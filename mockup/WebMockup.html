@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect - Sri Lankan American Community</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .logo img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            border-radius: 8px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #667eea;
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8rem 0 4rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" stroke-width="0.5" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* Main Content */
+        .main-content {
+            background: #f7fafc;
+            padding: 4rem 0;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Activity Feed */
+        .activity-feed {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .feed-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .location-selector {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .feed-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.3s;
+        }
+        
+        .feed-item:hover {
+            background: #f8f9ff;
+        }
+        
+        .feed-item:last-child {
+            border-bottom: none;
+        }
+        
+        .feed-meta {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .feed-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .feed-type {
+            background: #e6fffa;
+            color: #065f46;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
+        .feed-type.event {
+            background: #fef7e0;
+            color: #92400e;
+        }
+        
+        .feed-type.business {
+            background: #ede9fe;
+            color: #6b46c1;
+        }
+        
+        .feed-type.forum {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .feed-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #2d3748;
+        }
+        
+        .feed-content p {
+            color: #718096;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .feed-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        
+        .feed-action {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #718096;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .feed-action:hover {
+            color: #667eea;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .widget {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .widget-header {
+            background: #f8f9ff;
+            padding: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .widget-content {
+            padding: 1.25rem;
+        }
+        
+        .cultural-event {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .cultural-event:last-child {
+            border-bottom: none;
+        }
+        
+        .event-date {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 60px;
+            margin-right: 1rem;
+        }
+        
+        .event-day {
+            font-size: 1.25rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .event-month {
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+        
+        .event-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            color: #2d3748;
+        }
+        
+        .event-info p {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+        
+        .business-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .business-item:last-child {
+            border-bottom: none;
+        }
+        
+        .business-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+        
+        .business-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            color: #2d3748;
+        }
+        
+        .business-info p {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+        
+        .rating {
+            color: #f6ad55;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .nav {
+                padding: 1rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23667eea'/><circle cx='50' cy='30' r='15' fill='white'/><path d='M20 70 Q50 50 80 70 L80 90 L20 90 Z' fill='white'/></svg>" alt="Lanka Connect">
+                LankaConnect
+            </div>
+            <ul class="nav-links">
+                <li><a href="#events">Events</a></li>
+                <li><a href="#forum">Forums</a></li>
+                <li><a href="#business">Business</a></li>
+                <li><a href="#culture">Culture</a></li>
+            </ul>
+            <div class="auth-buttons">
+                <a href="#login" class="btn btn-outline">Login</a>
+                <a href="#signup" class="btn btn-primary">Join Community</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Connect. Celebrate. Thrive.</h1>
+                <p>The complete Sri Lankan American community platform bringing our diaspora together</p>
+                <div class="stats">
+                    <div class="stat">
+                        <span class="stat-number">12,500+</span>
+                        <span class="stat-label">Community Members</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">450+</span>
+                        <span class="stat-label">Events This Month</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">2,200+</span>
+                        <span class="stat-label">Local Businesses</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="main-content">
+        <div class="container">
+            <div class="content-grid">
+                <!-- Activity Feed -->
+                <div class="activity-feed">
+                    <div class="feed-header">
+                        <h2>Community Activity</h2>
+                        <select class="location-selector">
+                            <option>Aurora, OH & Nearby</option>
+                            <option>Cleveland Metro</option>
+                            <option>Columbus Area</option>
+                            <option>Nationwide</option>
+                        </select>
+                    </div>
+
+                    <div class="feed-item">
+                        <div class="feed-meta">
+                            <div class="feed-avatar">SA</div>
+                            <div>
+                                <strong>Sri Lankan Association of Cleveland</strong>
+                                <div style="font-size: 0.8rem; color: #718096;">2 hours ago • Cleveland, OH</div>
+                            </div>
+                            <span class="feed-type event">Event</span>
+                        </div>
+                        <div class="feed-content">
+                            <h3>Sinhala New Year Celebration 2025</h3>
+                            <p>Join us for the biggest Sinhala New Year celebration in Ohio! Traditional games, authentic food, cultural performances, and family fun. Tickets include lunch and all activities.</p>
+                        </div>
+                        <div class="feed-actions">
+                            <span class="feed-action">👍 245 Interested</span>
+                            <span class="feed-action">💬 32 Comments</span>
+                            <span class="feed-action">📅 April 13, 2025</span>
+                        </div>
+                    </div>
+
+                    <div class="feed-item">
+                        <div class="feed-meta">
+                            <div class="feed-avatar">RK</div>
+                            <div>
+                                <strong>Ravi Kumara</strong>
+                                <div style="font-size: 0.8rem; color: #718096;">4 hours ago • Jobs Forum</div>
+                            </div>
+                            <span class="feed-type forum">Forum</span>
+                        </div>
+                        <div class="feed-content">
+                            <h3>Software Engineer Opportunities in Columbus</h3>
+                            <p>I'm a .NET developer with 5 years experience looking to relocate to Columbus. Any recommendations for companies that sponsor H1B visas? Also looking for advice on the tech scene there.</p>
+                        </div>
+                        <div class="feed-actions">
+                            <span class="feed-action">💬 18 Replies</span>
+                            <span class="feed-action">🔥 12 Helpful</span>
+                            <span class="feed-action">📋 Jobs Forum</span>
+                        </div>
+                    </div>
+
+                    <div class="feed-item">
+                        <div class="feed-meta">
+                            <div class="feed-avatar">LK</div>
+                            <div>
+                                <strong>Lanka Kitchen</strong>
+                                <div style="font-size: 0.8rem; color: #718096;">6 hours ago • Akron, OH</div>
+                            </div>
+                            <span class="feed-type business">Business</span>
+                        </div>
+                        <div class="feed-content">
+                            <h3>New Location Opening in Akron!</h3>
+                            <p>We're excited to announce our second location opening next month! Authentic Sri Lankan cuisine, fresh hoppers, and our famous kottu roti. Grand opening special: 20% off for community members.</p>
+                        </div>
+                        <div class="feed-actions">
+                            <span class="feed-action">❤️ 156 Likes</span>
+                            <span class="feed-action">💬 24 Comments</span>
+                            <span class="feed-action">🏪 View Business</span>
+                        </div>
+                    </div>
+
+                    <div class="feed-item">
+                        <div class="feed-meta">
+                            <div class="feed-avatar">AM</div>
+                            <div>
+                                <strong>Anjali Mendis</strong>
+                                <div style="font-size: 0.8rem; color: #718096;">1 day ago • Cultural Forum</div>
+                            </div>
+                            <span class="feed-type forum">Forum</span>
+                        </div>
+                        <div class="feed-content">
+                            <h3>Teaching Kids Sinhala - Resources Needed</h3>
+                            <p>My 7-year-old is showing interest in learning Sinhala but I'm struggling to find good resources in the US. Any recommendations for books, apps, or online tutors? Also wondering if there are any weekend schools in the Ohio area.</p>
+                        </div>
+                        <div class="feed-actions">
+                            <span class="feed-action">💬 31 Replies</span>
+                            <span class="feed-action">📚 15 Resources Shared</span>
+                            <span class="feed-action">🎓 Cultural Forum</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Cultural Calendar -->
+                    <div class="widget">
+                        <div class="widget-header">🗓️ Cultural Calendar</div>
+                        <div class="widget-content">
+                            <div class="cultural-event">
+                                <div class="event-date">
+                                    <div class="event-day">13</div>
+                                    <div class="event-month">APR</div>
+                                </div>
+                                <div class="event-info">
+                                    <h4>Sinhala New Year</h4>
+                                    <p>Traditional celebrations nationwide</p>
+                                </div>
+                            </div>
+                            <div class="cultural-event">
+                                <div class="event-date">
+                                    <div class="event-day">23</div>
+                                    <div class="event-month">MAY</div>
+                                </div>
+                                <div class="event-info">
+                                    <h4>Vesak Day</h4>
+                                    <p>Buddhist celebration of enlightenment</p>
+                                </div>
+                            </div>
+                            <div class="cultural-event">
+                                <div class="event-date">
+                                    <div class="event-day">15</div>
+                                    <div class="event-month">AUG</div>
+                                </div>
+                                <div class="event-info">
+                                    <h4>Independence Day</h4>
+                                    <p>Sri Lankan independence celebrations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Featured Businesses -->
+                    <div class="widget">
+                        <div class="widget-header">⭐ Featured Businesses</div>
+                        <div class="widget-content">
+                            <div class="business-item">
+                                <div class="business-logo">LK</div>
+                                <div class="business-info">
+                                    <h4>Lanka Kitchen</h4>
+                                    <p>Authentic Sri Lankan Restaurant</p>
+                                </div>
+                                <div class="rating">⭐ 4.8</div>
+                            </div>
+                            <div class="business-item">
+                                <div class="business-logo">ST</div>
+                                <div class="business-info">
+                                    <h4>Spice Temple</h4>
+                                    <p>Grocery & Spices</p>
+                                </div>
+                                <div class="rating">⭐ 4.9</div>
+                            </div>
+                            <div class="business-item">
+                                <div class="business-logo">DL</div>
+                                <div class="business-info">
+                                    <h4>Dr. Lanka Immigration</h4>
+                                    <p>Legal Services</p>
+                                </div>
+                                <div class="rating">⭐ 4.7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="widget">
+                        <div class="widget-header">📊 Community Stats</div>
+                        <div class="widget-content">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span>Active Today</span>
+                                <strong>2,340</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span>Events This Week</span>
+                                <strong>127</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span>New Businesses</span>
+                                <strong>23</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Forum Discussions</span>
+                                <strong>456</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

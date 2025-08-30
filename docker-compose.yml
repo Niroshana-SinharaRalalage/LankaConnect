@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lankaconnect-postgres
+    environment:
+      POSTGRES_DB: lankaconnect
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lankaconnect-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: lankaconnect-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lankaconnect-network
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: lankaconnect-mailhog
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    environment:
+      MH_STORAGE: memory
+    networks:
+      - lankaconnect-network
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: lankaconnect-azurite
+    ports:
+      - "10000:10000" # Blob service
+      - "10001:10001" # Queue service
+      - "10002:10002" # Table service
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    volumes:
+      - azurite_data:/data
+    networks:
+      - lankaconnect-network
+
+  seq:
+    image: datalust/seq:latest
+    container_name: lankaconnect-seq
+    environment:
+      ACCEPT_EULA: Y
+    ports:
+      - "5341:80"
+      - "5342:5341"
+    volumes:
+      - seq_data:/data
+    networks:
+      - lankaconnect-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  azurite_data:
+  seq_data:
+
+networks:
+  lankaconnect-network:
+    driver: bridge

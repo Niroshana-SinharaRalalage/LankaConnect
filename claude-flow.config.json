@@ -1,0 +1,70 @@
+{
+  "project": {
+    "name": "LankaConnect",
+    "description": "Sri Lankan American community platform with events, forums, business directory, and cultural content",
+    "type": "full-stack",
+    "domain": "community-platform",
+    "target_users": "Sri Lankan Americans aged 25-55",
+    "tech_stack": "ASP.NET Core 8, PostgreSQL, Azure, Next.js, React Native"
+  },
+  "architecture": {
+    "pattern": "clean-architecture",
+    "ddd": {
+      "enabled": true,
+      "aggregateRoot": true,
+      "valueObjects": true,
+      "domainServices": true,
+      "repositories": true,
+      "domainEvents": true
+    },
+    "layers": {
+      "domain": "src/domain",
+      "application": "src/application", 
+      "infrastructure": "src/infrastructure",
+      "presentation": "src/presentation"
+    },
+    "testing": {
+      "strategy": "tdd",
+      "coverage": 90,
+      "unitTests": "src/**/*.spec.ts",
+      "integrationTests": "tests/integration/**/*.test.ts",
+      "e2eTests": "tests/e2e/**/*.test.ts"
+    }
+  },
+  "features": {
+    "autoTopologySelection": true,
+    "parallelExecution": true,
+    "neuralTraining": true,
+    "bottleneckAnalysis": true,
+    "smartAutoSpawning": true,
+    "selfHealingWorkflows": true,
+    "crossSessionMemory": true,
+    "githubIntegration": true
+  },
+  "performance": {
+    "maxAgents": 12,
+    "defaultTopology": "hierarchical",
+    "executionStrategy": "parallel",
+    "tokenOptimization": true,
+    "cacheEnabled": true,
+    "telemetryLevel": "detailed"
+  },
+  "agents": {
+    "specializations": [
+      "domain-expert",
+      "clean-architecture-specialist", 
+      "tdd-specialist",
+      "ddd-specialist",
+      "api-designer",
+      "database-architect",
+      "security-expert",
+      "performance-optimizer"
+    ],
+    "coordination": {
+      "domainLayer": ["domain-expert", "ddd-specialist"],
+      "applicationLayer": ["clean-architecture-specialist", "api-designer"], 
+      "infrastructureLayer": ["database-architect", "security-expert"],
+      "testingLayer": ["tdd-specialist", "performance-optimizer"]
+    }
+  }
+}

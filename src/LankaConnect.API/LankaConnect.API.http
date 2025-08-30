@@ -1,0 +1,6 @@
+@LankaConnect.API_HostAddress = http://localhost:5043
+
+GET {{LankaConnect.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

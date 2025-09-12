@@ -1,0 +1,43 @@
+# Global code owners
+* @devops-team @senior-developers
+
+# GitHub Actions and CI/CD
+/.github/ @devops-team @ci-maintainers
+
+# Core Domain Layer - Requires architect approval
+/src/LankaConnect.Domain/ @domain-architects @senior-developers
+
+# Infrastructure Layer - Requires DevOps approval  
+/src/LankaConnect.Infrastructure/ @devops-team @infrastructure-team
+
+# Application Layer - Requires feature team approval
+/src/LankaConnect.Application/ @application-team @senior-developers
+
+# API Layer - Requires API team approval
+/src/LankaConnect.API/ @api-team @senior-developers
+
+# Cultural Intelligence - Requires cultural team approval
+/src/**/Cultural*/ @cultural-intelligence-team @domain-architects
+/src/**/Sacred*/ @cultural-intelligence-team @senior-developers
+
+# Test Files - Requires test engineering approval
+/tests/ @test-engineers @qa-team
+
+# Database and Migrations
+/src/LankaConnect.Infrastructure/Database/ @database-team @devops-team
+/src/LankaConnect.Infrastructure/Migrations/ @database-team @devops-team
+
+# Documentation
+/docs/ @technical-writers @product-team
+/README.md @technical-writers @product-team
+
+# Configuration Files
+docker-compose*.yml @devops-team
+*.json @configuration-team
+*.yml @devops-team
+*.yaml @devops-team
+
+# Security Sensitive
+/src/**/*Auth*/ @security-team @senior-developers
+/src/**/*Security*/ @security-team @senior-developers
+/src/**/*Encryption*/ @security-team @senior-developers

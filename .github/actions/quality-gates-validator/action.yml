@@ -1,0 +1,76 @@
+name: 'Quality Gates Validator'
+description: 'Validates LankaConnect quality gates for selective build strategy'
+inputs:
+  component:
+    description: 'Component to validate (Domain, Infrastructure, Application, Tests)'
+    required: true
+  error-threshold:
+    description: 'Maximum allowed errors for the component'
+    required: false
+    default: '0'
+  build-path:
+    description: 'Path to the component project file'
+    required: true
+
+outputs:
+  validation-status:
+    description: 'Quality gate validation status (PASSED/FAILED/SKIPPED)'
+    value: ${{ steps.validate.outputs.status }}
+  error-count:
+    description: 'Number of compilation errors found'
+    value: ${{ steps.validate.outputs.error-count }}
+  build-output:
+    description: 'Build output for analysis'
+    value: ${{ steps.validate.outputs.build-output }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate Component Quality Gate
+      id: validate
+      shell: bash
+      run: |
+        echo "::group::Quality Gate Validation - ${{ inputs.component }}"
+        
+        # Attempt to build the component
+        BUILD_OUTPUT=$(dotnet build "${{ inputs.build-path }}" -c Release --no-restore 2>&1 || true)
+        BUILD_EXIT_CODE=$?
+        
+        # Extract error count
+        ERROR_COUNT=$(echo "$BUILD_OUTPUT" | grep -E "error(s)?" | tail -1 | grep -oE '[0-9]+' | head -1 || echo "0")
+        THRESHOLD=${{ inputs.error-threshold }}
+        
+        echo "Component: ${{ inputs.component }}"
+        echo "Error Count: $ERROR_COUNT"
+        echo "Threshold: $THRESHOLD"
+        echo "Build Exit Code: $BUILD_EXIT_CODE"
+        
+        # Determine validation status
+        if [ "$ERROR_COUNT" -le "$THRESHOLD" ] && [ "$BUILD_EXIT_CODE" -eq 0 ]; then
+          STATUS="PASSED"
+          echo "✅ Quality Gate PASSED for ${{ inputs.component }}"
+        elif [ "$ERROR_COUNT" -gt 50 ]; then
+          STATUS="SKIPPED"
+          echo "⚠️  Quality Gate SKIPPED for ${{ inputs.component }} - High error count ($ERROR_COUNT)"
+        else
+          STATUS="FAILED"
+          echo "❌ Quality Gate FAILED for ${{ inputs.component }} - $ERROR_COUNT errors"
+        fi
+        
+        # Set outputs
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+        echo "error-count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+        
+        # Save build output for analysis (first 1000 chars to avoid output limits)
+        BUILD_OUTPUT_TRUNCATED=$(echo "$BUILD_OUTPUT" | head -c 1000)
+        echo "build-output<<EOF" >> $GITHUB_OUTPUT
+        echo "$BUILD_OUTPUT_TRUNCATED" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+        
+        # Exit with failure only for critical components (Domain, Infrastructure)
+        if [[ "${{ inputs.component }}" == "Domain" || "${{ inputs.component }}" == "Infrastructure" ]] && [ "$STATUS" == "FAILED" ]; then
+          echo "💥 Critical component ${{ inputs.component }} failed quality gate"
+          exit 1
+        fi

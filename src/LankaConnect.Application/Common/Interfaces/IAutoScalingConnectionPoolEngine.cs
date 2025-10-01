@@ -8,6 +8,7 @@ using LankaConnect.Domain.Common;
 using DatabaseValidationResult = LankaConnect.Domain.Common.Database.ValidationResult;
 using LankaConnect.Domain.Common.Database;
 using LankaConnect.Domain.Shared.Types;
+using LankaConnect.Domain.Infrastructure.Failover;
 using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Infrastructure;

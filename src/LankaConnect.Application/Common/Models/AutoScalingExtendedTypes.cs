@@ -6,16 +6,7 @@ using LankaConnect.Domain.Common.ValueObjects;
 namespace LankaConnect.Application.Common.Models;
 
 #region Connection Pool and Failover Types
-
-public class FailoverConfiguration
-{
-    public string PrimaryPoolId { get; set; } = string.Empty;
-    public string BackupPoolId { get; set; } = string.Empty;
-    public TimeSpan FailoverTimeout { get; set; }
-    public double FailoverThreshold { get; set; }
-    public bool EnableAutomaticFailback { get; set; }
-    public Dictionary<string, object> FailoverSettings { get; set; } = new();
-}
+// CONSOLIDATED: Use LankaConnect.Domain.Infrastructure.Failover.FailoverConfiguration
 
 public class FailoverResult
 {

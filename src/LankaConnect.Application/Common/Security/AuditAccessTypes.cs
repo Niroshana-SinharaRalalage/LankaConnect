@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Common;
+using DomainAccessPatternAnalysis = LankaConnect.Domain.Common.Security.AccessPatternAnalysis;
 
 namespace LankaConnect.Application.Common.Security;
 

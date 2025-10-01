@@ -8,6 +8,7 @@ using LankaConnect.Application.Common.Models;
 using CulturalIntelligenceModels = LankaConnect.Application.Common.Models.CulturalIntelligence;
 using LankaConnect.Application.Common.Models.CulturalIntelligence;
 using LankaConnect.Application.Common.Models.Security;
+using LankaConnect.Domain.Infrastructure.Failover;
 using LankaConnect.Domain.Shared.Types;
 using CriticalModels = LankaConnect.Application.Common.Models.Critical;
 using AppSecurity = LankaConnect.Application.Common.Security;

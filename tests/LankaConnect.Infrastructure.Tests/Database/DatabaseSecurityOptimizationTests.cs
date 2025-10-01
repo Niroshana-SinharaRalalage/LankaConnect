@@ -13,6 +13,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Notifications;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
+using LankaConnect.Domain.Common.Database;
 using LankaConnect.Infrastructure.Database;
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Monitoring;
@@ -1049,13 +1050,7 @@ namespace LankaConnect.Infrastructure.Tests.Database
         public string Algorithm { get; set; }
     }
 
-    public enum SecurityLevel
-    {
-        Standard,
-        Medium,
-        High,
-        Maximum
-    }
+    // CONSOLIDATED: Use LankaConnect.Domain.Common.Database.SecurityLevel
 
     public class CulturalContent
     {

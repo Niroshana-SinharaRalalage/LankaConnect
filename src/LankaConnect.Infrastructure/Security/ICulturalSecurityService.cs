@@ -8,6 +8,7 @@ using LankaConnect.Domain.Common.Notifications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Security;
 using LankaConnect.Domain.Infrastructure;
+using LankaConnect.Domain.Common.Database;
 using LankaConnect.Domain.Shared;
 using LankaConnect.Infrastructure.Monitoring;
 using LankaConnect.Infrastructure.Database.LoadBalancing;

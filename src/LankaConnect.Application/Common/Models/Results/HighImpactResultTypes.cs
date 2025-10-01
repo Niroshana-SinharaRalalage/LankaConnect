@@ -425,7 +425,7 @@ public class PerformanceMetric { }
 public class PerformanceAlert { }
 public class CulturalPerformanceMetric { }
 public class PerformanceTrendAnalysis { }
-public class PerformanceThreshold { }
+// CONSOLIDATED: Use LankaConnect.Domain.Common.ValueObjects.PerformanceThreshold
 public class ResourceUtilization { }
 public class PerformanceOptimizationSuggestion { }
 public class PerformanceBaseline { }

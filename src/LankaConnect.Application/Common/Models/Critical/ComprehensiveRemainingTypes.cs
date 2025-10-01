@@ -357,13 +357,7 @@ public class PerformanceTrendAnalysis
     public required DateTime AnalysisTimestamp { get; set; }
 }
 
-public class PerformanceThreshold
-{
-    public required string ThresholdId { get; set; }
-    public required string MetricName { get; set; }
-    public required double ThresholdValue { get; set; }
-    public required PerformanceThresholdType ThresholdType { get; set; }
-}
+// CONSOLIDATED: Use LankaConnect.Domain.Common.ValueObjects.PerformanceThreshold
 
 public class ResourceUtilization
 {

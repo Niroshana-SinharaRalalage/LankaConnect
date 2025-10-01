@@ -1,0 +1,107 @@
+using LankaConnect.TestUtilities.Builders;
+
+namespace LankaConnect.TestUtilities.Fixtures;
+
+/// <summary>
+/// Central factory for creating test data across all domain objects.
+/// Provides convenient methods for common test scenarios.
+/// </summary>
+public static class TestDataFactory
+{
+    // Business domain
+    public static LankaConnect.Domain.Business.Business ValidBusiness() => 
+        BusinessTestDataBuilder.CreateValidBusiness();
+
+    public static LankaConnect.Domain.Business.Business Restaurant() => 
+        BusinessTestDataBuilder.CreateRestaurant();
+
+    public static LankaConnect.Domain.Business.Business Hotel() => 
+        BusinessTestDataBuilder.CreateHotel();
+
+    public static LankaConnect.Domain.Business.Business TechCompany() => 
+        BusinessTestDataBuilder.CreateTechCompany();
+
+    public static List<LankaConnect.Domain.Business.Business> BusinessCollection(int count = 5) => 
+        BusinessTestDataBuilder.CreateBusinessCollection(count);
+
+    // Communications domain
+    public static Domain.Communications.Entities.EmailMessage BasicEmail() => 
+        EmailTestDataBuilder.CreateBasicEmailMessage();
+
+    public static Domain.Communications.Entities.EmailMessage SentEmail() => 
+        EmailTestDataBuilder.CreateSentEmail();
+
+    public static Domain.Communications.Entities.EmailMessage DeliveredEmail() => 
+        EmailTestDataBuilder.CreateDeliveredEmail();
+
+    public static Domain.Communications.Entities.EmailMessage FailedEmail() => 
+        EmailTestDataBuilder.CreateFailedEmail();
+
+    public static List<Domain.Communications.Entities.EmailMessage> EmailBatch(int count = 10) => 
+        EmailTestDataBuilder.CreateEmailBatch(count);
+
+    // Common value objects
+    public static Domain.Users.ValueObjects.Email ValidEmail(string? address = null) => 
+        BusinessTestDataBuilder.CreateValidEmail(address);
+
+    public static Domain.Shared.ValueObjects.PhoneNumber ValidPhoneNumber(string? number = null) => 
+        BusinessTestDataBuilder.CreateValidPhoneNumber(number);
+
+    public static Domain.Business.ValueObjects.Address ValidAddress() => 
+        BusinessTestDataBuilder.CreateValidAddress();
+
+    public static Domain.Business.ValueObjects.GeoCoordinate ValidCoordinates() => 
+        BusinessTestDataBuilder.CreateValidCoordinates();
+
+    // Test scenarios
+    public static class Scenarios
+    {
+        public static class Business
+        {
+            public static (LankaConnect.Domain.Business.Business business, List<Domain.Communications.Entities.EmailMessage> emails) BusinessWithNotifications()
+            {
+                var business = ValidBusiness();
+                var emails = new List<Domain.Communications.Entities.EmailMessage>
+                {
+                    EmailTestDataBuilder.CreateWelcomeMessage(business.ContactInformation.Email.Value, business.Profile.Name),
+                    EmailTestDataBuilder.CreateBasicEmailMessage()
+                };
+                return (business, emails);
+            }
+
+            public static LankaConnect.Domain.Business.Business BusinessWithServices(int serviceCount = 3)
+            {
+                var business = ValidBusiness();
+                var services = BusinessTestDataBuilder.CreateMultipleServices(serviceCount);
+                
+                foreach (var service in services)
+                {
+                    business.AddService(service);
+                }
+
+                return business;
+            }
+        }
+
+        public static class Email
+        {
+            public static List<Domain.Communications.Entities.EmailMessage> MixedStatusEmails() => 
+                EmailTestDataBuilder.CreateMixedStatusEmails();
+
+            public static List<Domain.Communications.Entities.EmailMessage> PendingEmails(int count = 5) => 
+                EmailTestDataBuilder.CreatePendingEmails(count);
+
+            public static List<Domain.Communications.Entities.EmailMessage> FailedEmails(int count = 3) => 
+                EmailTestDataBuilder.CreateFailedEmails(count);
+
+            public static Domain.Communications.Entities.EmailMessage EmailVerification(string email, string token) => 
+                EmailTestDataBuilder.CreateEmailVerificationMessage(email, token);
+
+            public static Domain.Communications.Entities.EmailMessage PasswordReset(string email, string token) => 
+                EmailTestDataBuilder.CreatePasswordResetMessage(email, token);
+
+            public static Domain.Communications.Entities.EmailMessage Welcome(string email, string userName) => 
+                EmailTestDataBuilder.CreateWelcomeMessage(email, userName);
+        }
+    }
+}

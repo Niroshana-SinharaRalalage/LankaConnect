@@ -1,0 +1,31 @@
+   2724 LankaConnect.Infrastructure
+   1362 LankaConnect.Infrastructure.csproj]
+     42 LankaConnect.Domain.Common.Enums.SouthAsianLanguage' and 'LankaConnect.Domain.Shared.SouthAsianLanguage' [C:
+     12 LankaConnect.Domain.Common.Database.CulturalEventPerformanceMetrics' and 'LankaConnect.Application.Common.Interfaces.CulturalEventPerformanceMetrics' [C:
+      6 LankaConnect.Domain.Common.CulturalContext' and 'LankaConnect.Application.Common.Interfaces.CulturalContext' [C:
+      4 LankaConnect.Infrastructure.Monitoring.ISecurityMetricsCollector' and 'LankaConnect.Infrastructure.Security.ISecurityMetricsCollector' [C:
+      4 LankaConnect.Infrastructure.Database.LoadBalancing' already contains a definition for 'ValidationResult' [C:
+      4 LankaConnect.Domain.Common.Database.CulturalEventPriority' and 'LankaConnect.Application.Common.Interfaces.CulturalEventPriority' [C:
+      4 LankaConnect.Domain.Common.CulturalSignificance' and 'LankaConnect.Application.Common.Interfaces.CulturalSignificance' [C:
+      2 LankaConnect.Infrastructure.Security.SecurityOptimizationResult' and 'LankaConnect.Application.Common.Interfaces.SecurityOptimizationResult' [C:
+      2 LankaConnect.Infrastructure.Security.CulturalSecurityResult' and 'LankaConnect.Application.Common.Interfaces.CulturalSecurityResult' [C:
+      2 LankaConnect.Infrastructure.Database.LoadBalancing' already contains a definition for 'SystemHealthStatus' [C:
+      2 LankaConnect.Infrastructure.Database.LoadBalancing' already contains a definition for 'DateRange' [C:
+      2 LankaConnect.Infrastructure.Database.LoadBalancing' already contains a definition for 'CulturalEventType' [C:
+      2 LankaConnect.Infrastructure.Database.LoadBalancing' already contains a definition for 'CulturalEventContext' [C:
+      2 LankaConnect.Domain.Common.RevenueImpactMetrics' and 'LankaConnect.Application.Common.Interfaces.RevenueImpactMetrics' [C:
+      2 LankaConnect.Domain.Common.Enums.ContentType' and 'LankaConnect.Domain.Shared.ContentType' [C:
+      2 LankaConnect.Domain.Common.Database.DisasterRecoveryResult' and 'LankaConnect.Application.Common.Interfaces.DisasterRecoveryResult' [C:
+      2 LankaConnect.Domain.Common.Database.CulturalRegion' and 'LankaConnect.Domain.Shared.CulturalRegion' [C:
+      2 LankaConnect.Domain.Common.Database' (are you missing an assembly reference?) [C:
+      2 LankaConnect.Application.Common.Interfaces.ScriptComplexity' and 'LankaConnect.Domain.Shared.ScriptComplexity' [C:
+      2 LankaConnect.Application.Common.Interfaces.MultiCulturalEventResolution' and 'LankaConnect.Domain.Shared.MultiCulturalEventResolution' [C:
+      2 LankaConnect.Application.Common.Interfaces.LanguageServiceType' and 'LankaConnect.Domain.Shared.LanguageServiceType' [C:
+      2 LankaConnect.Application.Common.Interfaces.LanguageProficiencyLevel' and 'LankaConnect.Domain.Shared.LanguageProficiencyLevel' [C:
+      2 LankaConnect.Application.Common.Interfaces.LanguageInteractionData' and 'LankaConnect.Domain.Shared.LanguageInteractionData' [C:
+      2 LankaConnect.Application.Common.Interfaces.LanguageComplexityAnalysis' and 'LankaConnect.Domain.Shared.LanguageComplexityAnalysis' [C:
+      2 LankaConnect.Application.Common.Interfaces.HeritageLanguageLearningRecommendations' and 'LankaConnect.Domain.Shared.HeritageLanguageLearningRecommendations' [C:
+      2 LankaConnect.Application.Common.Interfaces.CulturalEventLanguagePrediction' and 'LankaConnect.Domain.Shared.CulturalEventLanguagePrediction' [C:
+      2 LankaConnect.Application.Common.Interfaces.CulturalEducationPathway' and 'LankaConnect.Domain.Shared.CulturalEducationPathway' [C:
+      2 LankaConnect.Application.Common.Interfaces.CulturalAppropriatenessValidation' and 'LankaConnect.Domain.Shared.CulturalAppropriatenessValidation' [C:
+      2 LankaConnect.Application.Common.Interfaces.BatchMultiLanguageRoutingResponse' and 'LankaConnect.Domain.Shared.BatchMultiLanguageRoutingResponse' [C:

@@ -1,0 +1,207 @@
+using Moq;
+using LankaConnect.Domain.Business;
+using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.TestUtilities.Builders;
+
+namespace LankaConnect.TestUtilities.Mocks;
+
+/// <summary>
+/// Centralized mock repository for all domain and application interfaces.
+/// Provides pre-configured mocks with common behaviors.
+/// </summary>
+public static class MockRepository
+{
+    // Business repository mocks
+    public static Mock<IBusinessRepository> CreateBusinessRepository()
+    {
+        var mock = new Mock<IBusinessRepository>();
+        
+        // Default behaviors
+        mock.Setup(x => x.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => id != Guid.Empty ? BusinessTestDataBuilder.CreateValidBusiness() : null);
+
+        mock.Setup(x => x.AddAsync(It.IsAny<Business>()))
+            .Returns(Task.CompletedTask);
+
+        mock.Setup(x => x.UpdateAsync(It.IsAny<Business>()))
+            .Returns(Task.CompletedTask);
+
+        mock.Setup(x => x.DeleteAsync(It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        return mock;
+    }
+
+    public static Mock<IBusinessRepository> CreateBusinessRepositoryWithData(List<Business> businesses)
+    {
+        var mock = CreateBusinessRepository();
+        
+        mock.Setup(x => x.GetAllAsync())
+            .ReturnsAsync(businesses);
+            
+        mock.Setup(x => x.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => businesses.FirstOrDefault(b => b.Id == id));
+
+        return mock;
+    }
+
+    // Email repository mocks
+    public static Mock<IEmailMessageRepository> CreateEmailRepository()
+    {
+        var mock = new Mock<IEmailMessageRepository>();
+        
+        // Default behaviors
+        mock.Setup(x => x.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => id != Guid.Empty ? EmailTestDataBuilder.CreateBasicEmailMessage() : null);
+
+        mock.Setup(x => x.AddAsync(It.IsAny<EmailMessage>()))
+            .Returns(Task.CompletedTask);
+
+        mock.Setup(x => x.UpdateAsync(It.IsAny<EmailMessage>()))
+            .Returns(Task.CompletedTask);
+
+        mock.Setup(x => x.DeleteAsync(It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        return mock;
+    }
+
+    public static Mock<IEmailMessageRepository> CreateEmailRepositoryWithData(List<EmailMessage> emails)
+    {
+        var mock = CreateEmailRepository();
+        
+        mock.Setup(x => x.GetAllAsync())
+            .ReturnsAsync(emails);
+            
+        mock.Setup(x => x.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => emails.FirstOrDefault(e => e.Id == id));
+
+        return mock;
+    }
+
+    // Unit of Work mock
+    public static Mock<LankaConnect.Domain.Common.IUnitOfWork> CreateUnitOfWork()
+    {
+        var mock = new Mock<LankaConnect.Domain.Common.IUnitOfWork>();
+        
+        mock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1); // Simulate one entity changed
+
+        return mock;
+    }
+
+    // Email service mocks
+    public static Mock<IEmailService> CreateEmailService()
+    {
+        var mock = new Mock<IEmailService>();
+        
+        mock.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessage>()))
+            .ReturnsAsync(true);
+
+        return mock;
+    }
+
+    public static Mock<IEmailService> CreateFailingEmailService()
+    {
+        var mock = new Mock<IEmailService>();
+        
+        mock.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessage>()))
+            .ReturnsAsync(false);
+
+        return mock;
+    }
+
+    // Logger mocks
+    public static Mock<Microsoft.Extensions.Logging.ILogger<T>> CreateLogger<T>()
+    {
+        return new Mock<Microsoft.Extensions.Logging.ILogger<T>>();
+    }
+
+    // Configuration mocks
+    public static Mock<Microsoft.Extensions.Configuration.IConfiguration> CreateConfiguration(Dictionary<string, string?> settings)
+    {
+        var mock = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+        
+        foreach (var setting in settings)
+        {
+            mock.Setup(x => x[setting.Key]).Returns(setting.Value);
+        }
+
+        return mock;
+    }
+
+    // HTTP context mocks (for integration testing)
+    public static Mock<Microsoft.AspNetCore.Http.HttpContext> CreateHttpContext()
+    {
+        var mock = new Mock<Microsoft.AspNetCore.Http.HttpContext>();
+        
+        var request = new Mock<Microsoft.AspNetCore.Http.HttpRequest>();
+        var response = new Mock<Microsoft.AspNetCore.Http.HttpResponse>();
+        
+        mock.Setup(x => x.Request).Returns(request.Object);
+        mock.Setup(x => x.Response).Returns(response.Object);
+
+        return mock;
+    }
+
+    // Image service mocks
+    public static Mock<IImageService> CreateImageService()
+    {
+        var mock = new Mock<IImageService>();
+        var storage = new Dictionary<string, byte[]>();
+        
+        mock.Setup(x => x.SaveImageAsync(It.IsAny<Stream>(), It.IsAny<string>()))
+            .Returns((Stream stream, string fileName) =>
+            {
+                using var memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+                storage[fileName] = memoryStream.ToArray();
+                return Task.FromResult($"https://images.example.com/{fileName}");
+            });
+
+        mock.Setup(x => x.GetImageUrlAsync(It.IsAny<string>()))
+            .ReturnsAsync((string fileName) => 
+                storage.ContainsKey(fileName) ? $"https://images.example.com/{fileName}" : null);
+
+        mock.Setup(x => x.DeleteImageAsync(It.IsAny<string>()))
+            .Returns((string fileName) =>
+            {
+                storage.Remove(fileName);
+                return Task.CompletedTask;
+            });
+
+        return mock;
+    }
+
+    // JWT service mocks
+    public static Mock<IJwtTokenService> CreateJwtTokenService()
+    {
+        var mock = new Mock<IJwtTokenService>();
+        
+        mock.Setup(x => x.GenerateTokenAsync(It.IsAny<Guid>()))
+            .ReturnsAsync("mock.jwt.token");
+
+        mock.Setup(x => x.ValidateTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(true);
+
+        mock.Setup(x => x.GetClaimsFromTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["userId"] = Guid.NewGuid().ToString() });
+
+        return mock;
+    }
+
+    // Password hashing service mocks
+    public static Mock<IPasswordHashingService> CreatePasswordHashingService()
+    {
+        var mock = new Mock<IPasswordHashingService>();
+        
+        mock.Setup(x => x.HashPassword(It.IsAny<string>()))
+            .Returns((string password) => $"hashed_{password}");
+
+        mock.Setup(x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns((string password, string hash) => hash == $"hashed_{password}");
+
+        return mock;
+    }
+}

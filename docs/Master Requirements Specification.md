@@ -360,36 +360,82 @@ Technical Notes:
 - Content approval workflow for quality
 ```
 
-### 3.3 Phase 1 Membership Tiers
+### 3.3 Revised Membership Strategy
 
-#### 3.3.1 Free Tier (Community Access)
-**Price**: Free  
-**Features**:
-- Basic event discovery and RSVP
-- Forum browsing (read-only on premium topics)
-- Business directory browsing
-- Cultural content viewing
-- 1 event creation per month (free events only)
+#### 3.3.1 Phase 1: Community Building (Months 1-6) - Complete Free Access
+**Strategy**: Build engaged community with no barriers to core social features
 
-#### 3.3.2 Premium Membership
-**Price**: $10/month  
+**Free Community Access - $0/month**
 **Features**:
-- All free features
-- 3 event publications per month (free and paid)
-- Full forum access with posting privileges
-- Enhanced business listing with priority placement
-- Priority customer support
-- Advanced event analytics
+- Unlimited event discovery and RSVP
+- Full forum access (reading AND posting)
+- Complete business directory browsing
+- All cultural content viewing
+- Community messaging and connections
+- No event creation or business listing capabilities
 
-#### 3.3.3 Super Premium Membership
-**Price**: $20/month  
-**Features**:
-- All premium features
-- Unlimited event publications
-- Premium business features (featured placement, analytics)
+**Goal**: Build 10,000+ active community members
+
+#### 3.3.2 Phase 2: Value-Add Premium (Months 7-12)
+
+**Free Tier - $0/month (Always Free)**
+**Social Participation Focus**:
+- All Phase 1 features remain permanently free
+- Focus on consuming and participating in community
+- No content creation beyond forum participation
+
+**Community Supporter - $5/month**
+**Content Creation Tier**:
+- All free features PLUS:
+- Unlimited free event creation
+- Basic business listing (1 per user)
+- Supporter badge and recognition
 - Early access to new features
-- Direct contact with community managers
-- Advanced community analytics dashboard
+- Priority customer support
+- No ads on platform
+- Advanced event analytics
+- Custom profile themes
+
+**Event Organizer Pro - $15/month**
+**For Active Event Organizers**:
+- All Community Supporter features
+- Paid event creation with ticketing system
+- Advanced event promotion tools
+- Event revenue analytics and reporting
+- Custom event branding and themes
+- Event attendee management tools
+- Social media promotion integration
+- Stripe payment processing integration
+
+**Business Professional - $25/month**
+**For Business Owners**:
+- All Community Supporter features
+- Enhanced business profile with unlimited images
+- Business advertisement posting capabilities
+- Featured placement in directory searches
+- Business analytics and customer insights
+- Customer review management tools
+- Direct customer messaging system
+- Business promotion across platform features
+
+#### 3.3.3 Platform Revenue Streams
+
+**Platform-Owned Marketplace**
+- LankaConnect owns and operates marketplace
+- Direct sourcing of authentic Sri Lankan products
+- 100% control over product quality and pricing
+- Categories: Traditional crafts, clothing, food/spices, books/media, jewelry, religious items
+
+**Advertisement System**
+- Businesses can publish promotional advertisements only
+- Businesses CANNOT sell products through platform
+- Advertisement types: Banner ads, sponsored events, featured business listings
+- Revenue through CPM/CPC advertising model
+
+**Event Ticketing Commission**
+- 5-8% commission on paid event tickets
+- Stripe payment processing integration
+- Automated ticket generation and QR code validation
 
 ---
 

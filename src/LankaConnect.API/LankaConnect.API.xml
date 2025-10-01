@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LankaConnect.API</name>
+    </assembly>
+    <members>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.CreateBusiness(LankaConnect.Application.Businesses.Commands.CreateBusiness.CreateBusinessCommand)">
+            <summary>
+            Creates a new business
+            </summary>
+            <param name="command">Business creation data</param>
+            <returns>The ID of the created business</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.GetBusiness(System.Guid)">
+            <summary>
+            Gets a business by ID
+            </summary>
+            <param name="id">Business ID</param>
+            <returns>Business details</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.UpdateBusiness(System.Guid,LankaConnect.API.Controllers.UpdateBusinessRequest)">
+            <summary>
+            Updates an existing business
+            </summary>
+            <param name="id">Business ID</param>
+            <param name="command">Business update data</param>
+            <returns>No content on success</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.DeleteBusiness(System.Guid)">
+            <summary>
+            Deletes a business
+            </summary>
+            <param name="id">Business ID</param>
+            <returns>No content on success</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.SearchBusinesses(System.String,System.String,System.String,System.String,System.Nullable{System.Double},System.Nullable{System.Double},System.Nullable{System.Double},System.Nullable{System.Decimal},System.Nullable{System.Boolean},System.Int32,System.Int32)">
+            <summary>
+            Searches businesses with various filters
+            </summary>
+            <param name="searchTerm">Search term for business name or description</param>
+            <param name="category">Filter by category</param>
+            <param name="city">Filter by city</param>
+            <param name="province">Filter by province</param>
+            <param name="latitude">Latitude for location-based search</param>
+            <param name="longitude">Longitude for location-based search</param>
+            <param name="radiusKm">Search radius in kilometers</param>
+            <param name="minRating">Minimum rating filter</param>
+            <param name="isVerified">Filter by verification status</param>
+            <param name="pageNumber">Page number (default: 1)</param>
+            <param name="pageSize">Page size (default: 10, max: 50)</param>
+            <returns>Paginated list of businesses</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.GetAllBusinesses(System.Int32,System.Int32)">
+            <summary>
+            Gets all businesses (paginated)
+            </summary>
+            <param name="pageNumber">Page number (default: 1)</param>
+            <param name="pageSize">Page size (default: 10, max: 50)</param>
+            <returns>Paginated list of all businesses</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.AddService(System.Guid,LankaConnect.API.Controllers.AddServiceRequest)">
+            <summary>
+            Adds a service to a business
+            </summary>
+            <param name="id">Business ID</param>
+            <param name="command">Service data</param>
+            <returns>The ID of the created service</returns>
+        </member>
+        <member name="M:LankaConnect.API.Controllers.BusinessesController.GetBusinessServices(System.Guid)">
+            <summary>
+            Gets all services for a business
+            </summary>
+            <param name="id">Business ID</param>
+            <returns>List of business services</returns>
+        </member>
+    </members>
+</doc>

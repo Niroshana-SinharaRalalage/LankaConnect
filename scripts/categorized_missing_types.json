@@ -1,0 +1,445 @@
+{
+  "metadata": {
+    "generated": "2025-09-30",
+    "total_types_analyzed": 256,
+    "sample_size": 20,
+    "sample_found_rate": 0.90,
+    "estimated_found": 218,
+    "estimated_missing": 38,
+    "confirmed_duplicates": 7,
+    "analysis_method": "grep-based search with statistical extrapolation"
+  },
+  "summary": {
+    "total_types": 256,
+    "found_types": 218,
+    "missing_types": 38,
+    "duplicate_types": 15,
+    "by_category": {
+      "Configuration": {"total": 45, "estimated_found": 38, "estimated_missing": 7},
+      "Result": {"total": 63, "estimated_found": 54, "estimated_missing": 9},
+      "Command": {"total": 18, "estimated_found": 16, "estimated_missing": 2},
+      "Data": {"total": 28, "estimated_found": 24, "estimated_missing": 4},
+      "Enum": {"total": 31, "estimated_found": 28, "estimated_missing": 3},
+      "Interface": {"total": 12, "estimated_found": 8, "estimated_missing": 4},
+      "Entity": {"total": 59, "estimated_found": 50, "estimated_missing": 9}
+    },
+    "by_priority": {
+      "P0": {"count": 5, "description": ">50 references, critical path"},
+      "P1": {"count": 15, "description": "10-50 references, high value"},
+      "P2": {"count": 12, "description": "5-9 references, medium priority"},
+      "P3": {"count": 6, "description": "<5 references, low priority"}
+    }
+  },
+  "confirmed_found_types": [
+    {
+      "type_name": "CulturalCommunityType",
+      "found": true,
+      "definition_type": "enum",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Database/LoadBalancingModels.cs",
+        "tests/LankaConnect.Infrastructure.Tests/Database/CulturalEventLoadDistributionServiceFocusedTests.cs"
+      ],
+      "ref_count": 187,
+      "category": "Enum",
+      "priority": "P0",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain version, remove test duplicate"
+    },
+    {
+      "type_name": "SecurityLevel",
+      "found": true,
+      "definition_type": "enum",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Database/DatabaseSecurityModels.cs",
+        "tests/LankaConnect.Infrastructure.Tests/Database/DatabaseSecurityOptimizationTests.cs"
+      ],
+      "ref_count": 83,
+      "category": "Enum",
+      "priority": "P0",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain version, remove test duplicate"
+    },
+    {
+      "type_name": "IncidentSeverity",
+      "found": true,
+      "definition_type": "enum",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Notifications/NotificationTypes.cs"
+      ],
+      "ref_count": 40,
+      "category": "Enum",
+      "priority": "P1",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Domain.Common.Notifications;"
+    },
+    {
+      "type_name": "PerformanceThreshold",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/ValueObjects/PerformanceThreshold.cs",
+        "src/LankaConnect.Application/Common/Models/Critical/ComprehensiveRemainingTypes.cs",
+        "src/LankaConnect.Application/Common/Models/Results/HighImpactResultTypes.cs"
+      ],
+      "ref_count": 31,
+      "category": "Entity",
+      "priority": "P1",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain/ValueObjects version (has ValueObject base), remove Application duplicates"
+    },
+    {
+      "type_name": "ComplianceStandard",
+      "found": true,
+      "definition_type": "enum",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Database/DatabaseSecurityModels.cs"
+      ],
+      "ref_count": 21,
+      "category": "Enum",
+      "priority": "P1",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Domain.Common.Database;"
+    },
+    {
+      "type_name": "AccessPatternAnalysis",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs",
+        "src/LankaConnect.Application/Common/Security/AuditAccessTypes.cs"
+      ],
+      "ref_count": 15,
+      "category": "Result",
+      "priority": "P1",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain/Security version"
+    },
+    {
+      "type_name": "FailoverConfiguration",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Infrastructure/Failover/CulturalIntelligenceFailoverOrchestrator.cs",
+        "src/LankaConnect.Application/Common/Models/AutoScalingExtendedTypes.cs"
+      ],
+      "ref_count": 15,
+      "category": "Configuration",
+      "priority": "P1",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain/Infrastructure version (has ValueObject base)"
+    },
+    {
+      "type_name": "AlertSuppressionPolicy",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Models/Monitoring/CoreMonitoringTypes.cs"
+      ],
+      "ref_count": 12,
+      "category": "Configuration",
+      "priority": "P1",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Models.Monitoring;"
+    },
+    {
+      "type_name": "DisasterRecoveryProcedure",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs",
+        "src/LankaConnect.Application/Common/Security/SecurityFoundationTypes.cs"
+      ],
+      "ref_count": 10,
+      "category": "Entity",
+      "priority": "P2",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Domain/Security version"
+    },
+    {
+      "type_name": "GDPRComplianceResult",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Models/CulturalIntelligence/SecurityComplianceTypes.cs"
+      ],
+      "ref_count": 9,
+      "category": "Result",
+      "priority": "P2",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Models.CulturalIntelligence;"
+    },
+    {
+      "type_name": "ScalingMetrics",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Performance/PredictiveScalingTypes.cs"
+      ],
+      "ref_count": 9,
+      "category": "Data",
+      "priority": "P2",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Domain.Common.Performance;"
+    },
+    {
+      "type_name": "RegionalComplianceStatus",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Performance/PerformanceMonitoringResultTypes.cs",
+        "src/LankaConnect.Application/Common/Models/Performance/PerformanceMonitoringTypes.cs"
+      ],
+      "ref_count": 8,
+      "category": "Entity",
+      "priority": "P2",
+      "duplicate": true,
+      "action_required": "Consolidate - keep Performance/PerformanceMonitoringResultTypes version (has Result<object> base)"
+    },
+    {
+      "type_name": "MonitoringConfiguration",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Models/AutoScalingTypes.cs"
+      ],
+      "ref_count": 7,
+      "category": "Configuration",
+      "priority": "P2",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Models;"
+    },
+    {
+      "type_name": "UserSession",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Models/Security/SecurityInfrastructureTypes.cs"
+      ],
+      "ref_count": 7,
+      "category": "Entity",
+      "priority": "P2",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Models.Security;"
+    },
+    {
+      "type_name": "BackupConfiguration",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs"
+      ],
+      "ref_count": 5,
+      "category": "Configuration",
+      "priority": "P2",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Domain.Common.Security;"
+    },
+    {
+      "type_name": "AlertConfiguration",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Enterprise/EnterpriseRevenueTypes.cs"
+      ],
+      "ref_count": 4,
+      "category": "Configuration",
+      "priority": "P3",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Enterprise;"
+    },
+    {
+      "type_name": "DataBreachIncident",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Application/Common/Models/Security/DataBreachModels.cs"
+      ],
+      "ref_count": 3,
+      "category": "Entity",
+      "priority": "P3",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Application.Common.Models.Security;"
+    },
+    {
+      "type_name": "ThreatIntelligence",
+      "found": true,
+      "definition_type": "class",
+      "locations": [
+        "src/LankaConnect.Domain/Common/Database/SecurityMissingTypes.cs"
+      ],
+      "ref_count": 3,
+      "category": "Data",
+      "priority": "P3",
+      "duplicate": false,
+      "action_required": "Add using statement: using LankaConnect.Domain.Common.Database;"
+    }
+  ],
+  "confirmed_missing_types": [
+    {
+      "type_name": "ICrossCulturalDiscoveryService",
+      "found": false,
+      "definition_type": null,
+      "locations": [],
+      "ref_count": 2,
+      "category": "Interface",
+      "priority": "P2",
+      "recommended_location": "src/LankaConnect.Application/Common/Interfaces/CulturalIntelligence/ICrossCulturalDiscoveryService.cs",
+      "recommended_namespace": "LankaConnect.Application.Common.Interfaces.CulturalIntelligence",
+      "action_required": "Create interface with DiscoverConnectionsAsync method"
+    },
+    {
+      "type_name": "CulturalAffinityCalculation",
+      "found": false,
+      "definition_type": null,
+      "locations": [],
+      "ref_count": 3,
+      "category": "Entity",
+      "priority": "P2",
+      "recommended_location": "src/LankaConnect.Domain/CulturalIntelligence/Entities/CulturalAffinityCalculation.cs",
+      "recommended_namespace": "LankaConnect.Domain.CulturalIntelligence.Entities",
+      "action_required": "Create entity class with CulturalAffinityScore and CulturalMetadata properties"
+    }
+  ],
+  "estimated_missing_types_by_category": {
+    "Interface": [
+      "ICrossCulturalDiscoveryService",
+      "ICulturalBusinessDirectoryService",
+      "ICulturalEventIntelligenceService",
+      "IGeographicCulturalRoutingService"
+    ],
+    "Configuration": [
+      "CulturalRoutingConfiguration",
+      "CulturalSecurityConfiguration",
+      "CulturalEventLoadConfiguration"
+    ],
+    "Result": [
+      "CrossCulturalDiscoveryResult",
+      "CulturalRoutingResult",
+      "CulturalSecurityResult"
+    ],
+    "Entity": [
+      "CulturalAffinityCalculation",
+      "BusinessCulturalContext",
+      "BusinessDiscoveryOpportunity",
+      "CachedAffinityScore"
+    ],
+    "Data": [
+      "CommunityClusteringDensityAnalysis"
+    ]
+  },
+  "consolidation_priority": [
+    {
+      "rank": 1,
+      "type_name": "CulturalCommunityType",
+      "ref_count": 187,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 187,
+      "canonical_location": "src/LankaConnect.Domain/Common/Database/LoadBalancingModels.cs",
+      "files_to_remove": [
+        "tests/LankaConnect.Infrastructure.Tests/Database/CulturalEventLoadDistributionServiceFocusedTests.cs"
+      ]
+    },
+    {
+      "rank": 2,
+      "type_name": "SecurityLevel",
+      "ref_count": 83,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 83,
+      "canonical_location": "src/LankaConnect.Domain/Common/Database/DatabaseSecurityModels.cs",
+      "files_to_remove": [
+        "tests/LankaConnect.Infrastructure.Tests/Database/DatabaseSecurityOptimizationTests.cs"
+      ]
+    },
+    {
+      "rank": 3,
+      "type_name": "PerformanceThreshold",
+      "ref_count": 31,
+      "duplicate_count": 3,
+      "estimated_error_reduction": 31,
+      "canonical_location": "src/LankaConnect.Domain/Common/ValueObjects/PerformanceThreshold.cs",
+      "files_to_remove": [
+        "src/LankaConnect.Application/Common/Models/Critical/ComprehensiveRemainingTypes.cs",
+        "src/LankaConnect.Application/Common/Models/Results/HighImpactResultTypes.cs"
+      ]
+    },
+    {
+      "rank": 4,
+      "type_name": "AccessPatternAnalysis",
+      "ref_count": 15,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 15,
+      "canonical_location": "src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs",
+      "files_to_remove": [
+        "src/LankaConnect.Application/Common/Security/AuditAccessTypes.cs"
+      ]
+    },
+    {
+      "rank": 5,
+      "type_name": "FailoverConfiguration",
+      "ref_count": 15,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 15,
+      "canonical_location": "src/LankaConnect.Domain/Infrastructure/Failover/CulturalIntelligenceFailoverOrchestrator.cs",
+      "files_to_remove": [
+        "src/LankaConnect.Application/Common/Models/AutoScalingExtendedTypes.cs"
+      ]
+    },
+    {
+      "rank": 6,
+      "type_name": "DisasterRecoveryProcedure",
+      "ref_count": 10,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 10,
+      "canonical_location": "src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs",
+      "files_to_remove": [
+        "src/LankaConnect.Application/Common/Security/SecurityFoundationTypes.cs"
+      ]
+    },
+    {
+      "rank": 7,
+      "type_name": "RegionalComplianceStatus",
+      "ref_count": 8,
+      "duplicate_count": 2,
+      "estimated_error_reduction": 8,
+      "canonical_location": "src/LankaConnect.Application/Common/Performance/PerformanceMonitoringResultTypes.cs",
+      "files_to_remove": [
+        "src/LankaConnect.Application/Common/Models/Performance/PerformanceMonitoringTypes.cs"
+      ]
+    }
+  ],
+  "implementation_phases": {
+    "phase1_cleanup": {
+      "name": "Consolidation & Using Statements",
+      "timeline": "3-5 days",
+      "estimated_error_reduction": "50-70%",
+      "tasks": [
+        "Consolidate 7 duplicate types (priority order by ref count)",
+        "Add using statements for 18 found types",
+        "Re-build and verify error reduction",
+        "Update missing types list with remaining errors"
+      ]
+    },
+    "phase2_foundation": {
+      "name": "Create Foundation Types (P0/P1)",
+      "timeline": "1-2 sprints",
+      "estimated_error_reduction": "20-30%",
+      "tasks": [
+        "Create 4 service interfaces",
+        "Create 5-10 core value objects and entities",
+        "Create 3-5 configuration types",
+        "Create 3-5 result types"
+      ]
+    },
+    "phase3_systematic": {
+      "name": "Systematic Type Creation (P2/P3)",
+      "timeline": "2-3 sprints",
+      "estimated_error_reduction": "10-20%",
+      "tasks": [
+        "Create remaining enums",
+        "Create specialized configuration types",
+        "Create analysis and report types",
+        "Create low-priority entity types"
+      ]
+    }
+  }
+}

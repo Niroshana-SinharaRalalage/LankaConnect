@@ -1,0 +1,299 @@
+# GitHub Actions Workflow for LankaConnect Testing
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - 'docs/**' 
+      - 'README.md'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: 'Release'
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: LankaConnectTest
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+    - name: Run unit tests
+      run: |
+        dotnet test \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --no-build \
+          --verbosity minimal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults \
+          --filter "Category!=Integration" \
+          --logger trx
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=LankaConnectTest;Username=testuser;Password=testpass123"
+        ConnectionStrings__Redis: "localhost:6379"
+
+    - name: Run integration tests
+      run: |
+        dotnet test \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --no-build \
+          --verbosity minimal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults \
+          --filter "Category=Integration" \
+          --logger trx
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=LankaConnectTest;Username=testuser;Password=testpass123"
+        ConnectionStrings__Redis: "localhost:6379"
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/
+        retention-days: 30
+
+    - name: Generate code coverage report
+      run: |
+        dotnet tool install -g dotnet-reportgenerator-globaltool
+        reportgenerator \
+          -reports:TestResults/**/coverage.cobertura.xml \
+          -targetdir:TestResults/CoverageReport \
+          -reporttypes:Html;Cobertura;JsonSummary
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: TestResults/CoverageReport/Cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: madrapps/jacoco-report@v1.6.1
+      with:
+        paths: TestResults/CoverageReport/Cobertura.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        min-coverage-overall: 80
+        min-coverage-changed-files: 80
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Run security scan
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: security-scan-results.sarif
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/dotnet@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+
+  docker-test:
+    name: Docker Environment Test
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Start Docker Compose services
+      run: |
+        # Modify docker-compose for CI
+        cp docker-compose.yml docker-compose.ci.yml
+        
+        # Start all services
+        docker-compose -f docker-compose.ci.yml up -d
+        
+        # Wait for services to be healthy
+        timeout=300
+        while [ $timeout -gt 0 ]; do
+          if docker-compose -f docker-compose.ci.yml ps | grep -q "healthy"; then
+            echo "Services are healthy"
+            break
+          fi
+          echo "Waiting for services to be healthy... ($timeout seconds left)"
+          sleep 10
+          timeout=$((timeout-10))
+        done
+
+    - name: Test service connectivity
+      run: |
+        # Test PostgreSQL
+        docker exec $(docker-compose -f docker-compose.ci.yml ps -q postgres) pg_isready -U lankaconnect
+        
+        # Test Redis
+        docker exec $(docker-compose -f docker-compose.ci.yml ps -q redis) redis-cli ping
+        
+        # Test HTTP services
+        curl -f http://localhost:8025/ # MailHog
+        curl -f http://localhost:8080/ # Seq
+        curl -f http://localhost:10000/devstoreaccount1 # Azurite (expect 400/404)
+
+    - name: Cleanup
+      if: always()
+      run: docker-compose -f docker-compose.ci.yml down -v
+
+  environment-validation:
+    name: Environment Validation
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run environment validation (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        chmod +x ./scripts/test-environment.sh
+        ./scripts/test-environment.sh --skip-docker --configuration ${{ env.BUILD_CONFIGURATION }}
+
+    - name: Run environment validation (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        ./scripts/test-environment.ps1 -SkipDocker -Configuration ${{ env.BUILD_CONFIGURATION }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, security-scan, docker-test]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build and publish
+      run: |
+        dotnet publish src/LankaConnect.API/LankaConnect.API.csproj \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --output ./publish
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'lankaconnect-staging'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './publish'
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, security-scan, docker-test]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build and publish
+      run: |
+        dotnet publish src/LankaConnect.API/LankaConnect.API.csproj \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --output ./publish
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'lankaconnect-prod'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
+        package: './publish'

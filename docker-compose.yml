@@ -1,85 +1,148 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: lankaconnect-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: lankaconnect
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: LankaConnectDB
+      POSTGRES_USER: lankaconnect
+      POSTGRES_PASSWORD: dev_password_123
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/docker/postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U lankaconnect -d LankaConnectDB"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - lankaconnect-network
 
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: lankaconnect-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass dev_redis_123
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+      - ./scripts/docker/redis.conf:/usr/local/etc/redis/redis.conf
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 5
     networks:
       - lankaconnect-network
 
+  # MailHog for Email Testing
   mailhog:
-    image: mailhog/mailhog
+    image: mailhog/mailhog:v1.0.1
     container_name: lankaconnect-mailhog
+    restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web UI
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
     environment:
-      MH_STORAGE: memory
+      MH_STORAGE: maildir
+      MH_MAILDIR_PATH: /maildir
+    volumes:
+      - mailhog_data:/maildir
     networks:
       - lankaconnect-network
 
+  # Azurite for Azure Storage Emulation
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite
+    image: mcr.microsoft.com/azure-storage/azurite:3.28.0
     container_name: lankaconnect-azurite
+    restart: unless-stopped
     ports:
-      - "10000:10000" # Blob service
-      - "10001:10001" # Queue service
-      - "10002:10002" # Table service
-    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service
+      - "10002:10002"  # Table service
     volumes:
       - azurite_data:/data
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --debug /data/debug.log
+    environment:
+      AZURITE_ACCOUNTS: devstoreaccount1:Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
     networks:
       - lankaconnect-network
 
+  # Seq for Structured Logging
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2024.1
     container_name: lankaconnect-seq
+    restart: unless-stopped
+    ports:
+      - "5341:5341"  # Ingestion
+      - "8080:80"    # Web UI
     environment:
       ACCEPT_EULA: Y
-    ports:
-      - "5341:80"
-      - "5342:5341"
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: # Will be set via .env file
     volumes:
       - seq_data:/data
     networks:
       - lankaconnect-network
 
+  # Optional: pgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:8.2
+    container_name: lankaconnect-pgadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@lankaconnect.dev
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./scripts/docker/pgadmin-servers.json:/pgadmin4/servers.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lankaconnect-network
+
+  # Optional: Redis Commander for Redis Management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: lankaconnect-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8082:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:dev_redis_123
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin123
+    depends_on:
+      - redis
+    networks:
+      - lankaconnect-network
+
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+  mailhog_data:
+    driver: local
   azurite_data:
+    driver: local
   seq_data:
+    driver: local
+  pgadmin_data:
+    driver: local
 
 networks:
   lankaconnect-network:
     driver: bridge
+    name: lankaconnect-dev-network

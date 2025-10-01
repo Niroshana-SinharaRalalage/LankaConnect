@@ -1,0 +1,372 @@
+using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Business;
+using LankaConnect.Domain.Business.Enums;
+using LankaConnect.Domain.Users.ValueObjects;
+using UserEmail = LankaConnect.Domain.Users.ValueObjects.Email;
+
+namespace LankaConnect.TestUtilities.Builders;
+
+/// <summary>
+/// Centralized test data builder for business-related domain objects.
+/// Follows Clean Architecture and DDD principles for test data creation.
+/// </summary>
+public static class BusinessTestDataBuilder
+{
+    private static readonly Random _random = new();
+
+    public static LankaConnect.Domain.Business.Business CreateValidBusiness()
+    {
+        return LankaConnect.Domain.Business.Business.Create(
+            CreateValidBusinessProfile(),
+            CreateValidBusinessLocation(),
+            CreateValidContactInformation(),
+            CreateValidBusinessHours(),
+            BusinessCategory.Restaurant,
+            Guid.NewGuid()).Value;
+    }
+
+    public static BusinessProfile CreateValidBusinessProfile()
+    {
+        return BusinessProfile.Create(
+            "Test Restaurant",
+            "A delicious test restaurant serving authentic local cuisine",
+            "keywords,test,restaurant,food"
+        ).Value;
+    }
+
+    public static BusinessProfile CreateCustomBusinessProfile(string name, string? description = null, string? keywords = null)
+    {
+        return BusinessProfile.Create(
+            name,
+            description ?? "Test business description",
+            keywords ?? "test,business"
+        ).Value;
+    }
+
+    public static BusinessLocation CreateValidBusinessLocation()
+    {
+        return BusinessLocation.Create(
+            Address.Create("123 Main St", "Colombo", "Western Province", "10100", "Sri Lanka").Value,
+            GeoCoordinate.Create(6.9271m, 79.8612m).Value
+        ).Value;
+    }
+
+    public static BusinessLocation CreateCustomBusinessLocation(string address, string city, decimal lat, decimal lng)
+    {
+        return BusinessLocation.Create(
+            Address.Create(address, city, "Western Province", "10100", "Sri Lanka").Value,
+            GeoCoordinate.Create(lat, lng).Value
+        ).Value;
+    }
+
+    public static ContactInformation CreateValidContactInformation()
+    {
+        return ContactInformation.Create(
+            PhoneNumber.Create("+94771234567").Value,
+            UserEmail.Create("test@restaurant.com").Value,
+            "https://test-restaurant.com"
+        ).Value;
+    }
+
+    public static ContactInformation CreateCustomContactInformation(string phone, string email, string? website = null)
+    {
+        return ContactInformation.Create(
+            PhoneNumber.Create(phone).Value,
+            UserEmail.Create(email).Value,
+            website
+        ).Value;
+    }
+
+    public static BusinessHours CreateValidBusinessHours()
+    {
+        var hours = new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>
+        {
+            [DayOfWeek.Monday] = (new TimeOnly(9, 0), new TimeOnly(17, 0)),
+            [DayOfWeek.Tuesday] = (new TimeOnly(9, 0), new TimeOnly(17, 0)),
+            [DayOfWeek.Wednesday] = (new TimeOnly(9, 0), new TimeOnly(17, 0)),
+            [DayOfWeek.Thursday] = (new TimeOnly(9, 0), new TimeOnly(17, 0)),
+            [DayOfWeek.Friday] = (new TimeOnly(9, 0), new TimeOnly(17, 0)),
+            [DayOfWeek.Saturday] = (null, null), // Closed
+            [DayOfWeek.Sunday] = (null, null)    // Closed
+        };
+
+        return BusinessHours.Create(hours).Value;
+    }
+
+    public static BusinessHours CreateCustomBusinessHours(TimeOnly openTime, TimeOnly closeTime, params DayOfWeek[] openDays)
+    {
+        var hours = new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>();
+        
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            hours[day] = openDays.Contains(day) ? (openTime, closeTime) : (null, null);
+        }
+
+        return BusinessHours.Create(hours).Value;
+    }
+
+    public static BusinessHours Create24x7BusinessHours()
+    {
+        var hours = new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>();
+        
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            hours[day] = (new TimeOnly(0, 0), new TimeOnly(23, 59));
+        }
+
+        return BusinessHours.Create(hours).Value;
+    }
+
+    public static Service CreateValidService()
+    {
+        return Service.Create(
+            "Test Service",
+            "A comprehensive test service",
+            Money.Create(1000m, Currency.LKR).Value
+        ).Value;
+    }
+
+    public static Service CreateCustomService(string name, string description, Money? price = null)
+    {
+        return Service.Create(name, description, price).Value;
+    }
+
+    public static List<Service> CreateMultipleServices(int count = 3)
+    {
+        var services = new List<Service>();
+
+        for (int i = 0; i < count; i++)
+        {
+            var price = Money.Create((decimal)(1000 * (i + 1)), Currency.LKR).Value;
+            services.Add(CreateCustomService(
+                $"Service {i + 1}",
+                $"Description for service {i + 1}",
+                price
+            ));
+        }
+
+        return services;
+    }
+
+    // Specific business types
+    public static LankaConnect.Domain.Business.Business CreateRestaurant()
+    {
+        var profile = BusinessProfile.Create(
+            "The Golden Spoon",
+            "Authentic Sri Lankan cuisine with a modern twist",
+            "restaurant,food,sri lanka,authentic,curry"
+        ).Value;
+
+        var location = CreateCustomBusinessLocation(
+            "45 Galle Road",
+            "Colombo",
+            6.9271m,
+            79.8612m
+        );
+
+        var contact = CreateCustomContactInformation(
+            "+94771234567",
+            "info@goldenspoon.lk",
+            "https://goldenspoon.lk"
+        );
+
+        var hours = CreateCustomBusinessHours(
+            new TimeOnly(11, 0),
+            new TimeOnly(22, 0),
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+        );
+
+        return LankaConnect.Domain.Business.Business.Create(
+            profile,
+            location,
+            contact,
+            hours,
+            BusinessCategory.Restaurant,
+            Guid.NewGuid()
+        ).Value;
+    }
+
+    public static LankaConnect.Domain.Business.Business CreateHotel()
+    {
+        var profile = BusinessProfile.Create(
+            "Paradise Beach Resort",
+            "Luxury beachfront accommodation with world-class amenities",
+            "hotel,resort,beach,luxury,accommodation"
+        ).Value;
+
+        var location = CreateCustomBusinessLocation(
+            "Ocean View Road",
+            "Bentota",
+            6.4267m,
+            79.9959m
+        );
+
+        var contact = CreateCustomContactInformation(
+            "+94345555678",
+            "reservations@paradise-beach.lk",
+            "https://paradise-beach.lk"
+        );
+
+        var hours = Create24x7BusinessHours(); // Hotels are always open
+
+        return LankaConnect.Domain.Business.Business.Create(
+            profile,
+            location,
+            contact,
+            hours,
+            BusinessCategory.Hotel,
+            Guid.NewGuid()
+        ).Value;
+    }
+
+    public static LankaConnect.Domain.Business.Business CreateTechCompany()
+    {
+        var profile = BusinessProfile.Create(
+            "InnovaTech Solutions",
+            "Cutting-edge software development and IT consultancy",
+            "technology,software,development,IT,consultancy"
+        ).Value;
+
+        var location = CreateCustomBusinessLocation(
+            "World Trade Center, West Tower",
+            "Colombo",
+            6.9344m,
+            79.8428m
+        );
+
+        var contact = CreateCustomContactInformation(
+            "+94112345678",
+            "contact@innovatech.lk",
+            "https://innovatech.lk"
+        );
+
+        var hours = CreateCustomBusinessHours(
+            new TimeOnly(9, 0),
+            new TimeOnly(18, 0),
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday
+        );
+
+        return LankaConnect.Domain.Business.Business.Create(
+            profile,
+            location,
+            contact,
+            hours,
+            BusinessCategory.Technology,
+            Guid.NewGuid()
+        ).Value;
+    }
+
+    // Collection builders
+    public static List<LankaConnect.Domain.Business.Business> CreateBusinessCollection(int count = 5)
+    {
+        var businesses = new List<LankaConnect.Domain.Business.Business>();
+        var categories = Enum.GetValues<BusinessCategory>();
+
+        for (int i = 0; i < count; i++)
+        {
+            var category = categories[i % categories.Length];
+            
+            var profile = CreateCustomBusinessProfile(
+                $"Test Business {i + 1}",
+                $"Description for test business {i + 1}",
+                $"test,business,category{i}"
+            );
+
+            var location = CreateCustomBusinessLocation(
+                $"{100 + i} Test Street",
+                "Colombo",
+                6.9271m + (i * 0.001m),
+                79.8612m + (i * 0.001m)
+            );
+
+            var contact = CreateCustomContactInformation(
+                $"+9477123456{i}",
+                $"test{i}@business.com",
+                $"https://business{i}.com"
+            );
+
+            var hours = CreateValidBusinessHours();
+
+            businesses.Add(LankaConnect.Domain.Business.Business.Create(
+                profile,
+                location,
+                contact,
+                hours,
+                category,
+                Guid.NewGuid()
+            ).Value);
+        }
+
+        return businesses;
+    }
+
+    // Value object builders
+    public static UserEmail CreateValidEmail(string? emailAddress = null)
+    {
+        return UserEmail.Create(emailAddress ?? "test@lankaconnect.com").Value;
+    }
+
+    public static LankaConnect.Domain.Shared.ValueObjects.PhoneNumber CreateValidPhoneNumber(string? number = null)
+    {
+        return LankaConnect.Domain.Shared.ValueObjects.PhoneNumber.Create(number ?? "+94771234567").Value;
+    }
+
+    public static Address CreateValidAddress()
+    {
+        return Address.Create("123 Main St", "Colombo", "Western Province", "10100", "Sri Lanka").Value;
+    }
+
+    public static GeoCoordinate CreateValidCoordinates()
+    {
+        return GeoCoordinate.Create(6.9271m, 79.8612m).Value;
+    }
+
+    // Random data generators for stress testing
+    public static LankaConnect.Domain.Business.Business CreateRandomBusiness()
+    {
+        var businessNames = new[]
+        {
+            "The Golden Dragon", "Paradise Cafe", "Tech Innovators", "Green Gardens Hotel",
+            "Spice Route Restaurant", "Digital Solutions Hub", "Sunset Resort", "Urban Deli"
+        };
+
+        var cities = new[] { "Colombo", "Kandy", "Galle", "Jaffna", "Negombo", "Bentota" };
+
+        var name = businessNames[_random.Next(businessNames.Length)];
+        var city = cities[_random.Next(cities.Length)];
+        var category = Enum.GetValues<BusinessCategory>()[_random.Next(Enum.GetValues<BusinessCategory>().Length)];
+
+        var profile = CreateCustomBusinessProfile(
+            name,
+            $"A wonderful {category.ToString().ToLower()} in {city}",
+            $"{category.ToString().ToLower()},test,{city.ToLower()}"
+        );
+
+        var location = CreateCustomBusinessLocation(
+            $"{_random.Next(1, 999)} Random Street",
+            city,
+            6.9271m + (decimal)((_random.NextDouble() - 0.5) * 2),
+            79.8612m + (decimal)((_random.NextDouble() - 0.5) * 2)
+        );
+
+        var contact = CreateCustomContactInformation(
+            $"+9477{_random.Next(1000000, 9999999)}",
+            $"contact@{name.Replace(" ", "").ToLower()}.lk",
+            $"https://{name.Replace(" ", "").ToLower()}.lk"
+        );
+
+        var hours = CreateValidBusinessHours();
+
+        return LankaConnect.Domain.Business.Business.Create(
+            profile,
+            location,
+            contact,
+            hours,
+            category,
+            Guid.NewGuid()
+        ).Value;
+    }
+}

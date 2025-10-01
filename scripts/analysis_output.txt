@@ -1,0 +1,9 @@
+Analyzing 0 types...
+Traceback (most recent call last):
+  File "C:\Work\LankaConnect\scripts\analyze_types.py", line 362, in <module>
+    main()
+  File "C:\Work\LankaConnect\scripts\analyze_types.py", line 345, in main
+    print(f"\n\u2713 JSON saved: {output_json}")
+  File "C:\Users\Niroshana\AppData\Local\Programs\Python\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 2: character maps to <undefined>

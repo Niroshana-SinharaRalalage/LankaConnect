@@ -1,0 +1,275 @@
+# Azure DevOps Pipeline for LankaConnect Testing
+# This pipeline runs comprehensive tests including unit, integration, and environment validation
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    exclude:
+      - docs/*
+      - README.md
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - docs/*
+      - README.md
+
+variables:
+  buildConfiguration: 'Release'
+  dotNetFramework: 'net8.0'
+  dotNetVersion: '8.0.x'
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+
+stages:
+  - stage: Build
+    displayName: 'Build and Test'
+    jobs:
+      - job: BuildAndTest
+        displayName: 'Build and Run Tests'
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        services:
+          postgres:
+            image: postgres:15-alpine
+            env:
+              POSTGRES_DB: LankaConnectTest
+              POSTGRES_USER: testuser
+              POSTGRES_PASSWORD: testpass123
+            ports:
+              - 5432:5432
+            options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+          redis:
+            image: redis:7-alpine
+            ports:
+              - 6379:6379
+            options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+        variables:
+          ConnectionStrings.DefaultConnection: 'Host=localhost;Port=5432;Database=LankaConnectTest;Username=testuser;Password=testpass123'
+          ConnectionStrings.Redis: 'localhost:6379'
+
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET Core SDK'
+            inputs:
+              packageType: sdk
+              version: $(dotNetVersion)
+              installationPath: $(Agent.ToolsDirectory)/dotnet
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore packages'
+            inputs:
+              command: 'restore'
+              projects: '$(solution)'
+              feedsToUse: 'select'
+              verbosityRestore: 'minimal'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Build solution'
+            inputs:
+              command: 'build'
+              projects: '$(solution)'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Run Unit Tests'
+            inputs:
+              command: 'test'
+              projects: '**/*Tests/*.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-build --verbosity minimal --collect:"XPlat Code Coverage" --results-directory $(Agent.TempDirectory) --filter "Category!=Integration"'
+              publishTestResults: true
+              testRunTitle: 'Unit Tests'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Run Integration Tests'
+            inputs:
+              command: 'test'
+              projects: '**/LankaConnect.IntegrationTests/*.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-build --verbosity minimal --collect:"XPlat Code Coverage" --results-directory $(Agent.TempDirectory)'
+              publishTestResults: true
+              testRunTitle: 'Integration Tests'
+            env:
+              ConnectionStrings__DefaultConnection: $(ConnectionStrings.DefaultConnection)
+              ConnectionStrings__Redis: $(ConnectionStrings.Redis)
+
+          - task: PublishCodeCoverageResults@1
+            displayName: 'Publish Code Coverage'
+            inputs:
+              codeCoverageTool: 'Cobertura'
+              summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish API'
+            inputs:
+              command: 'publish'
+              projects: '**/LankaConnect.API.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/api'
+              publishWebProjects: false
+              modifyOutputPath: false
+              zipAfterPublish: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+
+  - stage: QualityGates
+    displayName: 'Quality Gates'
+    dependsOn: Build
+    jobs:
+      - job: QualityAnalysis
+        displayName: 'Quality Analysis'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET Core SDK'
+            inputs:
+              packageType: sdk
+              version: $(dotNetVersion)
+
+          - task: SonarCloudPrepare@1
+            displayName: 'Prepare SonarCloud Analysis'
+            inputs:
+              SonarCloud: 'SonarCloud'
+              organization: 'lankaconnect'
+              scannerMode: 'MSBuild'
+              projectKey: 'lankaconnect_api'
+              projectName: 'LankaConnect API'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore and Build for Analysis'
+            inputs:
+              command: 'build'
+              projects: '$(solution)'
+              arguments: '--configuration $(buildConfiguration)'
+
+          - task: SonarCloudAnalyze@1
+            displayName: 'Run SonarCloud Analysis'
+
+          - task: SonarCloudPublish@1
+            displayName: 'Publish SonarCloud Results'
+            inputs:
+              pollingTimeoutSec: '300'
+
+  - stage: SecurityScan
+    displayName: 'Security Scanning'
+    dependsOn: Build
+    jobs:
+      - job: SecurityAnalysis
+        displayName: 'Security Analysis'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET Core SDK'
+            inputs:
+              packageType: sdk
+              version: $(dotNetVersion)
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Install Security Scan Tool'
+            inputs:
+              command: 'custom'
+              custom: 'tool'
+              arguments: 'install --global security-scan'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Run Security Scan'
+            inputs:
+              command: 'custom'
+              custom: 'security-scan'
+              arguments: '$(Build.SourcesDirectory) --export $(Build.ArtifactStagingDirectory)/security-report.json'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Security Report'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/security-report.json'
+              ArtifactName: 'security-report'
+
+  - stage: PerformanceTest
+    displayName: 'Performance Testing'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: LoadTest
+        displayName: 'Load Testing'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Build Artifacts'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: AzureWebApp@1
+            displayName: 'Deploy to Staging Slot'
+            inputs:
+              azureSubscription: 'Azure-Subscription'
+              appType: 'webApp'
+              appName: 'lankaconnect-staging'
+              deployToSlotOrASE: true
+              resourceGroupName: 'lankaconnect-rg'
+              slotName: 'staging'
+              package: '$(System.ArtifactsDirectory)/drop/api/*.zip'
+
+          - task: Bash@3
+            displayName: 'Run Load Tests'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Install artillery for load testing
+                npm install -g artillery@latest
+                
+                # Create load test configuration
+                cat > load-test.yml << EOF
+                config:
+                  target: 'https://lankaconnect-staging-staging.azurewebsites.net'
+                  phases:
+                    - duration: 60
+                      arrivalRate: 10
+                    - duration: 120
+                      arrivalRate: 20
+                    - duration: 60
+                      arrivalRate: 5
+                  processor: "./test-functions.js"
+                scenarios:
+                  - name: "Health Check"
+                    weight: 50
+                    flow:
+                      - get:
+                          url: "/health"
+                  - name: "API Endpoints"
+                    weight: 50
+                    flow:
+                      - get:
+                          url: "/api/businesses"
+                EOF
+                
+                # Run load test
+                artillery run load-test.yml --output $(Build.ArtifactStagingDirectory)/load-test-results.json
+                
+                # Generate HTML report
+                artillery report $(Build.ArtifactStagingDirectory)/load-test-results.json --output $(Build.ArtifactStagingDirectory)/load-test-report.html
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Load Test Results'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'load-test-results'

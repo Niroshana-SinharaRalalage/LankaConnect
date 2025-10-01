@@ -1,0 +1,166 @@
+=== AccessPatternAnalysis ===
+CLASS:
+./src/LankaConnect.Application/Common/Security/AuditAccessTypes.cs:public class AccessPatternAnalysis
+./src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs:public class AccessPatternAnalysis
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 15
+
+=== AlertConfiguration ===
+CLASS:
+./src/LankaConnect.Application/Common/Enterprise/EnterpriseRevenueTypes.cs:public class AlertConfiguration
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 4
+
+=== BackupConfiguration ===
+CLASS:
+./src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs:public class BackupConfiguration
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 5
+
+=== CulturalAffinityCalculation ===
+CLASS:
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 3
+
+=== DataBreachIncident ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/Security/DataBreachModels.cs:    public class DataBreachIncident : BaseEntity
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 3
+
+=== FailoverConfiguration ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/AutoScalingExtendedTypes.cs:public class FailoverConfiguration
+./src/LankaConnect.Domain/Infrastructure/Failover/CulturalIntelligenceFailoverOrchestrator.cs:public class FailoverConfiguration : ValueObject
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 15
+
+=== GDPRComplianceResult ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/CulturalIntelligence/SecurityComplianceTypes.cs:public class GDPRComplianceResult
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 9
+
+=== IncidentSeverity ===
+CLASS:
+RECORD:
+ENUM:
+./src/LankaConnect.Domain/Common/Notifications/NotificationTypes.cs:public enum IncidentSeverity { Low = 1, Medium = 2, High = 3, Critical = 4 }
+INTERFACE:
+REFERENCES: 40
+
+=== MonitoringConfiguration ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/AutoScalingTypes.cs:public class MonitoringConfiguration
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 7
+
+=== PerformanceThreshold ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/Critical/ComprehensiveRemainingTypes.cs:public class PerformanceThreshold
+./src/LankaConnect.Application/Common/Models/Results/HighImpactResultTypes.cs:public class PerformanceThreshold { }
+./src/LankaConnect.Domain/Common/ValueObjects/PerformanceThreshold.cs:public class PerformanceThreshold : ValueObject
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 31
+
+=== SecurityLevel ===
+CLASS:
+RECORD:
+ENUM:
+./src/LankaConnect.Domain/Common/Database/DatabaseSecurityModels.cs:    public enum SecurityLevel
+./tests/LankaConnect.Infrastructure.Tests/Database/DatabaseSecurityOptimizationTests.cs:    public enum SecurityLevel
+INTERFACE:
+REFERENCES: 83
+
+=== UserSession ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/Security/SecurityInfrastructureTypes.cs:public class UserSession
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 7
+
+=== ICrossCulturalDiscoveryService ===
+CLASS:
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 2
+
+=== CulturalCommunityType ===
+CLASS:
+RECORD:
+ENUM:
+./src/LankaConnect.Domain/Common/Database/LoadBalancingModels.cs:public enum CulturalCommunityType
+./tests/LankaConnect.Infrastructure.Tests/Database/CulturalEventLoadDistributionServiceFocusedTests.cs:public enum CulturalCommunityType
+INTERFACE:
+REFERENCES: 187
+
+=== AlertSuppressionPolicy ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/Monitoring/CoreMonitoringTypes.cs:public class AlertSuppressionPolicy
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 12
+
+=== ComplianceStandard ===
+CLASS:
+RECORD:
+ENUM:
+./src/LankaConnect.Domain/Common/Database/DatabaseSecurityModels.cs:    public enum ComplianceStandard
+INTERFACE:
+REFERENCES: 21
+
+=== DisasterRecoveryProcedure ===
+CLASS:
+./src/LankaConnect.Application/Common/Security/SecurityFoundationTypes.cs:public class DisasterRecoveryProcedure
+./src/LankaConnect.Domain/Common/Security/EmergencySecurityTypes.cs:public class DisasterRecoveryProcedure
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 10
+
+=== RegionalComplianceStatus ===
+CLASS:
+./src/LankaConnect.Application/Common/Models/Performance/PerformanceMonitoringTypes.cs:public class RegionalComplianceStatus
+./src/LankaConnect.Application/Common/Performance/PerformanceMonitoringResultTypes.cs:public class RegionalComplianceStatus : Result<object>
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 8
+
+=== ScalingMetrics ===
+CLASS:
+./src/LankaConnect.Domain/Common/Performance/PredictiveScalingTypes.cs:    public class ScalingMetrics
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 9
+
+=== ThreatIntelligence ===
+CLASS:
+./src/LankaConnect.Domain/Common/Database/SecurityMissingTypes.cs:    public class ThreatIntelligence
+RECORD:
+ENUM:
+INTERFACE:
+REFERENCES: 3
+

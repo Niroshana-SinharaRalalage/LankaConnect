@@ -1,0 +1,90 @@
+using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Communications.Enums;
+
+namespace LankaConnect.Domain.Communications.ValueObjects;
+
+/// <summary>
+/// Value object representing an email template category for organizational and filtering purposes
+/// </summary>
+public sealed class EmailTemplateCategory : ValueObject
+{
+    public string Value { get; private set; }
+    public string DisplayName { get; private set; }
+    public string Description { get; private set; }
+
+    // For EF Core
+    private EmailTemplateCategory() 
+    { 
+        Value = string.Empty;
+        DisplayName = string.Empty;
+        Description = string.Empty;
+    }
+
+    private EmailTemplateCategory(string value, string displayName, string description)
+    {
+        Value = value;
+        DisplayName = displayName;
+        Description = description;
+    }
+
+    /// <summary>
+    /// Predefined email template categories
+    /// </summary>
+    public static readonly EmailTemplateCategory Authentication = new("Authentication", "Authentication", "User authentication and security related emails");
+    public static readonly EmailTemplateCategory Business = new("Business", "Business", "Business operation and notification emails");
+    public static readonly EmailTemplateCategory Marketing = new("Marketing", "Marketing", "Marketing and promotional emails");
+    public static readonly EmailTemplateCategory System = new("System", "System", "System and administrative emails");
+    public static readonly EmailTemplateCategory Notification = new("Notification", "Notification", "General notification emails");
+
+    /// <summary>
+    /// All available categories
+    /// </summary>
+    public static readonly IReadOnlyList<EmailTemplateCategory> All = new[]
+    {
+        Authentication,
+        Business,
+        Marketing,
+        System,
+        Notification
+    };
+
+    /// <summary>
+    /// Creates a category from its string value
+    /// </summary>
+    public static Result<EmailTemplateCategory> FromValue(string value)
+    {
+        var category = All.FirstOrDefault(c => c.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
+        return category != null 
+            ? Result<EmailTemplateCategory>.Success(category)
+            : Result<EmailTemplateCategory>.Failure($"Invalid email template category: {value}");
+    }
+
+    /// <summary>
+    /// Gets category for a given email type using domain business logic
+    /// </summary>
+    public static EmailTemplateCategory ForEmailType(EmailType emailType)
+    {
+        return emailType switch
+        {
+            EmailType.EmailVerification or EmailType.PasswordReset => Authentication,
+            EmailType.BusinessNotification => Business,
+            EmailType.Marketing or EmailType.Newsletter => Marketing,
+            EmailType.Welcome => Notification,
+            EmailType.EventNotification => Notification,
+            EmailType.Transactional => System,
+            _ => System
+        };
+    }
+
+    /// <summary>
+    /// Implicit conversion to string for easy usage
+    /// </summary>
+    public static implicit operator string(EmailTemplateCategory category) => category.Value;
+
+    public override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public override string ToString() => Value;
+}

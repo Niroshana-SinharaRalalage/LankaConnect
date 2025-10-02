@@ -17,6 +17,19 @@ using LankaConnect.Domain.Common.Notifications;
 using LankaConnect.Domain.Common.Database;
 using LankaConnect.Application.Common.Models.CulturalIntelligence;
 using DomainCulturalContext = LankaConnect.Domain.Communications.ValueObjects.CulturalContext;
+using CulturalContext = LankaConnect.Domain.Common.Database.CulturalContext;
+// Additional aliases for types duplicated between Infrastructure.Security and Domain.Common.Database
+// Prefer Domain layer types per Clean Architecture (inner layer precedence)
+using SecurityPolicySet = LankaConnect.Domain.Common.Database.SecurityPolicySet;
+using CulturalContentSecurityResult = LankaConnect.Domain.Common.Database.CulturalContentSecurityResult;
+using EnhancedSecurityConfig = LankaConnect.Domain.Common.Database.EnhancedSecurityConfig;
+using SacredEventSecurityResult = LankaConnect.Domain.Common.Database.SacredEventSecurityResult;
+using SensitiveData = LankaConnect.Domain.Common.Database.SensitiveData;
+using CulturalEncryptionPolicy = LankaConnect.Domain.Common.Database.CulturalEncryptionPolicy;
+using EncryptionResult = LankaConnect.Domain.Common.Database.EncryptionResult;
+using AuditScope = LankaConnect.Domain.Common.Database.AuditScope;
+using ValidationScope = LankaConnect.Domain.Common.Database.ValidationScope;
+using SecurityIncidentTrigger = LankaConnect.Domain.Common.Database.SecurityIncidentTrigger;
 using LankaConnect.Domain.Infrastructure;
 using LankaConnect.Domain.Shared;
 using LankaConnect.Infrastructure.Security;

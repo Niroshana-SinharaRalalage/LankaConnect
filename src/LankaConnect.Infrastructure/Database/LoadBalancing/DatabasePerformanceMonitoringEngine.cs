@@ -16,6 +16,8 @@ using LankaConnect.Infrastructure.Common.Models;
 using AppPerformance = LankaConnect.Application.Common.Performance;
 using DatabaseCulturalContext = LankaConnect.Domain.Communications.ValueObjects.CulturalContext;
 using CulturalContext = LankaConnect.Domain.Common.Database.CulturalContext;
+// Resolve AutoScalingDecision ambiguity - prefer Domain.Common.Performance for performance monitoring
+using AutoScalingDecision = LankaConnect.Domain.Common.Performance.AutoScalingDecision;
 
 namespace LankaConnect.Infrastructure.Database.LoadBalancing
 {

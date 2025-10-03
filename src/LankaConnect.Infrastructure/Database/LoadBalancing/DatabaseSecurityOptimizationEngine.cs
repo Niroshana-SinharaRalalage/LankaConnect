@@ -30,6 +30,15 @@ using EncryptionResult = LankaConnect.Domain.Common.Database.EncryptionResult;
 using AuditScope = LankaConnect.Domain.Common.Database.AuditScope;
 using ValidationScope = LankaConnect.Domain.Common.Database.ValidationScope;
 using SecurityIncidentTrigger = LankaConnect.Domain.Common.Database.SecurityIncidentTrigger;
+// Additional aliases for remaining ambiguous types (Priority 1 continuation)
+using CulturalIncidentContext = LankaConnect.Domain.Common.Database.CulturalIncidentContext;
+using CulturalDataElement = LankaConnect.Domain.Common.Database.CulturalDataElement;
+using SecurityConfigurationSync = LankaConnect.Application.Common.Security.SecurityConfigurationSync;
+using RegionalDataCenter = LankaConnect.Application.Common.Security.RegionalDataCenter;
+using CrossRegionSecurityPolicy = LankaConnect.Application.Common.Security.CrossRegionSecurityPolicy;
+using PrivilegedUser = LankaConnect.Domain.Common.Database.PrivilegedUser;
+using CulturalPrivilegePolicy = LankaConnect.Domain.Common.Database.CulturalPrivilegePolicy;
+using AutoScalingDecision = LankaConnect.Domain.Common.Database.AutoScalingDecision;
 using LankaConnect.Domain.Infrastructure;
 using LankaConnect.Domain.Shared;
 using LankaConnect.Infrastructure.Security;

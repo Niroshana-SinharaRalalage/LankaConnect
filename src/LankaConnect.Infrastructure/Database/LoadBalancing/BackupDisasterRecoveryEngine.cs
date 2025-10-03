@@ -13,6 +13,8 @@ using LankaConnect.Domain.Common.Database;
 using LankaConnect.Application.Common.Models.Backup;
 using LankaConnect.Application.Common.Models.DisasterRecovery;
 using LankaConnect.Domain.Shared.Types;
+using DisasterRecoveryModels = LankaConnect.Infrastructure.Common.Models;
+using CriticalModels = LankaConnect.Application.Common.Models.Critical;
 
 namespace LankaConnect.Infrastructure.Database.LoadBalancing
 {

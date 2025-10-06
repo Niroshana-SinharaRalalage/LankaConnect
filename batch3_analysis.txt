@@ -1,0 +1,63 @@
+BATCH 3 TARGET TYPES (Security, Monitoring, Performance, SLA):
+
+Security Types (18):
+- AppSecurity
+- CulturalSecurityContext  
+- HeritageDataSecurityResult
+- ModelSecurityCriteria
+- ModelSecurityResult
+- PreservationSecurityConfig
+- RegionalSecurityImplementation
+- RegionalSecurityMaintenance
+- SecurityIntegrationPolicy
+- SecurityMonitoringIntegration (4 occurrences)
+- SecurityOptimizationStrategy
+- SecurityPerformanceMonitoring
+- SecuritySynchronizationResult
+
+Monitoring Types (4):
+- MonitoringConfiguration (2 occurrences)
+- MonitoringMetrics
+- RegionalMonitoringConfiguration
+- CrossRegionAlertingSystem
+
+Alert Types (6):
+- AlertAcknowledgment
+- AlertConfiguration
+- AlertCorrelationResult
+- AlertEffectivenessMetrics
+- AlertEffectivenessThreshold
+- AlertResolutionResult
+- AlertSuppressionResult
+
+Performance Types (6):
+- AutoScalingPerformanceImpact
+- CompetitivePerformanceAnalysis
+- GlobalPerformanceMetrics
+- PerformanceDegradationScenario
+- PerformanceRequirement
+- PerformanceThreshold
+- TimezoneAwarePerformanceReport
+
+SLA Types (11):
+- CustomerSLAReport
+- SLABreach
+- SLABreachAnalysis
+- SLABreachSeverity
+- SLACreditCalculation
+- SLAImprovementInitiative
+- SLAImprovementTracker
+- SLAPerformanceReport
+- SLAReportFormat
+- SLAReportingConfiguration
+- SLARiskAssessment
+- SLAThresholdAdjustment
+
+Access/Compliance Types (4):
+- APIAccessRequest
+- CulturalResourceAccess
+- CrossBorderComplianceRequirements
+- JITAccessRequest
+- MultiJurisdictionCompliance
+
+TOTAL: ~52 types (each appearing 2x = 104 error instances)

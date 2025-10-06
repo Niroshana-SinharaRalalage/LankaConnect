@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Enums;
+using LankaConnect.Domain.CulturalIntelligence.Models;
 using CulturalContext = LankaConnect.Domain.Communications.ValueObjects.CulturalContext;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;

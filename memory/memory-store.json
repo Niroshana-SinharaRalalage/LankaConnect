@@ -35,6 +35,44 @@
       "value": "Docker development environment fully configured for LankaConnect. Services: PostgreSQL (5432) with schema initialization, Redis (6379) with persistence, MailHog (1025/8025) for email testing, Azurite (10000-10002) for Azure Storage emulation, Seq (5341/8080) for structured logging. Additional: pgAdmin (8081) and Redis Commander (8082) for management. Environment file (.env.docker), setup scripts (PowerShell/Bash), database initialization with schemas and roles, Redis configuration with security. Ready for local development with all services coordinated.",
       "namespace": "default",
       "timestamp": 1756520685113
+    },
+    {
+      "key": "swarm/architect/namespace-aliases-start",
+      "value": "Starting NamespaceAliases.cs architectural analysis",
+      "namespace": "default",
+      "timestamp": 1759866795866
+    },
+    {
+      "key": "swarm/architect/namespace-aliases-analysis",
+      "value": "{\"currentPurpose\": \"Global type aliases to resolve CS0104 ambiguous reference errors\", \"aliasCount\": 17, \"dependentFiles\": 0, \"actualUsage\": \"NONE - Zero files reference this file\", \"definedTypes\": [\"AutoScalingDecision\", \"ResponseAction\", \"PerformanceAlert\", \"CulturalIntelligenceContext\", \"ServiceLevelAgreement\", \"DateRange\", \"AnalysisPeriod\", \"DisasterRecoveryContext\"], \"duplicateTypes\": [\"AutoScalingDecision\", \"ResponseAction\", \"PerformanceAlert\", \"ServiceLevelAgreement\"], \"architecturalViolation\": \"YES - Global using statements violate Clean Architecture\", \"rootCause\": \"Workaround for duplicate type definitions across Application/Infrastructure/Domain layers\"}",
+      "namespace": "default",
+      "timestamp": 1759868196126
+    },
+    {
+      "key": "swarm/planner/refactoring-plan",
+      "value": "Master refactoring plan created at docs/MASTER_REFACTORING_PLAN.md - 5 phases, zero-error guarantee, incremental TDD approach, 48-60 hour estimate",
+      "namespace": "default",
+      "timestamp": 1759870205635
+    },
+    {
+      "key": "swarm/analyzer/file-violations",
+      "value": "{\"totalViolations\": 361, \"filesWithMultipleTypes\": 361, \"interfaceFileViolations\": 41, \"refactoringActionsRequired\": 4302}",
+      "namespace": "default",
+      "timestamp": 1759882930157
+    }
+  ],
+  "swarm": [
+    {
+      "key": "swarm/researcher/protocol-complete",
+      "value": "Task synchronization protocol extracted and analyzed - ready for implementation",
+      "namespace": "swarm",
+      "timestamp": 1759866806570
+    },
+    {
+      "key": "swarm/coordinator/hive-mind-summary",
+      "value": "{\"status\":\"complete\",\"agents_deployed\":8,\"findings\":{\"using_violations\":176,\"duplicate_types\":7,\"file_violations\":361,\"namespace_aliases\":161,\"loadbalancing_misplaced\":9},\"documentation_created\":10,\"next_phase\":\"implementation\"}",
+      "namespace": "swarm",
+      "timestamp": 1759925741314
     }
   ]
 }

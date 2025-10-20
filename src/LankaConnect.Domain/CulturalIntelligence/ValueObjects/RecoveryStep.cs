@@ -1,12 +1,12 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.CulturalIntelligence.Enums;
+using LankaConnect.Domain.Common.Database;
 
 namespace LankaConnect.Domain.CulturalIntelligence.ValueObjects;
 
 public record RecoveryStep(
     string StepId,
     string Description,
-    SacredPriorityLevel Priority,
+    CulturalDataPriority Priority,
     TimeSpan EstimatedDuration,
     bool IsCompleted,
     DateTime? CompletedAt,

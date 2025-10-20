@@ -74,5 +74,43 @@
       "namespace": "swarm",
       "timestamp": 1759925741314
     }
+  ],
+  "validation": [
+    {
+      "key": "swarm/agent4/status",
+      "value": "READY_MONITORING_ACTIVE",
+      "namespace": "validation",
+      "timestamp": 1759978411495
+    },
+    {
+      "key": "swarm/agent4/baseline_corrected",
+      "value": "710",
+      "namespace": "validation",
+      "timestamp": 1759978590932
+    },
+    {
+      "key": "swarm/agent4/target_agent1_corrected",
+      "value": "430",
+      "namespace": "validation",
+      "timestamp": 1759978593791
+    },
+    {
+      "key": "swarm/agent4/target_agent2_corrected",
+      "value": "248",
+      "namespace": "validation",
+      "timestamp": 1759978596349
+    },
+    {
+      "key": "swarm/agent4/target_agent3_corrected",
+      "value": "242",
+      "namespace": "validation",
+      "timestamp": 1759978599223
+    },
+    {
+      "key": "swarm/agent4/stage1_final_corrected",
+      "value": "242",
+      "namespace": "validation",
+      "timestamp": 1759978601906
+    }
   ]
 }

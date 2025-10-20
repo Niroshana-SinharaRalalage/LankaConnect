@@ -31,6 +31,8 @@ claude-flow hive-mind "Please proceed with fixing 639 errors with 1. Don't forge
 Found 50+ more types defined inside interface files! This is a systematic anti-pattern. However, this is a larger refactor. Let me focus on
   immediate duplicates first.
   
+  claude-flow hive-mind "Mother fucker.. what are you doing again? 'private decimal CalculateConflictSeverityScore(IEnumerable<LankaConnect.Domain.Communications.ValueObjects.CulturalConflict> conflicts'    
+  you have to use fully qualified name means, you have duplicates. is this how you are fixing issues? Are you doing this acording to the plan?" 
 
 claude-flow hive-mind "Please proceed with COMPREHENSIVE SOLUTION-WIDE ARCHITECTURE RECOVERY PLAN with proper incremental TDD process (Zero Tolerance for Compilation Errors). I cant give you 9 days for the recovery plan, I will just give you 3 hours not more than that. 1. Don't forget to consult architect when needed. 2. follow TDD for implemenationa. 3. Also, update the status whenever possible acording to c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md"
 

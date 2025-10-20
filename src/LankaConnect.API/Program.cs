@@ -2,7 +2,6 @@ using LankaConnect.Application;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
-using LankaConnect.API.Authentication;
 using Serilog;
 using Serilog.Events;
 using Serilog.Context;
@@ -39,64 +38,10 @@ try
 
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
-    
-    // Add Cultural Intelligence API versioning
-    builder.Services.AddApiVersioning(options =>
-    {
-        options.AssumeDefaultVersionWhenUnspecified = true;
-        options.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
-        options.ApiVersionReader = Microsoft.AspNetCore.Mvc.ApiVersioning.ApiVersionReader.Combine(
-            new Microsoft.AspNetCore.Mvc.ApiVersioning.QueryStringApiVersionReader("version"),
-            new Microsoft.AspNetCore.Mvc.ApiVersioning.HeaderApiVersionReader("X-API-Version")
-        );
-    });
 
-    // Add Cultural Intelligence API key authentication
-    builder.Services.AddAuthentication("ApiKey")
-        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CulturalIntelligenceApiKeyAuthenticationHandler>(
-            "ApiKey", options => { });
-    
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddCustomAuthorization();
-
-    // Add Cultural Intelligence Rate Limiting
-    builder.Services.AddRateLimiter(options =>
-    {
-        options.AddPolicy("CulturalIntelligencePolicy", context =>
-            Microsoft.AspNetCore.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                factory: partition => new Microsoft.AspNetCore.RateLimiting.FixedWindowRateLimiterOptions
-                {
-                    AutoReplenishment = true,
-                    PermitLimit = 100, // 100 requests
-                    Window = TimeSpan.FromMinutes(1) // per minute
-                }));
-        
-        options.AddPolicy("PremiumApiPolicy", context =>
-            Microsoft.AspNetCore.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: CulturalIntelligenceApiHelpers.GetApiKey(context) ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                factory: partition => new Microsoft.AspNetCore.RateLimiting.FixedWindowRateLimiterOptions
-                {
-                    AutoReplenishment = true,
-                    PermitLimit = 1000, // 1000 requests for premium
-                    Window = TimeSpan.FromMinutes(1)
-                }));
-
-        options.OnRejected = async (context, token) =>
-        {
-            if (context.HttpContext.Response.HasStarted)
-                return;
-
-            context.HttpContext.Response.StatusCode = 429;
-            context.HttpContext.Response.Headers.Add("X-RateLimit-Remaining", "0");
-            context.HttpContext.Response.Headers.Add("X-RateLimit-Reset", 
-                DateTimeOffset.UtcNow.Add(context.Lease.TryGetMetadata(Microsoft.AspNetCore.RateLimiting.MetadataName.RetryAfter, out var retryAfter) ? retryAfter : TimeSpan.FromMinutes(1))
-                    .ToUnixTimeSeconds().ToString());
-
-            await context.HttpContext.Response.WriteAsync("Rate limit exceeded. Please try again later.", token);
-        };
-    });
 
     // Add API documentation with JWT support
     builder.Services.AddEndpointsApiExplorer();
@@ -219,9 +164,6 @@ try
     }
 
     app.UseHttpsRedirection();
-
-    // Add rate limiting for Cultural Intelligence APIs
-    app.UseRateLimiter();
 
     // Add correlation ID middleware
     app.Use(async (context, next) =>

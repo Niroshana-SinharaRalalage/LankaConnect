@@ -2,9 +2,9 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Communications.ValueObjects;
 using Microsoft.Extensions.Logging;
+using EmailValueObject = LankaConnect.Domain.Shared.ValueObjects.Email;
 using Microsoft.Extensions.Options;
 using System.Net.Mail;
 using System.Net;
@@ -243,11 +243,11 @@ public class EmailService : IEmailService
         try
         {
             // Create domain value objects
-            var fromEmailResult = LankaConnect.Domain.Users.ValueObjects.Email.Create(_smtpSettings.FromEmail);
+            var fromEmailResult = EmailValueObject.Create(_smtpSettings.FromEmail);
             if (fromEmailResult.IsFailure)
                 return Result<EmailMessage>.Failure(fromEmailResult.Error);
 
-            var toEmailResult = LankaConnect.Domain.Users.ValueObjects.Email.Create(dto.ToEmail);
+            var toEmailResult = EmailValueObject.Create(dto.ToEmail);
             if (toEmailResult.IsFailure)
                 return Result<EmailMessage>.Failure(toEmailResult.Error);
 

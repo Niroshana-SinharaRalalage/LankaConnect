@@ -211,13 +211,13 @@ public class GetEmailStatusQueryHandlerTests
 
     private static LankaConnect.Domain.Users.User CreateTestUser()
     {
-        var email = LankaConnect.Domain.Users.ValueObjects.Email.Create("test@example.com").Value;
+        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create("test@example.com").Value;
         return LankaConnect.Domain.Users.User.Create(email, "Test", "User").Value;
     }
 
     private static LankaConnect.Domain.Communications.Entities.EmailMessage CreateTestEmailMessage(string toEmail, string subject)
     {
-        var fromEmail = LankaConnect.Domain.Users.ValueObjects.Email.Create("system@lankaconnect.com").Value;
+        var fromEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("system@lankaconnect.com").Value;
         var emailSubject = EmailSubject.Create(subject).Value;
         var emailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage.Create(
             fromEmail,
@@ -228,7 +228,7 @@ public class GetEmailStatusQueryHandlerTests
             3).Value;
         
         // Add the recipient
-        var toEmailValue = LankaConnect.Domain.Users.ValueObjects.Email.Create(toEmail).Value;
+        var toEmailValue = LankaConnect.Domain.Shared.ValueObjects.Email.Create(toEmail).Value;
         emailMessage.AddRecipient(toEmailValue);
         
         return emailMessage;

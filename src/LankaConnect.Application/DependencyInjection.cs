@@ -22,7 +22,6 @@ public static class DependencyInjection
         // Add pipeline behaviors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CulturalIntelligenceCachingBehavior<,>));
 
         // Add FluentValidation
         services.AddValidatorsFromAssembly(assembly);

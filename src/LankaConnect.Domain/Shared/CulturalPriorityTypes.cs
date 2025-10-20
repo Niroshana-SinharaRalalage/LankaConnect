@@ -1,42 +1,6 @@
 namespace LankaConnect.Domain.Shared;
 
 /// <summary>
-/// Sacred priority level for cultural content and events
-/// </summary>
-public enum SacredPriorityLevel
-{
-    /// <summary>
-    /// Regular cultural content with standard processing
-    /// </summary>
-    Standard = 1,
-
-    /// <summary>
-    /// Important cultural content requiring careful handling
-    /// </summary>
-    Important = 2,
-
-    /// <summary>
-    /// High priority cultural content with elevated processing
-    /// </summary>
-    High = 3,
-
-    /// <summary>
-    /// Critical cultural content requiring immediate attention
-    /// </summary>
-    Critical = 4,
-
-    /// <summary>
-    /// Sacred content requiring the highest level of protection and reverence
-    /// </summary>
-    Sacred = 5,
-
-    /// <summary>
-    /// Ultra-sacred content such as religious texts and ceremonies
-    /// </summary>
-    UltraSacred = 6
-}
-
-/// <summary>
 /// Generational cohort for cultural affinity analysis
 /// </summary>
 public enum GenerationalCohort
@@ -136,41 +100,6 @@ public enum SacredContentType
     /// Other sacred content
     /// </summary>
     Other = 99
-}
-
-/// <summary>
-/// Extensions for SacredPriorityLevel enum
-/// </summary>
-public static class SacredPriorityLevelExtensions
-{
-    /// <summary>
-    /// Gets the processing priority weight for the sacred content
-    /// </summary>
-    /// <param name="level">The sacred priority level</param>
-    /// <returns>Processing weight (higher = more priority)</returns>
-    public static int GetProcessingWeight(this SacredPriorityLevel level)
-    {
-        return level switch
-        {
-            SacredPriorityLevel.Standard => 1,
-            SacredPriorityLevel.Important => 2,
-            SacredPriorityLevel.High => 4,
-            SacredPriorityLevel.Critical => 8,
-            SacredPriorityLevel.Sacred => 16,
-            SacredPriorityLevel.UltraSacred => 32,
-            _ => 1
-        };
-    }
-
-    /// <summary>
-    /// Determines if the content requires special cultural validation
-    /// </summary>
-    /// <param name="level">The sacred priority level</param>
-    /// <returns>True if special validation is required</returns>
-    public static bool RequiresSpecialValidation(this SacredPriorityLevel level)
-    {
-        return level >= SacredPriorityLevel.Critical;
-    }
 }
 
 /// <summary>

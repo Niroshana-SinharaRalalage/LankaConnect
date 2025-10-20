@@ -1,5 +1,6 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Enums;
+using LankaConnect.Domain.Common.Database;
 using LankaConnect.Domain.Shared;
 
 namespace LankaConnect.Domain.Shared;
@@ -31,7 +32,7 @@ public record AutoScalingDecision
     public decimal ConfidenceScore { get; init; }
     public bool IsCulturalEvent { get; init; }
     public CulturalEventType CulturalEventType { get; init; }
-    public SacredPriorityLevel SacredPriorityLevel { get; init; }
+    public CulturalDataPriority SacredPriorityLevel { get; init; }
     public DateTime DecisionTimestamp { get; init; } = DateTime.UtcNow;
 
     public static AutoScalingDecision Create(ScalingAction scalingAction, int targetCapacity, string culturalContext, decimal confidenceScore)
@@ -49,22 +50,22 @@ public record AutoScalingDecision
                              culturalContext.Contains("Hindu") || culturalContext.Contains("Islamic");
 
         var eventType = CulturalEventType.VesakDayBuddhist;
-        var priorityLevel = SacredPriorityLevel.Standard;
+        var priorityLevel = CulturalDataPriority.Level5General;
 
         if (culturalContext.Contains("Vesak"))
         {
             eventType = CulturalEventType.VesakDayBuddhist;
-            priorityLevel = SacredPriorityLevel.Sacred;
+            priorityLevel = CulturalDataPriority.Level10Sacred;
         }
         else if (culturalContext.Contains("Diwali"))
         {
             eventType = CulturalEventType.DiwaliHindu;
-            priorityLevel = SacredPriorityLevel.High;
+            priorityLevel = CulturalDataPriority.Level9Religious;
         }
         else if (culturalContext.Contains("Eid"))
         {
             eventType = CulturalEventType.EidAlFitrIslamic;
-            priorityLevel = SacredPriorityLevel.High;
+            priorityLevel = CulturalDataPriority.Level9Religious;
         }
 
         return new AutoScalingDecision

@@ -12,7 +12,7 @@ public class SacredEventSnapshot
     public required string EventId { get; set; }
     public required string EventName { get; set; }
     public required DateTime EventDate { get; set; }
-    public required SacredPriorityLevel PriorityLevel { get; set; }
+    public required LankaConnect.Domain.Common.Database.CulturalDataPriority PriorityLevel { get; set; }
     public required List<SouthAsianLanguage> Languages { get; set; } = new();
     public required Dictionary<string, object> EventData { get; set; } = new();
     public required DateTime SnapshotTimestamp { get; set; }
@@ -115,7 +115,7 @@ public class CulturalIntelligenceData
     public required DateTime DataTimestamp { get; set; }
     public required Dictionary<string, object> Data { get; set; } = new();
     public required List<SouthAsianLanguage> Languages { get; set; } = new();
-    public required SacredPriorityLevel Priority { get; set; }
+    public required LankaConnect.Domain.Common.Database.CulturalDataPriority Priority { get; set; }
     public bool IsVerified { get; set; }
     public Dictionary<string, object> Metadata { get; set; } = new();
 }
@@ -145,7 +145,7 @@ public class SacredEvent
     public required string Name { get; set; }
     public required string EventType { get; set; }
     public required string CulturalCommunity { get; set; }
-    public required SacredPriorityLevel SacredPriorityLevel { get; set; }
+    public required LankaConnect.Domain.Common.Database.CulturalDataPriority SacredPriorityLevel { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
     public List<string> RegionalVariations { get; set; } = new();

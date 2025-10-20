@@ -127,3 +127,80 @@ public sealed class CommunityConnectionPair
     public decimal ConnectionStrength { get; init; }
     public List<string> SharedInterests { get; init; } = new();
 }
+
+// Additional types from Stage5MissingTypes.cs
+
+/// <summary>
+/// Domain cultural context for core business rules
+/// Moved from Stage5MissingTypes.cs
+/// </summary>
+public class DomainCulturalContext
+{
+    public string ContextId { get; set; } = string.Empty;
+    public string PrimaryCulture { get; set; } = string.Empty;
+    public List<string> SecondaryCultures { get; set; } = new();
+    public Dictionary<string, string> CulturalAttributes { get; set; } = new();
+}
+
+/// <summary>
+/// Cultural routing rationale for decision transparency
+/// Moved from Stage5MissingTypes.cs
+/// </summary>
+public class CulturalRoutingRationale
+{
+    public string RationaleId { get; set; } = string.Empty;
+    public string RoutingDecision { get; set; } = string.Empty;
+    public Dictionary<string, double> CulturalFactors { get; set; } = new();
+    public List<string> ConsideredAlternatives { get; set; } = new();
+    public double ConfidenceScore { get; set; }
+}
+
+/// <summary>
+/// Religious background for cultural sensitivity
+/// Moved from Stage5MissingTypes.cs
+/// </summary>
+public class ReligiousBackground
+{
+    public string BackgroundId { get; set; } = string.Empty;
+    public string Religion { get; set; } = string.Empty;
+    public string Denomination { get; set; } = string.Empty;
+    public List<string> Practices { get; set; } = new();
+    public List<string> Observances { get; set; } = new();
+}
+
+/// <summary>
+/// User language profile for multilingual support
+/// Moved from Stage5MissingTypes.cs (renamed from LanguagePreferences)
+/// </summary>
+public class UserLanguageProfile
+{
+    public string ProfileId { get; set; } = string.Empty;
+    public string PrimaryLanguage { get; set; } = string.Empty;
+    public List<string> SecondaryLanguages { get; set; } = new();
+    public Dictionary<string, string> LanguageProficiency { get; set; } = new();
+}
+
+/// <summary>
+/// Cultural event participation tracking
+/// Moved from Stage5MissingTypes.cs
+/// </summary>
+public class CulturalEventParticipation
+{
+    public string ParticipationId { get; set; } = string.Empty;
+    public string EventId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public ParticipationType ParticipationType { get; set; }
+    public DateTime ParticipatedAt { get; set; }
+}
+
+/// <summary>
+/// Type of cultural event participation
+/// </summary>
+public enum ParticipationType
+{
+    Organizer,
+    Speaker,
+    Attendee,
+    Volunteer,
+    Sponsor
+}

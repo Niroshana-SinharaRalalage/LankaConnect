@@ -106,7 +106,7 @@ public static class TestDataBuilder
 
     public static User CreateValidUser()
     {
-        var email = LankaConnect.Domain.Users.ValueObjects.Email.Create($"test{_fixture.Create<int>()}@test.com").Value;
+        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create($"test{_fixture.Create<int>()}@test.com").Value;
         return User.Create(email, _fixture.Create<string>(), _fixture.Create<string>()).Value;
     }
 

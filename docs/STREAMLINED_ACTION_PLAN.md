@@ -1,9 +1,57 @@
 # STREAMLINED ACTION PLAN - LankaConnect
 ## Local Development → Production (Target: Before Thanksgiving)
 
-**Philosophy:** Build locally, iterate fast, ship to Azure when ready  
-**Approach:** Complete each item fully before moving to next  
+**Philosophy:** Build locally, iterate fast, ship to Azure when ready
+**Approach:** Complete each item fully before moving to next
 **Priority:** Phase 1 MVP to production ASAP
+
+---
+
+## 🚨 CRITICAL: MVP SCOPE CLEANUP (2025-01-27) - IN PROGRESS
+
+### Build Error Remediation 🔄
+```yaml
+Status: 🔄 IN PROGRESS - Ruthless MVP Cleanup
+Blocker: 118 build errors from Phase 2+ scope creep
+Action Plan: RUTHLESS_MVP_CLEANUP_PLAN.md
+Strategy: Delete all non-MVP Phase 2/3 features
+
+Current Progress:
+  🔄 Phase 1: Delete 5 non-MVP interface files (118→80 errors) - PENDING
+  ⏳ Phase 2: Delete 4+ implementation files (80→40 errors) - PENDING
+  ⏳ Phase 3: Stub 3 files removing Phase 2 code (40→20 errors) - PENDING
+  ⏳ Phase 4: Fix core MVP errors (20→0 errors) - PENDING
+
+Files to DELETE (Phase 2+ features):
+  ❌ ICulturalEventDetector.cs - Cultural intelligence (Phase 2)
+  ❌ ICulturalIntelligenceMetricsService.cs - Advanced monitoring (Phase 2)
+  ❌ IHeritageLanguagePreservationService.cs - Multi-language (Phase 2)
+  ❌ ISacredContentLanguageService.cs - Cultural features (Phase 2)
+  ❌ ICulturalSecurityService.cs - Advanced security (Phase 2)
+  ❌ CulturalIntelligenceMetricsService.cs - Implementation (Phase 2)
+  ❌ SacredEventRecoveryOrchestrator.cs - Disaster recovery (Phase 2)
+  ❌ CulturalIntelligenceBackupEngine.cs - Backup (Phase 2)
+  ❌ MockImplementations.cs (Security) - References Phase 2 types
+
+Phase 2+ Features Being Removed:
+  - Cultural intelligence routing and affinity
+  - Heritage language preservation
+  - Sacred content services
+  - Disaster recovery engines
+  - Advanced security (cultural profiles, sensitivity)
+  - Compliance tracking (GDPR, SOX, HIPAA)
+  - Cross-community connections
+  - Diaspora clustering
+  - Multi-language preferences
+
+Success Criteria:
+  ✅ Zero compilation errors
+  ✅ MVP features intact (auth, events, business, forums)
+  ✅ Solution builds successfully
+  ✅ Existing tests pass (963 tests)
+
+Timeline: ~2 hours (4 phases × 30 min each)
+```
 
 ---
 

@@ -288,7 +288,7 @@ public class SacredContentRequest
     public string ContentText { get; set; } = string.Empty;
     public SacredContentType ContentType { get; set; }
     public SouthAsianLanguage RequestedLanguage { get; set; }
-    public required CulturalBackground UserCulturalBackground { get; set; }
+    public required UserCulturalProfile UserCulturalBackground { get; set; }
     public DateTime RequestTimestamp { get; set; }
     public bool RequiresStrictValidation { get; set; }
 }
@@ -324,9 +324,12 @@ public enum SacredContentType
 }
 
 /// <summary>
-/// Cultural background for sacred content validation
+/// User cultural profile for sacred content validation
+/// RENAMED from CulturalBackground to avoid semantic conflict with CulturalBackground enum in Domain.Shared
+/// The enum represents simple cultural categories (SriLankanBuddhist, IndianTamil, etc.)
+/// This class represents detailed user profile with heritage language, generation, religious tradition, etc.
 /// </summary>
-public class CulturalBackground
+public class UserCulturalProfile
 {
     public SouthAsianLanguage HeritageLanguage { get; set; }
     public List<SouthAsianLanguage> FamiliarLanguages { get; set; } = new();

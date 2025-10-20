@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using FluentAssertions;
 using Xunit;
-using UserEmail = LankaConnect.Domain.Users.ValueObjects.Email;
+using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 

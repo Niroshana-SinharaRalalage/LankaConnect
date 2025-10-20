@@ -4,7 +4,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.TestUtilities.Builders;
-using Email = LankaConnect.Domain.Users.ValueObjects.Email;
+using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 

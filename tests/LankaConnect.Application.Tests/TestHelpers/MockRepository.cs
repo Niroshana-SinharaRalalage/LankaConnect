@@ -3,6 +3,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Business;
+using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.TestHelpers;
 

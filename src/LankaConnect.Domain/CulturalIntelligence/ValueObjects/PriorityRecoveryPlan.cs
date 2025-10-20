@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.CulturalIntelligence.Enums;
+using LankaConnect.Domain.Common.Database;
 
 namespace LankaConnect.Domain.CulturalIntelligence.ValueObjects;
 
@@ -7,7 +7,7 @@ public record PriorityRecoveryPlan(
     string PlanId,
     string EventId,
     IEnumerable<RecoveryStep> RecoverySteps,
-    SacredPriorityLevel PriorityLevel,
+    CulturalDataPriority PriorityLevel,
     TimeSpan EstimatedRecoveryTime,
     DateTime CreatedAt
 );

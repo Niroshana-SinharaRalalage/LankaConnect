@@ -20,7 +20,6 @@ using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
-using LankaConnect.Infrastructure.Cache;
 
 namespace LankaConnect.Infrastructure;
 
@@ -172,8 +171,6 @@ public static class DependencyInjection
             
             return ConnectionMultiplexer.Connect(redisConnectionString);
         });
-        
-        services.AddScoped<ICulturalIntelligenceCacheService, CulturalIntelligenceCacheService>();
 
         return services;
     }

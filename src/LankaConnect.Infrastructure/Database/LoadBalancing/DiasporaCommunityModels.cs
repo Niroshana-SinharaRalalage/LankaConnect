@@ -1,6 +1,23 @@
 using LankaConnect.Domain.Common.Enums;
+using LankaConnect.Application.Common.Models.Business;
 
 namespace LankaConnect.Infrastructure.Database.LoadBalancing;
+
+/// <summary>
+/// Diaspora community clustering types - STUB for Phase 2
+/// Originally defined in deleted CulturalAffinityGeographicLoadBalancer.cs
+/// TODO Phase 2: Move to Domain layer and implement full cultural affinity clustering
+/// </summary>
+public enum DiasporaCommunityClustering
+{
+    SriLankanBuddhist,
+    SriLankanTamil,
+    IndianHindu,
+    PakistaniMuslim,
+    SikhPunjabi,
+    BangladeshiMuslim,
+    Other
+}
 
 /// <summary>
 /// Result of identifying target diaspora communities for business optimization
@@ -22,7 +39,7 @@ public class TargetDiasporaCommunitiesResult
 public class CommunityClusteringDensityAnalysis
 {
     public DiasporaCommunityClustering CommunityType { get; set; }
-    public GeographicRegion Region { get; set; } = null!;
+    public GeographicRegion? Region { get; set; }
     public double PopulationDensity { get; set; }
     public double CulturalInstitutionDensity { get; set; }
     public double BusinessDirectoryDensity { get; set; }

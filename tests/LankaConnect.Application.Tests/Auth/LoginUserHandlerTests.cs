@@ -9,6 +9,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Common;
+using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Auth;
 

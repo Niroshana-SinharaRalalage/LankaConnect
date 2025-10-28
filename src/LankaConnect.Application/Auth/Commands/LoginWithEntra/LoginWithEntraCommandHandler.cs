@@ -4,7 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
-using LankaConnect.Domain.Users.ValueObjects;
+using RefreshTokenVO = LankaConnect.Domain.Users.ValueObjects.RefreshToken;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Auth.Commands.LoginWithEntra;
@@ -140,7 +140,7 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
         var tokenExpiresAt = DateTime.UtcNow.AddMinutes(_tokenConfiguration.AccessTokenExpirationMinutes);
         var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(_tokenConfiguration.RefreshTokenExpirationDays);
 
-        var refreshTokenObject = Domain.Users.ValueObjects.RefreshToken.Create(
+        var refreshTokenObject = RefreshTokenVO.Create(
             refreshTokenResult.Value,
             refreshTokenExpiresAt,
             request.IpAddress ?? "unknown");

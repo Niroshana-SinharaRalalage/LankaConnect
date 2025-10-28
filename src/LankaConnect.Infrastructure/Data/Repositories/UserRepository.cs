@@ -54,19 +54,22 @@ public class UserRepository : Repository<User>, IUserRepository
     public async Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         return await _dbSet
-            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken && rt.IsRevoked == false), 
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken && rt.IsRevoked == false),
                 cancellationToken);
     }
 
     public async Task<User?> GetByEmailVerificationTokenAsync(string token, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, cancellationToken);
     }
 
     public async Task<User?> GetByPasswordResetTokenAsync(string token, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.PasswordResetToken == token, cancellationToken);
     }
 

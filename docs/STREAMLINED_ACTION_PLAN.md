@@ -7,6 +7,622 @@
 
 ---
 
+## 📋 EPIC 1 & EPIC 2 IMPLEMENTATION ROADMAP (2025-10-28)
+
+**Status:** 🔄 PLANNING COMPLETE - Awaiting implementation approval
+**Reference:** `working/EPIC1_EPIC2_GAP_ANALYSIS.md`
+**Timeline:** 11-12 weeks total (Backend: 7 weeks, Frontend: 3-4 weeks, Testing: 1 week)
+
+---
+
+### ✅ EPIC 1: AUTHENTICATION & USER MANAGEMENT - PHASE 1 (Entra External ID Foundation)
+
+```yaml
+Status: ✅ PHASE 1 COMPLETE - Domain + Infrastructure Layers Done (2025-10-28)
+Duration: 1 week (5 sessions @ 4 hours each) - ACTUAL: 2.5 hours
+Priority: HIGH - Foundational for all features
+Current Progress: 60% (Domain + DB complete, Application Layer next)
+Dependencies: ✅ Azure Entra External ID tenant created
+Technology: Microsoft Entra External ID (modern replacement for Azure AD B2C)
+```
+
+#### Task Breakdown - Phase 1 (Domain + Infrastructure): ✅ COMPLETE
+**Day 1: Azure Entra External ID Setup** ✅ COMPLETE
+- [x] Create Microsoft Entra External ID tenant (lankaconnect.onmicrosoft.com)
+- [x] Register LankaConnect API application in Entra
+- [x] Configure OAuth 2.0 scopes and permissions (openid, profile, email, User.Read)
+- [x] Setup client secret and redirect URIs
+- [x] Document Azure configuration (Tenant ID, Client ID, etc.)
+
+**Day 1: Domain Layer (TDD)** ✅ COMPLETE
+- [x] Create IdentityProvider enum (Local = 0, EntraExternal = 1)
+- [x] Extension methods for business rules (RequiresPasswordHash, IsExternalProvider, etc.)
+- [x] Add IdentityProvider and ExternalProviderId properties to User entity
+- [x] Create CreateFromExternalProvider() factory method
+- [x] Update SetPassword/ChangePassword with business rule validation
+- [x] Create UserCreatedFromExternalProviderEvent domain event
+- [x] Comprehensive unit tests (28 tests: 12 IdentityProvider + 16 User entity)
+- [x] **Test Results**: 311/311 Application.Tests passing (100% - zero regressions)
+
+**Day 2: Infrastructure Layer (Database)** ✅ COMPLETE
+- [x] Update UserConfiguration.cs with IdentityProvider and ExternalProviderId
+- [x] Configure enum-to-int conversion for IdentityProvider
+- [x] Add database indexes for query optimization (3 indexes)
+- [x] Create AddEntraExternalIdSupport EF Core migration
+- [x] **Migration Status**: Build successful, migration ready for deployment
+- [x] **Backward Compatibility**: Existing users default to IdentityProvider.Local
+
+#### Task Breakdown - Phase 2 (Application Layer): 🔄 NEXT
+**Day 3: Backend Integration**
+- [ ] Install Microsoft.Identity.Web NuGet package
+- [ ] Create EntraExternalIdOptions.cs configuration model
+- [ ] Create EntraExternalIdService.cs for token validation
+- [ ] Create JwtTokenValidator.cs for Entra token validation
+- [ ] Update Program.cs with AddMicrosoftIdentityWebApi()
+
+**Day 4: Application Layer Commands/Queries**
+- [ ] Create LoginWithEntraCommand + Handler
+- [ ] Create SyncEntraUserCommand + Handler (auto-provisioning)
+- [ ] Create GetUserByExternalProviderIdQuery + Handler
+- [ ] Update existing RegisterUserCommand to support Entra users
+- [ ] FluentValidation for all commands
+
+**Day 5: API Layer & Testing**
+- [ ] Add API endpoint: POST /api/auth/entra/login
+- [ ] Add API endpoint: POST /api/auth/entra/callback
+- [ ] Integration tests for Entra authentication flow
+- [ ] Test user auto-provisioning on first login
+- [ ] Test dual authentication (Local + Entra coexistence)
+- [ ] Validate user data sync between Entra and PostgreSQL
+
+---
+
+### ✅ EPIC 1: AUTHENTICATION & USER MANAGEMENT - PHASE 2 (Social Login)
+
+```yaml
+Status: ⏳ READY - Waiting for Phase 1 completion
+Duration: 3 days (3 sessions)
+Priority: HIGH - Core user feature
+Current Progress: 0%
+Dependencies: Azure AD B2C setup complete
+```
+
+#### Task Breakdown:
+**Day 1: Facebook & Google OAuth**
+- [ ] Configure Facebook Identity Provider in Azure AD B2C portal
+- [ ] Configure Google Identity Provider in Azure AD B2C portal
+- [ ] Test social login through B2C user flows
+- [ ] Update frontend login UI with social buttons
+
+**Day 2: Apple Sign-In & Backend**
+- [ ] Configure Apple Identity Provider in Azure AD B2C portal
+- [ ] Create ExternalLoginCommand + Handler
+- [ ] Create LinkExternalLoginCommand + Handler (link to existing account)
+- [ ] Create UnlinkExternalLoginCommand + Handler
+
+**Day 3: API & Testing**
+- [ ] Add API endpoint: POST /api/auth/external-login/{provider}
+- [ ] Add API endpoint: POST /api/auth/link-external-login
+- [ ] Add API endpoint: POST /api/auth/unlink-external-login/{provider}
+- [ ] Integration tests for all social login flows
+- [ ] E2E tests with real social providers (test accounts)
+
+---
+
+### ✅ EPIC 1: AUTHENTICATION & USER MANAGEMENT - PHASE 3 (Profile Enhancement)
+
+```yaml
+Status: ⏳ READY - Can start anytime
+Duration: 5 days (profile photo: 2 days, location: 1 day, cultural: 2 days)
+Priority: MEDIUM - User experience enhancement
+Current Progress: 0%
+Dependencies: BasicImageService exists (ready to use)
+```
+
+#### Profile Photo Upload (2 days)
+**Day 1: Domain & Application Layer**
+- [ ] Add ProfilePhotoUrl and ProfilePhotoBlobName to User entity
+- [ ] Add UpdateProfilePhoto(url, blobName) method to User
+- [ ] Add RemoveProfilePhoto() method to User
+- [ ] Create UploadProfilePhotoCommand + Handler (use BasicImageService)
+- [ ] Create DeleteProfilePhotoCommand + Handler
+- [ ] Database migration for profile photo columns
+
+**Day 2: API & Testing**
+- [ ] Add API endpoint: POST /api/users/{id}/profile-photo (multipart/form-data)
+- [ ] Add API endpoint: DELETE /api/users/{id}/profile-photo
+- [ ] Integration tests with Azure Blob Storage
+- [ ] Test image validation (size, type, dimensions)
+- [ ] Test profile photo removal and cleanup
+
+#### Location Field (1 day)
+- [ ] Create UserLocation value object (City, State, ZipCode)
+- [ ] Add Location property to User entity
+- [ ] Update RegisterUserCommand to accept location parameters
+- [ ] Database migration (city, state, zip_code columns + index)
+- [ ] Add API endpoint: PUT /api/users/{id}/location
+- [ ] Update registration tests with location validation
+
+#### Cultural Interests & Languages (2 days)
+**Day 1: Domain & Database**
+- [ ] Add CulturalInterests and Languages collections to User entity
+- [ ] Add AddCulturalInterest/RemoveCulturalInterest methods
+- [ ] Add AddLanguage/RemoveLanguage methods
+- [ ] Create user_cultural_interests junction table
+- [ ] Create user_languages junction table (with proficiency_level)
+- [ ] EF Core configuration for collections (many-to-many)
+
+**Day 2: Application & API**
+- [ ] Create UpdateCulturalInterestsCommand + Handler
+- [ ] Create UpdateLanguagePreferencesCommand + Handler
+- [ ] Add API endpoint: PUT /api/users/{id}/cultural-interests
+- [ ] Add API endpoint: PUT /api/users/{id}/languages
+- [ ] Integration tests for cultural preferences
+- [ ] Test multi-select functionality
+
+---
+
+### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 1 (Domain Foundation)
+
+```yaml
+Status: ⏳ READY - Can start anytime
+Duration: 1 week (4 days for domain enhancements)
+Priority: HIGH - Foundational for event system
+Current Progress: 20% (Event aggregate exists with basic features)
+Dependencies: PostGIS extension, existing value objects
+```
+
+#### Event Location with PostGIS (3 days)
+**Day 1: PostGIS Setup & Value Objects**
+- [ ] Enable PostGIS extension: CREATE EXTENSION IF NOT EXISTS postgis;
+- [ ] Create EventLocation value object (Address + GeoCoordinate)
+- [ ] Reuse Address value object from Business domain
+- [ ] Reuse GeoCoordinate value object (Haversine distance exists)
+- [ ] Add Location property to Event entity
+- [ ] Update Event.Create() factory method signature
+
+**Day 2: Database Migration & Repository**
+- [ ] Database migration for event location columns
+  - street VARCHAR(200)
+  - city VARCHAR(100)
+  - state VARCHAR(100)
+  - zip_code VARCHAR(20)
+  - country VARCHAR(100)
+  - coordinates GEOGRAPHY(POINT, 4326)
+- [ ] Create spatial index: CREATE INDEX idx_events_coordinates USING GIST(coordinates)
+- [ ] Create location index: CREATE INDEX idx_events_location ON events(city, state)
+
+**Day 3: Repository Methods & Testing**
+- [ ] Add IEventRepository.GetEventsByLocationAsync(lat, lng, radiusMiles)
+- [ ] Add IEventRepository.GetEventsByCityAsync(city, state)
+- [ ] Implement repository methods with PostGIS queries
+- [ ] Integration tests for 25/50/100 mile radius searches
+- [ ] Integration tests for city-based searches
+
+#### Event Category & Pricing (1 day)
+**Category Integration (0.5 day)**
+- [ ] Add Category property to Event entity (EventCategory enum exists)
+- [ ] Update Event.Create() to accept category parameter
+- [ ] Database migration: category VARCHAR(50) with index
+- [ ] Update existing Event tests for category
+
+**Ticket Pricing (0.5 day)**
+- [ ] Add TicketPrice property to Event entity (Money VO exists)
+- [ ] Update Event.Create() to accept ticketPrice parameter (nullable)
+- [ ] Database migration: ticket_price DECIMAL(10,2), currency VARCHAR(3)
+- [ ] Add price filtering to event queries
+- [ ] Integration tests for free/paid events
+
+---
+
+### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 2 (Event Images)
+
+```yaml
+Status: ⏳ READY - Can start anytime
+Duration: 2 days (2 sessions)
+Priority: MEDIUM - Visual enhancement
+Current Progress: 0%
+Dependencies: BasicImageService exists (ready to use)
+```
+
+**Day 1: Domain & Database**
+- [ ] Create EventImage entity (Id, EventId, ImageUrl, BlobName, DisplayOrder, UploadedAt)
+- [ ] Add Images collection to Event entity
+- [ ] Add AddImage(url, blobName, order) method to Event
+- [ ] Add RemoveImage(imageId) method to Event
+- [ ] Create event_images table with foreign key to events
+- [ ] Create indexes on event_id and display_order
+
+**Day 2: Application & API**
+- [ ] Create UploadEventImageCommand + Handler (use BasicImageService)
+- [ ] Create DeleteEventImageCommand + Handler
+- [ ] Create ReorderEventImagesCommand + Handler
+- [ ] Add API endpoint: POST /api/events/{id}/images (multipart/form-data)
+- [ ] Add API endpoint: DELETE /api/events/{eventId}/images/{imageId}
+- [ ] Add API endpoint: PUT /api/events/{id}/images/reorder
+- [ ] Integration tests for event gallery management
+
+---
+
+### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 3 (Application Layer)
+
+```yaml
+Status: ⏳ READY - Waiting for Phase 1 & 2 completion
+Duration: 1.5 weeks (6 sessions)
+Priority: HIGH - BLOCKING for API layer
+Current Progress: 10% (2 queries exist: GetCulturallyAppropriate, GetRecommendations)
+Dependencies: Event domain enhancements complete
+```
+
+#### Commands (Week 1)
+**Create & Submit Commands**
+- [ ] CreateEventCommand + Handler + FluentValidation (3 tests)
+- [ ] SubmitEventForApprovalCommand + Handler (3 tests)
+
+**Update Commands**
+- [ ] UpdateEventCommand + Handler + FluentValidation (4 tests)
+- [ ] UpdateEventCapacityCommand + Handler (3 tests)
+- [ ] UpdateEventLocationCommand + Handler (3 tests)
+
+**Status Change Commands**
+- [ ] PublishEventCommand + Handler (3 tests)
+- [ ] CancelEventCommand + Handler + FluentValidation (3 tests)
+- [ ] PostponeEventCommand + Handler + FluentValidation (3 tests)
+- [ ] ArchiveEventCommand + Handler (2 tests)
+
+**RSVP Commands**
+- [ ] RsvpToEventCommand + Handler + FluentValidation (4 tests)
+- [ ] CancelRsvpCommand + Handler (3 tests)
+- [ ] UpdateRsvpCommand + Handler (3 tests)
+
+**Delete Command**
+- [ ] DeleteEventCommand + Handler (3 tests)
+
+#### Queries (Week 2)
+**Basic Queries**
+- [ ] GetEventByIdQuery + Handler + EventDto (3 tests)
+- [ ] GetEventsQuery + Handler with filters (location, category, date, price) (5 tests)
+- [ ] GetEventsByOrganizerQuery + Handler (3 tests)
+
+**User Queries**
+- [ ] GetUserRsvpsQuery + Handler + RsvpDto (3 tests)
+- [ ] GetUpcomingEventsForUserQuery + Handler (3 tests)
+
+**Admin Queries**
+- [ ] GetPendingEventsForApprovalQuery + Handler (3 tests)
+
+**AutoMapper Configuration**
+- [ ] Create EventMappingProfile (Event → EventDto, Registration → RsvpDto)
+- [ ] Test all DTO mappings
+
+---
+
+### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 4 (API Layer)
+
+```yaml
+Status: ⏳ READY - Waiting for Phase 3 completion
+Duration: 1 week (4 sessions)
+Priority: HIGH - BLOCKING for frontend
+Current Progress: 0%
+Dependencies: Application layer complete
+```
+
+#### EventsController Implementation (4 days)
+**Day 1: Public Endpoints**
+- [ ] Create EventsController with base controller pattern
+- [ ] GET /api/events (search/filter with pagination)
+- [ ] GET /api/events/{id} (event details)
+- [ ] Integration tests (2 tests per endpoint)
+
+**Day 2: Authenticated Endpoints (Create, Update, Delete)**
+- [ ] POST /api/events (create - organizers only with [Authorize])
+- [ ] PUT /api/events/{id} (update - owner only)
+- [ ] DELETE /api/events/{id} (delete - owner only)
+- [ ] POST /api/events/{id}/submit (submit for approval)
+- [ ] Integration tests with JWT authentication
+
+**Day 3: Status Change & RSVP Endpoints**
+- [ ] POST /api/events/{id}/publish (publish - owner only)
+- [ ] POST /api/events/{id}/cancel (cancel with reason)
+- [ ] POST /api/events/{id}/postpone (postpone with reason)
+- [ ] POST /api/events/{id}/rsvp (RSVP with quantity)
+- [ ] DELETE /api/events/{id}/rsvp (cancel RSVP)
+- [ ] GET /api/events/my-rsvps (user dashboard)
+- [ ] Integration tests for all RSVP flows
+
+**Day 4: Admin & Calendar Endpoints**
+- [ ] GET /api/admin/events/pending ([Authorize(Policy = "AdminOnly")])
+- [ ] POST /api/admin/events/{id}/approve ([Authorize(Policy = "AdminOnly")])
+- [ ] POST /api/admin/events/{id}/reject ([Authorize(Policy = "AdminOnly")])
+- [ ] GET /api/events/{id}/ics (ICS calendar export)
+- [ ] Swagger documentation for all endpoints
+- [ ] Integration tests for admin workflows
+
+---
+
+### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 5 (Advanced Features)
+
+```yaml
+Status: ⏳ READY - Waiting for Phase 4 completion
+Duration: 1 week (5 days)
+Priority: MEDIUM - Enhanced functionality
+Current Progress: 0%
+Dependencies: Email infrastructure exists, EventsController complete
+```
+
+#### RSVP Email Notifications (2 days)
+**Day 1: Domain Event Handlers**
+- [ ] Create RegistrationConfirmedEventHandler (send confirmation email)
+- [ ] Create RegistrationCancelledEventHandler (send cancellation email)
+- [ ] Create EventCancelledEventHandler (notify all attendees)
+- [ ] Wire up handlers in DependencyInjection.cs
+
+**Day 2: Email Templates & Testing**
+- [ ] Create RsvpConfirmationEmail.cshtml (Razor template)
+- [ ] Create RsvpCancellationEmail.cshtml
+- [ ] Create EventCancelledEmail.cshtml
+- [ ] Create EventPostponedEmail.cshtml
+- [ ] Integration tests with MailHog (verify email sending)
+
+#### Hangfire Background Jobs (2 days)
+**Day 1: Hangfire Setup**
+- [ ] Install Hangfire.AspNetCore (v1.8.x)
+- [ ] Install Hangfire.PostgreSql (v1.20.x)
+- [ ] Configure Hangfire in Program.cs with PostgreSQL storage
+- [ ] Add Hangfire dashboard: app.MapHangfireDashboard("/hangfire")
+- [ ] Secure dashboard with authorization filter
+
+**Day 2: Background Jobs Implementation**
+- [ ] Create EventReminderJob (runs hourly, finds events starting in 24h)
+- [ ] Create EventStatusUpdateJob (runs hourly, marks Active/Completed)
+- [ ] Register recurring jobs: RecurringJob.AddOrUpdate
+- [ ] Integration tests for job execution
+- [ ] Test job persistence across application restarts
+
+#### Admin Approval Workflow (1 day)
+- [ ] Create ApproveEventCommand + Handler
+- [ ] Create RejectEventCommand + Handler (with reason)
+- [ ] API endpoints already created in Phase 4
+- [ ] Integration tests for approval/rejection flows
+- [ ] Test email notifications for approval decisions
+
+---
+
+### ✅ FRONTEND WEB UI - PHASE 1 (Authentication)
+
+```yaml
+Status: ⏳ READY - Can start after Epic 1 Phase 1-2 complete
+Duration: 2 weeks (10 days)
+Priority: HIGH - User-facing feature
+Current Progress: 0%
+Technology Stack: React/Next.js (TBD), TypeScript, Tailwind CSS
+```
+
+#### Week 1: Core Authentication Pages
+**Registration Page (3 days)**
+- [ ] Setup React/Next.js project structure
+- [ ] Create registration form component
+  - Email, password, first name, last name inputs
+  - Location fields (city, state, ZIP with autocomplete)
+  - Cultural interests multi-select component
+  - Language preferences multi-select with proficiency
+- [ ] Social login buttons (Facebook, Google, Apple)
+- [ ] Form validation with react-hook-form
+- [ ] Error handling and user feedback
+- [ ] Integration with POST /api/auth/register
+
+**Login Page (2 days)**
+- [ ] Create login form component (email/password)
+- [ ] Social login buttons integration
+- [ ] "Forgot password" link
+- [ ] "Remember me" checkbox
+- [ ] JWT token storage (httpOnly cookies or localStorage)
+- [ ] Redirect after successful login
+- [ ] Error handling for failed login
+
+#### Week 2: Profile & Password Management
+**Profile Management Page (3 days)**
+- [ ] Create profile dashboard layout
+- [ ] Profile photo upload with preview
+  - Drag-drop image upload
+  - Image cropping tool
+  - Preview before save
+- [ ] Edit location form
+- [ ] Manage cultural interests (add/remove)
+- [ ] Manage language preferences (add/remove/update proficiency)
+- [ ] Change password form
+- [ ] Integration with PUT /api/users/{id}/* endpoints
+
+**Email Verification & Password Reset (2 days)**
+- [ ] Email verification landing page (/verify-email?token=...)
+- [ ] Password reset request form (/forgot-password)
+- [ ] Password reset confirmation form (/reset-password?token=...)
+- [ ] Success/error messages
+- [ ] Redirect flows after completion
+
+---
+
+### ✅ FRONTEND WEB UI - PHASE 2 (Event Discovery & Management)
+
+```yaml
+Status: ⏳ READY - Waiting for Epic 2 Phase 4 completion
+Duration: 2 weeks (10 days)
+Priority: HIGH - Core business value
+Current Progress: 0%
+Dependencies: EventsController API complete
+```
+
+#### Week 1: Event Discovery
+**Event Discovery Page (Home) (5 days)**
+- [ ] Create event list component with card layout
+- [ ] Implement search functionality
+- [ ] Category filter dropdown (Religious, Cultural, Community, etc.)
+- [ ] Location radius filter (25/50/100 miles + auto-detect location)
+- [ ] Date range picker (upcoming, this week, this month, custom)
+- [ ] Price range filter (free, paid, custom range)
+- [ ] Map view integration (Azure Maps or Google Maps)
+  - Display events as markers on map
+  - Cluster markers for nearby events
+  - Click marker to show event preview
+- [ ] Pagination or infinite scroll
+- [ ] Integration with GET /api/events with query parameters
+
+#### Week 2: Event Details & Management
+**Event Details Page (3 days)**
+- [ ] Create event details layout
+  - Event title, description, organizer info
+  - Image gallery with lightbox
+  - Location map (pinned address)
+  - Date, time, capacity display
+- [ ] RSVP button with capacity indicator
+  - Quantity selector
+  - Disable if full
+  - Show "RSVP'd" status if user registered
+- [ ] Real-time RSVP counter (SignalR integration)
+- [ ] ICS calendar export button
+- [ ] Social sharing buttons
+- [ ] Integration with GET /api/events/{id} and POST /api/events/{id}/rsvp
+
+**Create/Edit Event Form (4 days)**
+- [ ] Create event form layout (multi-step wizard)
+  - Step 1: Basic info (title, description, category)
+  - Step 2: Date/time picker (start, end)
+  - Step 3: Location (address with autocomplete, auto-fetch coordinates)
+  - Step 4: Ticket pricing (free or paid with amount)
+  - Step 5: Images (drag-drop, multiple upload, reorder)
+  - Step 6: Capacity and settings
+- [ ] Form validation for all steps
+- [ ] Draft save functionality
+- [ ] Submit for approval button
+- [ ] Integration with POST /api/events and PUT /api/events/{id}
+
+**User Dashboard (2 days)**
+- [ ] My RSVPs list (upcoming, past, cancelled)
+- [ ] My organized events list
+- [ ] Event management actions (edit, cancel, view attendees)
+- [ ] Integration with GET /api/events/my-rsvps
+
+**Admin Approval Queue (1 day)**
+- [ ] Pending events list (admin only)
+- [ ] Event preview modal
+- [ ] Approve/Reject buttons with reason input
+- [ ] Integration with GET /api/admin/events/pending and approval endpoints
+
+---
+
+### DATABASE SCHEMA MIGRATIONS SUMMARY
+
+```yaml
+Total Migrations Required: 6 major migrations
+Estimated Time: Included in each phase
+Testing: All migrations tested in local PostgreSQL before production
+```
+
+**Migration 1: Epic 1 Phase 1 (Entra External ID)** ✅ COMPLETE (2025-10-28)
+- [x] users.identity_provider INTEGER NOT NULL DEFAULT 0 (0=Local, 1=EntraExternal)
+- [x] users.external_provider_id VARCHAR(255) NULLABLE
+- [x] CREATE INDEX idx_users_identity_provider ON users(identity_provider)
+- [x] CREATE INDEX idx_users_external_provider_id ON users(external_provider_id)
+- [x] CREATE INDEX idx_users_identity_provider_external_id ON users(identity_provider, external_provider_id)
+- [x] **Note**: password_hash column KEPT (nullable) for Local authentication users
+- [x] **Migration**: 20251028184528_AddEntraExternalIdSupport
+
+**Migration 2: Epic 1 Phase 3 (User Profile)**
+- [ ] users.profile_photo_url VARCHAR(500)
+- [ ] users.profile_photo_blob_name VARCHAR(255)
+- [ ] users.city VARCHAR(100)
+- [ ] users.state VARCHAR(100)
+- [ ] users.zip_code VARCHAR(20)
+- [ ] CREATE INDEX idx_users_location ON users(city, state)
+- [ ] CREATE TABLE user_cultural_interests (user_id, interest, added_at)
+- [ ] CREATE TABLE user_languages (user_id, language, proficiency, added_at)
+
+**Migration 3: Epic 2 Phase 1 (Event Location & PostGIS)**
+- [ ] CREATE EXTENSION IF NOT EXISTS postgis;
+- [ ] events.category VARCHAR(50) NOT NULL
+- [ ] events.street VARCHAR(200)
+- [ ] events.city VARCHAR(100)
+- [ ] events.state VARCHAR(100)
+- [ ] events.zip_code VARCHAR(20)
+- [ ] events.country VARCHAR(100)
+- [ ] events.coordinates GEOGRAPHY(POINT, 4326)
+- [ ] events.ticket_price DECIMAL(10, 2)
+- [ ] events.currency VARCHAR(3) DEFAULT 'USD'
+- [ ] CREATE INDEX idx_events_category ON events(category)
+- [ ] CREATE INDEX idx_events_coordinates ON events USING GIST(coordinates)
+- [ ] CREATE INDEX idx_events_location ON events(city, state)
+- [ ] CREATE INDEX idx_events_price ON events(ticket_price)
+
+**Migration 4: Epic 2 Phase 2 (Event Images)**
+- [ ] CREATE TABLE event_images (id, event_id, image_url, blob_name, display_order, uploaded_at, created_at, updated_at)
+- [ ] CREATE INDEX idx_event_images_event_id ON event_images(event_id)
+- [ ] CREATE INDEX idx_event_images_display_order ON event_images(event_id, display_order)
+
+**Migration 5: Epic 2 Phase 5 (Hangfire - auto-created)**
+- [ ] Hangfire creates its own schema and tables automatically
+- [ ] No manual migration needed
+
+---
+
+### IMPLEMENTATION TIMELINE & MILESTONES
+
+```yaml
+Total Project Duration: 11-12 weeks
+Target Start: TBD (awaiting Azure subscription)
+Target Completion: TBD + 12 weeks
+```
+
+**Week 1: Epic 1 Phase 1** ⏳ BLOCKED
+- Azure AD B2C infrastructure setup
+- Milestone: Users can authenticate via Azure AD B2C
+
+**Week 2: Epic 1 Phase 2-3**
+- Social login + profile enhancements
+- Milestone: Users have complete profiles with photos, location, interests
+
+**Week 3: Epic 2 Phase 1**
+- Event domain enhancements (location, category, pricing, images)
+- Milestone: Event aggregate production-ready
+
+**Week 4-5: Epic 2 Phase 3**
+- Events application layer (all commands and queries)
+- Milestone: Complete CQRS implementation for events
+
+**Week 6: Epic 2 Phase 4**
+- EventsController API with all endpoints
+- Milestone: Full RESTful API for event management
+
+**Week 7: Epic 2 Phase 5**
+- Email notifications + Hangfire + admin approval
+- Milestone: Complete backend feature set
+
+**Week 8-9: Frontend Phase 1**
+- Authentication UI (registration, login, profile)
+- Milestone: Users can register and manage profiles via UI
+
+**Week 10-11: Frontend Phase 2**
+- Event discovery and management UI
+- Milestone: Complete event lifecycle via UI
+
+**Week 12: Testing & Deployment**
+- Integration testing, E2E testing, load testing
+- Azure deployment preparation
+- Milestone: Production-ready application
+
+---
+
+**CRITICAL BLOCKERS:**
+1. ⚠️ Azure subscription required for Epic 1 Phase 1 (Azure AD B2C)
+2. ⚠️ Epic 2 blocked until Epic 1 authentication complete (need user context for events)
+3. ⚠️ Frontend blocked until backend APIs complete
+
+**READY TO START IMMEDIATELY (No Blockers):**
+- Epic 1 Phase 3: Profile enhancements (photo, location, cultural interests)
+- Epic 2 Phase 1: Event domain enhancements (PostGIS, category, pricing)
+- Epic 2 Phase 2: Event images
+
+---
+
 ## ✅ EMAIL & NOTIFICATIONS SYSTEM - PHASE 1 (2025-10-23) - COMPLETE
 
 ### Phase 1: Domain Layer ✅ COMPLETE

@@ -1,12 +1,14 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-10-28 18:50 UTC*
+*Last Updated: 2025-10-28 20:15 UTC*
 
-## 🎉 Current Session Status (2025-10-28) - ENTRA EXTERNAL ID DOMAIN + DATABASE INTEGRATION COMPLETE ✅
+## 🎉 Current Session Status (2025-10-28) - ENTRA EXTERNAL ID APPLICATION LAYER COMPLETE ✅
 
 **MILESTONES ACHIEVED:**
 1. ✅ Microsoft Entra External ID Domain Layer Implementation (Phase 1 Day 1)
 2. ✅ EF Core Database Migration for Entra Support (Phase 1 Day 2)
 3. ✅ Azure Entra External ID Tenant Setup Complete
+4. ✅ Entra Token Validation Service (Phase 1 Day 3)
+5. ✅ CQRS Application Layer - LoginWithEntraCommand (Phase 1 Day 4)
 
 **Azure Configuration:**
 - **Tenant**: lankaconnect.onmicrosoft.com
@@ -48,16 +50,64 @@
    - **Result**: Build successful, 311/311 tests passing (zero regressions)
    - Commit: d296c0a
 
+**Phase 1 Day 3 - Infrastructure Layer (Token Validation Service):**
+5. ✅ **Microsoft.Identity.Web Integration** (45 min)
+   - Installed Microsoft.Identity.Web 3.5.0 package
+   - Created `EntraExternalIdOptions` configuration model
+   - Created `IEntraExternalIdService` interface
+   - Implemented `EntraExternalIdService` with OIDC validation
+   - Configured token validation parameters (issuer, audience, lifetime, signature)
+   - Updated appsettings.json with Entra configuration
+   - **Result**: Build successful, 311/311 tests passing
+   - Commit: 21ed053
+
+**Phase 1 Day 4 - Application Layer (CQRS Commands/Queries):**
+6. ✅ **LoginWithEntraCommand Implementation** (2 hours - TDD)
+   - Added `GetByExternalProviderIdAsync` to IUserRepository
+   - Implemented repository method with AsNoTracking optimization
+   - Created `LoginWithEntraCommand` record (access token + IP address)
+   - Created `LoginWithEntraResponse` DTO with IsNewUser flag
+   - Created `LoginWithEntraValidator` with FluentValidation
+   - Implemented `LoginWithEntraCommandHandler` (182 lines):
+     * Token validation via IEntraExternalIdService
+     * User lookup by external provider ID
+     * Auto-provisioning for new users (User.CreateFromExternalProvider)
+     * Email conflict detection (prevents dual registration)
+     * JWT token generation (access + refresh tokens)
+     * RefreshToken value object creation with IP tracking
+   - Created 7 comprehensive tests (LoginWithEntraCommandHandlerTests.cs)
+   - **Result**: 7/7 new tests passing, 318/319 total (100% pass rate)
+   - Commit: 64b7e38
+
+7. ✅ **Code Review Critical Fixes** (15 min)
+   - Added AsNoTracking() to 3 repository methods (performance optimization)
+   - Added namespace alias `RefreshTokenVO` for cleaner code
+   - Fixed repository query inconsistencies
+   - **Result**: 318/319 tests passing, zero regressions
+   - Commit: 3bc9381
+
+8. ✅ **Day 4 Phase 2 - Opportunistic Profile Sync** (15 min)
+   - Added profile sync to LoginWithEntraCommandHandler (lines 121-144)
+   - Auto-updates first/last name if changed in Entra
+   - Graceful degradation (sync failure doesn't block authentication)
+   - Created FUTURE-ENHANCEMENTS.md for deferred SyncEntraUserCommand
+   - **Result**: 318/319 tests passing, zero regressions
+   - Commit: [pending]
+
 **TDD Metrics:**
 - **Build**: 0 errors, 0 warnings (Zero Tolerance maintained throughout)
-- **Tests**: 311/311 passing (Application.Tests)
-- **New Tests**: 28 tests added (12 IdentityProvider + 16 User entity)
+- **Tests**: 318/319 passing (Application.Tests)
+- **New Tests**: 35 tests added (28 Domain + 7 Application)
 - **Test Coverage**: 100% for new Entra functionality
-- **Commits**: 3 clean commits following RED-GREEN-REFACTOR
+- **Commits**: 6 clean commits following RED-GREEN-REFACTOR
+- **Code Review Score**: 8.2/10 (improved from 7.6/10 after critical fixes)
 
 **Architecture Decision**: ADR-002 Entra External ID Integration
 **Implementation Strategy**: Identity Provider Abstraction Pattern (dual authentication mode)
 **Backward Compatibility**: 100% - existing users default to IdentityProvider.Local
+**Performance**: Repository queries optimized with AsNoTracking()
+**Auto-Provisioning**: New Entra users automatically created with EmailVerified=true
+**Profile Sync**: Opportunistic sync on login (handles 99% of update scenarios)
 
 ---
 

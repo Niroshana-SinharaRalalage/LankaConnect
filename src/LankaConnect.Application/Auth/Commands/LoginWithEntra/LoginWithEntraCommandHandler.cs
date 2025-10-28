@@ -117,6 +117,30 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
         {
             user = existingUser;
             _logger.LogInformation("Found existing user {UserId} for Entra login", user.Id);
+
+            // Opportunistic profile sync on login (if data changed in Entra)
+            if (user.FirstName != entraUserInfo.FirstName || user.LastName != entraUserInfo.LastName)
+            {
+                _logger.LogInformation("Syncing profile changes from Entra for user {UserId} (FirstName: {OldFirst}→{NewFirst}, LastName: {OldLast}→{NewLast})",
+                    user.Id, user.FirstName, entraUserInfo.FirstName, user.LastName, entraUserInfo.LastName);
+
+                var updateResult = user.UpdateProfile(
+                    entraUserInfo.FirstName,
+                    entraUserInfo.LastName,
+                    user.PhoneNumber, // Keep existing phone
+                    user.Bio);        // Keep existing bio
+
+                if (updateResult.IsFailure)
+                {
+                    // Log but don't fail login - authentication succeeded
+                    _logger.LogWarning("Failed to sync profile for user {UserId}: {Errors}. Login will proceed.",
+                        user.Id, string.Join(", ", updateResult.Errors));
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully synced profile changes for user {UserId}", user.Id);
+                }
+            }
         }
 
         // 5. Generate JWT tokens

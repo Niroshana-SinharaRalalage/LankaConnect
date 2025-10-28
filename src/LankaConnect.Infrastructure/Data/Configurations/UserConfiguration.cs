@@ -55,6 +55,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValue(true);
 
         // Configure authentication properties
+        builder.Property(u => u.IdentityProvider)
+            .HasConversion<int>()
+            .IsRequired()
+            .HasDefaultValue(IdentityProvider.Local);
+
+        builder.Property(u => u.ExternalProviderId)
+            .HasMaxLength(255);
+
         builder.Property(u => u.PasswordHash)
             .HasMaxLength(255);
 
@@ -150,5 +158,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.LastLoginAt)
             .HasDatabaseName("ix_users_last_login_at");
+
+        // Configure indexes for Entra External ID integration
+        builder.HasIndex(u => u.IdentityProvider)
+            .HasDatabaseName("ix_users_identity_provider");
+
+        builder.HasIndex(u => u.ExternalProviderId)
+            .HasDatabaseName("ix_users_external_provider_id");
+
+        // Composite index for external provider lookups
+        builder.HasIndex(u => new { u.IdentityProvider, u.ExternalProviderId })
+            .HasDatabaseName("ix_users_identity_provider_external_id");
     }
 }

@@ -69,4 +69,11 @@ public class UserRepository : Repository<User>, IUserRepository
         return await _dbSet
             .FirstOrDefaultAsync(u => u.PasswordResetToken == token, cancellationToken);
     }
+
+    public async Task<User?> GetByExternalProviderIdAsync(string externalProviderId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.ExternalProviderId == externalProviderId, cancellationToken);
+    }
 }

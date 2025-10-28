@@ -153,10 +153,23 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHashingService, PasswordHashingService>();
         services.AddScoped<ITokenConfiguration, TokenConfiguration>();
 
+        // Add Entra External ID Services
+        services.Configure<EntraExternalIdOptions>(configuration.GetSection(EntraExternalIdOptions.SectionName));
+        services.AddScoped<IEntraExternalIdService, EntraExternalIdService>();
+
         // Add Email Services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
         services.AddScoped<IEmailTemplateService, RazorEmailTemplateService>();
+
+        // Add Email Queue Processor (Background Service)
+        services.AddHostedService<EmailQueueProcessor>();
+
+        // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
+        services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, LankaConnect.Infrastructure.CulturalIntelligence.StubUserPreferences>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.IGeographicProximityService, LankaConnect.Infrastructure.CulturalIntelligence.StubGeographicProximityService>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.IEventRecommendationEngine, LankaConnect.Domain.Events.Services.EventRecommendationEngine>();
 
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>

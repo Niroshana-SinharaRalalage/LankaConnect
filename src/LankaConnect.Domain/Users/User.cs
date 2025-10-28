@@ -17,6 +17,8 @@ public class User : BaseEntity
     public bool IsActive { get; private set; }
     
     // Authentication properties
+    public IdentityProvider IdentityProvider { get; private set; }
+    public string? ExternalProviderId { get; private set; }
     public string? PasswordHash { get; private set; }
     public UserRole Role { get; private set; }
     public bool IsEmailVerified { get; private set; }
@@ -34,12 +36,13 @@ public class User : BaseEntity
     public string FullName => $"{FirstName} {LastName}";
 
     // EF Core constructor
-    private User() 
+    private User()
     {
         Email = null!;
         FirstName = null!;
         LastName = null!;
         Role = UserRole.User;
+        IdentityProvider = IdentityProvider.Local;
     }
 
     private User(Email email, string firstName, string lastName, UserRole role = UserRole.User)
@@ -51,6 +54,7 @@ public class User : BaseEntity
         IsActive = true;
         IsEmailVerified = false;
         FailedLoginAttempts = 0;
+        IdentityProvider = IdentityProvider.Local; // Default to Local for backward compatibility
     }
 
     public static Result<User> Create(Email? email, string firstName, string lastName, UserRole role = UserRole.User)
@@ -65,10 +69,56 @@ public class User : BaseEntity
             return Result<User>.Failure("Last name is required");
 
         var user = new User(email, firstName.Trim(), lastName.Trim(), role);
-        
+
         // Raise domain event
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id, email.Value, user.FullName));
-        
+
+        return Result<User>.Success(user);
+    }
+
+    /// <summary>
+    /// Creates a user from an external identity provider (e.g., Microsoft Entra External ID)
+    /// </summary>
+    public static Result<User> CreateFromExternalProvider(
+        IdentityProvider identityProvider,
+        string? externalProviderId,
+        Email? email,
+        string firstName,
+        string lastName,
+        UserRole role = UserRole.User)
+    {
+        // Validate that it's an external provider
+        if (identityProvider == IdentityProvider.Local)
+            return Result<User>.Failure("Cannot create user from external provider using Local identity provider");
+
+        if (email == null)
+            return Result<User>.Failure("Email is required");
+
+        if (string.IsNullOrWhiteSpace(externalProviderId))
+            return Result<User>.Failure("External provider ID is required for external providers");
+
+        if (string.IsNullOrWhiteSpace(firstName))
+            return Result<User>.Failure("First name is required");
+
+        if (string.IsNullOrWhiteSpace(lastName))
+            return Result<User>.Failure("Last name is required");
+
+        var user = new User(email, firstName.Trim(), lastName.Trim(), role)
+        {
+            IdentityProvider = identityProvider,
+            ExternalProviderId = externalProviderId.Trim(),
+            IsEmailVerified = true, // External providers pre-verify emails
+            PasswordHash = null // External providers manage passwords
+        };
+
+        // Raise domain event specific to external provider creation
+        user.RaiseDomainEvent(new UserCreatedFromExternalProviderEvent(
+            user.Id,
+            email.Value,
+            user.FullName,
+            identityProvider,
+            externalProviderId.Trim()));
+
         return Result<User>.Success(user);
     }
 
@@ -114,6 +164,10 @@ public class User : BaseEntity
     // Authentication methods
     public Result SetPassword(string passwordHash)
     {
+        // Business rule: External provider users cannot set passwords
+        if (IdentityProvider.IsExternalProvider())
+            return Result.Failure("Cannot set password for external provider users");
+
         if (string.IsNullOrWhiteSpace(passwordHash))
             return Result.Failure("Password hash is required");
 
@@ -124,6 +178,10 @@ public class User : BaseEntity
 
     public Result ChangePassword(string newPasswordHash)
     {
+        // Business rule: External provider users cannot change passwords
+        if (IdentityProvider.IsExternalProvider())
+            return Result.Failure("Cannot change password for external provider users");
+
         if (string.IsNullOrWhiteSpace(newPasswordHash))
             return Result.Failure("Password hash is required");
 
@@ -134,7 +192,7 @@ public class User : BaseEntity
         // Reset failed login attempts
         FailedLoginAttempts = 0;
         AccountLockedUntil = null;
-        
+
         MarkAsUpdated();
         RaiseDomainEvent(new UserPasswordChangedEvent(Id, Email.Value));
         return Result.Success();
@@ -282,8 +340,24 @@ public class User : BaseEntity
         var oldRole = Role;
         Role = newRole;
         MarkAsUpdated();
-        
+
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, newRole));
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Determines if this user uses local authentication
+    /// </summary>
+    public bool IsLocalProvider()
+    {
+        return IdentityProvider == IdentityProvider.Local;
+    }
+
+    /// <summary>
+    /// Determines if this user uses an external identity provider
+    /// </summary>
+    public bool IsExternalProvider()
+    {
+        return IdentityProvider.IsExternalProvider();
     }
 }

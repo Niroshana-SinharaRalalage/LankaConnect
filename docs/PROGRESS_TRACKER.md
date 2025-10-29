@@ -116,9 +116,9 @@
    - Registered fake service in DockerComposeWebApiTestBase DI container
    - Updated 8 integration tests to use test token constants
    - Created appsettings.Production.json with environment variable placeholders
-   - Created ENTRA_CONFIGURATION.md deployment guide (500+ lines)
+   - Created ENTRA_CONFIGURATION.md deployment guide (580 lines)
    - **Result**: 318/319 Application tests passing, 0 errors, 0 build failures
-   - Commit: [pending]
+   - Commit: b393911
 
 **TDD Metrics:**
 - **Build**: 0 errors, 1 warning (Microsoft.Identity.Web vulnerability - documented)

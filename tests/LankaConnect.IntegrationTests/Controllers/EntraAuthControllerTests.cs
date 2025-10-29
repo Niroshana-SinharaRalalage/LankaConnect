@@ -5,8 +5,8 @@ using FluentAssertions;
 using LankaConnect.Application.Auth.Commands.LoginWithEntra;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.IntegrationTests.Common;
+using LankaConnect.IntegrationTests.Fakes;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 using Xunit;
 
 namespace LankaConnect.IntegrationTests.Controllers;
@@ -63,7 +63,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
         // Arrange
         var request = new
         {
-            accessToken = "mock-valid-entra-token-existing-user",
+            accessToken = TestEntraTokens.ValidTokenExistingUser,
             ipAddress = "192.168.1.101"
         };
 
@@ -108,7 +108,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
         // Arrange
         var request = new
         {
-            accessToken = "invalid-malformed-token-12345",
+            accessToken = TestEntraTokens.InvalidToken,
             ipAddress = "192.168.1.102"
         };
 
@@ -129,7 +129,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
         // Arrange
         var request = new
         {
-            accessToken = "mock-expired-entra-token",
+            accessToken = TestEntraTokens.ExpiredToken,
             ipAddress = "192.168.1.103"
         };
 
@@ -159,7 +159,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
         // Now try to login with Entra using the same email
         var entraRequest = new
         {
-            accessToken = "mock-entra-token-duplicate-email",
+            accessToken = TestEntraTokens.ValidTokenDuplicateEmail,
             ipAddress = "192.168.1.104"
         };
 
@@ -213,7 +213,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
         // Arrange
         var request = new
         {
-            accessToken = "mock-valid-entra-token-refresh",
+            accessToken = TestEntraTokens.ValidTokenProfileUpdate,
             ipAddress = "192.168.1.106"
         };
 

@@ -6,6 +6,10 @@ using LankaConnect.Application.Auth.Commands.RegisterUser;
 using LankaConnect.Application.Auth.Commands.LoginUser;
 using LankaConnect.Application.Auth.Commands.RefreshToken;
 using LankaConnect.Application.Auth.Commands.LogoutUser;
+using LankaConnect.Application.Auth.Commands.LoginWithEntra;
+using LankaConnect.Application.Communications.Commands.SendPasswordReset;
+using LankaConnect.Application.Communications.Commands.ResetPassword;
+using LankaConnect.Application.Communications.Commands.VerifyEmail;
 using LankaConnect.API.Filters;
 
 namespace LankaConnect.API.Controllers;
@@ -248,6 +252,173 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Authenticate user with Microsoft Entra External ID
+    /// </summary>
+    /// <param name="request">Entra access token and IP address</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Authentication tokens and user information</returns>
+    [HttpPost("login/entra")]
+    [ProducesResponseType(typeof(LoginWithEntraResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LoginWithEntra([FromBody] LoginWithEntraCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get client IP address for security tracking
+            var ipAddress = GetClientIpAddress();
+            var loginRequest = request with { IpAddress = ipAddress };
+
+            var result = await _mediator.Send(loginRequest, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Entra login failed: {Errors}", string.Join(", ", result.Errors));
+                return Unauthorized(new { error = result.Error });
+            }
+
+            _logger.LogInformation("User logged in with Entra External ID: {Email} (IsNewUser: {IsNewUser})",
+                result.Value.Email, result.Value.IsNewUser);
+
+            // Set refresh token as HttpOnly cookie for security
+            SetRefreshTokenCookie(result.Value.RefreshToken);
+
+            return Ok(new
+            {
+                user = new
+                {
+                    result.Value.UserId,
+                    result.Value.Email,
+                    result.Value.FullName,
+                    result.Value.Role,
+                    result.Value.IsNewUser
+                },
+                result.Value.AccessToken,
+                result.Value.TokenExpiresAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during Entra login");
+            return StatusCode(500, new { error = "An error occurred during Entra login" });
+        }
+    }
+
+    /// <summary>
+    /// Request password reset email
+    /// </summary>
+    /// <param name="request">Password reset request with email</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Success confirmation (always returns success for security)</returns>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] SendPasswordResetCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+
+            // Always return success for security (don't reveal if email exists)
+            // The handler internally logs failed attempts
+            if (!result.IsSuccess && !result.Value.UserNotFound)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+
+            _logger.LogInformation("Password reset requested for email: {Email}", request.Email);
+
+            return Ok(new
+            {
+                message = "If an account with that email exists, a password reset link has been sent.",
+                email = request.Email
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during password reset request for email: {Email}", request.Email);
+            return StatusCode(500, new { error = "An error occurred while processing your request" });
+        }
+    }
+
+    /// <summary>
+    /// Reset password using reset token
+    /// </summary>
+    /// <param name="request">Password reset details with token and new password</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Password reset confirmation</returns>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+
+            _logger.LogInformation("Password reset successfully for user: {UserId}", result.Value.UserId);
+
+            return Ok(new
+            {
+                message = "Password has been reset successfully. Please login with your new password.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                requiresLogin = result.Value.RequiresLogin
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during password reset for email: {Email}", request.Email);
+            return StatusCode(500, new { error = "An error occurred while resetting your password" });
+        }
+    }
+
+    /// <summary>
+    /// Verify email address using verification token
+    /// </summary>
+    /// <param name="request">Email verification request with user ID and token</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Email verification confirmation</returns>
+    [HttpPost("verify-email")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { error = result.Error });
+            }
+
+            _logger.LogInformation("Email verified successfully for user: {UserId}", result.Value.UserId);
+
+            return Ok(new
+            {
+                message = result.Value.WasAlreadyVerified
+                    ? "Email was already verified."
+                    : "Email has been verified successfully. You can now login.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                verifiedAt = result.Value.VerifiedAt,
+                wasAlreadyVerified = result.Value.WasAlreadyVerified
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during email verification for user: {UserId}", request.UserId);
+            return StatusCode(500, new { error = "An error occurred while verifying your email" });
+        }
+    }
+
+    /// <summary>
     /// Health check endpoint for authentication service
     /// </summary>
     /// <returns>Service health status</returns>
@@ -255,8 +426,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Health()
     {
-        return Ok(new 
-        { 
+        return Ok(new
+        {
             service = "Authentication",
             status = "Healthy",
             timestamp = DateTime.UtcNow

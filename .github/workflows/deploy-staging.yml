@@ -1,0 +1,197 @@
+name: Deploy to Azure Staging
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: lankaconnectstaging
+  CONTAINER_APP_NAME: lankaconnect-api-staging
+  RESOURCE_GROUP: lankaconnect-staging
+  KEY_VAULT_NAME: lankaconnect-staging-kv
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build application
+        run: dotnet build -c Release --no-restore
+
+      - name: Run unit tests
+        run: |
+          dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
+            --no-restore \
+            --verbosity normal \
+            --logger "console;verbosity=detailed"
+
+      - name: Run integration tests
+        run: |
+          dotnet test tests/LankaConnect.IntegrationTests/LankaConnect.IntegrationTests.csproj \
+            --no-restore \
+            --verbosity normal \
+            --logger "console;verbosity=detailed"
+
+      - name: Test results summary
+        if: always()
+        run: |
+          echo "Test execution completed. Check logs above for results."
+          echo "Zero Tolerance for Compilation Errors: Enforced ✅"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME_STAGING }}
+          password: ${{ secrets.ACR_PASSWORD_STAGING }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:staging \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:latest \
+            -f src/LankaConnect.API/Dockerfile .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }}
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:staging
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:latest
+
+      - name: Get Key Vault secrets
+        id: keyvault
+        run: |
+          # Retrieve secrets from Key Vault for Container App configuration
+          az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name DATABASE-CONNECTION-STRING --query value -o tsv > /dev/null
+          az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name JWT-SECRET-KEY --query value -o tsv > /dev/null
+          echo "Key Vault secrets validated ✅"
+
+      - name: Update Container App
+        run: |
+          # Get Key Vault URI
+          KEY_VAULT_URI=$(az keyvault show --name ${{ env.KEY_VAULT_NAME }} --query properties.vaultUri -o tsv)
+
+          # Update Container App with new image and environment variables
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
+            --set-env-vars \
+              ASPNETCORE_ENVIRONMENT=Staging \
+              DATABASE_CONNECTION_STRING=secretref:DATABASE-CONNECTION-STRING \
+              JWT_SECRET_KEY=secretref:JWT-SECRET-KEY \
+              JWT_ISSUER=secretref:JWT-ISSUER \
+              JWT_AUDIENCE=secretref:JWT-AUDIENCE \
+              ENTRA_ENABLED=secretref:ENTRA-ENABLED \
+              ENTRA_TENANT_ID=secretref:ENTRA-TENANT-ID \
+              ENTRA_CLIENT_ID=secretref:ENTRA-CLIENT-ID \
+              ENTRA_AUDIENCE=secretref:ENTRA-AUDIENCE \
+              SMTP_HOST=secretref:SMTP-HOST \
+              SMTP_PORT=secretref:SMTP-PORT \
+              SMTP_USERNAME=secretref:SMTP-USERNAME \
+              SMTP_PASSWORD=secretref:SMTP-PASSWORD \
+              EMAIL_FROM_ADDRESS=secretref:EMAIL-FROM-ADDRESS \
+              AZURE_STORAGE_CONNECTION_STRING=secretref:AZURE-STORAGE-CONNECTION-STRING
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting 30 seconds for Container App to update..."
+          sleep 30
+
+      - name: Get Container App URL
+        id: get-url
+        run: |
+          URL=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "STAGING_URL=https://$URL" >> $GITHUB_OUTPUT
+          echo "Container App URL: https://$URL"
+
+      - name: Smoke Test - Health Check
+        run: |
+          echo "Testing health endpoint..."
+          curl --fail --retry 3 --retry-delay 5 \
+            ${{ steps.get-url.outputs.STAGING_URL }}/health || exit 1
+          echo "✅ Health check passed"
+
+      - name: Smoke Test - Entra Endpoint
+        run: |
+          echo "Testing Entra login endpoint (expect 400/401 for invalid token)..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST ${{ steps.get-url.outputs.STAGING_URL }}/api/auth/login/entra \
+            -H "Content-Type: application/json" \
+            -d '{"accessToken":"invalid","ipAddress":"127.0.0.1"}')
+
+          if [ "$HTTP_CODE" -eq 400 ] || [ "$HTTP_CODE" -eq 401 ]; then
+            echo "✅ Entra endpoint responding correctly (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Unexpected response code: $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Get Container App Logs
+        if: failure()
+        run: |
+          echo "Fetching Container App logs for debugging..."
+          az containerapp logs show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --tail 50
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "✅ Staging Deployment Successful!"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "Environment:  Staging"
+          echo "URL:          ${{ steps.get-url.outputs.STAGING_URL }}"
+          echo "Image:        ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }}"
+          echo "Commit:       ${{ github.sha }}"
+          echo "Branch:       ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Next Steps:"
+          echo "1. Manual validation: Visit ${{ steps.get-url.outputs.STAGING_URL }}/health"
+          echo "2. Test Entra External ID login with valid token"
+          echo "3. Verify database connectivity"
+          echo "4. Check Container App logs: az containerapp logs show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
+          echo "5. Approve production deployment after validation"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "❌ Staging Deployment Failed!"
+          echo "════════════════════════════════════════════════════════════════"
+          echo "Check the logs above for error details."
+          echo "Common issues:"
+          echo "- Tests failed (Zero Tolerance enforced)"
+          echo "- Docker build failed"
+          echo "- Container App update failed"
+          echo "- Health check endpoint not responding"

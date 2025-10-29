@@ -105,7 +105,7 @@
    - HttpOnly cookie for refresh token
    - Comprehensive error handling (401 for auth failures, 500 for exceptions)
    - **Result**: 318/319 Application tests passing, 0 errors
-   - Commit: [pending]
+   - Commit: 6fd4375
 
 **TDD Metrics:**
 - **Build**: 0 errors, 1 warning (Microsoft.Identity.Web vulnerability - documented)

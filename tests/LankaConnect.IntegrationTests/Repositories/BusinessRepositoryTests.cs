@@ -11,7 +11,7 @@ using LankaConnect.TestUtilities.Builders;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 
-public class BusinessRepositoryTests : BaseIntegrationTest
+public class BusinessRepositoryTests : DockerComposeWebApiTestBase
 {
     private BusinessRepository _repository = null!;
     private AppDbContext _context = null!;
@@ -253,32 +253,53 @@ public class BusinessRepositoryTests : BaseIntegrationTest
         bool isVerified = false,
         string city = "Test City")
     {
-        var profile = BusinessProfile.Create(
+        // Create BusinessProfile
+        var profileResult = BusinessProfile.Create(
             name,
             "Test business description",
             "https://www.testbusiness.com",
             null,
             new List<string> { "Service 1", "Service 2" },
-            new List<string> { "Specialization 1" }).Value;
+            new List<string> { "Specialization 1" });
+        if (!profileResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessProfile: {profileResult.Error}");
 
-        var address = Address.Create(
+        // Create Address
+        var addressResult = Address.Create(
             "123 Test Street",
             city,
             "Test State",
             "12345",
-            "Test Country").Value;
+            "Test Country");
+        if (!addressResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create Address: {addressResult.Error}");
 
-        var coordinates = GeoCoordinate.Create(6.9271m, 79.8612m).Value; // Colombo coordinates
-        var location = BusinessLocation.Create(address, coordinates).Value;
+        // Create GeoCoordinate
+        var coordinatesResult = GeoCoordinate.Create(6.9271m, 79.8612m);
+        if (!coordinatesResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create GeoCoordinate: {coordinatesResult.Error}");
 
+        // Create BusinessLocation
+        var locationResult = BusinessLocation.Create(addressResult.Value, coordinatesResult.Value);
+        if (!locationResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessLocation: {locationResult.Error}");
+
+        // Create Email and Phone
         var email = EmailTestDataBuilder.CreateValidEmail("test@business.com");
-        var phone = PhoneNumber.Create("+94771234567").Value;
-        var contactInfo = ContactInformation.Create(
-            email.Value,
-            phone.Value,
-            "https://www.testbusiness.com").Value;
+        var phoneResult = PhoneNumber.Create("+94771234567");
+        if (!phoneResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create PhoneNumber: {phoneResult.Error}");
 
-        var hours = BusinessHours.Create(new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>
+        // Create ContactInformation
+        var contactInfoResult = ContactInformation.Create(
+            email: email.Value,
+            phoneNumber: phoneResult.Value.Value,
+            website: "https://www.testbusiness.com");
+        if (!contactInfoResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create ContactInformation: {contactInfoResult.Error}");
+
+        // Create BusinessHours
+        var hoursResult = BusinessHours.Create(new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>
         {
             { DayOfWeek.Monday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
             { DayOfWeek.Tuesday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
@@ -287,15 +308,22 @@ public class BusinessRepositoryTests : BaseIntegrationTest
             { DayOfWeek.Friday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
             { DayOfWeek.Saturday, (null, null) },
             { DayOfWeek.Sunday, (null, null) }
-        }).Value;
+        });
+        if (!hoursResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessHours: {hoursResult.Error}");
 
-        var business = Business.Create(
-            profile,
-            location,
-            contactInfo,
-            hours,
+        // Create Business
+        var businessResult = Business.Create(
+            profileResult.Value,
+            locationResult.Value,
+            contactInfoResult.Value,
+            hoursResult.Value,
             category,
-            ownerId ?? Guid.NewGuid()).Value;
+            ownerId ?? Guid.NewGuid());
+        if (!businessResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create Business: {businessResult.Error}");
+
+        var business = businessResult.Value;
 
         if (status != BusinessStatus.PendingApproval)
         {

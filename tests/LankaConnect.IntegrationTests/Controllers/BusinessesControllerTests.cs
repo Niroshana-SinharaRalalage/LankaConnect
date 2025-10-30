@@ -9,7 +9,7 @@ using Xunit;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 
-public class BusinessesControllerTests : BaseIntegrationTest
+public class BusinessesControllerTests : DockerComposeWebApiTestBase
 {
     private readonly JsonSerializerOptions _jsonOptions;
 

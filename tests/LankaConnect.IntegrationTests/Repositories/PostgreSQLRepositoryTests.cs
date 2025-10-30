@@ -10,7 +10,7 @@ namespace LankaConnect.IntegrationTests.Repositories;
 /// <summary>
 /// Integration tests for PostgreSQL database operations using proper EF Core DI setup
 /// </summary>
-public class PostgreSQLRepositoryTests : DatabaseIntegrationTestBase
+public class PostgreSQLRepositoryTests : DockerComposeTestBase
 {
 
     [Fact]

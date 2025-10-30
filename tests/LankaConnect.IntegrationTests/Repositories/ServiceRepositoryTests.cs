@@ -10,16 +10,24 @@ using LankaConnect.TestUtilities.Builders;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 
-public class ServiceRepositoryTests : BaseIntegrationTest
+public class ServiceRepositoryTests : DockerComposeWebApiTestBase
 {
     private ServiceRepository _repository = null!;
     private BusinessRepository _businessRepository = null!;
     private AppDbContext _context = null!;
 
+    private void InitializeRepositories()
+    {
+        _context = DbContext;
+        _repository = new ServiceRepository(_context);
+        _businessRepository = new BusinessRepository(_context);
+    }
+
     [Fact]
     public async Task AddAsync_Should_Add_Service_Successfully()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
         await _context.CommitAsync();
@@ -51,6 +59,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetByBusinessIdAsync_Should_Return_All_Services_For_Business()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -75,6 +84,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetActiveByBusinessIdAsync_Should_Return_Only_Active_Services()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -99,6 +109,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetByBusinessIdAndNameAsync_Should_Return_Matching_Service()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -119,6 +130,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task SearchByNameAsync_Should_Return_Services_Matching_Name()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -144,6 +156,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetByPriceRangeAsync_Should_Return_Services_In_Price_Range()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -172,6 +185,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetFreeServicesAsync_Should_Return_Services_Without_Price()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -198,6 +212,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetServiceCountByBusinessIdAsync_Should_Return_Total_Count()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -220,6 +235,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task GetActiveServiceCountByBusinessIdAsync_Should_Return_Active_Count_Only()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -242,6 +258,7 @@ public class ServiceRepositoryTests : BaseIntegrationTest
     public async Task DeactivateAllByBusinessIdAsync_Should_Deactivate_All_Services()
     {
         // Arrange
+        InitializeRepositories();
         var business = await CreateTestBusinessAsync();
         await _businessRepository.AddAsync(business);
 
@@ -262,34 +279,53 @@ public class ServiceRepositoryTests : BaseIntegrationTest
 
     private Task<Business> CreateTestBusinessAsync()
     {
-        // Use the same helper method pattern as in BusinessRepositoryTests
-        // but simplified for service tests
-        var profile = Domain.Business.ValueObjects.BusinessProfile.Create(
+        // Create BusinessProfile
+        var profileResult = Domain.Business.ValueObjects.BusinessProfile.Create(
             "Test Business",
             "Test business description",
             "https://www.testbusiness.com",
             null,
             new List<string> { "Service 1", "Service 2" },
-            new List<string> { "Specialization 1" }).Value;
+            new List<string> { "Specialization 1" });
+        if (!profileResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessProfile: {profileResult.Error}");
 
-        var address = Domain.Business.ValueObjects.Address.Create(
+        // Create Address
+        var addressResult = Domain.Business.ValueObjects.Address.Create(
             "123 Test Street",
             "Test City",
             "Test State",
             "12345",
-            "Test Country").Value;
+            "Test Country");
+        if (!addressResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create Address: {addressResult.Error}");
 
-        var coordinates = Domain.Business.ValueObjects.GeoCoordinate.Create(6.9271m, 79.8612m).Value;
-        var location = Domain.Business.ValueObjects.BusinessLocation.Create(address, coordinates).Value;
+        // Create GeoCoordinate
+        var coordinatesResult = Domain.Business.ValueObjects.GeoCoordinate.Create(6.9271m, 79.8612m);
+        if (!coordinatesResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create GeoCoordinate: {coordinatesResult.Error}");
 
+        // Create BusinessLocation
+        var locationResult = Domain.Business.ValueObjects.BusinessLocation.Create(addressResult.Value, coordinatesResult.Value);
+        if (!locationResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessLocation: {locationResult.Error}");
+
+        // Create Email and Phone
         var email = EmailTestDataBuilder.CreateValidEmail("test@business.com");
-        var phone = PhoneNumber.Create("+94771234567").Value;
-        var contactInfo = Domain.Business.ValueObjects.ContactInformation.Create(
-            email.Value,
-            phone.Value,
-            "https://www.testbusiness.com").Value;
+        var phoneResult = PhoneNumber.Create("+94771234567");
+        if (!phoneResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create PhoneNumber: {phoneResult.Error}");
 
-        var hours = Domain.Business.ValueObjects.BusinessHours.Create(new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>
+        // Create ContactInformation
+        var contactInfoResult = Domain.Business.ValueObjects.ContactInformation.Create(
+            email: email.Value,
+            phoneNumber: phoneResult.Value.Value,
+            website: "https://www.testbusiness.com");
+        if (!contactInfoResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create ContactInformation: {contactInfoResult.Error}");
+
+        // Create BusinessHours
+        var hoursResult = Domain.Business.ValueObjects.BusinessHours.Create(new Dictionary<DayOfWeek, (TimeOnly? open, TimeOnly? close)>
         {
             { DayOfWeek.Monday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
             { DayOfWeek.Tuesday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
@@ -298,14 +334,21 @@ public class ServiceRepositoryTests : BaseIntegrationTest
             { DayOfWeek.Friday, (new TimeOnly(9, 0), new TimeOnly(17, 0)) },
             { DayOfWeek.Saturday, (null, null) },
             { DayOfWeek.Sunday, (null, null) }
-        }).Value;
+        });
+        if (!hoursResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create BusinessHours: {hoursResult.Error}");
 
-        return Task.FromResult(Business.Create(
-            profile,
-            location,
-            contactInfo,
-            hours,
+        // Create Business
+        var businessResult = Business.Create(
+            profileResult.Value,
+            locationResult.Value,
+            contactInfoResult.Value,
+            hoursResult.Value,
             BusinessCategory.Restaurant,
-            Guid.NewGuid()).Value);
+            Guid.NewGuid());
+        if (!businessResult.IsSuccess)
+            throw new InvalidOperationException($"Failed to create Business: {businessResult.Error}");
+
+        return Task.FromResult(businessResult.Value);
     }
 }

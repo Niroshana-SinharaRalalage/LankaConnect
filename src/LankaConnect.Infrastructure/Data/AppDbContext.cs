@@ -43,12 +43,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
-        
+
         // Business entity configurations
         modelBuilder.ApplyConfiguration(new BusinessConfiguration());
         modelBuilder.ApplyConfiguration(new ServiceConfiguration());
         modelBuilder.ApplyConfiguration(new ReviewConfiguration());
-        
+
         // Communications entity configurations
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
@@ -56,7 +56,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
-        
+
+        // Ignore unconfigured monitoring/infrastructure entities (not MVP)
+        IgnoreUnconfiguredEntities(modelBuilder);
+
         // Configure value object conversions
         ConfigureValueObjectConversions(modelBuilder);
     }
@@ -85,10 +88,65 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
     }
 
+    private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
+    {
+        // Ignore all entity types from Domain that aren't explicitly configured above
+        // This prevents EF Core from trying to map monitoring/infrastructure/database models
+        var configuredEntityTypes = new[]
+        {
+            typeof(User),
+            typeof(Event),
+            typeof(Registration),
+            typeof(ForumTopic),
+            typeof(Reply),
+            typeof(Business),
+            typeof(Service),
+            typeof(Review),
+            typeof(EmailMessage),
+            typeof(EmailTemplate),
+            typeof(UserEmailPreferences)
+        };
+
+        // Get all types from Domain assembly that aren't in our configured list
+        var domainAssembly = typeof(BaseEntity).Assembly;
+        var allDomainTypes = domainAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract);
+
+        foreach (var type in allDomainTypes)
+        {
+            // If it's not in our configured list and EF Core hasn't explicitly configured it, ignore it
+            if (!configuredEntityTypes.Contains(type))
+            {
+                try
+                {
+                    modelBuilder.Ignore(type);
+                }
+                catch
+                {
+                    // Ignore any types that can't be ignored (primitives, etc.)
+                }
+            }
+        }
+    }
+
     private static void ConfigureValueObjectConversions(ModelBuilder modelBuilder)
     {
-        // Configure value object conversions will be added in separate configurations
-        // This keeps the DbContext clean and focused
+        // Configure TimeZoneInfo conversion for all properties (especially in CulturalContext)
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(TimeZoneInfo))
+                {
+                    property.SetValueConverter(
+                        new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<TimeZoneInfo, string>(
+                            tz => tz.Id,
+                            tzId => TimeZoneInfo.FindSystemTimeZoneById(tzId)
+                        )
+                    );
+                }
+            }
+        }
     }
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)

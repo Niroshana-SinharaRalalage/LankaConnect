@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -13,17 +14,20 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
     private readonly ILogger<RegisterUserHandler> _logger;
+    private readonly IMediator _mediator;
 
     public RegisterUserHandler(
         IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
-        ILogger<RegisterUserHandler> logger)
+        ILogger<RegisterUserHandler> logger,
+        IMediator mediator)
     {
         _userRepository = userRepository;
         _passwordHashingService = passwordHashingService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mediator = mediator;
     }
 
     public async Task<Result<RegisterUserResponse>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -86,6 +90,17 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             // Save user
             await _userRepository.AddAsync(user, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
+
+            // Send verification email automatically
+            var sendEmailCommand = new SendEmailVerificationCommand(user.Id);
+            var sendEmailResult = await _mediator.Send(sendEmailCommand, cancellationToken);
+
+            if (!sendEmailResult.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "User {UserId} registered successfully, but failed to send verification email: {Error}",
+                    user.Id, sendEmailResult.Error);
+            }
 
             _logger.LogInformation("User registered successfully: {Email}", request.Email);
 

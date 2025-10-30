@@ -1,9 +1,9 @@
 #!/bin/bash
 
 ################################################################################
-# LankaConnect - Azure Staging Environment Provisioning Script
+# LankaConnect - Azure Production Environment Provisioning Script
 #
-# This script provisions all Azure resources required for the staging environment.
+# This script provisions all Azure resources required for the production environment.
 #
 # Prerequisites:
 # - Azure CLI installed (az --version)
@@ -11,8 +11,8 @@
 # - Subscription set (az account set --subscription "YOUR_SUBSCRIPTION_ID")
 #
 # Usage:
-#   chmod +x scripts/azure/provision-staging.sh
-#   ./scripts/azure/provision-staging.sh
+#   chmod +x scripts/azure/provision-production.sh
+#   ./scripts/azure/provision-production.sh
 #
 ################################################################################
 
@@ -44,23 +44,23 @@ log_error() {
 
 # Configuration Variables
 LOCATION="eastus2"
-STAGING_RG="lankaconnect-staging"
-ACR_NAME="lankaconnectstaging"  # Must be globally unique, lowercase, no hyphens
-POSTGRES_SERVER="lankaconnect-staging-db"
+PRODUCTION_RG="lankaconnect-production"
+ACR_NAME="lankaconnectproduction"  # Must be globally unique, lowercase, no hyphens
+POSTGRES_SERVER="lankaconnect-production-db"
 POSTGRES_ADMIN="adminuser"
 POSTGRES_PASSWORD=""  # Will be prompted securely
-KEY_VAULT_NAME="lankaconnect-staging-kv"  # Must be globally unique
-CONTAINERAPPS_ENV="lankaconnect-staging-env"
-CONTAINER_APP_NAME="lankaconnect-api-staging"
-LOG_ANALYTICS_WORKSPACE="lankaconnect-staging-logs"
+KEY_VAULT_NAME="lankaconnect-production-kv"  # Must be globally unique
+CONTAINERAPPS_ENV="lankaconnect-production"
+CONTAINER_APP_NAME="lankaconnect-api-production"
+LOG_ANALYTICS_WORKSPACE="lankaconnect-production-logs"
 
 ################################################################################
 # Step 0: Pre-flight Checks
 ################################################################################
 
-log_info "Starting LankaConnect Staging Environment Provisioning..."
+log_info "Starting LankaConnect Production Environment Provisioning..."
 log_info "Target Location: $LOCATION"
-log_info "Resource Group: $STAGING_RG"
+log_info "Resource Group: $PRODUCTION_RG"
 echo ""
 
 # Check if Azure CLI is installed
@@ -116,16 +116,16 @@ echo ""
 
 log_info "Step 1: Creating Resource Group..."
 
-if az group exists --name "$STAGING_RG" | grep -q "true"; then
-    log_warning "Resource group '$STAGING_RG' already exists. Skipping creation."
+if az group exists --name "$PRODUCTION_RG" | grep -q "true"; then
+    log_warning "Resource group '$PRODUCTION_RG' already exists. Skipping creation."
 else
     az group create \
-        --name "$STAGING_RG" \
+        --name "$PRODUCTION_RG" \
         --location "$LOCATION" \
-        --tags Environment=Staging Project=LankaConnect Owner=DevTeam \
+        --tags Environment=Production Project=LankaConnect Owner=DevTeam \
         --output none
 
-    log_success "Resource group '$STAGING_RG' created successfully."
+    log_success "Resource group '$PRODUCTION_RG' created successfully."
 fi
 
 echo ""
@@ -136,12 +136,12 @@ echo ""
 
 log_info "Step 2: Creating Azure Container Registry..."
 
-if az acr show --name "$ACR_NAME" --resource-group "$STAGING_RG" &> /dev/null; then
+if az acr show --name "$ACR_NAME" --resource-group "$PRODUCTION_RG" &> /dev/null; then
     log_warning "Container Registry '$ACR_NAME' already exists. Skipping creation."
 else
     az acr create \
         --name "$ACR_NAME" \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --sku Basic \
         --admin-enabled true \
         --location "$LOCATION" \
@@ -152,8 +152,8 @@ fi
 
 # Get ACR credentials
 log_info "Retrieving ACR credentials..."
-ACR_USERNAME=$(az acr credential show --name "$ACR_NAME" --resource-group "$STAGING_RG" --query username -o tsv)
-ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --resource-group "$STAGING_RG" --query "passwords[0].value" -o tsv)
+ACR_USERNAME=$(az acr credential show --name "$ACR_NAME" --resource-group "$PRODUCTION_RG" --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --resource-group "$PRODUCTION_RG" --query "passwords[0].value" -o tsv)
 
 log_success "ACR Credentials:"
 echo "  Username: $ACR_USERNAME"
@@ -167,25 +167,25 @@ echo ""
 
 log_info "Step 3: Creating PostgreSQL Flexible Server..."
 
-if az postgres flexible-server show --name "$POSTGRES_SERVER" --resource-group "$STAGING_RG" &> /dev/null; then
+if az postgres flexible-server show --name "$POSTGRES_SERVER" --resource-group "$PRODUCTION_RG" &> /dev/null; then
     log_warning "PostgreSQL server '$POSTGRES_SERVER' already exists. Skipping creation."
 else
     log_info "This may take 5-10 minutes..."
 
     az postgres flexible-server create \
         --name "$POSTGRES_SERVER" \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --location "$LOCATION" \
         --admin-user "$POSTGRES_ADMIN" \
         --admin-password "$POSTGRES_PASSWORD" \
-        --sku-name Standard_B1ms \
-        --tier Burstable \
+        --sku-name Standard_D2ds_v5 \
+        --tier GeneralPurpose \
         --storage-size 32 \
         --version 15 \
         --backup-retention 7 \
         --high-availability Disabled \
         --public-access 0.0.0.0 \
-        --tags Environment=Staging \
+        --tags Environment=Production \
         --output none
 
     log_success "PostgreSQL server '$POSTGRES_SERVER' created successfully."
@@ -194,13 +194,13 @@ fi
 # Create database
 log_info "Creating database 'LankaConnectDB'..."
 if az postgres flexible-server db show \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --server-name "$POSTGRES_SERVER" \
     --database-name LankaConnectDB &> /dev/null; then
     log_warning "Database 'LankaConnectDB' already exists. Skipping creation."
 else
     az postgres flexible-server db create \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --server-name "$POSTGRES_SERVER" \
         --database-name LankaConnectDB \
         --output none
@@ -208,29 +208,27 @@ else
     log_success "Database 'LankaConnectDB' created successfully."
 fi
 
-# Enable PgBouncer connection pooling (only available in GeneralPurpose/MemoryOptimized tiers)
-log_info "Checking PgBouncer availability..."
-if az postgres flexible-server parameter set \
-    --resource-group "$STAGING_RG" \
+# Enable PgBouncer connection pooling
+log_info "Enabling PgBouncer connection pooling..."
+az postgres flexible-server parameter set \
+    --resource-group "$PRODUCTION_RG" \
     --server-name "$POSTGRES_SERVER" \
     --name pgbouncer.enabled \
     --value on \
-    --output none 2>/dev/null; then
-    log_success "PgBouncer enabled."
-else
-    log_warning "PgBouncer not available in Burstable tier (B1ms). Skipping (production will have it)."
-fi
+    --output none
+
+log_success "PgBouncer enabled."
 
 # Configure firewall (allow Azure services)
 log_info "Configuring firewall rules..."
 if az postgres flexible-server firewall-rule show \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --name "$POSTGRES_SERVER" \
     --rule-name AllowAzureServices &> /dev/null; then
     log_warning "Firewall rule 'AllowAzureServices' already exists. Skipping."
 else
     az postgres flexible-server firewall-rule create \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --name "$POSTGRES_SERVER" \
         --rule-name AllowAzureServices \
         --start-ip-address 0.0.0.0 \
@@ -254,12 +252,12 @@ echo ""
 
 log_info "Step 4: Creating Azure Key Vault..."
 
-if az keyvault show --name "$KEY_VAULT_NAME" --resource-group "$STAGING_RG" &> /dev/null; then
+if az keyvault show --name "$KEY_VAULT_NAME" --resource-group "$PRODUCTION_RG" &> /dev/null; then
     log_warning "Key Vault '$KEY_VAULT_NAME' already exists. Skipping creation."
 else
     az keyvault create \
         --name "$KEY_VAULT_NAME" \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --location "$LOCATION" \
         --sku standard \
         --retention-days 90 \
@@ -299,14 +297,14 @@ log_info "Setting JWT-ISSUER..."
 az keyvault secret set \
     --vault-name "$KEY_VAULT_NAME" \
     --name JWT-ISSUER \
-    --value "https://lankaconnect-api-staging.azurewebsites.net" \
+    --value "https://lankaconnect-api-production.azurewebsites.net" \
     --output none
 
 log_info "Setting JWT-AUDIENCE..."
 az keyvault secret set \
     --vault-name "$KEY_VAULT_NAME" \
     --name JWT-AUDIENCE \
-    --value "https://lankaconnect-staging.azurewebsites.net" \
+    --value "https://lankaconnect-production.azurewebsites.net" \
     --output none
 
 log_info "Setting ENTRA-ENABLED..."
@@ -382,7 +380,7 @@ log_info "Setting EMAIL-FROM-ADDRESS..."
 az keyvault secret set \
     --vault-name "$KEY_VAULT_NAME" \
     --name EMAIL-FROM-ADDRESS \
-    --value "noreply-staging@lankaconnect.com" \
+    --value "noreply-production@lankaconnect.com" \
     --output none
 
 log_info "Setting AZURE-STORAGE-CONNECTION-STRING..."
@@ -403,12 +401,12 @@ log_info "Step 6: Creating Container Apps Environment..."
 
 # Create Log Analytics Workspace
 if az monitor log-analytics workspace show \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --workspace-name "$LOG_ANALYTICS_WORKSPACE" &> /dev/null; then
     log_warning "Log Analytics workspace already exists. Skipping."
 else
     az monitor log-analytics workspace create \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
         --location "$LOCATION" \
         --output none
@@ -418,26 +416,26 @@ fi
 
 # Get workspace credentials
 LOG_ANALYTICS_WORKSPACE_ID=$(az monitor log-analytics workspace show \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
     --query customerId -o tsv | tr -d '[:space:]')
 
 LOG_ANALYTICS_WORKSPACE_KEY=$(az monitor log-analytics workspace get-shared-keys \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
     --query primarySharedKey -o tsv | tr -d '[:space:]')
 
 # Create Container Apps environment
 if az containerapp env show \
     --name "$CONTAINERAPPS_ENV" \
-    --resource-group "$STAGING_RG" &> /dev/null; then
+    --resource-group "$PRODUCTION_RG" &> /dev/null; then
     log_warning "Container Apps environment already exists. Skipping."
 else
     log_info "Creating Container Apps environment (this may take 5 minutes)..."
 
     az containerapp env create \
         --name "$CONTAINERAPPS_ENV" \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --location "$LOCATION" \
         --logs-workspace-id "$LOG_ANALYTICS_WORKSPACE_ID" \
         --logs-workspace-key "$LOG_ANALYTICS_WORKSPACE_KEY" \
@@ -456,20 +454,20 @@ log_info "Step 7: Creating Container App..."
 
 if az containerapp show \
     --name "$CONTAINER_APP_NAME" \
-    --resource-group "$STAGING_RG" &> /dev/null; then
+    --resource-group "$PRODUCTION_RG" &> /dev/null; then
     log_warning "Container App '$CONTAINER_APP_NAME' already exists. Skipping."
 else
     log_info "Creating Container App with temporary image..."
 
     az containerapp create \
         --name "$CONTAINER_APP_NAME" \
-        --resource-group "$STAGING_RG" \
+        --resource-group "$PRODUCTION_RG" \
         --environment "$CONTAINERAPPS_ENV" \
         --image mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
         --target-port 80 \
         --ingress external \
-        --min-replicas 1 \
-        --max-replicas 3 \
+        --min-replicas 2 \
+        --max-replicas 10 \
         --cpu 0.25 \
         --memory 0.5Gi \
         --system-assigned \
@@ -481,7 +479,7 @@ fi
 # Get managed identity principal ID
 MANAGED_IDENTITY_ID=$(az containerapp show \
     --name "$CONTAINER_APP_NAME" \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --query identity.principalId -o tsv)
 
 log_info "Managed Identity Principal ID: $MANAGED_IDENTITY_ID"
@@ -499,7 +497,7 @@ log_success "Key Vault access granted."
 # Get Container App URL
 CONTAINER_APP_URL=$(az containerapp show \
     --name "$CONTAINER_APP_NAME" \
-    --resource-group "$STAGING_RG" \
+    --resource-group "$PRODUCTION_RG" \
     --query properties.configuration.ingress.fqdn -o tsv)
 
 log_success "Container App URL: https://$CONTAINER_APP_URL"
@@ -511,7 +509,7 @@ echo ""
 
 log_info "Step 8: Creating Service Principal for GitHub Actions..."
 
-SP_NAME="lankaconnect-github-actions-staging"
+SP_NAME="lankaconnect-github-actions-production"
 
 # Check if service principal already exists
 if az ad sp list --display-name "$SP_NAME" --query "[0].appId" -o tsv &> /dev/null; then
@@ -523,12 +521,12 @@ else
     SP_OUTPUT=$(az ad sp create-for-rbac \
         --name "$SP_NAME" \
         --role Contributor \
-        --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$STAGING_RG \
+        --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$PRODUCTION_RG \
         --sdk-auth)
 
     log_success "Service Principal created successfully."
     echo ""
-    log_success "GitHub Secret: AZURE_CREDENTIALS_STAGING"
+    log_success "GitHub Secret: AZURE_CREDENTIALS_PRODUCTION"
     log_info "Copy the entire JSON below and paste it as a GitHub secret:"
     echo "────────────────────────────────────────────────────────────────"
     echo "$SP_OUTPUT"
@@ -542,12 +540,12 @@ echo ""
 ################################################################################
 
 log_success "╔════════════════════════════════════════════════════════════════╗"
-log_success "║  LankaConnect Staging Environment Provisioned Successfully!   ║"
+log_success "║  LankaConnect Production Environment Provisioned Successfully!   ║"
 log_success "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
 log_info "Resource Summary:"
-echo "  Resource Group:        $STAGING_RG"
+echo "  Resource Group:        $PRODUCTION_RG"
 echo "  Location:              $LOCATION"
 echo "  Container Registry:    $ACR_NAME"
 echo "  PostgreSQL Server:     $POSTGRES_SERVER"
@@ -559,19 +557,19 @@ echo ""
 
 log_info "Next Steps:"
 echo "  1. Save ACR credentials for GitHub Secrets:"
-echo "     - ACR_USERNAME_STAGING: $ACR_USERNAME"
-echo "     - ACR_PASSWORD_STAGING: $ACR_PASSWORD"
+echo "     - ACR_USERNAME_PRODUCTION: $ACR_USERNAME"
+echo "     - ACR_PASSWORD_PRODUCTION: $ACR_PASSWORD"
 echo ""
-echo "  2. Save Service Principal JSON for GitHub Secret: AZURE_CREDENTIALS_STAGING"
+echo "  2. Save Service Principal JSON for GitHub Secret: AZURE_CREDENTIALS_PRODUCTION"
 echo ""
 echo "  3. Apply database migration:"
 echo "     psql \"$POSTGRES_CONNECTION_STRING\" -f docs/deployment/migrations/20251028_AddEntraExternalIdSupport.sql"
 echo ""
 echo "  4. Configure GitHub Actions workflow:"
-echo "     - Update .github/workflows/deploy-staging.yml"
+echo "     - Update .github/workflows/deploy-production.yml"
 echo "     - Add GitHub Secrets"
 echo ""
-echo "  5. Deploy to staging:"
+echo "  5. Deploy to production:"
 echo "     git push origin develop"
 echo ""
 

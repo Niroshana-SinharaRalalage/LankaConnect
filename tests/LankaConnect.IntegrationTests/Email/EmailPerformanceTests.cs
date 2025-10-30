@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 
 namespace LankaConnect.IntegrationTests.Email;
 
-public class EmailPerformanceTests : BaseIntegrationTest
+public class EmailPerformanceTests : DockerComposeWebApiTestBase
 {
 
     [Fact]

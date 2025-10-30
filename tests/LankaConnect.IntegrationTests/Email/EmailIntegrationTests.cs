@@ -11,7 +11,7 @@ using System.Text.Json;
 
 namespace LankaConnect.IntegrationTests.Email;
 
-public class EmailIntegrationTests : BaseIntegrationTest
+public class EmailIntegrationTests : DockerComposeWebApiTestBase
 {
 
     [Fact]

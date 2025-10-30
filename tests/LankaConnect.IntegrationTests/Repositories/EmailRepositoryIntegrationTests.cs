@@ -15,7 +15,7 @@ namespace LankaConnect.IntegrationTests.Repositories;
 /// <summary>
 /// Integration tests for Email-related repositories with proper EF Core DI setup
 /// </summary>
-public class EmailRepositoryIntegrationTests : DatabaseIntegrationTestBase
+public class EmailRepositoryIntegrationTests : DockerComposeTestBase
 {
     [Fact]
     public async Task EmailTemplateRepository_CreateAndRetrieve_ShouldWork()

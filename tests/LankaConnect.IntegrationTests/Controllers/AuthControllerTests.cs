@@ -15,7 +15,7 @@ using LankaConnect.Application.Common.Interfaces;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 
-public class AuthControllerTests : BaseIntegrationTest
+public class AuthControllerTests : DockerComposeWebApiTestBase
 {
     [Fact]
     public async Task Register_WithValidData_ShouldReturn201Created()
@@ -341,6 +341,296 @@ public class AuthControllerTests : BaseIntegrationTest
         
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("locked");
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithValidEmail_ShouldReturn200OK()
+    {
+        // Arrange
+        var email = "forgotpassword@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        var request = new { Email = email };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/forgot-password", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("password reset link has been sent");
+        content.Should().Contain(email);
+
+        // Verify token was set in database
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+        user.PasswordResetToken.Should().NotBeNullOrEmpty();
+        user.PasswordResetTokenExpiresAt.Should().BeAfter(DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithInvalidEmail_ShouldReturn400BadRequest()
+    {
+        // Arrange
+        var request = new { Email = "invalid-email" };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/forgot-password", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_WithNonExistentUser_ShouldReturn200OK()
+    {
+        // Arrange - Security feature: don't reveal if user exists
+        var request = new { Email = "nonexistent@example.com" };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/forgot-password", request);
+
+        // Assert - Should return success for security
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("password reset link has been sent");
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithValidTokenAndPassword_ShouldReturn200OK()
+    {
+        // Arrange
+        var email = "resetpassword@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        // Trigger forgot password to get token
+        var forgotRequest = new { Email = email };
+        await HttpClient.PostAsJsonAsync("/api/auth/forgot-password", forgotRequest);
+
+        // Get token from database
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+        var token = user.PasswordResetToken;
+
+        var resetRequest = new
+        {
+            Email = email,
+            Token = token,
+            NewPassword = "NewValidPassword123!"
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/reset-password", resetRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonDocument.Parse(content);
+
+        result.RootElement.GetProperty("message").GetString().Should().Contain("reset successfully");
+        result.RootElement.GetProperty("email").GetString().Should().Be(email);
+        result.RootElement.GetProperty("requiresLogin").GetBoolean().Should().BeTrue();
+
+        // Verify token was cleared
+        await DbContext.Entry(user).ReloadAsync();
+        user.PasswordResetToken.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithInvalidToken_ShouldReturn400BadRequest()
+    {
+        // Arrange
+        var email = "resetinvalid@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        var resetRequest = new
+        {
+            Email = email,
+            Token = "invalid-token-12345",
+            NewPassword = "NewValidPassword123!"
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/reset-password", resetRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Invalid or expired");
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithExpiredToken_ShouldReturn400BadRequest()
+    {
+        // Arrange
+        var email = "resetexpired@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        // Set expired token directly in database
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+        user.SetPasswordResetToken("expired-token", DateTime.UtcNow.AddHours(-1)); // Expired 1 hour ago
+        await DbContext.SaveChangesAsync();
+
+        var resetRequest = new
+        {
+            Email = email,
+            Token = "expired-token",
+            NewPassword = "NewValidPassword123!"
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/reset-password", resetRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Invalid or expired");
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithWeakPassword_ShouldReturn400BadRequest()
+    {
+        // Arrange
+        var email = "resetweak@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        // Trigger forgot password to get token
+        var forgotRequest = new { Email = email };
+        await HttpClient.PostAsJsonAsync("/api/auth/forgot-password", forgotRequest);
+
+        // Get token from database
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+        var token = user.PasswordResetToken;
+
+        var resetRequest = new
+        {
+            Email = email,
+            Token = token,
+            NewPassword = "weak" // Weak password
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/reset-password", resetRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("password");
+    }
+
+    [Fact]
+    public async Task VerifyEmail_WithValidToken_ShouldReturn200OK()
+    {
+        // Arrange
+        var email = "verifyemail@example.com";
+        var password = "ValidPassword123!";
+
+        // Register user (don't verify)
+        var registerRequest = new RegisterUserCommand(email, password, "John", "Doe");
+        await HttpClient.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        // Get verification token from database
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+        var token = user.EmailVerificationToken;
+
+        var verifyRequest = new
+        {
+            UserId = user.Id,
+            Token = token
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/verify-email", verifyRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonDocument.Parse(content);
+
+        result.RootElement.GetProperty("message").GetString().Should().Contain("verified successfully");
+        result.RootElement.GetProperty("email").GetString().Should().Be(email);
+        result.RootElement.GetProperty("wasAlreadyVerified").GetBoolean().Should().BeFalse();
+
+        // Verify email is now verified in database
+        await DbContext.Entry(user).ReloadAsync();
+        user.IsEmailVerified.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VerifyEmail_WithInvalidToken_ShouldReturn400BadRequest()
+    {
+        // Arrange
+        var email = "verifyinvalid@example.com";
+        var password = "ValidPassword123!";
+
+        var registerRequest = new RegisterUserCommand(email, password, "John", "Doe");
+        await HttpClient.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+
+        var verifyRequest = new
+        {
+            UserId = user.Id,
+            Token = "invalid-token-12345"
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/verify-email", verifyRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Invalid or expired");
+    }
+
+    [Fact]
+    public async Task VerifyEmail_WithAlreadyVerifiedEmail_ShouldReturn200OK()
+    {
+        // Arrange
+        var email = "alreadyverified@example.com";
+        var password = "ValidPassword123!";
+
+        await RegisterAndVerifyUser(email, password, "John", "Doe");
+
+        var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
+
+        // Set a new verification token for testing
+        user.SetEmailVerificationToken(Guid.NewGuid().ToString(), DateTime.UtcNow.AddHours(24));
+        await DbContext.SaveChangesAsync();
+
+        var verifyRequest = new
+        {
+            UserId = user.Id,
+            Token = user.EmailVerificationToken
+        };
+
+        // Act
+        var response = await HttpClient.PostAsJsonAsync("/api/auth/verify-email", verifyRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonDocument.Parse(content);
+
+        result.RootElement.GetProperty("message").GetString().Should().Contain("already verified");
+        result.RootElement.GetProperty("wasAlreadyVerified").GetBoolean().Should().BeTrue();
     }
 
     #region Helper Methods

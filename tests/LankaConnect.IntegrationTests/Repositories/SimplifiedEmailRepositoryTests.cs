@@ -13,7 +13,7 @@ namespace LankaConnect.IntegrationTests.Repositories;
 /// Simplified integration tests following architectural decision for email-based approach
 /// Tests focus on repository contracts without complex FK relationships
 /// </summary>
-public class SimplifiedEmailRepositoryTests : DatabaseIntegrationTestBase
+public class SimplifiedEmailRepositoryTests : DockerComposeTestBase
 {
     [Fact]
     public async Task EmailMessage_CreateWithEmailAddresses_ShouldPersistSuccessfully()

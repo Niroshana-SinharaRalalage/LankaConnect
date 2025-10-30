@@ -9,14 +9,16 @@ namespace LankaConnect.Domain.Communications.ValueObjects;
 /// </summary>
 public class CulturalContext : ValueObject
 {
-    public SriLankanLanguage Language { get; }
-    public CulturalBackground CulturalBackground { get; }
-    public GeographicRegion GeographicRegion { get; }
-    public ReligiousContext ReligiousContext { get; }
-    public bool IsReligiousObservanceConsidered { get; }
-    public bool RequiresCulturalAuthority { get; }
-    public TimeZoneInfo TimeZone { get; }
-    public string CulturalNotes { get; }
+    public SriLankanLanguage Language { get; set; }
+    public CulturalBackground CulturalBackground { get; set; }
+    public GeographicRegion GeographicRegion { get; set; }
+    public ReligiousContext ReligiousContext { get; set; }
+    public bool IsReligiousObservanceConsidered { get; set; }
+    public bool RequiresCulturalAuthority { get; set; }
+    public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Utc;
+    public string CulturalNotes { get; set; } = string.Empty;
+
+    public CulturalContext() { } // EF Core & JSON serialization
 
     private CulturalContext(
         SriLankanLanguage language,

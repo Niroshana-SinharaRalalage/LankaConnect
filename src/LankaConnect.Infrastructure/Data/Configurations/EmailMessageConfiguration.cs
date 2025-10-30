@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Communications.Enums;
+using System.Text.Json;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -121,7 +123,29 @@ public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
 
         builder.Property(e => e.TemplateData)
             .HasColumnName("template_data")
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v != null ? JsonSerializer.Serialize(v, (JsonSerializerOptions?)null) : null,
+                v => v != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions?)null) : null)
+            .IsRequired(false);
+
+        // Configure RecipientStatuses as JSON
+        builder.Property(e => e.RecipientStatuses)
+            .HasColumnName("recipient_statuses")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v != null ? JsonSerializer.Serialize(v, (JsonSerializerOptions?)null) : null,
+                v => v != null ? JsonSerializer.Deserialize<Dictionary<string, EmailDeliveryStatus>>(v, (JsonSerializerOptions?)null) : null)
+            .IsRequired(false);
+
+        // Configure CulturalContext as JSON (complex value object with multiple properties)
+        builder.Property(e => e.CulturalContext)
+            .HasColumnName("cultural_context")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v != null ? JsonSerializer.Serialize(v, (JsonSerializerOptions?)null) : null,
+                v => v != null ? JsonSerializer.Deserialize<Domain.Communications.ValueObjects.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
+            .IsRequired(false);
 
         // Performance indexes for email queue processing
         builder.HasIndex(e => e.Status)

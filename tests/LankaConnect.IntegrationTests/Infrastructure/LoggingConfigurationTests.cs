@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Hosting.Server;
 using Xunit;
 using FluentAssertions;
 using Serilog;
@@ -19,13 +20,18 @@ namespace LankaConnect.IntegrationTests.Infrastructure;
 [Collection("Logging")]
 public class LoggingConfigurationTests : IDisposable
 {
-    private readonly TestServer _testServer;
-    private readonly HttpClient _httpClient;
+    private TestServer _testServer = null!;
+    private HttpClient _httpClient = null!;
     private readonly IDisposable _testCorrelatorContext;
 
     public LoggingConfigurationTests()
     {
         _testCorrelatorContext = TestCorrelator.CreateContext();
+        InitializeAsync().GetAwaiter().GetResult();
+    }
+
+    private async Task InitializeAsync()
+    {
         
         var configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.Test.json", optional: true)
@@ -69,7 +75,11 @@ public class LoggingConfigurationTests : IDisposable
             throw new InvalidOperationException("Test exception");
         });
 
-        _testServer = new TestServer(app.Services.GetRequiredService<IWebHostBuilder>());
+        // Start the application (required for TestServer)
+        await app.StartAsync();
+
+        // Modern .NET: Get IServer and cast to TestServer (configured via UseTestServer())
+        _testServer = (TestServer)app.Services.GetRequiredService<IServer>();
         _httpClient = _testServer.CreateClient();
     }
 

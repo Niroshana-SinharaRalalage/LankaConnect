@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 
 namespace LankaConnect.IntegrationTests.Email;
 
-public class MailHogIntegrationTests : BaseIntegrationTest
+public class MailHogIntegrationTests : DockerComposeWebApiTestBase
 {
     private readonly HttpClient _mailHogClient;
     private const string MailHogApiUrl = "http://localhost:8025/api/v2";

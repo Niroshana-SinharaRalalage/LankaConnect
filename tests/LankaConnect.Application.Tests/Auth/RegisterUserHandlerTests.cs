@@ -2,8 +2,10 @@ using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MediatR;
 using LankaConnect.Application.Auth.Commands.RegisterUser;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
@@ -18,6 +20,7 @@ public class RegisterUserHandlerTests
     private readonly Mock<IPasswordHashingService> _mockPasswordHashingService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<RegisterUserHandler>> _mockLogger;
+    private readonly Mock<IMediator> _mockMediator;
     private readonly RegisterUserHandler _handler;
 
     public RegisterUserHandlerTests()
@@ -26,12 +29,24 @@ public class RegisterUserHandlerTests
         _mockPasswordHashingService = new Mock<IPasswordHashingService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<RegisterUserHandler>>();
-        
+        _mockMediator = new Mock<IMediator>();
+
+        // Setup default success response for email verification
+        _mockMediator
+            .Setup(m => m.Send(It.IsAny<SendEmailVerificationCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<SendEmailVerificationResponse>.Success(
+                new SendEmailVerificationResponse(
+                    Guid.NewGuid(),
+                    "test@example.com",
+                    DateTime.UtcNow.AddHours(24),
+                    false)));
+
         _handler = new RegisterUserHandler(
             _mockUserRepository.Object,
             _mockPasswordHashingService.Object,
             _mockUnitOfWork.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMediator.Object);
     }
 
     [Fact]
@@ -282,19 +297,19 @@ public class RegisterUserHandlerTests
 
         var email = Email.Create(request.Email).Value;
         User? capturedUser = null;
-        
+
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                           .ReturnsAsync((User?)null);
-        
+
         _mockUserRepository.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
                           .Callback<User, CancellationToken>((user, _) => capturedUser = user);
-        
+
         _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
                                   .Returns(Result.Success());
-        
+
         _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
                                   .Returns(Result<string>.Success("hashedpassword123"));
-        
+
         _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
                       .ReturnsAsync(1);
 
@@ -307,5 +322,96 @@ public class RegisterUserHandlerTests
         capturedUser!.EmailVerificationToken.Should().NotBeNullOrEmpty();
         capturedUser.EmailVerificationTokenExpiresAt.Should().BeAfter(DateTime.UtcNow);
         capturedUser.IsEmailVerified.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_WithValidRequest_ShouldSendVerificationEmail()
+    {
+        // Arrange
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.User);
+
+        var email = Email.Create(request.Email).Value;
+        Guid capturedUserId = Guid.Empty;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockUserRepository.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+                          .Callback<User, CancellationToken>((user, _) => capturedUserId = user.Id);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value.EmailVerificationRequired.Should().BeTrue();
+
+        // Verify email was sent with correct user ID
+        _mockMediator.Verify(
+            m => m.Send(
+                It.Is<SendEmailVerificationCommand>(c => c.UserId != Guid.Empty),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenEmailFails_ShouldStillSucceedRegistration()
+    {
+        // Arrange
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.User);
+
+        var email = Email.Create(request.Email).Value;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Mock email service to return failure
+        _mockMediator
+            .Setup(m => m.Send(It.IsAny<SendEmailVerificationCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<SendEmailVerificationResponse>.Failure("Email service unavailable"));
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue(); // Registration still succeeds
+        result.Value.Should().NotBeNull();
+        result.Value.EmailVerificationRequired.Should().BeTrue();
+
+        // Verify email was attempted
+        _mockMediator.Verify(
+            m => m.Send(
+                It.IsAny<SendEmailVerificationCommand>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

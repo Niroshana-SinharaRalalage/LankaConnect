@@ -7,32 +7,30 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System.Text;
-using Testcontainers.Azurite;
 using Xunit;
 
 namespace LankaConnect.IntegrationTests.Storage;
 
+/// <summary>
+/// Integration tests for Azure Blob Storage using docker-compose Azurite
+/// Note: All tests are skipped as AzureBlobImageService implementation is not complete
+/// </summary>
 public sealed class AzureBlobImageServiceIntegrationTests : IAsyncLifetime
 {
-    private readonly AzuriteContainer _azuriteContainer;
+    // Use docker-compose Azurite connection string
+    private const string AzuriteConnectionString =
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
+        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
+        "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+
     private BlobServiceClient? _blobServiceClient;
     private IImageService? _imageService = null; // Placeholder for service - will be initialized when service is implemented
     // Skip service for now since implementation is not complete
 
-    public AzureBlobImageServiceIntegrationTests()
-    {
-        _azuriteContainer = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.28.0")
-            .WithCommand("azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0", "--location", "/data")
-            .Build();
-    }
-
     public async Task InitializeAsync()
     {
-        await _azuriteContainer.StartAsync();
-
-        var connectionString = _azuriteContainer.GetConnectionString();
-        _blobServiceClient = new BlobServiceClient(connectionString);
+        // Connect to docker-compose Azurite instance
+        _blobServiceClient = new BlobServiceClient(AzuriteConnectionString);
 
         var options = Options.Create(new AzureStorageOptions
         {
@@ -48,20 +46,19 @@ public sealed class AzureBlobImageServiceIntegrationTests : IAsyncLifetime
             IsDevelopment = true,
             Azurite = new AzuriteSettings
             {
-                ConnectionString = connectionString
+                ConnectionString = AzuriteConnectionString
             }
         });
 
         // Skip service creation for now since AzureBlobImageService implementation is not complete
         // This test file serves as a specification for future implementation
+        await Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
-        if (_azuriteContainer != null)
-        {
-            await _azuriteContainer.DisposeAsync();
-        }
+        // No cleanup needed - docker-compose Azurite continues running
+        return Task.CompletedTask;
     }
 
     [Fact(Skip = "AzureBlobImageService implementation not complete yet")]

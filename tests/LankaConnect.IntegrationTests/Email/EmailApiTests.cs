@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace LankaConnect.IntegrationTests.Email;
 
-public class EmailApiTests : BaseIntegrationTest
+public class EmailApiTests : DockerComposeWebApiTestBase
 {
     [Fact]
     public async Task SendEmailVerification_WithValidEmail_ShouldReturnSuccess()

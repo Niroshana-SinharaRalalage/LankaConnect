@@ -29,15 +29,13 @@ COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
 WORKDIR "/src/LankaConnect.API"
 RUN dotnet build "LankaConnect.API.csproj" \
     -c Release \
-    -o /app/build \
-    --no-restore
+    -o /app/build
 
 # Stage 2: Publish
 FROM build AS publish
 RUN dotnet publish "LankaConnect.API.csproj" \
     -c Release \
     -o /app/publish \
-    --no-restore \
     /p:UseAppHost=false
 
 # Stage 3: Runtime

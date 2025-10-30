@@ -110,20 +110,20 @@ jobs:
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
             --set-env-vars \
               ASPNETCORE_ENVIRONMENT=Staging \
-              DATABASE_CONNECTION_STRING=secretref:DATABASE-CONNECTION-STRING \
-              JWT_SECRET_KEY=secretref:JWT-SECRET-KEY \
-              JWT_ISSUER=secretref:JWT-ISSUER \
-              JWT_AUDIENCE=secretref:JWT-AUDIENCE \
-              ENTRA_ENABLED=secretref:ENTRA-ENABLED \
-              ENTRA_TENANT_ID=secretref:ENTRA-TENANT-ID \
-              ENTRA_CLIENT_ID=secretref:ENTRA-CLIENT-ID \
-              ENTRA_AUDIENCE=secretref:ENTRA-AUDIENCE \
-              SMTP_HOST=secretref:SMTP-HOST \
-              SMTP_PORT=secretref:SMTP-PORT \
-              SMTP_USERNAME=secretref:SMTP-USERNAME \
-              SMTP_PASSWORD=secretref:SMTP-PASSWORD \
-              EMAIL_FROM_ADDRESS=secretref:EMAIL-FROM-ADDRESS \
-              AZURE_STORAGE_CONNECTION_STRING=secretref:AZURE-STORAGE-CONNECTION-STRING
+              DATABASE_CONNECTION_STRING=secretref:database-connection-string \
+              JWT_SECRET_KEY=secretref:jwt-secret-key \
+              JWT_ISSUER=secretref:jwt-issuer \
+              JWT_AUDIENCE=secretref:jwt-audience \
+              ENTRA_ENABLED=secretref:entra-enabled \
+              ENTRA_TENANT_ID=secretref:entra-tenant-id \
+              ENTRA_CLIENT_ID=secretref:entra-client-id \
+              ENTRA_AUDIENCE=secretref:entra-audience \
+              SMTP_HOST=secretref:smtp-host \
+              SMTP_PORT=secretref:smtp-port \
+              SMTP_USERNAME=secretref:smtp-username \
+              SMTP_PASSWORD=secretref:smtp-password \
+              EMAIL_FROM_ADDRESS=secretref:email-from-address \
+              AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
 
       - name: Wait for deployment
         run: |

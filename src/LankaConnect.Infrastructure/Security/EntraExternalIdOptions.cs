@@ -44,7 +44,7 @@ public class EntraExternalIdOptions
     /// <summary>
     /// Whether Entra External ID authentication is enabled
     /// </summary>
-    public bool Enabled { get; set; }
+    public bool IsEnabled { get; set; }
 
     /// <summary>
     /// Token validation parameters

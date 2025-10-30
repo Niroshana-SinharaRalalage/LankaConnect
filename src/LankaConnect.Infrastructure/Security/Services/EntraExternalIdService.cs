@@ -40,12 +40,12 @@ public class EntraExternalIdService : IEntraExternalIdService
     }
 
     /// <inheritdoc/>
-    public bool IsEnabled => _options.Enabled;
+    public bool IsEnabled => _options.IsEnabled;
 
     /// <inheritdoc/>
     public async Task<Result<EntraTokenClaims>> ValidateAccessTokenAsync(string accessToken)
     {
-        if (!_options.Enabled)
+        if (!_options.IsEnabled)
         {
             return Result<EntraTokenClaims>.Failure("Entra External ID integration is not enabled");
         }
@@ -134,7 +134,7 @@ public class EntraExternalIdService : IEntraExternalIdService
     /// <inheritdoc/>
     public async Task<Result<EntraUserInfo>> GetUserInfoAsync(string accessToken)
     {
-        if (!_options.Enabled)
+        if (!_options.IsEnabled)
         {
             return Result<EntraUserInfo>.Failure("Entra External ID integration is not enabled");
         }

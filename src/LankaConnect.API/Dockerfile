@@ -10,16 +10,20 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj files and restore (layer caching optimization)
+# Build context is repository root, so paths start with src/
 COPY ["src/LankaConnect.API/LankaConnect.API.csproj", "LankaConnect.API/"]
 COPY ["src/LankaConnect.Application/LankaConnect.Application.csproj", "LankaConnect.Application/"]
 COPY ["src/LankaConnect.Domain/LankaConnect.Domain.csproj", "LankaConnect.Domain/"]
 COPY ["src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj", "LankaConnect.Infrastructure/"]
 
-# Restore dependencies
+# Restore dependencies (this will restore ALL project dependencies including analyzers)
 RUN dotnet restore "LankaConnect.API/LankaConnect.API.csproj"
 
-# Copy source code
-COPY ["src/", "."]
+# Copy ALL source code (including all projects)
+COPY ["src/LankaConnect.API/", "LankaConnect.API/"]
+COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
+COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
+COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
 
 # Build application
 WORKDIR "/src/LankaConnect.API"

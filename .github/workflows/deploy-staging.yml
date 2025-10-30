@@ -125,6 +125,12 @@ jobs:
               EMAIL_FROM_ADDRESS=secretref:email-from-address \
               AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
 
+          # Ensure ingress is configured for port 5000 (ASP.NET Core default)
+          az containerapp ingress update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 5000
+
       - name: Wait for deployment
         run: |
           echo "Waiting 30 seconds for Container App to update..."

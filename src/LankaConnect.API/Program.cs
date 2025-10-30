@@ -144,7 +144,7 @@ try
     var app = builder.Build();
 
     // Configure the HTTP request pipeline
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
         app.UseSwagger();
         app.UseSwaggerUI(c =>
@@ -153,8 +153,8 @@ try
             c.RoutePrefix = string.Empty; // Make Swagger available at root
             c.DisplayRequestDuration();
         });
-        
-        app.UseCors("Development");
+
+        app.UseCors(app.Environment.IsDevelopment() ? "Development" : "Production");
     }
     else
     {

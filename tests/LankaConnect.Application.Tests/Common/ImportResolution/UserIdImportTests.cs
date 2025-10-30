@@ -37,27 +37,35 @@ public class UserIdImportTests
     
     private string[] GetApplicationSourceFiles()
     {
-        var applicationPath = @"C:\Work\LankaConnect\src\LankaConnect.Application";
-        return System.IO.Directory.GetFiles(applicationPath, "*.cs", System.IO.SearchOption.AllDirectories)
+        // Use relative paths that work on both Windows and Linux
+        var testAssemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        var testDirectory = System.IO.Path.GetDirectoryName(testAssemblyLocation);
+        var projectRoot = System.IO.Path.GetFullPath(System.IO.Path.Combine(testDirectory!, "..", "..", "..", "..", "..", "src", "LankaConnect.Application"));
+
+        return System.IO.Directory.GetFiles(projectRoot, "*.cs", System.IO.SearchOption.AllDirectories)
             .Where(f => !f.Contains("bin") && !f.Contains("obj"))
             .ToArray();
     }
-    
+
     private MetadataReference[] GetRequiredReferences()
     {
-        var domainPath = @"C:\Work\LankaConnect\src\LankaConnect.Domain\bin\Debug\net8.0\LankaConnect.Domain.dll";
+        // Use relative paths that work on both Windows and Linux
+        var testAssemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        var testDirectory = System.IO.Path.GetDirectoryName(testAssemblyLocation);
+        var domainPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(testDirectory!, "..", "..", "..", "..", "..", "src", "LankaConnect.Domain", "bin", "Debug", "net8.0", "LankaConnect.Domain.dll"));
+
         var systemReferences = new[]
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
         };
-        
+
         var references = systemReferences.ToList();
         if (System.IO.File.Exists(domainPath))
         {
             references.Add(MetadataReference.CreateFromFile(domainPath));
         }
-        
+
         return references.ToArray();
     }
 }

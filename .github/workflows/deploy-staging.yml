@@ -104,26 +104,28 @@ jobs:
           KEY_VAULT_URI=$(az keyvault show --name ${{ env.KEY_VAULT_NAME }} --query properties.vaultUri -o tsv)
 
           # Update Container App with new image and environment variables
+          # Using ASP.NET Core hierarchical configuration format (e.g., ConnectionStrings__DefaultConnection)
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
-            --set-env-vars \
+            --replace-env-vars \
               ASPNETCORE_ENVIRONMENT=Staging \
-              DATABASE_CONNECTION_STRING=secretref:database-connection-string \
-              JWT_SECRET_KEY=secretref:jwt-secret-key \
-              JWT_ISSUER=secretref:jwt-issuer \
-              JWT_AUDIENCE=secretref:jwt-audience \
-              ENTRA_ENABLED=secretref:entra-enabled \
-              ENTRA_TENANT_ID=secretref:entra-tenant-id \
-              ENTRA_CLIENT_ID=secretref:entra-client-id \
-              ENTRA_AUDIENCE=secretref:entra-audience \
-              SMTP_HOST=secretref:smtp-host \
-              SMTP_PORT=secretref:smtp-port \
-              SMTP_USERNAME=secretref:smtp-username \
-              SMTP_PASSWORD=secretref:smtp-password \
-              EMAIL_FROM_ADDRESS=secretref:email-from-address \
-              AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
+              ConnectionStrings__DefaultConnection=secretref:database-connection-string \
+              ConnectionStrings__Redis=localhost:6379 \
+              JwtSettings__SecretKey=secretref:jwt-secret-key \
+              JwtSettings__Issuer=secretref:jwt-issuer \
+              JwtSettings__Audience=secretref:jwt-audience \
+              EntraExternalId__IsEnabled=secretref:entra-enabled \
+              EntraExternalId__TenantId=secretref:entra-tenant-id \
+              EntraExternalId__ClientId=secretref:entra-client-id \
+              EntraExternalId__Audience=secretref:entra-audience \
+              Email__SmtpHost=secretref:smtp-host \
+              Email__SmtpPort=secretref:smtp-port \
+              Email__SmtpUsername=secretref:smtp-username \
+              Email__SmtpPassword=secretref:smtp-password \
+              Email__FromEmail=secretref:email-from-address \
+              AzureBlobStorage__ConnectionString=secretref:azure-storage-connection-string
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

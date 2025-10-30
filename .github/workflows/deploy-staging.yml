@@ -69,13 +69,20 @@ jobs:
           username: ${{ secrets.ACR_USERNAME_STAGING }}
           password: ${{ secrets.ACR_PASSWORD_STAGING }}
 
+      - name: Publish application
+        run: |
+          dotnet publish src/LankaConnect.API/LankaConnect.API.csproj \
+            -c Release \
+            -o src/LankaConnect.API/publish \
+            --no-restore
+
       - name: Build Docker image
         run: |
           docker build \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:staging \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:latest \
-            -f src/LankaConnect.API/Dockerfile .
+            -f src/LankaConnect.API/Dockerfile.simple .
 
       - name: Push Docker image
         run: |

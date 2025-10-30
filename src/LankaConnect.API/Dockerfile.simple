@@ -1,0 +1,35 @@
+# ============================================================================
+# LankaConnect API - Simplified Production Dockerfile
+# ============================================================================
+# This Dockerfile expects the application to be pre-built and published
+# by the CI/CD pipeline (GitHub Actions). It simply packages the published
+# output into a runtime container.
+# ============================================================================
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy pre-published output from CI/CD pipeline
+# The publish output should be in src/LankaConnect.API/publish/
+COPY ["src/LankaConnect.API/publish/", "."]
+
+# Expose port (Container Apps expects HTTP on 5000)
+EXPOSE 5000
+
+# Health check endpoint (Azure Container Apps uses this for liveness probe)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl --fail http://localhost:5000/health || exit 1
+
+# Run as non-root user for security
+USER $APP_UID
+
+# Set ASP.NET Core environment (override via Container App environment variable)
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:5000
+
+# Entry point
+ENTRYPOINT ["dotnet", "LankaConnect.API.dll"]

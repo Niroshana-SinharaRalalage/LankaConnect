@@ -27,9 +27,25 @@ public class RazorEmailTemplateService : IEmailTemplateService
         _cache = cache;
         _logger = logger;
         _templateBasePath = Path.Combine(Directory.GetCurrentDirectory(), _emailSettings.TemplateBasePath);
-        
-        // Ensure template directory exists
-        Directory.CreateDirectory(_templateBasePath);
+
+        // Try to ensure template directory exists (will fail in read-only containers, but that's okay)
+        // Templates should be included in the Docker image or read from a writable volume
+        try
+        {
+            if (!Directory.Exists(_templateBasePath))
+            {
+                Directory.CreateDirectory(_templateBasePath);
+                _logger.LogInformation("Created template directory: {Path}", _templateBasePath);
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Cannot create template directory {Path} - templates must be included in container image or mounted volume", _templateBasePath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Cannot create template directory {Path} - templates must be included in container image or mounted volume", _templateBasePath);
+        }
     }
 
     public async Task<Result<RenderedEmailTemplate>> RenderTemplateAsync(

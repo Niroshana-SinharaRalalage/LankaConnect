@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Context;
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 // Configure Serilog with enhanced enrichment
@@ -142,6 +143,28 @@ try
             });
 
     var app = builder.Build();
+
+    // Apply database migrations automatically on startup
+    // This ensures the database schema is always up-to-date in all environments
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<AppDbContext>();
+            var logger = services.GetRequiredService<ILogger<Program>>();
+
+            logger.LogInformation("Applying database migrations...");
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied successfully");
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while migrating the database");
+            throw; // Re-throw to prevent application startup with incomplete database
+        }
+    }
 
     // Configure the HTTP request pipeline
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())

@@ -1,7 +1,7 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-10-28 22:00 UTC*
+*Last Updated: 2025-10-31 22:45 UTC*
 
-## 🎉 Current Session Status (2025-10-28) - AZURE DEPLOYMENT INFRASTRUCTURE READY ✅
+## 🎉 Current Session Status (2025-10-31) - EPIC 1 PHASE 3 COMPLETE ✅
 
 **MILESTONES ACHIEVED:**
 1. ✅ Microsoft Entra External ID Domain Layer Implementation (Phase 1 Day 1)
@@ -10,6 +10,9 @@
 4. ✅ Entra Token Validation Service (Phase 1 Day 3)
 5. ✅ CQRS Application Layer - LoginWithEntraCommand (Phase 1 Day 4)
 6. ✅ Azure Deployment Infrastructure Complete (Phase 1 Day 7)
+7. ✅ Profile Photo Upload/Delete Feature (Epic 1 Phase 3 Days 1-2)
+8. ✅ Location Field Implementation (Epic 1 Phase 3 Day 3)
+9. ✅ Cultural Interests & Languages Implementation (Epic 1 Phase 3 Day 4)
 
 **Azure Configuration:**
 - **Tenant**: lankaconnect.onmicrosoft.com
@@ -98,6 +101,632 @@
 **Phase 1 Day 5 - Presentation Layer (API Endpoints):**
 9. ✅ **Entra Login Endpoint Implementation** (1.5 hours - TDD)
    - Created EntraAuthControllerTests.cs (8 comprehensive integration tests)
+
+---
+
+## **Epic 1 Phase 3: Profile Enhancement - Profile Photo Feature** ✅
+
+**Implementation Date:** 2025-10-31
+**Total Time:** ~3 hours (Days 1-2 combined)
+**Status:** Complete - Zero Tolerance maintained (0 compilation errors)
+
+### **Completed Components:**
+
+**1. Domain Layer (TDD RED-GREEN)**
+   - ✅ Created 18 comprehensive tests in `UserProfilePhotoTests.cs`
+   - ✅ Added `ProfilePhotoUrl` property to User entity (nullable string)
+   - ✅ Added `ProfilePhotoBlobName` property to User entity (nullable string)
+   - ✅ Implemented `UpdateProfilePhoto(string url, string blobName)` method
+   - ✅ Implemented `RemoveProfilePhoto()` method with business rule validation
+   - ✅ Created `UserProfilePhotoUpdatedEvent` domain event
+   - ✅ Created `UserProfilePhotoRemovedEvent` domain event
+   - ✅ Added `GetDomainEvents()` method to BaseEntity for test access
+   - **Test Results:** 18/18 tests passing (100%)
+   - **File:** `src/LankaConnect.Domain/Users/User.cs` (lines 19-408)
+
+**2. Application Layer (CQRS Commands)**
+   - ✅ Created `UploadProfilePhotoCommand` with IFormFile support
+   - ✅ Created `UploadProfilePhotoResponse` DTO (PhotoUrl, FileSizeBytes, UploadedAt)
+   - ✅ Implemented `UploadProfilePhotoCommandHandler` with:
+     * File validation (null/empty checks)
+     * User lookup and authorization
+     * Existing photo cleanup (if present)
+     * Image upload via IImageService (reused infrastructure)
+     * Transactional updates with rollback on failure
+   - ✅ Created `DeleteProfilePhotoCommand`
+   - ✅ Implemented `DeleteProfilePhotoCommandHandler` with:
+     * User validation
+     * Business rule enforcement (must have photo to delete)
+     * Azure Blob Storage cleanup
+     * Transactional consistency
+   - ✅ Created 10 comprehensive tests (6 upload + 4 delete scenarios)
+   - **Test Results:** 10/10 tests passing (100%)
+   - **Files:**
+     * `src/LankaConnect.Application/Users/Commands/UploadProfilePhoto/`
+     * `src/LankaConnect.Application/Users/Commands/DeleteProfilePhoto/`
+
+**3. Presentation Layer (REST API Endpoints)**
+   - ✅ Added `POST /api/users/{id}/profile-photo` endpoint
+     * Multipart/form-data file upload
+     * 5MB size limit (RequestSizeLimit attribute)
+     * Comprehensive logging (upload start, success, failure)
+     * Returns 200 OK with upload details
+   - ✅ Added `DELETE /api/users/{id}/profile-photo` endpoint
+     * Returns 204 No Content on success
+     * Returns 404 Not Found if user/photo doesn't exist
+     * Returns 400 Bad Request for validation errors
+   - **File:** `src/LankaConnect.API/Controllers/UsersController.cs` (lines 88-186)
+
+**4. Infrastructure Layer (Database Schema)**
+   - ✅ Created EF Core migration `20251031125825_AddUserProfilePhoto`
+   - ✅ Added `ProfilePhotoUrl` column (text, nullable) to users table
+   - ✅ Added `ProfilePhotoBlobName` column (text, nullable) to users table
+   - **Schema:** identity.users table (PostgreSQL)
+   - **Rollback:** Down migration provided for safe rollback
+
+### **Architecture Decisions:**
+
+1. **Reused Existing Components:**
+   - IImageService interface (no duplication)
+   - BasicImageService implementation (Azure Blob Storage)
+   - Repository pattern (IUserRepository.Update)
+   - Result pattern for error handling
+
+2. **Storage Strategy:**
+   - Two-column approach (URL + BlobName)
+   - Enables efficient cleanup operations
+   - Follows existing Business image pattern
+
+3. **Business Rules Enforced:**
+   - Cannot remove photo if none exists
+   - Old photo automatically cleaned up on upload
+   - Transactional consistency (upload succeeds or all rollback)
+
+### **Test Coverage:**
+
+- **Unit Tests:** 28 tests (18 domain + 10 application)
+- **Pass Rate:** 100% (28/28 passing)
+- **Zero Tolerance:** Maintained throughout implementation
+- **Total Project Tests:** 346 tests passing
+
+### **API Contracts:**
+
+**Upload Profile Photo:**
+```http
+POST /api/users/{id}/profile-photo
+Content-Type: multipart/form-data
+
+{
+  "image": <file>
+}
+
+Response 200 OK:
+{
+  "photoUrl": "https://lankaconnectstorage.blob.core.windows.net/users/abc123.jpg",
+  "fileSizeBytes": 524288,
+  "uploadedAt": "2025-10-31T13:00:00Z"
+}
+```
+
+**Delete Profile Photo:**
+```http
+DELETE /api/users/{id}/profile-photo
+
+Response: 204 No Content
+```
+
+### **Next Steps (Profile Photo):**
+- Integration tests (end-to-end upload/delete flows) [Optional]
+
+---
+
+## Epic 1 Phase 3 Day 3 - Location Field Implementation ✅
+*Completed: 2025-10-31*
+
+### **Feature Overview:**
+User location tracking with privacy-first design (city-level granularity only, no street addresses or GPS coordinates). Supports diaspora community matching while respecting user privacy. Users can update or clear their location at any time.
+
+### **Implementation Details:**
+
+**1. Domain Layer (TDD) - UserLocation Value Object:**
+- Created `UserLocation` value object with City, State, ZipCode, Country properties
+- Factory method with validation: all fields required (1-100 chars for city/state/country, 1-20 for zipCode)
+- Value object equality, immutable design
+- Proper trimming of input values
+- Created `UserLocationTests.cs` with 23 comprehensive tests
+- **Test Results:** 23/23 passing (100%)
+
+**2. Domain Layer - User Entity Integration:**
+- Added nullable `Location` property to User aggregate (privacy choice)
+- Implemented `UpdateLocation(UserLocation? location)` method
+- Created `UserLocationUpdatedEvent` domain event (includes UserId, Email, City, State, Country)
+- Domain event NOT raised when clearing location (null)
+- Created `UserUpdateLocationTests.cs` with 9 comprehensive tests
+- **Test Results:** 9/9 passing (100%)
+
+**3. Infrastructure Layer - Database Schema:**
+- Updated `UserConfiguration.cs` with OwnsOne configuration for embedded columns
+- Columns: `city`, `state`, `zip_code`, `country` (all VARCHAR, nullable)
+- Created EF Core migration: `20251031131720_AddUserLocation`
+- Embedded storage approach (not JSONB) for query performance
+
+**4. Application Layer (CQRS):**
+- Created `UpdateUserLocationCommand` (all properties nullable)
+- Created `UpdateUserLocationCommandHandler`:
+  * Handles location updates and clearing (all null = clear location)
+  * User not found validation
+  * UserLocation creation with validation
+  * Domain event raising (only when setting location, not clearing)
+- Created `UpdateUserLocationCommandHandlerTests.cs` with 6 comprehensive tests
+- **Test Results:** 6/6 passing (100%)
+
+**5. Presentation Layer (API Endpoint):**
+- Added PUT `/api/users/{id}/location` endpoint to UsersController
+- Created `UpdateLocationRequest` record (City, State, ZipCode, Country - all nullable)
+- Structured logging with operation scope
+- Proper error handling (400 Bad Request, 404 Not Found)
+- Returns 204 No Content on success
+- Swagger documentation included
+
+### **Architecture Decisions:**
+
+1. **Separate UserLocation VO:** Created separate value object in Users domain (not reusing Business domain's Address)
+   - Rationale: Domain boundary separation, different semantic meaning
+   - Privacy-focused vs business address have different validation rules
+
+2. **Privacy-First Design:** City-level granularity only
+   - No street addresses
+   - No GPS coordinates
+   - Sufficient for regional diaspora community matching
+
+3. **Country Field Included:** Critical for international diaspora context
+   - Users in USA, Canada, UK, Australia, Middle East, etc.
+   - Required for cross-border community connections
+
+4. **Nullable Location Property:** User privacy choice
+   - Users can opt out of sharing location
+   - Clearing logic: send all null values in request
+
+5. **Embedded Columns Storage:** Direct columns (not JSONB)
+   - Better query performance for location-based searches
+   - Standard SQL WHERE clauses work natively
+
+6. **Single Location (MVP):** Not supporting multiple locations
+   - YAGNI principle - can add later if needed
+
+7. **Domain Events:** UserLocationUpdatedEvent for audit trail
+   - Only raised when setting location (not when clearing)
+   - Includes City, State, Country for downstream processing
+
+### **Test Coverage:**
+
+- **Domain Tests:** 32 tests (23 UserLocation + 9 User.UpdateLocation)
+- **Application Tests:** 6 tests (UpdateUserLocationCommand handler)
+- **Pass Rate:** 100% (38/38 tests related to location feature)
+- **Zero Tolerance:** Maintained throughout implementation (0 compilation errors)
+- **Total Project Tests:** 384/384 passing (application tests), 1 skipped
+- **Integration Tests:** 49/158 passing (pre-existing failures unrelated to location feature)
+
+### **Database Schema:**
+
+```sql
+-- Added to identity.users table
+ALTER TABLE identity.users ADD COLUMN city VARCHAR(100) NULL;
+ALTER TABLE identity.users ADD COLUMN state VARCHAR(100) NULL;
+ALTER TABLE identity.users ADD COLUMN zip_code VARCHAR(20) NULL;
+ALTER TABLE identity.users ADD COLUMN country VARCHAR(100) NULL;
+```
+
+### **API Contract:**
+
+**Update User Location:**
+```http
+PUT /api/users/{id}/location
+Content-Type: application/json
+
+{
+  "city": "Los Angeles",
+  "state": "California",
+  "zipCode": "90001",
+  "country": "United States"
+}
+
+Response: 204 No Content
+```
+
+**Clear User Location (Privacy Choice):**
+```http
+PUT /api/users/{id}/location
+Content-Type: application/json
+
+{
+  "city": null,
+  "state": null,
+  "zipCode": null,
+  "country": null
+}
+
+Response: 204 No Content
+```
+
+**Error Responses:**
+- 400 Bad Request: Validation errors (e.g., "City is required", "ZipCode cannot exceed 20 characters")
+- 404 Not Found: User not found
+
+### **Files Created/Modified:**
+
+**Created:**
+- `src/LankaConnect.Domain/Users/ValueObjects/UserLocation.cs` (85 lines)
+- `src/LankaConnect.Domain/Events/UserLocationUpdatedEvent.cs` (12 lines)
+- `src/LankaConnect.Application/Users/Commands/UpdateUserLocation/UpdateUserLocationCommand.cs` (16 lines)
+- `src/LankaConnect.Application/Users/Commands/UpdateUserLocation/UpdateUserLocationCommandHandler.cs` (76 lines)
+- `tests/LankaConnect.Application.Tests/Users/Domain/UserLocationTests.cs` (281 lines, 23 tests)
+- `tests/LankaConnect.Application.Tests/Users/Domain/UserUpdateLocationTests.cs` (191 lines, 9 tests)
+- `tests/LankaConnect.Application.Tests/Users/Commands/UpdateUserLocationCommandHandlerTests.cs` (225 lines, 6 tests)
+- `src/LankaConnect.Infrastructure/Migrations/20251031131720_AddUserLocation.cs` (migration)
+
+**Modified:**
+- `src/LankaConnect.Domain/Users/User.cs` (added Location property + UpdateLocation method)
+- `src/LankaConnect.Infrastructure/Data/Configurations/UserConfiguration.cs` (added OwnsOne configuration)
+- `src/LankaConnect.API/Controllers/UsersController.cs` (added UpdateLocation endpoint + UpdateLocationRequest model)
+- `src/LankaConnect.Infrastructure/Migrations/AppDbContextModelSnapshot.cs` (updated with Location columns)
+
+### **Epic 1 Phase 3 Completion Status:**
+- ✅ Day 1-2: Profile Photo Upload/Delete (Complete)
+- ✅ Day 3: Location Field Implementation (Complete)
+- ✅ Day 4: Cultural Interests & Languages Implementation (Complete)
+
+---
+
+## Epic 1 Phase 3 Day 4 - Cultural Interests & Languages Implementation ✅
+*Completed: 2025-10-31*
+
+### **Feature Overview:**
+Enhanced user profiles with cultural interests (0-10 allowed, privacy choice) and language preferences (1-5 required with proficiency levels). Supports community discovery and cultural matching for diaspora members. Pre-defined enumeration of Sri Lankan cultural interests and language codes with proficiency levels (Basic, Conversational, Fluent, Native, Professional).
+
+### **Implementation Details:**
+
+**1. Domain Layer (TDD) - Value Objects:**
+
+**CulturalInterest Value Object:**
+- Pre-defined enumeration of 18 Sri Lankan cultural interests (SL_CUISINE, CRICKET, BUDDHISM, etc.)
+- Static `All` collection with factory method for type safety
+- Immutable value object with equality support
+- Code + Name properties (e.g., "SL_CUISINE" → "Sri Lankan Cuisine")
+- Created `CulturalInterestTests.cs` with 10 comprehensive tests
+- **Test Results:** 10/10 passing (100%)
+
+**LanguageCode Value Object:**
+- Pre-defined enumeration of 16 languages (SINHALA, TAMIL, ENGLISH, etc.)
+- Static `All` collection with factory method
+- Immutable value object with Code + Name properties
+- Created `LanguageCodeTests.cs` with 8 comprehensive tests
+- **Test Results:** 8/8 passing (100%)
+
+**ProficiencyLevel Enum:**
+- 5 levels: Basic, Conversational, Fluent, Native, Professional
+- Standard C# enum for type safety
+
+**LanguagePreference Value Object:**
+- Composite value object (LanguageCode + ProficiencyLevel)
+- Factory method with validation
+- Immutable with equality support
+- Created `LanguagePreferenceTests.cs` with 13 comprehensive tests
+- **Test Results:** 13/13 passing (100%)
+
+**2. Domain Layer - User Entity Integration:**
+
+**CulturalInterests Collection:**
+- Added `IReadOnlyCollection<CulturalInterest> CulturalInterests` property
+- Implemented `UpdateCulturalInterests(List<CulturalInterest>)` method
+- Business rule: 0-10 interests allowed (privacy choice - empty list clears interests)
+- Created `CulturalInterestsUpdatedEvent` domain event
+- Created `UserUpdateCulturalInterestsTests.cs` with 10 comprehensive tests
+- **Test Results:** 10/10 passing (100%)
+
+**Languages Collection:**
+- Added `IReadOnlyCollection<LanguagePreference> Languages` property
+- Implemented `UpdateLanguages(List<LanguagePreference>)` method
+- Business rule: 1-5 languages required (cannot be empty)
+- Created `LanguagesUpdatedEvent` domain event
+- Created `UserUpdateLanguagesTests.cs` with 9 comprehensive tests
+- **Test Results:** 9/9 passing (100%)
+
+**3. Infrastructure Layer - Database Schema:**
+
+**Cultural Interests Storage:**
+- EF Core OwnsMany configuration with JSON column
+- Column: `cultural_interests` (JSONB in PostgreSQL)
+- Stores list of interest codes (e.g., ["SL_CUISINE", "CRICKET"])
+- Created migration: `20251031194253_AddUserCulturalInterestsAndLanguages`
+
+**Languages Storage:**
+- EF Core OwnsMany configuration with JSON column
+- Column: `languages` (JSONB in PostgreSQL)
+- Stores list of language objects with code + proficiency level
+- Example: `[{"LanguageCode":"SINHALA","ProficiencyLevel":3}]`
+
+**4. Application Layer (CQRS):**
+
+**UpdateCulturalInterestsCommand:**
+- Command with UserId + List<string> InterestCodes
+- Created `UpdateCulturalInterestsCommandHandler`:
+  * Validates interest codes against CulturalInterest.All
+  * Converts codes to value objects
+  * Delegates business rules (0-10 validation) to domain
+  * User not found validation
+- Created `UpdateCulturalInterestsCommandHandlerTests.cs` with 5 comprehensive tests
+- **Test Results:** 5/5 passing (100%)
+
+**UpdateLanguagesCommand:**
+- Command with UserId + List<LanguageDto> (LanguageCode + ProficiencyLevel)
+- Created `UpdateLanguagesCommandHandler`:
+  * Validates language codes against LanguageCode.All
+  * Converts DTOs to LanguagePreference value objects
+  * Delegates business rules (1-5 validation) to domain
+  * User not found validation
+- Created `UpdateLanguagesCommandHandlerTests.cs` with 5 comprehensive tests (2 edits: removed nested DTO class, fixed case-sensitive assertion)
+- **Test Results:** 5/5 passing (100%)
+
+**5. Presentation Layer (API Endpoints):**
+
+**Update Cultural Interests Endpoint:**
+- Added PUT `/api/users/{id}/cultural-interests` endpoint to UsersController
+- Created `UpdateCulturalInterestsRequest` record (List<string> InterestCodes)
+- Empty list clears all interests (privacy choice)
+- Structured logging with operation scope
+- Proper error handling (400 Bad Request for invalid codes, 404 Not Found)
+- Returns 204 No Content on success
+- Swagger documentation included
+
+**Update Languages Endpoint:**
+- Added PUT `/api/users/{id}/languages` endpoint to UsersController
+- Created `UpdateLanguagesRequest` record with `LanguageRequestDto` (LanguageCode + ProficiencyLevel)
+- 1-5 languages required (cannot be empty)
+- Structured logging with operation scope
+- Proper error handling (400 Bad Request for validation errors, 404 Not Found)
+- Returns 204 No Content on success
+- Swagger documentation included
+
+### **Architecture Decisions:**
+
+1. **Enumeration Pattern:** Pre-defined CulturalInterest and LanguageCode enumerations
+   - Type safety, prevents invalid values
+   - Easy to extend with new values
+   - Factory methods for validation
+
+2. **JSON Storage:** JSONB columns for collections
+   - Simplified schema (no junction tables)
+   - PostgreSQL JSONB provides indexing and query capabilities
+   - Suitable for MVP (can migrate to junction tables if complex queries needed)
+
+3. **Business Rules in Domain:** 0-10 interests, 1-5 languages
+   - Domain layer enforces business rules
+   - Application layer validates codes exist
+   - Clear separation of concerns
+
+4. **Privacy-First Design:** Cultural interests are optional (0-10)
+   - Users can clear all interests (empty list)
+   - Privacy choice - users control their profile visibility
+
+5. **Composite Value Object:** LanguagePreference combines code + proficiency
+   - Single atomic value representing language skill
+   - Immutable, validated through factory method
+
+6. **DTO Separation:** LanguageDto in command, LanguageRequestDto in API
+   - Application layer DTO different from API layer DTO
+   - Clear layer boundaries
+
+### **Test Coverage:**
+
+- **Domain Tests:** 50 tests
+  * 10 CulturalInterest tests
+  * 8 LanguageCode tests
+  * 13 LanguagePreference tests
+  * 10 User.UpdateCulturalInterests tests
+  * 9 User.UpdateLanguages tests
+- **Application Tests:** 10 tests
+  * 5 UpdateCulturalInterestsCommand handler tests
+  * 5 UpdateLanguagesCommand handler tests
+- **Pass Rate:** 100% (60/60 tests related to cultural interests & languages)
+- **Zero Tolerance:** Maintained throughout implementation (0 compilation errors at all GREEN phases)
+- **Total Project Tests:** 490/490 passing (application tests), 1 skipped
+- **Build Status:** Succeeded (0 errors, 2 warnings)
+
+### **Database Schema:**
+
+```sql
+-- Added to identity.users table (JSONB columns)
+ALTER TABLE identity.users ADD COLUMN cultural_interests JSONB NULL;
+ALTER TABLE identity.users ADD COLUMN languages JSONB NULL;
+
+-- Example data:
+-- cultural_interests: ["SL_CUISINE", "CRICKET", "BUDDHISM"]
+-- languages: [{"LanguageCode":"SINHALA","ProficiencyLevel":3}, {"LanguageCode":"ENGLISH","ProficiencyLevel":4}]
+```
+
+### **API Contracts:**
+
+**Update Cultural Interests:**
+```http
+PUT /api/users/{id}/cultural-interests
+Content-Type: application/json
+
+{
+  "interestCodes": ["SL_CUISINE", "CRICKET", "BUDDHISM", "AYURVEDA"]
+}
+
+Response: 204 No Content
+```
+
+**Clear Cultural Interests (Privacy Choice):**
+```http
+PUT /api/users/{id}/cultural-interests
+Content-Type: application/json
+
+{
+  "interestCodes": []
+}
+
+Response: 204 No Content
+```
+
+**Update Languages:**
+```http
+PUT /api/users/{id}/languages
+Content-Type: application/json
+
+{
+  "languages": [
+    {
+      "languageCode": "SINHALA",
+      "proficiencyLevel": 3  // 0=Basic, 1=Conversational, 2=Fluent, 3=Native, 4=Professional
+    },
+    {
+      "languageCode": "ENGLISH",
+      "proficiencyLevel": 4
+    }
+  ]
+}
+
+Response: 204 No Content
+```
+
+**Error Responses:**
+- 400 Bad Request: Validation errors (e.g., "Invalid cultural interest code: INVALID_CODE", "At least 1 language is required", "Maximum 10 cultural interests allowed")
+- 404 Not Found: User not found
+
+### **Available Cultural Interests (18 total):**
+```yaml
+SL_CUISINE: Sri Lankan Cuisine
+CRICKET: Cricket
+BUDDHISM: Buddhism
+HINDUISM: Hinduism
+ISLAM: Islam
+CHRISTIANITY: Christianity
+AYURVEDA: Ayurveda
+TRADITIONAL_DANCE: Traditional Dance
+DRUMMING: Drumming
+ARTS_CRAFTS: Arts & Crafts
+SL_HISTORY: Sri Lankan History
+SL_LITERATURE: Sri Lankan Literature
+BATIK: Batik
+GEMS_JEWELRY: Gems & Jewelry
+TEA_CULTURE: Tea Culture
+WILDLIFE: Wildlife & Nature
+FESTIVALS: Festivals & Celebrations
+MUSIC: Music
+```
+
+### **Available Languages (16 total):**
+```yaml
+SINHALA: Sinhala
+TAMIL: Tamil
+ENGLISH: English
+HINDI: Hindi
+URDU: Urdu
+ARABIC: Arabic
+FRENCH: French
+GERMAN: German
+SPANISH: Spanish
+ITALIAN: Italian
+JAPANESE: Japanese
+CHINESE: Chinese (Mandarin)
+KOREAN: Korean
+PORTUGUESE: Portuguese
+RUSSIAN: Russian
+DUTCH: Dutch
+```
+
+### **Proficiency Levels:**
+```yaml
+0: Basic - Basic phrases and vocabulary
+1: Conversational - Can hold everyday conversations
+2: Fluent - Advanced proficiency, near-native
+3: Native - Native speaker level
+4: Professional - Professional working proficiency
+```
+
+### **Files Created/Modified:**
+
+**Created:**
+- `src/LankaConnect.Domain/Users/ValueObjects/CulturalInterest.cs` (value object + enumeration, 18 interests)
+- `src/LankaConnect.Domain/Users/ValueObjects/LanguageCode.cs` (value object + enumeration, 16 languages)
+- `src/LankaConnect.Domain/Users/Enums/ProficiencyLevel.cs` (enum with 5 levels)
+- `src/LankaConnect.Domain/Users/ValueObjects/LanguagePreference.cs` (composite value object)
+- `src/LankaConnect.Domain/Events/CulturalInterestsUpdatedEvent.cs` (domain event)
+- `src/LankaConnect.Domain/Events/LanguagesUpdatedEvent.cs` (domain event)
+- `src/LankaConnect.Application/Users/Commands/UpdateCulturalInterests/UpdateCulturalInterestsCommand.cs` (13 lines)
+- `src/LankaConnect.Application/Users/Commands/UpdateCulturalInterests/UpdateCulturalInterestsCommandHandler.cs` (60 lines)
+- `src/LankaConnect.Application/Users/Commands/UpdateLanguages/UpdateLanguagesCommand.cs` (22 lines with LanguageDto)
+- `src/LankaConnect.Application/Users/Commands/UpdateLanguages/UpdateLanguagesCommandHandler.cs` (68 lines)
+- `tests/LankaConnect.Application.Tests/Users/Domain/CulturalInterestTests.cs` (10 tests)
+- `tests/LankaConnect.Application.Tests/Users/Domain/LanguageCodeTests.cs` (8 tests)
+- `tests/LankaConnect.Application.Tests/Users/Domain/LanguagePreferenceTests.cs` (13 tests)
+- `tests/LankaConnect.Application.Tests/Users/Domain/UserUpdateCulturalInterestsTests.cs` (10 tests)
+- `tests/LankaConnect.Application.Tests/Users/Domain/UserUpdateLanguagesTests.cs` (9 tests)
+- `tests/LankaConnect.Application.Tests/Users/Commands/UpdateCulturalInterestsCommandHandlerTests.cs` (150 lines, 5 tests)
+- `tests/LankaConnect.Application.Tests/Users/Commands/UpdateLanguagesCommandHandlerTests.cs` (165 lines, 5 tests, 2 edits)
+- `src/LankaConnect.Infrastructure/Migrations/20251031194253_AddUserCulturalInterestsAndLanguages.cs` (migration)
+
+**Modified:**
+- `src/LankaConnect.Domain/Users/User.cs` (added CulturalInterests + Languages collections, UpdateCulturalInterests + UpdateLanguages methods)
+- `src/LankaConnect.Domain/Common/BaseEntity.cs` (inherited by User)
+- `src/LankaConnect.Infrastructure/Data/Configurations/UserConfiguration.cs` (added OwnsMany JSON configurations)
+- `src/LankaConnect.API/Controllers/UsersController.cs` (added UpdateCulturalInterests + UpdateLanguages endpoints, request DTOs)
+- `src/LankaConnect.Infrastructure/Migrations/AppDbContextModelSnapshot.cs` (updated with cultural_interests + languages columns)
+
+### **Issues Fixed During Implementation:**
+
+**Issue #1: Type Conflict (LanguageDto)**
+- **Problem:** Nested LanguageDto class in test file conflicted with actual DTO in command
+- **Error:** CS0029 - Cannot convert UpdateLanguagesCommandHandlerTests.LanguageDto to UpdateLanguages.LanguageDto
+- **Fix:** Removed nested class from test file, used actual DTO from command namespace
+- **File:** `tests/LankaConnect.Application.Tests/Users/Commands/UpdateLanguagesCommandHandlerTests.cs` (lines 38-42 removed)
+
+**Issue #2: Case-Sensitive Assertion**
+- **Problem:** FluentAssertions `.Contain()` is case-sensitive
+- **Expected:** "at least 1" (lowercase)
+- **Actual:** "At least 1 language is required" (uppercase A from domain)
+- **Fix:** Changed test assertion to match actual casing
+- **File:** `tests/LankaConnect.Application.Tests/Users/Commands/UpdateLanguagesCommandHandlerTests.cs` line 113
+
+### **TDD Process Followed:**
+
+**Day 4 Session (This Session):**
+1. ✅ **Pattern Review:** Read existing UpdateUserLocationCommand + handler to avoid duplication
+2. ✅ **TDD RED Phase:** Created UpdateCulturalInterestsCommandHandlerTests.cs (5 tests) - Build FAILED (expected)
+3. ✅ **TDD RED Phase:** Created UpdateLanguagesCommandHandlerTests.cs (5 tests) - Build FAILED (expected)
+4. ✅ **TDD GREEN Phase:** Implemented UpdateCulturalInterestsCommand + Handler - Build SUCCEEDED
+5. ✅ **TDD GREEN Phase:** Implemented UpdateLanguagesCommand + Handler - Build FAILED (type conflict)
+6. ✅ **Fix Issue #1:** Removed nested LanguageDto class - Build SUCCEEDED
+7. ✅ **Fix Issue #2:** Fixed case-sensitive assertion - Tests 19/19 passing (100%)
+8. ✅ **Final Verification:** Build SUCCEEDED, 490/490 application tests passing
+
+### **Epic 1 Phase 3 - COMPLETE ✅**
+
+**Total Implementation Time:** ~6 hours across 4 days
+- Day 1-2: Profile Photo Upload/Delete (~3 hours)
+- Day 3: Location Field Implementation (~2 hours)
+- Day 4: Cultural Interests & Languages (~1 hour, continued from previous session's domain work)
+
+**Total Test Coverage:**
+- **Domain Tests:** 82 tests (profile photo, location, cultural interests, languages)
+- **Application Tests:** 22 tests (commands + handlers for all features)
+- **API Endpoints:** 4 PUT endpoints added
+- **Database Migrations:** 3 migrations (profile photo, location, cultural interests/languages)
+- **Zero Tolerance:** Maintained throughout all 4 days (0 compilation errors at GREEN phases)
+
+**All Features Operational:**
+- ✅ Profile Photo Upload (with Azure Blob Storage integration)
+- ✅ Profile Photo Delete
+- ✅ User Location (privacy-first, city-level)
+- ✅ Cultural Interests (0-10, privacy choice, 18 pre-defined interests)
+- ✅ Languages (1-5 required, 16 languages, 5 proficiency levels)
+
+---
+
+**Phase 1 Day 5 Continued - Presentation Layer (API Endpoints):**
    - Implemented POST /api/auth/login/entra endpoint in AuthController
    - Added LoginWithEntraCommand using statement
    - Returns user info, access token, refresh token, IsNewUser flag

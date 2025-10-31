@@ -15,7 +15,21 @@ public class User : BaseEntity
     public PhoneNumber? PhoneNumber { get; private set; }
     public string? Bio { get; private set; }
     public bool IsActive { get; private set; }
-    
+
+    // Profile photo properties
+    public string? ProfilePhotoUrl { get; private set; }
+    public string? ProfilePhotoBlobName { get; private set; }
+
+    // Location property (nullable - privacy choice)
+    public UserLocation? Location { get; private set; }
+
+    // Cultural preferences (collections)
+    private readonly List<CulturalInterest> _culturalInterests = new();
+    public IReadOnlyCollection<CulturalInterest> CulturalInterests => _culturalInterests.AsReadOnly();
+
+    private readonly List<LanguagePreference> _languages = new();
+    public IReadOnlyCollection<LanguagePreference> Languages => _languages.AsReadOnly();
+
     // Authentication properties
     public IdentityProvider IdentityProvider { get; private set; }
     public string? ExternalProviderId { get; private set; }
@@ -359,5 +373,132 @@ public class User : BaseEntity
     public bool IsExternalProvider()
     {
         return IdentityProvider.IsExternalProvider();
+    }
+
+    /// <summary>
+    /// Updates the user's profile photo
+    /// </summary>
+    /// <param name="url">Azure Blob Storage URL for the profile photo</param>
+    /// <param name="blobName">Azure Blob Storage blob name for cleanup</param>
+    public Result UpdateProfilePhoto(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Profile photo URL is required");
+
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Profile photo blob name is required");
+
+        ProfilePhotoUrl = url.Trim();
+        ProfilePhotoBlobName = blobName.Trim();
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserProfilePhotoUpdatedEvent(Id, ProfilePhotoUrl, ProfilePhotoBlobName));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes the user's profile photo
+    /// </summary>
+    public Result RemoveProfilePhoto()
+    {
+        if (string.IsNullOrEmpty(ProfilePhotoUrl) || string.IsNullOrEmpty(ProfilePhotoBlobName))
+            return Result.Failure("No profile photo to remove");
+
+        var oldUrl = ProfilePhotoUrl;
+        var oldBlobName = ProfilePhotoBlobName;
+
+        ProfilePhotoUrl = null;
+        ProfilePhotoBlobName = null;
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserProfilePhotoRemovedEvent(Id, oldUrl, oldBlobName));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the user's location
+    /// </summary>
+    /// <param name="location">New location (nullable - user can choose not to share location for privacy)</param>
+    /// <returns>Success result</returns>
+    public Result UpdateLocation(UserLocation? location)
+    {
+        Location = location;
+        MarkAsUpdated();
+
+        // Only raise event if location is being set (not cleared)
+        if (location != null)
+        {
+            RaiseDomainEvent(new UserLocationUpdatedEvent(
+                Id,
+                Email.Value,
+                location.City,
+                location.State,
+                location.Country));
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates user's cultural interests (0-10 allowed)
+    /// Empty collection clears all interests (privacy choice)
+    /// </summary>
+    public Result UpdateCulturalInterests(IEnumerable<CulturalInterest>? interests)
+    {
+        var interestList = interests?.ToList() ?? new List<CulturalInterest>();
+
+        // Validate max 10 interests
+        if (interestList.Count > 10)
+        {
+            return Result.Failure("Cannot have more than 10 cultural interests");
+        }
+
+        // Clear and add interests (removes duplicates automatically via Distinct)
+        _culturalInterests.Clear();
+        _culturalInterests.AddRange(interestList.Distinct());
+
+        MarkAsUpdated();
+
+        // Only raise event if setting interests (not clearing)
+        if (_culturalInterests.Any())
+        {
+            RaiseDomainEvent(new CulturalInterestsUpdatedEvent(Id, _culturalInterests.AsReadOnly()));
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates user's language preferences (1-5 languages required)
+    /// Per architect guidance: At least 1 language required, maximum 5
+    /// </summary>
+    public Result UpdateLanguages(IEnumerable<LanguagePreference>? languages)
+    {
+        var languageList = languages?.ToList() ?? new List<LanguagePreference>();
+
+        // Validate minimum 1 language required
+        if (!languageList.Any())
+        {
+            return Result.Failure("At least 1 language is required");
+        }
+
+        // Validate maximum 5 languages
+        if (languageList.Count > 5)
+        {
+            return Result.Failure("Cannot have more than 5 languages");
+        }
+
+        // Clear and add languages (removes duplicates automatically via Distinct)
+        _languages.Clear();
+        _languages.AddRange(languageList.Distinct());
+
+        MarkAsUpdated();
+
+        // Always raise event (languages are required, not privacy choice like interests)
+        RaiseDomainEvent(new LanguagesUpdatedEvent(Id, _languages.AsReadOnly()));
+
+        return Result.Success();
     }
 }

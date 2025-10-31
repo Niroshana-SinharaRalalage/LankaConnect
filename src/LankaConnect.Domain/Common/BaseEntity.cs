@@ -9,6 +9,11 @@ public abstract class BaseEntity : IEquatable<BaseEntity>
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
+    /// <summary>
+    /// Gets the list of domain events. Alias for DomainEvents property for backward compatibility.
+    /// </summary>
+    public IReadOnlyList<IDomainEvent> GetDomainEvents() => DomainEvents;
+
     protected BaseEntity()
     {
         Id = Guid.NewGuid();

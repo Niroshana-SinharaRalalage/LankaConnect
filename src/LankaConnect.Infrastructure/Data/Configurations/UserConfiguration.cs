@@ -49,6 +49,26 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Bio)
             .HasMaxLength(1000);
 
+        // Configure UserLocation value object (optional - privacy choice)
+        builder.OwnsOne(u => u.Location, location =>
+        {
+            location.Property(l => l.City)
+                .HasColumnName("city")
+                .HasMaxLength(100);
+
+            location.Property(l => l.State)
+                .HasColumnName("state")
+                .HasMaxLength(100);
+
+            location.Property(l => l.ZipCode)
+                .HasColumnName("zip_code")
+                .HasMaxLength(20);
+
+            location.Property(l => l.Country)
+                .HasColumnName("country")
+                .HasMaxLength(100);
+        });
+
         // Configure status
         builder.Property(u => u.IsActive)
             .IsRequired()
@@ -93,12 +113,66 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.LastLoginAt);
 
+        // Configure CulturalInterests collection (0-10 interests allowed, privacy choice)
+        builder.OwnsMany(u => u.CulturalInterests, ci =>
+        {
+            ci.WithOwner().HasForeignKey("UserId");
+            ci.ToTable("user_cultural_interests", "users");
+
+            ci.Property<int>("Id")
+                .ValueGeneratedOnAdd();
+
+            ci.HasKey("Id");
+
+            // Store only the Code property (enumeration pattern - Code identifies the interest)
+            ci.Property(c => c.Code)
+                .HasColumnName("interest_code")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            // Index for efficient querying and uniqueness
+            ci.HasIndex("UserId", "Code")
+                .HasDatabaseName("ix_user_cultural_interests_user_code")
+                .IsUnique(); // Prevent duplicate interests per user
+        });
+
+        // Configure Languages collection (1-5 languages required)
+        builder.OwnsMany(u => u.Languages, lang =>
+        {
+            lang.WithOwner().HasForeignKey("UserId");
+            lang.ToTable("user_languages", "users");
+
+            lang.Property<int>("Id")
+                .ValueGeneratedOnAdd();
+
+            lang.HasKey("Id");
+
+            // Configure LanguageCode value object - store only the Code property
+            lang.OwnsOne(l => l.Language, languageCode =>
+            {
+                languageCode.Property(lc => lc.Code)
+                    .HasColumnName("language_code")
+                    .HasMaxLength(10)
+                    .IsRequired();
+
+                // Index for efficient querying and uniqueness on language_code column
+                languageCode.HasIndex(lc => lc.Code)
+                    .HasDatabaseName("ix_user_languages_code");
+            });
+
+            // Configure ProficiencyLevel enum
+            lang.Property(l => l.Proficiency)
+                .HasColumnName("proficiency_level")
+                .HasConversion<int>()
+                .IsRequired();
+        });
+
         // Configure RefreshTokens collection
         builder.OwnsMany(u => u.RefreshTokens, rt =>
         {
             rt.WithOwner().HasForeignKey("UserId");
             rt.ToTable("user_refresh_tokens", "identity");
-            
+
             rt.Property(t => t.Token)
                 .HasMaxLength(255)
                 .IsRequired();
@@ -125,7 +199,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             rt.HasIndex(t => t.Token)
                 .IsUnique()
                 .HasDatabaseName("ix_user_refresh_tokens_token");
-                
+
             rt.HasIndex(t => t.ExpiresAt)
                 .HasDatabaseName("ix_user_refresh_tokens_expires_at");
         });

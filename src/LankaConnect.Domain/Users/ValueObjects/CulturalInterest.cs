@@ -9,8 +9,13 @@ namespace LankaConnect.Domain.Users.ValueObjects;
 /// </summary>
 public sealed class CulturalInterest : ValueObject
 {
-    public string Code { get; }
-    public string Name { get; }
+    public string Code { get; internal set; } = null!;
+    public string Name { get; internal set; } = null!;
+
+    // Parameterless constructor for EF Core
+    private CulturalInterest()
+    {
+    }
 
     private CulturalInterest(string code, string name)
     {

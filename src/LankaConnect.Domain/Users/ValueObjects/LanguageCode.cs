@@ -9,9 +9,14 @@ namespace LankaConnect.Domain.Users.ValueObjects;
 /// </summary>
 public sealed class LanguageCode : ValueObject
 {
-    public string Code { get; }
-    public string Name { get; }
-    public string NativeName { get; }
+    public string Code { get; internal set; } = null!;
+    public string Name { get; internal set; } = null!;
+    public string NativeName { get; internal set; } = null!;
+
+    // Parameterless constructor for EF Core
+    private LanguageCode()
+    {
+    }
 
     private LanguageCode(string code, string name, string nativeName)
     {

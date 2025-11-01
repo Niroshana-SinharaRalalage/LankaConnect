@@ -130,6 +130,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(50)
                 .IsRequired();
 
+            // Ignore Name property - it's computed from the static enumeration
+            ci.Ignore(c => c.Name);
+
             // Index for efficient querying and uniqueness
             ci.HasIndex("UserId", "Code")
                 .HasDatabaseName("ix_user_cultural_interests_user_code")
@@ -157,6 +160,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                     .HasColumnName("language_code")
                     .HasMaxLength(10)
                     .IsRequired();
+
+                // Ignore Name and NativeName - they're computed from the static enumeration
+                languageCode.Ignore(lc => lc.Name);
+                languageCode.Ignore(lc => lc.NativeName);
 
                 // Index for efficient querying and uniqueness on language_code column
                 languageCode.HasIndex(lc => lc.Code)

@@ -9,8 +9,13 @@ namespace LankaConnect.Domain.Users.ValueObjects;
 /// </summary>
 public sealed class LanguagePreference : ValueObject
 {
-    public LanguageCode Language { get; }
-    public ProficiencyLevel Proficiency { get; }
+    public LanguageCode Language { get; internal set; } = null!;
+    public ProficiencyLevel Proficiency { get; internal set; }
+
+    // Parameterless constructor for EF Core
+    private LanguagePreference()
+    {
+    }
 
     private LanguagePreference(LanguageCode language, ProficiencyLevel proficiency)
     {

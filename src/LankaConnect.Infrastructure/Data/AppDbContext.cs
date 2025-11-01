@@ -92,6 +92,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         // Ignore all entity types from Domain that aren't explicitly configured above
         // This prevents EF Core from trying to map monitoring/infrastructure/database models
+        // CRITICAL: Do NOT ignore ValueObject types - they are handled via OwnsOne/OwnsMany
         var configuredEntityTypes = new[]
         {
             typeof(User),
@@ -109,11 +110,19 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Get all types from Domain assembly that aren't in our configured list
         var domainAssembly = typeof(BaseEntity).Assembly;
+        var valueObjectType = typeof(ValueObject);
+
         var allDomainTypes = domainAssembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract);
 
         foreach (var type in allDomainTypes)
         {
+            // Skip value objects - they are configured via OwnsOne/OwnsMany in entity configurations
+            if (valueObjectType.IsAssignableFrom(type))
+            {
+                continue;
+            }
+
             // If it's not in our configured list and EF Core hasn't explicitly configured it, ignore it
             if (!configuredEntityTypes.Contains(type))
             {

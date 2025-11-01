@@ -13,13 +13,12 @@ public class UserRepository : Repository<User>, IUserRepository
     /// <summary>
     /// Override to include Epic 1 Phase 3 navigation properties (CulturalInterests, Languages)
     /// Base Repository uses FindAsync which doesn't load OwnsMany collections
-    /// EF Core requires explicit Include() for OwnsMany relationships
+    /// Using AsSplitQuery() forces EF Core to load OwnsMany owned entities
     /// </summary>
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
-            .Include(u => u.CulturalInterests)
-            .Include(u => u.Languages)
+            .AsSplitQuery()
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }

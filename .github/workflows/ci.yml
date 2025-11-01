@@ -69,16 +69,16 @@ jobs:
       - name: Build Test Projects
         run: |
           echo "::group::Building Test Projects"
-          dotnet build tests/LankaConnect.Domain.Tests/LankaConnect.Domain.Tests.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
+          dotnet build tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
           dotnet build tests/LankaConnect.Infrastructure.Tests/LankaConnect.Infrastructure.Tests.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
           dotnet build tests/LankaConnect.TestUtilities/LankaConnect.TestUtilities.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
           echo "::endgroup::"
 
-      - name: Run Domain Tests (Quality Gate: >95% Success)
-        id: domain-tests
+      - name: Run Application Tests (Quality Gate: >95% Success)
+        id: application-tests
         run: |
-          echo "::group::Running Domain Tests"
-          dotnet test tests/LankaConnect.Domain.Tests/LankaConnect.Domain.Tests.csproj \
+          echo "::group::Running Application Tests (includes Domain tests)"
+          dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
             --no-build \
             --logger trx \
@@ -281,13 +281,13 @@ jobs:
         run: |
           echo "::group::Cultural Intelligence Validation"
           # Run Cultural Intelligence specific tests
-          dotnet test tests/LankaConnect.Domain.Tests/LankaConnect.Domain.Tests.csproj \
+          dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
             --logger trx \
             --results-directory TestResults/Cultural \
-            --filter "Category=CulturalIntelligence|DisplayName~Cultural" \
+            --filter "FullyQualifiedName~Cultural|FullyQualifiedName~Language" \
             --verbosity normal || true
-          
+
           # Validate Sacred Event Priority Matrix functionality
           echo "✅ Sacred Event Priority Matrix validation completed"
           echo "::endgroup::"
@@ -332,12 +332,12 @@ jobs:
       - name: Run All Available Tests
         run: |
           echo "::group::Comprehensive Test Execution"
-          
-          # Run Domain Tests
-          dotnet test tests/LankaConnect.Domain.Tests/LankaConnect.Domain.Tests.csproj \
+
+          # Run Application Tests (includes Domain tests)
+          dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
             --logger trx \
-            --results-directory TestResults/Domain \
+            --results-directory TestResults/Application \
             --collect:"XPlat Code Coverage" \
             --verbosity normal
 
@@ -348,16 +348,6 @@ jobs:
             --results-directory TestResults/Infrastructure \
             --collect:"XPlat Code Coverage" \
             --verbosity normal || true
-
-          # Run Application Tests (if Application layer is buildable)
-          if [[ "${{ needs.selective-application-build.outputs.buildable-modules }}" == *"Application"* ]]; then
-            dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
-              -c ${{ env.BUILD_CONFIGURATION }} \
-              --logger trx \
-              --results-directory TestResults/Application \
-              --collect:"XPlat Code Coverage" \
-              --verbosity normal || true
-          fi
 
           # Run Integration Tests
           dotnet test tests/LankaConnect.IntegrationTests/LankaConnect.IntegrationTests.csproj \

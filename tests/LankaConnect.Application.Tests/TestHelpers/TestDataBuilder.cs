@@ -110,6 +110,51 @@ public static class TestDataBuilder
         return User.Create(email, _fixture.Create<string>(), _fixture.Create<string>()).Value;
     }
 
+    // Epic 1 Phase 3: Test Helpers for Profile Enhancement
+    public static User CreateUserWithProfilePhoto()
+    {
+        var user = CreateValidUser();
+        user.UpdateProfilePhoto("https://example.com/photo.jpg", "test-photo.jpg");
+        return user;
+    }
+
+    public static User CreateUserWithLocation()
+    {
+        var user = CreateValidUser();
+        var location = LankaConnect.Domain.Users.ValueObjects.UserLocation.Create("New York", "NY", "10001", "USA").Value;
+        user.UpdateLocation(location);
+        return user;
+    }
+
+    public static User CreateUserWithCulturalInterests()
+    {
+        var user = CreateValidUser();
+        var interests = new List<LankaConnect.Domain.Users.ValueObjects.CulturalInterest>
+        {
+            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.SriLankanCuisine,
+            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.BuddhistFestivals,
+            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.CricketCulture
+        };
+        user.UpdateCulturalInterests(interests);
+        return user;
+    }
+
+    public static User CreateUserWithLanguages()
+    {
+        var user = CreateValidUser();
+        var languages = new List<LankaConnect.Domain.Users.ValueObjects.LanguagePreference>
+        {
+            LankaConnect.Domain.Users.ValueObjects.LanguagePreference.Create(
+                LankaConnect.Domain.Users.ValueObjects.LanguageCode.English,
+                LankaConnect.Domain.Users.Enums.ProficiencyLevel.Advanced).Value,
+            LankaConnect.Domain.Users.ValueObjects.LanguagePreference.Create(
+                LankaConnect.Domain.Users.ValueObjects.LanguageCode.Sinhala,
+                LankaConnect.Domain.Users.Enums.ProficiencyLevel.Native).Value
+        };
+        user.UpdateLanguages(languages);
+        return user;
+    }
+
     public static Business CreateValidBusiness(Guid ownerId)
     {
         var businessData = CreateValidUsBusinessCommand(ownerId);

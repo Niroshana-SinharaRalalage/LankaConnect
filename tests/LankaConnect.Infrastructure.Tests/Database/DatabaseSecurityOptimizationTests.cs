@@ -107,13 +107,13 @@ namespace LankaConnect.Infrastructure.Tests.Database
         [InlineData("Islamic", "Eid", "Arabic", "PAKISTAN")]
         [InlineData("Sikh", "Vaisakhi", "Punjabi", "PUNJAB")]
         public async Task CulturalContentEncryption_Should_PreserveCulturalMetadata(
-            string religion, string event, string language, string region)
+            string religion, string eventName, string language, string region)
         {
             // Arrange
             var culturalContent = new CulturalContent
             {
                 Religion = religion,
-                Event = event,
+                Event = eventName,
                 Language = language,
                 Region = region,
                 Content = "Sacred cultural content",

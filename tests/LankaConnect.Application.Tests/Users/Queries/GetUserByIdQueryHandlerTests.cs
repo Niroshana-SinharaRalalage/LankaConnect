@@ -150,4 +150,114 @@ public class GetUserByIdQueryHandlerTests
         _userRepository.Verify(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
         _userRepository.VerifyNoOtherCalls();
     }
+
+    // Epic 1 Phase 3: Profile Enhancement - GET Endpoint Tests
+
+    [Fact]
+    public async Task Handle_WithUserWithProfilePhoto_ShouldReturnProfilePhotoUrl()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new GetUserByIdQuery(userId);
+        var user = TestDataBuilder.CreateUserWithProfilePhoto();
+
+        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ProfilePhotoUrl.Should().NotBeNullOrEmpty();
+        result.Value.ProfilePhotoUrl.Should().Be(user.ProfilePhotoUrl);
+    }
+
+    [Fact]
+    public async Task Handle_WithUserWithLocation_ShouldReturnLocationDetails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new GetUserByIdQuery(userId);
+        var user = TestDataBuilder.CreateUserWithLocation();
+
+        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Location.Should().NotBeNull();
+        result.Value.Location!.City.Should().Be(user.Location!.City);
+        result.Value.Location.State.Should().Be(user.Location.State);
+        result.Value.Location.ZipCode.Should().Be(user.Location.ZipCode);
+        result.Value.Location.Country.Should().Be(user.Location.Country);
+    }
+
+    [Fact]
+    public async Task Handle_WithUserWithCulturalInterests_ShouldReturnInterestCodes()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new GetUserByIdQuery(userId);
+        var user = TestDataBuilder.CreateUserWithCulturalInterests();
+
+        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.CulturalInterests.Should().NotBeEmpty();
+        result.Value.CulturalInterests.Should().HaveCount(user.CulturalInterests.Count);
+        result.Value.CulturalInterests.Should().Contain(user.CulturalInterests.Select(ci => ci.Code));
+    }
+
+    [Fact]
+    public async Task Handle_WithUserWithLanguages_ShouldReturnLanguagesWithProficiency()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new GetUserByIdQuery(userId);
+        var user = TestDataBuilder.CreateUserWithLanguages();
+
+        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Languages.Should().NotBeEmpty();
+        result.Value.Languages.Should().HaveCount(user.Languages.Count);
+        result.Value.Languages.First().LanguageCode.Should().Be(user.Languages.First().Language.Code);
+        result.Value.Languages.First().ProficiencyLevel.Should().Be(user.Languages.First().Proficiency);
+    }
+
+    [Fact]
+    public async Task Handle_WithUserWithoutEpic1Phase3Fields_ShouldReturnEmptyOrNullValues()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new GetUserByIdQuery(userId);
+        var user = TestDataBuilder.CreateValidUser(); // User without Epic 1 Phase 3 fields
+
+        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ProfilePhotoUrl.Should().BeNull();
+        result.Value.Location.Should().BeNull();
+        result.Value.CulturalInterests.Should().BeEmpty();
+        result.Value.Languages.Should().BeEmpty();
+    }
 }

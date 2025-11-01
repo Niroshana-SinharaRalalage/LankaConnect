@@ -33,7 +33,23 @@ public class GetUserByIdQueryHandler : IQueryHandler<GetUserByIdQuery, UserDto>
             Bio = user.Bio,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
-            UpdatedAt = user.UpdatedAt
+            UpdatedAt = user.UpdatedAt,
+
+            // Epic 1 Phase 3: Profile Enhancement Fields
+            ProfilePhotoUrl = user.ProfilePhotoUrl,
+            Location = user.Location != null ? new UserLocationDto
+            {
+                City = user.Location.City,
+                State = user.Location.State,
+                ZipCode = user.Location.ZipCode,
+                Country = user.Location.Country
+            } : null,
+            CulturalInterests = user.CulturalInterests.Select(ci => ci.Code).ToList(),
+            Languages = user.Languages.Select(l => new LanguageDto
+            {
+                LanguageCode = l.Language.Code,
+                ProficiencyLevel = l.Proficiency
+            }).ToList()
         };
 
         return Result<UserDto>.Success(userDto);

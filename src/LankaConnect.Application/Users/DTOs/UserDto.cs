@@ -12,4 +12,10 @@ public record UserDto
     public bool IsActive { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+
+    // Epic 1 Phase 3: Profile Enhancement Fields
+    public string? ProfilePhotoUrl { get; init; }
+    public UserLocationDto? Location { get; init; }
+    public List<string> CulturalInterests { get; init; } = new();
+    public List<LanguageDto> Languages { get; init; } = new();
 }

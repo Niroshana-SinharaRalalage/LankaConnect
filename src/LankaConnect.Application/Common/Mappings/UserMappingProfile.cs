@@ -11,6 +11,21 @@ public class UserMappingProfile : Profile
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Value))
             .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber != null ? src.PhoneNumber.Value : null))
-            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName));
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
+            // Epic 1 Phase 3: Profile Enhancement Fields
+            .ForMember(dest => dest.ProfilePhotoUrl, opt => opt.MapFrom(src => src.ProfilePhotoUrl))
+            .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.Location != null ? new UserLocationDto
+            {
+                City = src.Location.City,
+                State = src.Location.State,
+                ZipCode = src.Location.ZipCode,
+                Country = src.Location.Country
+            } : null))
+            .ForMember(dest => dest.CulturalInterests, opt => opt.MapFrom(src => src.CulturalInterests.Select(ci => ci.Code).ToList()))
+            .ForMember(dest => dest.Languages, opt => opt.MapFrom(src => src.Languages.Select(l => new LanguageDto
+            {
+                LanguageCode = l.Language.Code,
+                ProficiencyLevel = l.Proficiency
+            }).ToList()));
     }
 }

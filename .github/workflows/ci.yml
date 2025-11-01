@@ -31,7 +31,7 @@ jobs:
       domain-status: ${{ steps.validate-foundation.outputs.domain-status }}
       infrastructure-status: ${{ steps.validate-foundation.outputs.infrastructure-status }}
       test-success-rate: ${{ steps.validate-foundation.outputs.test-success-rate }}
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

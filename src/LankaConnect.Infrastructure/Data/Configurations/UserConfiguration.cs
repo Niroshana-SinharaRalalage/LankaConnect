@@ -136,6 +136,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .IsUnique(); // Prevent duplicate interests per user
         });
 
+        // Auto-include CulturalInterests when loading User
+        builder.Navigation(u => u.CulturalInterests).AutoInclude();
+
         // Configure Languages collection (1-5 languages required)
         builder.OwnsMany(u => u.Languages, lang =>
         {
@@ -166,6 +169,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasConversion<int>()
                 .IsRequired();
         });
+
+        // Auto-include Languages when loading User
+        builder.Navigation(u => u.Languages).AutoInclude();
 
         // Configure RefreshTokens collection
         builder.OwnsMany(u => u.RefreshTokens, rt =>

@@ -93,25 +93,25 @@ jobs:
           DOMAIN_STATUS="PASSED"
           INFRASTRUCTURE_STATUS="PASSED"
           TEST_SUCCESS_RATE="97.3"
-          
+
           # Validate quality gates
           if [ "${{ steps.build-domain.outputs.domain-exit-code }}" != "0" ]; then
             DOMAIN_STATUS="FAILED"
             echo "❌ Domain Layer Quality Gate FAILED: Compilation errors detected"
             exit 1
           fi
-          
+
           if [ "${{ steps.build-infrastructure.outputs.infrastructure-exit-code }}" != "0" ]; then
             INFRASTRUCTURE_STATUS="FAILED"
             echo "❌ Infrastructure Layer Quality Gate FAILED: Compilation errors detected"
             exit 1
           fi
-          
+
           echo "✅ Foundation Quality Gates PASSED"
           echo "   - Domain Layer: $DOMAIN_STATUS"
           echo "   - Infrastructure Layer: $INFRASTRUCTURE_STATUS"
           echo "   - Test Success Rate: $TEST_SUCCESS_RATE%"
-          
+
           echo "domain-status=$DOMAIN_STATUS" >> $GITHUB_OUTPUT
           echo "infrastructure-status=$INFRASTRUCTURE_STATUS" >> $GITHUB_OUTPUT
           echo "test-success-rate=$TEST_SUCCESS_RATE" >> $GITHUB_OUTPUT
@@ -133,7 +133,7 @@ jobs:
     outputs:
       buildable-modules: ${{ steps.identify-buildable.outputs.buildable-modules }}
       application-status: ${{ steps.selective-build.outputs.application-status }}
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -150,13 +150,13 @@ jobs:
         id: identify-buildable
         run: |
           echo "::group::Analyzing Application Layer Modules"
-          
+
           # Test build Application layer to identify error count
           BUILD_OUTPUT=$(dotnet build src/LankaConnect.Application/LankaConnect.Application.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore 2>&1 || true)
           ERROR_COUNT=$(echo "$BUILD_OUTPUT" | grep -E "error(s)?" | tail -1 | grep -oE '[0-9]+' | head -1 || echo "0")
-          
+
           echo "Application Layer Error Count: $ERROR_COUNT"
-          
+
           if [ "$ERROR_COUNT" -gt 50 ]; then
             echo "⚠️  Application Layer has $ERROR_COUNT errors (>50 threshold)"
             echo "🔄 Using selective build strategy - skipping Application layer"
@@ -167,7 +167,7 @@ jobs:
             BUILDABLE_MODULES="Domain,Infrastructure,Application,Tests"
             APPLICATION_STATUS="BUILDABLE"
           fi
-          
+
           echo "buildable-modules=$BUILDABLE_MODULES" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
@@ -177,11 +177,11 @@ jobs:
           echo "::group::Executing Selective Build"
           MODULES="${{ steps.identify-buildable.outputs.buildable-modules }}"
           echo "Building modules: $MODULES"
-          
+
           # Always build stable components
           dotnet build src/LankaConnect.Domain/LankaConnect.Domain.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
           dotnet build src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
-          
+
           # Conditionally build Application if it's buildable
           if [[ "$MODULES" == *"Application"* ]]; then
             echo "Building Application layer..."
@@ -189,13 +189,13 @@ jobs:
               echo "⚠️  Application build failed, continuing with selective strategy"
             }
           fi
-          
+
           # Build API with tolerance for Application layer issues
           echo "Building API layer with dependency tolerance..."
           dotnet build src/LankaConnect.API/LankaConnect.API.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore || {
             echo "⚠️  API build failed due to Application layer dependencies"
           }
-          
+
           APPLICATION_STATUS="${{ steps.identify-buildable.outputs.buildable-modules }}"
           echo "application-status=$APPLICATION_STATUS" >> $GITHUB_OUTPUT
           echo "::endgroup::"
@@ -206,7 +206,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [foundation-validation, selective-application-build]
     if: success()
-    
+
     services:
       postgres:
         image: postgres:15-alpine
@@ -252,7 +252,7 @@ jobs:
             echo "Waiting for PostgreSQL to be ready..."
             sleep 2
           done
-          
+
           # Run infrastructure tests that validate database connectivity
           dotnet test tests/LankaConnect.Infrastructure.Tests/LankaConnect.Infrastructure.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
@@ -267,7 +267,7 @@ jobs:
           echo "::group::Cache Integration Tests"
           # Validate Redis connectivity
           redis-cli -h localhost -p 6379 ping
-          
+
           # Run cache-related tests
           dotnet test tests/LankaConnect.Infrastructure.Tests/LankaConnect.Infrastructure.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
@@ -316,7 +316,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [foundation-validation, selective-application-build, integration-validation]
     if: success()
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -370,25 +370,25 @@ jobs:
       - name: TDD Compliance Report
         run: |
           echo "::group::TDD Compliance Assessment"
-          
+
           # Calculate test metrics
           TOTAL_TESTS=$(find TestResults -name "*.trx" -exec grep -o "total=\"[0-9]*\"" {} \; | grep -o "[0-9]*" | awk '{sum += $1} END {print sum}' || echo "1605")
           PASSED_TESTS=$(find TestResults -name "*.trx" -exec grep -o "passed=\"[0-9]*\"" {} \; | grep -o "[0-9]*" | awk '{sum += $1} END {print sum}' || echo "1562")
-          
+
           SUCCESS_RATE=$(echo "scale=1; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)
-          
+
           echo "📊 TDD Compliance Metrics:"
           echo "   📝 Total Tests: $TOTAL_TESTS"
           echo "   ✅ Passed Tests: $PASSED_TESTS"
           echo "   📈 Success Rate: $SUCCESS_RATE%"
           echo "   🎯 Target: >95% success rate"
-          
+
           if (( $(echo "$SUCCESS_RATE >= 95" | bc -l) )); then
             echo "✅ TDD Compliance: PASSED"
           else
             echo "⚠️  TDD Compliance: BELOW TARGET"
           fi
-          
+
           echo "::endgroup::"
 
       - name: Upload Coverage Reports
@@ -412,43 +412,43 @@ jobs:
     runs-on: ubuntu-latest
     needs: [foundation-validation, selective-application-build, integration-validation, tdd-compliance]
     if: always()
-    
+
     steps:
       - name: Quality Gates Assessment
         run: |
           echo "::group::Quality Gates Summary"
           echo "🏗️  LankaConnect CI/CD Pipeline - Quality Gates Assessment"
           echo "=================================================="
-          
+
           # Foundation Status
           DOMAIN_STATUS="${{ needs.foundation-validation.outputs.domain-status }}"
           INFRA_STATUS="${{ needs.foundation-validation.outputs.infrastructure-status }}"
           TEST_RATE="${{ needs.foundation-validation.outputs.test-success-rate }}"
-          
+
           echo "🏛️  Stage 1: Foundation Validation"
           echo "   Domain Layer: $DOMAIN_STATUS"
           echo "   Infrastructure: $INFRA_STATUS"
           echo "   Test Success: $TEST_RATE%"
-          
+
           # Application Status
           APP_STATUS="${{ needs.selective-application-build.outputs.application-status }}"
           BUILDABLE="${{ needs.selective-application-build.outputs.buildable-modules }}"
-          
+
           echo ""
           echo "🔄 Stage 2: Selective Build Strategy"
           echo "   Application Status: $APP_STATUS"
           echo "   Buildable Modules: $BUILDABLE"
-          
+
           echo ""
           echo "🔗 Stage 3: Integration Validation"
           echo "   Database: ${{ needs.integration-validation.result }}"
           echo "   Cultural Intelligence: Validated"
-          
+
           echo ""
           echo "🧪 Stage 4: TDD Compliance"
           echo "   Test Execution: ${{ needs.tdd-compliance.result }}"
           echo "   Coverage Reports: Generated"
-          
+
           echo ""
           echo "📋 Overall Pipeline Status"
           if [[ "$DOMAIN_STATUS" == "PASSED" && "$INFRA_STATUS" == "PASSED" ]]; then
@@ -460,7 +460,7 @@ jobs:
             echo "   ❌ Quality Gates: FAILED"
             echo "   ❌ Ready for Development: NO"
           fi
-          
+
           echo "=================================================="
           echo "::endgroup::"
 
@@ -470,14 +470,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [quality-gates-summary]
     if: |
-      success() && 
+      success() &&
       (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop') &&
       needs.foundation-validation.outputs.domain-status == 'PASSED' &&
       needs.foundation-validation.outputs.infrastructure-status == 'PASSED'
     environment:
       name: staging
       url: https://staging.lankaconnect.app
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -506,7 +506,7 @@ jobs:
           echo "::group::Staging Deployment"
           echo "🚀 Deploying LankaConnect to Staging Environment"
           echo "   Domain Layer: Ready"
-          echo "   Infrastructure: Ready" 
+          echo "   Infrastructure: Ready"
           echo "   Database: PostgreSQL configured"
           echo "   Cache: Redis configured"
           echo "   Cultural Intelligence: Features available"
@@ -519,13 +519,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-staging]
     if: |
-      success() && 
+      success() &&
       github.ref == 'refs/heads/master' &&
       (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
     environment:
       name: production
       url: https://app.lankaconnect.com
-    
+
     steps:
       - name: Production Deployment
         run: |

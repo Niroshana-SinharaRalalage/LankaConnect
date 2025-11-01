@@ -46,7 +46,7 @@ jobs:
       - name: Restore NuGet Packages
         run: dotnet restore LankaConnect.sln
 
-      - name: Build Domain Layer (Quality Gate: 0 Errors)
+      - name: "Build Domain Layer (Quality Gate: 0 Errors)"
         id: build-domain
         run: |
           echo "::group::Building Domain Layer"
@@ -56,7 +56,7 @@ jobs:
           echo "::endgroup::"
           exit $DOMAIN_EXIT_CODE
 
-      - name: Build Infrastructure Layer (Quality Gate: 0 Errors)
+      - name: "Build Infrastructure Layer (Quality Gate: 0 Errors)"
         id: build-infrastructure
         run: |
           echo "::group::Building Infrastructure Layer"
@@ -74,7 +74,7 @@ jobs:
           dotnet build tests/LankaConnect.TestUtilities/LankaConnect.TestUtilities.csproj -c ${{ env.BUILD_CONFIGURATION }} --no-restore
           echo "::endgroup::"
 
-      - name: Run Application Tests (Quality Gate: >95% Success)
+      - name: "Run Application Tests (Quality Gate: >95% Success)"
         id: application-tests
         run: |
           echo "::group::Running Application Tests (includes Domain tests)"

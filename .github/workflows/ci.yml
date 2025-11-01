@@ -81,7 +81,6 @@ jobs:
           echo "::group::Running Application Tests (includes Domain tests)"
           dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
-            --no-build \
             --logger trx \
             --results-directory TestResults \
             --collect:"XPlat Code Coverage" \

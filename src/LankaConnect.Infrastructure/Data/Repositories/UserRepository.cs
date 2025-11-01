@@ -10,6 +10,17 @@ public class UserRepository : Repository<User>, IUserRepository
     {
     }
 
+    /// <summary>
+    /// Override to include Epic 1 Phase 3 navigation properties (CulturalInterests, Languages)
+    /// Base Repository uses FindAsync which doesn't load OwnsMany collections
+    /// </summary>
+    public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+    }
+
     public async Task<User?> GetByEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
     {
         return await _dbSet

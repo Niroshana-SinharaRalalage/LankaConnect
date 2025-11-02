@@ -888,15 +888,23 @@ DUTCH: Dutch
    - Created EPIC-1-PHASE-2-DECISION-MATRIX.md (technology comparison)
    - Result: 4 comprehensive architecture documents (7,000+ words total)
 
-**TDD Metrics (Day 2):**
-- **Build**: 0 errors, 0 warnings (Zero Tolerance maintained)
-- **Application Tests**: 549/549 passing (100% pass rate)
-- **Integration Tests**: Skipped (not yet implemented for Phase 2)
-- **Test Coverage**: Domain layer ExternalLogin functionality fully covered
-- **Regressions**: 0 (all existing tests updated and passing)
-- **Commits**: 1 clean commit (101d009) following Zero Tolerance guidelines
+**TDD Metrics (Day 2 - Final):**
+- **Build**: 0 errors, 0 warnings (Zero Tolerance maintained throughout)
+- **Application Tests**: 571/571 passing (100% pass rate, +22 new tests)
+- **Integration Tests**: Not yet implemented for Phase 2
+- **Test Coverage**:
+  * Domain layer: ExternalLogin functionality fully covered
+  * Application layer: CQRS handlers fully covered (Link, Unlink, GetLinked)
+- **Regressions**: 0 (all 549 existing tests still passing)
+- **New Tests**: 22 comprehensive tests (8 Link + 8 Unlink + 6 Query)
+- **Commits**: 3 clean commits following Zero Tolerance guidelines
+  * 101d009 - IDP claim parsing and auto-linking
+  * ddf9a27 - PROGRESS_TRACKER update
+  * c59f5fe - CQRS handlers (Link, Unlink, GetLinked)
 - **Files Modified**: 8 files (3 source, 3 test, 2 docs)
-- **Files Created**: 4 architecture docs
+- **Files Created**:
+  * 4 architecture docs (ADR-003, diagrams, summary, decision matrix)
+  * 11 CQRS files (3 commands + 3 handlers + 3 validators + 1 query + 1 response)
 
 **Phase 2 Implementation Summary:**
 - ✅ Federated provider detection via idp claim (Microsoft/Facebook/Google/Apple)
@@ -906,13 +914,37 @@ DUTCH: Dutch
 - ✅ Logging and observability for federated provider detection
 - ✅ Zero Tolerance: All tests passing with zero regressions
 
+**Phase 2 Day 2 - CQRS Application Layer (COMPLETE):**
+7. ✅ **LinkExternalProviderCommand + Handler + Validator** (90 min - TDD)
+   - Created LinkExternalProviderCommand with UserId, Provider, ExternalProviderId, ProviderEmail
+   - Implemented LinkExternalProviderHandler (uses User.LinkExternalProvider domain logic)
+   - Created LinkExternalProviderValidator with FluentValidation rules
+   - Created 8 comprehensive tests (TDD RED → GREEN)
+   - Tests cover: success path, user not found, already linked, commit failures, multiple providers, domain events
+   - Result: 8/8 tests passing (100%)
+
+8. ✅ **UnlinkExternalProviderCommand + Handler + Validator** (90 min - TDD)
+   - Created UnlinkExternalProviderCommand with UserId, Provider
+   - Implemented UnlinkExternalProviderHandler (enforces last-auth-method business rule)
+   - Created UnlinkExternalProviderValidator with FluentValidation rules
+   - Created 8 comprehensive tests (TDD RED → GREEN)
+   - Tests cover: success path, user not found, not linked, last auth method, multiple providers, domain events
+   - Result: 8/8 tests passing (100%)
+
+9. ✅ **GetLinkedProvidersQuery + Handler + DTOs** (60 min - TDD)
+   - Created GetLinkedProvidersQuery following IQuery pattern
+   - Created LinkedProviderDto with Provider, DisplayName, ExternalProviderId, ProviderEmail, LinkedAt
+   - Implemented GetLinkedProvidersHandler (read-only query)
+   - Created 6 comprehensive tests (TDD RED → GREEN)
+   - Tests cover: empty list, multiple providers, user not found, display names, provider details
+   - Result: 6/6 tests passing (100%)
+
 **Phase 2 Day 2 - Remaining Work:**
-- [ ] Create LinkExternalProviderCommand + Handler + Validator (TDD - 8 tests)
-- [ ] Create UnlinkExternalProviderCommand + Handler + Validator (TDD - 6 tests)
-- [ ] Create GetLinkedProvidersQuery + Handler + DTO (TDD - 4 tests)
-- [ ] Update IUserRepository with GetByExternalLoginAsync method
-- [ ] Create API endpoints for external provider management
+- [ ] Create API endpoints (POST /api/users/{id}/external-providers/link)
+- [ ] Create API endpoints (DELETE /api/users/{id}/external-providers/{provider})
+- [ ] Create API endpoints (GET /api/users/{id}/external-providers)
 - [ ] Integration tests for multi-provider workflows
+- [ ] Update Swagger/OpenAPI documentation
 
 **Architecture Decision**: ADR-003 Social Login Multi-Provider Architecture
 **Implementation Strategy**: Federated Provider Abstraction with IDP Claim Parsing

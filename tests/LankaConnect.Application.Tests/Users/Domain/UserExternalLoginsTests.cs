@@ -192,19 +192,21 @@ public class UserExternalLoginsTests
     public void UnlinkExternalProvider_WhenLastAuthMethod_ShouldReturnFailure()
     {
         // Arrange - User with ONLY external login (no password)
+        // Note: CreateFromExternalProvider automatically links the Microsoft provider
         var email = Email.Create("external@example.com").Value;
         var user = User.CreateFromExternalProvider(
             IdentityProvider.EntraExternal,
             "entra-123",
             email,
             "John",
-            "Doe").Value;
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value).Value;
 
-        // Link a single Facebook provider
-        user.LinkExternalProvider(FederatedProvider.Facebook, "fb-123", "user@fb.com");
+        // User now has 1 auto-linked Microsoft provider (the only authentication method)
 
         // Act - Try to unlink the only authentication method
-        var result = user.UnlinkExternalProvider(FederatedProvider.Facebook);
+        var result = user.UnlinkExternalProvider(FederatedProvider.Microsoft);
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -231,23 +233,29 @@ public class UserExternalLoginsTests
     public void UnlinkExternalProvider_WhenUserHasOtherProviders_ShouldSucceed()
     {
         // Arrange - User with multiple external logins
+        // Note: CreateFromExternalProvider automatically links the Microsoft provider
         var email = Email.Create("external@example.com").Value;
         var user = User.CreateFromExternalProvider(
             IdentityProvider.EntraExternal,
             "entra-123",
             email,
             "John",
-            "Doe").Value;
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value).Value;
 
+        // User now has 1 auto-linked Microsoft provider
         user.LinkExternalProvider(FederatedProvider.Facebook, "fb-123", "user@fb.com");
         user.LinkExternalProvider(FederatedProvider.Google, "google-456", "user@google.com");
+        // User now has 3 external logins total: Microsoft, Facebook, Google
 
-        // Act - Unlink one provider (still has another)
+        // Act - Unlink one provider (still has 2 others)
         var result = user.UnlinkExternalProvider(FederatedProvider.Facebook);
 
         // Assert
         Assert.True(result.IsSuccess);
-        Assert.Single(user.ExternalLogins);
+        Assert.Equal(2, user.ExternalLogins.Count);
+        Assert.Contains(user.ExternalLogins, login => login.Provider == FederatedProvider.Microsoft);
         Assert.Contains(user.ExternalLogins, login => login.Provider == FederatedProvider.Google);
     }
 

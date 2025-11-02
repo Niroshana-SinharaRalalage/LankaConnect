@@ -66,6 +66,8 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
             UserRole.User).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))
@@ -234,6 +236,8 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
             UserRole.User).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))
@@ -283,6 +287,8 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
             UserRole.User).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))

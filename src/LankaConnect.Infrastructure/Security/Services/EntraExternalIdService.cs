@@ -158,7 +158,8 @@ public class EntraExternalIdService : IEntraExternalIdService
                 FirstName = claims.GivenName ?? ExtractFirstName(claims.Name),
                 LastName = claims.FamilyName ?? ExtractLastName(claims.Name),
                 DisplayName = claims.Name,
-                EmailVerified = true // Entra pre-verifies emails
+                EmailVerified = true, // Entra pre-verifies emails
+                IdentityProvider = claims.AllClaims.GetValueOrDefault("idp") // Epic 1 Phase 2: Extract federated provider
             };
 
             // Validate required fields

@@ -61,6 +61,19 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
         var entraUserInfo = userInfoResult.Value;
         _logger.LogInformation("Successfully validated Entra token for user: {Email}", entraUserInfo.Email);
 
+        // Epic 1 Phase 2: Parse federated provider from idp claim
+        var federatedProviderResult = FederatedProviderExtensions.FromIdpClaimValue(entraUserInfo.IdentityProvider);
+        if (federatedProviderResult.IsFailure)
+        {
+            // Default to Microsoft if idp claim is missing or invalid
+            _logger.LogWarning("Could not parse federated provider from idp claim '{IdpClaim}', defaulting to Microsoft",
+                entraUserInfo.IdentityProvider);
+            federatedProviderResult = Result<FederatedProvider>.Success(FederatedProvider.Microsoft);
+        }
+
+        var federatedProvider = federatedProviderResult.Value;
+        _logger.LogInformation("Detected federated provider: {Provider}", federatedProvider.ToDisplayName());
+
         // 3. Try to find existing user by external provider ID
         var existingUser = await _userRepository.GetByExternalProviderIdAsync(
             entraUserInfo.ObjectId,
@@ -91,12 +104,15 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
             }
 
             // Create new user using external provider factory method
+            // Epic 1 Phase 2: Pass federatedProvider to automatically link external login
             var createUserResult = User.CreateFromExternalProvider(
                 IdentityProvider.EntraExternal,
                 entraUserInfo.ObjectId,
                 emailResult.Value,
                 entraUserInfo.FirstName,
                 entraUserInfo.LastName,
+                federatedProvider,
+                entraUserInfo.Email, // Provider email
                 UserRole.User);
 
             if (createUserResult.IsFailure)

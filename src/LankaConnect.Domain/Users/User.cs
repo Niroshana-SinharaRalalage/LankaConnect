@@ -96,13 +96,24 @@ public class User : BaseEntity
 
     /// <summary>
     /// Creates a user from an external identity provider (e.g., Microsoft Entra External ID)
+    /// Epic 1 Phase 2: Enhanced to support federated social providers (Facebook, Google, Apple)
     /// </summary>
+    /// <param name="identityProvider">The identity provider (should be EntraExternal for social logins)</param>
+    /// <param name="externalProviderId">The external user ID from Entra (OID claim)</param>
+    /// <param name="email">User's email address</param>
+    /// <param name="firstName">User's first name</param>
+    /// <param name="lastName">User's last name</param>
+    /// <param name="federatedProvider">The federated social provider (Microsoft/Facebook/Google/Apple)</param>
+    /// <param name="providerEmail">Email from the social provider</param>
+    /// <param name="role">User's role (defaults to User)</param>
     public static Result<User> CreateFromExternalProvider(
         IdentityProvider identityProvider,
         string? externalProviderId,
         Email? email,
         string firstName,
         string lastName,
+        FederatedProvider federatedProvider,
+        string? providerEmail = null,
         UserRole role = UserRole.User)
     {
         // Validate that it's an external provider
@@ -128,6 +139,18 @@ public class User : BaseEntity
             IsEmailVerified = true, // External providers pre-verify emails
             PasswordHash = null // External providers manage passwords
         };
+
+        // Epic 1 Phase 2: Automatically link the federated provider
+        var linkResult = user.LinkExternalProvider(
+            federatedProvider,
+            externalProviderId.Trim(),
+            providerEmail ?? email.Value);
+
+        if (linkResult.IsFailure)
+        {
+            // This shouldn't happen for new users, but handle gracefully
+            return Result<User>.Failure($"Failed to link external provider: {linkResult.Error}");
+        }
 
         // Raise domain event specific to external provider creation
         user.RaiseDomainEvent(new UserCreatedFromExternalProviderEvent(

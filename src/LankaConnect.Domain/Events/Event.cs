@@ -2,6 +2,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
@@ -18,6 +19,8 @@ public class Event : BaseEntity
     public EventStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
+    public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
+    public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public int CurrentRegistrations => _registrations
@@ -32,7 +35,7 @@ public class Event : BaseEntity
     }
 
     private Event(EventTitle title, EventDescription description, DateTime startDate, DateTime endDate,
-        Guid organizerId, int capacity, EventLocation? location = null)
+        Guid organizerId, int capacity, EventLocation? location = null, EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         Title = title;
         Description = description;
@@ -42,10 +45,13 @@ public class Event : BaseEntity
         Capacity = capacity;
         Status = EventStatus.Draft;
         Location = location;
+        Category = category;
+        TicketPrice = ticketPrice;
     }
 
     public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,
-        DateTime endDate, Guid organizerId, int capacity, EventLocation? location = null)
+        DateTime endDate, Guid organizerId, int capacity, EventLocation? location = null,
+        EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         if (title == null)
             return Result<Event>.Failure("Title is required");
@@ -65,7 +71,7 @@ public class Event : BaseEntity
         if (capacity <= 0)
             return Result<Event>.Failure("Capacity must be greater than 0");
 
-        var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location);
+        var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location, category, ticketPrice);
         return Result<Event>.Success(@event);
     }
 
@@ -319,6 +325,15 @@ public class Event : BaseEntity
     /// Checks if event has a physical location set
     /// </summary>
     public bool HasLocation() => Location != null;
+
+    #endregion
+
+    #region Pricing Management (Epic 2 Phase 2)
+
+    /// <summary>
+    /// Checks if event is free (no ticket price or zero ticket price)
+    /// </summary>
+    public bool IsFree() => TicketPrice == null || TicketPrice.IsZero;
 
     #endregion
 }

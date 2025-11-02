@@ -58,6 +58,26 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CancellationReason)
             .HasMaxLength(500);
 
+        // Configure Category enum (Epic 2 Phase 2)
+        builder.Property(e => e.Category)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(EventCategory.Community);
+
+        // Configure TicketPrice as owned Money value object (Epic 2 Phase 2)
+        builder.OwnsOne(e => e.TicketPrice, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("ticket_price_amount")
+                .HasPrecision(18, 2); // Standard precision for currency
+
+            money.Property(m => m.Currency)
+                .HasColumnName("ticket_price_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
+        });
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

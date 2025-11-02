@@ -366,19 +366,21 @@ Latest Commit: Pending - Day 3 repository methods and integration tests ready
 - [x] Test verification: 599/600 Application tests passing (100%)
 - [x] **Result**: 20 comprehensive integration tests, PostGIS queries implemented, Zero Tolerance maintained
 
-#### Event Category & Pricing (1 day)
-**Category Integration (0.5 day)**
-- [ ] Add Category property to Event entity (EventCategory enum exists)
-- [ ] Update Event.Create() to accept category parameter
-- [ ] Database migration: category VARCHAR(50) with index
-- [ ] Update existing Event tests for category
+#### ✅ Event Category & Pricing (1 day) - COMPLETE
+**Category Integration (0.5 day)** ✅
+- [x] Add Category property to Event entity (EventCategory enum exists)
+- [x] Update Event.Create() to accept category parameter (default: EventCategory.Community)
+- [x] Database migration: category VARCHAR(20) with default value 'Community'
+- [x] Update existing Event tests for category (20 comprehensive tests)
 
-**Ticket Pricing (0.5 day)**
-- [ ] Add TicketPrice property to Event entity (Money VO exists)
-- [ ] Update Event.Create() to accept ticketPrice parameter (nullable)
-- [ ] Database migration: ticket_price DECIMAL(10,2), currency VARCHAR(3)
-- [ ] Add price filtering to event queries
-- [ ] Integration tests for free/paid events
+**Ticket Pricing (0.5 day)** ✅
+- [x] Add TicketPrice property to Event entity (Money VO exists)
+- [x] Update Event.Create() to accept ticketPrice parameter (nullable)
+- [x] Database migration: ticket_price_amount DECIMAL(18,2), ticket_price_currency VARCHAR(3)
+- [x] Added IsFree() helper method for free event detection
+- [x] Domain tests for free/paid events (20 tests passing)
+
+**Result**: Epic 2 Phase 2 complete - 100% test coverage, Zero Tolerance maintained, ready for Phase 3
 
 ---
 

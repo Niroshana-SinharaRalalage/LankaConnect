@@ -85,6 +85,16 @@ public class Registration : BaseEntity
         return Result.Success();
     }
 
+    // Internal method for Event aggregate to update quantity
+    internal void UpdateQuantity(int newQuantity)
+    {
+        if (newQuantity <= 0)
+            throw new ArgumentException("Quantity must be greater than 0", nameof(newQuantity));
+
+        Quantity = newQuantity;
+        MarkAsUpdated();
+    }
+
     private static bool IsValidTransition(RegistrationStatus from, RegistrationStatus to)
     {
         return (from, to) switch

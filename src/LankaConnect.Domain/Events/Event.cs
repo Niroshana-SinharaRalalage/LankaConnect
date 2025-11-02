@@ -158,16 +158,50 @@ public class Event : BaseEntity
     public Result CancelRegistration(Guid userId)
     {
         var registration = _registrations.FirstOrDefault(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);
-        
+
         if (registration == null)
             return Result.Failure("User is not registered for this event");
 
         registration.Cancel();
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
-        
+
+        return Result.Success();
+    }
+
+    public Result UpdateRegistration(Guid userId, int newQuantity)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (newQuantity <= 0)
+            return Result.Failure("Quantity must be greater than 0");
+
+        // Find existing registration
+        var registration = _registrations.FirstOrDefault(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);
+
+        if (registration == null)
+            return Result.Failure("User is not registered for this event");
+
+        var previousQuantity = registration.Quantity;
+        var quantityDelta = newQuantity - previousQuantity;
+
+        // If increasing quantity, check capacity
+        if (quantityDelta > 0)
+        {
+            if (!HasCapacityFor(quantityDelta))
+                return Result.Failure("Insufficient capacity to increase registration quantity");
+        }
+
+        // Update the registration
+        registration.UpdateQuantity(newQuantity);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new RegistrationQuantityUpdatedEvent(Id, userId, previousQuantity, newQuantity, DateTime.UtcNow));
+
         return Result.Success();
     }
 

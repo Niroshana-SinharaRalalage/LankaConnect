@@ -24,5 +24,12 @@ public class EventMappingProfile : Profile
             // Ticket price mapping (nullable)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
             .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (Domain.Shared.Enums.Currency?)null));
+
+        // Registration -> RsvpDto mapping
+        CreateMap<Registration, RsvpDto>()
+            .ForMember(dest => dest.EventTitle, opt => opt.Ignore())
+            .ForMember(dest => dest.EventStartDate, opt => opt.Ignore())
+            .ForMember(dest => dest.EventEndDate, opt => opt.Ignore())
+            .ForMember(dest => dest.EventStatus, opt => opt.Ignore());
     }
 }

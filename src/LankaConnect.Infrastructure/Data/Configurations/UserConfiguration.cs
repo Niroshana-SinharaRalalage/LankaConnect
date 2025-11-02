@@ -217,6 +217,44 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasDatabaseName("ix_user_refresh_tokens_expires_at");
         });
 
+        // Configure ExternalLogins collection (Epic 1 Phase 2 - Social Login)
+        builder.OwnsMany(u => u.ExternalLogins, el =>
+        {
+            el.WithOwner().HasForeignKey("UserId");
+            el.ToTable("external_logins", "identity");
+
+            el.Property(login => login.Provider)
+                .HasColumnName("provider")
+                .HasConversion<int>()
+                .IsRequired();
+
+            el.Property(login => login.ExternalProviderId)
+                .HasColumnName("external_provider_id")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            el.Property(login => login.ProviderEmail)
+                .HasColumnName("provider_email")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            el.Property(login => login.LinkedAt)
+                .HasColumnName("linked_at")
+                .IsRequired();
+
+            // Composite unique index: Prevent same provider+externalId from being linked twice
+            el.HasIndex(login => new { login.Provider, login.ExternalProviderId })
+                .IsUnique()
+                .HasDatabaseName("ix_external_logins_provider_external_id");
+
+            // Index for userId lookups
+            el.HasIndex("UserId")
+                .HasDatabaseName("ix_external_logins_user_id");
+        });
+
+        // Auto-include ExternalLogins when loading User
+        builder.Navigation(u => u.ExternalLogins).AutoInclude();
+
         // Configure audit fields
         builder.Property(u => u.CreatedAt)
             .IsRequired()

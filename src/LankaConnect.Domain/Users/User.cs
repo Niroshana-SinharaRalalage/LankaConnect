@@ -47,6 +47,10 @@ public class User : BaseEntity
     private readonly List<RefreshToken> _refreshTokens = new();
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
+    // External logins collection (for multi-provider social login)
+    private readonly List<ExternalLogin> _externalLogins = new();
+    public IReadOnlyCollection<ExternalLogin> ExternalLogins => _externalLogins.AsReadOnly();
+
     public string FullName => $"{FirstName} {LastName}";
 
     // EF Core constructor
@@ -500,5 +504,89 @@ public class User : BaseEntity
         RaiseDomainEvent(new LanguagesUpdatedEvent(Id, _languages.AsReadOnly()));
 
         return Result.Success();
+    }
+
+    // External Login Management (Epic 1 Phase 2 - Social Login)
+
+    /// <summary>
+    /// Links an external social provider to the user's account
+    /// Allows users to login with multiple social providers
+    /// </summary>
+    public Result LinkExternalProvider(
+        FederatedProvider provider,
+        string externalProviderId,
+        string providerEmail)
+    {
+        // Validate external login can be created
+        var externalLoginResult = ExternalLogin.Create(provider, externalProviderId, providerEmail);
+        if (!externalLoginResult.IsSuccess)
+            return Result.Failure(externalLoginResult.Error);
+
+        var externalLogin = externalLoginResult.Value;
+
+        // Business rule: Cannot link the same provider twice
+        if (_externalLogins.Any(login => login.Provider == provider))
+            return Result.Failure($"{provider.ToDisplayName()} is already linked to this account");
+
+        // Add external login
+        _externalLogins.Add(externalLogin);
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new ExternalProviderLinkedEvent(
+            Id,
+            provider,
+            externalProviderId,
+            providerEmail));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Unlinks an external social provider from the user's account
+    /// Business rule: Cannot unlink if it's the last authentication method
+    /// </summary>
+    public Result UnlinkExternalProvider(FederatedProvider provider)
+    {
+        // Find the external login
+        var externalLogin = _externalLogins.FirstOrDefault(login => login.Provider == provider);
+        if (externalLogin == null)
+            return Result.Failure($"{provider.ToDisplayName()} is not linked to this account");
+
+        // Business rule: Prevent unlinking the last authentication method
+        // User must have either:
+        // 1. A password (local authentication), OR
+        // 2. At least one other external provider
+        var hasPassword = !string.IsNullOrEmpty(PasswordHash);
+        var hasOtherProviders = _externalLogins.Count > 1;
+
+        if (!hasPassword && !hasOtherProviders)
+            return Result.Failure("Cannot unlink your last authentication method. Please set a password or link another provider first");
+
+        // Remove external login
+        _externalLogins.Remove(externalLogin);
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new ExternalProviderUnlinkedEvent(
+            Id,
+            provider,
+            externalLogin.ExternalProviderId));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if the user has linked a specific external provider
+    /// </summary>
+    public bool HasExternalLogin(FederatedProvider provider)
+    {
+        return _externalLogins.Any(login => login.Provider == provider);
+    }
+
+    /// <summary>
+    /// Gets the external login for a specific provider (if linked)
+    /// </summary>
+    public ExternalLogin? GetExternalLogin(FederatedProvider provider)
+    {
+        return _externalLogins.FirstOrDefault(login => login.Provider == provider);
     }
 }

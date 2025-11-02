@@ -37,6 +37,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure NetTopologySuite for PostGIS support (Epic 2 Phase 1)
+        // This must be called before applying configurations
+        modelBuilder.HasPostgresExtension("postgis");
+
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new EventConfiguration());

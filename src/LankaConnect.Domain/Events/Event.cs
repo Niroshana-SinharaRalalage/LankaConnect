@@ -17,6 +17,7 @@ public class Event : BaseEntity
     public int Capacity { get; private set; }
     public EventStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public int CurrentRegistrations => _registrations
@@ -30,8 +31,8 @@ public class Event : BaseEntity
         Description = null!;
     }
 
-    private Event(EventTitle title, EventDescription description, DateTime startDate, DateTime endDate, 
-        Guid organizerId, int capacity)
+    private Event(EventTitle title, EventDescription description, DateTime startDate, DateTime endDate,
+        Guid organizerId, int capacity, EventLocation? location = null)
     {
         Title = title;
         Description = description;
@@ -40,10 +41,11 @@ public class Event : BaseEntity
         OrganizerId = organizerId;
         Capacity = capacity;
         Status = EventStatus.Draft;
+        Location = location;
     }
 
-    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate, 
-        DateTime endDate, Guid organizerId, int capacity)
+    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,
+        DateTime endDate, Guid organizerId, int capacity, EventLocation? location = null)
     {
         if (title == null)
             return Result<Event>.Failure("Title is required");
@@ -63,7 +65,7 @@ public class Event : BaseEntity
         if (capacity <= 0)
             return Result<Event>.Failure("Capacity must be greater than 0");
 
-        var @event = new Event(title, description, startDate, endDate, organizerId, capacity);
+        var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location);
         return Result<Event>.Success(@event);
     }
 
@@ -276,4 +278,47 @@ public class Event : BaseEntity
 
         return hasDateOverlap ? Result.Success() : Result.Failure("No scheduling conflict");
     }
+
+    #region Location Management (Epic 2 Phase 1)
+
+    /// <summary>
+    /// Sets the event location (address + optional coordinates)
+    /// </summary>
+    public Result SetLocation(EventLocation location)
+    {
+        if (location == null)
+            return Result.Failure("Location cannot be null");
+
+        Location = location;
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventLocationUpdatedEvent(Id, location, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes the event location (e.g., converting to virtual event)
+    /// </summary>
+    public Result RemoveLocation()
+    {
+        if (Location == null)
+            return Result.Failure("Event does not have a location set");
+
+        Location = null;
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventLocationRemovedEvent(Id, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if event has a physical location set
+    /// </summary>
+    public bool HasLocation() => Location != null;
+
+    #endregion
 }

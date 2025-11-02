@@ -35,13 +35,16 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly("LankaConnect.Infrastructure");
-                
+
+                // Enable NetTopologySuite for PostGIS spatial support (Epic 2 Phase 1)
+                npgsqlOptions.UseNetTopologySuite();
+
                 // Enhanced retry configuration
                 npgsqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
                     errorCodesToAdd: null);
-                
+
                 // Command timeout configuration (30 seconds)
                 npgsqlOptions.CommandTimeout(30);
             });

@@ -823,6 +823,105 @@ DUTCH: Dutch
 
 ---
 
+## 🚀 Epic 1 Phase 2: Multi-Provider Social Login (2025-11-01)
+
+**MILESTONE**: Enhanced Entra External ID to support federated identity provider detection via idp claim parsing
+
+**Phase 2 Day 1 - Domain Layer Extensions:**
+1. ✅ **FederatedProvider Enum & Extensions** (Day 1 completed in previous session)
+   - Created FederatedProvider enum (Microsoft, Facebook, Google, Apple)
+   - Added ToIdpClaimValue() and ToDisplayName() extension methods
+   - Created FromIdpClaimValue() factory method for parsing idp claims
+   - Added comprehensive validation tests (25 tests)
+   - Result: 25/25 tests passing
+
+2. ✅ **ExternalLogin Value Object** (Day 1 completed in previous session)
+   - Created ExternalLogin value object with Provider, ExternalProviderId, ProviderEmail
+   - Added validation for required fields
+   - Implemented equality comparison
+   - Created 9 comprehensive tests
+   - Result: 9/9 tests passing
+
+3. ✅ **User Aggregate External Login Management** (Day 1 completed in previous session)
+   - Added ExternalLogins collection to User aggregate
+   - Implemented LinkExternalProvider() method with business rules
+   - Implemented UnlinkExternalProvider() with last-auth-method protection
+   - Added HasExternalLogin() and GetExternalLogin() query methods
+   - Created ExternalProviderLinkedEvent and ExternalProviderUnlinkedEvent domain events
+   - Created 19 comprehensive tests
+   - Result: 19/19 tests passing
+
+**Phase 2 Day 2 - Application Layer (IDP Claim Integration):**
+4. ✅ **Federated Provider Detection via IDP Claim** (90 min)
+   - Added IdentityProvider property to EntraUserInfo DTO
+   - Updated EntraExternalIdService to extract idp claim from JWT tokens
+   - Enhanced LoginWithEntraCommandHandler to parse idp claim using FederatedProviderExtensions.FromIdpClaimValue()
+   - Added fallback to Microsoft provider if idp claim is missing/invalid
+   - Added logging for detected federated provider (observability)
+   - Result: 549/549 Application tests passing (Zero Tolerance maintained)
+   - Files modified:
+     * IEntraExternalIdService.cs - Added IdentityProvider to EntraUserInfo
+     * EntraExternalIdService.cs - Extracted idp claim from AllClaims dictionary
+     * LoginWithEntraCommandHandler.cs - Parse and log federated provider
+
+5. ✅ **Auto-Link External Provider on User Creation** (60 min)
+   - Enhanced User.CreateFromExternalProvider() to accept FederatedProvider parameter
+   - Method now automatically calls LinkExternalProvider() for new users
+   - Raises both UserCreatedFromExternalProviderEvent and ExternalProviderLinkedEvent
+   - Updated all test calls across codebase to include FederatedProvider parameter
+   - Fixed 3 test failures caused by new auto-linking behavior:
+     * UnlinkExternalProvider_WhenLastAuthMethod_ShouldReturnFailure
+     * UnlinkExternalProvider_WhenUserHasOtherProviders_ShouldSucceed
+     * CreateFromExternalProvider_ShouldRaiseUserCreatedFromExternalProviderEvent
+   - Result: 549/549 Application tests passing (100% pass rate, zero regressions)
+   - Files modified:
+     * User.cs - Enhanced CreateFromExternalProvider signature and implementation
+     * UserEntraIntegrationTests.cs - Updated test expectations for domain events
+     * UserExternalLoginsTests.cs - Fixed count assertions for auto-linked providers
+     * LoginWithEntraCommandHandlerTests.cs - Added FederatedProvider to all test calls
+
+**Phase 2 Day 2 - Architecture Documentation:**
+6. ✅ **Comprehensive Architecture Documentation** (45 min)
+   - Created ADR-003-Social-Login-Multi-Provider-Architecture.md (comprehensive ADR)
+   - Created EPIC-1-PHASE-2-ARCHITECTURE-DIAGRAMS.md (5 detailed diagrams)
+   - Created EPIC-1-PHASE-2-ARCHITECTURE-SUMMARY.md (technical overview)
+   - Created EPIC-1-PHASE-2-DECISION-MATRIX.md (technology comparison)
+   - Result: 4 comprehensive architecture documents (7,000+ words total)
+
+**TDD Metrics (Day 2):**
+- **Build**: 0 errors, 0 warnings (Zero Tolerance maintained)
+- **Application Tests**: 549/549 passing (100% pass rate)
+- **Integration Tests**: Skipped (not yet implemented for Phase 2)
+- **Test Coverage**: Domain layer ExternalLogin functionality fully covered
+- **Regressions**: 0 (all existing tests updated and passing)
+- **Commits**: 1 clean commit (101d009) following Zero Tolerance guidelines
+- **Files Modified**: 8 files (3 source, 3 test, 2 docs)
+- **Files Created**: 4 architecture docs
+
+**Phase 2 Implementation Summary:**
+- ✅ Federated provider detection via idp claim (Microsoft/Facebook/Google/Apple)
+- ✅ Automatic external provider linking on user creation
+- ✅ Domain events for external provider lifecycle
+- ✅ Backward compatibility maintained (existing users unaffected)
+- ✅ Logging and observability for federated provider detection
+- ✅ Zero Tolerance: All tests passing with zero regressions
+
+**Phase 2 Day 2 - Remaining Work:**
+- [ ] Create LinkExternalProviderCommand + Handler + Validator (TDD - 8 tests)
+- [ ] Create UnlinkExternalProviderCommand + Handler + Validator (TDD - 6 tests)
+- [ ] Create GetLinkedProvidersQuery + Handler + DTO (TDD - 4 tests)
+- [ ] Update IUserRepository with GetByExternalLoginAsync method
+- [ ] Create API endpoints for external provider management
+- [ ] Integration tests for multi-provider workflows
+
+**Architecture Decision**: ADR-003 Social Login Multi-Provider Architecture
+**Implementation Strategy**: Federated Provider Abstraction with IDP Claim Parsing
+**Provider Support**: Microsoft (Entra), Facebook, Google, Apple (via Entra federation)
+**User Experience**: Automatic provider detection, no explicit provider selection needed
+**Security**: JWT token validation with issuer/audience checks, no provider secrets in application
+
+---
+
 ## 📋 Previous Session (2025-10-25) - EF CORE + INTEGRATION TEST INFRASTRUCTURE COMPLETE ✅
 
 **MILESTONES ACHIEVED:**

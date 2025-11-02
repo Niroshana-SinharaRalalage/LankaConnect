@@ -416,16 +416,20 @@ Dependencies: BasicImageService exists (ready to use)
 ### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 3 (Application Layer)
 
 ```yaml
-Status: ⏳ READY - Waiting for Phase 1 & 2 completion
+Status: 🟡 IN PROGRESS - Day 1 Complete
 Duration: 1.5 weeks (6 sessions)
 Priority: HIGH - BLOCKING for API layer
-Current Progress: 10% (2 queries exist: GetCulturallyAppropriate, GetRecommendations)
-Dependencies: Event domain enhancements complete
+Current Progress: 15% (Core CQRS foundation implemented)
+Dependencies: Event domain enhancements complete ✅
 ```
 
+#### DTOs & Mapping ✅ COMPLETE
+- [x] EventDto created with all properties (location, pricing, category)
+- [x] EventMappingProfile (AutoMapper) - Event → EventDto
+
 #### Commands (Week 1)
-**Create & Submit Commands**
-- [ ] CreateEventCommand + Handler + FluentValidation (3 tests)
+**Create & Submit Commands** ✅ Day 1 Complete
+- [x] CreateEventCommand + Handler (location + pricing support)
 - [ ] SubmitEventForApprovalCommand + Handler (3 tests)
 
 **Update Commands**
@@ -448,9 +452,9 @@ Dependencies: Event domain enhancements complete
 - [ ] DeleteEventCommand + Handler (3 tests)
 
 #### Queries (Week 2)
-**Basic Queries**
-- [ ] GetEventByIdQuery + Handler + EventDto (3 tests)
-- [ ] GetEventsQuery + Handler with filters (location, category, date, price) (5 tests)
+**Basic Queries** ✅ Day 1 Complete
+- [x] GetEventByIdQuery + Handler - returns EventDto?
+- [x] GetEventsQuery + Handler with filters (status, category, date, price, city)
 - [ ] GetEventsByOrganizerQuery + Handler (3 tests)
 
 **User Queries**
@@ -460,9 +464,9 @@ Dependencies: Event domain enhancements complete
 **Admin Queries**
 - [ ] GetPendingEventsForApprovalQuery + Handler (3 tests)
 
-**AutoMapper Configuration**
-- [ ] Create EventMappingProfile (Event → EventDto, Registration → RsvpDto)
-- [ ] Test all DTO mappings
+**AutoMapper Configuration** ✅ Day 1 Complete
+- [x] EventMappingProfile (Event → EventDto)
+- [ ] RsvpDto + mapping (Registration → RsvpDto)
 
 ---
 

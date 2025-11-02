@@ -416,10 +416,10 @@ Dependencies: BasicImageService exists (ready to use)
 ### ✅ EPIC 2: EVENT DISCOVERY & MANAGEMENT - PHASE 3 (Application Layer)
 
 ```yaml
-Status: 🟡 IN PROGRESS - Day 3 Complete
+Status: 🟡 IN PROGRESS - Day 4 Complete
 Duration: 1.5 weeks (6 sessions)
 Priority: HIGH - BLOCKING for API layer
-Current Progress: 37% (Core CQRS + Event lifecycle + Status/Update commands)
+Current Progress: 50% (Core CQRS + Event lifecycle + Status/Update + RSVP/Admin commands)
 Dependencies: Event domain enhancements complete ✅
 ```
 
@@ -428,9 +428,9 @@ Dependencies: Event domain enhancements complete ✅
 - [x] EventMappingProfile (AutoMapper) - Event → EventDto
 
 #### Commands (Week 1)
-**Create & Submit Commands** ✅ Day 1 Complete
+**Create & Submit Commands** ✅ Days 1 & 4 Complete
 - [x] CreateEventCommand + Handler (location + pricing support)
-- [ ] SubmitEventForApprovalCommand + Handler (3 tests)
+- [x] SubmitEventForApprovalCommand + Handler (3 tests)
 
 **Update Commands** ✅ Days 2-3 Complete
 - [x] UpdateEventCommand + Handler + FluentValidation (4 tests)
@@ -443,13 +443,13 @@ Dependencies: Event domain enhancements complete ✅
 - [x] PostponeEventCommand + Handler + FluentValidation (3 tests)
 - [x] ArchiveEventCommand + Handler (2 tests)
 
-**RSVP Commands**
-- [ ] RsvpToEventCommand + Handler + FluentValidation (4 tests)
-- [ ] CancelRsvpCommand + Handler (3 tests)
+**RSVP Commands** ✅ Day 4 Partial
+- [x] RsvpToEventCommand + Handler + FluentValidation (4 tests)
+- [x] CancelRsvpCommand + Handler (3 tests)
 - [ ] UpdateRsvpCommand + Handler (3 tests)
 
-**Delete Command**
-- [ ] DeleteEventCommand + Handler (3 tests)
+**Delete Command** ✅ Day 4 Complete
+- [x] DeleteEventCommand + Handler (3 tests)
 
 #### Queries (Week 2)
 **Basic Queries** ✅ Days 1-2 Complete

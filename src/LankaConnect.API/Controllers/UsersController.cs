@@ -6,7 +6,10 @@ using LankaConnect.Application.Users.Commands.DeleteProfilePhoto;
 using LankaConnect.Application.Users.Commands.UpdateUserLocation;
 using LankaConnect.Application.Users.Commands.UpdateCulturalInterests;
 using LankaConnect.Application.Users.Commands.UpdateLanguages;
+using LankaConnect.Application.Users.Commands.LinkExternalProvider;
+using LankaConnect.Application.Users.Commands.UnlinkExternalProvider;
 using LankaConnect.Application.Users.Queries.GetUserById;
+using LankaConnect.Application.Users.Queries.GetLinkedProviders;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Domain.Users.Enums;
 using Microsoft.Extensions.Logging;
@@ -372,6 +375,149 @@ public class UsersController : BaseController<UsersController>
             });
         }
     }
+
+    #region External Provider Management (Epic 1 Phase 2)
+
+    /// <summary>
+    /// Links an external OAuth provider to a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">External provider details (provider, externalProviderId, providerEmail)</param>
+    /// <returns>Linked provider details on success</returns>
+    [HttpPost("{id:guid}/external-providers/link")]
+    [ProducesResponseType(typeof(LinkExternalProviderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LinkExternalProvider(Guid id, [FromBody] LinkExternalProviderRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "LinkExternalProvider",
+            ["UserId"] = id,
+            ["Provider"] = request.Provider.ToString()
+        }))
+        {
+            Logger.LogInformation("Linking external provider {Provider} for user {UserId}",
+                request.Provider, id);
+
+            var command = new LinkExternalProviderCommand(
+                id,
+                request.Provider,
+                request.ExternalProviderId,
+                request.ProviderEmail);
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("External provider {Provider} linked successfully for user {UserId}",
+                    request.Provider, id);
+            }
+            else
+            {
+                Logger.LogWarning("Failed to link external provider {Provider} for user {UserId}: {Error}",
+                    request.Provider, id, result.Errors.FirstOrDefault());
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Unlinks an external OAuth provider from a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// Business Rule: Cannot unlink last authentication method
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="provider">Provider to unlink (Facebook, Google, Apple, Microsoft)</param>
+    /// <returns>Unlink details on success</returns>
+    [HttpDelete("{id:guid}/external-providers/{provider}")]
+    [ProducesResponseType(typeof(UnlinkExternalProviderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnlinkExternalProvider(Guid id, FederatedProvider provider)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UnlinkExternalProvider",
+            ["UserId"] = id,
+            ["Provider"] = provider.ToString()
+        }))
+        {
+            Logger.LogInformation("Unlinking external provider {Provider} for user {UserId}",
+                provider, id);
+
+            var command = new UnlinkExternalProviderCommand(id, provider);
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("External provider {Provider} unlinked successfully for user {UserId}",
+                    provider, id);
+            }
+            else
+            {
+                var firstError = result.Errors.FirstOrDefault();
+                Logger.LogWarning("Failed to unlink external provider {Provider} for user {UserId}: {Error}",
+                    provider, id, firstError);
+
+                // Check if it's a "not found" error
+                if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Detail = firstError,
+                        Status = 404,
+                        Title = "Not Found"
+                    });
+                }
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Gets all external OAuth providers linked to a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <returns>List of linked providers with details</returns>
+    [HttpGet("{id:guid}/external-providers")]
+    [ProducesResponseType(typeof(GetLinkedProvidersResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLinkedProviders(Guid id)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "GetLinkedProviders",
+            ["UserId"] = id
+        }))
+        {
+            Logger.LogInformation("Retrieving linked providers for user {UserId}", id);
+
+            var query = new GetLinkedProvidersQuery(id);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                Logger.LogInformation("User not found with ID {UserId}", id);
+                return NotFound();
+            }
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Retrieved {Count} linked providers for user {UserId}",
+                    result.Value.LinkedProviders.Count, id);
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -408,4 +554,16 @@ public record LanguageRequestDto
 {
     public string LanguageCode { get; init; } = null!;
     public ProficiencyLevel ProficiencyLevel { get; init; }
+}
+
+/// <summary>
+/// Request model for linking an external OAuth provider
+/// Epic 1 Phase 2: Multi-Provider Social Login
+/// </summary>
+public record LinkExternalProviderRequest
+{
+    [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+    public FederatedProvider Provider { get; init; }
+    public string ExternalProviderId { get; init; } = null!;
+    public string ProviderEmail { get; init; } = null!;
 }

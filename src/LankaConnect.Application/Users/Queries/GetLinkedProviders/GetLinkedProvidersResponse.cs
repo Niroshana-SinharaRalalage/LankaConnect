@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Users.Enums;
+using System.Text.Json.Serialization;
 
 namespace LankaConnect.Application.Users.Queries.GetLinkedProviders;
 
@@ -13,6 +14,7 @@ public record GetLinkedProvidersResponse(
 /// DTO representing a linked external provider
 /// </summary>
 public record LinkedProviderDto(
+    [property: JsonConverter(typeof(JsonStringEnumConverter))]
     FederatedProvider Provider,
     string ProviderDisplayName,
     string ExternalProviderId,

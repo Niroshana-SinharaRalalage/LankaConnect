@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Users.Enums;
+using System.Text.Json.Serialization;
 
 namespace LankaConnect.Application.Users.Commands.LinkExternalProvider;
 
@@ -7,6 +8,7 @@ namespace LankaConnect.Application.Users.Commands.LinkExternalProvider;
 /// </summary>
 public record LinkExternalProviderResponse(
     Guid UserId,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))]
     FederatedProvider Provider,
     string ProviderEmail,
     DateTime LinkedAt);

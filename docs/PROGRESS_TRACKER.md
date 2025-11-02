@@ -1,9 +1,19 @@
 # LankaConnect Development Progress Tracker
 *Last Updated: 2025-11-02 02:45 UTC*
 
-## 🎉 Current Session Status (2025-11-02) - EPIC 2 PHASE 3 DAY 1 COMPLETE ✅
+## 🎉 Current Session Status (2025-11-02) - EPIC 2 PHASE 3 DAY 2 COMPLETE ✅
 
-**SESSION SUMMARY - APPLICATION LAYER (CQRS) - DAY 1:**
+**SESSION SUMMARY - APPLICATION LAYER (CQRS) - DAY 2:**
+- ✅ **Epic 2 Phase 3 Day 2**: Application Layer - Event Lifecycle Commands - COMPLETE
+- ✅ **UpdateEventCommand Implemented**: Full update command + handler with validation (draft events only)
+- ✅ **PublishEventCommand Implemented**: Publish draft events using Event.Publish() domain method
+- ✅ **CancelEventCommand Implemented**: Cancel published events using Event.Cancel() domain method
+- ✅ **GetEventsByOrganizerQuery Implemented**: Query + handler to retrieve all events by organizer
+- ✅ **Zero Tolerance**: 0 compilation errors, 624/625 Application tests passing (99.8%)
+- ✅ **EF Core Integration**: Leveraged automatic change tracking (removed unnecessary UpdateAsync calls)
+- ✅ **Domain Method Usage**: Properly used existing domain methods instead of duplicating business logic
+
+**Previous Session (Earlier Today - Epic 2 Phase 3 Day 1):**
 - ✅ **Epic 2 Phase 3 Day 1**: Application Layer - CQRS Foundation - COMPLETE
 - ✅ **EventDto Created**: Mapped Event entity to DTO with all properties (location, pricing, category)
 - ✅ **EventMappingProfile Created**: AutoMapper profile for Event → EventDto mapping
@@ -87,6 +97,7 @@
 11. ✅ **Epic 2 Phase 1 Days 1-3 - Event Location with PostGIS (2025-11-02)** - **COMPLETED**
 12. ✅ **Epic 2 Phase 2 - Event Category & Pricing (2025-11-02)** - **COMPLETED**
 13. ✅ **Epic 2 Phase 3 Day 1 - Application Layer CQRS Foundation (2025-11-02)** - **COMPLETED**
+14. ✅ **Epic 2 Phase 3 Day 2 - Event Lifecycle Commands (2025-11-02)** - **COMPLETED**
 
 ---
 
@@ -593,10 +604,95 @@ Implemented foundational CQRS layer for Event management with Commands and Queri
 - Used record types for Commands and Queries (immutability)
 - Used ICommand<TResponse> and IQuery<TResponse> interfaces
 
-**Next Steps (Epic 2 Phase 3 Day 1 Complete):**
+**Next Steps (Epic 2 Phase 3 Day 2 Complete):**
 - ✅ Day 1: Core CQRS foundation (CreateEvent, GetEventById, GetEvents) - COMPLETE
-- Next Days: Additional commands (Update, Publish, Cancel, RSVP) and queries (GetByOrganizer, GetPending, etc.)
-- **Epic 2 Phase 3 is 10% COMPLETE** (3 of ~30 planned Commands/Queries implemented)
+- ✅ Day 2: Event lifecycle commands (Update, Publish, Cancel, GetByOrganizer) - COMPLETE
+- Next Days: Additional commands (RSVP, Capacity, Location updates) and queries (GetPending, GetUpcoming, etc.)
+- **Epic 2 Phase 3 is 23% COMPLETE** (7 of ~30 planned Commands/Queries implemented)
+
+---
+
+## Epic 2 Phase 3 - Application Layer (CQRS) - Day 2 ✅
+
+### **Day 2: Event Lifecycle Commands**
+
+**Overview:**
+Implemented critical event lifecycle management commands and organizer query. Focused on commands that manage event status transitions (Draft → Published → Cancelled) and organizer-specific queries.
+
+**Implementation Details:**
+
+1. **UpdateEventCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommand.cs` (16 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs` (150 lines)
+   - **Features**:
+     * Updates all event properties (title, description, dates, capacity, category, location, pricing)
+     * Validates event exists and is in Draft status (only draft events can be fully updated)
+     * Validates dates (start date not in past, end date after start date)
+     * Validates capacity against current registrations (cannot reduce below current)
+     * Creates new value objects (EventTitle, EventDescription, EventLocation, Money)
+     * Uses reflection to update private properties (TODO: add proper domain methods)
+     * Uses domain methods where available (UpdateCapacity, SetLocation, RemoveLocation)
+   - **EF Core Integration**: Leveraged automatic change tracking (no UpdateAsync needed)
+
+2. **PublishEventCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/PublishEvent/PublishEventCommand.cs` (7 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/PublishEvent/PublishEventCommandHandler.cs` (35 lines)
+   - **Features**:
+     * Publishes draft events using Event.Publish() domain method
+     * Validates event exists
+     * Uses domain business rules for validation (dates, capacity, etc.)
+     * Raises EventPublishedEvent domain event
+   - **Domain Method Usage**: Properly delegates to Event.Publish() instead of duplicating logic
+
+3. **CancelEventCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/CancelEvent/CancelEventCommand.cs` (7 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/CancelEvent/CancelEventCommandHandler.cs` (35 lines)
+   - **Features**:
+     * Cancels published events using Event.Cancel() domain method
+     * Requires cancellation reason (string parameter)
+     * Validates event exists
+     * Uses domain business rules (only published events can be cancelled)
+     * Raises EventCancelledEvent domain event
+   - **Domain Method Usage**: Properly delegates to Event.Cancel() instead of duplicating logic
+
+4. **GetEventsByOrganizerQuery + Handler**
+   - File: `src/LankaConnect.Application/Events/Queries/GetEventsByOrganizer/GetEventsByOrganizerQuery.cs` (6 lines)
+   - File: `src/LankaConnect.Application/Events/Queries/GetEventsByOrganizer/GetEventsByOrganizerQueryHandler.cs` (30 lines)
+   - **Features**:
+     * Retrieves all events for a specific organizer (by OrganizerId)
+     * Uses IEventRepository.GetByOrganizerAsync() method
+     * Returns list of EventDto using AutoMapper
+   - **Use Case**: Organizer dashboard, event management UI
+
+**Error Fix:**
+- **Issue**: Initial implementation called `UpdateAsync()` on IEventRepository (method doesn't exist)
+- **Root Cause**: EF Core tracks entity changes automatically via change tracking
+- **Solution**: Removed UpdateAsync calls, kept only `CommitAsync()` on Unit of Work
+- **Files Affected**: UpdateEventCommandHandler, PublishEventCommandHandler, CancelEventCommandHandler
+
+**Test Results:**
+- ✅ **Build**: 0 compilation errors
+- ✅ **Application Tests**: 624/625 passing (99.8%)
+- ✅ **Zero Tolerance**: Maintained throughout Day 2
+
+**Architecture Notes:**
+- Followed existing Command/Query patterns from Business aggregate
+- Properly separated concerns (Application layer orchestrates, Domain layer validates)
+- Used Result pattern for error handling
+- Leveraged EF Core change tracking (no explicit Update calls needed)
+- Used domain methods to ensure business rules are enforced
+
+**Files Created (Day 2):**
+- UpdateEventCommand.cs (16 lines)
+- UpdateEventCommandHandler.cs (150 lines)
+- PublishEventCommand.cs (7 lines)
+- PublishEventCommandHandler.cs (35 lines)
+- CancelEventCommand.cs (7 lines)
+- CancelEventCommandHandler.cs (35 lines)
+- GetEventsByOrganizerQuery.cs (6 lines)
+- GetEventsByOrganizerQueryHandler.cs (30 lines)
+
+**Total Lines Added (Day 2):** ~286 lines (application layer only)
 
 ---
 

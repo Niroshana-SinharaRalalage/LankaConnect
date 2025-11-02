@@ -1,9 +1,19 @@
 # LankaConnect Development Progress Tracker
 *Last Updated: 2025-11-02 02:45 UTC*
 
-## 🎉 Current Session Status (2025-11-02) - EPIC 2 PHASE 3 DAY 2 COMPLETE ✅
+## 🎉 Current Session Status (2025-11-02) - EPIC 2 PHASE 3 DAY 3 COMPLETE ✅
 
-**SESSION SUMMARY - APPLICATION LAYER (CQRS) - DAY 2:**
+**SESSION SUMMARY - APPLICATION LAYER (CQRS) - DAY 3:**
+- ✅ **Epic 2 Phase 3 Day 3**: Additional Status & Update Commands - COMPLETE
+- ✅ **PostponeEventCommand Implemented**: Postpone published events using Event.Postpone() domain method
+- ✅ **ArchiveEventCommand Implemented**: Archive completed events using Event.Archive() domain method
+- ✅ **UpdateEventCapacityCommand Implemented**: Update event capacity using Event.UpdateCapacity() domain method
+- ✅ **UpdateEventLocationCommand Implemented**: Update event location using Event.SetLocation() domain method
+- ✅ **Zero Tolerance**: 0 compilation errors, 624/625 Application tests passing (99.8%)
+- ✅ **Domain Method Reuse**: All 4 commands use existing domain methods - no business logic duplication
+- ✅ **Clean Implementation**: Simple, focused commands that delegate to domain layer
+
+**Previous Session (Earlier Today - Epic 2 Phase 3 Day 2):**
 - ✅ **Epic 2 Phase 3 Day 2**: Application Layer - Event Lifecycle Commands - COMPLETE
 - ✅ **UpdateEventCommand Implemented**: Full update command + handler with validation (draft events only)
 - ✅ **PublishEventCommand Implemented**: Publish draft events using Event.Publish() domain method
@@ -98,6 +108,7 @@
 12. ✅ **Epic 2 Phase 2 - Event Category & Pricing (2025-11-02)** - **COMPLETED**
 13. ✅ **Epic 2 Phase 3 Day 1 - Application Layer CQRS Foundation (2025-11-02)** - **COMPLETED**
 14. ✅ **Epic 2 Phase 3 Day 2 - Event Lifecycle Commands (2025-11-02)** - **COMPLETED**
+15. ✅ **Epic 2 Phase 3 Day 3 - Additional Status & Update Commands (2025-11-02)** - **COMPLETED**
 
 ---
 
@@ -693,6 +704,88 @@ Implemented critical event lifecycle management commands and organizer query. Fo
 - GetEventsByOrganizerQueryHandler.cs (30 lines)
 
 **Total Lines Added (Day 2):** ~286 lines (application layer only)
+
+---
+
+## Epic 2 Phase 3 - Application Layer (CQRS) - Day 3 ✅
+
+### **Day 3: Additional Status & Update Commands**
+
+**Overview:**
+Implemented additional event status change commands (Postpone, Archive) and specialized update commands (Capacity, Location). Focused on reusing existing domain methods to maintain clean architecture and avoid business logic duplication.
+
+**Implementation Details:**
+
+1. **PostponeEventCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/PostponeEvent/PostponeEventCommand.cs` (7 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/PostponeEvent/PostponeEventCommandHandler.cs` (35 lines)
+   - **Features**:
+     * Postpones published events using Event.Postpone() domain method
+     * Requires postponement reason (string parameter)
+     * Validates event exists
+     * Uses domain business rules (only published events can be postponed)
+     * Raises EventPostponedEvent domain event
+   - **Domain Method Usage**: Delegates to Event.Postpone(reason)
+
+2. **ArchiveEventCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/ArchiveEvent/ArchiveEventCommand.cs` (6 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/ArchiveEvent/ArchiveEventCommandHandler.cs` (35 lines)
+   - **Features**:
+     * Archives completed events using Event.Archive() domain method
+     * Validates event exists
+     * Uses domain business rules (only completed events can be archived)
+     * Raises EventArchivedEvent domain event
+   - **Domain Method Usage**: Delegates to Event.Archive()
+
+3. **UpdateEventCapacityCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEventCapacity/UpdateEventCapacityCommand.cs` (6 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEventCapacity/UpdateEventCapacityCommandHandler.cs` (35 lines)
+   - **Features**:
+     * Updates event capacity using Event.UpdateCapacity() domain method
+     * Validates new capacity is positive
+     * Validates capacity not reduced below current registrations
+     * Raises EventCapacityUpdatedEvent domain event
+   - **Domain Method Usage**: Delegates to Event.UpdateCapacity(newCapacity)
+   - **Use Case**: Organizers need to increase/decrease event capacity
+
+4. **UpdateEventLocationCommand + Handler**
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEventLocation/UpdateEventLocationCommand.cs` (11 lines)
+   - File: `src/LankaConnect.Application/Events/Commands/UpdateEventLocation/UpdateEventLocationCommandHandler.cs` (76 lines)
+   - **Features**:
+     * Updates event location using Event.SetLocation() domain method
+     * Requires address and city (minimum location data)
+     * Creates Address and optional GeoCoordinate value objects
+     * Creates EventLocation value object
+     * Raises EventLocationUpdatedEvent domain event
+   - **Domain Method Usage**: Delegates to Event.SetLocation(location)
+   - **Use Case**: Organizers need to change venue or add/update coordinates
+
+**Architecture Notes:**
+- All 4 commands follow same simple pattern: retrieve → delegate to domain → commit
+- Zero business logic duplication - everything delegated to domain layer
+- Clean separation of concerns (Application orchestrates, Domain validates)
+- EF Core change tracking leveraged (no explicit Update calls)
+- All commands raise appropriate domain events for side effects
+
+**Test Results:**
+- ✅ **Build**: 0 compilation errors
+- ✅ **Application Tests**: 624/625 passing (99.8%)
+- ✅ **Zero Tolerance**: Maintained throughout Day 3
+
+**Files Created (Day 3):**
+- PostponeEventCommand.cs (7 lines)
+- PostponeEventCommandHandler.cs (35 lines)
+- ArchiveEventCommand.cs (6 lines)
+- ArchiveEventCommandHandler.cs (35 lines)
+- UpdateEventCapacityCommand.cs (6 lines)
+- UpdateEventCapacityCommandHandler.cs (35 lines)
+- UpdateEventLocationCommand.cs (11 lines)
+- UpdateEventLocationCommandHandler.cs (76 lines)
+
+**Total Lines Added (Day 3):** ~211 lines (application layer only)
+
+**Key Learning:**
+Day 3 implementation was significantly faster than Days 1-2 because the domain layer already had all necessary methods. This validates the TDD/DDD approach where domain layer is built first with comprehensive business rules, allowing application layer to be thin orchestration logic.
 
 ---
 

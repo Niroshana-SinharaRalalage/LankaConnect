@@ -69,4 +69,70 @@ public class EventRepository : Repository<Event>, IEventRepository
             .OrderByDescending(e => e.StartDate)
             .ToListAsync(cancellationToken);
     }
+
+    // Location-based queries (Epic 2 Phase 1 - PostGIS spatial queries)
+    public async Task<IReadOnlyList<Event>> GetEventsByRadiusAsync(decimal latitude, decimal longitude, double radiusMiles, CancellationToken cancellationToken = default)
+    {
+        // Convert miles to meters for PostGIS (1 mile = 1609.344 meters)
+        var radiusMeters = radiusMiles * 1609.344;
+
+        // Create search point using NetTopologySuite
+        var geometryFactory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+        var searchPoint = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate((double)longitude, (double)latitude));
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(e => e.Location != null && e.Location.Coordinates != null)
+            .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
+            .Where(e => searchPoint.IsWithinDistance(
+                geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(
+                    (double)e.Location!.Coordinates!.Longitude,
+                    (double)e.Location.Coordinates.Latitude
+                )),
+                radiusMeters
+            ))
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Event>> GetEventsByCityAsync(string city, string? state = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(city))
+            return Array.Empty<Event>();
+
+        var query = _dbSet
+            .AsNoTracking()
+            .Where(e => e.Location != null)
+            .Where(e => EF.Functions.Like(e.Location!.Address.City.ToLower(), $"%{city.Trim().ToLower()}%"))
+            .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow);
+
+        if (!string.IsNullOrWhiteSpace(state))
+        {
+            query = query.Where(e => EF.Functions.Like(e.Location!.Address.State.ToLower(), $"%{state.Trim().ToLower()}%"));
+        }
+
+        return await query
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Event>> GetNearestEventsAsync(decimal latitude, decimal longitude, int maxResults = 10, CancellationToken cancellationToken = default)
+    {
+        // Create search point using NetTopologySuite
+        var geometryFactory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+        var searchPoint = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate((double)longitude, (double)latitude));
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(e => e.Location != null && e.Location.Coordinates != null)
+            .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
+            .OrderBy(e => searchPoint.Distance(
+                geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(
+                    (double)e.Location!.Coordinates!.Longitude,
+                    (double)e.Location.Coordinates.Latitude
+                ))
+            ))
+            .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
 }

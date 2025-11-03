@@ -383,7 +383,7 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(typeof(EventImage), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> AddImageToEvent(Guid id, [FromForm] IFormFile image)
+    public async Task<IActionResult> AddImageToEvent(Guid id, IFormFile image)
     {
         if (image == null || image.Length == 0)
             return BadRequest("Image file is required");

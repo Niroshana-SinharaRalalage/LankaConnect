@@ -12,6 +12,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
+using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
@@ -328,6 +329,44 @@ public class EventsController : BaseController<EventsController>
 
         return HandleResult(result);
     }
+
+    /// <summary>
+    /// Approve event (Admins only)
+    /// </summary>
+    [HttpPost("admin/{id:guid}/approve")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ApproveEvent(Guid id, [FromBody] ApproveEventRequest request)
+    {
+        Logger.LogInformation("Approving event {EventId} by admin {AdminId}", id, request.ApprovedByAdminId);
+
+        var command = new ApproveEventCommand(id, request.ApprovedByAdminId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Reject event with reason (Admins only)
+    /// </summary>
+    [HttpPost("admin/{id:guid}/reject")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> RejectEvent(Guid id, [FromBody] RejectEventRequest request)
+    {
+        Logger.LogInformation("Rejecting event {EventId} by admin {AdminId}", id, request.RejectedByAdminId);
+
+        var command = new RejectEventCommand(id, request.RejectedByAdminId, request.Reason);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
 }
 
 // Request DTOs
@@ -335,3 +374,5 @@ public record CancelEventRequest(string Reason);
 public record PostponeEventRequest(string Reason);
 public record RsvpRequest(Guid UserId, int Quantity = 1);
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
+public record ApproveEventRequest(Guid ApprovedByAdminId);
+public record RejectEventRequest(Guid RejectedByAdminId, string Reason);

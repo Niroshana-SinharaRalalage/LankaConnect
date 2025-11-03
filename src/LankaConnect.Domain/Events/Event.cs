@@ -280,10 +280,47 @@ public class Event : BaseEntity
 
         Status = EventStatus.UnderReview;
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventSubmittedForReviewEvent(Id, DateTime.UtcNow, true)); // Cultural events require approval
-        
+
+        return Result.Success();
+    }
+
+    public Result Approve(Guid approvedByAdminId)
+    {
+        if (Status != EventStatus.UnderReview)
+            return Result.Failure("Only events under review can be approved");
+
+        if (approvedByAdminId == Guid.Empty)
+            return Result.Failure("Admin ID is required");
+
+        Status = EventStatus.Published;
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventApprovedEvent(Id, approvedByAdminId, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    public Result Reject(Guid rejectedByAdminId, string reason)
+    {
+        if (Status != EventStatus.UnderReview)
+            return Result.Failure("Only events under review can be rejected");
+
+        if (rejectedByAdminId == Guid.Empty)
+            return Result.Failure("Admin ID is required");
+
+        if (string.IsNullOrWhiteSpace(reason))
+            return Result.Failure("Rejection reason is required");
+
+        Status = EventStatus.Draft; // Return to draft for organizer to modify
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventRejectedEvent(Id, rejectedByAdminId, reason, DateTime.UtcNow));
+
         return Result.Success();
     }
 

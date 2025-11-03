@@ -63,6 +63,9 @@ public static class ServiceCollectionExtensions
 
             // Custom schema IDs to avoid conflicts
             options.CustomSchemaIds(type => type.FullName?.Replace('+', '.'));
+
+            // Add operation filter to handle IFormFile parameters
+            options.OperationFilter<Filters.FileUploadOperationFilter>();
         });
 
         services.AddCors(options =>

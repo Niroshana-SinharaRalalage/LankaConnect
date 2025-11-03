@@ -9,6 +9,9 @@ namespace LankaConnect.Domain.Events;
 public class Event : BaseEntity
 {
     private readonly List<Registration> _registrations = new();
+    private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
+
+    private const int MAX_IMAGES = 10; // Maximum images per event
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
@@ -23,6 +26,8 @@ public class Event : BaseEntity
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
+    public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
+
     public int CurrentRegistrations => _registrations
         .Where(r => r.Status == RegistrationStatus.Confirmed)
         .Sum(r => r.Quantity);
@@ -405,6 +410,127 @@ public class Event : BaseEntity
     /// Checks if event is free (no ticket price or zero ticket price)
     /// </summary>
     public bool IsFree() => TicketPrice == null || TicketPrice.IsZero;
+
+    #endregion
+
+    #region Image Management (Epic 2 Phase 2)
+
+    /// <summary>
+    /// Adds an image to the event gallery
+    /// Enforces maximum image limit invariant
+    /// </summary>
+    public Result<EventImage> AddImage(string imageUrl, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return Result<EventImage>.Failure("Image URL cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result<EventImage>.Failure("Blob name cannot be empty");
+
+        // Invariant: Max images limit
+        if (_images.Count >= MAX_IMAGES)
+            return Result<EventImage>.Failure($"Event cannot have more than {MAX_IMAGES} images");
+
+        // Calculate next display order (sequential from 1)
+        var displayOrder = _images.Any() ? _images.Max(i => i.DisplayOrder) + 1 : 1;
+
+        // Create and add image
+        var eventImage = EventImage.Create(Id, imageUrl, blobName, displayOrder);
+        _images.Add(eventImage);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new ImageAddedToEventDomainEvent(Id, eventImage.Id, imageUrl));
+
+        return Result<EventImage>.Success(eventImage);
+    }
+
+    /// <summary>
+    /// Removes an image from the event gallery
+    /// Automatically resequences remaining images
+    /// </summary>
+    public Result RemoveImage(Guid imageId)
+    {
+        var image = _images.FirstOrDefault(i => i.Id == imageId);
+        if (image == null)
+            return Result.Failure($"Image with ID {imageId} not found in this event");
+
+        var blobName = image.BlobName;
+        _images.Remove(image);
+
+        // Resequence display orders after removal
+        ResequenceDisplayOrders();
+        MarkAsUpdated();
+
+        // Raise domain event (includes BlobName for cleanup in handler)
+        RaiseDomainEvent(new ImageRemovedFromEventDomainEvent(Id, imageId, blobName));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Reorders event images by providing new display orders
+    /// Enforces sequential ordering starting from 1
+    /// </summary>
+    public Result ReorderImages(Dictionary<Guid, int> newOrders)
+    {
+        if (newOrders == null || newOrders.Count == 0)
+            return Result.Failure("New display orders cannot be empty");
+
+        // Invariant: All image IDs must belong to this event
+        var invalidIds = newOrders.Keys.Except(_images.Select(i => i.Id)).ToList();
+        if (invalidIds.Any())
+            return Result.Failure("Cannot reorder images that don't belong to this event");
+
+        // Invariant: Must provide orders for ALL images
+        if (newOrders.Count != _images.Count)
+            return Result.Failure("Must provide display orders for all images");
+
+        // Invariant: Display orders must be sequential starting from 1
+        var orders = newOrders.Values.OrderBy(o => o).ToList();
+        if (orders.Count != orders.Distinct().Count())
+            return Result.Failure("Display orders must be unique");
+
+        if (orders.First() != 1 || orders.Last() != orders.Count)
+            return Result.Failure("Display orders must be sequential starting from 1");
+
+        // Apply new display orders
+        foreach (var kvp in newOrders)
+        {
+            var image = _images.First(i => i.Id == kvp.Key);
+            image.UpdateDisplayOrder(kvp.Value);
+        }
+
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new ImagesReorderedDomainEvent(Id));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Resequences image display orders to be sequential from 1
+    /// Called after image removal to eliminate gaps
+    /// </summary>
+    private void ResequenceDisplayOrders()
+    {
+        var sortedImages = _images.OrderBy(i => i.DisplayOrder).ToList();
+        for (int i = 0; i < sortedImages.Count; i++)
+        {
+            sortedImages[i].UpdateDisplayOrder(i + 1);
+        }
+    }
+
+    /// <summary>
+    /// Checks if event has any images
+    /// </summary>
+    public bool HasImages() => _images.Any();
+
+    /// <summary>
+    /// Gets the number of images in the event gallery
+    /// </summary>
+    public int ImageCount() => _images.Count;
 
     #endregion
 }

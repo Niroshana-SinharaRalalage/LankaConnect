@@ -18,7 +18,11 @@ using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
+using LankaConnect.Application.Events.Commands.AddImageToEvent;
+using LankaConnect.Application.Events.Commands.DeleteEventImage;
+using LankaConnect.Application.Events.Commands.ReorderEventImages;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -367,6 +371,90 @@ public class EventsController : BaseController<EventsController>
 
         return HandleResult(result);
     }
+
+    #region Event Images (Epic 2 Phase 2)
+
+    /// <summary>
+    /// Add image to event gallery
+    /// </summary>
+    [HttpPost("{id:guid}/images")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(EventImage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddImageToEvent(Guid id, [FromForm] IFormFile image)
+    {
+        if (image == null || image.Length == 0)
+            return BadRequest("Image file is required");
+
+        // Read image data
+        using var memoryStream = new MemoryStream();
+        await image.CopyToAsync(memoryStream);
+        var imageData = memoryStream.ToArray();
+
+        Logger.LogInformation("Adding image to event {EventId}, FileName={FileName}, Size={Size}",
+            id, image.FileName, imageData.Length);
+
+        var command = new AddImageToEventCommand
+        {
+            EventId = id,
+            ImageData = imageData,
+            FileName = image.FileName
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Delete image from event gallery
+    /// </summary>
+    [HttpDelete("{eventId:guid}/images/{imageId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteEventImage(Guid eventId, Guid imageId)
+    {
+        Logger.LogInformation("Deleting image {ImageId} from event {EventId}", imageId, eventId);
+
+        var command = new DeleteEventImageCommand
+        {
+            EventId = eventId,
+            ImageId = imageId
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Reorder event images
+    /// </summary>
+    [HttpPut("{id:guid}/images/reorder")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReorderEventImages(Guid id, [FromBody] EventReorderImagesRequest request)
+    {
+        Logger.LogInformation("Reordering images for event {EventId}", id);
+
+        var command = new ReorderEventImagesCommand
+        {
+            EventId = id,
+            NewOrders = request.NewOrders
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
 }
 
 // Request DTOs
@@ -376,3 +464,4 @@ public record RsvpRequest(Guid UserId, int Quantity = 1);
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
+public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2

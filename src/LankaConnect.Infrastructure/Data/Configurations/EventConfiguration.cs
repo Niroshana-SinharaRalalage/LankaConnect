@@ -91,6 +91,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey("EventId")
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Configure Images relationship (Epic 2 Phase 2)
+        builder.HasMany(e => e.Images)
+            .WithOne()
+            .HasForeignKey(ei => ei.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Configure indexes
         builder.HasIndex(e => e.StartDate)
             .HasDatabaseName("ix_events_start_date");

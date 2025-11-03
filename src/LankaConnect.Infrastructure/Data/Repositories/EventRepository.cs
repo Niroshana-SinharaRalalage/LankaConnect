@@ -135,4 +135,19 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Take(maxResults)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Event>> GetEventsStartingInTimeWindowAsync(
+        DateTime startTime,
+        DateTime endTime,
+        EventStatus[] statuses,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(e => e.Registrations) // Include registrations for attendee notifications
+            .Where(e => e.StartDate >= startTime && e.StartDate <= endTime)
+            .Where(e => statuses.Contains(e.Status))
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+    }
 }

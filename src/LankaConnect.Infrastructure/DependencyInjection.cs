@@ -1,4 +1,6 @@
 using Azure.Storage.Blobs;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -179,13 +181,33 @@ public static class DependencyInjection
         {
             var configuration = provider.GetRequiredService<IConfiguration>();
             var redisConnectionString = configuration.GetConnectionString("Redis");
-            
+
             if (string.IsNullOrEmpty(redisConnectionString))
             {
                 throw new InvalidOperationException("Redis connection string is not configured");
             }
-            
+
             return ConnectionMultiplexer.Connect(redisConnectionString);
+        });
+
+        // Add Hangfire Background Jobs (Epic 2 Phase 5)
+        services.AddHangfire(hangfireConfig =>
+        {
+            hangfireConfig
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UsePostgreSqlStorage(options =>
+                {
+                    options.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"));
+                });
+        });
+
+        // Add Hangfire server
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = 1; // Start with 1 worker for development
+            options.SchedulePollingInterval = TimeSpan.FromMinutes(1); // Check for scheduled jobs every minute
         });
 
         return services;

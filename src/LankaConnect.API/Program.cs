@@ -1,4 +1,7 @@
+using Hangfire;
+using LankaConnect.API.Infrastructure;
 using LankaConnect.Application;
+using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -255,6 +258,45 @@ try
             await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
         }
     });
+
+    // Add Hangfire Dashboard (Epic 2 Phase 5)
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuthorizationFilter() },
+        DisplayStorageConnectionString = false,
+        DashboardTitle = "LankaConnect Background Jobs"
+    });
+
+    // Register Recurring Jobs (Epic 2 Phase 5)
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        logger.LogInformation("Registering Hangfire recurring jobs...");
+
+        // Event Reminder Job - Runs hourly to send reminders for events starting in 24 hours
+        recurringJobManager.AddOrUpdate<EventReminderJob>(
+            "event-reminder-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Event Status Update Job - Runs hourly to update event statuses (Published->Active, Active->Completed)
+        recurringJobManager.AddOrUpdate<EventStatusUpdateJob>(
+            "event-status-update-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        logger.LogInformation("Hangfire recurring jobs registered successfully");
+    }
 
     Log.Information("LankaConnect API started successfully");
     app.Run();

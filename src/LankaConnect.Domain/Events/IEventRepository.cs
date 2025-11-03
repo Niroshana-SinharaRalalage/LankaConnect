@@ -16,4 +16,7 @@ public interface IEventRepository : IRepository<Event>
     Task<IReadOnlyList<Event>> GetEventsByRadiusAsync(decimal latitude, decimal longitude, double radiusMiles, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetEventsByCityAsync(string city, string? state = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetNearestEventsAsync(decimal latitude, decimal longitude, int maxResults = 10, CancellationToken cancellationToken = default);
+
+    // Background job queries (Epic 2 Phase 5 - Hangfire)
+    Task<IReadOnlyList<Event>> GetEventsStartingInTimeWindowAsync(DateTime startTime, DateTime endTime, EventStatus[] statuses, CancellationToken cancellationToken = default);
 }

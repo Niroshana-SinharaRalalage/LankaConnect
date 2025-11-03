@@ -115,7 +115,7 @@ namespace LankaConnect.Infrastructure.Migrations
             // Add composite index for common filtered queries
             migrationBuilder.Sql(@"
                 CREATE INDEX ix_events_status_city_startdate
-                ON events.events (status, address_city, start_date)
+                ON events.events (""Status"", address_city, ""StartDate"")
                 WHERE address_city IS NOT NULL;
             ");
         }

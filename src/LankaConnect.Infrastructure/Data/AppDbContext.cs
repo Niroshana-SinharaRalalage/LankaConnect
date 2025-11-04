@@ -44,6 +44,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new EventConfiguration());
+        modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
+        modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
@@ -101,6 +103,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         {
             typeof(User),
             typeof(Event),
+            typeof(EventImage), // Epic 2 Phase 2
+            typeof(EventVideo),  // Epic 2 Phase 2
             typeof(Registration),
             typeof(ForumTopic),
             typeof(Reply),

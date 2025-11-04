@@ -23,7 +23,16 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Longitude : (decimal?)null))
             // Ticket price mapping (nullable)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
-            .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (Domain.Shared.Enums.Currency?)null));
+            .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (Domain.Shared.Enums.Currency?)null))
+            // Media galleries (Epic 2 Phase 2)
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
+            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos));
+
+        // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
+        CreateMap<EventImage, EventImageDto>();
+
+        // EventVideo -> EventVideoDto mapping (Epic 2 Phase 2)
+        CreateMap<EventVideo, EventVideoDto>();
 
         // Registration -> RsvpDto mapping
         CreateMap<Registration, RsvpDto>()

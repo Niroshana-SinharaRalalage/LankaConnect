@@ -10,8 +10,10 @@ public class Event : BaseEntity
 {
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
+    private readonly List<EventVideo> _videos = new(); // Epic 2 Phase 2: Event videos support
 
     private const int MAX_IMAGES = 10; // Maximum images per event
+    private const int MAX_VIDEOS = 3; // Maximum videos per event
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
@@ -27,6 +29,7 @@ public class Event : BaseEntity
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
+    public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
 
     public int CurrentRegistrations => _registrations
         .Where(r => r.Status == RegistrationStatus.Confirmed)
@@ -469,6 +472,49 @@ public class Event : BaseEntity
     }
 
     /// <summary>
+    /// Replaces an existing image with a new one, maintaining the same ID and display order
+    /// Used for updating image content while preserving gallery position
+    /// </summary>
+    public Result<EventImage> ReplaceImage(Guid imageId, string newImageUrl, string newBlobName)
+    {
+        // Validate inputs
+        if (string.IsNullOrWhiteSpace(newImageUrl))
+            return Result<EventImage>.Failure("Image URL cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(newBlobName))
+            return Result<EventImage>.Failure("Blob name cannot be empty");
+
+        // Find existing image
+        var existingImage = _images.FirstOrDefault(i => i.Id == imageId);
+        if (existingImage == null)
+            return Result<EventImage>.Failure($"Image not found with ID {imageId}");
+
+        // Store old blob name for cleanup
+        var oldBlobName = existingImage.BlobName;
+
+        // Remove old image
+        _images.Remove(existingImage);
+
+        // Create new image with same ID and display order
+        var newImage = EventImage.CreateWithId(
+            existingImage.Id,
+            Id,
+            newImageUrl,
+            newBlobName,
+            existingImage.DisplayOrder
+        );
+
+        // Add new image
+        _images.Add(newImage);
+        MarkAsUpdated();
+
+        // Raise domain event with old blob name for cleanup
+        RaiseDomainEvent(new ImageReplacedInEventDomainEvent(Id, imageId, oldBlobName, newImageUrl));
+
+        return Result<EventImage>.Success(newImage);
+    }
+
+    /// <summary>
     /// Reorders event images by providing new display orders
     /// Enforces sequential ordering starting from 1
     /// </summary>
@@ -509,6 +555,94 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    #endregion
+
+    #region Video Management
+
+    /// <summary>
+    /// Adds a video to the event's video gallery
+    /// Videos are displayed in the order they are added (DisplayOrder)
+    /// Maximum 3 videos per event
+    /// </summary>
+    public Result<EventVideo> AddVideo(
+        string videoUrl,
+        string blobName,
+        string thumbnailUrl,
+        string thumbnailBlobName,
+        TimeSpan? duration,
+        string format,
+        long fileSizeBytes)
+    {
+        if (string.IsNullOrWhiteSpace(videoUrl))
+            return Result<EventVideo>.Failure("Video URL cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result<EventVideo>.Failure("Blob name cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(thumbnailUrl))
+            return Result<EventVideo>.Failure("Thumbnail URL cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(thumbnailBlobName))
+            return Result<EventVideo>.Failure("Thumbnail blob name cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(format))
+            return Result<EventVideo>.Failure("Format cannot be empty");
+
+        // Invariant: Max videos limit
+        if (_videos.Count >= MAX_VIDEOS)
+            return Result<EventVideo>.Failure($"Event cannot have more than {MAX_VIDEOS} videos (maximum limit reached)");
+
+        // Calculate next display order (sequential from 1)
+        var displayOrder = _videos.Any() ? _videos.Max(v => v.DisplayOrder) + 1 : 1;
+
+        // Create and add video
+        var eventVideo = EventVideo.Create(
+            Id,
+            videoUrl,
+            blobName,
+            thumbnailUrl,
+            thumbnailBlobName,
+            duration,
+            format,
+            fileSizeBytes,
+            displayOrder);
+
+        _videos.Add(eventVideo);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new VideoAddedToEventDomainEvent(Id, eventVideo.Id, videoUrl));
+
+        return Result<EventVideo>.Success(eventVideo);
+    }
+
+    /// <summary>
+    /// Removes a video from the event gallery
+    /// Automatically resequences remaining videos
+    /// Both video blob and thumbnail blob names are included in domain event for cleanup
+    /// </summary>
+    public Result RemoveVideo(Guid videoId)
+    {
+        var video = _videos.FirstOrDefault(v => v.Id == videoId);
+        if (video == null)
+            return Result.Failure($"Video with ID {videoId} not found in this event");
+
+        var videoBlobName = video.BlobName;
+        var thumbnailBlobName = video.ThumbnailBlobName;
+        _videos.Remove(video);
+
+        // Resequence display orders after removal
+        ResequenceVideoDisplayOrders();
+        MarkAsUpdated();
+
+        // Raise domain event (includes both blob names for cleanup in handler)
+        RaiseDomainEvent(new VideoRemovedFromEventDomainEvent(Id, videoId, videoBlobName, thumbnailBlobName));
+
+        return Result.Success();
+    }
+
+    #endregion
+
     /// <summary>
     /// Resequences image display orders to be sequential from 1
     /// Called after image removal to eliminate gaps
@@ -523,6 +657,19 @@ public class Event : BaseEntity
     }
 
     /// <summary>
+    /// Resequences video display orders to be sequential from 1
+    /// Called after video removal to eliminate gaps
+    /// </summary>
+    private void ResequenceVideoDisplayOrders()
+    {
+        var sortedVideos = _videos.OrderBy(v => v.DisplayOrder).ToList();
+        for (int i = 0; i < sortedVideos.Count; i++)
+        {
+            sortedVideos[i].UpdateDisplayOrder(i + 1);
+        }
+    }
+
+    /// <summary>
     /// Checks if event has any images
     /// </summary>
     public bool HasImages() => _images.Any();
@@ -531,6 +678,4 @@ public class Event : BaseEntity
     /// Gets the number of images in the event gallery
     /// </summary>
     public int ImageCount() => _images.Count;
-
-    #endregion
 }

@@ -51,6 +51,24 @@ public class EventImage : BaseEntity
     }
 
     /// <summary>
+    /// Factory method to create an EventImage with a specific ID
+    /// Used internally by Event aggregate for replace operations
+    /// </summary>
+    internal static EventImage CreateWithId(Guid id, Guid eventId, string imageUrl, string blobName, int displayOrder)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            throw new ArgumentException("Image URL cannot be empty", nameof(imageUrl));
+
+        if (string.IsNullOrWhiteSpace(blobName))
+            throw new ArgumentException("Blob name cannot be empty", nameof(blobName));
+
+        if (displayOrder < 1)
+            throw new ArgumentException("Display order must be greater than 0", nameof(displayOrder));
+
+        return new EventImage(id, eventId, imageUrl, blobName, displayOrder);
+    }
+
+    /// <summary>
     /// Updates the display order of this image
     /// Internal method - only Event aggregate can call this
     /// </summary>

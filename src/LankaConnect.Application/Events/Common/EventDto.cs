@@ -31,4 +31,34 @@ public record EventDto
     public decimal? TicketPriceAmount { get; init; }
     public Currency? TicketPriceCurrency { get; init; }
     public bool IsFree { get; init; }
+
+    // Media galleries (Epic 2 Phase 2)
+    public IReadOnlyList<EventImageDto> Images { get; init; } = Array.Empty<EventImageDto>();
+    public IReadOnlyList<EventVideoDto> Videos { get; init; } = Array.Empty<EventVideoDto>();
+}
+
+/// <summary>
+/// DTO for event image in gallery
+/// </summary>
+public record EventImageDto
+{
+    public Guid Id { get; init; }
+    public string ImageUrl { get; init; } = string.Empty;
+    public int DisplayOrder { get; init; }
+    public DateTime UploadedAt { get; init; }
+}
+
+/// <summary>
+/// DTO for event video in gallery
+/// </summary>
+public record EventVideoDto
+{
+    public Guid Id { get; init; }
+    public string VideoUrl { get; init; } = string.Empty;
+    public string ThumbnailUrl { get; init; } = string.Empty;
+    public TimeSpan? Duration { get; init; }
+    public string Format { get; init; } = string.Empty;
+    public long FileSizeBytes { get; init; }
+    public int DisplayOrder { get; init; }
+    public DateTime UploadedAt { get; init; }
 }

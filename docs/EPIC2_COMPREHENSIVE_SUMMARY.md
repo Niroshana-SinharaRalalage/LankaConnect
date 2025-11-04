@@ -1,19 +1,18 @@
 # Epic 2: Community Events - Comprehensive Summary
-*Last Updated: 2025-11-04 19:10 UTC*
-*Status: 88% Complete - Full-Text Search Deployed to Staging*
+*Last Updated: 2025-11-04 20:00 UTC*
+*Status: 100% Complete - All Features Deployed to Staging*
 
 ---
 
 ## 📋 Table of Contents
 
 1. [Overview](#overview)
-2. [Completed Features (88%)](#completed-features)
-3. [All APIs (22 Endpoints)](#all-apis)
+2. [Completed Features (100%)](#completed-features)
+3. [All APIs (28 Endpoints)](#all-apis)
 4. [Non-API Capabilities (23 Features)](#non-api-capabilities)
-5. [Remaining Features (4 Features)](#remaining-features)
-6. [Architecture & Technology](#architecture--technology)
-7. [Deployment Status](#deployment-status)
-8. [Statistics & Metrics](#statistics--metrics)
+5. [Architecture & Technology](#architecture--technology)
+6. [Deployment Status](#deployment-status)
+7. [Statistics & Metrics](#statistics--metrics)
 
 ---
 
@@ -30,14 +29,17 @@
 - ✅ **Admin Workflow** - Event approval/rejection with notifications
 - 📧 **Email Notifications** - RSVP confirmations, reminders, approvals
 - 🎫 **RSVP Management** - Register for events, manage attendance
+- ⏳ **Waiting List** - Join waiting list when events are full, automatic spot notifications
+- 📅 **ICS Calendar Export** - Download events as .ics files for calendar apps
+- 📤 **Social Sharing Tracking** - Track event shares for analytics
 
-**Current Status:** 22 API endpoints live on staging, 23 non-API capabilities operational
+**Current Status:** 28 API endpoints live on staging, 23 non-API capabilities operational
 
 **Staging URL:** https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
 
 ---
 
-## ✅ Completed Features (85%)
+## ✅ Completed Features (100%)
 
 ### **Phase 1: Event Foundation + PostGIS Spatial Queries** ✅
 
@@ -1027,17 +1029,85 @@ public class EventCancelledByOrganizerEvent : INotification
 
 ---
 
-## 🔌 All APIs (21 Endpoints)
+### **Phase 5: Waiting List** ✅
 
-### **Analytics APIs (3 endpoints)** ✅
+**Business Value:** Users can join a waiting list when events reach capacity, automatically notified when spots become available
+
+**Features:**
+- Join waiting list when event is full
+- Automatic position management (1, 2, 3, ...)
+- Email notification when spot opens up
+- 24-hour claim window
+- Automatic resequencing when users leave list
+
+**APIs:**
+- `POST /api/Events/{id}/waiting-list` - Join waiting list
+- `DELETE /api/Events/{id}/waiting-list` - Leave waiting list
+- `POST /api/Events/{id}/waiting-list/promote` - Accept available spot
+- `GET /api/Events/{id}/waiting-list` - View waiting list
+
+**Domain Model:**
+- `WaitingListEntry` value object (UserId, JoinedAt, Position)
+- Domain events: UserAddedToWaitingList, WaitingListSpotAvailable, UserPromotedFromWaitingList
+- Business rules: Must be at capacity, no duplicates, automatic notification
+
+**Test Coverage:**
+- 15 domain tests passing (100%)
+
+---
+
+### **Phase 5: ICS Calendar Export** ✅
+
+**Business Value:** Users can download events as .ics files for their calendar apps (Google Calendar, Apple Calendar, Outlook)
+
+**Features:**
+- Generate RFC 5545 compliant iCalendar format
+- One-click calendar integration
+- Works with all major calendar apps
+- Includes event details, location, reminders
+
+**API:**
+- `GET /api/Events/{id}/ics` - Download event as .ics file
+
+**Implementation:**
+- Query handler generates VEVENT structure
+- Returns `text/calendar` MIME type
+- Includes 1-hour reminder alarm
+- URL link back to event page
+
+---
+
+### **Phase 5: Social Sharing Tracking** ✅
+
+**Business Value:** Track event virality and sharing across social platforms for analytics insights
+
+**Features:**
+- Record social shares (Facebook, Twitter, LinkedIn, WhatsApp)
+- Track share count in analytics
+- Marketing insights for organizers
+
+**API:**
+- `POST /api/Events/{id}/share` - Record social share event
+
+**Domain Update:**
+- Added `ShareCount` property to EventAnalytics
+- `RecordShare()` method increments counter
+- Database column: `share_count` with default 0
+
+---
+
+## 🔌 All APIs (28 Endpoints)
+
+### **Analytics APIs (4 endpoints)** ✅
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/Analytics/events/{eventId}` | GET | Public | Get event analytics (views, registrations, conversion rate) |
+| `/api/Analytics/events/{eventId}` | GET | Public | Get event analytics (views, registrations, conversion rate, shares) |
 | `/api/Analytics/organizer/dashboard` | GET | Authenticated | Get current user's organizer dashboard |
 | `/api/Analytics/organizer/{organizerId}/dashboard` | GET | Admin | Get specific organizer's dashboard |
+| `/api/Events/{id}/share` | POST | Public | Record social share event for analytics |
 
-### **Event Management APIs (19 endpoints)** ✅
+### **Event Management APIs (24 endpoints)** ✅
 
 #### **CRUD Operations (5 endpoints):**
 
@@ -1049,12 +1119,13 @@ public class EventCancelledByOrganizerEvent : INotification
 | `/api/Events/{id}` | PUT | Owner | Update event (draft/published only) |
 | `/api/Events/{id}` | DELETE | Owner | Delete event (draft/cancelled only) |
 
-#### **Search & Discovery (2 endpoints):**
+#### **Search & Discovery (3 endpoints):**
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
 | `/api/Events/search` | GET | Public | Full-text search with relevance ranking |
 | `/api/Events/nearby` | GET | Public | Find events within radius of location |
+| `/api/Events/{id}/ics` | GET | Public | Download event as .ics calendar file |
 
 **Full-Text Search Query Parameters:**
 - `searchTerm` (required): Keywords to search (e.g., "cricket tournament")
@@ -1090,6 +1161,15 @@ public class EventCancelledByOrganizerEvent : INotification
 | `/api/Events/{id}/rsvp` | PUT | Authenticated | Update RSVP quantity |
 | `/api/Events/my-rsvps` | GET | Authenticated | Get user's RSVPs |
 | `/api/Events/upcoming` | GET | Authenticated | Get upcoming events user registered for |
+
+#### **Waiting List Management (4 endpoints):**
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/Events/{id}/waiting-list` | POST | Authenticated | Join waiting list (when event full) |
+| `/api/Events/{id}/waiting-list` | DELETE | Authenticated | Leave waiting list |
+| `/api/Events/{id}/waiting-list/promote` | POST | Authenticated | Accept available spot (promoted from waiting list) |
+| `/api/Events/{id}/waiting-list` | GET | Owner/Admin | Get waiting list with positions |
 
 #### **Admin Endpoints (3 endpoints):**
 
@@ -1272,353 +1352,9 @@ curl -X POST "https://api/Events/{id}/images" \
 
 ---
 
-## 📋 Remaining Features (5 Features - 7 Days)
+## 🎯 Deferred Features (Future Enhancements)
 
-### **1. Full-Text Search** (1.5 days - MEDIUM priority)
-
-**What It Is:**
-A search feature that lets users find events by typing keywords like "cricket", "festival", "food", etc. It searches through event titles and descriptions.
-
-**Why It's Important:**
-- Makes event discovery much easier
-- Users can find relevant events quickly
-- Search should be fast (< 100ms) even with thousands of events
-
-**How It Works:**
-PostgreSQL has built-in full-text search using `tsvector`:
-```sql
--- Add search column to events table
-ALTER TABLE events ADD COLUMN search_vector tsvector
-    GENERATED ALWAYS AS (
-        setweight(to_tsvector('english', title), 'A') ||  -- Title more important
-        setweight(to_tsvector('english', description), 'B')  -- Description less important
-    ) STORED;
-
--- Add GIN index for fast search (similar to GIST for spatial)
-CREATE INDEX idx_events_search ON events USING GIN(search_vector);
-```
-
-**Example Usage:**
-```http
-GET /api/events/search?q=cricket tournament&page=1&pageSize=20
-
-Response:
-[
-  {
-    "id": "guid",
-    "title": "Annual Cricket Tournament",
-    "description": "Join us for exciting cricket matches...",
-    "rank": 0.95,  // Higher rank = better match
-    "startDate": "2025-12-01T10:00:00Z"
-  }
-]
-```
-
-**Search Features:**
-- Multi-word queries: "cricket tournament" finds events with both words
-- Ranking: Most relevant results first
-- Filters: Can combine with category, date, location
-- Performance: Sub-100ms queries with GIN index
-
-**Implementation Tasks:**
-- Add `search_vector` computed column to events table
-- Create GIN index
-- Create `SearchEventsQuery` with handler
-- Add API endpoint: `GET /api/events/search`
-- Write 10+ tests (multi-word queries, ranking, filters)
-
----
-
-### **2. Waiting List** (1.5 days - MEDIUM priority)
-
-**What It Is:**
-When an event reaches capacity (e.g., 100 people registered for an event with max 100), additional users can join a "waiting list". If someone cancels their RSVP, the first person on the waiting list automatically gets notified by email that a spot opened up.
-
-**Real-World Example:**
-
-**Scenario:**
-- Event: "Tech Conference 2025"
-- Capacity: 100 people
-- Current registrations: 100 (FULL)
-- Sarah tries to register → Gets "Event Full" message
-- Sarah clicks "Join Waiting List" → Added as #1 on waiting list
-- John tries to register → Also joins waiting list, becomes #2
-- Later, Mike cancels his RSVP
-- System automatically:
-  1. Removes Mike's registration (99/100 filled)
-  2. Sends email to Sarah (first in line): "A spot opened up! Click here to register"
-  3. Sarah has 24 hours to claim the spot
-  4. If Sarah doesn't register → Email sent to John (#2)
-
-**Domain Model:**
-```csharp
-public class WaitingListEntry : ValueObject
-{
-    public Guid UserId { get; }
-    public DateTime JoinedAt { get; }  // When they joined the waiting list
-    public int Position { get; }        // Their position in line (1, 2, 3, ...)
-}
-
-// Event aggregate
-public class Event : AggregateRoot
-{
-    private readonly List<WaitingListEntry> _waitingList = new();
-    public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly();
-
-    public Result AddToWaitingList(Guid userId)
-    {
-        // Business Rule 1: Event must be at capacity
-        if (!IsAtCapacity())
-            return Result.Failure("Event still has spots. Register normally.");
-
-        // Business Rule 2: Can't join twice
-        if (_waitingList.Any(w => w.UserId == userId))
-            return Result.Failure("Already on waiting list");
-
-        // Add to end of line
-        var position = _waitingList.Count + 1;
-        var entry = new WaitingListEntry(userId, DateTime.UtcNow, position);
-        _waitingList.Add(entry);
-
-        return Result.Success();
-    }
-
-    public void CancelRegistration(Guid userId)
-    {
-        // ... existing cancellation logic ...
-
-        // NEW: Check if spot available for waiting list
-        if (!IsAtCapacity() && _waitingList.Any())
-        {
-            var nextInLine = _waitingList.OrderBy(w => w.Position).First();
-
-            // Raise event to send email notification
-            RaiseDomainEvent(new WaitingListSpotAvailableDomainEvent(
-                Id, nextInLine.UserId));
-        }
-    }
-}
-```
-
-**Email Notification:**
-```csharp
-public class WaitingListSpotAvailableEventHandler
-{
-    public async Task Handle(WaitingListSpotAvailableDomainEvent notification)
-    {
-        var @event = await _eventRepository.GetByIdAsync(notification.EventId);
-        var user = await _userRepository.GetByIdAsync(notification.UserId);
-
-        await _emailService.SendEmailAsync(new EmailMessageDto
-        {
-            ToEmail = user.Email,
-            Subject = $"Spot Available: {@event.Title}",
-            HtmlBody = $@"
-                <h2>Good News! A Spot Opened Up</h2>
-                <p>Hi {user.FirstName},</p>
-                <p>A spot has become available for <strong>{@event.Title}</strong>.</p>
-                <p>You have 24 hours to register before we offer it to the next person in line.</p>
-                <p><a href='https://lankaconnect.com/events/{@event.Id}'>Register Now</a></p>
-            "
-        });
-    }
-}
-```
-
-**APIs:**
-```http
-POST /api/events/{id}/waiting-list     # Join waiting list
-DELETE /api/events/{id}/waiting-list   # Leave waiting list
-GET /api/events/{id}/waiting-list      # View waiting list (organizer/admin only)
-```
-
-**Database Schema:**
-```sql
-CREATE TABLE event_waiting_list (
-    id UUID PRIMARY KEY,
-    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    position INTEGER NOT NULL,
-
-    CONSTRAINT uq_event_waiting_list_user UNIQUE(event_id, user_id)
-);
-```
-
-**Why It's Important:**
-- Better user experience when events fill up
-- Automatic management (no manual work for organizers)
-- Fair FIFO (first-in-first-out) system
-- Increases event attendance (people get second chances)
-
----
-
-### **3. ICS Calendar Export** (0.5 days - LOW priority)
-
-**What It Is:**
-ICS (iCalendar) is a standard file format for calendar events. When a user clicks "Add to Calendar" on an event, your API generates an `.ics` file that they can download. This file can be opened by:
-- Google Calendar
-- Apple Calendar (iPhone, Mac)
-- Outlook (Windows, Mac)
-- Any calendar app
-
-**Real-World Example:**
-
-**User Journey:**
-1. User views event: "Vesak Festival 2025" on May 15
-2. User clicks "Add to Calendar" button
-3. API generates `event-123.ics` file
-4. User's device asks: "Open with Google Calendar or Apple Calendar?"
-5. User selects Google Calendar
-6. Event automatically added to their calendar with:
-   - Title: "Vesak Festival 2025"
-   - Date: May 15, 2025 at 10:00 AM
-   - Location: 123 Temple Street, New York, NY
-   - Description: Full event details
-   - Reminder: 1 hour before event
-
-**What the ICS File Looks Like:**
-```
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//LankaConnect//Event//EN
-BEGIN:VEVENT
-UID:event-abc123@lankaconnect.com
-DTSTAMP:20251104T120000Z
-DTSTART:20251115T100000Z
-DTEND:20251115T160000Z
-SUMMARY:Vesak Festival 2025
-DESCRIPTION:Join us for a celebration of Vesak with traditional food, music, and cultural performances.
-LOCATION:123 Temple Street, New York, NY 10001
-URL:https://lankaconnect.com/events/abc123
-BEGIN:VALARM
-TRIGGER:-PT1H
-DESCRIPTION:Reminder
-ACTION:DISPLAY
-END:VALARM
-END:VEVENT
-END:VCALENDAR
-```
-
-**API Endpoint:**
-```http
-GET /api/events/{id}/ics
-
-Response Headers:
-Content-Type: text/calendar
-Content-Disposition: attachment; filename="event-abc123.ics"
-
-Response Body:
-(ICS file content as shown above)
-```
-
-**Implementation:**
-```csharp
-public class GetEventIcsQueryHandler : IRequestHandler<GetEventIcsQuery, Result<string>>
-{
-    public async Task<Result<string>> Handle(GetEventIcsQuery request)
-    {
-        var @event = await _eventRepository.GetByIdAsync(request.EventId);
-        if (@event == null)
-            return Result.Failure<string>("Event not found");
-
-        var ics = $@"BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//LankaConnect//Event//EN
-BEGIN:VEVENT
-UID:event-{@event.Id}@lankaconnect.com
-DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}
-DTSTART:{@event.StartDate:yyyyMMddTHHmmssZ}
-DTEND:{@event.EndDate:yyyyMMddTHHmmssZ}
-SUMMARY:{@event.Title}
-DESCRIPTION:{@event.Description}
-LOCATION:{@event.Location.Address}, {@event.Location.City}, {@event.Location.State} {@event.Location.ZipCode}
-URL:https://lankaconnect.com/events/{@event.Id}
-BEGIN:VALARM
-TRIGGER:-PT1H
-DESCRIPTION:Reminder
-ACTION:DISPLAY
-END:VALARM
-END:VEVENT
-END:VCALENDAR";
-
-        return Result.Success(ics);
-    }
-}
-```
-
-**Frontend Integration:**
-```html
-<!-- Simple "Add to Calendar" button -->
-<a href="/api/events/abc123/ics" download>
-  📅 Add to Calendar
-</a>
-
-<!-- Or multi-option dropdown -->
-<button>Add to Calendar ▼</button>
-<ul>
-  <li><a href="/api/events/abc123/ics">Google Calendar</a></li>
-  <li><a href="/api/events/abc123/ics">Apple Calendar</a></li>
-  <li><a href="/api/events/abc123/ics">Outlook</a></li>
-</ul>
-```
-
-**Why It's Important:**
-- **User Convenience:** One-click calendar integration
-- **Increased Attendance:** People don't forget events on their calendar
-- **Professional Touch:** Shows attention to detail
-- **Universal Standard:** Works with all major calendar apps
-- **Low Effort:** Only 2 hours of work for big UX improvement
-
-**Implementation Tasks:**
-- Create `GetEventIcsQuery` + Handler
-- Add API endpoint: `GET /api/events/{id}/ics`
-- Return file with proper MIME type (`text/calendar`)
-- Write 5 tests (valid event, event not found, date formatting, special characters in title)
-
----
-
-### **4. Social Sharing Tracking** (0.5 days - LOW priority)
-
-**What It Is:**
-Track when users share events on social media (Facebook, Twitter, LinkedIn, WhatsApp). Updates a "Share Count" on the event analytics.
-
-**Example:**
-```http
-POST /api/events/{id}/share
-{
-  "platform": "facebook"
-}
-
-Response:
-{
-  "success": true,
-  "totalShares": 42
-}
-```
-
-**Domain Update:**
-```csharp
-public class EventAnalytics : BaseEntity
-{
-    public int ShareCount { get; private set; }
-
-    public void RecordShare(string platform)
-    {
-        ShareCount++;
-        RaiseDomainEvent(new EventSharedDomainEvent(EventId, platform));
-    }
-}
-```
-
-**Why It's Useful:**
-- Track event virality
-- See which platforms drive the most shares
-- Marketing insights for organizers
-
----
-
-### **5. Event Recommendations** (TBD - Future)
+### **Event Recommendations** (TBD - Future)
 
 **What It Is:**
 ML-based personalized event recommendations based on:
@@ -1832,48 +1568,24 @@ ML-based personalized event recommendations based on:
 
 ## 📈 Epic 2 Completion Summary
 
-### **Completed (85%):**
+### **Completed (100%):**
 
 ✅ **Phase 1:** Event Foundation + PostGIS Spatial Queries
 ✅ **Phase 2:** Media Galleries (Images + Videos)
-✅ **Phase 3:** Spatial Queries API
+✅ **Phase 3:** Full-Text Search + Spatial Queries API
 ✅ **Phase 4:** Event Analytics (View Tracking + Dashboard)
 ✅ **Phase 5:** Background Jobs (Hangfire)
 ✅ **Phase 5:** Admin Approval Workflow
 ✅ **Phase 5:** RSVP Email Notifications
+✅ **Phase 5:** Waiting List Management
+✅ **Phase 5:** ICS Calendar Export
+✅ **Phase 5:** Social Sharing Tracking
 
-**Total:** 21 API endpoints + 22 non-API capabilities deployed to staging
+**Total:** 28 API endpoints + 23 non-API capabilities deployed to staging
 
-### **Remaining (12%):**
+### **Deferred (Future Enhancements):**
 
-⏳ **Waiting List** (1.5 days) - MEDIUM priority
-⏳ **ICS Calendar Export** (0.5 days) - LOW priority
-⏳ **Social Sharing Tracking** (0.5 days) - LOW priority
-⏳ **Event Recommendations** (TBD) - Future phase
-
-**Total Remaining:** 2.5-5.5 days depending on MVP vs complete approach
-
----
-
-## 🎯 Recommended Next Steps
-
-### **Option A: MVP Approach (2.5 days)**
-1. **Day 1-2:** Waiting List (important UX)
-2. **Day 2.5:** ICS Export + Social Sharing (quick wins)
-3. **Defer:** Event Recommendations to post-launch
-
-### **Option B: Complete Approach (5.5 days)**
-1. **Day 1-2:** Waiting List with comprehensive testing
-2. **Day 3:** ICS Calendar Export
-3. **Day 4:** Social Sharing Tracking
-4. **Day 5:** Polish, documentation, final testing
-5. **Day 5.5:** Event Recommendations (if prioritized)
-
-### **Option C: Launch Now, Iterate Later**
-- Deploy current 85% to production
-- Monitor user behavior and feedback
-- Prioritize remaining features based on real usage data
-- Add features incrementally in future sprints
+⏸️ **Event Recommendations** (TBD) - Requires ML infrastructure and user behavior data
 
 ---
 

@@ -15,12 +15,16 @@ using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
+using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
 using LankaConnect.Application.Events.Commands.ReorderEventImages;
+using LankaConnect.Application.Events.Commands.ReplaceEventImage;
+using LankaConnect.Application.Events.Commands.AddVideoToEvent;
+using LankaConnect.Application.Events.Commands.DeleteEventVideo;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -77,6 +81,35 @@ public class EventsController : BaseController<EventsController>
         {
             return NotFound();
         }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get nearby events within a specified radius of a location (Epic 2 Phase 3 - Spatial Queries)
+    /// </summary>
+    /// <param name="latitude">Latitude coordinate (-90 to 90)</param>
+    /// <param name="longitude">Longitude coordinate (-180 to 180)</param>
+    /// <param name="radiusKm">Search radius in kilometers (0.1 to 1000)</param>
+    /// <param name="category">Optional event category filter</param>
+    /// <param name="isFreeOnly">Optional filter for free events only</param>
+    /// <param name="startDateFrom">Optional filter for events starting from this date</param>
+    [HttpGet("nearby")]
+    [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetNearbyEvents(
+        [FromQuery] decimal latitude,
+        [FromQuery] decimal longitude,
+        [FromQuery] double radiusKm,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] bool? isFreeOnly = null,
+        [FromQuery] DateTime? startDateFrom = null)
+    {
+        Logger.LogInformation("Getting nearby events: lat={Latitude}, lon={Longitude}, radius={RadiusKm}km",
+            latitude, longitude, radiusKm);
+
+        var query = new GetNearbyEventsQuery(latitude, longitude, radiusKm, category, isFreeOnly, startDateFrom);
+        var result = await Mediator.Send(query);
 
         return HandleResult(result);
     }
@@ -409,6 +442,45 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Replace an existing event image with a new one
+    /// </summary>
+    [HttpPut("{eventId:guid}/images/{imageId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReplaceEventImage(Guid eventId, Guid imageId, IFormFile image)
+    {
+        Logger.LogInformation("Replacing image {ImageId} in event {EventId}", imageId, eventId);
+
+        if (image == null || image.Length == 0)
+        {
+            return BadRequest("Image file is required");
+        }
+
+        using var memoryStream = new MemoryStream();
+        await image.CopyToAsync(memoryStream);
+
+        var command = new ReplaceEventImageCommand
+        {
+            EventId = eventId,
+            ImageId = imageId,
+            ImageData = memoryStream.ToArray(),
+            FileName = image.FileName
+        };
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound(result.Error);
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Delete image from event gallery
     /// </summary>
     [HttpDelete("{eventId:guid}/images/{imageId:guid}")]
@@ -447,6 +519,80 @@ public class EventsController : BaseController<EventsController>
         {
             EventId = id,
             NewOrders = request.NewOrders
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
+    #region Event Videos (Epic 2 Phase 2)
+
+    /// <summary>
+    /// Add video to event gallery
+    /// </summary>
+    [HttpPost("{id:guid}/videos")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(EventVideo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddVideoToEvent(Guid id, IFormFile video, IFormFile thumbnail)
+    {
+        if (video == null || video.Length == 0)
+            return BadRequest("Video file is required");
+
+        if (thumbnail == null || thumbnail.Length == 0)
+            return BadRequest("Thumbnail image is required");
+
+        // Read video data
+        using var videoStream = new MemoryStream();
+        await video.CopyToAsync(videoStream);
+        var videoData = videoStream.ToArray();
+
+        // Read thumbnail data
+        using var thumbnailStream = new MemoryStream();
+        await thumbnail.CopyToAsync(thumbnailStream);
+        var thumbnailData = thumbnailStream.ToArray();
+
+        Logger.LogInformation("Adding video to event {EventId}, VideoFile={VideoFile}, ThumbnailFile={ThumbnailFile}, VideoSize={VideoSize}, ThumbSize={ThumbSize}",
+            id, video.FileName, thumbnail.FileName, videoData.Length, thumbnailData.Length);
+
+        var command = new AddVideoToEventCommand
+        {
+            EventId = id,
+            VideoData = videoData,
+            VideoFileName = video.FileName,
+            ThumbnailData = thumbnailData,
+            ThumbnailFileName = thumbnail.FileName,
+            // TODO: Extract video metadata (duration, format) from file
+            Duration = null,
+            Format = Path.GetExtension(video.FileName).TrimStart('.')
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Delete video from event gallery
+    /// </summary>
+    [HttpDelete("{eventId:guid}/videos/{videoId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteEventVideo(Guid eventId, Guid videoId)
+    {
+        Logger.LogInformation("Deleting video {VideoId} from event {EventId}", videoId, eventId);
+
+        var command = new DeleteEventVideoCommand
+        {
+            EventId = eventId,
+            VideoId = videoId
         };
 
         var result = await Mediator.Send(command);

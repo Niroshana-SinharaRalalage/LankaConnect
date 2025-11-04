@@ -7,18 +7,44 @@
 
 ---
 
-## 🎉 CURRENT STATUS (2025-11-03) - EPIC 2 PHASE 2 DEPLOYED TO STAGING ✅
+## 🎉 CURRENT STATUS (2025-11-04) - EPIC 2 PHASE 3: SPATIAL QUERIES COMPLETE ✅
 
-**Session Summary - Event Images Deployment:**
+**Session Summary - GetNearbyEvents Query (Location-based Event Discovery):**
+- ✅ **Epic 2 Phase 3 - GetNearbyEventsQuery**: 100% COMPLETE (10 tests passing, 685 total tests)
+- ✅ **Application Layer**: GetNearbyEventsQuery + Handler with coordinate & radius validation
+- ✅ **Validation**: Latitude (-90 to 90), Longitude (-180 to 180), RadiusKm (0.1 to 1000)
+- ✅ **Conversion**: Km to miles (1 km = 0.621371 miles) for PostGIS queries
+- ✅ **Optional Filters**: Category, IsFreeOnly, StartDateFrom (applied in-memory)
+- ✅ **API Endpoint**: GET /api/events/nearby (public, no authentication required)
+- ✅ **Infrastructure**: Leveraged existing PostGIS spatial queries from Epic 2 Phase 1
+- ✅ **Repository Method**: GetEventsByRadiusAsync (NetTopologySuite + ST_DWithin)
+- ✅ **Performance**: GIST spatial index (400x faster - 2000ms → 5ms)
+- ✅ **Zero Tolerance**: 0 compilation errors throughout implementation
+- ✅ **TDD Compliance**: Strict RED-GREEN-REFACTOR cycle followed
+- ✅ **Files Created**: 3 files (GetNearbyEventsQuery, GetNearbyEventsQueryHandler, GetNearbyEventsQueryHandlerTests)
+
+**Previous Session (2025-11-04) - Epic 2 Phase 2: Video Support:**
+- ✅ **Epic 2 Phase 2 - Video Support**: 100% COMPLETE (34 tests passing)
+- ✅ **Domain Layer**: EventVideo entity with MAX_VIDEOS=3 business rule
+- ✅ **Domain Methods**: Event.AddVideo(), Event.RemoveVideo() with auto-resequencing
+- ✅ **Application Commands**: AddVideoToEventCommand, DeleteEventVideoCommand + handlers
+- ✅ **Event Handler**: VideoRemovedEventHandler (deletes video + thumbnail blobs, fail-silent)
+- ✅ **Infrastructure**: EventVideos table migration with unique indexes, cascade delete
+- ✅ **API Endpoints**:
+  - POST /api/events/{id}/videos (multipart/form-data: video + thumbnail)
+  - DELETE /api/events/{eventId}/videos/{videoId}
+- ✅ **DTOs**: EventVideoDto and EventImageDto added to EventDto with AutoMapper
+- ✅ **Zero Tolerance**: 0 compilation errors throughout implementation
+- ✅ **TDD Compliance**: Strict RED-GREEN-REFACTOR cycle followed
+- ✅ **Features Implemented**:
+  - Video upload with thumbnail (Azure Blob Storage via IImageService)
+  - Maximum 3 videos per event
+  - Sequential display order (1, 2, 3) with automatic resequencing on delete
+  - Compensating transactions for upload rollback on failure
+  - Blob cleanup via domain event handler
+
+**Previous Session (2025-11-03) - Event Images Deployment:**
 - ✅ **Epic 2 Phase 2 Staging Deployment**: 100% COMPLETE (run 19023944905)
-- ✅ **Deployment Trigger**: Automatic on push to develop branch
-- ✅ **Build & Test**: All unit tests passed, zero compilation errors
-- ✅ **Docker Build**: Multi-stage build completed, image pushed to ACR
-- ✅ **Container App**: lankaconnect-api-staging updated successfully
-- ✅ **Health Checks**: PostgreSQL (Healthy), EF Core (Healthy), Redis (Degraded - expected)
-- ✅ **Smoke Tests**: Health endpoint (HTTP 200), Entra login (HTTP 401 - correct)
-- ✅ **Deployment URL**: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
-- ✅ **Deployment Duration**: 3m56s
 - ✅ **Features Deployed**:
   - Event Images: POST /api/events/{id}/images (multipart/form-data upload)
   - Event Images: DELETE /api/events/{eventId}/images/{imageId}

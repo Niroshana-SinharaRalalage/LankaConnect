@@ -52,7 +52,12 @@ public class UserIdImportTests
         // Use relative paths that work on both Windows and Linux
         var testAssemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
         var testDirectory = System.IO.Path.GetDirectoryName(testAssemblyLocation);
-        var domainPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(testDirectory!, "..", "..", "..", "..", "..", "src", "LankaConnect.Domain", "bin", "Debug", "net8.0", "LankaConnect.Domain.dll"));
+
+        // Try Release first (for CI/CD), then Debug (for local development)
+        var domainPathRelease = System.IO.Path.GetFullPath(System.IO.Path.Combine(testDirectory!, "..", "..", "..", "..", "..", "src", "LankaConnect.Domain", "bin", "Release", "net8.0", "LankaConnect.Domain.dll"));
+        var domainPathDebug = System.IO.Path.GetFullPath(System.IO.Path.Combine(testDirectory!, "..", "..", "..", "..", "..", "src", "LankaConnect.Domain", "bin", "Debug", "net8.0", "LankaConnect.Domain.dll"));
+
+        var domainPath = System.IO.File.Exists(domainPathRelease) ? domainPathRelease : domainPathDebug;
 
         var systemReferences = new[]
         {

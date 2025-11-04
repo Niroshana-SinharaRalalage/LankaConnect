@@ -360,7 +360,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Generate Coverage Report
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.4.18
         with:
           reports: 'TestResults/**/coverage.cobertura.xml'
           targetdir: 'TestResults/Coverage'

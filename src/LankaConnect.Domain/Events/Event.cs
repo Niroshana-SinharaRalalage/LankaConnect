@@ -11,6 +11,7 @@ public class Event : BaseEntity
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
     private readonly List<EventVideo> _videos = new(); // Epic 2 Phase 2: Event videos support
+    private readonly List<WaitingListEntry> _waitingList = new(); // Epic 2: Waiting List support
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
@@ -30,6 +31,7 @@ public class Event : BaseEntity
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
+    public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly(); // Epic 2: Read-only waiting list collection
 
     public int CurrentRegistrations => _registrations
         .Where(r => r.Status == RegistrationStatus.Confirmed)
@@ -175,6 +177,13 @@ public class Event : BaseEntity
 
         // Raise domain event
         RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
+
+        // Epic 2: Check if spot available for waiting list
+        if (!IsAtCapacity() && _waitingList.Any())
+        {
+            var nextInLine = _waitingList.OrderBy(w => w.Position).First();
+            RaiseDomainEvent(new WaitingListSpotAvailableDomainEvent(Id, nextInLine.UserId, DateTime.UtcNow));
+        }
 
         return Result.Success();
     }
@@ -678,4 +687,125 @@ public class Event : BaseEntity
     /// Gets the number of images in the event gallery
     /// </summary>
     public int ImageCount() => _images.Count;
+
+    #region Waiting List Management (Epic 2)
+
+    /// <summary>
+    /// Adds a user to the waiting list when event is at capacity
+    /// </summary>
+    public Result AddToWaitingList(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        // Business Rule 1: Event must be at capacity
+        if (!IsAtCapacity())
+            return Result.Failure("Event still has available capacity");
+
+        // Business Rule 2: User cannot be already registered
+        if (IsUserRegistered(userId))
+            return Result.Failure("User is already registered for this event");
+
+        // Business Rule 3: User cannot join waiting list twice
+        if (_waitingList.Any(w => w.UserId == userId))
+            return Result.Failure("User is already on the waiting list");
+
+        // Add to end of waiting list
+        var position = _waitingList.Count + 1;
+        var entry = WaitingListEntry.Create(userId, position);
+        _waitingList.Add(entry);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new UserAddedToWaitingListDomainEvent(Id, userId, position, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes a user from the waiting list
+    /// Automatically resequences remaining positions
+    /// </summary>
+    public Result RemoveFromWaitingList(Guid userId)
+    {
+        var entry = _waitingList.FirstOrDefault(w => w.UserId == userId);
+        if (entry == null)
+            return Result.Failure("User is not on the waiting list");
+
+        _waitingList.Remove(entry);
+        ResequenceWaitingList();
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new UserRemovedFromWaitingListDomainEvent(Id, userId, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Promotes a user from waiting list to confirmed registration
+    /// Called when user accepts the spot that became available
+    /// </summary>
+    public Result PromoteFromWaitingList(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        // Business Rule: Must have capacity
+        if (!HasCapacityFor(1))
+            return Result.Failure("No capacity available to promote user");
+
+        // Find user on waiting list
+        var entry = _waitingList.FirstOrDefault(w => w.UserId == userId);
+        if (entry == null)
+            return Result.Failure("User is not on the waiting list");
+
+        // Register the user
+        var registerResult = Register(userId, 1);
+        if (registerResult.IsFailure)
+            return registerResult;
+
+        // Remove from waiting list
+        _waitingList.Remove(entry);
+        ResequenceWaitingList();
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new UserPromotedFromWaitingListDomainEvent(Id, userId, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Gets the user's position in the waiting list
+    /// Returns 0 if user is not on the waiting list
+    /// </summary>
+    public int GetWaitingListPosition(Guid userId)
+    {
+        var entry = _waitingList.FirstOrDefault(w => w.UserId == userId);
+        return entry?.Position ?? 0;
+    }
+
+    /// <summary>
+    /// Checks if event is at full capacity
+    /// </summary>
+    public bool IsAtCapacity()
+    {
+        return CurrentRegistrations >= Capacity;
+    }
+
+    /// <summary>
+    /// Resequences waiting list positions after removal
+    /// Ensures sequential ordering from 1
+    /// </summary>
+    private void ResequenceWaitingList()
+    {
+        var sortedEntries = _waitingList.OrderBy(w => w.Position).ToList();
+        for (int i = 0; i < sortedEntries.Count; i++)
+        {
+            sortedEntries[i].UpdatePosition(i + 1);
+        }
+    }
+
+    #endregion
 }

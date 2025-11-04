@@ -29,6 +29,12 @@ using LankaConnect.Application.Events.Commands.AddVideoToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventVideo;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Analytics.Commands.RecordEventView;
+using LankaConnect.Application.Analytics.Commands.RecordEventShare;
+using LankaConnect.Application.Events.Commands.AddToWaitingList;
+using LankaConnect.Application.Events.Commands.RemoveFromWaitingList;
+using LankaConnect.Application.Events.Commands.PromoteFromWaitingList;
+using LankaConnect.Application.Events.Queries.GetWaitingList;
+using LankaConnect.Application.Events.Queries.GetEventIcs;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -661,6 +667,140 @@ public class EventsController : BaseController<EventsController>
     }
 
     #endregion
+
+    #region Waiting List Endpoints (Epic 2)
+
+    /// <summary>
+    /// Add user to event waiting list (Authenticated users)
+    /// </summary>
+    [HttpPost("{id:guid}/waiting-list")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddToWaitingList(Guid id, [FromQuery] Guid userId)
+    {
+        Logger.LogInformation("Adding user {UserId} to waiting list for event {EventId}", userId, id);
+
+        var command = new AddToWaitingListCommand(id, userId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Remove user from event waiting list (Authenticated users)
+    /// </summary>
+    [HttpDelete("{id:guid}/waiting-list")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveFromWaitingList(Guid id, [FromQuery] Guid userId)
+    {
+        Logger.LogInformation("Removing user {UserId} from waiting list for event {EventId}", userId, id);
+
+        var command = new RemoveFromWaitingListCommand(id, userId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Promote user from waiting list to confirmed registration (Authenticated users)
+    /// </summary>
+    [HttpPost("{id:guid}/waiting-list/promote")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> PromoteFromWaitingList(Guid id, [FromQuery] Guid userId)
+    {
+        Logger.LogInformation("Promoting user {UserId} from waiting list for event {EventId}", userId, id);
+
+        var command = new PromoteFromWaitingListCommand(id, userId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get waiting list for an event
+    /// </summary>
+    [HttpGet("{id:guid}/waiting-list")]
+    [ProducesResponseType(typeof(IReadOnlyList<WaitingListEntryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetWaitingList(Guid id)
+    {
+        Logger.LogInformation("Getting waiting list for event {EventId}", id);
+
+        var query = new GetWaitingListQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
+    #region Calendar Export (Epic 2)
+
+    /// <summary>
+    /// Export event as ICS calendar file (for Google Calendar, Apple Calendar, Outlook)
+    /// </summary>
+    [HttpGet("{id:guid}/ics")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventIcs(Guid id)
+    {
+        Logger.LogInformation("Generating ICS file for event {EventId}", id);
+
+        var query = new GetEventIcsQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        if (result.IsFailure)
+        {
+            return HandleResult(result);
+        }
+
+        // Return ICS file as downloadable content
+        var icsContent = System.Text.Encoding.UTF8.GetBytes(result.Value);
+        return File(icsContent, "text/calendar", $"event-{id}.ics");
+    }
+
+    #endregion
+
+    #region Social Sharing Analytics (Epic 2)
+
+    /// <summary>
+    /// Record a social share of an event (for analytics tracking)
+    /// </summary>
+    [HttpPost("{id:guid}/share")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RecordEventShare(Guid id, [FromBody] RecordShareRequest? request = null)
+    {
+        Logger.LogInformation("Recording social share for event {EventId}", id);
+
+        var userId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
+        var command = new RecordEventShareCommand(id, userId, request?.Platform);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
 }
 
 // Request DTOs
@@ -671,3 +811,4 @@ public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2
+public record RecordShareRequest(string? Platform = null); // Epic 2: Social sharing tracking

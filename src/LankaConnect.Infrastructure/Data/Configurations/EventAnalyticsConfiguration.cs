@@ -39,6 +39,11 @@ public class EventAnalyticsConfiguration : IEntityTypeConfiguration<EventAnalyti
             .IsRequired()
             .HasDefaultValue(0);
 
+        builder.Property(a => a.ShareCount)
+            .HasColumnName("share_count")
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(a => a.LastViewedAt)
             .HasColumnName("last_viewed_at")
             .HasColumnType("timestamp with time zone");

@@ -14,6 +14,7 @@ public class EventAnalytics : BaseEntity
     public int TotalViews { get; private set; }
     public int UniqueViewers { get; private set; }
     public int RegistrationCount { get; private set; }
+    public int ShareCount { get; private set; }
     public DateTime? LastViewedAt { get; private set; }
 
     /// <summary>
@@ -41,6 +42,7 @@ public class EventAnalytics : BaseEntity
             TotalViews = 0,
             UniqueViewers = 0,
             RegistrationCount = 0,
+            ShareCount = 0,
             LastViewedAt = null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -88,6 +90,16 @@ public class EventAnalytics : BaseEntity
             throw new ArgumentException("Registration count cannot be negative", nameof(count));
 
         RegistrationCount = count;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Record a social share of the event
+    /// Increments share count for analytics and engagement tracking
+    /// </summary>
+    public void RecordShare()
+    {
+        ShareCount++;
         UpdatedAt = DateTime.UtcNow;
     }
 }

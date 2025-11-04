@@ -103,6 +103,36 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(ev => ev.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Configure WaitingList relationship (Epic 2: Waiting List)
+        builder.OwnsMany(e => e.WaitingList, waitingList =>
+        {
+            waitingList.ToTable("event_waiting_list");
+            waitingList.Property<Guid>("Id").ValueGeneratedOnAdd();
+            waitingList.HasKey("Id");
+
+            waitingList.Property(w => w.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+
+            waitingList.Property(w => w.JoinedAt)
+                .HasColumnName("joined_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            waitingList.Property(w => w.Position)
+                .HasColumnName("position")
+                .IsRequired();
+
+            // Create composite unique index to prevent duplicate user entries
+            waitingList.HasIndex("EventId", nameof(WaitingListEntry.UserId))
+                .IsUnique()
+                .HasDatabaseName("ix_event_waiting_list_event_user");
+
+            // Index for position ordering
+            waitingList.HasIndex("EventId", nameof(WaitingListEntry.Position))
+                .HasDatabaseName("ix_event_waiting_list_event_position");
+        });
+
         // Configure indexes
         builder.HasIndex(e => e.StartDate)
             .HasDatabaseName("ix_events_start_date");

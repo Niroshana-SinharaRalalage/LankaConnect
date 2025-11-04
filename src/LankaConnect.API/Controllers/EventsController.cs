@@ -26,6 +26,8 @@ using LankaConnect.Application.Events.Commands.ReplaceEventImage;
 using LankaConnect.Application.Events.Commands.AddVideoToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventVideo;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Analytics.Commands.RecordEventView;
+using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
@@ -80,6 +82,32 @@ public class EventsController : BaseController<EventsController>
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
         {
             return NotFound();
+        }
+
+        // Fire-and-forget: Record event view for analytics (non-blocking)
+        // This runs asynchronously and doesn't affect the response time
+        if (result.IsSuccess && result.Value != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var userId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
+                    var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+                    var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                    var recordViewCommand = new RecordEventViewCommand(id, userId, ipAddress, userAgent);
+                    await Mediator.Send(recordViewCommand);
+
+                    Logger.LogDebug("Event view recorded for: {EventId}, User: {UserId}, IP: {IpAddress}",
+                        id, userId, ipAddress);
+                }
+                catch (Exception ex)
+                {
+                    // Fail-silent: Don't let analytics errors affect the main request
+                    Logger.LogWarning(ex, "Failed to record event view for: {EventId}", id);
+                }
+            });
         }
 
         return HandleResult(result);

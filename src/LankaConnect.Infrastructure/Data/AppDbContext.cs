@@ -5,6 +5,7 @@ using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Analytics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
 
@@ -33,6 +34,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
 
+    // Analytics Entity Sets (Epic 2 Phase 3)
+    public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
+    public DbSet<EventViewRecord> EventViewRecords => Set<EventViewRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -59,6 +64,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
+
+        // Analytics entity configurations (Epic 2 Phase 3)
+        modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
+        modelBuilder.ApplyConfiguration(new EventViewRecordConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -92,6 +101,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
         modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
+
+        // Analytics schema (Epic 2 Phase 3)
+        modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
+        modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -113,7 +126,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Review),
             typeof(EmailMessage),
             typeof(EmailTemplate),
-            typeof(UserEmailPreferences)
+            typeof(UserEmailPreferences),
+            typeof(EventAnalytics), // Epic 2 Phase 3
+            typeof(EventViewRecord) // Epic 2 Phase 3
         };
 
         // Get all types from Domain assembly that aren't in our configured list

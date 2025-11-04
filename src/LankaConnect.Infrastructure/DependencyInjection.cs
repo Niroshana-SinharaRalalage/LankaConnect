@@ -121,6 +121,10 @@ public static class DependencyInjection
         services.AddScoped<IUserEmailPreferencesRepository, UserEmailPreferencesRepository>();
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
 
+        // Add Analytics Repositories (Epic 2 Phase 3)
+        services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
+        services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
+
         // Add Email Services
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
         services.AddScoped<IEmailService, EmailService>();

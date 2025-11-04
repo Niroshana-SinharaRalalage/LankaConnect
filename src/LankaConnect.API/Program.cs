@@ -1,5 +1,6 @@
 using Hangfire;
 using LankaConnect.API.Infrastructure;
+using LankaConnect.API.Filters;
 using LankaConnect.Application;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Infrastructure;
@@ -51,9 +52,9 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new OpenApiInfo 
-        { 
-            Title = "LankaConnect API", 
+        c.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "LankaConnect API",
             Version = "v1",
             Description = "Sri Lankan American Community Platform API",
             Contact = new OpenApiContact
@@ -62,7 +63,10 @@ try
                 Email = "support@lankaconnect.com"
             }
         });
-        
+
+        // Add document filter for tag definitions (ensures all endpoints visible in Swagger UI)
+        c.DocumentFilter<TagDescriptionsDocumentFilter>();
+
         // Add JWT Authentication to Swagger
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
@@ -72,7 +76,7 @@ try
             Type = SecuritySchemeType.ApiKey,
             Scheme = "Bearer"
         });
-        
+
         c.AddSecurityRequirement(new OpenApiSecurityRequirement()
         {
             {
@@ -90,7 +94,7 @@ try
                 new List<string>()
             }
         });
-        
+
         // Include XML comments if available
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);

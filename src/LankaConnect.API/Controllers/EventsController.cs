@@ -19,6 +19,8 @@ using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
+using LankaConnect.Application.Events.Queries.SearchEvents;
+using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
 using LankaConnect.Application.Events.Commands.ReorderEventImages;
@@ -60,6 +62,36 @@ public class EventsController : BaseController<EventsController>
             status, category, city);
 
         var query = new GetEventsQuery(status, category, startDateFrom, startDateTo, isFreeOnly, city);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Search events using full-text search (Epic 2 Phase 3 - PostgreSQL FTS)
+    /// </summary>
+    /// <param name="searchTerm">Search term to match against event titles and descriptions</param>
+    /// <param name="page">Page number (default: 1)</param>
+    /// <param name="pageSize">Items per page (default: 20, max: 100)</param>
+    /// <param name="category">Optional category filter</param>
+    /// <param name="isFreeOnly">Optional filter for free events only</param>
+    /// <param name="startDateFrom">Optional filter for events starting from this date</param>
+    /// <returns>Paginated list of matching events ordered by relevance</returns>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(PagedResult<EventSearchResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SearchEvents(
+        [FromQuery] string searchTerm,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] bool? isFreeOnly = null,
+        [FromQuery] DateTime? startDateFrom = null)
+    {
+        Logger.LogInformation("Searching events: term='{SearchTerm}', page={Page}, pageSize={PageSize}, category={Category}",
+            searchTerm, page, pageSize, category);
+
+        var query = new SearchEventsQuery(searchTerm, page, pageSize, category, isFreeOnly, startDateFrom);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

@@ -150,4 +150,83 @@ public class EventRepository : Repository<Event>, IEventRepository
             .OrderBy(e => e.StartDate)
             .ToListAsync(cancellationToken);
     }
+
+    // Full-text search implementation (Epic 2 Phase 3 - PostgreSQL FTS)
+    public async Task<(IReadOnlyList<Event> Events, int TotalCount)> SearchAsync(
+        string searchTerm,
+        int limit,
+        int offset,
+        EventCategory? category = null,
+        bool? isFreeOnly = null,
+        DateTime? startDateFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Build the WHERE clause dynamically based on filters
+        var whereConditions = new List<string>
+        {
+            "e.search_vector @@ websearch_to_tsquery('english', {0})",
+            "e.status = {1}" // Only search Published events
+        };
+
+        var parameters = new List<object>
+        {
+            searchTerm,
+            (int)EventStatus.Published
+        };
+
+        // Add category filter if provided
+        if (category.HasValue)
+        {
+            whereConditions.Add($"e.category = {{{parameters.Count}}}");
+            parameters.Add((int)category.Value);
+        }
+
+        // Add free-only filter if provided
+        if (isFreeOnly.HasValue && isFreeOnly.Value)
+        {
+            whereConditions.Add("e.ticket_price_amount = 0");
+        }
+
+        // Add start date filter if provided
+        if (startDateFrom.HasValue)
+        {
+            whereConditions.Add($"e.start_date >= {{{parameters.Count}}}");
+            parameters.Add(startDateFrom.Value);
+        }
+
+        var whereClause = string.Join(" AND ", whereConditions);
+
+        // Query for events with ranking
+        var eventsSql = $@"
+            SELECT e.*
+            FROM events e
+            WHERE {whereClause}
+            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
+            LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
+
+        parameters.Add(limit);
+        parameters.Add(offset);
+
+        var events = await _dbSet
+            .FromSqlRaw(eventsSql, parameters.ToArray())
+            .AsNoTracking()
+            .Include(e => e.Images)
+            .Include(e => e.Videos)
+            .ToListAsync(cancellationToken);
+
+        // Count query (same filters, no ranking needed)
+        var countSql = $@"
+            SELECT COUNT(*)
+            FROM events e
+            WHERE {whereClause}";
+
+        // Remove limit and offset parameters for count query
+        var countParameters = parameters.Take(parameters.Count - 2).ToArray();
+
+        var totalCount = await _context.Database
+            .SqlQueryRaw<int>(countSql, countParameters)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return (events, totalCount);
+    }
 }

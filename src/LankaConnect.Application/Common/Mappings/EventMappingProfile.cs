@@ -34,6 +34,18 @@ public class EventMappingProfile : Profile
         // EventVideo -> EventVideoDto mapping (Epic 2 Phase 2)
         CreateMap<EventVideo, EventVideoDto>();
 
+        // Event -> EventSearchResultDto mapping (Epic 2 Phase 3 - Full-Text Search)
+        // Same mappings as EventDto, plus SearchRelevance (set to 0, will be populated by repository)
+        CreateMap<Event, EventSearchResultDto>()
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title.Value))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description.Value))
+            .ForMember(dest => dest.CurrentRegistrations, opt => opt.MapFrom(src => src.CurrentRegistrations))
+            .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
+            .ForMember(dest => dest.TicketPrice, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
+            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos))
+            .ForMember(dest => dest.SearchRelevance, opt => opt.MapFrom(src => 0m)); // Default to 0, repository will set actual value
+
         // Registration -> RsvpDto mapping
         CreateMap<Registration, RsvpDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.Ignore())

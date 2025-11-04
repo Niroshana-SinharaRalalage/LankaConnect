@@ -345,8 +345,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CancelRsvp(Guid id, [FromQuery] Guid userId)
+    public async Task<IActionResult> CancelRsvp(Guid id)
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}", userId, id);
 
         var command = new CancelRsvpCommand(id, userId);
@@ -384,8 +385,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(typeof(IReadOnlyList<RsvpDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyRsvps([FromQuery] Guid userId)
+    public async Task<IActionResult> GetMyRsvps()
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("Getting RSVPs for user: {UserId}", userId);
 
         var query = new GetUserRsvpsQuery(userId);
@@ -402,8 +404,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetUpcomingEvents([FromQuery] Guid userId)
+    public async Task<IActionResult> GetUpcomingEvents()
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("Getting upcoming events for user: {UserId}", userId);
 
         var query = new GetUpcomingEventsForUserQuery(userId);
@@ -678,8 +681,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> AddToWaitingList(Guid id, [FromQuery] Guid userId)
+    public async Task<IActionResult> AddToWaitingList(Guid id)
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("Adding user {UserId} to waiting list for event {EventId}", userId, id);
 
         var command = new AddToWaitingListCommand(id, userId);
@@ -696,8 +700,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RemoveFromWaitingList(Guid id, [FromQuery] Guid userId)
+    public async Task<IActionResult> RemoveFromWaitingList(Guid id)
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("Removing user {UserId} from waiting list for event {EventId}", userId, id);
 
         var command = new RemoveFromWaitingListCommand(id, userId);
@@ -714,8 +719,9 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> PromoteFromWaitingList(Guid id, [FromQuery] Guid userId)
+    public async Task<IActionResult> PromoteFromWaitingList(Guid id)
     {
+        var userId = User.GetUserId();
         Logger.LogInformation("Promoting user {UserId} from waiting list for event {EventId}", userId, id);
 
         var command = new PromoteFromWaitingListCommand(id, userId);

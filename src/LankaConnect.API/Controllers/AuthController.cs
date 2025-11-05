@@ -10,6 +10,7 @@ using LankaConnect.Application.Auth.Commands.LoginWithEntra;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Communications.Commands.ResetPassword;
 using LankaConnect.Application.Communications.Commands.VerifyEmail;
+using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.API.Filters;
 
 namespace LankaConnect.API.Controllers;
@@ -415,6 +416,55 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error during email verification for user: {UserId}", request.UserId);
             return StatusCode(500, new { error = "An error occurred while verifying your email" });
+        }
+    }
+
+    /// <summary>
+    /// Resend email verification link
+    /// </summary>
+    /// <param name="request">User ID for resending verification</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Confirmation that email was sent</returns>
+    [HttpPost("resend-verification")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResendVerificationEmail([FromBody] SendEmailVerificationCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                // Check for rate limiting
+                if (result.Error.Contains("recently sent") || result.Error.Contains("rate limit"))
+                {
+                    return StatusCode(429, new { error = result.Error });
+                }
+
+                return BadRequest(new { error = result.Error });
+            }
+
+            _logger.LogInformation("Verification email resent for user: {UserId}", result.Value.UserId);
+
+            return Ok(new
+            {
+                message = result.Value.WasRecentlySent
+                    ? "A verification email was recently sent. Please check your inbox."
+                    : "Verification email has been sent. Please check your inbox.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                expiresAt = result.Value.TokenExpiresAt,
+                wasRecentlySent = result.Value.WasRecentlySent
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resending verification email for user: {UserId}", request.UserId);
+            return StatusCode(500, new { error = "An error occurred while sending the verification email" });
         }
     }
 

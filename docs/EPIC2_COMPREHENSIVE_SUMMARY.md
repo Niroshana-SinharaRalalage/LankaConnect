@@ -1,6 +1,6 @@
 # Epic 2: Community Events - Comprehensive Summary
-*Last Updated: 2025-11-04 20:00 UTC*
-*Status: 100% Complete - All Features Deployed to Staging*
+*Last Updated: 2025-11-05 05:45 UTC*
+*Status: 100% Complete - All Features Deployed to Staging - CRITICAL FIX DEPLOYED ✅*
 
 ---
 
@@ -36,6 +36,15 @@
 **Current Status:** 28 API endpoints live on staging, 23 non-API capabilities operational
 
 **Staging URL:** https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**CRITICAL FIX (2025-11-05):**
+- ✅ **Migration Bug Fixed**: Full-Text Search migration was missing schema prefix (`events.events`)
+- ✅ **Commit**: 33ffb62 - Added schema prefix to all FTS migration SQL statements
+- ✅ **Deployment**: Run 19092422695 - SUCCESS
+- ✅ **Impact**: All 5 previously missing endpoints now appear in Swagger (search, ics, share, waiting-list)
+- ✅ **Swagger Endpoints**: 17 → 22 Events endpoints (100% complete)
+- ✅ **Root Cause**: SQL statements didn't specify schema, causing migration failure in staging
+- ✅ **Investigation**: Multi-agent hierarchical swarm (6 specialized agents) identified database migration issue
 
 ---
 

@@ -6,13 +6,22 @@ namespace LankaConnect.Application.Common.Models;
 /// </summary>
 public class PagedResult<T>
 {
-    public IReadOnlyList<T> Items { get; }
-    public int TotalCount { get; }
-    public int Page { get; }
-    public int PageSize { get; }
-    public int TotalPages { get; }
-    public bool HasPreviousPage { get; }
-    public bool HasNextPage { get; }
+    public IReadOnlyList<T> Items { get; init; } = Array.Empty<T>();
+    public int TotalCount { get; init; }
+    public int Page { get; init; }
+    public int PageSize { get; init; }
+    public int TotalPages { get; init; }
+    public bool HasPreviousPage { get; init; }
+    public bool HasNextPage { get; init; }
+
+    /// <summary>
+    /// Parameterless constructor for serialization (Swagger/System.Text.Json)
+    /// DO NOT use in application code - use the parameterized constructor instead
+    /// </summary>
+    public PagedResult()
+    {
+        // Properties initialized with default values above
+    }
 
     public PagedResult(IReadOnlyList<T> items, int totalCount, int page, int pageSize)
     {

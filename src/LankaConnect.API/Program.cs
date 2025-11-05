@@ -67,6 +67,9 @@ try
         // Add document filter for tag definitions (ensures all endpoints visible in Swagger UI)
         c.DocumentFilter<TagDescriptionsDocumentFilter>();
 
+        // Add operation filter for file upload endpoints (handles IFormFile parameters)
+        c.OperationFilter<FileUploadOperationFilter>();
+
         // Add JWT Authentication to Swagger
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {

@@ -117,7 +117,18 @@ try
                   .AllowAnyHeader()
                   .AllowCredentials();
         });
-        
+
+        options.AddPolicy("Staging", policy =>
+        {
+            policy.WithOrigins(
+                      "http://localhost:3000",
+                      "https://localhost:3001",
+                      "https://lankaconnect-staging.azurestaticapps.net")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+
         options.AddPolicy("Production", policy =>
         {
             policy.WithOrigins("https://lankaconnect.com", "https://www.lankaconnect.com")
@@ -187,7 +198,12 @@ try
             c.DisplayRequestDuration();
         });
 
-        app.UseCors(app.Environment.IsDevelopment() ? "Development" : "Production");
+        if (app.Environment.IsDevelopment())
+            app.UseCors("Development");
+        else if (app.Environment.IsStaging())
+            app.UseCors("Staging");
+        else
+            app.UseCors("Production");
     }
     else
     {

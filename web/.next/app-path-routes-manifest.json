@@ -1,0 +1,12 @@
+{
+  "/(auth)/forgot-password/page": "/forgot-password",
+  "/(auth)/login/page": "/login",
+  "/(auth)/register/page": "/register",
+  "/(auth)/reset-password/page": "/reset-password",
+  "/(auth)/verify-email/page": "/verify-email",
+  "/(dashboard)/dashboard/page": "/dashboard",
+  "/(dashboard)/profile/page": "/profile",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/page": "/"
+}

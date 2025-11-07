@@ -1,0 +1,7 @@
+1:"$Sreact.fragment"
+2:I[5500,["/_next/static/chunks/970762e1bd07f3c5.js","/_next/static/chunks/11a8120c4ac7cb18.js","/_next/static/chunks/a0071a616b8955fc.js"],"Image"]
+3:I[11299,["/_next/static/chunks/970762e1bd07f3c5.js","/_next/static/chunks/11a8120c4ac7cb18.js","/_next/static/chunks/a0071a616b8955fc.js"],"RegisterForm"]
+4:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/247eb132b7f7b574.js"],"OutletBoundary"]
+5:"$Sreact.suspense"
+0:{"buildId":"1_Z5zdlrBB1YuMMgJIrnb","rsc":["$","$1","c",{"children":[["$","div",null,{"className":"min-h-screen flex flex-col items-center justify-center bg-gradient-sri-lanka p-4","children":[["$","div",null,{"className":"mb-8","children":["$","div",null,{"className":"flex items-center gap-3","children":[["$","$L2",null,{"src":"/logos/lankaconnect-logo-transparent.png","alt":"LankaConnect","width":64,"height":64,"className":"h-16 w-16 object-contain","priority":true}],["$","span",null,{"className":"font-bold text-primary text-2xl","children":"LankaConnect"}]]}]}],["$","$L3",null,{}]]}],[["$","script","script-0",{"src":"/_next/static/chunks/970762e1bd07f3c5.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/11a8120c4ac7cb18.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/a0071a616b8955fc.js","async":true}]],["$","$L4",null,{"children":["$","$5",null,{"name":"Next.MetadataOutlet","children":"$@6"}]}]]}],"loading":null,"isPartial":false}
+6:null

@@ -104,8 +104,10 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 { "Email", request.Email },
                 { "ConfirmationToken", subscriber.ConfirmationToken! },
                 { "ConfirmationLink", $"https://lankaconnect.com/newsletter/confirm?token={subscriber.ConfirmationToken}" },
+                { "UnsubscribeLink", $"https://lankaconnect.com/newsletter/unsubscribe?token={subscriber.UnsubscribeToken}" },
                 { "MetroArea", request.MetroAreaId.HasValue ? "Specific Location" : "All Locations" },
-                { "CompanyName", "LankaConnect" }
+                { "CompanyName", "LankaConnect" },
+                { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }
             };
 
             var sendEmailResult = await _emailService.SendTemplatedEmailAsync(

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Your Newsletter Subscription - LankaConnect</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 18px;
+            color: #059669;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 25px;
+        }
+        .subscription-info {
+            background-color: #f0fdf4;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #059669;
+            margin: 20px 0;
+        }
+        .subscription-info h3 {
+            margin-top: 0;
+            color: #065f46;
+        }
+        .subscription-info p {
+            margin: 8px 0;
+        }
+        .subscription-info strong {
+            color: #047857;
+        }
+        .button {
+            display: inline-block;
+            background-color: #059669;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #047857;
+        }
+        .info-notice {
+            background-color: #f0f9ff;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #2563eb;
+            margin: 20px 0;
+        }
+        .info-notice h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .benefits-list {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        .benefits-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .url-fallback {
+            background-color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .security-notice {
+            background-color: #fef3c7;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #f59e0b;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .security-notice h3 {
+            margin-top: 0;
+            color: #92400e;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">LankaConnect</div>
+            <div class="title">📬 Confirm Your Newsletter Subscription</div>
+        </div>
+
+        <div class="content">
+            <p>Hello,</p>
+
+            <p>Thank you for subscribing to the LankaConnect newsletter! We're excited to keep you updated with the latest events, news, and happenings in the Sri Lankan American community.</p>
+
+            <div class="subscription-info">
+                <h3>✅ Subscription Details</h3>
+                <p><strong>Email:</strong> {{Email}}</p>
+                <p><strong>Location Preference:</strong> {{MetroArea}}</p>
+            </div>
+
+            <p>To complete your subscription and start receiving our newsletter, please confirm your email address by clicking the button below:</p>
+
+            <div style="text-align: center;">
+                <a href="{{ConfirmationLink}}" class="button">Confirm My Subscription</a>
+            </div>
+
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <div class="url-fallback">{{ConfirmationLink}}</div>
+
+            <div class="info-notice">
+                <h3>📰 What to Expect</h3>
+                <p>Once confirmed, you'll receive:</p>
+                <ul class="benefits-list">
+                    <li>🗓️ <strong>Weekly event digests</strong> featuring upcoming community gatherings, cultural celebrations, and networking opportunities</li>
+                    <li>🎉 <strong>Special announcements</strong> about festivals, workshops, and exclusive community events</li>
+                    <li>💼 <strong>Business spotlights</strong> showcasing local Sri Lankan American entrepreneurs and services</li>
+                    <li>🌟 <strong>Community stories</strong> highlighting achievements and contributions of community members</li>
+                    <li>📍 <strong>Location-specific updates</strong> tailored to your metro area preference</li>
+                </ul>
+                <p style="margin-top: 15px;"><em>We respect your inbox! Newsletters are sent weekly, and you can unsubscribe at any time.</em></p>
+            </div>
+
+            <div class="security-notice">
+                <h3>🛡️ Didn't subscribe?</h3>
+                <p>If you didn't request this newsletter subscription, you can safely ignore this email. No further emails will be sent unless you confirm your subscription by clicking the link above.</p>
+            </div>
+
+            <p>If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>Stay Connected with {{CompanyName}}</strong></p>
+            <p>Building bridges, sharing culture, strengthening community.</p>
+            <p>This email was sent on {{Date}}.</p>
+            <p>Visit us at: <a href="https://lankaconnect.com">https://lankaconnect.com</a></p>
+            <p style="margin-top: 15px; font-size: 12px;">
+                <a href="{{UnsubscribeLink}}">Unsubscribe</a> | <a href="https://lankaconnect.com/privacy">Privacy Policy</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

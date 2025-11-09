@@ -27,7 +27,7 @@ public class NewsletterController : ControllerBase
     [HttpPost("subscribe")]
     [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Subscribe([FromBody] NewsletterSubscriptionDto request)
+    public IActionResult Subscribe([FromBody] NewsletterSubscriptionDto request)
     {
         try
         {

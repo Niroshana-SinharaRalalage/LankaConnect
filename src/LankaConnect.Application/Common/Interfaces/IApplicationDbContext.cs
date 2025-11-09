@@ -1,6 +1,7 @@
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Enterprise;
@@ -24,6 +25,9 @@ public interface IApplicationDbContext
 
     // User Domain
     DbSet<User> Users { get; }
+
+    // Events Domain
+    DbSet<MetroArea> MetroAreas { get; }
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }

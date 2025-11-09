@@ -8,6 +8,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
+using LankaConnect.Infrastructure.Data.Seeders;
 
 namespace LankaConnect.Infrastructure.Data;
 
@@ -23,6 +24,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Registration> Registrations => Set<Registration>();
     public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
     public DbSet<Reply> Replies => Set<Reply>();
+    public DbSet<MetroArea> MetroAreas => Set<MetroArea>();
     
     // Business Entity Sets
     public DbSet<Business> Businesses => Set<Business>();
@@ -55,6 +57,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
+        modelBuilder.ApplyConfiguration(new MetroAreaConfiguration()); // Phase 5
 
         // Business entity configurations
         modelBuilder.ApplyConfiguration(new BusinessConfiguration());
@@ -79,6 +82,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Configure value object conversions
         ConfigureValueObjectConversions(modelBuilder);
+
+        // Note: Seed data is applied via DbInitializer at runtime
+        // due to complex value objects and owned entities
     }
 
     private static void ConfigureSchemas(ModelBuilder modelBuilder)

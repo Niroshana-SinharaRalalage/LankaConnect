@@ -1,5 +1,8 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.Application.Communications.Common;
+using LankaConnect.Application.Communications.Commands.SubscribeToNewsletter;
+using LankaConnect.Application.Communications.Commands.ConfirmNewsletterSubscription;
 
 namespace LankaConnect.API.Controllers;
 
@@ -12,10 +15,12 @@ namespace LankaConnect.API.Controllers;
 [ProducesResponseType(StatusCodes.Status500InternalServerError)]
 public class NewsletterController : ControllerBase
 {
+    private readonly IMediator _mediator;
     private readonly ILogger<NewsletterController> _logger;
 
-    public NewsletterController(ILogger<NewsletterController> logger)
+    public NewsletterController(IMediator mediator, ILogger<NewsletterController> logger)
     {
+        _mediator = mediator;
         _logger = logger;
     }
 
@@ -23,11 +28,14 @@ public class NewsletterController : ControllerBase
     /// Subscribe to newsletter with location preferences
     /// </summary>
     /// <param name="request">Subscription details including email and location preferences</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Subscription result</returns>
     [HttpPost("subscribe")]
     [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status400BadRequest)]
-    public IActionResult Subscribe([FromBody] NewsletterSubscriptionDto request)
+    public async Task<IActionResult> Subscribe(
+        [FromBody] NewsletterSubscriptionDto request,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -42,51 +50,116 @@ public class NewsletterController : ControllerBase
                 });
             }
 
-            // Validate email format
-            if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+            // Parse MetroAreaId if provided
+            Guid? metroAreaId = null;
+            if (!string.IsNullOrWhiteSpace(request.MetroAreaId))
             {
-                return BadRequest(new NewsletterSubscriptionResponseDto
+                if (Guid.TryParse(request.MetroAreaId, out var parsedId))
                 {
-                    Success = false,
-                    Message = "Invalid email format",
-                    ErrorCode = "INVALID_EMAIL"
-                });
+                    metroAreaId = parsedId;
+                }
+                else
+                {
+                    return BadRequest(new NewsletterSubscriptionResponseDto
+                    {
+                        Success = false,
+                        Message = "Invalid metro area ID format",
+                        ErrorCode = "INVALID_METRO_AREA_ID"
+                    });
+                }
             }
 
-            // Validate location requirement
-            if (!request.ReceiveAllLocations && string.IsNullOrWhiteSpace(request.MetroAreaId))
-            {
-                return BadRequest(new NewsletterSubscriptionResponseDto
-                {
-                    Success = false,
-                    Message = "Location is required when not receiving all locations",
-                    ErrorCode = "LOCATION_REQUIRED"
-                });
-            }
-
-            // Log subscription (Phase 1 - will be replaced with database save in Phase 2)
-            _logger.LogInformation(
-                "Newsletter subscription received: Email={Email}, MetroAreaId={MetroAreaId}, ReceiveAllLocations={ReceiveAllLocations}, Timestamp={Timestamp}",
+            // Create command
+            var command = new SubscribeToNewsletterCommand(
                 request.Email,
-                request.MetroAreaId ?? "null",
-                request.ReceiveAllLocations,
-                request.Timestamp
-            );
+                metroAreaId,
+                request.ReceiveAllLocations);
 
-            // TODO: Phase 2 - Save to database
-            // var subscriberId = await _newsletterService.SubscribeAsync(request);
+            // Execute command
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new NewsletterSubscriptionResponseDto
+                {
+                    Success = false,
+                    Message = result.Error,
+                    ErrorCode = "SUBSCRIPTION_FAILED"
+                });
+            }
 
             // Return success response
             return Ok(new NewsletterSubscriptionResponseDto
             {
                 Success = true,
-                Message = "Successfully subscribed to newsletter",
-                SubscriberId = $"temp-{DateTime.UtcNow.Ticks}" // Phase 2: Replace with actual DB ID
+                Message = "Successfully subscribed to newsletter. Please check your email to confirm.",
+                SubscriberId = result.Value.Id.ToString()
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing newsletter subscription for email: {Email}", request.Email);
+            return StatusCode(500, new NewsletterSubscriptionResponseDto
+            {
+                Success = false,
+                Message = "Internal server error",
+                ErrorCode = "SERVER_ERROR"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Confirm newsletter subscription with token from email
+    /// </summary>
+    /// <param name="token">Confirmation token from email</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Confirmation result</returns>
+    [HttpGet("confirm")]
+    [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(NewsletterSubscriptionResponseDto), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Confirm(
+        [FromQuery] string token,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return BadRequest(new NewsletterSubscriptionResponseDto
+                {
+                    Success = false,
+                    Message = "Confirmation token is required",
+                    ErrorCode = "INVALID_TOKEN"
+                });
+            }
+
+            // Create command
+            var command = new ConfirmNewsletterSubscriptionCommand(token);
+
+            // Execute command
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new NewsletterSubscriptionResponseDto
+                {
+                    Success = false,
+                    Message = result.Error,
+                    ErrorCode = "CONFIRMATION_FAILED"
+                });
+            }
+
+            // Return success response
+            return Ok(new NewsletterSubscriptionResponseDto
+            {
+                Success = true,
+                Message = "Newsletter subscription confirmed successfully!",
+                SubscriberId = result.Value.Id.ToString()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error confirming newsletter subscription with token: {Token}", token);
             return StatusCode(500, new NewsletterSubscriptionResponseDto
             {
                 Success = false,

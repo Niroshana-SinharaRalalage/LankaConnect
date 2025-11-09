@@ -83,7 +83,13 @@ function HomeContent() {
     // Filter by metro area
     if (selectedMetroArea) {
       items = items.filter(item => {
-        // Check if item location matches any city in the metro area
+        // State-level filtering: If metro area cities include "Statewide", filter by state only
+        if (selectedMetroArea.cities.includes('Statewide')) {
+          // For state-level selections (e.g., "All Ohio"), match any location in that state
+          return item.location.includes(selectedMetroArea.state);
+        }
+
+        // Regular metro area filtering: Check if item location matches any city in the metro area
         const itemCity = item.location.split(',')[0].trim();
         return selectedMetroArea.cities.some(city => city === itemCity) ||
                item.location.includes(selectedMetroArea.state);

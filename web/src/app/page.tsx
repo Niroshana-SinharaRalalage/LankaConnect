@@ -16,6 +16,9 @@ import { mockFeedItems } from '@/domain/data/mockFeedData';
 import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
 import type { FeedItem } from '@/domain/models/FeedItem';
 import type { MetroArea } from '@/domain/models/MetroArea';
+import { useEvents } from '@/presentation/hooks/useEvents';
+import { mapEventListToFeedItems } from '@/application/mappers/eventMapper';
+import { EventStatus } from '@/infrastructure/api/types/events.types';
 
 /**
  * Landing Page Component
@@ -76,9 +79,30 @@ function HomeContent() {
   const { selectedMetroArea } = useMetroArea();
   const [activeTab, setActiveTab] = React.useState<'all' | 'event' | 'business' | 'forum' | 'culture'>('all');
 
+  // Fetch events from API
+  const { data: events, isLoading, error } = useEvents({
+    status: EventStatus.Published,
+    startDateFrom: new Date().toISOString(),
+  });
+
+  // Convert API events to feed items and merge with mock data for other types
+  const allFeedItems = React.useMemo((): FeedItem[] => {
+    // Get non-event items from mock data
+    const nonEventItems = mockFeedItems.filter(item => item.type !== 'event');
+
+    // If we have events from API, convert them to feed items
+    if (events && events.length > 0) {
+      const eventFeedItems = mapEventListToFeedItems(events);
+      return [...eventFeedItems, ...nonEventItems];
+    }
+
+    // Fallback to mock data if API fails or returns no events
+    return mockFeedItems;
+  }, [events]);
+
   // Filter feed items by selected metro area and active tab
   const filteredItems = React.useMemo((): FeedItem[] => {
-    let items = mockFeedItems;
+    let items = allFeedItems;
 
     // Filter by metro area
     if (selectedMetroArea) {
@@ -91,8 +115,7 @@ function HomeContent() {
 
         // Regular metro area filtering: Check if item location matches any city in the metro area
         const itemCity = item.location.split(',')[0].trim();
-        return selectedMetroArea.cities.some(city => city === itemCity) ||
-               item.location.includes(selectedMetroArea.state);
+        return selectedMetroArea.cities.some(city => city === itemCity);
       });
     }
 
@@ -102,7 +125,7 @@ function HomeContent() {
     }
 
     return items;
-  }, [selectedMetroArea, activeTab]);
+  }, [allFeedItems, selectedMetroArea, activeTab]);
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -334,7 +357,13 @@ function HomeContent() {
 
             {/* Activity Feed - 2 Column Grid */}
             <div className="bg-white rounded-b-xl shadow-[0_2px_15px_rgba(0,0,0,0.08)] overflow-hidden">
-              <ActivityFeed items={filteredItems} loading={false} gridView={true} />
+              {error ? (
+                <div className="p-8 text-center">
+                  <p className="text-red-600 mb-4">Failed to load events. Please try again later.</p>
+                  <p className="text-sm text-gray-600">Showing cached content...</p>
+                </div>
+              ) : null}
+              <ActivityFeed items={filteredItems} loading={isLoading} gridView={true} />
             </div>
           </div>
         </div>

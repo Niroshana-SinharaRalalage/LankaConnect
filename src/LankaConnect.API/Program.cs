@@ -178,6 +178,13 @@ try
             logger.LogInformation("Applying database migrations...");
             await context.Database.MigrateAsync();
             logger.LogInformation("Database migrations applied successfully");
+
+            // Seed initial data (Development and Staging only)
+            if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+            {
+                var dbInitializer = new DbInitializer(context, services.GetRequiredService<ILogger<DbInitializer>>());
+                await dbInitializer.SeedAsync();
+            }
         }
         catch (Exception ex)
         {

@@ -120,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<IUserEmailPreferencesRepository, UserEmailPreferencesRepository>();
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
+        services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();

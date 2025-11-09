@@ -33,6 +33,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Domain.Communications.Entities.EmailMessage>();
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
 
     // Analytics Entity Sets (Epic 2 Phase 3)
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
@@ -64,6 +65,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
 
         // Analytics entity configurations (Epic 2 Phase 3)
         modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
@@ -101,6 +103,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
         modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
+        modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
 
         // Analytics schema (Epic 2 Phase 3)
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");

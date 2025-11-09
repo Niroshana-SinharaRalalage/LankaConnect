@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '../atoms/Logo';
-import { US_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
+import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
 
 interface FooterLinkProps {
   href: string;
@@ -194,7 +194,7 @@ const Footer: React.FC = () => {
                     disabled={receiveAllLocations || subscribeStatus === 'loading'}
                   >
                     <option value="">Select your metro area...</option>
-                    {US_METRO_AREAS.map(metro => (
+                    {ALL_METRO_AREAS.map(metro => (
                       <option key={metro.id} value={metro.id}>
                         {metro.name}, {metro.state}
                       </option>

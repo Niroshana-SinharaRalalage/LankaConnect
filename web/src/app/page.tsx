@@ -13,7 +13,7 @@ import { FeedTabs, ActivityFeed } from '@/presentation/components/features/feed'
 import { MetroAreaProvider, useMetroArea } from '@/presentation/components/features/location/MetroAreaContext';
 import { MetroAreaSelector } from '@/presentation/components/features/location/MetroAreaSelector';
 import { mockFeedItems } from '@/domain/data/mockFeedData';
-import { US_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
+import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
 import type { FeedItem } from '@/domain/models/FeedItem';
 import type { MetroArea } from '@/domain/models/MetroArea';
 
@@ -40,14 +40,14 @@ function LandingMetroSelector() {
 
   // Set available metros on mount
   React.useEffect(() => {
-    setAvailableMetros(US_METRO_AREAS);
+    setAvailableMetros(ALL_METRO_AREAS);
   }, [setAvailableMetros]);
 
   const handleChange = (metroId: string | null) => {
     if (!metroId) {
       setMetroArea(null);
     } else {
-      const metro = US_METRO_AREAS.find(m => m.id === metroId);
+      const metro = ALL_METRO_AREAS.find(m => m.id === metroId);
       setMetroArea(metro || null);
     }
   };
@@ -56,7 +56,7 @@ function LandingMetroSelector() {
     <div className="w-full max-w-md">
       <MetroAreaSelector
         value={selectedMetroArea?.id || null}
-        metros={US_METRO_AREAS}
+        metros={ALL_METRO_AREAS}
         onChange={handleChange}
         userLocation={userLocation}
         isDetecting={isDetecting}

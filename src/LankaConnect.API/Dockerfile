@@ -25,6 +25,9 @@ COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
 COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
 COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
 
+# Copy email templates (needed for runtime)
+COPY ["Templates/", "LankaConnect.API/Templates/"]
+
 # Build application
 WORKDIR "/src/LankaConnect.API"
 RUN dotnet build "LankaConnect.API.csproj" \
@@ -48,6 +51,9 @@ WORKDIR /app
 
 # Copy published output
 COPY --from=publish /app/publish .
+
+# Copy email templates to runtime
+COPY --from=build /src/LankaConnect.API/Templates ./Templates
 
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000

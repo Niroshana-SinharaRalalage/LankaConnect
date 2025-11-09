@@ -55,6 +55,9 @@ COPY --from=publish /app/publish .
 # Copy email templates to runtime
 COPY --from=build /src/LankaConnect.API/Templates ./Templates
 
+# Set correct permissions for Templates directory (before switching to non-root user)
+RUN chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates
+
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000
 

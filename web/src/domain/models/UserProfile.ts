@@ -56,6 +56,7 @@ export interface UserProfile {
   location?: Location | null;
   culturalInterests?: string[];
   languages?: Language[];
+  preferredMetroAreas?: string[]; // Phase 5B: 0-10 metro area IDs
 }
 
 /**
@@ -82,6 +83,13 @@ export interface UpdateBasicInfoRequest {
   lastName: string;
   phoneNumber?: string | null;
   bio?: string | null;
+}
+
+/**
+ * Phase 5B: Update user's preferred metro areas for location-based filtering
+ */
+export interface UpdatePreferredMetroAreasRequest {
+  metroAreaIds: string[]; // 0-10 metro area IDs
 }
 
 /**

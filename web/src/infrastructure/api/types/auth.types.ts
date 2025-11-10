@@ -26,16 +26,16 @@ export interface AuthTokens {
 export interface UserDto {
   userId: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string; // Backend returns fullName, not firstName/lastName separately
   role: UserRole;
-  isEmailVerified: boolean;
-  createdAt: string;
+  isEmailVerified?: boolean;
+  createdAt?: string;
 }
 
 export interface LoginResponse {
   user: UserDto;
-  tokens: AuthTokens;
+  accessToken: string;
+  tokenExpiresAt: string;
 }
 
 export interface RegisterResponse {

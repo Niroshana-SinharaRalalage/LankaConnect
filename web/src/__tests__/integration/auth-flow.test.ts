@@ -83,16 +83,15 @@ describe('Authentication Flow Integration Tests', () => {
       expect(response).toBeDefined();
       expect(response.user).toBeDefined();
       expect(response.user.email).toBe(testUser.email.toLowerCase());
-      expect(response.user.firstName).toBe(testUser.firstName);
-      expect(response.user.lastName).toBe(testUser.lastName);
-      expect(response.tokens).toBeDefined();
-      expect(response.tokens.accessToken).toBeDefined();
-      expect(response.tokens.refreshToken).toBeDefined();
-      expect(response.tokens.expiresIn).toBeGreaterThan(0);
+      expect(response.user.fullName).toContain(testUser.firstName);
+      expect(response.user.fullName).toContain(testUser.lastName);
+      expect(response.accessToken).toBeDefined();
+      expect(response.tokenExpiresAt).toBeDefined();
 
       // Store tokens for subsequent tests
-      accessToken = response.tokens.accessToken;
-      refreshToken = response.tokens.refreshToken;
+      accessToken = response.accessToken;
+      // Note: refreshToken is stored in HttpOnly cookie, not in response
+      refreshToken = '';
     });
 
     it('should fail to login with incorrect password', async () => {
@@ -122,10 +121,10 @@ describe('Authentication Flow Integration Tests', () => {
       };
 
       const response = await authRepository.login(loginData);
-      apiClient.setAuthToken(response.tokens.accessToken);
+      apiClient.setAuthToken(response.accessToken);
 
       // Token should be set (we can't directly test this, but no error should be thrown)
-      expect(response.tokens.accessToken).toBeDefined();
+      expect(response.accessToken).toBeDefined();
     });
 
     it('should clear auth token from API client', () => {

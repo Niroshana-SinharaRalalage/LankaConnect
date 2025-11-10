@@ -8,10 +8,10 @@ export interface LogoProps {
 }
 
 const sizeClasses = {
-  sm: 'h-8 w-8',
-  md: 'h-12 w-12',
-  lg: 'h-16 w-16',
-  xl: 'h-20 w-20',
+  sm: 'h-10 w-10',
+  md: 'h-16 w-16',
+  lg: 'h-20 w-20',
+  xl: 'h-24 w-24',
 };
 
 const textSizeClasses = {
@@ -21,23 +21,32 @@ const textSizeClasses = {
   xl: 'text-3xl',
 };
 
+const imageSizes = {
+  sm: 40,
+  md: 64,
+  lg: 80,
+  xl: 96,
+};
+
 /**
  * Logo Component
  * Displays the LankaConnect logo with optional text
  */
 export function Logo({ size = 'md', showText = false, className }: LogoProps) {
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <Image
-        src="/logos/lankaconnect-logo-transparent.png"
-        alt="LankaConnect"
-        width={size === 'sm' ? 32 : size === 'md' ? 48 : size === 'lg' ? 64 : 80}
-        height={size === 'sm' ? 32 : size === 'md' ? 48 : size === 'lg' ? 64 : 80}
-        className={cn(sizeClasses[size], 'object-contain')}
-        priority
-      />
+    <div className={cn('flex items-center gap-3', className)} suppressHydrationWarning>
+      <div className={cn(sizeClasses[size], 'relative flex-shrink-0')}>
+        <Image
+          src="/images/lankaconnect-logo.png"
+          alt="LankaConnect"
+          width={imageSizes[size]}
+          height={imageSizes[size]}
+          className="object-contain w-full h-full"
+          priority
+        />
+      </div>
       {showText && (
-        <span className={cn('font-bold text-primary', textSizeClasses[size])}>
+        <span className={cn('font-bold text-maroon', textSizeClasses[size])}>
           LankaConnect
         </span>
       )}

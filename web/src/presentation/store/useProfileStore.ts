@@ -8,6 +8,7 @@ import type {
   UpdateCulturalInterestsRequest,
   UpdateLanguagesRequest,
   UpdateBasicInfoRequest,
+  UpdatePreferredMetroAreasRequest,
 } from '@/domain/models/UserProfile';
 import { profileRepository } from '@/infrastructure/api/repositories/profile.repository';
 
@@ -22,6 +23,7 @@ interface ProfileSectionStates {
   location: SaveButtonState;
   culturalInterests: SaveButtonState;
   languages: SaveButtonState;
+  preferredMetroAreas: SaveButtonState; // Phase 5B
 }
 
 interface ProfileState {
@@ -56,6 +58,12 @@ interface ProfileState {
   // Actions - Languages
   updateLanguages: (userId: string, languages: UpdateLanguagesRequest) => Promise<void>;
 
+  // Actions - Preferred Metro Areas (Phase 5B)
+  updatePreferredMetroAreas: (
+    userId: string,
+    metroAreas: UpdatePreferredMetroAreasRequest
+  ) => Promise<void>;
+
   // Actions - Dirty Tracking
   markSectionDirty: (section: keyof ProfileSectionStates) => void;
   markSectionClean: (section: keyof ProfileSectionStates) => void;
@@ -69,6 +77,7 @@ const initialSectionStates: ProfileSectionStates = {
   location: 'idle',
   culturalInterests: 'idle',
   languages: 'idle',
+  preferredMetroAreas: 'idle', // Phase 5B
 };
 
 /**
@@ -316,6 +325,40 @@ export const useProfileStore = create<ProfileState>()(
           set((state) => ({
             error: errorMessage,
             sectionStates: { ...state.sectionStates, languages: 'error' },
+          }));
+        }
+      },
+
+      // Phase 5B: Update user's preferred metro areas for location-based filtering
+      updatePreferredMetroAreas: async (userId, metroAreas) => {
+        set((state) => ({
+          sectionStates: { ...state.sectionStates, preferredMetroAreas: 'saving' },
+          error: null,
+        }));
+
+        try {
+          const updatedProfile = await profileRepository.updatePreferredMetroAreas(
+            userId,
+            metroAreas
+          );
+          get().setProfile(updatedProfile);
+
+          set((state) => ({
+            sectionStates: { ...state.sectionStates, preferredMetroAreas: 'success' },
+          }));
+
+          // Reset to idle after 2 seconds
+          setTimeout(() => {
+            set((state) => ({
+              sectionStates: { ...state.sectionStates, preferredMetroAreas: 'idle' },
+            }));
+          }, 2000);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Failed to update preferred metro areas';
+          set((state) => ({
+            error: errorMessage,
+            sectionStates: { ...state.sectionStates, preferredMetroAreas: 'error' },
           }));
         }
       },

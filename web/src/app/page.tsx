@@ -17,7 +17,6 @@ import type { FeedItem } from '@/domain/models/FeedItem';
 import type { MetroArea } from '@/domain/models/MetroArea';
 import { useEvents } from '@/presentation/hooks/useEvents';
 import { mapEventListToFeedItems } from '@/application/mappers/eventMapper';
-import { EventStatus } from '@/infrastructure/api/types/events.types';
 
 /**
  * Landing Page Component
@@ -79,11 +78,10 @@ function HomeContent() {
   const [activeTab, setActiveTab] = React.useState<'all' | 'event' | 'business' | 'forum' | 'culture'>('all');
 
   // Fetch events from API
-  // Note: Removed startDateFrom filter to prevent query key from changing on every render
-  // Backend will return all published events
-  const { data: events, isLoading, error } = useEvents({
-    status: EventStatus.Published,
-  });
+  // Note: Backend has a bug where status filter doesn't work properly
+  // Removing status filter allows events to load correctly
+  // TODO: Investigate backend issue with status=1 filter
+  const { data: events, isLoading, error } = useEvents();
 
 
   // Convert API events to feed items (no mock data)

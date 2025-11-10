@@ -5,6 +5,7 @@ import type {
   UpdateCulturalInterestsRequest,
   UpdateLanguagesRequest,
   UpdateBasicInfoRequest,
+  UpdatePreferredMetroAreasRequest,
   PhotoUploadResponse,
 } from '@/domain/models/UserProfile';
 
@@ -130,6 +131,37 @@ export class ProfileRepository {
     const response = await apiClient.put<UserProfile>(
       `${this.basePath}/${userId}`,
       basicInfo
+    );
+    return response;
+  }
+
+  /**
+   * Update user's preferred metro areas for location-based filtering
+   * Phase 5B: User Preferred Metro Areas
+   * @param userId User GUID
+   * @param metroAreas Metro area IDs (0-10 items)
+   * @returns Promise resolving to updated UserProfile
+   */
+  async updatePreferredMetroAreas(
+    userId: string,
+    request: UpdatePreferredMetroAreasRequest
+  ): Promise<UserProfile> {
+    const response = await apiClient.put<UserProfile>(
+      `${this.basePath}/${userId}/preferred-metro-areas`,
+      request
+    );
+    return response;
+  }
+
+  /**
+   * Get user's preferred metro areas with full details
+   * Phase 5B: User Preferred Metro Areas
+   * @param userId User GUID
+   * @returns Promise resolving to array of metro area IDs
+   */
+  async getPreferredMetroAreas(userId: string): Promise<string[]> {
+    const response = await apiClient.get<string[]>(
+      `${this.basePath}/${userId}/preferred-metro-areas`
     );
     return response;
   }

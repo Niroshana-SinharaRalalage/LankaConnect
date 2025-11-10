@@ -48,8 +48,8 @@ export class EventsRepository {
   async getEvents(filters: GetEventsRequest = {}): Promise<EventDto[]> {
     const params = new URLSearchParams();
 
-    if (filters.status) params.append('status', filters.status);
-    if (filters.category) params.append('category', filters.category);
+    if (filters.status !== undefined) params.append('status', String(filters.status));
+    if (filters.category !== undefined) params.append('category', String(filters.category));
     if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
     if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
     if (filters.isFreeOnly !== undefined) params.append('isFreeOnly', String(filters.isFreeOnly));
@@ -80,7 +80,7 @@ export class EventsRepository {
       pageSize: String(request.pageSize ?? 20),
     });
 
-    if (request.category) params.append('category', request.category);
+    if (request.category !== undefined) params.append('category', String(request.category));
     if (request.isFreeOnly !== undefined) params.append('isFreeOnly', String(request.isFreeOnly));
     if (request.startDateFrom) params.append('startDateFrom', request.startDateFrom);
 
@@ -100,7 +100,7 @@ export class EventsRepository {
       radiusKm: String(request.radiusKm),
     });
 
-    if (request.category) params.append('category', request.category);
+    if (request.category !== undefined) params.append('category', String(request.category));
     if (request.isFreeOnly !== undefined) params.append('isFreeOnly', String(request.isFreeOnly));
     if (request.startDateFrom) params.append('startDateFrom', request.startDateFrom);
 

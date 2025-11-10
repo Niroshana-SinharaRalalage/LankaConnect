@@ -51,7 +51,7 @@ export function ProfilePhotoSection() {
     <section role="region" aria-labelledby="profile-photo-heading">
       <Card>
         <CardHeader>
-          <CardTitle id="profile-photo-heading">Profile Photo</CardTitle>
+          <CardTitle id="profile-photo-heading" style={{ color: '#8B1538' }}>Profile Photo</CardTitle>
           <CardDescription>
             Upload a photo to personalize your profile and help others recognize you
           </CardDescription>

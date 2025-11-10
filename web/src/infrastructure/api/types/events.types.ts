@@ -9,53 +9,53 @@
  * Event status enum matching backend LankaConnect.Domain.Events.Enums.EventStatus
  */
 export enum EventStatus {
-  Draft = 'Draft',
-  Published = 'Published',
-  Active = 'Active',
-  Postponed = 'Postponed',
-  Cancelled = 'Cancelled',
-  Completed = 'Completed',
-  Archived = 'Archived',
-  UnderReview = 'UnderReview',
+  Draft = 0,
+  Published = 1,
+  Active = 2,
+  Postponed = 3,
+  Cancelled = 4,
+  Completed = 5,
+  Archived = 6,
+  UnderReview = 7,
 }
 
 /**
  * Event category enum matching backend LankaConnect.Domain.Events.Enums.EventCategory
  */
 export enum EventCategory {
-  Religious = 'Religious',
-  Cultural = 'Cultural',
-  Community = 'Community',
-  Educational = 'Educational',
-  Social = 'Social',
-  Business = 'Business',
-  Charity = 'Charity',
-  Entertainment = 'Entertainment',
+  Religious = 0,
+  Cultural = 1,
+  Community = 2,
+  Educational = 3,
+  Social = 4,
+  Business = 5,
+  Charity = 6,
+  Entertainment = 7,
 }
 
 /**
  * Registration status enum matching backend LankaConnect.Domain.Events.Enums.RegistrationStatus
  */
 export enum RegistrationStatus {
-  Pending = 'Pending',
-  Confirmed = 'Confirmed',
-  Waitlisted = 'Waitlisted',
-  CheckedIn = 'CheckedIn',
-  Completed = 'Completed',
-  Cancelled = 'Cancelled',
-  Refunded = 'Refunded',
+  Pending = 0,
+  Confirmed = 1,
+  Waitlisted = 2,
+  CheckedIn = 3,
+  Completed = 4,
+  Cancelled = 5,
+  Refunded = 6,
 }
 
 /**
  * Currency enum matching backend LankaConnect.Domain.Shared.Enums.Currency
  */
 export enum Currency {
-  USD = 'USD',
-  LKR = 'LKR',
-  GBP = 'GBP',
-  EUR = 'EUR',
-  CAD = 'CAD',
-  AUD = 'AUD',
+  USD = 1,
+  LKR = 2,
+  GBP = 3,
+  EUR = 4,
+  CAD = 5,
+  AUD = 6,
 }
 
 // ==================== Event DTOs ====================

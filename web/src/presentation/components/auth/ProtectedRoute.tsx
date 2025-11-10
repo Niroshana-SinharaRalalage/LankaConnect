@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 
@@ -12,22 +12,36 @@ interface ProtectedRouteProps {
  * ProtectedRoute Component
  * Wrapper for routes that require authentication
  * Redirects to login if not authenticated
+ * Handles Zustand hydration to prevent redirect on page refresh
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Wait for Zustand store to hydrate from localStorage
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only redirect after hydration is complete
+    if (isHydrated && !isLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, isHydrated, router]);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  // Show loading state while hydrating or checking authentication
+  if (!isHydrated || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7fafc' }}>
+        <div className="text-center">
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+            style={{ borderColor: '#FF7900' }}
+          ></div>
+          <p style={{ color: '#8B1538', fontSize: '0.9rem' }}>Loading...</p>
+        </div>
       </div>
     );
   }

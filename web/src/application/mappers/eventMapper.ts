@@ -5,7 +5,7 @@
  * Handles transformation between infrastructure layer DTOs and domain models
  */
 
-import type { EventDto } from '@/infrastructure/api/types/events.types';
+import type { EventDto, EventCategory } from '@/infrastructure/api/types/events.types';
 import type { FeedItem, EventMetadata } from '@/domain/models/FeedItem';
 import { createFeedItem } from '@/domain/models/FeedItem';
 
@@ -162,9 +162,9 @@ export function filterEventsByLocation(
  */
 export function filterEventsByCategory(
   events: EventDto[],
-  category: string
+  category: string | EventCategory
 ): EventDto[] {
-  return events.filter((event) => event.category === category);
+  return events.filter((event) => event.category === Number(category) || event.category.toString() === category);
 }
 
 /**

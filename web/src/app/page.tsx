@@ -25,6 +25,25 @@ import { mapEventListToFeedItems } from '@/application/mappers/eventMapper';
  */
 
 /**
+ * State name to abbreviation mapping for API compatibility
+ * API returns full state names (e.g., "Ohio") but metro areas use abbreviations (e.g., "OH")
+ */
+const STATE_ABBR_MAP: Record<string, string> = {
+  'Ohio': 'OH',
+  'Pennsylvania': 'PA',
+  'California': 'CA',
+  'Texas': 'TX',
+  'New York': 'NY',
+  'Illinois': 'IL',
+  'Arizona': 'AZ',
+  'Colorado': 'CO',
+  'Georgia': 'GA',
+  'Indiana': 'IN',
+  'Massachusetts': 'MA',
+  'Washington': 'WA',
+} as const;
+
+/**
  * Metro Area Selector with Geolocation for Landing Page
  * Uses full MetroAreaSelector component with geolocation support
  */
@@ -102,11 +121,17 @@ function HomeContent() {
     // Filter by metro area
     if (selectedMetroArea) {
       items = items.filter(item => {
-        // State-level filtering: If metro area is marked as "Statewide", filter by state code anywhere in location
+        // State-level filtering: If metro area is marked as "Statewide", filter by state code
         if (selectedMetroArea.cities.includes('Statewide')) {
-          // Check if state code appears anywhere in location (case-insensitive)
-          // Format is "City, State" so we check if ", STATE" or " STATE" is in the location
-          const statePattern = new RegExp(`[,\\s]${selectedMetroArea.state}([,\\s]|$)`, 'i');
+          // API returns full state names (e.g., "Ohio"), so we need to match against the full name
+          // Find the full state name from the abbreviation (e.g., "OH" -> "Ohio")
+          const fullStateName = Object.keys(STATE_ABBR_MAP).find(
+            name => STATE_ABBR_MAP[name as keyof typeof STATE_ABBR_MAP] === selectedMetroArea.state
+          );
+
+          // Build pattern to match state name in location (e.g., "Cleveland, Ohio")
+          // Match state name preceded by comma or space, followed by comma or space or end
+          const statePattern = new RegExp(`[,\\s]${fullStateName}([,\\s]|$)`, 'i');
           return statePattern.test(item.location);
         }
 

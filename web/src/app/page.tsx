@@ -104,10 +104,11 @@ function HomeContent() {
     // Filter by metro area
     if (selectedMetroArea) {
       items = items.filter(item => {
-        // State-level filtering: If metro area is marked as "Statewide", filter by state code only
+        // State-level filtering: If metro area is marked as "Statewide", filter by state code anywhere in location
         if (selectedMetroArea.cities.includes('Statewide')) {
-          // Check if location ends with the state code (e.g., ", OH" or "OH")
-          const statePattern = new RegExp(`(,\\s*)?${selectedMetroArea.state}$`, 'i');
+          // Check if state code appears anywhere in location (case-insensitive)
+          // Format is "City, State" so we check if ", STATE" or " STATE" is in the location
+          const statePattern = new RegExp(`[,\\s]${selectedMetroArea.state}([,\\s]|$)`, 'i');
           return statePattern.test(item.location);
         }
 

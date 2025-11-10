@@ -40,8 +40,8 @@ public class SubscribeToNewsletterCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        Guid? metroAreaId = Guid.NewGuid();
-        var command = new SubscribeToNewsletterCommand(email, metroAreaId);
+        var metroAreaIds = new List<Guid> { Guid.NewGuid() };
+        var command = new SubscribeToNewsletterCommand(email, metroAreaIds);
 
         _mockRepository
             .Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -62,7 +62,8 @@ public class SubscribeToNewsletterCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value.Email.Should().Be(email);
-        result.Value.MetroAreaId.Should().Be(metroAreaId);
+        result.Value.MetroAreaIds.Should().NotBeNull();
+        result.Value.MetroAreaIds.Should().HaveCount(1);
         result.Value.IsActive.Should().BeTrue();
         result.Value.IsConfirmed.Should().BeFalse();
 
@@ -98,12 +99,12 @@ public class SubscribeToNewsletterCommandHandlerTests
     {
         // Arrange
         var email = "existing@example.com";
-        Guid? metroAreaId = Guid.NewGuid();
-        var command = new SubscribeToNewsletterCommand(email, metroAreaId);
+        var metroAreaIds = new List<Guid> { Guid.NewGuid() };
+        var command = new SubscribeToNewsletterCommand(email, metroAreaIds);
 
         var existingSubscriber = NewsletterSubscriber.Create(
             Email.Create(email).Value,
-            metroAreaId,
+            metroAreaIds.FirstOrDefault(),
             false).Value;
 
         _mockRepository
@@ -126,12 +127,12 @@ public class SubscribeToNewsletterCommandHandlerTests
     {
         // Arrange
         var email = "inactive@example.com";
-        Guid? metroAreaId = Guid.NewGuid();
-        var command = new SubscribeToNewsletterCommand(email, metroAreaId);
+        var metroAreaIds = new List<Guid> { Guid.NewGuid() };
+        var command = new SubscribeToNewsletterCommand(email, metroAreaIds);
 
         var existingSubscriber = NewsletterSubscriber.Create(
             Email.Create(email).Value,
-            metroAreaId,
+            metroAreaIds.FirstOrDefault(),
             false).Value;
         existingSubscriber.Unsubscribe(existingSubscriber.UnsubscribeToken!); // Make inactive
 
@@ -153,7 +154,8 @@ public class SubscribeToNewsletterCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.IsActive.Should().BeTrue();
-        result.Value.MetroAreaId.Should().Be(metroAreaId);
+        result.Value.MetroAreaIds.Should().NotBeNull();
+        result.Value.MetroAreaIds.Should().HaveCount(1);
 
         // Should remove old and add new
         _mockRepository.Verify(r => r.Remove(It.IsAny<NewsletterSubscriber>()), Times.Once);
@@ -199,8 +201,8 @@ public class SubscribeToNewsletterCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        Guid? metroAreaId = Guid.NewGuid();
-        var command = new SubscribeToNewsletterCommand(email, metroAreaId);
+        var metroAreaIds = new List<Guid> { Guid.NewGuid() };
+        var command = new SubscribeToNewsletterCommand(email, metroAreaIds);
 
         _mockRepository
             .Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))

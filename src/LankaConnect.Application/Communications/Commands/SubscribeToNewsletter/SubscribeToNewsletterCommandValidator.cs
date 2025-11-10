@@ -16,14 +16,14 @@ public class SubscribeToNewsletterCommandValidator : AbstractValidator<Subscribe
             .Must(BeValidEmail)
             .WithMessage("Invalid email format");
 
-        RuleFor(x => x.MetroAreaId)
+        RuleFor(x => x.MetroAreaIds)
             .NotEmpty()
-            .WithMessage("Metro area is required when not receiving all locations")
+            .WithMessage("Metro areas are required when not receiving all locations")
             .When(x => !x.ReceiveAllLocations);
 
         RuleFor(x => x.ReceiveAllLocations)
-            .Must((command, receiveAll) => receiveAll || command.MetroAreaId.HasValue)
-            .WithMessage("Either specify a metro area or select to receive all locations");
+            .Must((command, receiveAll) => receiveAll || (command.MetroAreaIds != null && command.MetroAreaIds.Count > 0))
+            .WithMessage("Either specify metro areas or select to receive all locations");
     }
 
     private static bool BeValidEmail(string email)

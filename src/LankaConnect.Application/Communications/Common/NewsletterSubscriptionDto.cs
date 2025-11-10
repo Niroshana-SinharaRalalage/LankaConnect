@@ -15,9 +15,10 @@ public class NewsletterSubscriptionDto
     public required string Email { get; set; }
 
     /// <summary>
-    /// Metro area ID for location-based subscriptions (null if receive all locations)
+    /// Metro area IDs for location-based subscriptions (null/empty if receive all locations)
+    /// Phase 5B: Support multiple metro areas for subscriptions
     /// </summary>
-    public string? MetroAreaId { get; set; }
+    public List<string>? MetroAreaIds { get; set; }
 
     /// <summary>
     /// Whether subscriber wants to receive events from all locations

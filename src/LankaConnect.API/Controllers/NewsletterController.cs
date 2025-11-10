@@ -50,29 +50,33 @@ public class NewsletterController : ControllerBase
                 });
             }
 
-            // Parse MetroAreaId if provided
-            Guid? metroAreaId = null;
-            if (!string.IsNullOrWhiteSpace(request.MetroAreaId))
+            // Parse MetroAreaIds if provided
+            List<Guid>? metroAreaIds = null;
+            if (request.MetroAreaIds != null && request.MetroAreaIds.Count > 0)
             {
-                if (Guid.TryParse(request.MetroAreaId, out var parsedId))
+                metroAreaIds = new List<Guid>();
+                foreach (var metroIdString in request.MetroAreaIds)
                 {
-                    metroAreaId = parsedId;
-                }
-                else
-                {
-                    return BadRequest(new NewsletterSubscriptionResponseDto
+                    if (Guid.TryParse(metroIdString, out var parsedId))
                     {
-                        Success = false,
-                        Message = "Invalid metro area ID format",
-                        ErrorCode = "INVALID_METRO_AREA_ID"
-                    });
+                        metroAreaIds.Add(parsedId);
+                    }
+                    else
+                    {
+                        return BadRequest(new NewsletterSubscriptionResponseDto
+                        {
+                            Success = false,
+                            Message = $"Invalid metro area ID format: {metroIdString}",
+                            ErrorCode = "INVALID_METRO_AREA_ID"
+                        });
+                    }
                 }
             }
 
             // Create command
             var command = new SubscribeToNewsletterCommand(
                 request.Email,
-                metroAreaId,
+                metroAreaIds,
                 request.ReceiveAllLocations);
 
             // Execute command

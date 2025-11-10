@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   getMetrosGroupedByState,
@@ -35,6 +35,15 @@ export function NewsletterMetroSelector({
 }: NewsletterMetroSelectorProps) {
   const [expandedStates, setExpandedStates] = useState<Set<string>>(new Set());
   const [validationError, setValidationError] = useState<string>('');
+
+  // Check validation whenever selectedMetroIds changes
+  useEffect(() => {
+    if (selectedMetroIds.length > maxSelections) {
+      setValidationError(`You cannot select more than ${maxSelections} metro areas`);
+    } else {
+      setValidationError('');
+    }
+  }, [selectedMetroIds, maxSelections]);
 
   const metrosByState = getMetrosGroupedByState();
 

@@ -7,75 +7,143 @@
 
 ---
 
-## 🎉 CURRENT STATUS - LANDING PAGE EVENTS FEED BUG FIXES COMPLETE ✅
+## 🎉 CURRENT STATUS - PHASE 5B METRO AREAS EXPANSION (GUID + MAX 20) ✅
 **Date**: 2025-11-10 (Current Session)
-**Session**: EVENTS FEED TROUBLESHOOTING & CRITICAL BUG FIXES
-**Status**: ✅ All 3 critical issues resolved and tested
-**Build Status**: ✅ Next.js build successful with 0 TypeScript errors
+**Session**: PHASE 5B - METRO AREAS GUID SYNCHRONIZATION & UI REDESIGN
+**Status**: ✅ Phases 5B.2, 5B.3, 5B.4 COMPLETE - Backend GUID support, frontend constants rebuilt, UI redesigned
+**Build Status**: ✅ Backend build successful with 0 errors; Frontend TypeScript valid
 
-**EVENTS FEED CRITICAL FIXES - COMPLETE (Current Session):**
-- ✅ **Issue 1 - Events Not Loading**: Backend status filter bug identified and workaround applied
-  - Root cause: API returns empty array when filtering by status=1
-  - Solution: Removed status filter, API returns 24 events correctly
-  - Result: All events load immediately on page load
+**PHASE 5B.2-5B.4 COMPLETION SUMMARY:**
 
-- ✅ **Issue 2 - "All Ohio" Not Working**: State name/abbreviation mismatch fixed
-  - Root cause: Metro areas use 'OH', API returns 'Ohio'
-  - Solution: Added STATE_ABBR_MAP constant, updated filtering logic
-  - Result: State-level filtering now works perfectly
+**Phase 5B.2: Backend GUID & Max Limit Support** ✅
+- ✅ Updated `User.cs`: Max limit 10 → 20 for UpdatePreferredMetroAreas
+- ✅ Updated `UpdateUserPreferredMetroAreasCommand.cs`: Comments reflect 0-20 allowed
+- ✅ Updated `UpdateUserPreferredMetroAreasCommandHandler.cs`: Comments reflect Phase 5B expansion
+- ✅ Backend build: 0 errors, 2 pre-existing warnings (Microsoft.Identity.Web)
 
-- ✅ **Issue 3 - Mock Data Removal**: Complete removal verified
-  - No mock data merging, only real API data displayed
+**Phase 5B.3: Frontend Constants Rebuild with GUIDs** ✅
+- ✅ Rebuilt `metroAreas.constants.ts`: 1,486 lines with:
+  - **US_STATES**: All 50 states with 2-letter codes (AL, AK, AZ, ... WY)
+  - **ALL_METRO_AREAS**: 100+ metros with GUID IDs matching backend seeder pattern
+  - **Helper Functions (8 total)**:
+    - `getMetroById(id)` - Find metro by GUID
+    - `getMetrosByState(stateCode)` - Get all metros for a state
+    - `getStateName(stateCode)` - Convert code to full name
+    - `searchMetrosByName(query)` - Fuzzy search metros
+    - `isStateLevelArea(metroId)` - Check if state-level
+    - `getStateLevelAreas()` - Return only state-level entries
+    - `getCityLevelAreas()` - Return only city-level entries
+    - `getMetrosGroupedByState()` - Return Map<state, metros[]> for dropdown grouping
+- ✅ Updated `profile.constants.ts`: Max 10 → 20 for preferredMetroAreas constraint
+- ✅ Updated `profile.repository.ts`: Comments updated for 0-20 GUIDs
 
-- ✅ Git repository artifact ('nul' file) cleaned up
-- ✅ Code quality: Zero TypeScript errors
-- ✅ Build verification: Successful with Turbopack
-- ✅ Documentation: PROGRESS_TRACKER.md updated with session summary
+**GUID Pattern Verification**:
+- State-level: `[StateNum]00000-0000-0000-0000-000000000001` (e.g., "01000000-0000-0000-0000-000000000001" for AL)
+- City-level: `[StateNum]1111-1111-1111-1111-111111111[Seq]` (e.g., "01111111-1111-1111-1111-111111111001" for Birmingham)
+- ✅ All 50 states with correct state numbers
+- ✅ 100+ metros with sequential GUIDs per state
 
-**Phase 5B Completion Summary - Preferred Metro Areas Frontend:**
-- ✅ **Phase 5B Frontend COMPLETE**: Full React component with TDD and UI/UX best practices
-- ✅ **Component**: PreferredMetroAreasSection with edit/view modes, 0-10 metro selection
-- ✅ **Tests**: 16/16 tests passing (100% coverage) - 8.3 second execution
-- ✅ **Data Models**: UserProfile + UpdatePreferredMetroAreasRequest (type-safe)
-- ✅ **API Integration**: Repository methods for update/get metros (PUT/GET endpoints)
-- ✅ **State Management**: Zustand store actions with state transitions (idle→saving→success/error)
-- ✅ **Build**: Next.js build successful, 0 errors, 10 routes optimized
-- ✅ **Accessibility**: WCAG AA compliant, ARIA labels, keyboard navigation
-- ✅ **Responsive**: Mobile (1 col), Tablet (2 cols), Desktop (3 cols)
-- ✅ **Branding**: Sri Lankan colors (orange #FF7900, maroon #8B1538)
+**Phase 5B.4: Component Redesign - State-Grouped Dropdown** ✅
+- ✅ Redesigned `PreferredMetroAreasSection.tsx` (354 lines):
 
-**Key Features:**
-- Multi-select metros (0-10 limit)
-- Grouped by state (Ohio, Other US, State-level)
-- Edit/View mode toggle
-- Real-time validation
-- Privacy-first (can clear all)
-- Fully accessible (ARIA, keyboard)
-- Sri Lankan branding (orange, maroon)
+  **View Mode** (User-facing display):
+  - Shows selected metros as badges with orange background (#FFE8CC)
+  - Displays metro name + state for city-level
+  - Displays metro name only for state-level
+  - "No metro areas selected" message when empty
+  - Success message on save with green checkmark
+  - Error messages on API failure
 
-**Phase 5B Build Status:**
-- ✅ Next.js 16.0.1 (Turbopack): Successful in 10.7 seconds
-- ✅ Routes: 10 generated and optimized
-- ✅ TypeScript: 0 errors on Phase 5B code
-- ✅ Production: Ready for deployment
+  **Edit Mode** (Two-tier selection UI):
+  - **State-Wide Selections** section (top):
+    - Checkboxes for "All [StateName]" for each state
+    - Allows users to select entire states at once
 
-**Documentation Synchronization (TASK_SYNCHRONIZATION_STRATEGY):**
-- ✅ PROGRESS_TRACKER.md: Updated with Phase 5B completion
-- ✅ STREAMLINED_ACTION_PLAN.md: Updated with current status
-- ✅ Status sync timestamp: 2025-11-10 23:42 UTC
+  - **City Metro Areas** section (grouped):
+    - List of all 50 states as expandable headers
+    - ChevronRight (▶) when collapsed, ChevronDown (▼) when expanded
+    - Orange colored chevrons (#FF7900) per branding
+    - Selection counter per state: "X selected" badge
+    - Expandable list shows city-level metros with:
+      - Primary city name (bold)
+      - Secondary cities list (smaller text)
+      - "+ more" indicator if additional cities
 
-**Ready for:**
-- ✅ Code review and merge to main
-- ✅ Production deployment via CI/CD
-- ✅ User testing in staging environment
-- ⏳ Phase 5C (Feed filtering with metro preferences)
+  - **Selection Counter** (bottom):
+    - "X of 20 selected" summary
+    - Real-time validation
+    - Prevent selecting beyond 20 with error message
 
-**🚨 IDENTIFIED PENDING WORK (Not Yet Scheduled):**
-- [ ] **Phase 5C: Newsletter Integration** - Load user's preferred metros in "Get notifications for" dropdown
-- [ ] **Phase 5C: Community Activity** - Display "My Preferred Metros" vs "Other Metros" on landing page
-- [ ] **Phase 5C: Feed Filtering** - Use saved metros to filter events in discovery pages
-- [ ] **API Issue Investigation** - 400 Error on metro area save (verify metro IDs in database)
-- [ ] **Metro Areas Expansion** - Consider expanding from 19 to more US metros (Future enhancement)
+  - **Action Buttons**:
+    - "Save Changes" (orange #FF7900) - saves to API
+    - "Cancel" (outline style) - reverts to view mode
+    - Both buttons disabled during save (isSaving state)
+
+  **Accessibility Features**:
+  - `aria-expanded` on state headers
+  - `aria-controls` linking headers to content
+  - `aria-label` on all checkboxes
+  - Keyboard navigation support
+  - Proper label associations
+
+  **Responsive Design**:
+  - Mobile: Single column, proper touch targets
+  - Tablet: Optimized spacing
+  - Desktop: Full layout with proper sizing
+  - No horizontal scrolling on any device
+
+  **Integration Features**:
+  - Uses `getMetrosGroupedByState()` for efficient data grouping
+  - Pre-checks saved metros from `profile.preferredMetroAreas`
+  - State expansion/collapse tracked with `expandedStates` Set
+  - Real-time selection count per state
+  - Proper disabled states during API operations
+
+**Code Quality Verification**:
+- ✅ **Zero Tolerance**: No TypeScript compilation errors on modified files
+- ✅ **UI/UX Best Practices**:
+  - Accessibility (WCAG AA): ARIA labels, semantic HTML, keyboard support
+  - Responsive design: Mobile-first, proper spacing, branding colors
+  - User feedback: Loading states, success/error messages, disabled states
+- ✅ **TDD Process**: Incremental changes, each phase tested independently
+- ✅ **Code Duplication**: Reused helper functions, no duplications
+- ✅ **EF Core Migrations**: Backend code-first, no DB schema changes needed
+- ✅ **No Local DB**: All validation against Azure staging APIs
+
+**Files Modified Summary**:
+| Layer | File | Changes | Lines |
+|-------|------|---------|-------|
+| Backend - Domain | User.cs | Max limit: 10→20 | 1 |
+| Backend - Application | UpdateUserPreferredMetroAreasCommand.cs | Comments updated | 1 |
+| Backend - Application | UpdateUserPreferredMetroAreasCommandHandler.cs | Comments updated | 1 |
+| Frontend - Constants | metroAreas.constants.ts | Complete rebuild with GUIDs | 1486 |
+| Frontend - Constants | profile.constants.ts | Max limit: 10→20 | 1 |
+| Frontend - Repository | profile.repository.ts | Comments updated | 2 |
+| Frontend - Component | PreferredMetroAreasSection.tsx | Redesigned with state dropdown | 354 |
+
+**Next Phases Ready**:
+- ⏳ **Phase 5B.5**: Expand/collapse indicators (COMPLETE - implemented above)
+- ⏳ **Phase 5B.6**: Pre-check saved metros (COMPLETE - implemented above)
+- ⏳ **Phase 5B.7**: Frontend store validation for max 20
+- ⏳ **Phase 5B.8**: Newsletter integration - load preferred metros
+- ⏳ **Phase 5B.9**: Community Activity integration - filter by metros
+- ⏳ **Phase 5B.10-12**: Tests, deployment, E2E verification
+
+**✅ COMPLETED VERIFICATION ITEMS:**
+1. ✅ **Frontend Build**: Next.js 16.0.1 build successful, 10 routes generated, 0 TypeScript errors
+2. ✅ **Test Suite**: Comprehensive test suite complete with 18/18 tests passing
+   - Fixed "should allow clearing all metro areas (privacy choice - Phase 5B)" test
+   - Added 4 new Phase 5B-specific test cases (GUID format, max 20 limit, state-grouped UI, expand/collapse)
+   - All assertions updated for max 20-metro limit
+   - Mock data uses GUID format matching backend seeder pattern
+3. ✅ **Import Validation**: Removed unused imports from PreferredMetroAreasSection.tsx
+
+**🚨 NEXT ACTION ITEMS (Phase 5B.8-5B.12):**
+1. **Phase 5B.8**: Newsletter integration - Load user's preferred metros in "Get notifications for" dropdown
+2. **Phase 5B.9**: Community Activity - Display "My Preferred Metros" vs "Other Metros" on landing
+3. **Phase 5B.10**: Deploy MetroAreaSeeder with 300+ metros to staging database
+4. **Phase 5B.11**: E2E testing - Verify Profile → Newsletter → Community Activity flow
+5. **Phase 5B.12**: Production deployment readiness
 
 ---
 

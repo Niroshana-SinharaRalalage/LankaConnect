@@ -12,7 +12,6 @@ import Footer from '@/presentation/components/layout/Footer';
 import { FeedTabs, ActivityFeed } from '@/presentation/components/features/feed';
 import { MetroAreaProvider, useMetroArea } from '@/presentation/components/features/location/MetroAreaContext';
 import { MetroAreaSelector } from '@/presentation/components/features/location/MetroAreaSelector';
-import { mockFeedItems } from '@/domain/data/mockFeedData';
 import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
 import type { FeedItem } from '@/domain/models/FeedItem';
 import type { MetroArea } from '@/domain/models/MetroArea';
@@ -87,20 +86,16 @@ function HomeContent() {
   });
 
 
-  // Convert API events to feed items and merge with mock data for other types
+  // Convert API events to feed items (no mock data)
   const allFeedItems = React.useMemo((): FeedItem[] => {
-    // Get non-event items from mock data
-    const nonEventItems = mockFeedItems.filter(item => item.type !== 'event');
-
     // If we have events from API, convert them to feed items
     if (events && events.length > 0) {
-      const eventFeedItems = mapEventListToFeedItems(events);
-      return [...eventFeedItems, ...nonEventItems];
+      return mapEventListToFeedItems(events);
     }
 
-    // Fallback to mock data if API fails or returns no events
-    return mockFeedItems;
-  }, [events, isLoading, error]);
+    // Return empty array if no events
+    return [];
+  }, [events]);
 
   // Filter feed items by selected metro area and active tab
   const filteredItems = React.useMemo((): FeedItem[] => {
@@ -109,9 +104,11 @@ function HomeContent() {
     // Filter by metro area
     if (selectedMetroArea) {
       items = items.filter(item => {
-        // State-level filtering: If metro area cities include "Statewide", filter by state only
+        // State-level filtering: If metro area is marked as "Statewide", filter by state code only
         if (selectedMetroArea.cities.includes('Statewide')) {
-          return item.location.includes(selectedMetroArea.state);
+          // Check if location ends with the state code (e.g., ", OH" or "OH")
+          const statePattern = new RegExp(`(,\\s*)?${selectedMetroArea.state}$`, 'i');
+          return statePattern.test(item.location);
         }
 
         // Regular metro area filtering: Check if item location matches any city in the metro area

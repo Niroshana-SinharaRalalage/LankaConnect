@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '../atoms/Logo';
-import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
+import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
 
 interface FooterLinkProps {
   href: string;
@@ -47,7 +47,7 @@ interface LinkCategory {
 const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [selectedMetro, setSelectedMetro] = useState<string>('');
+  const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [receiveAllLocations, setReceiveAllLocations] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2025); // Initialize with static value
 
@@ -103,7 +103,7 @@ const Footer: React.FC = () => {
       return;
     }
 
-    if (!receiveAllLocations && !selectedMetro) {
+    if (!receiveAllLocations && selectedMetroIds.length === 0) {
       setSubscribeStatus('error');
       return;
     }
@@ -120,7 +120,7 @@ const Footer: React.FC = () => {
         },
         body: JSON.stringify({
           email,
-          metroAreaId: receiveAllLocations ? null : selectedMetro,
+          metroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
           receiveAllLocations,
           timestamp: new Date().toISOString(),
         }),
@@ -131,7 +131,7 @@ const Footer: React.FC = () => {
       if (data.success) {
         setSubscribeStatus('success');
         setEmail('');
-        setSelectedMetro('');
+        setSelectedMetroIds([]);
         setReceiveAllLocations(false);
 
         // Reset status after 3 seconds
@@ -181,44 +181,15 @@ const Footer: React.FC = () => {
                   required
                 />
 
-                {/* Metro Area Selection */}
-                <div>
-                  <label className="text-sm text-white/90 mb-1.5 block font-medium">
-                    📍 Get notifications for events in:
-                  </label>
-                  <select
-                    value={selectedMetro}
-                    onChange={(e) => setSelectedMetro(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-lg bg-white/90 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FF7900]"
-                    required={!receiveAllLocations}
-                    disabled={receiveAllLocations || subscribeStatus === 'loading'}
-                  >
-                    <option value="">Select your metro area...</option>
-                    {ALL_METRO_AREAS.map(metro => (
-                      <option key={metro.id} value={metro.id}>
-                        {metro.name}, {metro.state}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* All Locations Checkbox */}
-                <div>
-                  <label className="flex items-center text-sm text-white/90 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={receiveAllLocations}
-                      onChange={(e) => {
-                        setReceiveAllLocations(e.target.checked);
-                        if (e.target.checked) {
-                          setSelectedMetro('');
-                        }
-                      }}
-                      className="mr-2 w-4 h-4 rounded border-white/30 text-[#FF7900] focus:ring-2 focus:ring-[#FF7900]"
-                      disabled={subscribeStatus === 'loading'}
-                    />
-                    <span>Send me events from all locations (I'm interested everywhere)</span>
-                  </label>
+                {/* Metro Area Selection Component - Phase 5B.8 */}
+                <div className="bg-white/95 p-4 rounded-lg text-gray-800">
+                  <NewsletterMetroSelector
+                    selectedMetroIds={selectedMetroIds}
+                    receiveAllLocations={receiveAllLocations}
+                    onMetrosChange={setSelectedMetroIds}
+                    onReceiveAllChange={setReceiveAllLocations}
+                    disabled={subscribeStatus === 'loading'}
+                  />
                 </div>
 
                 <button
@@ -232,7 +203,7 @@ const Footer: React.FC = () => {
               </form>
               {subscribeStatus === 'error' && (
                 <p className="text-red-300 text-sm mt-2" role="alert">
-                  Please enter a valid email address and select a location.
+                  Please enter a valid email address and select at least one location.
                 </p>
               )}
               {subscribeStatus === 'success' && (

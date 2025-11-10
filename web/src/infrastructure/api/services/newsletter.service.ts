@@ -1,6 +1,6 @@
 export interface NewsletterSubscribeRequest {
   email: string;
-  metroAreaId?: string | null;
+  metroAreaIds?: string[];
   receiveAllLocations: boolean;
 }
 

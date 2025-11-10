@@ -49,6 +49,10 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
             NewsletterSubscriber subscriber;
 
+            // Phase 5B: Handle multiple metro areas by using first metro area for backward compatibility
+            // In future, this could be extended to create multiple subscriptions per metro area
+            var metroAreaId = request.MetroAreaIds?.FirstOrDefault();
+
             if (existingSubscriber != null)
             {
                 // If already active, return error
@@ -61,7 +65,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 // This ensures a fresh confirmation token and follows the domain model
                 var reactivateResult = NewsletterSubscriber.Create(
                     email,
-                    request.MetroAreaId,
+                    metroAreaId,
                     request.ReceiveAllLocations);
 
                 if (!reactivateResult.IsSuccess)
@@ -82,7 +86,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 // Create new subscriber
                 var createResult = NewsletterSubscriber.Create(
                     email,
-                    request.MetroAreaId,
+                    metroAreaId,
                     request.ReceiveAllLocations);
 
                 if (!createResult.IsSuccess)
@@ -99,13 +103,17 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             await _unitOfWork.CommitAsync(cancellationToken);
 
             // Send confirmation email
+            var metroAreaDescription = request.ReceiveAllLocations
+                ? "All Locations"
+                : (request.MetroAreaIds?.Count > 0 ? $"{request.MetroAreaIds.Count} Location(s)" : "All Locations");
+
             var emailParameters = new Dictionary<string, object>
             {
                 { "Email", request.Email },
                 { "ConfirmationToken", subscriber.ConfirmationToken! },
                 { "ConfirmationLink", $"https://lankaconnect.com/newsletter/confirm?token={subscriber.ConfirmationToken}" },
                 { "UnsubscribeLink", $"https://lankaconnect.com/newsletter/unsubscribe?token={subscriber.UnsubscribeToken}" },
-                { "MetroArea", request.MetroAreaId.HasValue ? "Specific Location" : "All Locations" },
+                { "MetroArea", metroAreaDescription },
                 { "CompanyName", "LankaConnect" },
                 { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }
             };
@@ -129,6 +137,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 subscriber.Id,
                 subscriber.Email.Value,
                 subscriber.MetroAreaId,
+                request.MetroAreaIds,
                 subscriber.ReceiveAllLocations,
                 subscriber.IsActive,
                 subscriber.IsConfirmed,

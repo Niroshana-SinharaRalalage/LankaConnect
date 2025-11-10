@@ -7,11 +7,11 @@ namespace LankaConnect.Application.Communications.Commands.SubscribeToNewsletter
 /// Command to subscribe to the newsletter
 /// </summary>
 /// <param name="Email">Email address for newsletter subscription</param>
-/// <param name="MetroAreaId">Optional metro area ID for location-specific newsletters</param>
+/// <param name="MetroAreaIds">List of optional metro area IDs for location-specific newsletters (Phase 5B)</param>
 /// <param name="ReceiveAllLocations">Whether to receive newsletters from all locations</param>
 public record SubscribeToNewsletterCommand(
     string Email,
-    Guid? MetroAreaId = null,
+    List<Guid>? MetroAreaIds = null,
     bool ReceiveAllLocations = false) : ICommand<SubscribeToNewsletterResponse>;
 
 /// <summary>
@@ -22,6 +22,7 @@ public class SubscribeToNewsletterResponse
     public Guid Id { get; init; }
     public string Email { get; init; } = string.Empty;
     public Guid? MetroAreaId { get; init; }
+    public List<Guid>? MetroAreaIds { get; init; }
     public bool ReceiveAllLocations { get; init; }
     public bool IsActive { get; init; }
     public bool IsConfirmed { get; init; }
@@ -32,6 +33,7 @@ public class SubscribeToNewsletterResponse
         Guid id,
         string email,
         Guid? metroAreaId,
+        List<Guid>? metroAreaIds,
         bool receiveAllLocations,
         bool isActive,
         bool isConfirmed,
@@ -41,6 +43,7 @@ public class SubscribeToNewsletterResponse
         Id = id;
         Email = email;
         MetroAreaId = metroAreaId;
+        MetroAreaIds = metroAreaIds;
         ReceiveAllLocations = receiveAllLocations;
         IsActive = isActive;
         IsConfirmed = isConfirmed;

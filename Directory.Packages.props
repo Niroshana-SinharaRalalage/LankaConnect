@@ -77,7 +77,7 @@
   </ItemGroup>
   <!-- Azure Storage -->
   <ItemGroup>
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.22.1" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.26.0" />
     <PackageVersion Include="Azure.Storage.Files.Shares" Version="12.20.1" />
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageVersion Include="SixLabors.ImageSharp.Web" Version="3.1.4" />

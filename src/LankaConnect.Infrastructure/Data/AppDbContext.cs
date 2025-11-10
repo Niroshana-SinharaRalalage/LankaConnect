@@ -95,6 +95,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Events schema
         modelBuilder.Entity<Event>().ToTable("events", "events");
         modelBuilder.Entity<Registration>().ToTable("registrations", "events");
+        modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
         
         // Community schema  
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
@@ -128,6 +129,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventImage), // Epic 2 Phase 2
             typeof(EventVideo),  // Epic 2 Phase 2
             typeof(Registration),
+            typeof(MetroArea), // Phase 5C
             typeof(ForumTopic),
             typeof(Reply),
             typeof(Business),
@@ -136,6 +138,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EmailMessage),
             typeof(EmailTemplate),
             typeof(UserEmailPreferences),
+            typeof(NewsletterSubscriber), // Phase 5
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord) // Epic 2 Phase 3
         };

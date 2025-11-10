@@ -255,6 +255,44 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Auto-include ExternalLogins when loading User
         builder.Navigation(u => u.ExternalLogins).AutoInclude();
 
+        // Configure PreferredMetroAreas many-to-many relationship (Phase 5A)
+        // Following ADR-008: Explicit junction table for full control
+        builder.HasMany<Domain.Events.MetroArea>()
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "user_preferred_metro_areas",
+                j => j
+                    .HasOne<Domain.Events.MetroArea>()
+                    .WithMany()
+                    .HasForeignKey("metro_area_id")
+                    .OnDelete(DeleteBehavior.Cascade) // ADR-008: Cascade delete
+                    .HasConstraintName("fk_user_preferred_metro_areas_metro_area_id"),
+                j => j
+                    .HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey("user_id")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("fk_user_preferred_metro_areas_user_id"),
+                j =>
+                {
+                    j.ToTable("user_preferred_metro_areas", "identity");
+
+                    // Composite primary key
+                    j.HasKey("user_id", "metro_area_id");
+
+                    // Indexes for query performance
+                    j.HasIndex("user_id")
+                        .HasDatabaseName("ix_user_preferred_metro_areas_user_id");
+
+                    j.HasIndex("metro_area_id")
+                        .HasDatabaseName("ix_user_preferred_metro_areas_metro_area_id");
+
+                    // Audit columns
+                    j.Property<DateTime>("created_at")
+                        .HasDefaultValueSql("NOW()")
+                        .IsRequired();
+                });
+
         // Configure audit fields
         builder.Property(u => u.CreatedAt)
             .IsRequired()

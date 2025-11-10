@@ -8,8 +8,11 @@ using LankaConnect.Application.Users.Commands.UpdateCulturalInterests;
 using LankaConnect.Application.Users.Commands.UpdateLanguages;
 using LankaConnect.Application.Users.Commands.LinkExternalProvider;
 using LankaConnect.Application.Users.Commands.UnlinkExternalProvider;
+using LankaConnect.Application.Users.Commands.UpdatePreferredMetroAreas;
 using LankaConnect.Application.Users.Queries.GetUserById;
 using LankaConnect.Application.Users.Queries.GetLinkedProviders;
+using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
+using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Domain.Users.Enums;
 using Microsoft.Extensions.Logging;
@@ -518,6 +521,109 @@ public class UsersController : BaseController<UsersController>
     }
 
     #endregion
+
+    #region Preferred Metro Areas (Phase 5A)
+
+    /// <summary>
+    /// Updates a user's preferred metro areas for location-based filtering
+    /// Phase 5A: User Preferred Metro Areas
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">Preferred metro area IDs (0-10 allowed). Pass empty list to clear all preferences.</param>
+    /// <returns>No content on success</returns>
+    [HttpPut("{id:guid}/preferred-metro-areas")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePreferredMetroAreas(Guid id, [FromBody] UpdatePreferredMetroAreasRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UpdatePreferredMetroAreas",
+            ["UserId"] = id,
+            ["MetroAreaCount"] = request.MetroAreaIds.Count
+        }))
+        {
+            Logger.LogInformation("Updating preferred metro areas for user {UserId} with {Count} metro areas",
+                id, request.MetroAreaIds.Count);
+
+            var command = new UpdateUserPreferredMetroAreasCommand
+            {
+                UserId = id,
+                MetroAreaIds = request.MetroAreaIds
+            };
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Preferred metro areas updated successfully for user {UserId}", id);
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Preferred metro areas update failed for user {UserId}: {Error}", id, firstError);
+
+            // Check if it's a "not found" error
+            if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Detail = firstError,
+                    Status = 404,
+                    Title = "Not Found"
+                });
+            }
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Gets a user's preferred metro areas with full details
+    /// Phase 5A: User Preferred Metro Areas
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <returns>List of preferred metro areas with details</returns>
+    [HttpGet("{id:guid}/preferred-metro-areas")]
+    [ProducesResponseType(typeof(IReadOnlyList<MetroAreaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPreferredMetroAreas(Guid id)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "GetPreferredMetroAreas",
+            ["UserId"] = id
+        }))
+        {
+            Logger.LogInformation("Retrieving preferred metro areas for user {UserId}", id);
+
+            var query = new GetUserPreferredMetroAreasQuery(id);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                Logger.LogInformation("User not found with ID {UserId}", id);
+                return NotFound();
+            }
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Retrieved {Count} preferred metro areas for user {UserId}",
+                    result.Value.Count, id);
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -566,4 +672,13 @@ public record LinkExternalProviderRequest
     public FederatedProvider Provider { get; init; }
     public string ExternalProviderId { get; init; } = null!;
     public string ProviderEmail { get; init; } = null!;
+}
+
+/// <summary>
+/// Request model for updating user's preferred metro areas
+/// Phase 5A: User Preferred Metro Areas
+/// </summary>
+public record UpdatePreferredMetroAreasRequest
+{
+    public List<Guid> MetroAreaIds { get; init; } = new();
 }

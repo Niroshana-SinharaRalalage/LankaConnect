@@ -9,4 +9,5 @@ public record RegisterUserCommand(
     string Password,
     string FirstName,
     string LastName,
-    UserRole Role = UserRole.User) : IRequest<Result<RegisterUserResponse>>;
+    UserRole Role = UserRole.User,
+    List<Guid>? PreferredMetroAreaIds = null) : IRequest<Result<RegisterUserResponse>>; // Phase 5A: Optional metro areas

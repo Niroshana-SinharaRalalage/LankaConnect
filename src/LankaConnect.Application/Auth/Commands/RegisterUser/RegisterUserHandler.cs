@@ -87,6 +87,16 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                 return Result<RegisterUserResponse>.Failure(setTokenResult.Error);
             }
 
+            // Set preferred metro areas if provided (Phase 5A: Optional)
+            if (request.PreferredMetroAreaIds != null && request.PreferredMetroAreaIds.Any())
+            {
+                var setMetroAreasResult = user.UpdatePreferredMetroAreas(request.PreferredMetroAreaIds);
+                if (!setMetroAreasResult.IsSuccess)
+                {
+                    return Result<RegisterUserResponse>.Failure(setMetroAreasResult.Error);
+                }
+            }
+
             // Save user
             await _userRepository.AddAsync(user, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);

@@ -30,6 +30,10 @@ public class User : BaseEntity
     private readonly List<LanguagePreference> _languages = new();
     public IReadOnlyCollection<LanguagePreference> Languages => _languages.AsReadOnly();
 
+    // Metro area preferences (Phase 5A)
+    private readonly List<Guid> _preferredMetroAreaIds = new();
+    public IReadOnlyList<Guid> PreferredMetroAreaIds => _preferredMetroAreaIds.AsReadOnly();
+
     // Authentication properties
     public IdentityProvider IdentityProvider { get; private set; }
     public string? ExternalProviderId { get; private set; }
@@ -525,6 +529,36 @@ public class User : BaseEntity
 
         // Always raise event (languages are required, not privacy choice like interests)
         RaiseDomainEvent(new LanguagesUpdatedEvent(Id, _languages.AsReadOnly()));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates user's preferred metro areas for location-based filtering (0-10 allowed)
+    /// Empty collection clears all preferences (privacy choice - user can opt out)
+    /// Phase 5A: User Preferred Metro Areas
+    /// Architecture: Follows ADR-008 - Domain validates max count, Application validates existence
+    /// </summary>
+    public Result UpdatePreferredMetroAreas(IEnumerable<Guid>? metroAreaIds)
+    {
+        var metroAreaList = metroAreaIds?.ToList() ?? new List<Guid>();
+
+        // Validate max 10 metro areas (per ADR-008)
+        if (metroAreaList.Count > 10)
+            return Result.Failure("Cannot select more than 10 preferred metro areas");
+
+        // Validate no duplicates
+        if (metroAreaList.Distinct().Count() != metroAreaList.Count)
+            return Result.Failure("Duplicate metro area IDs are not allowed");
+
+        _preferredMetroAreaIds.Clear();
+        _preferredMetroAreaIds.AddRange(metroAreaList.Distinct());
+
+        MarkAsUpdated();
+
+        // Only raise event if setting preferences (not clearing for privacy)
+        if (_preferredMetroAreaIds.Any())
+            RaiseDomainEvent(new UserPreferredMetroAreasUpdatedEvent(Id, _preferredMetroAreaIds.AsReadOnly()));
 
         return Result.Success();
     }

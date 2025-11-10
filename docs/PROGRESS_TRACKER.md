@@ -1,9 +1,59 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-10 (Current Session) - Events Feed Bug Fixes*
+*Last Updated: 2025-11-10 (Current Session) - Phase 5B.9 Backend Integration Complete*
 
-## 🎯 Current Session Status - EVENTS FEED CRITICAL FIXES COMPLETED ✅
+## 🎯 Current Session Status - PHASE 5B.9 BACKEND INTEGRATION COMPLETE ✅
 
-### Session: Events Feed Troubleshooting & Bug Fixes (Today)
+### Session: Phase 5B.9 Community Activity - Preferred Metro Areas Filtering (Today)
+
+**PHASE 5B.9 BACKEND INTEGRATION - COMPLETION SUMMARY:**
+
+**Phase 5B.9.1-5B.9.3: Preferred Metros Display & Filtering** ✅
+- ✅ **Landing Page Integration**: Updated `page.tsx` with:
+  - Import `useProfileStore` for user's preferred metros
+  - Import `getMetroById` function for metro lookup
+  - Import `Sparkles` icon for visual indicator
+  - Created `isEventInMetro()` callback for filtering logic
+  - Separated feed into `preferredItems` and `otherItems` using useMemo
+  - Implemented two-section layout with collapsible "Other Events"
+
+- ✅ **Two-Section Feed Layout**:
+  - **Preferred Section**: "Events in Your Preferred Metros" (shown only for authenticated users with saved metros)
+    - Sparkles icon indicator (#FF7900)
+    - Event count badge
+    - Maroon background (#8B1538) text
+    - Uses reusable ActivityFeed component
+  - **Other Section**: "All Other Events" (always shown, collapsible when preferred section exists)
+    - MapPin icon indicator
+    - Event count badge
+    - Toggle button to collapse/expand
+    - Falls back to showing all events if no preferred metros selected
+
+- ✅ **Filtering Logic Implementation**:
+  - State-level metros: Matches any city in that state
+  - City-level metros: Matches specific city events
+  - Fallback to manual selection filtering if no preferred metros
+  - Proper state abbreviation → full name conversion using STATE_ABBR_MAP
+
+- ✅ **Backend API Updates** (Zero Tolerance for Compilation Errors):
+  - Updated `NewsletterSubscriptionDto.cs`: Changed `MetroAreaId` → `MetroAreaIds` (List<string>?)
+  - Updated `NewsletterController.cs`: Parse `request.MetroAreaIds` to `List<Guid>?` before passing to command
+  - Updated `SubscribeToNewsletterCommandValidator.cs`: Use `MetroAreaIds` instead of `MetroAreaId`
+  - Updated `SubscribeToNewsletterCommandHandlerTests.cs`: All 5 test methods now use `List<Guid>` metro area IDs
+
+- ✅ **Build Status**:
+  - Backend build: ✅ 0 errors, 2 pre-existing warnings
+  - Frontend TypeScript: ✅ No type errors in modified files
+  - All 5 compilation errors resolved in this session
+
+**FILES MODIFIED (Phase 5B.9):**
+1. Backend (C# - API/Tests):
+   - `src/LankaConnect.API/Controllers/NewsletterController.cs` (line 53-80)
+   - `src/LankaConnect.Application/Communications/Common/NewsletterSubscriptionDto.cs` (line 18-21)
+   - `src/LankaConnect.Application/Communications/Commands/SubscribeToNewsletter/SubscribeToNewsletterCommandValidator.cs`
+   - `tests/LankaConnect.Application.Tests/Communications/Commands/SubscribeToNewsletterCommandHandlerTests.cs` (5 test methods)
+
+2. Frontend (TypeScript/React):
+   - `web/src/app/page.tsx` (landing page with two-section feed)
 
 **ISSUES RESOLVED:**
 1. ✅ **Events Not Loading on Initial Page Load**

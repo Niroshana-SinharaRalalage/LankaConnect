@@ -80,10 +80,12 @@ function HomeContent() {
   const [activeTab, setActiveTab] = React.useState<'all' | 'event' | 'business' | 'forum' | 'culture'>('all');
 
   // Fetch events from API
+  // Note: Removed startDateFrom filter to prevent query key from changing on every render
+  // Backend will return all published events
   const { data: events, isLoading, error } = useEvents({
     status: EventStatus.Published,
-    startDateFrom: new Date().toISOString(),
   });
+
 
   // Convert API events to feed items and merge with mock data for other types
   const allFeedItems = React.useMemo((): FeedItem[] => {
@@ -98,7 +100,7 @@ function HomeContent() {
 
     // Fallback to mock data if API fails or returns no events
     return mockFeedItems;
-  }, [events]);
+  }, [events, isLoading, error]);
 
   // Filter feed items by selected metro area and active tab
   const filteredItems = React.useMemo((): FeedItem[] => {
@@ -109,7 +111,6 @@ function HomeContent() {
       items = items.filter(item => {
         // State-level filtering: If metro area cities include "Statewide", filter by state only
         if (selectedMetroArea.cities.includes('Statewide')) {
-          // For state-level selections (e.g., "All Ohio"), match any location in that state
           return item.location.includes(selectedMetroArea.state);
         }
 

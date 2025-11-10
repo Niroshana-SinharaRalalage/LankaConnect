@@ -74,9 +74,13 @@ export function useEvents(
 ) {
   return useQuery({
     queryKey: eventKeys.list(filters || {}),
-    queryFn: () => eventsRepository.getEvents(filters),
+    queryFn: async () => {
+      const result = await eventsRepository.getEvents(filters);
+      return result;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
+    retry: 1, // Only retry once
     ...options,
   });
 }

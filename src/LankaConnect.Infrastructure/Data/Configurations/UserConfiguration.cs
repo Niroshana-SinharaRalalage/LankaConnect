@@ -89,7 +89,33 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Role)
             .HasConversion<int>()
             .IsRequired()
-            .HasDefaultValue(UserRole.User);
+            .HasDefaultValue(UserRole.GeneralUser);
+
+        // Phase 6A.0: Role upgrade tracking
+        builder.Property(u => u.PendingUpgradeRole)
+            .HasConversion<int?>();
+
+        builder.Property(u => u.UpgradeRequestedAt);
+
+        // Phase 6A.1: Subscription management
+        builder.Property(u => u.SubscriptionStatus)
+            .HasConversion<int>()
+            .IsRequired()
+            .HasDefaultValue(SubscriptionStatus.None);
+
+        builder.Property(u => u.FreeTrialStartedAt);
+
+        builder.Property(u => u.FreeTrialEndsAt);
+
+        builder.Property(u => u.SubscriptionActivatedAt);
+
+        builder.Property(u => u.SubscriptionCanceledAt);
+
+        builder.Property(u => u.StripeCustomerId)
+            .HasMaxLength(255);
+
+        builder.Property(u => u.StripeSubscriptionId)
+            .HasMaxLength(255);
 
         builder.Property(u => u.IsEmailVerified)
             .IsRequired()
@@ -255,43 +281,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Auto-include ExternalLogins when loading User
         builder.Navigation(u => u.ExternalLogins).AutoInclude();
 
-        // Configure PreferredMetroAreas many-to-many relationship (Phase 5A)
-        // Following ADR-008: Explicit junction table for full control
-        builder.HasMany<Domain.Events.MetroArea>()
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "user_preferred_metro_areas",
-                j => j
-                    .HasOne<Domain.Events.MetroArea>()
-                    .WithMany()
-                    .HasForeignKey("metro_area_id")
-                    .OnDelete(DeleteBehavior.Cascade) // ADR-008: Cascade delete
-                    .HasConstraintName("fk_user_preferred_metro_areas_metro_area_id"),
-                j => j
-                    .HasOne<User>()
-                    .WithMany()
-                    .HasForeignKey("user_id")
-                    .OnDelete(DeleteBehavior.Cascade)
-                    .HasConstraintName("fk_user_preferred_metro_areas_user_id"),
-                j =>
-                {
-                    j.ToTable("user_preferred_metro_areas", "identity");
+        // Configure PreferredMetroAreas as primitive collection (EF Core 8.0+)
+        // Phase 5B: User Preferred Metro Areas - ADR-008 compliant
+        // Maps to junction table automatically via EF Core primitive collections
+        // The backing field _preferredMetroAreaIds is mapped and tracked by EF Core
+        builder.PrimitiveCollection(u => u.PreferredMetroAreaIds)
+            .IsRequired();
 
-                    // Composite primary key
-                    j.HasKey("user_id", "metro_area_id");
-
-                    // Indexes for query performance
-                    j.HasIndex("user_id")
-                        .HasDatabaseName("ix_user_preferred_metro_areas_user_id");
-
-                    j.HasIndex("metro_area_id")
-                        .HasDatabaseName("ix_user_preferred_metro_areas_metro_area_id");
-
-                    // Audit columns
-                    j.Property<DateTime>("created_at")
-                        .HasDefaultValueSql("NOW()")
-                        .IsRequired();
-                });
+        // EF Core 8.0+ automatically:
+        // 1. Creates/uses the existing user_preferred_metro_areas junction table
+        // 2. Manages the relationship between users and metro area IDs
+        // 3. Handles INSERT/UPDATE/DELETE for the collection
 
         // Configure audit fields
         builder.Property(u => u.CreatedAt)
@@ -321,6 +321,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.LastLoginAt)
             .HasDatabaseName("ix_users_last_login_at");
+
+        // Phase 6A.1: Indexes for subscription management
+        builder.HasIndex(u => u.SubscriptionStatus)
+            .HasDatabaseName("ix_users_subscription_status");
+
+        builder.HasIndex(u => u.StripeCustomerId)
+            .HasDatabaseName("ix_users_stripe_customer_id");
+
+        builder.HasIndex(u => u.FreeTrialEndsAt)
+            .HasDatabaseName("ix_users_free_trial_ends_at");
 
         // Configure indexes for Entra External ID integration
         builder.HasIndex(u => u.IdentityProvider)

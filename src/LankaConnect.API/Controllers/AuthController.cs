@@ -496,8 +496,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestVerifyUser(Guid userId, CancellationToken cancellationToken)
     {
-        // IMPORTANT: Only available in Development environment for testing
-        if (!_env.IsDevelopment())
+        // IMPORTANT: Only available in non-production environments for E2E testing
+        if (_env.IsProduction())
         {
             _logger.LogWarning("Unauthorized attempt to access test endpoint in {Environment}", _env.EnvironmentName);
             return Forbid();

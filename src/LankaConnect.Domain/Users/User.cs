@@ -47,7 +47,20 @@ public class User : BaseEntity
     public int FailedLoginAttempts { get; private set; }
     public DateTime? AccountLockedUntil { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
-    
+
+    // Phase 6A.0: Role upgrade tracking for Event Organizer approval workflow
+    public UserRole? PendingUpgradeRole { get; private set; }
+    public DateTime? UpgradeRequestedAt { get; private set; }
+
+    // Phase 6A.1: Subscription management for Event Organizer accounts
+    public SubscriptionStatus SubscriptionStatus { get; private set; }
+    public DateTime? FreeTrialStartedAt { get; private set; }
+    public DateTime? FreeTrialEndsAt { get; private set; }
+    public DateTime? SubscriptionActivatedAt { get; private set; }
+    public DateTime? SubscriptionCanceledAt { get; private set; }
+    public string? StripeCustomerId { get; private set; }
+    public string? StripeSubscriptionId { get; private set; }
+
     private readonly List<RefreshToken> _refreshTokens = new();
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
@@ -63,11 +76,11 @@ public class User : BaseEntity
         Email = null!;
         FirstName = null!;
         LastName = null!;
-        Role = UserRole.User;
+        Role = UserRole.GeneralUser;
         IdentityProvider = IdentityProvider.Local;
     }
 
-    private User(Email email, string firstName, string lastName, UserRole role = UserRole.User)
+    private User(Email email, string firstName, string lastName, UserRole role = UserRole.GeneralUser)
     {
         Email = email;
         FirstName = firstName;
@@ -77,9 +90,10 @@ public class User : BaseEntity
         IsEmailVerified = false;
         FailedLoginAttempts = 0;
         IdentityProvider = IdentityProvider.Local; // Default to Local for backward compatibility
+        SubscriptionStatus = SubscriptionStatus.None; // Phase 6A.1: Default subscription status
     }
 
-    public static Result<User> Create(Email? email, string firstName, string lastName, UserRole role = UserRole.User)
+    public static Result<User> Create(Email? email, string firstName, string lastName, UserRole role = UserRole.GeneralUser)
     {
         if (email == null)
             return Result<User>.Failure("Email is required");
@@ -118,7 +132,7 @@ public class User : BaseEntity
         string lastName,
         FederatedProvider federatedProvider,
         string? providerEmail = null,
-        UserRole role = UserRole.User)
+        UserRole role = UserRole.GeneralUser)
     {
         // Validate that it's an external provider
         if (identityProvider == IdentityProvider.Local)
@@ -534,18 +548,18 @@ public class User : BaseEntity
     }
 
     /// <summary>
-    /// Updates user's preferred metro areas for location-based filtering (0-10 allowed)
+    /// Updates user's preferred metro areas for location-based filtering (0-20 allowed)
     /// Empty collection clears all preferences (privacy choice - user can opt out)
-    /// Phase 5A: User Preferred Metro Areas
+    /// Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
     /// Architecture: Follows ADR-008 - Domain validates max count, Application validates existence
     /// </summary>
     public Result UpdatePreferredMetroAreas(IEnumerable<Guid>? metroAreaIds)
     {
         var metroAreaList = metroAreaIds?.ToList() ?? new List<Guid>();
 
-        // Validate max 10 metro areas (per ADR-008)
-        if (metroAreaList.Count > 10)
-            return Result.Failure("Cannot select more than 10 preferred metro areas");
+        // Validate max 20 metro areas (Phase 5B: Expanded from 10 to 20)
+        if (metroAreaList.Count > 20)
+            return Result.Failure("Cannot select more than 20 preferred metro areas");
 
         // Validate no duplicates
         if (metroAreaList.Distinct().Count() != metroAreaList.Count)
@@ -645,5 +659,200 @@ public class User : BaseEntity
     public ExternalLogin? GetExternalLogin(FederatedProvider provider)
     {
         return _externalLogins.FirstOrDefault(login => login.Provider == provider);
+    }
+
+    // Phase 6A.0: Role upgrade management methods
+
+    /// <summary>
+    /// Sets a pending role upgrade (e.g., Event Organizer) awaiting admin approval
+    /// </summary>
+    public Result SetPendingUpgradeRole(UserRole pendingRole)
+    {
+        // Business rule: Can only request upgrade if no pending request exists
+        if (PendingUpgradeRole.HasValue)
+            return Result.Failure("A role upgrade request is already pending");
+
+        // Business rule: Cannot request downgrade or same role
+        if (pendingRole <= Role)
+            return Result.Failure("Can only request upgrade to a higher role");
+
+        // Business rule: GeneralUser can only request upgrade to EventOrganizer
+        if (Role == UserRole.GeneralUser && pendingRole != UserRole.EventOrganizer)
+            return Result.Failure("General users can only request Event Organizer role");
+
+        PendingUpgradeRole = pendingRole;
+        UpgradeRequestedAt = DateTime.UtcNow;
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserRoleUpgradeRequestedEvent(Id, Email.Value, pendingRole));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Approves the pending role upgrade and changes the user's role
+    /// </summary>
+    public Result ApproveRoleUpgrade()
+    {
+        if (!PendingUpgradeRole.HasValue)
+            return Result.Failure("No pending role upgrade to approve");
+
+        var newRole = PendingUpgradeRole.Value;
+        var oldRole = Role;
+
+        Role = newRole;
+        PendingUpgradeRole = null;
+        UpgradeRequestedAt = null;
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, newRole));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Rejects the pending role upgrade request
+    /// </summary>
+    public Result RejectRoleUpgrade(string? reason = null)
+    {
+        if (!PendingUpgradeRole.HasValue)
+            return Result.Failure("No pending role upgrade to reject");
+
+        var rejectedRole = PendingUpgradeRole.Value;
+        PendingUpgradeRole = null;
+        UpgradeRequestedAt = null;
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserRoleUpgradeRejectedEvent(Id, Email.Value, rejectedRole, reason));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Cancels a pending role upgrade request (user-initiated)
+    /// </summary>
+    public Result CancelRoleUpgrade()
+    {
+        if (!PendingUpgradeRole.HasValue)
+            return Result.Failure("No pending role upgrade to cancel");
+
+        PendingUpgradeRole = null;
+        UpgradeRequestedAt = null;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    // Phase 6A.1: Subscription management methods
+
+    /// <summary>
+    /// Starts the 6-month free trial for Event Organizer
+    /// Called when admin approves Event Organizer upgrade
+    /// </summary>
+    public Result StartFreeTrial()
+    {
+        // Business rule: Can only start free trial for Event Organizer role
+        if (Role != UserRole.EventOrganizer)
+            return Result.Failure("Free trial is only available for Event Organizer accounts");
+
+        // Business rule: Cannot start free trial if already has subscription
+        if (SubscriptionStatus != SubscriptionStatus.None)
+            return Result.Failure("Cannot start free trial when a subscription already exists");
+
+        FreeTrialStartedAt = DateTime.UtcNow;
+        FreeTrialEndsAt = DateTime.UtcNow.AddMonths(6);
+        SubscriptionStatus = SubscriptionStatus.Trialing;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Activates paid subscription after free trial or manual activation
+    /// </summary>
+    public Result ActivateSubscription(string stripeCustomerId, string stripeSubscriptionId)
+    {
+        // Business rule: Can only activate subscription for Event Organizer role
+        if (Role != UserRole.EventOrganizer)
+            return Result.Failure("Subscription activation is only for Event Organizer accounts");
+
+        // Business rule: Stripe IDs are required
+        if (string.IsNullOrWhiteSpace(stripeCustomerId) || string.IsNullOrWhiteSpace(stripeSubscriptionId))
+            return Result.Failure("Stripe customer ID and subscription ID are required");
+
+        StripeCustomerId = stripeCustomerId;
+        StripeSubscriptionId = stripeSubscriptionId;
+        SubscriptionActivatedAt = DateTime.UtcNow;
+        SubscriptionStatus = SubscriptionStatus.Active;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates subscription status based on Stripe webhook events
+    /// </summary>
+    public Result UpdateSubscriptionStatus(SubscriptionStatus newStatus)
+    {
+        // Business rule: Can only update subscription status for Event Organizer
+        if (Role != UserRole.EventOrganizer)
+            return Result.Failure("Subscription status updates are only for Event Organizer accounts");
+
+        var oldStatus = SubscriptionStatus;
+        SubscriptionStatus = newStatus;
+
+        // Handle status-specific logic
+        if (newStatus == SubscriptionStatus.Canceled)
+        {
+            SubscriptionCanceledAt = DateTime.UtcNow;
+        }
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if the user can create events based on subscription status
+    /// </summary>
+    public bool CanCreateEvents()
+    {
+        // General Users cannot create events
+        if (Role == UserRole.GeneralUser)
+            return false;
+
+        // Admins can always create events
+        if (Role.IsAdmin())
+            return true;
+
+        // Event Organizers must have active subscription (trialing or paid)
+        if (Role == UserRole.EventOrganizer)
+        {
+            return SubscriptionStatus.CanCreateEvents();
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if the free trial has expired
+    /// </summary>
+    public bool IsFreeTrialExpired()
+    {
+        if (SubscriptionStatus != SubscriptionStatus.Trialing || !FreeTrialEndsAt.HasValue)
+            return false;
+
+        return DateTime.UtcNow > FreeTrialEndsAt.Value;
+    }
+
+    /// <summary>
+    /// Gets the number of days remaining in free trial
+    /// </summary>
+    public int? GetFreeTrialDaysRemaining()
+    {
+        if (SubscriptionStatus != SubscriptionStatus.Trialing || !FreeTrialEndsAt.HasValue)
+            return null;
+
+        var daysRemaining = (FreeTrialEndsAt.Value - DateTime.UtcNow).Days;
+        return daysRemaining > 0 ? daysRemaining : 0;
     }
 }

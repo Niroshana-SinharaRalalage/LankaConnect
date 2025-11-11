@@ -1,11 +1,15 @@
 namespace LankaConnect.Domain.Users.Enums;
 
+/// <summary>
+/// User roles for the LankaConnect platform
+/// Phase 6A.0: Updated role system for Event Organizer model
+/// </summary>
 public enum UserRole
 {
-    User = 1,
-    BusinessOwner = 2,
-    Moderator = 3,
-    Admin = 4
+    GeneralUser = 1,
+    EventOrganizer = 2,
+    Admin = 3,
+    AdminManager = 4
 }
 
 public static class UserRoleExtensions
@@ -14,36 +18,41 @@ public static class UserRoleExtensions
     {
         return role switch
         {
-            UserRole.User => "User",
-            UserRole.BusinessOwner => "Business Owner",
-            UserRole.Moderator => "Moderator",
+            UserRole.GeneralUser => "General User",
+            UserRole.EventOrganizer => "Event Organizer",
             UserRole.Admin => "Administrator",
+            UserRole.AdminManager => "Admin Manager",
             _ => role.ToString()
         };
     }
 
     public static bool CanManageUsers(this UserRole role)
     {
-        return role == UserRole.Admin || role == UserRole.Moderator;
+        return role == UserRole.Admin || role == UserRole.AdminManager;
     }
 
-    public static bool CanManageBusinesses(this UserRole role)
+    public static bool CanCreateEvents(this UserRole role)
     {
-        return role == UserRole.Admin || role == UserRole.Moderator || role == UserRole.BusinessOwner;
+        return role == UserRole.EventOrganizer || role == UserRole.Admin || role == UserRole.AdminManager;
     }
 
     public static bool CanModerateContent(this UserRole role)
     {
-        return role == UserRole.Admin || role == UserRole.Moderator;
+        return role == UserRole.Admin || role == UserRole.AdminManager;
     }
 
-    public static bool IsBusinessOwner(this UserRole role)
+    public static bool IsEventOrganizer(this UserRole role)
     {
-        return role == UserRole.BusinessOwner;
+        return role == UserRole.EventOrganizer;
     }
 
     public static bool IsAdmin(this UserRole role)
     {
-        return role == UserRole.Admin;
+        return role == UserRole.Admin || role == UserRole.AdminManager;
+    }
+
+    public static bool RequiresSubscription(this UserRole role)
+    {
+        return role == UserRole.EventOrganizer;
     }
 }

@@ -97,6 +97,18 @@ export class AuthRepository {
     );
     return response;
   }
+
+  /**
+   * [TEST ONLY] Verify user email without token validation
+   * Only available in Development environment for E2E testing
+   */
+  async testVerifyEmail(userId: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>(
+      `${this.basePath}/test/verify-user/${userId}`,
+      {}
+    );
+    return response;
+  }
 }
 
 // Export singleton instance

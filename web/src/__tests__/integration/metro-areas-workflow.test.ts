@@ -90,41 +90,13 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       testUser.id = response.userId;
     });
 
-    it.skip('Phase 5B.11.3b: should successfully login with valid credentials', async () => {
-      // BLOCKER: Email Verification Required in Staging
-      //
-      // Staging enforces email verification before login.
-      // Backend checks: if (!user.IsEmailVerified) return "Email address must be verified"
-      //
-      // Root Cause:
-      // - Verification tokens are sent via email
-      // - Testing environment cannot intercept emails
-      // - No test-specific bypass endpoint exists yet
-      //
-      // Solution Paths:
-      // 1. Backend Change (Recommended):
-      //    - Add POST /api/auth/test/verify-user/{userId} endpoint
-      //    - Requires ASPNETCORE_ENVIRONMENT=Development || special API key
-      //    - Marks user email as verified without token validation
-      //
-      // 2. Frontend Test Helper:
-      //    - Create test helper that calls verify-email with known token
-      //    - Still requires token generation logic
-      //
-      // 3. Database Seeding:
-      //    - Create pre-verified test user in staging DB
-      //    - Use known credentials in tests
-      //
-      // Unblocking Steps:
-      // [ ] Implement /api/auth/test/verify-user/{userId} endpoint
-      // [ ] Or: Update test to capture verification token from logs/database
-      // [ ] Then: Unskip this test and run full E2E flow
-      //
-      // Once blocked, the flow would be:
-      // await authRepository.resendVerificationEmail(testUser.email);
-      // const token = /* capture from email or db */;
-      // await authRepository.verifyEmail(token);
-      // const loginResponse = await authRepository.login({...});
+    it('Phase 5B.11.3b: should successfully login with valid credentials', async () => {
+      // Step 1: Verify email using test endpoint (bypasses token requirement)
+      expect(testUser.id).toBeDefined();
+      const verifyResult = await authRepository.testVerifyEmail(testUser.id!);
+      expect(verifyResult.message).toContain('verified');
+
+      // Step 2: Now login should succeed
       const loginResponse = await authRepository.login({
         email: testUser.email,
         password: testUser.password,
@@ -134,6 +106,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(loginResponse.accessToken).toBeDefined();
       expect(loginResponse.refreshToken).toBeDefined();
 
+      // Step 3: Store tokens for downstream tests
       testUser.accessToken = loginResponse.accessToken;
       testUser.refreshToken = loginResponse.refreshToken;
       apiClient.setAuthToken(loginResponse.accessToken);

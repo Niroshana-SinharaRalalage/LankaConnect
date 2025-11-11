@@ -12,6 +12,8 @@ using LankaConnect.Application.Communications.Commands.ResetPassword;
 using LankaConnect.Application.Communications.Commands.VerifyEmail;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.API.Filters;
+using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Common;
 
 namespace LankaConnect.API.Controllers;
 
@@ -26,11 +28,22 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IMediator mediator, ILogger<AuthController> logger)
+    public AuthController(
+        IMediator mediator,
+        ILogger<AuthController> logger,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        IWebHostEnvironment env)
     {
         _mediator = mediator;
         _logger = logger;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
+        _env = env;
     }
 
     /// <summary>
@@ -465,6 +478,63 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error resending verification email for user: {UserId}", request.UserId);
             return StatusCode(500, new { error = "An error occurred while sending the verification email" });
+        }
+    }
+
+    /// <summary>
+    /// [TEST ONLY] Verify user email without token validation
+    /// Only available in Development environment for E2E testing
+    /// </summary>
+    /// <param name="userId">User ID to verify email for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Verification result</returns>
+    [HttpPost("test/verify-user/{userId}")]
+    [ApiExplorerSettings(IgnoreApi = true)] // Hide from Swagger in production
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> TestVerifyUser(Guid userId, CancellationToken cancellationToken)
+    {
+        // IMPORTANT: Only available in Development environment for testing
+        if (!_env.IsDevelopment())
+        {
+            _logger.LogWarning("Unauthorized attempt to access test endpoint in {Environment}", _env.EnvironmentName);
+            return Forbid();
+        }
+
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                _logger.LogWarning("Test verify user failed: user {UserId} not found", userId);
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Verify email without token validation (test-only)
+            var result = user.VerifyEmail();
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Test verify user failed: {Error}", result.Error);
+                return BadRequest(new { error = result.Error });
+            }
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Test verified email for user: {UserId}", userId);
+            return Ok(new
+            {
+                message = "Email verified successfully (test mode)",
+                userId = user.Id,
+                email = user.Email.Value,
+                verifiedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in test verify email endpoint for user: {UserId}", userId);
+            return StatusCode(500, new { error = "An error occurred during verification" });
         }
     }
 

@@ -89,7 +89,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Role)
             .HasConversion<int>()
             .IsRequired()
-            .HasDefaultValue(UserRole.User);
+            .HasDefaultValue(UserRole.GeneralUser);
 
         builder.Property(u => u.IsEmailVerified)
             .IsRequired()
@@ -255,9 +255,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Auto-include ExternalLogins when loading User
         builder.Navigation(u => u.ExternalLogins).AutoInclude();
 
-        // Configure PreferredMetroAreas many-to-many relationship (Phase 5A)
-        // Following ADR-008: Explicit junction table for full control
-        builder.HasMany<Domain.Events.MetroArea>()
+        // Configure PreferredMetroAreas many-to-many relationship (Phase 5B)
+        // CRITICAL FIX: Connect skip navigation to the _preferredMetroAreaIds backing field
+        // Following ADR-008: Explicit junction table with proper backing field configuration
+        var navigation = builder.HasMany<Domain.Events.MetroArea>()
             .WithMany()
             .UsingEntity<Dictionary<string, object>>(
                 "user_preferred_metro_areas",
@@ -292,6 +293,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                         .HasDefaultValueSql("NOW()")
                         .IsRequired();
                 });
+
+        // CRITICAL: Tell EF Core to track this skip navigation with field access
+        // This ensures changes to the backing field are persisted to the junction table
+        // The navigation exists only in EF's model metadata, not as a domain model property
+        if (navigation?.Metadata != null)
+        {
+            navigation.Metadata.SetPropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
+        }
 
         // Configure audit fields
         builder.Property(u => u.CreatedAt)

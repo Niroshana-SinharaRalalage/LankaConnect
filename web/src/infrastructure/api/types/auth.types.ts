@@ -14,6 +14,7 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
+  selectedRole?: UserRole; // Phase 6A.0: Optional role selection (defaults to GeneralUser)
 }
 
 // Response DTOs
@@ -30,6 +31,8 @@ export interface UserDto {
   role: UserRole;
   isEmailVerified?: boolean;
   createdAt?: string;
+  pendingUpgradeRole?: UserRole; // Phase 6A.7: Pending role upgrade
+  upgradeRequestedAt?: string; // Phase 6A.7: When upgrade was requested
 }
 
 export interface LoginResponse {
@@ -45,10 +48,12 @@ export interface RegisterResponse {
 }
 
 // Enums
+// Phase 6A.0: Updated role system for Event Organizer model
 export enum UserRole {
-  User = 'User',
+  GeneralUser = 'GeneralUser',
+  EventOrganizer = 'EventOrganizer',
   Admin = 'Admin',
-  Moderator = 'Moderator',
+  AdminManager = 'AdminManager',
 }
 
 // Error Response

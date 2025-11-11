@@ -137,9 +137,9 @@ export class ProfileRepository {
 
   /**
    * Update user's preferred metro areas for location-based filtering
-   * Phase 5B: User Preferred Metro Areas
+   * Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
    * @param userId User GUID
-   * @param metroAreas Metro area IDs (0-10 items)
+   * @param metroAreas Metro area IDs (0-20 items, GUIDs)
    * @returns Promise resolving to updated UserProfile
    */
   async updatePreferredMetroAreas(
@@ -157,7 +157,7 @@ export class ProfileRepository {
    * Get user's preferred metro areas with full details
    * Phase 5B: User Preferred Metro Areas
    * @param userId User GUID
-   * @returns Promise resolving to array of metro area IDs
+   * @returns Promise resolving to array of metro area GUIDs
    */
   async getPreferredMetroAreas(userId: string): Promise<string[]> {
     const response = await apiClient.get<string[]>(

@@ -7,9 +7,9 @@ namespace LankaConnect.Application.Users.Commands.UpdatePreferredMetroAreas;
 
 /// <summary>
 /// Handler for UpdateUserPreferredMetroAreasCommand
-/// Phase 5A: User Preferred Metro Areas
+/// Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
 /// Architecture: Following ADR-008 - Validates metro area existence in Application layer
-/// Domain layer validates business rules (max 10, no duplicates)
+/// Domain layer validates business rules (max 20, no duplicates)
 /// </summary>
 public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<UpdateUserPreferredMetroAreasCommand>
 {

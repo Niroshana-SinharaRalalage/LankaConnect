@@ -174,6 +174,24 @@ Option 1: Continue with Azure Configuration (Days 4-5)
 
   - ⏸️ Event Recommendations - Requires ML infrastructure and user behavior data (TBD)
  ------------------------------------------
+🎯 Your Priority Order:
+
+  1. Epic 1 Phase 4 - Email verification & password reset (3-4 days)
+    - SendEmailVerificationCommand + Handler
+    - SendPasswordResetCommand + Handler
+    - Email service integration (SendGrid/MailHog)
+  2. Frontend Development - Epic 1 & Epic 2 UI (4-5 weeks)
+    - Authentication UI (registration, login, profile)
+    - Event Discovery & Management UI
+  3. Epic 1 Phase 2 (Days 4-5) - Social login Azure config (2 days)
+    - Configure Facebook/Google/Apple in Azure Entra External ID portal
+    - Deploy and verify multi-provider login
+
+  Reasoning I understand:
+  - Get email verification/password reset working first (complete core auth flow)
+  - Then build the frontend so users can actually use Epic 1 & Epic 2 features
+  - Social login Azure config can come last (nice-to-have, not blocking)
+ -------------------------------------------
 
  Go ahead.
   1. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
@@ -181,3 +199,28 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   3. Before make any code changes, make sure you are not duplicating the code by reviewing whether there are similar implemenation or some reusable componants are available.
   4. You must follow TDD and DDD patterns for development. For more details refer: c:\Work\LankaConnect\CLAUDE.md
   5. Also, update the status in c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md whenever possible acording to c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+  7. For database migrations we should always use EF core migrations.
+  8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
+
+  -------------------------------------------
+    1. Don't forget to follow UI/UX best practices.
+    2. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
+    3. Don't forget to consult architect when needed.
+    4. Before make any code changes, make sure you are not duplicating the code by reviewing whether there are similar implemenation or some reusable componants are available.
+    5. For more details refer: c:\Work\LankaConnect\CLAUDE.md
+    6. Also, update the status in c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md whenever possible acording to
+  c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+    7. For database migrations we should always use EF core migrations.
+    8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
+
+  -------------------------------------------------
+
+  1. ✅ Landing Page (/)
+  2. ✅ Login (/login)
+  3. ✅ Register (/register)
+  4. ✅ Forgot Password (/forgot-password)
+  5. ✅ Reset Password (/reset-password)
+  6. ✅ Email Verification (/verify-email)
+  7. ✅ Dashboard (/dashboard)
+  8. ✅ Profile (/profile)
+  9. ✅ 404 Page (/_not-found)

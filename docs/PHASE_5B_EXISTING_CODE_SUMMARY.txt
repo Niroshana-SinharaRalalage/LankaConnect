@@ -1,0 +1,255 @@
+PHASE 5B METRO AREA EXISTING CODE SUMMARY
+==========================================
+
+1. BACKEND C# IMPLEMENTATION
+============================
+
+1.1 DOMAIN LAYER
+- MetroArea Entity (src/LankaConnect.Domain/Events/MetroArea.cs)
+  * Properties: Id, Name, State, CenterLatitude, CenterLongitude, RadiusMiles, IsStateLevelArea, IsActive
+  * Factory method with full validation
+  * User has PreferredMetroAreaIds list property
+
+1.2 APPLICATION LAYER  
+- MetroAreaDto (src/LankaConnect.Application/MetroAreas/Common/MetroAreaDto.cs)
+  * Maps to: Id, Name, State, CenterLatitude, CenterLongitude, RadiusMiles, IsStateLevelArea, IsActive
+
+- UpdateUserPreferredMetroAreasCommand
+  * Properties: UserId (Guid), MetroAreaIds (List<Guid>)
+  * Handler validates metro IDs exist, delegates to domain for business rules
+  * Max 20 metros (expanded from Phase 5A)
+
+- GetUserPreferredMetroAreasQuery
+  * Returns full MetroAreaDto details for user's selected metros
+  * Ordered by State then Name
+
+1.3 API LAYER (UsersController)
+- PUT /api/users/{id}/preferred-metro-areas
+  * Request: { metroAreaIds: [guid, ...] } (0-20 items)
+  * Response: 204 NoContent
+  * Validation: 404 if user not found, 400 if invalid metros
+
+- GET /api/users/{id}/preferred-metro-areas  
+  * Response: IReadOnlyList<MetroAreaDto>
+  * Returns empty list if no selections
+
+1.4 API LAYER (MetroAreasController)
+- GET /api/metro-areas
+  * Query params: stateFilter (optional), activeOnly (default=true)
+  * Response: IReadOnlyList<MetroAreaDto>
+  * Caching: 15 minutes
+
+1.5 DATABASE
+- Migration: 20251110031400_AddUserPreferredMetroAreas
+  * Junction table: users.preferred_metro_areas
+  * Supports 0-20 selections per user
+
+1.6 SEEDER
+- MetroAreaSeeder.cs
+  * Pre-seeds 50 state-level areas (All Alabama, All Ohio, etc.)
+  * Pre-seeds 100+ major US metro areas
+  * Uses backend GUIDs for consistency with frontend
+
+---
+
+2. FRONTEND TYPESCRIPT/REACT
+=============================
+
+2.1 DOMAIN MODELS
+- MetroArea interface (web/src/domain/models/MetroArea.ts)
+  * Properties: id, name, state, cities[], centerLat, centerLng, radiusMiles
+  * Utility functions: isWithinMetroArea, findNearestMetroArea, calculateDistance
+
+- UserProfile interface (web/src/domain/models/UserProfile.ts)
+  * Property: preferredMetroAreas?: string[] (0-20 IDs)
+  * UpdatePreferredMetroAreasRequest: { metroAreaIds: string[] }
+
+2.2 CONSTANTS
+- metroAreas.constants.ts
+  * ALL_METRO_AREAS: 150+ pre-defined metros with backend GUIDs
+  * US_STATES: All 50 states with codes and names
+  * Helper functions:
+    - getMetroById(id)
+    - getMetrosByState(stateCode)
+    - searchMetrosByName(query)
+    - isStateLevelArea(id)
+    - getMetrosGroupedByState()
+
+2.3 REPOSITORIES
+- ProfileRepository (web/src/infrastructure/api/repositories/profile.repository.ts)
+  * updatePreferredMetroAreas(userId, request): Promise<UserProfile>
+  * getPreferredMetroAreas(userId): Promise<string[]>
+  * Maps to: PUT/GET /api/users/{id}/preferred-metro-areas
+
+- EventsRepository
+  * getEvents(filters)
+  * getNearbyEvents(request) 
+  * searchEvents(request)
+  * Full event CRUD operations
+
+2.4 COMPONENTS
+- PreferredMetroAreasSection (profile page)
+  * View mode: Shows selected metros as colored tags
+  * Edit mode: State-grouped dropdown with expand/collapse
+  * Max 20 selection limit
+  * Success/error messaging
+  * Uses: useProfileStore(), useAuthStore()
+
+- MetroAreaSelector (reusable dropdown)
+  * Single-select dropdown (not multi-select)
+  * Geolocation detection support
+  * Distance calculation and sorting
+  * "Nearby" badge for metros within 50 miles
+  * Props: value, metros, onChange, userLocation, isDetecting, etc.
+
+2.5 STORES
+- useProfileStore
+  * Methods: updatePreferredMetroAreas(userId, request)
+  * State: sectionStates.preferredMetroAreas
+  * Returns: profile.preferredMetroAreas
+
+- useAuthStore
+  * Returns: user object with userId
+
+2.6 TESTS
+- MetroAreaSelector.test.tsx
+- PreferredMetroAreasSection.test.tsx
+- metro-areas-workflow.test.ts
+
+---
+
+3. EVENT STRUCTURE
+===================
+
+EventDto Properties (from events.types.ts):
+- id: string
+- title: string
+- description: string
+- startDate: string (ISO 8601)
+- endDate: string (ISO 8601)
+- organizerId: string
+- capacity: number
+- ... (additional fields in full file)
+
+EventStatus enum:
+- Draft = 0
+- Published = 1
+- Active = 2
+- Postponed = 3
+- Cancelled = 4
+- Completed = 5
+- Archived = 6
+- UnderReview = 7
+
+EventCategory enum:
+- Religious, Cultural, Community, Educational, Social, Business, Charity, Entertainment
+
+---
+
+4. KEY VALIDATION RULES
+=======================
+
+Backend (C# - Domain):
+- Max 20 metro areas per user
+- No duplicate IDs
+- All IDs must exist in metro_areas table
+- Validates before persisting
+
+Frontend (TypeScript - Components):
+- Max 20 selection limit in PreferredMetroAreasSection
+- Shows validation error if limit exceeded
+- Disables save button on validation errors
+- Clears errors when items deselected
+
+---
+
+5. FILE LOCATIONS
+=================
+
+Backend C#:
+src/LankaConnect.Domain/Events/MetroArea.cs
+src/LankaConnect.Application/MetroAreas/Common/MetroAreaDto.cs
+src/LankaConnect.Application/Users/Commands/UpdatePreferredMetroAreas/*.cs
+src/LankaConnect.Application/Users/Queries/GetUserPreferredMetroAreas/*.cs
+src/LankaConnect.API/Controllers/UsersController.cs
+src/LankaConnect.API/Controllers/MetroAreasController.cs
+
+Frontend TypeScript:
+web/src/domain/models/MetroArea.ts
+web/src/domain/models/UserProfile.ts
+web/src/domain/constants/metroAreas.constants.ts
+web/src/infrastructure/api/repositories/profile.repository.ts
+web/src/infrastructure/api/repositories/events.repository.ts
+web/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx
+web/src/presentation/components/features/location/MetroAreaSelector.tsx
+web/src/presentation/store/useProfileStore.ts
+web/src/presentation/store/useAuthStore.ts
+
+---
+
+6. CODE DUPLICATION PREVENTION
+===============================
+
+DO NOT CREATE:
+- New metro area models (reuse existing)
+- New metro area constants (150+ pre-defined in constants file)
+- New profile update endpoints (use updatePreferredMetroAreas)
+- New database schemas (migration already exists)
+- New metro area selector components (reuse MetroAreaSelector)
+- New metro area profile section (reuse PreferredMetroAreasSection)
+
+DO LEVERAGE:
+- EventsRepository for event operations
+- useProfileStore for state management
+- useAuthStore for user context
+- Existing API endpoints
+- Existing constants and helpers
+
+---
+
+7. API CONTRACT
+===============
+
+GET /api/metro-areas
+  Query: stateFilter (optional), activeOnly (default=true)
+  Response: [MetroAreaDto, ...]
+  Cache: 15 minutes
+
+PUT /api/users/{id}/preferred-metro-areas
+  Request: { metroAreaIds: [guid, ...] } (max 20)
+  Response: 204 NoContent
+  Error: 404 (user not found), 400 (validation)
+
+GET /api/users/{id}/preferred-metro-areas
+  Response: [MetroAreaDto, ...] with full details
+  Error: 404 (user not found)
+
+---
+
+8. INTEGRATION POINTS
+====================
+
+Landing Page / Events Feed:
+- Filter events by user's preferred metros
+- Use eventsRepository with metro filter
+- Coordinate with existing event listing
+
+Newsletter Integration:
+- NewsletterMetroSelector component exists
+- Coordinate preferences with user profile metros
+
+---
+
+SUMMARY
+=======
+
+All core Phase 5B infrastructure ALREADY EXISTS:
+✓ Backend API endpoints (PUT/GET /api/users/{id}/preferred-metro-areas)
+✓ Database schema and migration
+✓ Domain models and validation rules  
+✓ Frontend repository integration
+✓ UI components (PreferredMetroAreasSection, MetroAreaSelector)
+✓ Frontend constants (150+ metros with GUIDs)
+✓ Store/hook integration (useProfileStore)
+
+Max limit: 20 metro areas (expanded from 10 in Phase 5A)

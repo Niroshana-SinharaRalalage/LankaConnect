@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///C:/Work/LankaConnect/web/src/app/page.tsx"],"sourcesContent":["import { redirect } from 'next/navigation';\r\n\r\nexport default function Home() {\r\n  // Redirect to login page\r\n  redirect('/login');\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;AAAA;;AAEe,SAAS;IACtB,yBAAyB;IACzB,IAAA,iMAAQ,EAAC;AACX","debugId":null}}]
-}

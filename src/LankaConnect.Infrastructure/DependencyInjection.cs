@@ -12,6 +12,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
+using LankaConnect.Domain.Notifications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
@@ -122,6 +123,9 @@ public static class DependencyInjection
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
+        // Add Notifications Repositories (Phase 6A.6)
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
@@ -162,6 +166,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHashingService, PasswordHashingService>();
         services.AddScoped<ITokenConfiguration, TokenConfiguration>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>(); // Phase 6A.6
 
         // Add Entra External ID Services
         services.Configure<EntraExternalIdOptions>(configuration.GetSection(EntraExternalIdOptions.SectionName));

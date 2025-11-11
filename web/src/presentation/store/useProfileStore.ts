@@ -330,7 +330,17 @@ export const useProfileStore = create<ProfileState>()(
       },
 
       // Phase 5B: Update user's preferred metro areas for location-based filtering
+      // Validates against max 20 limit (expanded from 10)
       updatePreferredMetroAreas: async (userId, metroAreas) => {
+        // Frontend validation: Check max 20 limit
+        if (metroAreas.metroAreaIds.length > 20) {
+          set((state) => ({
+            error: 'Cannot select more than 20 metro areas',
+            sectionStates: { ...state.sectionStates, preferredMetroAreas: 'error' },
+          }));
+          return;
+        }
+
         set((state) => ({
           sectionStates: { ...state.sectionStates, preferredMetroAreas: 'saving' },
           error: null,

@@ -41,8 +41,9 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
             .MaximumLength(50)
             .WithMessage("Last name must not exceed 50 characters");
 
-        RuleFor(x => x.Role)
+        RuleFor(x => x.SelectedRole)
             .IsInEnum()
+            .When(x => x.SelectedRole.HasValue)
             .WithMessage("Invalid user role");
     }
 

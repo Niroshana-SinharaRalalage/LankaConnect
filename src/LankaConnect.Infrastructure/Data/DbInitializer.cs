@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Infrastructure.Data.Seeders;
+using LankaConnect.Application.Common.Interfaces;
 
 namespace LankaConnect.Infrastructure.Data;
 
@@ -12,11 +13,16 @@ public class DbInitializer
 {
     private readonly AppDbContext _context;
     private readonly ILogger<DbInitializer> _logger;
+    private readonly IPasswordHashingService _passwordHashingService;
 
-    public DbInitializer(AppDbContext context, ILogger<DbInitializer> logger)
+    public DbInitializer(
+        AppDbContext context,
+        ILogger<DbInitializer> logger,
+        IPasswordHashingService passwordHashingService)
     {
         _context = context;
         _logger = logger;
+        _passwordHashingService = passwordHashingService;
     }
 
     /// <summary>
@@ -30,7 +36,10 @@ public class DbInitializer
             // Ensure database is created and migrations are applied
             await _context.Database.MigrateAsync();
 
-            // Seed metro areas first (Phase 5C)
+            // Seed users first (Phase 6A.1) - required for event organizers
+            await SeedUsersAsync();
+
+            // Seed metro areas (Phase 5C)
             await SeedMetroAreasAsync();
 
             // Seed events
@@ -41,6 +50,24 @@ public class DbInitializer
             _logger.LogError(ex, "An error occurred while seeding the database.");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Seeds admin users into the database
+    /// Phase 6A.1: Admin User Seeding
+    /// </summary>
+    private async Task SeedUsersAsync()
+    {
+        var existingUsersCount = await _context.Users.CountAsync();
+        if (existingUsersCount > 0)
+        {
+            _logger.LogInformation("Database already contains {Count} users. Skipping seed.", existingUsersCount);
+            return;
+        }
+
+        _logger.LogInformation("Seeding admin users...");
+        await UserSeeder.SeedAsync(_context, _passwordHashingService);
+        _logger.LogInformation("Successfully seeded admin users to the database.");
     }
 
     /// <summary>

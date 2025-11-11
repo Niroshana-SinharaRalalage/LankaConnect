@@ -26,7 +26,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         // Act
         var response = await HttpClient.PostAsJsonAsync("/api/auth/register", request);
@@ -50,7 +50,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         user.Should().NotBeNull();
         user!.FirstName.Should().Be("John");
         user.LastName.Should().Be("Doe");
-        user.Role.Should().Be(UserRole.User);
+        user.Role.Should().Be(UserRole.GeneralUser);
         user.IsEmailVerified.Should().BeFalse();
         user.PasswordHash.Should().NotBeNullOrEmpty();
     }
@@ -290,10 +290,10 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
     }
 
     [Theory]
-    [InlineData(UserRole.User)]
-    [InlineData(UserRole.BusinessOwner)]
-    [InlineData(UserRole.Moderator)]
+    [InlineData(UserRole.GeneralUser)]
+    [InlineData(UserRole.EventOrganizer)]
     [InlineData(UserRole.Admin)]
+    [InlineData(UserRole.AdminManager)]
     public async Task Register_WithDifferentRoles_ShouldCreateUserWithCorrectRole(UserRole role)
     {
         // Arrange

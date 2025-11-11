@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ResetPasswordForm } from '@/presentation/components/features/auth/ResetPasswordForm';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';

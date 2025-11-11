@@ -64,6 +64,7 @@ const config: Config = {
           800: '#665600',
           900: '#332B00',
         },
+        cream: '#FFF8DC',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -104,10 +105,37 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-sri-lanka': 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)',
+      },
+      keyframes: {
+        'bell-ring': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '10%, 30%': { transform: 'rotate(-10deg)' },
+          '20%, 40%': { transform: 'rotate(10deg)' },
+        },
+        'badge-pop': {
+          '0%': { transform: 'scale(0)' },
+          '50%': { transform: 'scale(1.1)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        'dropdown-fade-in': {
+          from: {
+            opacity: '0',
+            transform: 'translateY(-10px)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateY(0)',
+          },
+        },
+      },
+      animation: {
+        'bell-ring': 'bell-ring 1s ease-in-out',
+        'badge-pop': 'badge-pop 0.3s ease-out',
+        'dropdown-fade-in': 'dropdown-fade-in 0.2s ease-out',
       },
     },
   },

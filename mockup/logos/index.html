@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect - Official Logo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 3rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #8B1538;
+            margin-bottom: 1rem;
+            font-size: 3rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 3rem;
+            font-size: 1.2rem;
+        }
+
+        .logo-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        .logo-card h3 {
+            color: #8B1538;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 1.4rem;
+        }
+
+        .logo-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+            min-height: 200px;
+        }
+
+        .logo-display.dark {
+            background: #2d3436;
+        }
+
+        .logo-display.gradient {
+            background: linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%);
+        }
+
+        .logo-with-text {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .logo-icon {
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #8B1538;
+        }
+
+        .logo-text.white {
+            color: white;
+        }
+
+        .size-variations {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+        }
+
+        .size-item {
+            text-align: center;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .size-label {
+            display: block;
+            margin-top: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .usage-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            margin-top: 3rem;
+        }
+
+        .usage-section h2 {
+            color: #8B1538;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        .usage-section h3 {
+            color: #8B1538;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .code-block {
+            background: #2d3436;
+            color: #00ff88;
+            padding: 1.5rem;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .color-specs {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .color-box {
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .guidelines {
+            margin-top: 2rem;
+            line-height: 2;
+            color: #666;
+        }
+
+        .guidelines li {
+            margin-bottom: 1rem;
+        }
+
+        .guidelines strong {
+            color: #8B1538;
+        }
+
+        .file-location {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #FF7900;
+            margin-top: 1rem;
+        }
+
+        .file-location code {
+            background: #e9ecef;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #8B1538;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇱🇰 LankaConnect</h1>
+        <p class="subtitle">Official Brand Logo - Heritage Lotus with Sri Lankan Lion</p>
+
+        <div class="logo-showcase">
+            <!-- Full Logo - Light Background -->
+            <div class="logo-card">
+                <h3>Light Background</h3>
+                <div class="logo-display">
+                    <div class="logo-with-text">
+                        <img src="lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon" width="100" height="100">
+                        <span class="logo-text">LankaConnect</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Logo - Dark Background -->
+            <div class="logo-card">
+                <h3>Dark Background</h3>
+                <div class="logo-display dark">
+                    <div class="logo-with-text">
+                        <img src="lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon" width="100" height="100">
+                        <span class="logo-text white">LankaConnect</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Logo - Gradient Background -->
+            <div class="logo-card">
+                <h3>Gradient Background (Flag Colors)</h3>
+                <div class="logo-display gradient">
+                    <div class="logo-with-text">
+                        <img src="lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon" width="100" height="100">
+                        <span class="logo-text white">LankaConnect</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Icon Only - Size Variations -->
+        <div class="logo-card">
+            <h3>Icon Size Variations</h3>
+            <div class="size-variations">
+                <div class="size-item">
+                    <img src="lankaconnect-logo-transparent.png" alt="LankaConnect" width="32" height="32">
+                    <span class="size-label">32px</span>
+                </div>
+                <div class="size-item">
+                    <img src="lankaconnect-final-logo.png" alt="LankaConnect" width="48" height="48">
+                    <span class="size-label">48px</span>
+                </div>
+                <div class="size-item">
+                    <img src="lankaconnect-final-logo.png" alt="LankaConnect" width="64" height="64">
+                    <span class="size-label">64px</span>
+                </div>
+                <div class="size-item">
+                    <img src="lankaconnect-final-logo.png" alt="LankaConnect" width="80" height="80">
+                    <span class="size-label">80px</span>
+                </div>
+                <div class="size-item">
+                    <img src="lankaconnect-final-logo.png" alt="LankaConnect" width="100" height="100">
+                    <span class="size-label">100px</span>
+                </div>
+                <div class="size-item">
+                    <img src="lankaconnect-final-logo.png" alt="LankaConnect" width="128" height="128">
+                    <span class="size-label">128px</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Guidelines -->
+        <div class="usage-section">
+            <h2>📋 Usage Guidelines</h2>
+
+            <h3>HTML Implementation</h3>
+            <p style="color: #666;">Full logo with text for headers and navigation:</p>
+            <div class="code-block">
+&lt;div class="logo-container"&gt;
+  &lt;img src="logos/lankaconnect-logo-transparent.png"
+       alt="LankaConnect"
+       width="60"
+       height="60"&gt;
+  &lt;span class="logo-text"&gt;LankaConnect&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .logo-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #8B1538; /* Maroon */
+  }
+
+  /* For dark backgrounds */
+  .dark-bg .logo-text {
+    color: white;
+  }
+&lt;/style&gt;
+            </div>
+
+            <h3>Icon Only Usage</h3>
+            <p style="color: #666;">For favicons, app icons, and compact layouts:</p>
+            <div class="code-block">
+&lt;!-- Favicon --&gt;
+&lt;link rel="icon" type="image/png"
+      href="logos/lankaconnect-logo-transparent.png"&gt;
+
+&lt;!-- App Icon --&gt;
+&lt;img src="logos/lankaconnect-logo-transparent.png"
+     alt="LankaConnect"
+     width="48"
+     height="48"&gt;
+            </div>
+
+            <h3>React/Next.js Implementation</h3>
+            <div class="code-block">
+import Image from 'next/image';
+
+export function Logo({ size = 60, showText = true }) {
+  return (
+    &lt;div className="flex items-center gap-4"&gt;
+      &lt;Image
+        src="/logos/lankaconnect-logo-transparent.png"
+        alt="LankaConnect"
+        width={size}
+        height={size}
+        priority
+      /&gt;
+      {showText && (
+        &lt;span className="text-2xl font-bold text-maroon"&gt;
+          LankaConnect
+        &lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  );
+}
+            </div>
+
+            <h3>File Location</h3>
+            <div class="file-location">
+                <strong>Logo Image:</strong><br>
+                <code>C:\Work\LankaConnect\mockup\logos\lankaconnect-logo-transparent.png</code>
+            </div>
+
+            <h3>Brand Colors (Sri Lankan Flag)</h3>
+            <div class="color-specs">
+                <div class="color-box" style="background: #FF7900;">
+                    Saffron<br>#FF7900<br>rgb(255, 121, 0)
+                </div>
+                <div class="color-box" style="background: #8B1538;">
+                    Maroon<br>#8B1538<br>rgb(139, 21, 56)
+                </div>
+                <div class="color-box" style="background: #006400;">
+                    Green<br>#006400<br>rgb(0, 100, 0)
+                </div>
+                <div class="color-box" style="background: #FFD700; color: #8B1538;">
+                    Gold<br>#FFD700<br>rgb(255, 215, 0)
+                </div>
+            </div>
+
+            <h3>Design Guidelines</h3>
+            <ul class="guidelines">
+                <li><strong>Minimum Size:</strong> Do not use the icon smaller than 32x32 pixels to maintain clarity</li>
+                <li><strong>Clear Space:</strong> Maintain at least 15px of clear space around the logo</li>
+                <li><strong>Background Colors:</strong> Logo works on light, dark, and gradient backgrounds</li>
+                <li><strong>Text Pairing:</strong> Always use "LankaConnect" as one word in Arial or Helvetica Bold</li>
+                <li><strong>Primary Text Color:</strong> Maroon (#8B1538) on light backgrounds, White on dark backgrounds</li>
+                <li><strong>Do Not:</strong> Modify the logo colors, distort proportions, or add effects</li>
+                <li><strong>File Format:</strong> Use PNG for web, ensure high resolution for print (300 DPI minimum)</li>
+            </ul>
+
+            <h3>Logo Symbolism</h3>
+            <ul class="guidelines">
+                <li><strong>Heritage Lotus:</strong> Overlapping circles forming a lotus pattern represent growth, enlightenment, and Sri Lankan heritage</li>
+                <li><strong>Sri Lankan Lion:</strong> The golden lion with sword symbolizes strength, courage, and national pride from the Sri Lankan flag</li>
+                <li><strong>Flag Colors:</strong> Saffron (orange), maroon (red), and green circles represent the Sri Lankan flag's vibrant colors</li>
+                <li><strong>Community Connection:</strong> The circular design represents unity and bringing the diaspora community together</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -183,16 +183,18 @@ public class EventsController : BaseController<EventsController>
     // ==================== AUTHENTICATED ENDPOINTS ====================
 
     /// <summary>
-    /// Create a new event (Organizers only)
+    /// Create a new event (Event Organizers, Admins only)
+    /// Phase 6A.3: Requires EventOrganizer, Admin, or AdminManager role with active subscription
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [Authorize(Policy = "CanCreateEvents")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventCommand command)
     {
-        Logger.LogInformation("Creating event: {Title}", command.Title);
+        Logger.LogInformation("Creating event: {Title} by user: {UserId}", command.Title, User.TryGetUserId());
 
         var result = await Mediator.Send(command);
 

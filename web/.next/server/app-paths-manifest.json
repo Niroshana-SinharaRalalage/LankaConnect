@@ -4,9 +4,13 @@
   "/(auth)/register/page": "app/(auth)/register/page.js",
   "/(auth)/reset-password/page": "app/(auth)/reset-password/page.js",
   "/(auth)/verify-email/page": "app/(auth)/verify-email/page.js",
+  "/(dashboard)/admin/approvals/page": "app/(dashboard)/admin/approvals/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/notifications/page": "app/(dashboard)/notifications/page.js",
   "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
   "/_global-error/page": "app/_global-error/page.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/test-events/page": "app/test-events/page.js",
+  "/test-simple/page": "app/test-simple/page.js"
 }

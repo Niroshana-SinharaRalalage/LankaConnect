@@ -5,14 +5,15 @@ import { Button } from '@/presentation/components/ui/Button';
 import { StatCard } from '@/presentation/components/ui/StatCard';
 import { Logo } from '@/presentation/components/atoms/Logo';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { useRouter } from 'next/navigation';
-import { Users, Calendar, Building2, Heart, MessageSquare, TrendingUp, MapPin, ThumbsUp } from 'lucide-react';
+import { Users, Calendar, Building2, Heart, MessageSquare, TrendingUp, MapPin, ThumbsUp, Sparkles } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { FeedTabs, ActivityFeed } from '@/presentation/components/features/feed';
 import { MetroAreaProvider, useMetroArea } from '@/presentation/components/features/location/MetroAreaContext';
 import { MetroAreaSelector } from '@/presentation/components/features/location/MetroAreaSelector';
-import { ALL_METRO_AREAS } from '@/domain/constants/metroAreas.constants';
+import { ALL_METRO_AREAS, getMetroById } from '@/domain/constants/metroAreas.constants';
 import type { FeedItem } from '@/domain/models/FeedItem';
 import type { MetroArea } from '@/domain/models/MetroArea';
 import { useEvents } from '@/presentation/hooks/useEvents';
@@ -91,63 +92,93 @@ function LandingMetroSelector() {
 /**
  * Main Page Content Component
  * Separated to use MetroAreaContext hooks
+ * Phase 5B.9: Display events organized by preferred metros vs other metros
  */
 function HomeContent() {
   const { selectedMetroArea } = useMetroArea();
+  const { isAuthenticated, user } = useAuthStore();
+  const { profile } = useProfileStore();
   const [activeTab, setActiveTab] = React.useState<'all' | 'event' | 'business' | 'forum' | 'culture'>('all');
+  const [showOtherMetros, setShowOtherMetros] = React.useState(true);
 
   // Fetch events from API
-  // Note: Backend has a bug where status filter doesn't work properly
-  // Removing status filter allows events to load correctly
-  // TODO: Investigate backend issue with status=1 filter
   const { data: events, isLoading, error } = useEvents();
-
 
   // Convert API events to feed items (no mock data)
   const allFeedItems = React.useMemo((): FeedItem[] => {
-    // If we have events from API, convert them to feed items
     if (events && events.length > 0) {
       return mapEventListToFeedItems(events);
     }
-
-    // Return empty array if no events
     return [];
   }, [events]);
 
-  // Filter feed items by selected metro area and active tab
-  const filteredItems = React.useMemo((): FeedItem[] => {
-    let items = allFeedItems;
+  /**
+   * Helper: Check if an event is in a specific metro area
+   * Handles both state-level and city-level metros
+   */
+  const isEventInMetro = React.useCallback((item: FeedItem, metro: MetroArea): boolean => {
+    // State-level filtering: If metro area is marked as "Statewide"
+    if (metro.cities.includes('Statewide')) {
+      const fullStateName = Object.keys(STATE_ABBR_MAP).find(
+        name => STATE_ABBR_MAP[name as keyof typeof STATE_ABBR_MAP] === metro.state
+      );
+      const statePattern = new RegExp(`[,\\s]${fullStateName}([,\\s]|$)`, 'i');
+      return statePattern.test(item.location);
+    }
 
-    // Filter by metro area
-    if (selectedMetroArea) {
-      items = items.filter(item => {
-        // State-level filtering: If metro area is marked as "Statewide", filter by state code
-        if (selectedMetroArea.cities.includes('Statewide')) {
-          // API returns full state names (e.g., "Ohio"), so we need to match against the full name
-          // Find the full state name from the abbreviation (e.g., "OH" -> "Ohio")
-          const fullStateName = Object.keys(STATE_ABBR_MAP).find(
-            name => STATE_ABBR_MAP[name as keyof typeof STATE_ABBR_MAP] === selectedMetroArea.state
-          );
+    // City-level filtering: Check if item location matches any city in the metro area
+    const itemCity = item.location.split(',')[0].trim();
+    return metro.cities.some(city => city === itemCity);
+  }, []);
 
-          // Build pattern to match state name in location (e.g., "Cleveland, Ohio")
-          // Match state name preceded by comma or space, followed by comma or space or end
-          const statePattern = new RegExp(`[,\\s]${fullStateName}([,\\s]|$)`, 'i');
-          return statePattern.test(item.location);
+  /**
+   * Filter events by preferred metros
+   * Phase 5B.9: Separate events into preferred metros vs other metros
+   */
+  const { preferredItems, otherItems } = React.useMemo(() => {
+    let preferred: FeedItem[] = [];
+    let other: FeedItem[] = [];
+
+    let itemsToProcess = allFeedItems;
+
+    // Apply active tab filter first
+    if (activeTab !== 'all') {
+      itemsToProcess = itemsToProcess.filter(item => item.type === activeTab);
+    }
+
+    // If user is authenticated and has preferred metros, separate items
+    if (isAuthenticated && profile?.preferredMetroAreas && profile.preferredMetroAreas.length > 0) {
+      const preferredMetroIds = new Set(profile.preferredMetroAreas);
+
+      itemsToProcess.forEach(item => {
+        let isInPreferred = false;
+
+        // Check if item matches any preferred metro
+        for (const metroId of preferredMetroIds) {
+          const metro = getMetroById(metroId);
+          if (metro && isEventInMetro(item, metro)) {
+            isInPreferred = true;
+            break;
+          }
         }
 
-        // Regular metro area filtering: Check if item location matches any city in the metro area
-        const itemCity = item.location.split(',')[0].trim();
-        return selectedMetroArea.cities.some(city => city === itemCity);
+        if (isInPreferred) {
+          preferred.push(item);
+        } else {
+          other.push(item);
+        }
       });
+    } else if (selectedMetroArea) {
+      // If user has manually selected a metro area, use that for filtering
+      itemsToProcess = itemsToProcess.filter(item => isEventInMetro(item, selectedMetroArea));
+      other = itemsToProcess;
+    } else {
+      // If no preferred metros and no selected metro, show all items
+      other = itemsToProcess;
     }
 
-    // Filter by tab
-    if (activeTab !== 'all') {
-      items = items.filter(item => item.type === activeTab);
-    }
-
-    return items;
-  }, [allFeedItems, selectedMetroArea, activeTab]);
+    return { preferredItems: preferred, otherItems: other };
+  }, [allFeedItems, activeTab, isAuthenticated, profile, selectedMetroArea, isEventInMetro]);
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -377,7 +408,7 @@ function HomeContent() {
               <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} />
             </div>
 
-            {/* Activity Feed - 2 Column Grid */}
+            {/* Activity Feed - Two Section Layout (Phase 5B.9) */}
             <div className="bg-white rounded-b-xl shadow-[0_2px_15px_rgba(0,0,0,0.08)] overflow-hidden">
               {error ? (
                 <div className="p-8 text-center">
@@ -385,7 +416,60 @@ function HomeContent() {
                   <p className="text-sm text-gray-600">Showing cached content...</p>
                 </div>
               ) : null}
-              <ActivityFeed items={filteredItems} loading={isLoading} gridView={true} />
+
+              {/* Preferred Metros Section (Phase 5B.9) */}
+              {isAuthenticated && preferredItems.length > 0 && (
+                <div className="border-b border-[#e2e8f0]">
+                  <div className="px-4 py-3 bg-[#FFF9F5] border-b border-[#e2e8f0] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" style={{ color: '#FF7900' }} />
+                      <h3 className="font-semibold text-[#8B1538]">
+                        Events in Your Preferred Metros
+                      </h3>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: '#FFE8CC', color: '#8B1538' }}>
+                        {preferredItems.length}
+                      </span>
+                    </div>
+                  </div>
+                  <ActivityFeed items={preferredItems} loading={isLoading} gridView={true} />
+                </div>
+              )}
+
+              {/* All Other Events Section */}
+              {(otherItems.length > 0 || preferredItems.length === 0) && (
+                <div>
+                  {preferredItems.length > 0 && (
+                    <div className="px-4 py-2">
+                      <button
+                        onClick={() => setShowOtherMetros(!showOtherMetros)}
+                        className="w-full flex items-center justify-between gap-2 text-left hover:bg-[#f8f9fa] py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-5 h-5" style={{ color: '#8B1538' }} />
+                          <h3 className="font-semibold text-[#8B1538]">
+                            All Other Events
+                          </h3>
+                          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: '#e2e8f0', color: '#4b5563' }}>
+                            {otherItems.length}
+                          </span>
+                        </div>
+                        <span className="text-[#718096]">{showOtherMetros ? '▼' : '▶'}</span>
+                      </button>
+                    </div>
+                  )}
+                  {showOtherMetros && <ActivityFeed items={otherItems} loading={isLoading} gridView={true} />}
+                </div>
+              )}
+
+              {/* Empty State */}
+              {preferredItems.length === 0 && otherItems.length === 0 && !isLoading && (
+                <div className="p-8 text-center">
+                  <p className="text-gray-600">No events found.</p>
+                  {isAuthenticated && (
+                    <p className="text-sm text-gray-500 mt-2">Try updating your preferred metro areas in your profile!</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

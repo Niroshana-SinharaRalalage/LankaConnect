@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear LankaConnect Storage</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Clear LankaConnect Metro Area Selection</h1>
+    <button onclick="clearStorage()">Clear LocalStorage</button>
+    <button onclick="location.href='/'">Go Back to Home</button>
+    <pre id="output"></pre>
+    
+    <script>
+        function clearStorage() {
+            const before = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            
+            localStorage.removeItem('lankaconnect_selected_metro');
+            localStorage.removeItem('lankaconnect_user_location');
+            
+            const after = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            
+            document.getElementById('output').textContent = 
+                'BEFORE:\n' + JSON.stringify(before, null, 2) + 
+                '\n\nAFTER:\n' + JSON.stringify(after, null, 2) +
+                '\n\n✅ Storage cleared! Click "Go Back to Home" or refresh the main page.';
+        }
+        
+        // Show current values on load
+        window.onload = () => {
+            const current = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            document.getElementById('output').textContent = 
+                'CURRENT LOCALSTORAGE:\n' + JSON.stringify(current, null, 2) +
+                '\n\nClick "Clear LocalStorage" to remove the metro area selection.';
+        };
+    </script>
+</body>
+</html>

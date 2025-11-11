@@ -9,6 +9,8 @@ using LankaConnect.Application.Users.Commands.UpdateLanguages;
 using LankaConnect.Application.Users.Commands.LinkExternalProvider;
 using LankaConnect.Application.Users.Commands.UnlinkExternalProvider;
 using LankaConnect.Application.Users.Commands.UpdatePreferredMetroAreas;
+using LankaConnect.Application.Users.Commands.RequestRoleUpgrade;
+using LankaConnect.Application.Users.Commands.CancelRoleUpgrade;
 using LankaConnect.Application.Users.Queries.GetUserById;
 using LankaConnect.Application.Users.Queries.GetLinkedProviders;
 using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
@@ -624,6 +626,90 @@ public class UsersController : BaseController<UsersController>
     }
 
     #endregion
+
+    #region Role Upgrade Workflow (Phase 6A.7)
+
+    /// <summary>
+    /// Requests a role upgrade to Event Organizer
+    /// Phase 6A.7: User Upgrade Workflow
+    /// </summary>
+    /// <param name="request">Role upgrade request details</param>
+    /// <returns>No content on success</returns>
+    [HttpPost("me/request-upgrade")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RequestRoleUpgrade([FromBody] RequestRoleUpgradeRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "RequestRoleUpgrade",
+            ["TargetRole"] = request.TargetRole.ToString()
+        }))
+        {
+            Logger.LogInformation("User requesting role upgrade to {TargetRole}", request.TargetRole);
+
+            var command = new RequestRoleUpgradeCommand(request.TargetRole, request.Reason);
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Role upgrade request submitted successfully for target role {TargetRole}", request.TargetRole);
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Role upgrade request failed: {Error}", firstError);
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Cancels a pending role upgrade request
+    /// Phase 6A.7: User Upgrade Workflow
+    /// </summary>
+    /// <returns>No content on success</returns>
+    [HttpPost("me/cancel-upgrade")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CancelRoleUpgrade()
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "CancelRoleUpgrade"
+        }))
+        {
+            Logger.LogInformation("User canceling role upgrade request");
+
+            var command = new CancelRoleUpgradeCommand();
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Role upgrade request canceled successfully");
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Cancel role upgrade failed: {Error}", firstError);
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -681,4 +767,15 @@ public record LinkExternalProviderRequest
 public record UpdatePreferredMetroAreasRequest
 {
     public List<Guid> MetroAreaIds { get; init; } = new();
+}
+
+/// <summary>
+/// Request model for requesting a role upgrade
+/// Phase 6A.7: User Upgrade Workflow
+/// </summary>
+public record RequestRoleUpgradeRequest
+{
+    [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+    public UserRole TargetRole { get; init; }
+    public string Reason { get; init; } = null!;
 }

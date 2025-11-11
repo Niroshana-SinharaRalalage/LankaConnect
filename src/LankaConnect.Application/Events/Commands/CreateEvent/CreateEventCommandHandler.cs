@@ -5,22 +5,40 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Users.Enums;
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
 
 public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Guid>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateEventCommandHandler(IEventRepository eventRepository, IUnitOfWork unitOfWork)
+    public CreateEventCommandHandler(
+        IEventRepository eventRepository,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork)
     {
         _eventRepository = eventRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
+        // Validate user can create events based on role
+        var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
+        if (user == null)
+            return Result<Guid>.Failure("User not found");
+
+        // Check if user has permission to create events (EventOrganizer or Admin roles)
+        if (!user.Role.CanCreateEvents())
+        {
+            return Result<Guid>.Failure("You do not have permission to create events. Only Event Organizers and Administrators can create events.");
+        }
+
         // Create EventTitle value object
         var titleResult = EventTitle.Create(request.Title);
         if (titleResult.IsFailure)

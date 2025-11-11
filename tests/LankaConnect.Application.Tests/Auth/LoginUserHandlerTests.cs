@@ -46,7 +46,7 @@ public class LoginUserHandlerTests
 
         // Create test user
         var email = Email.Create("test@example.com").Value;
-        _testUser = User.Create(email, "John", "Doe", UserRole.User).Value;
+        _testUser = User.Create(email, "John", "Doe", UserRole.GeneralUser).Value;
         _testUser.SetPassword("hashedpassword123");
         _testUser.VerifyEmail(); // Make user email verified
     }

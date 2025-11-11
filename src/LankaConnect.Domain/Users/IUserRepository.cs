@@ -17,4 +17,7 @@ public interface IUserRepository : IRepository<User>
 
     // Entra External ID authentication methods
     Task<User?> GetByExternalProviderIdAsync(string externalProviderId, CancellationToken cancellationToken = default);
+
+    // Phase 6A.5: Admin approval workflow
+    Task<IReadOnlyList<User>> GetUsersWithPendingRoleUpgradesAsync(CancellationToken cancellationToken = default);
 }

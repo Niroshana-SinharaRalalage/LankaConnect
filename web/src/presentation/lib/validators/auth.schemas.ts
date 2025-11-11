@@ -44,6 +44,7 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 
 /**
  * Register Form Schema
+ * Updated for Phase 6A.0 - includes role selection
  */
 export const registerSchema = z
   .object({
@@ -52,14 +53,29 @@ export const registerSchema = z
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     firstName: nameSchema,
     lastName: nameSchema,
+    selectedRole: z.enum(['GeneralUser', 'EventOrganizer']),
     agreeToTerms: z.boolean().refine((val) => val === true, {
       message: 'You must agree to the terms and conditions',
     }),
+    agreeToApproval: z.boolean().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
-  });
+  })
+  .refine(
+    (data) => {
+      // If Event Organizer selected, approval checkbox must be checked
+      if (data.selectedRole === 'EventOrganizer') {
+        return data.agreeToApproval === true;
+      }
+      return true;
+    },
+    {
+      message: 'You must acknowledge that Event Organizer requests require admin approval',
+      path: ['agreeToApproval'],
+    }
+  );
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
 

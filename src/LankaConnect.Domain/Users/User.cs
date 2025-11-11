@@ -52,15 +52,6 @@ public class User : BaseEntity
     public UserRole? PendingUpgradeRole { get; private set; }
     public DateTime? UpgradeRequestedAt { get; private set; }
 
-    // Phase 6A.1: Subscription management for Event Organizer accounts
-    public SubscriptionStatus SubscriptionStatus { get; private set; }
-    public DateTime? FreeTrialStartedAt { get; private set; }
-    public DateTime? FreeTrialEndsAt { get; private set; }
-    public DateTime? SubscriptionActivatedAt { get; private set; }
-    public DateTime? SubscriptionCanceledAt { get; private set; }
-    public string? StripeCustomerId { get; private set; }
-    public string? StripeSubscriptionId { get; private set; }
-
     private readonly List<RefreshToken> _refreshTokens = new();
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
@@ -90,7 +81,6 @@ public class User : BaseEntity
         IsEmailVerified = false;
         FailedLoginAttempts = 0;
         IdentityProvider = IdentityProvider.Local; // Default to Local for backward compatibility
-        SubscriptionStatus = SubscriptionStatus.None; // Phase 6A.1: Default subscription status
     }
 
     public static Result<User> Create(Email? email, string firstName, string lastName, UserRole role = UserRole.GeneralUser)
@@ -743,116 +733,4 @@ public class User : BaseEntity
         return Result.Success();
     }
 
-    // Phase 6A.1: Subscription management methods
-
-    /// <summary>
-    /// Starts the 6-month free trial for Event Organizer
-    /// Called when admin approves Event Organizer upgrade
-    /// </summary>
-    public Result StartFreeTrial()
-    {
-        // Business rule: Can only start free trial for Event Organizer role
-        if (Role != UserRole.EventOrganizer)
-            return Result.Failure("Free trial is only available for Event Organizer accounts");
-
-        // Business rule: Cannot start free trial if already has subscription
-        if (SubscriptionStatus != SubscriptionStatus.None)
-            return Result.Failure("Cannot start free trial when a subscription already exists");
-
-        FreeTrialStartedAt = DateTime.UtcNow;
-        FreeTrialEndsAt = DateTime.UtcNow.AddMonths(6);
-        SubscriptionStatus = SubscriptionStatus.Trialing;
-
-        MarkAsUpdated();
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Activates paid subscription after free trial or manual activation
-    /// </summary>
-    public Result ActivateSubscription(string stripeCustomerId, string stripeSubscriptionId)
-    {
-        // Business rule: Can only activate subscription for Event Organizer role
-        if (Role != UserRole.EventOrganizer)
-            return Result.Failure("Subscription activation is only for Event Organizer accounts");
-
-        // Business rule: Stripe IDs are required
-        if (string.IsNullOrWhiteSpace(stripeCustomerId) || string.IsNullOrWhiteSpace(stripeSubscriptionId))
-            return Result.Failure("Stripe customer ID and subscription ID are required");
-
-        StripeCustomerId = stripeCustomerId;
-        StripeSubscriptionId = stripeSubscriptionId;
-        SubscriptionActivatedAt = DateTime.UtcNow;
-        SubscriptionStatus = SubscriptionStatus.Active;
-
-        MarkAsUpdated();
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Updates subscription status based on Stripe webhook events
-    /// </summary>
-    public Result UpdateSubscriptionStatus(SubscriptionStatus newStatus)
-    {
-        // Business rule: Can only update subscription status for Event Organizer
-        if (Role != UserRole.EventOrganizer)
-            return Result.Failure("Subscription status updates are only for Event Organizer accounts");
-
-        var oldStatus = SubscriptionStatus;
-        SubscriptionStatus = newStatus;
-
-        // Handle status-specific logic
-        if (newStatus == SubscriptionStatus.Canceled)
-        {
-            SubscriptionCanceledAt = DateTime.UtcNow;
-        }
-
-        MarkAsUpdated();
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Checks if the user can create events based on subscription status
-    /// </summary>
-    public bool CanCreateEvents()
-    {
-        // General Users cannot create events
-        if (Role == UserRole.GeneralUser)
-            return false;
-
-        // Admins can always create events
-        if (Role.IsAdmin())
-            return true;
-
-        // Event Organizers must have active subscription (trialing or paid)
-        if (Role == UserRole.EventOrganizer)
-        {
-            return SubscriptionStatus.CanCreateEvents();
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Checks if the free trial has expired
-    /// </summary>
-    public bool IsFreeTrialExpired()
-    {
-        if (SubscriptionStatus != SubscriptionStatus.Trialing || !FreeTrialEndsAt.HasValue)
-            return false;
-
-        return DateTime.UtcNow > FreeTrialEndsAt.Value;
-    }
-
-    /// <summary>
-    /// Gets the number of days remaining in free trial
-    /// </summary>
-    public int? GetFreeTrialDaysRemaining()
-    {
-        if (SubscriptionStatus != SubscriptionStatus.Trialing || !FreeTrialEndsAt.HasValue)
-            return null;
-
-        var daysRemaining = (FreeTrialEndsAt.Value - DateTime.UtcNow).Days;
-        return daysRemaining > 0 ? daysRemaining : 0;
-    }
 }

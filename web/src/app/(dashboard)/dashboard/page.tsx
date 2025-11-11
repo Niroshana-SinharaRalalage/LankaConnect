@@ -5,8 +5,11 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/Card';
 import { Logo } from '@/presentation/components/atoms/Logo';
+import Footer from '@/presentation/components/layout/Footer';
 import { useRouter } from 'next/navigation';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
+import { canCreateEvents } from '@/infrastructure/api/utils/role-helpers';
+import { UserRole } from '@/infrastructure/api/types/auth.types';
 import {
   Bell,
   Calendar,
@@ -19,12 +22,15 @@ import {
   Share2,
   ChevronDown,
   User,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { CulturalCalendar } from '@/presentation/components/features/dashboard/CulturalCalendar';
 import { FeaturedBusinesses } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
 import { CommunityStats } from '@/presentation/components/features/dashboard/CommunityStats';
+import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
+import { UpgradePendingBanner } from '@/presentation/components/features/role-upgrade/UpgradePendingBanner';
 import type { CulturalEvent } from '@/presentation/components/features/dashboard/CulturalCalendar';
 import type { Business } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
 import type { CommunityStatsData } from '@/presentation/components/features/dashboard/CommunityStats';
@@ -146,6 +152,7 @@ export default function DashboardPage() {
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Set mounted state after client-side hydration
@@ -286,22 +293,49 @@ export default function DashboardPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Quick Actions */}
+          {/* Phase 6A.7: Upgrade Pending Banner - Show if user has pending upgrade */}
+          {user?.pendingUpgradeRole && (
+            <UpgradePendingBanner
+              upgradeRequestedAt={user.upgradeRequestedAt ? new Date(user.upgradeRequestedAt) : undefined}
+            />
+          )}
+
+          {/* Quick Actions - Phase 6A.2: Role-based visibility */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={() => router.push('/events/create')}
-                className="flex-1 sm:flex-none rounded-lg"
-                style={{
-                  background: '#FF7900',
-                  color: 'white',
-                  transition: 'all 0.3s'
-                }}
-                variant="default"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Create Event
-              </Button>
+              {/* Phase 6A.7: Show 'Upgrade to Event Organizer' button for GeneralUser (if not already pending) */}
+              {user && user.role === UserRole.GeneralUser && !user.pendingUpgradeRole && (
+                <Button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="flex-1 sm:flex-none rounded-lg"
+                  style={{
+                    background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)',
+                    color: 'white',
+                    transition: 'all 0.3s'
+                  }}
+                  variant="default"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Upgrade to Event Organizer
+                </Button>
+              )}
+              {/* Phase 6A.2.5: Hide 'Create Event' for GeneralUser */}
+              {user && canCreateEvents(user.role as UserRole) && (
+                <Button
+                  onClick={() => router.push('/events/create')}
+                  className="flex-1 sm:flex-none rounded-lg"
+                  style={{
+                    background: '#FF7900',
+                    color: 'white',
+                    transition: 'all 0.3s'
+                  }}
+                  variant="default"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Create Event
+                </Button>
+              )}
+              {/* Phase 6A.2.6: Show 'Post Topic' for all authenticated users (already shown) */}
               <Button
                 onClick={() => router.push('/forum/new')}
                 className="flex-1 sm:flex-none rounded-lg"
@@ -315,19 +349,7 @@ export default function DashboardPage() {
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Post Topic
               </Button>
-              <Button
-                onClick={() => router.push('/businesses')}
-                className="flex-1 sm:flex-none rounded-lg"
-                variant="outline"
-                style={{
-                  background: 'white',
-                  borderColor: '#FF7900',
-                  color: '#FF7900'
-                }}
-              >
-                <Store className="w-4 h-4 mr-2" />
-                Find Business
-              </Button>
+              {/* Phase 6A.2.7: Remove 'Find Business' button (Phase 2 feature) - REMOVED */}
             </div>
           </div>
 
@@ -507,6 +529,12 @@ export default function DashboardPage() {
             </div>
           </div>
         </main>
+
+        {/* Phase 6A.2.4: Add Footer component */}
+        <Footer />
+
+        {/* Phase 6A.7: Upgrade Modal */}
+        <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
       </div>
     </ProtectedRoute>
   );

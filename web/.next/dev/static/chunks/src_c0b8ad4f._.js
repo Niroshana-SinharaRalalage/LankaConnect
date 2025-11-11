@@ -206,6 +206,18 @@ class ApiClient {
         const response = await this.axiosInstance.delete(url, config);
         return response.data;
     }
+    /**
+   * POST request with multipart/form-data (for file uploads)
+   */ async postMultipart(url, formData, config) {
+        const response = await this.axiosInstance.post(url, formData, {
+            ...config,
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...config?.headers
+            }
+        });
+        return response.data;
+    }
 }
 const apiClient = ApiClient.getInstance();
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {

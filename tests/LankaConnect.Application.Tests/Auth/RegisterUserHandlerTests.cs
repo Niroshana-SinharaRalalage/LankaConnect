@@ -58,7 +58,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
         
@@ -244,10 +244,10 @@ public class RegisterUserHandlerTests
     }
 
     [Theory]
-    [InlineData(UserRole.User)]
-    [InlineData(UserRole.BusinessOwner)]
-    [InlineData(UserRole.Moderator)]
+    [InlineData(UserRole.GeneralUser)]
+    [InlineData(UserRole.EventOrganizer)]
     [InlineData(UserRole.Admin)]
+    [InlineData(UserRole.AdminManager)]
     public async Task Handle_WithDifferentRoles_ShouldCreateUserWithCorrectRole(UserRole role)
     {
         // Arrange
@@ -333,7 +333,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
         Guid capturedUserId = Guid.Empty;
@@ -378,7 +378,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
 

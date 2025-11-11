@@ -52,5 +52,8 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.EventStartDate, opt => opt.Ignore())
             .ForMember(dest => dest.EventEndDate, opt => opt.Ignore())
             .ForMember(dest => dest.EventStatus, opt => opt.Ignore());
+
+        // Phase 6A.8: EventTemplate -> EventTemplateDto mapping
+        CreateMap<EventTemplate, EventTemplateDto>();
     }
 }

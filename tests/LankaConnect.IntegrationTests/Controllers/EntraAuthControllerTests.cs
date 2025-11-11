@@ -152,7 +152,7 @@ public class EntraAuthControllerTests : DockerComposeWebApiTestBase
             password = "SecurePassword123!",
             firstName = "Local",
             lastName = "User",
-            role = UserRole.User
+            role = UserRole.GeneralUser
         };
         await HttpClient.PostAsJsonAsync("/api/auth/register", registerRequest);
 

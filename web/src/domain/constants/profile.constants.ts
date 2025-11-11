@@ -130,6 +130,6 @@ export const PROFILE_CONSTRAINTS = {
   },
   preferredMetroAreas: {
     min: 0, // Optional (privacy choice)
-    max: 10, // Maximum 10 metro areas (matches backend validation)
+    max: 20, // Maximum 20 metro areas (Phase 5B: Expanded from 10)
   },
 } as const;

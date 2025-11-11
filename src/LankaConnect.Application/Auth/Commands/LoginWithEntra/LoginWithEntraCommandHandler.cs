@@ -113,7 +113,7 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
                 entraUserInfo.LastName,
                 federatedProvider,
                 entraUserInfo.Email, // Provider email
-                UserRole.User);
+                UserRole.GeneralUser);
 
             if (createUserResult.IsFailure)
             {

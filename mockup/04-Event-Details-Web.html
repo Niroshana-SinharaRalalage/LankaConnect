@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinhala New Year Celebration 2025 - LankaConnect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+
+        /* Flag Header */
+        .flag-header {
+            background: linear-gradient(90deg, var(--saffron) 0%, var(--saffron) 33%, var(--maroon) 33%, var(--maroon) 66%, var(--green) 66%, var(--green) 100%);
+            height: 8px;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--maroon);
+        }
+
+        .logo-icon {
+            width: 65px;
+            height: 65px;
+            margin-right: 12px;
+        }
+
+        .back-btn {
+            padding: 0.625rem 1.25rem;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Hero Section */
+        .event-hero {
+            height: 400px;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .event-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+        }
+
+        .hero-emoji {
+            position: relative;
+            z-index: 1;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: -100px auto 0;
+            padding: 0 2rem 3rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 2rem;
+        }
+
+        .event-details {
+            background: white;
+            border-radius: 15px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .event-header {
+            margin-bottom: 2rem;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.1), rgba(139, 21, 56, 0.1));
+            color: var(--maroon);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .event-title {
+            font-size: 2.5rem;
+            color: var(--maroon);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .event-meta-bar {
+            display: flex;
+            gap: 2rem;
+            padding: 1.5rem 0;
+            border-top: 2px solid #f0f0f0;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 2rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .meta-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .meta-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meta-label {
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        .meta-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--maroon);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .description {
+            line-height: 1.8;
+            color: #555;
+            margin-bottom: 2rem;
+        }
+
+        .highlights {
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.05), rgba(139, 21, 56, 0.05));
+            border-left: 4px solid var(--saffron);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .highlights ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .highlights li {
+            padding: 0.75rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .highlights li::before {
+            content: '✓';
+            color: var(--green);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .registration-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 100px;
+        }
+
+        .price-display {
+            text-align: center;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.1), rgba(139, 21, 56, 0.1));
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .price-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-amount {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--maroon);
+        }
+
+        .register-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 121, 0, 0.4);
+        }
+
+        .share-btn {
+            width: 100%;
+            padding: 1rem;
+            background: white;
+            border: 2px solid var(--saffron);
+            color: var(--saffron);
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .share-btn:hover {
+            background: rgba(255, 121, 0, 0.05);
+        }
+
+        .interest-counter {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #f0f0f0;
+            color: #666;
+        }
+
+        .interest-number {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--maroon);
+            margin-top: 0.5rem;
+        }
+
+        .organizer-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .organizer-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .organizer-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .organizer-info h3 {
+            color: var(--maroon);
+            margin-bottom: 0.25rem;
+        }
+
+        .organizer-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .contact-btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .contact-btn:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="flag-header"></div>
+
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <img src="logos/lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon">
+                LankaConnect
+            </div>
+            <button class="back-btn">← Back to Events</button>
+        </div>
+    </nav>
+
+    <div class="event-hero">
+        <div class="hero-emoji">🎊</div>
+    </div>
+
+    <main class="main-content">
+        <div class="content-grid">
+            <!-- Event Details -->
+            <div class="event-details">
+                <div class="event-header">
+                    <span class="category-badge">🎉 CULTURAL EVENT</span>
+                    <h1 class="event-title">Sinhala New Year Celebration 2025</h1>
+
+                    <div class="event-meta-bar">
+                        <div class="meta-item">
+                            <div class="meta-icon">📅</div>
+                            <div class="meta-text">
+                                <span class="meta-label">Date & Time</span>
+                                <span class="meta-value">April 13, 2025 • 10:00 AM</span>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">📍</div>
+                            <div class="meta-text">
+                                <span class="meta-label">Location</span>
+                                <span class="meta-value">Cleveland SL Hall</span>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">🎟️</div>
+                            <div class="meta-text">
+                                <span class="meta-label">Capacity</span>
+                                <span class="meta-value">350 / 500 seats</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">📖 About This Event</div>
+                <div class="description">
+                    <p>Join us for the most spectacular Sinhala New Year celebration in Ohio! This year, we're bringing together the entire Sri Lankan American community for an unforgettable day of traditions, games, food, and fellowship.</p>
+                    <br>
+                    <p>This family-friendly event celebrates the rich cultural heritage of Sri Lanka with authentic traditions passed down through generations. Whether you're a long-time community member or new to our beautiful culture, everyone is welcome!</p>
+                    <br>
+                    <p>The Sri Lankan Association of Cleveland has been organizing this annual celebration for over 15 years, making it the largest gathering of Sri Lankan Americans in the Midwest region.</p>
+                </div>
+
+                <div class="section-title">✨ Event Highlights</div>
+                <div class="highlights">
+                    <ul>
+                        <li><strong>Traditional Games</strong> - Pillow fights on a log, breaking clay pots, tug of war, and many more nostalgic games that bring back childhood memories</li>
+                        <li><strong>Authentic Cuisine</strong> - Kiribath, kavum, kokis, aluwa, and a full traditional lunch buffet with rice, curry, and accompaniments</li>
+                        <li><strong>Cultural Performances</strong> - Kandyan dancing, drumming ensembles, and vocal performances by community artists</li>
+                        <li><strong>Kids Activities</strong> - Face painting, bouncy castle, traditional dress photo booth, and prizes for game winners</li>
+                        <li><strong>New Year Rituals</strong> - Boiling of milk, lighting of the hearth, anointing with oil, and other auspicious customs</li>
+                        <li><strong>Live Entertainment</strong> - DJ playing baila and popular Sri Lankan music throughout the day</li>
+                    </ul>
+                </div>
+
+                <div class="section-title">⏱️ Schedule</div>
+                <div class="description">
+                    <strong>10:00 AM</strong> - Registration and Welcome<br>
+                    <strong>10:30 AM</strong> - New Year Rituals (Boiling of Milk, Lighting the Hearth)<br>
+                    <strong>11:00 AM</strong> - Traditional Games Begin<br>
+                    <strong>12:30 PM</strong> - Lunch Service<br>
+                    <strong>2:00 PM</strong> - Cultural Performances<br>
+                    <strong>3:30 PM</strong> - Kids Activities and Games<br>
+                    <strong>5:00 PM</strong> - Prize Distribution and Closing Ceremony
+                </div>
+
+                <div class="section-title">🎫 What's Included</div>
+                <div class="description">
+                    Your ticket includes:<br>
+                    • Full day access to all activities and games<br>
+                    • Traditional New Year breakfast (Kiribath and accompaniments)<br>
+                    • Buffet lunch with authentic Sri Lankan dishes<br>
+                    • Tea and traditional sweets throughout the day<br>
+                    • Entry to cultural performances<br>
+                    • Participation in all games and activities<br>
+                    • Commemorative event T-shirt
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Registration Card -->
+                <div class="registration-card">
+                    <div class="price-display">
+                        <div class="price-label">Ticket Price</div>
+                        <div class="price-amount">$25</div>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">per person • includes lunch</div>
+                    </div>
+
+                    <button class="register-btn">🎟️ Register Now</button>
+                    <button class="share-btn">📤 Share Event</button>
+
+                    <div class="interest-counter">
+                        <div>👥 People Interested</div>
+                        <span class="interest-number">245</span>
+                    </div>
+                </div>
+
+                <!-- Organizer Card -->
+                <div class="organizer-card">
+                    <h3 style="color: var(--maroon); margin-bottom: 1rem;">Organized By</h3>
+                    <div class="organizer-header">
+                        <div class="organizer-avatar">SA</div>
+                        <div class="organizer-info">
+                            <h3>Sri Lankan Association</h3>
+                            <p>Cleveland Chapter</p>
+                        </div>
+                    </div>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.6;">
+                        Established in 2005, serving the Sri Lankan American community in Northeast Ohio with cultural events and support services.
+                    </p>
+                    <button class="contact-btn">📧 Contact Organizer</button>
+                </div>
+
+                <!-- Location Card -->
+                <div class="organizer-card">
+                    <h3 style="color: var(--maroon); margin-bottom: 1rem;">📍 Location</h3>
+                    <div style="background: linear-gradient(135deg, var(--saffron), var(--maroon)); height: 150px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; margin-bottom: 1rem;">
+                        🗺️
+                    </div>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Cleveland Sri Lankan Association Hall</p>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">1234 Community Drive, Cleveland, OH 44101</p>
+                    <button class="contact-btn">🧭 Get Directions</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

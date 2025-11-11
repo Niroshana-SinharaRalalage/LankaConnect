@@ -92,4 +92,16 @@ public class UserRepository : Repository<User>, IUserRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.ExternalProviderId == externalProviderId, cancellationToken);
     }
+
+    /// <summary>
+    /// Phase 6A.5: Get all users with pending role upgrade requests awaiting admin approval
+    /// </summary>
+    public async Task<IReadOnlyList<User>> GetUsersWithPendingRoleUpgradesAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Where(u => u.PendingUpgradeRole != null)
+            .OrderBy(u => u.UpgradeRequestedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

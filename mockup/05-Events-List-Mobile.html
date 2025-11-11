@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events - LankaConnect Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            max-width: 428px;
+            margin: 0 auto;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+        }
+
+        /* Flag Header */
+        .flag-header {
+            background: linear-gradient(90deg, var(--saffron) 0%, var(--saffron) 33%, var(--maroon) 33%, var(--maroon) 66%, var(--green) 66%, var(--green) 100%);
+            height: 6px;
+        }
+
+        /* Header */
+        .mobile-header {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--maroon);
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: #f0f0f0;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .search-bar {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 3rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 0.95rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: #999;
+        }
+
+        /* Filter Chips */
+        .filter-chips {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            scrollbar-width: none;
+        }
+
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            padding: 0.625rem 1rem;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chip.active {
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Page Banner */
+        .page-banner {
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            color: white;
+            padding: 2rem 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+
+        .banner-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-content h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .banner-content p {
+            opacity: 0.95;
+            font-size: 0.95rem;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 0.875rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        /* Events List */
+        .events-container {
+            padding: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.2rem;
+            color: var(--maroon);
+        }
+
+        .view-toggle {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .event-image {
+            height: 180px;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        .event-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--gold);
+            color: var(--maroon);
+            padding: 0.5rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .event-badge.free {
+            background: var(--green);
+            color: white;
+        }
+
+        .event-content {
+            padding: 1.25rem;
+        }
+
+        .event-category {
+            color: var(--saffron);
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .event-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--maroon);
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+
+        .event-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .event-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .event-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--maroon);
+        }
+
+        .register-btn {
+            padding: 0.625rem 1.25rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            box-shadow: 0 6px 25px rgba(255, 121, 0, 0.4);
+            cursor: pointer;
+            z-index: 90;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            padding: 0.75rem 0;
+            display: flex;
+            justify-content: space-around;
+            z-index: 100;
+            max-width: 428px;
+            margin: 0 auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #999;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--maroon);
+        }
+
+        .nav-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .load-more {
+            text-align: center;
+            padding: 2rem 1rem 6rem;
+        }
+
+        .load-more-btn {
+            padding: 1rem 2rem;
+            background: white;
+            border: 2px solid var(--saffron);
+            color: var(--saffron);
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .spacer {
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="flag-header"></div>
+
+    <!-- Header -->
+    <div class="mobile-header">
+        <div class="header-top">
+            <div class="logo">
+                <img src="logos/lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon">
+                Events
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn">🔔</button>
+                <button class="icon-btn">👤</button>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Search events...">
+        </div>
+
+        <div class="filter-chips">
+            <button class="chip active">All</button>
+            <button class="chip">🎉 Cultural</button>
+            <button class="chip">⚽ Sports</button>
+            <button class="chip">📚 Education</button>
+            <button class="chip">🍽️ Food</button>
+            <button class="chip">💼 Professional</button>
+        </div>
+    </div>
+
+    <!-- Page Banner -->
+    <div class="page-banner">
+        <div class="banner-content">
+            <h1>Discover Events</h1>
+            <p>Join your community, celebrate culture</p>
+            <div class="stats-row">
+                <div class="stat-box">
+                    <span class="stat-number">127</span>
+                    <span class="stat-label">Upcoming</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">245</span>
+                    <span class="stat-label">This Month</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">2.4K</span>
+                    <span class="stat-label">Members</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Events List -->
+    <div class="events-container">
+        <div class="section-header">
+            <h2>Upcoming Events</h2>
+            <span class="view-toggle">📋 List</span>
+        </div>
+
+        <!-- Event Card 1 -->
+        <div class="event-card">
+            <div class="event-image">
+                🎊
+                <span class="event-badge">$25</span>
+            </div>
+            <div class="event-content">
+                <div class="event-category">🎉 CULTURAL</div>
+                <h3 class="event-title">Sinhala New Year Celebration 2025</h3>
+                <div class="event-meta">
+                    <div class="meta-row">
+                        📅 April 13, 2025 • 10:00 AM
+                    </div>
+                    <div class="meta-row">
+                        📍 Cleveland SL Association Hall
+                    </div>
+                    <div class="meta-row">
+                        👥 245 interested • 350/500 seats
+                    </div>
+                </div>
+                <div class="event-footer">
+                    <div class="event-price">$25/ticket</div>
+                    <button class="register-btn">Register</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Card 2 -->
+        <div class="event-card">
+            <div class="event-image">
+                🏏
+                <span class="event-badge free">FREE</span>
+            </div>
+            <div class="event-content">
+                <div class="event-category">⚽ SPORTS</div>
+                <h3 class="event-title">Cricket Tournament Finals</h3>
+                <div class="event-meta">
+                    <div class="meta-row">
+                        📅 March 25, 2025 • 2:00 PM
+                    </div>
+                    <div class="meta-row">
+                        📍 Columbus Sports Complex
+                    </div>
+                    <div class="meta-row">
+                        👥 156 interested • Unlimited spots
+                    </div>
+                </div>
+                <div class="event-footer">
+                    <div class="event-price" style="color: var(--green);">FREE</div>
+                    <button class="register-btn">Register</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Card 3 -->
+        <div class="event-card">
+            <div class="event-image">
+                🎓
+                <span class="event-badge">$80/mo</span>
+            </div>
+            <div class="event-content">
+                <div class="event-category">📚 EDUCATION</div>
+                <h3 class="event-title">Learn Sinhala - Spring Session</h3>
+                <div class="event-meta">
+                    <div class="meta-row">
+                        📅 Every Saturday • 10:00 AM
+                    </div>
+                    <div class="meta-row">
+                        📍 Online (Zoom)
+                    </div>
+                    <div class="meta-row">
+                        👥 89 enrolled • 15 spots left
+                    </div>
+                </div>
+                <div class="event-footer">
+                    <div class="event-price">$80/month</div>
+                    <button class="register-btn">Enroll</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Card 4 -->
+        <div class="event-card">
+            <div class="event-image">
+                🍛
+                <span class="event-badge">$15</span>
+            </div>
+            <div class="event-content">
+                <div class="event-category">🍽️ FOOD</div>
+                <h3 class="event-title">Traditional Cooking Workshop</h3>
+                <div class="event-meta">
+                    <div class="meta-row">
+                        📅 March 20, 2025 • 6:00 PM
+                    </div>
+                    <div class="meta-row">
+                        📍 Lanka Kitchen, Akron
+                    </div>
+                    <div class="meta-row">
+                        👥 32 interested • 12/20 seats
+                    </div>
+                </div>
+                <div class="event-footer">
+                    <div class="event-price">$15/person</div>
+                    <button class="register-btn">Register</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="load-more">
+            <button class="load-more-btn">Load More Events</button>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab">+</button>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="nav-icon">🎉</span>
+            <span>Events</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">💬</span>
+            <span>Forums</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🏪</span>
+            <span>Business</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </a>
+    </nav>
+</body>
+</html>

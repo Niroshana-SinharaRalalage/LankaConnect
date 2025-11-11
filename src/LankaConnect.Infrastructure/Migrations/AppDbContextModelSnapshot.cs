@@ -1048,6 +1048,77 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.ToTable("EventImages", (string)null);
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.EventTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("TemplateDataJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("template_data_json");
+
+                    b.Property<string>("ThumbnailSvg")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("thumbnail_svg");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("idx_event_templates_category");
+
+                    b.HasIndex("DisplayOrder")
+                        .HasDatabaseName("idx_event_templates_display_order");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("idx_event_templates_is_active");
+
+                    b.HasIndex("IsActive", "Category", "DisplayOrder")
+                        .HasDatabaseName("idx_event_templates_active_category_order");
+
+                    b.ToTable("event_templates", "events");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.EventVideo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1226,6 +1297,63 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.ToTable("registrations", "events");
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RelatedEntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_notifications_created_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notifications_user_id");
+
+                    b.HasIndex("UserId", "IsRead")
+                        .HasDatabaseName("ix_notifications_user_id_is_read");
+
+                    b.ToTable("notifications", "notifications");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1298,6 +1426,9 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.Property<DateTime?>("PasswordResetTokenExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("PendingUpgradeRole")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ProfilePhotoBlobName")
                         .HasColumnType("text");
 
@@ -1310,6 +1441,9 @@ namespace LankaConnect.Infrastructure.Migrations
                         .HasDefaultValue(1);
 
                     b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpgradeRequestedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");

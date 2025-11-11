@@ -4,9 +4,13 @@
   "/(auth)/register/page": "/register",
   "/(auth)/reset-password/page": "/reset-password",
   "/(auth)/verify-email/page": "/verify-email",
+  "/(dashboard)/admin/approvals/page": "/admin/approvals",
   "/(dashboard)/dashboard/page": "/dashboard",
+  "/(dashboard)/notifications/page": "/notifications",
   "/(dashboard)/profile/page": "/profile",
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
-  "/page": "/"
+  "/page": "/",
+  "/test-events/page": "/test-events",
+  "/test-simple/page": "/test-simple"
 }

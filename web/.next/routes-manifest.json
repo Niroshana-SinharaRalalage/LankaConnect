@@ -40,6 +40,12 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/admin/approvals",
+      "regex": "^/admin/approvals(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/approvals(?:/)?$"
+    },
+    {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},
@@ -58,6 +64,12 @@
       "namedRegex": "^/login(?:/)?$"
     },
     {
+      "page": "/notifications",
+      "regex": "^/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/notifications(?:/)?$"
+    },
+    {
       "page": "/profile",
       "regex": "^/profile(?:/)?$",
       "routeKeys": {},
@@ -74,6 +86,18 @@
       "regex": "^/reset\\-password(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/reset\\-password(?:/)?$"
+    },
+    {
+      "page": "/test-events",
+      "regex": "^/test\\-events(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/test\\-events(?:/)?$"
+    },
+    {
+      "page": "/test-simple",
+      "regex": "^/test\\-simple(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/test\\-simple(?:/)?$"
     },
     {
       "page": "/verify-email",

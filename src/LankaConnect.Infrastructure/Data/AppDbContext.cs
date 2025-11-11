@@ -6,6 +6,7 @@ using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
+using LankaConnect.Domain.Notifications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Infrastructure.Data.Seeders;
@@ -25,7 +26,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
     public DbSet<Reply> Replies => Set<Reply>();
     public DbSet<MetroArea> MetroAreas => Set<MetroArea>();
-    
+    public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>(); // Phase 6A.8
+
     // Business Entity Sets
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<Service> Services => Set<Service>();
@@ -40,6 +42,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Analytics Entity Sets (Epic 2 Phase 3)
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
     public DbSet<EventViewRecord> EventViewRecords => Set<EventViewRecord>();
+
+    // Notification Entity Set (Phase 6A.6)
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,6 +63,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
         modelBuilder.ApplyConfiguration(new MetroAreaConfiguration()); // Phase 5
+        modelBuilder.ApplyConfiguration(new EventTemplateConfiguration()); // Phase 6A.8
 
         // Business entity configurations
         modelBuilder.ApplyConfiguration(new BusinessConfiguration());
@@ -73,6 +79,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Analytics entity configurations (Epic 2 Phase 3)
         modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
         modelBuilder.ApplyConfiguration(new EventViewRecordConfiguration());
+
+        // Notification entity configuration (Phase 6A.6)
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -96,6 +105,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Event>().ToTable("events", "events");
         modelBuilder.Entity<Registration>().ToTable("registrations", "events");
         modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
+        modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
         
         // Community schema  
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
@@ -115,6 +125,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Analytics schema (Epic 2 Phase 3)
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
         modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
+
+        // Notifications schema (Phase 6A.6)
+        modelBuilder.Entity<Notification>().ToTable("notifications", "notifications");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -130,6 +143,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventVideo),  // Epic 2 Phase 2
             typeof(Registration),
             typeof(MetroArea), // Phase 5C
+            typeof(EventTemplate), // Phase 6A.8
             typeof(ForumTopic),
             typeof(Reply),
             typeof(Business),
@@ -140,7 +154,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(EventAnalytics), // Epic 2 Phase 3
-            typeof(EventViewRecord) // Epic 2 Phase 3
+            typeof(EventViewRecord), // Epic 2 Phase 3
+            typeof(Notification) // Phase 6A.6
         };
 
         // Get all types from Domain assembly that aren't in our configured list

@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Logo } from '@/presentation/components/atoms/Logo';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
+import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
+import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
 
 export interface HeaderProps {
   className?: string;
@@ -20,6 +23,12 @@ export interface HeaderProps {
 export function Header({ className = '' }: HeaderProps) {
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
+
+  // Fetch unread notifications only when authenticated
+  const { data: unreadNotifications = [] } = useUnreadNotifications({
+    enabled: isAuthenticated,
+  });
 
   /**
    * Helper to get user initials from fullName
@@ -97,16 +106,42 @@ export function Header({ className = '' }: HeaderProps) {
                 </Link>
               </li>
             )}
+            {isAuthenticated && (user?.role === 'Admin' || user?.role === 'AdminManager') && (
+              <li>
+                <Link
+                  href="/admin/approvals"
+                  className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+                >
+                  Admin
+                </Link>
+              </li>
+            )}
           </ul>
 
           {/* Auth Section */}
           <div className="flex items-center gap-4">
             {isAuthenticated && user ? (
-              // Authenticated: Show user avatar with name
+              // Authenticated: Show notification bell and user avatar
               <div className="flex items-center gap-3">
+                {/* Notification Bell */}
+                <div className="relative">
+                  <NotificationBell
+                    unreadCount={unreadNotifications.length}
+                    onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+                  />
+                  <NotificationDropdown
+                    notifications={unreadNotifications}
+                    isOpen={notificationDropdownOpen}
+                    onClose={() => setNotificationDropdownOpen(false)}
+                  />
+                </div>
+
+                {/* User Name */}
                 <span className="text-sm font-medium text-[#333] hidden lg:inline">
                   {user.fullName}
                 </span>
+
+                {/* User Avatar */}
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-90 transition-opacity"
                   style={{

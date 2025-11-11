@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///C:/Work/LankaConnect/web/src/app/providers.tsx"],"sourcesContent":["'use client';\r\n\r\nimport { QueryClient, QueryClientProvider } from '@tanstack/react-query';\r\nimport { ReactQueryDevtools } from '@tanstack/react-query-devtools';\r\nimport { useState } from 'react';\r\n\r\nexport function Providers({ children }: { children: React.ReactNode }) {\r\n  const [queryClient] = useState(\r\n    () => new QueryClient({\r\n      defaultOptions: {\r\n        queries: {\r\n          staleTime: 60 * 1000, // 1 minute\r\n          refetchOnWindowFocus: false,\r\n        },\r\n      },\r\n    })\r\n  );\r\n\r\n  return (\r\n    <QueryClientProvider client={queryClient}>\r\n      {children}\r\n      <ReactQueryDevtools initialIsOpen={false} />\r\n    </QueryClientProvider>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;AAEA;AAAA;AACA;AACA;AAJA;;;;;AAMO,SAAS,UAAU,EAAE,QAAQ,EAAiC;IACnE,MAAM,CAAC,YAAY,GAAG,IAAA,iNAAQ,EAC5B,IAAM,IAAI,4LAAW,CAAC;YACpB,gBAAgB;gBACd,SAAS;oBACP,WAAW,KAAK;oBAChB,sBAAsB;gBACxB;YACF;QACF;IAGF,qBACE,8OAAC,6MAAmB;QAAC,QAAQ;;YAC1B;0BACD,8OAAC,0MAAkB;gBAAC,eAAe;;;;;;;;;;;;AAGzC","debugId":null}}]
+}

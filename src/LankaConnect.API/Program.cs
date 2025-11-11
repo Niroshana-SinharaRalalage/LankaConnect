@@ -2,6 +2,7 @@ using Hangfire;
 using LankaConnect.API.Infrastructure;
 using LankaConnect.API.Filters;
 using LankaConnect.Application;
+using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
@@ -182,7 +183,10 @@ try
             // Seed initial data (Development and Staging only)
             if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
             {
-                var dbInitializer = new DbInitializer(context, services.GetRequiredService<ILogger<DbInitializer>>());
+                var dbInitializer = new DbInitializer(
+                    context,
+                    services.GetRequiredService<ILogger<DbInitializer>>(),
+                    services.GetRequiredService<IPasswordHashingService>());
                 await dbInitializer.SeedAsync();
             }
         }

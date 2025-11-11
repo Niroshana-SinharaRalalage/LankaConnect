@@ -93,22 +93,36 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
     it('Phase 5B.11.3b: should successfully login with valid credentials', async () => {
       // Step 1: Verify email using test endpoint (bypasses token requirement)
       expect(testUser.id).toBeDefined();
-      const verifyResult = await authRepository.testVerifyEmail(testUser.id!);
-      expect(verifyResult.message).toContain('verified');
+      try {
+        const verifyResult = await authRepository.testVerifyEmail(testUser.id!);
+        expect(verifyResult.message).toContain('verified');
+      } catch (error) {
+        console.error('Test verify email failed:', error);
+        throw error;
+      }
 
       // Step 2: Now login should succeed
-      const loginResponse = await authRepository.login({
-        email: testUser.email,
-        password: testUser.password,
-      });
+      let loginResponse;
+      try {
+        loginResponse = await authRepository.login({
+          email: testUser.email,
+          password: testUser.password,
+        });
+      } catch (error) {
+        console.error('Login failed after email verification:', error);
+        console.error('Test user:', { email: testUser.email, hasPassword: !!testUser.password });
+        throw error;
+      }
 
       expect(loginResponse).toBeDefined();
       expect(loginResponse.accessToken).toBeDefined();
-      expect(loginResponse.refreshToken).toBeDefined();
+      expect(loginResponse.user).toBeDefined();
+      expect(loginResponse.user.userId).toBeDefined();
 
       // Step 3: Store tokens for downstream tests
+      // Note: Refresh token is stored as HttpOnly cookie by backend, not in response
       testUser.accessToken = loginResponse.accessToken;
-      testUser.refreshToken = loginResponse.refreshToken;
+      // testUser.refreshToken is set from cookie, not from response
       apiClient.setAuthToken(loginResponse.accessToken);
     });
   });

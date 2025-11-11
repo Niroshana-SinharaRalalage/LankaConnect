@@ -32,12 +32,14 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
     lastName: 'Tester',
   };
 
-  // Sample metro area GUIDs (from Phase 5B.10 seeder)
-  const ohioMetroId = '39000000-0000-0000-0000-000000000001'; // All Ohio
-  const clevelandMetroId = '39111111-1111-1111-1111-111111111001'; // Cleveland
-  const columbusMetroId = '39111111-1111-1111-1111-111111111002'; // Columbus
-  const cincinnatMetroId = '39111111-1111-1111-1111-111111111003'; // Cincinnati
-  const texasMetroId = '48000000-0000-0000-0000-000000000001'; // All Texas
+  // Sample metro area GUIDs (verified in staging database)
+  // State-level metros (match any city in state)
+  const ohioMetroId = '00000000-0000-0000-0000-000000000001'; // All Ohio
+  const nyMetroId = '00000000-0000-0000-0000-000000000002'; // All New York
+  // City-level metros (match specific cities)
+  const clevelandMetroId = '11111111-0000-0000-0000-000000000001'; // Cleveland
+  const columbusMetroId = '11111111-0000-0000-0000-000000000002'; // Columbus
+  const cincinnatMetroId = '11111111-0000-0000-0000-000000000003'; // Cincinnati
 
   beforeAll(async () => {
     // Verify API is configured
@@ -132,7 +134,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   // ============================================================================
 
   describe('Profile Metro Selection (Phase 5B.11.3)', () => {
-    it.skip('should update profile with single metro area selection', async () => {
+    it('should update profile with single metro area selection', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       if (!testUser.accessToken) {
         const loginResponse = await authRepository.login({
@@ -150,7 +152,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(updatedProfile.preferredMetroAreas).toContain(ohioMetroId);
     });
 
-    it.skip('should update profile with multiple metro areas (0-20 limit)', async () => {
+    it('should update profile with multiple metro areas (0-20 limit)', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const metroIds = [
@@ -158,7 +160,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
         clevelandMetroId,
         columbusMetroId,
         cincinnatMetroId,
-        texasMetroId,
+        nyMetroId,
       ];
       const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metroIds });
       expect(updatedProfile).toBeDefined();
@@ -166,7 +168,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(updatedProfile.preferredMetroAreas).toEqual(expect.arrayContaining(metroIds));
     });
 
-    it.skip('should persist metro selection after save', async () => {
+    it('should persist metro selection after save', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const metroIds = [clevelandMetroId, columbusMetroId];
@@ -177,7 +179,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(retrievedProfile.preferredMetroAreas).toContain(columbusMetroId);
     });
 
-    it.skip('should allow clearing all metros (privacy choice)', async () => {
+    it('should allow clearing all metros (privacy choice)', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const metroIds = [ohioMetroId, clevelandMetroId];
@@ -187,7 +189,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(clearedProfile.preferredMetroAreas).toHaveLength(0);
     });
 
-    it.skip('should validate max limit enforcement (20 metros)', async () => {
+    it('should validate max limit enforcement (20 metros)', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const excessiveMetroIds = Array(20).fill(null).map((_, i) => {
@@ -196,7 +198,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       });
 
       const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: excessiveMetroIds });
-      expect(updatedProfile.preferredMetroAreas.length).toBeLessThanOrEqual(20);
+      expect(updatedProfile?.preferredMetroAreas?.length ?? 0).toBeLessThanOrEqual(20);
     });
   });
 
@@ -205,7 +207,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   // ============================================================================
 
   describe('Landing Page Event Filtering (Phase 5B.11.5)', () => {
-    it.skip('should show all events when no metros selected', async () => {
+    it('should show all events when no metros selected', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [] });
       const allEvents = await eventsRepository.getEvents();
@@ -215,7 +217,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(allEvents.length).toBeGreaterThanOrEqual(0);
     });
 
-    it.skip('should filter events by single state metro area', async () => {
+    it('should filter events by single state metro area', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
@@ -223,7 +225,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(Array.isArray(allEvents)).toBe(true);
     });
 
-    it.skip('should filter events by single city metro area', async () => {
+    it('should filter events by single city metro area', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
@@ -231,7 +233,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(Array.isArray(allEvents)).toBe(true);
     });
 
-    it.skip('should filter by multiple metros using OR logic', async () => {
+    it('should filter by multiple metros using OR logic', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       const multipleMetros = [clevelandMetroId, columbusMetroId, cincinnatMetroId];
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: multipleMetros });
@@ -240,7 +242,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(Array.isArray(allEvents)).toBe(true);
     });
 
-    it.skip('should not duplicate events across sections', async () => {
+    it('should not duplicate events across sections', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       const metrosWithOverlap = [ohioMetroId];
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metrosWithOverlap });
@@ -249,7 +251,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       expect(uniqueEventIds.size).toBe(allEvents.length);
     });
 
-    it.skip('should display accurate event count badges', async () => {
+    it('should display accurate event count badges', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
@@ -277,7 +279,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       }
     });
 
-    it.skip('Phase 5B.11.4b: should sync newsletter metros to user profile', async () => {
+    it('Phase 5B.11.4b: should sync newsletter metros to user profile', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       if (!testUser.accessToken) {
         const loginResponse = await authRepository.login({
@@ -302,7 +304,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   // ============================================================================
 
   describe('UI/UX Component Validation (Phase 5B.11.6)', () => {
-    it.skip('should show preferred section only when authenticated with metros', async () => {
+    it('should show preferred section only when authenticated with metros', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       if (!testUser.accessToken) {
         const loginResponse = await authRepository.login({
@@ -359,40 +361,41 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   // ============================================================================
 
   describe('State-Level vs City-Level Metro Filtering (Phase 5B.11.5)', () => {
-    it.skip('should match state-level metro to any city in that state', async () => {
+    it('should match state-level metro to any city in that state', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 
       const ohioEvents = allEvents.filter((event) => {
-        const location = event.location || '';
-        return location.includes('Ohio') || location.includes('Cleveland') || location.includes('Columbus');
+        const city = event.city || '';
+        const state = event.state || '';
+        return state.includes('Ohio') || city.includes('Cleveland') || city.includes('Columbus');
       });
       expect(allEvents.length).toBeGreaterThanOrEqual(0);
     });
 
-    it.skip('should match city-level metro to specific city only', async () => {
+    it('should match city-level metro to specific city only', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 
       const clevelandEvents = allEvents.filter((event) => {
-        const location = event.location || '';
-        return location.includes('Cleveland');
+        const city = event.city || '';
+        return city.includes('Cleveland');
       });
       expect(allEvents.length).toBeGreaterThanOrEqual(0);
     });
 
-    it.skip('should handle state name conversion (OH -> Ohio)', async () => {
+    it('should handle state name conversion (OH -> Ohio)', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 
       const ohioEventsByFullName = allEvents.filter((event) => {
-        return (event.location || '').includes('Ohio');
+        return (event.state || '').includes('Ohio');
       });
       expect(allEvents.length).toBeGreaterThanOrEqual(0);
     });

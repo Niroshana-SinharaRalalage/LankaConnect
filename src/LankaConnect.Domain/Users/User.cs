@@ -570,15 +570,26 @@ public class User : BaseEntity
         _preferredMetroAreaIds.AddRange(metroAreaList.Distinct());
 
         // CRITICAL FIX Phase 6A.9: Update EF Core shadow navigation property for persistence
-        // This enables EF Core to detect changes and persist to junction table per ADR-009
-        if (metroAreaEntities != null)
+        // IMPORTANT: Modify the SAME collection instance that EF Core is tracking
+        // DO NOT replace the collection reference - that breaks change tracking!
+        // Per ADR-009 and EF Core best practices for many-to-many relationships
+        if (_preferredMetroAreaEntities != null)
         {
-            _preferredMetroAreaEntities = metroAreaEntities;
+            // Clear and repopulate the TRACKED collection instance
+            _preferredMetroAreaEntities.Clear();
+
+            if (metroAreaEntities != null && metroAreaEntities.Any())
+            {
+                foreach (var entity in metroAreaEntities)
+                {
+                    _preferredMetroAreaEntities.Add(entity);
+                }
+            }
         }
-        else if (!metroAreaList.Any())
+        else if (metroAreaEntities != null)
         {
-            // Clear entities when clearing preferences
-            _preferredMetroAreaEntities = new List<Domain.Events.MetroArea>();
+            // First time initialization - assign the collection
+            _preferredMetroAreaEntities = metroAreaEntities;
         }
 
         MarkAsUpdated();

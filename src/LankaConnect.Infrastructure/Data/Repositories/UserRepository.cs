@@ -13,13 +13,15 @@ public class UserRepository : Repository<User>, IUserRepository
     /// <summary>
     /// Override to include Epic 1 Phase 3 navigation properties (CulturalInterests, Languages)
     /// Base Repository uses FindAsync which doesn't load OwnsMany collections
-    /// Using AsSplitQuery() + WITH tracking loads OwnsMany collections and tracks changes
+    /// Using AsSplitQuery() + explicit Include() loads OwnsMany collections and tracks changes
     /// CRITICAL: Do NOT use AsNoTracking() - we need tracking for UPDATE operations
     /// </summary>
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .AsSplitQuery()
+            .Include(u => u.CulturalInterests)
+            .Include(u => u.Languages)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 

@@ -31,36 +31,46 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
         UpdateUserPreferredMetroAreasCommand command,
         CancellationToken cancellationToken)
     {
-        // Get user
+        // Get user with tracked metro area entities
         var user = await _userRepository.GetByIdAsync(command.UserId, cancellationToken);
         if (user == null)
         {
             return Result.Failure("User not found");
         }
 
-        // Validate metro area IDs exist (Application layer validation per ADR-008)
+        // Phase 6A.9 FIX: Load MetroArea entities for EF Core persistence per ADR-009
+        // Application layer validates existence (ADR-008)
+        // Infrastructure layer provides entity references (ADR-009)
+        List<Domain.Events.MetroArea> metroAreaEntities = new();
+
         if (command.MetroAreaIds.Any())
         {
-            var existingMetroAreaIds = await _dbContext.MetroAreas
+            // Load actual entities from database
+            metroAreaEntities = await _dbContext.MetroAreas
                 .Where(m => command.MetroAreaIds.Contains(m.Id))
-                .Select(m => m.Id)
                 .ToListAsync(cancellationToken);
 
-            var invalidMetroAreaIds = command.MetroAreaIds.Except(existingMetroAreaIds).ToList();
-            if (invalidMetroAreaIds.Any())
+            // Validate all IDs exist
+            if (metroAreaEntities.Count != command.MetroAreaIds.Count())
             {
-                return Result.Failure($"Invalid metro area IDs: {string.Join(", ", invalidMetroAreaIds)}");
+                var foundIds = metroAreaEntities.Select(m => m.Id).ToList();
+                var invalidIds = command.MetroAreaIds.Except(foundIds).ToList();
+                return Result.Failure($"Invalid metro area IDs: {string.Join(", ", invalidIds)}");
             }
         }
 
-        // Update user's preferred metro areas (domain will validate max 10 and duplicates)
-        var updateResult = user.UpdatePreferredMetroAreas(command.MetroAreaIds);
+        // Update user's preferred metro areas
+        // Pass both IDs (for domain logic) AND entities (for EF Core persistence per ADR-009)
+        var updateResult = user.UpdatePreferredMetroAreas(
+            command.MetroAreaIds,
+            metroAreaEntities);  // NEW: Entity references for EF tracking
+
         if (!updateResult.IsSuccess)
         {
             return Result.Failure(updateResult.Errors.ToArray());
         }
 
-        // Save changes
+        // Save changes - EF Core now detects changes via _preferredMetroAreaEntities shadow property
         _userRepository.Update(user);
         await _unitOfWork.CommitAsync(cancellationToken);
 

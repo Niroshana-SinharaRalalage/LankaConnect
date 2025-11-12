@@ -274,10 +274,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Auto-include ExternalLogins when loading User
         builder.Navigation(u => u.ExternalLogins).AutoInclude();
 
-        // Configure PreferredMetroAreas many-to-many relationship (Phase 5B)
-        // CRITICAL FIX: Connect skip navigation to the _preferredMetroAreaIds backing field
-        // Following ADR-008: Explicit junction table with proper backing field configuration
-        var navigation = builder.HasMany<Domain.Events.MetroArea>()
+        // Configure PreferredMetroAreas many-to-many relationship (Phase 5B + 6A.9 Fix)
+        // ADR-009: Domain stores List<Guid> for business logic, EF Core needs entity references for persistence
+        // Solution: Shadow navigation property "_preferredMetroAreaEntities" synced with "_preferredMetroAreaIds"
+        builder.HasMany<Domain.Events.MetroArea>("_preferredMetroAreaEntities")
             .WithMany()
             .UsingEntity<Dictionary<string, object>>(
                 "user_preferred_metro_areas",
@@ -285,7 +285,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                     .HasOne<Domain.Events.MetroArea>()
                     .WithMany()
                     .HasForeignKey("metro_area_id")
-                    .OnDelete(DeleteBehavior.Cascade) // ADR-008: Cascade delete
+                    .OnDelete(DeleteBehavior.Cascade)
                     .HasConstraintName("fk_user_preferred_metro_areas_metro_area_id"),
                 j => j
                     .HasOne<User>()
@@ -307,20 +307,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                     j.HasIndex("metro_area_id")
                         .HasDatabaseName("ix_user_preferred_metro_areas_metro_area_id");
 
-                    // Audit columns
+                    // Audit column
                     j.Property<DateTime>("created_at")
                         .HasDefaultValueSql("NOW()")
                         .IsRequired();
                 });
 
-        // CRITICAL: Tell EF Core to track this skip navigation with field access
-        // This ensures changes to the backing field are persisted to the junction table
-        // The navigation exists only in EF's model metadata, not as a domain model property
-        // IMPORTANT: Must use Field (not FieldDuringConstruction) to allow updates after construction
-        if (navigation?.Metadata != null)
-        {
-            navigation.Metadata.SetPropertyAccessMode(PropertyAccessMode.Field);
-        }
+        // CRITICAL: Configure field access for shadow navigation property per ADR-009
+        // This tells EF Core to use the private "_preferredMetroAreaEntities" field for change tracking
+        builder.Navigation("_preferredMetroAreaEntities")
+            .HasField("_preferredMetroAreaEntities")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Configure audit fields
         builder.Property(u => u.CreatedAt)

@@ -34,6 +34,11 @@ public class User : BaseEntity
     private readonly List<Guid> _preferredMetroAreaIds = new();
     public IReadOnlyList<Guid> PreferredMetroAreaIds => _preferredMetroAreaIds.AsReadOnly();
 
+    // Phase 6A.9: EF Core shadow navigation property (internal use only)
+    // This allows EF Core to track entity references for persistence to junction table
+    // NOT exposed through public API - infrastructure concern per ADR-009
+    private ICollection<Domain.Events.MetroArea>? _preferredMetroAreaEntities;
+
     // Authentication properties
     public IdentityProvider IdentityProvider { get; private set; }
     public string? ExternalProviderId { get; private set; }
@@ -541,9 +546,14 @@ public class User : BaseEntity
     /// Updates user's preferred metro areas for location-based filtering (0-20 allowed)
     /// Empty collection clears all preferences (privacy choice - user can opt out)
     /// Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
-    /// Architecture: Follows ADR-008 - Domain validates max count, Application validates existence
+    /// Phase 6A.9: Added EF Core entity parameter for proper persistence per ADR-009
+    /// Architecture: Follows ADR-008 & ADR-009 - Domain validates max count, Application validates existence
     /// </summary>
-    public Result UpdatePreferredMetroAreas(IEnumerable<Guid>? metroAreaIds)
+    /// <param name="metroAreaIds">List of metro area GUIDs for domain logic</param>
+    /// <param name="metroAreaEntities">Optional: Loaded MetroArea entities for EF Core persistence (infrastructure concern)</param>
+    public Result UpdatePreferredMetroAreas(
+        IEnumerable<Guid>? metroAreaIds,
+        ICollection<Domain.Events.MetroArea>? metroAreaEntities = null)
     {
         var metroAreaList = metroAreaIds?.ToList() ?? new List<Guid>();
 
@@ -555,8 +565,21 @@ public class User : BaseEntity
         if (metroAreaList.Distinct().Count() != metroAreaList.Count)
             return Result.Failure("Duplicate metro area IDs are not allowed");
 
+        // Update domain collection (used by business logic)
         _preferredMetroAreaIds.Clear();
         _preferredMetroAreaIds.AddRange(metroAreaList.Distinct());
+
+        // CRITICAL FIX Phase 6A.9: Update EF Core shadow navigation property for persistence
+        // This enables EF Core to detect changes and persist to junction table per ADR-009
+        if (metroAreaEntities != null)
+        {
+            _preferredMetroAreaEntities = metroAreaEntities;
+        }
+        else if (!metroAreaList.Any())
+        {
+            // Clear entities when clearing preferences
+            _preferredMetroAreaEntities = new List<Domain.Events.MetroArea>();
+        }
 
         MarkAsUpdated();
 

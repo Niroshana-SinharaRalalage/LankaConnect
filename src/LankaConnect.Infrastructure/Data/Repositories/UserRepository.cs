@@ -12,9 +12,14 @@ public class UserRepository : Repository<User>, IUserRepository
 
     /// <summary>
     /// Override to include Epic 1 Phase 3 navigation properties (CulturalInterests, Languages)
+    /// + Phase 6A.9: Include _preferredMetroAreaEntities shadow navigation for many-to-many persistence
     /// Base Repository uses FindAsync which doesn't load OwnsMany collections
     /// Using AsSplitQuery() + explicit Include() loads OwnsMany collections and tracks changes
     /// CRITICAL: Do NOT use AsNoTracking() - we need tracking for UPDATE operations
+    /// ARCHITECTURE NOTE: OwnsMany collections with nested OwnsOne value objects (like Languages.Language)
+    /// are automatically loaded by EF Core due to AutoInclude() configuration in UserConfiguration.cs.
+    /// However, we keep explicit Include() for clarity and to ensure proper split query optimization.
+    /// The nested LanguageCode owned entity is loaded automatically - no ThenInclude() needed.
     /// </summary>
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -22,6 +27,10 @@ public class UserRepository : Repository<User>, IUserRepository
             .AsSplitQuery()
             .Include(u => u.CulturalInterests)
             .Include(u => u.Languages)
+            .Include(u => u.ExternalLogins)
+            // CRITICAL FIX Phase 6A.9: Load shadow navigation for metro areas many-to-many per ADR-009
+            // This populates _preferredMetroAreaEntities so EF Core can track changes to junction table
+            .Include("_preferredMetroAreaEntities")  // String-based for shadow property
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 

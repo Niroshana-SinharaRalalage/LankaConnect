@@ -225,6 +225,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasDatabaseName("ix_user_refresh_tokens_expires_at");
         });
 
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.RefreshTokens)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Auto-include RefreshTokens when loading User
+        builder.Navigation(u => u.RefreshTokens).AutoInclude();
+
         // Configure ExternalLogins collection (Epic 1 Phase 2 - Social Login)
         builder.OwnsMany(u => u.ExternalLogins, el =>
         {
@@ -259,6 +266,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             el.HasIndex("UserId")
                 .HasDatabaseName("ix_external_logins_user_id");
         });
+
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.ExternalLogins)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Auto-include ExternalLogins when loading User
         builder.Navigation(u => u.ExternalLogins).AutoInclude();

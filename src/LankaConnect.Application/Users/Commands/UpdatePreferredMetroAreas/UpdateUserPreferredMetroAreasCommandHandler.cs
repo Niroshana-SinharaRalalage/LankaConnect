@@ -80,12 +80,23 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
         var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<Domain.Events.MetroArea>
             ?? new List<Domain.Events.MetroArea>();
 
+        // DIAGNOSTIC: Log collection state before modification
+        var countBefore = currentMetroAreas.Count;
+        Console.WriteLine($"[DIAGNOSTIC] CurrentValue collection count BEFORE: {countBefore}");
+        Console.WriteLine($"[DIAGNOSTIC] New metro areas to add: {metroAreaEntities.Count}");
+
         // Clear existing and add new entities using EF Core's tracked collection
         currentMetroAreas.Clear();
+        Console.WriteLine($"[DIAGNOSTIC] Collection count AFTER Clear(): {currentMetroAreas.Count}");
+
         foreach (var metroArea in metroAreaEntities)
         {
             currentMetroAreas.Add(metroArea);
+            Console.WriteLine($"[DIAGNOSTIC] Added metro area: {metroArea.Id}");
         }
+
+        Console.WriteLine($"[DIAGNOSTIC] Collection count AFTER adding: {currentMetroAreas.Count}");
+        Console.WriteLine($"[DIAGNOSTIC] Is collection modified: {dbContext.Entry(user).Collection("_preferredMetroAreaEntities").IsModified}");
 
         // Save changes - EF Core now detects changes via ChangeTracker
         _userRepository.Update(user);

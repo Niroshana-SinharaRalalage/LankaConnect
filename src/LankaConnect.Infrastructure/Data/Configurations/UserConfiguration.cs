@@ -316,9 +316,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // CRITICAL: Tell EF Core to track this skip navigation with field access
         // This ensures changes to the backing field are persisted to the junction table
         // The navigation exists only in EF's model metadata, not as a domain model property
+        // IMPORTANT: Must use Field (not FieldDuringConstruction) to allow updates after construction
         if (navigation?.Metadata != null)
         {
-            navigation.Metadata.SetPropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
+            navigation.Metadata.SetPropertyAccessMode(PropertyAccessMode.Field);
         }
 
         // Configure audit fields

@@ -139,6 +139,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .IsUnique(); // Prevent duplicate interests per user
         });
 
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.CulturalInterests)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Auto-include CulturalInterests when loading User
         builder.Navigation(u => u.CulturalInterests).AutoInclude();
 
@@ -176,6 +180,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasConversion<int>()
                 .IsRequired();
         });
+
+        // Configure property access mode for backing field support with nested owned entities
+        builder.Navigation(u => u.Languages)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Auto-include Languages when loading User
         builder.Navigation(u => u.Languages).AutoInclude();

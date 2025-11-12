@@ -34,12 +34,13 @@ public class User : BaseEntity
     private readonly List<Guid> _preferredMetroAreaIds = new();
     public IReadOnlyList<Guid> PreferredMetroAreaIds => _preferredMetroAreaIds.AsReadOnly();
 
-    // Phase 6A.9: EF Core shadow navigation property (internal use only)
-    // This allows EF Core to track entity references for persistence to junction table
-    // NOT exposed through public API - infrastructure concern per ADR-009
-    // CRITICAL: Must be non-nullable and initialized to ensure EF Core can track changes
-    // When loaded from DB with no metro areas, EF Core needs an empty collection (not null)
-    private ICollection<Domain.Events.MetroArea> _preferredMetroAreaEntities = new List<Domain.Events.MetroArea>();
+    // Phase 6A.9: EF Core shadow navigation property (infrastructure concern only)
+    // This field exists ONLY for EF Core's use - managed entirely by infrastructure layer
+    // Domain layer does NOT modify this - see UpdateUserPreferredMetroAreasCommandHandler
+    // Per ADR-009: Shadow navigation accessed via ChangeTracker API in infrastructure layer
+#pragma warning disable CS0169 // Field is used by EF Core via reflection
+    private ICollection<Domain.Events.MetroArea>? _preferredMetroAreaEntities;
+#pragma warning restore CS0169
 
     // Authentication properties
     public IdentityProvider IdentityProvider { get; private set; }
@@ -548,14 +549,11 @@ public class User : BaseEntity
     /// Updates user's preferred metro areas for location-based filtering (0-20 allowed)
     /// Empty collection clears all preferences (privacy choice - user can opt out)
     /// Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
-    /// Phase 6A.9: Added EF Core entity parameter for proper persistence per ADR-009
-    /// Architecture: Follows ADR-008 & ADR-009 - Domain validates max count, Application validates existence
+    /// Phase 6A.9: EF Core shadow navigation updated by infrastructure layer per ADR-009
+    /// Architecture: Domain validates business rules, infrastructure handles persistence
     /// </summary>
     /// <param name="metroAreaIds">List of metro area GUIDs for domain logic</param>
-    /// <param name="metroAreaEntities">Optional: Loaded MetroArea entities for EF Core persistence (infrastructure concern)</param>
-    public Result UpdatePreferredMetroAreas(
-        IEnumerable<Guid>? metroAreaIds,
-        ICollection<Domain.Events.MetroArea>? metroAreaEntities = null)
+    public Result UpdatePreferredMetroAreas(IEnumerable<Guid>? metroAreaIds)
     {
         var metroAreaList = metroAreaIds?.ToList() ?? new List<Guid>();
 
@@ -571,22 +569,9 @@ public class User : BaseEntity
         _preferredMetroAreaIds.Clear();
         _preferredMetroAreaIds.AddRange(metroAreaList.Distinct());
 
-        // CRITICAL FIX Phase 6A.9: Update EF Core shadow navigation property for persistence
-        // IMPORTANT: Modify the SAME collection instance that EF Core is tracking
-        // DO NOT replace the collection reference - that breaks change tracking!
-        // Per ADR-009 and EF Core best practices for many-to-many relationships
-
-        // Clear and repopulate the TRACKED collection instance
-        // Since _preferredMetroAreaEntities is now initialized, it's never null
-        _preferredMetroAreaEntities.Clear();
-
-        if (metroAreaEntities != null && metroAreaEntities.Any())
-        {
-            foreach (var entity in metroAreaEntities)
-            {
-                _preferredMetroAreaEntities.Add(entity);
-            }
-        }
+        // NOTE: _preferredMetroAreaEntities shadow navigation is updated by infrastructure layer
+        // See UpdateUserPreferredMetroAreasCommandHandler - uses EF Core ChangeTracker API
+        // Domain layer only maintains GUID list for business logic per ADR-009
 
         MarkAsUpdated();
 

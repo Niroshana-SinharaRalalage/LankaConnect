@@ -59,18 +59,35 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
             }
         }
 
-        // Update user's preferred metro areas
-        // Pass both IDs (for domain logic) AND entities (for EF Core persistence per ADR-009)
-        var updateResult = user.UpdatePreferredMetroAreas(
-            command.MetroAreaIds,
-            metroAreaEntities);  // NEW: Entity references for EF tracking
+        // Update user's preferred metro areas (domain validation only - no entities)
+        var updateResult = user.UpdatePreferredMetroAreas(command.MetroAreaIds);
 
         if (!updateResult.IsSuccess)
         {
             return Result.Failure(updateResult.Errors.ToArray());
         }
 
-        // Save changes - EF Core now detects changes via _preferredMetroAreaEntities shadow property
+        // CRITICAL FIX Phase 6A.9: Use EF Core ChangeTracker API to update shadow navigation
+        // We cannot modify shadow navigation from domain layer - must use EF Core's API
+        // This is the CORRECT way to handle many-to-many with shadow properties per ADR-009
+        // Cast to AppDbContext to access Entry() method (infrastructure layer detail)
+        var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
+            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+        var metroAreasCollection = dbContext.Entry(user).Collection("_preferredMetroAreaEntities");
+        await metroAreasCollection.LoadAsync(cancellationToken);  // Ensure tracked
+
+        var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<Domain.Events.MetroArea>
+            ?? new List<Domain.Events.MetroArea>();
+
+        // Clear existing and add new entities using EF Core's tracked collection
+        currentMetroAreas.Clear();
+        foreach (var metroArea in metroAreaEntities)
+        {
+            currentMetroAreas.Add(metroArea);
+        }
+
+        // Save changes - EF Core now detects changes via ChangeTracker
         _userRepository.Update(user);
         await _unitOfWork.CommitAsync(cancellationToken);
 

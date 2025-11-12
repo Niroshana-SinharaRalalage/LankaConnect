@@ -133,7 +133,7 @@ public class UserUpdatePreferredMetroAreasTests
     }
 
     [Fact]
-    public void UpdatePreferredMetroAreas_Should_Fail_When_More_Than_10_Metro_Areas()
+    public void UpdatePreferredMetroAreas_Should_Fail_When_More_Than_20_Metro_Areas()
     {
         // Arrange
         var user = CreateTestUser().Value;
@@ -149,7 +149,17 @@ public class UserUpdatePreferredMetroAreasTests
             Guid.Parse("22222222-0000-0000-0000-000000000002"),
             Guid.Parse("33333333-0000-0000-0000-000000000001"),
             Guid.Parse("33333333-0000-0000-0000-000000000002"),
-            Guid.Parse("00000000-0000-0000-0000-000000000001") // 11th metro area
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Guid.Parse("44444444-0000-0000-0000-000000000001"),
+            Guid.Parse("44444444-0000-0000-0000-000000000002"),
+            Guid.Parse("55555555-0000-0000-0000-000000000001"),
+            Guid.Parse("55555555-0000-0000-0000-000000000002"),
+            Guid.Parse("66666666-0000-0000-0000-000000000001"),
+            Guid.Parse("66666666-0000-0000-0000-000000000002"),
+            Guid.Parse("77777777-0000-0000-0000-000000000001"),
+            Guid.Parse("77777777-0000-0000-0000-000000000002"),
+            Guid.Parse("88888888-0000-0000-0000-000000000001"),
+            Guid.Parse("88888888-0000-0000-0000-000000000002") // 21st metro area (over the limit of 20)
         };
 
         // Act
@@ -157,7 +167,7 @@ public class UserUpdatePreferredMetroAreasTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("10");
+        result.Error.Should().Contain("20");
         result.Error.Should().Contain("metro area");
     }
 

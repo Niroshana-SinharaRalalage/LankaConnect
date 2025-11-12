@@ -37,7 +37,9 @@ public class User : BaseEntity
     // Phase 6A.9: EF Core shadow navigation property (internal use only)
     // This allows EF Core to track entity references for persistence to junction table
     // NOT exposed through public API - infrastructure concern per ADR-009
-    private ICollection<Domain.Events.MetroArea>? _preferredMetroAreaEntities;
+    // CRITICAL: Must be non-nullable and initialized to ensure EF Core can track changes
+    // When loaded from DB with no metro areas, EF Core needs an empty collection (not null)
+    private ICollection<Domain.Events.MetroArea> _preferredMetroAreaEntities = new List<Domain.Events.MetroArea>();
 
     // Authentication properties
     public IdentityProvider IdentityProvider { get; private set; }
@@ -573,23 +575,17 @@ public class User : BaseEntity
         // IMPORTANT: Modify the SAME collection instance that EF Core is tracking
         // DO NOT replace the collection reference - that breaks change tracking!
         // Per ADR-009 and EF Core best practices for many-to-many relationships
-        if (_preferredMetroAreaEntities != null)
-        {
-            // Clear and repopulate the TRACKED collection instance
-            _preferredMetroAreaEntities.Clear();
 
-            if (metroAreaEntities != null && metroAreaEntities.Any())
-            {
-                foreach (var entity in metroAreaEntities)
-                {
-                    _preferredMetroAreaEntities.Add(entity);
-                }
-            }
-        }
-        else if (metroAreaEntities != null)
+        // Clear and repopulate the TRACKED collection instance
+        // Since _preferredMetroAreaEntities is now initialized, it's never null
+        _preferredMetroAreaEntities.Clear();
+
+        if (metroAreaEntities != null && metroAreaEntities.Any())
         {
-            // First time initialization - assign the collection
-            _preferredMetroAreaEntities = metroAreaEntities;
+            foreach (var entity in metroAreaEntities)
+            {
+                _preferredMetroAreaEntities.Add(entity);
+            }
         }
 
         MarkAsUpdated();

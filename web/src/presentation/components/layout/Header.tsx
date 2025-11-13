@@ -20,6 +20,7 @@ export interface HeaderProps {
  * Reusable navigation header for LankaConnect application
  * Features: Sticky navigation, authentication state, responsive design
  * Styling: Sri Lankan flag colors (Maroon #8B1538, Saffron #FF7900)
+ * Phase 6A.8: Added user dropdown menu with Profile and Logout options
  */
 export function Header({ className = '' }: HeaderProps) {
   const { user, isAuthenticated, clearAuth } = useAuthStore();

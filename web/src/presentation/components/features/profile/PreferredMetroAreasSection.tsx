@@ -179,26 +179,17 @@ export function PreferredMetroAreasSection() {
   const handleSave = async () => {
     if (!user?.userId) return;
 
-    console.log('=== SAVING METRO AREAS ===');
-    console.log('User ID:', user.userId);
-    console.log('Selected Metro Area IDs:', selectedMetroAreas);
-    console.log('Count:', selectedMetroAreas.length);
-
     try {
       await updatePreferredMetroAreas(user.userId, {
         metroAreaIds: selectedMetroAreas,
       });
-
-      console.log('✅ Save successful! Checking updated profile...');
-      console.log('Profile after save:', profile);
-      console.log('Preferred metro areas after save:', profile?.preferredMetroAreas);
 
       // Exit edit mode on success (store will set state to 'success')
       setIsEditing(false);
       setValidationError('');
     } catch (err) {
       // Error handled by store, stay in edit mode for retry
-      console.error('❌ Failed to save preferred metro areas:', err);
+      console.error('Failed to save preferred metro areas:', err);
     }
   };
 

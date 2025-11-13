@@ -1,11 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 Metro Areas Persistence RESOLVED ✅*
+*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 UI Fixes & DTO Completion ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - PHASE 6A.9 COMPLETE ✅
+## 🎯 Current Session Status - PHASE 6A.9 UI/FRONTEND COMPLETE ✅
 
-### Session: Phase 6A.9 - Metro Areas Persistence Fix (2025-11-13)
+### Session: Phase 6A.9 UI Fixes - Tree Dropdown & Profile Persistence (2025-11-13)
+
+**FRONTEND ISSUES RESOLVED - TreeDropdown Component + UserDto Fix ✅**
+
+**Status**: ✅ COMPLETE - All UI/UX issues resolved, ready for user testing
+
+**Problems Identified**:
+1. **Priority 1**: PreferredMetroAreas not persisting after save - success message shown but data disappeared on page refresh
+2. **Priority 2**: UI needed tree dropdown pattern instead of expandable card sections
+3. Duplicate "All" prefix in state-level metros ("All All Ohio" instead of "All Ohio")
+4. React Hooks ordering violation error when useMemo called after conditional returns
+5. Save button inaccessible when dropdown open - needed way to close dropdown
+
+**Root Causes**:
+1. **UserDto Missing Property**: UserDto.cs was missing `PreferredMetroAreas` property, so API never returned saved metro area IDs
+2. **Repository 204 Handling**: Profile repository expected UserProfile response but backend returns 204 No Content
+3. **UI Pattern Mismatch**: Expandable card sections didn't match tree dropdown design spec
+4. **Template Duplication**: Metro names already included "All" prefix from database
+5. **React Hooks Rules**: useMemo must be called before any conditional returns
+
+**Complete Fix Summary**:
+
+**1. Created TreeDropdown Component (New File)** ✅
+- [TreeDropdown.tsx](../web/src/presentation/components/ui/TreeDropdown.tsx) - 234 lines
+- Reusable tree structure with expand/collapse functionality
+- Multi-select checkboxes with max selection validation
+- Click-outside-to-close behavior
+- "Done" button in footer to close dropdown
+- ARIA accessibility (aria-label, aria-expanded, aria-haspopup)
+- LankaConnect brand colors (#FF7900, #8B1538)
+
+**2. Fixed UserDto (Backend)** ✅
+- Added `public List<Guid> PreferredMetroAreas { get; init; } = new();` to [UserDto.cs](../src/LankaConnect.Application/Users/DTOs/UserDto.cs) line 23
+- Backend build successful (1:52.34)
+- API now returns saved metro area IDs in profile response
+
+**3. Fixed Profile Repository (Frontend)** ✅
+- Modified [profile.repository.ts](../web/src/infrastructure/api/repositories/profile.repository.ts) updatePreferredMetroAreas()
+- Properly handles 204 No Content response: `await apiClient.put<void>(...)`
+- Reloads full profile after save: `const updatedProfile = await this.getProfile(userId);`
+- Returns updated profile with persisted metro areas
+
+**4. Integrated TreeDropdown into Profile Section** ✅
+- Updated [PreferredMetroAreasSection.tsx](../web/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx)
+- Replaced expandable card sections with TreeDropdown component
+- Removed duplicate "All" prefix: metro names come directly from database
+- Fixed React Hooks ordering: moved useMemo to top of component (before early returns)
+- Clean error-only logging (removed debug console.log statements)
+
+**Files Modified**:
+- [UserDto.cs](../src/LankaConnect.Application/Users/DTOs/UserDto.cs) - Added PreferredMetroAreas property (Backend)
+- [TreeDropdown.tsx](../web/src/presentation/components/ui/TreeDropdown.tsx) - NEW reusable component
+- [PreferredMetroAreasSection.tsx](../web/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx) - Tree dropdown integration, hooks fix
+- [profile.repository.ts](../web/src/infrastructure/api/repositories/profile.repository.ts) - 204 handling fix
+
+**Testing Results**:
+- ✅ Backend build successful (0 errors)
+- ✅ Frontend running on port 3001
+- ✅ TypeScript compilation successful
+- ✅ React Hooks ordering issue resolved
+- ✅ TreeDropdown renders with proper state hierarchy
+- ✅ Max 20 metro areas selection validation working
+- ✅ Click outside closes dropdown
+- ✅ Done button closes dropdown
+- ⏳ Ready for user acceptance testing (manual testing required for persistence verification)
+
+**Architecture**: Reusable TreeDropdown component, proper DTO mapping, 204 No Content handling with profile reload
+
+---
+
+### Session: Phase 6A.9 - Metro Areas Persistence Fix (2025-11-13 - Backend)
 
 **CRITICAL BUG RESOLVED - PUT/GET /api/Users/{id}/preferred-metro-areas NOW WORKING ✅**
 

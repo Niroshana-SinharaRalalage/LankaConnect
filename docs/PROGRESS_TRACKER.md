@@ -1,9 +1,76 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-12 (Current Session) - Phase 6A Infrastructure Complete ✅*
+*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 Metro Areas Persistence RESOLVED ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - PHASE 6A INFRASTRUCTURE COMPLETE ✅
+## 🎯 Current Session Status - PHASE 6A.9 COMPLETE ✅
+
+### Session: Phase 6A.9 - Metro Areas Persistence Fix (2025-11-13)
+
+**CRITICAL BUG RESOLVED - PUT/GET /api/Users/{id}/preferred-metro-areas NOW WORKING ✅**
+
+**Status**: ✅ RESOLVED - Three-issue fix deployed via GitHub Actions Runs #96, #99, #100
+
+**Problem**:
+1. PUT returned 400 "Invalid metro area IDs" despite valid GUIDs
+2. GET returned empty array `[]` even after successful PUT returning 204
+
+**Root Causes**:
+1. **Empty Metro Areas Table**: Staging database had zero metro area reference data, blocking validation
+2. **Migration SQL Error**: First data migration missing required `created_at` and `updated_at` columns
+3. **GET Handler Bug**: Domain's `_preferredMetroAreaIds` collection not synchronized with shadow navigation `_preferredMetroAreaEntities` after database load
+
+**Three-Phase Fix**:
+
+**Phase 1: EF Core Data Migration (Commit 08f0745, Run #96) ✅**
+- Created [20251112204434_SeedMetroAreasReferenceData.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251112204434_SeedMetroAreasReferenceData.cs)
+- Added SQL INSERT for 22 metro areas (states: AL, AK, AZ, CA, IL, NY, TX)
+- Initial deployment failed: Missing `created_at` (NOT NULL) and `updated_at` columns
+- Fixed: Added `CURRENT_TIMESTAMP` and `NULL` values to INSERT statement
+- Result: Metro areas table now populated, PUT validation now passes (204)
+
+**Phase 2: GET Handler Shadow Navigation Fix (Commit 1dea640, Run #99) ✅**
+- Modified [GetUserPreferredMetroAreasQueryHandler.cs](../src/LankaConnect.Application/Users/Queries/GetUserPreferredMetroAreas/GetUserPreferredMetroAreasQueryHandler.cs)
+- Changed from checking domain's `_preferredMetroAreaIds` to accessing shadow navigation `_preferredMetroAreaEntities`
+- Uses EF Core ChangeTracker API: `dbContext.Entry(user).Collection("_preferredMetroAreaEntities")`
+- Consistent with ADR-009 and PUT handler approach
+- Result: GET now returns persisted metro areas with full details (200 OK)
+
+**Phase 3: Code Cleanup (Commit TBD, Run #100)**
+- Removed diagnostic Console.WriteLine statements from [UpdateUserPreferredMetroAreasCommandHandler.cs](../src/LankaConnect.Application/Users/Commands/UpdatePreferredMetroAreas/UpdateUserPreferredMetroAreasCommandHandler.cs)
+- Clean production code without debug logging
+
+**Files Modified**:
+- [20251112204434_SeedMetroAreasReferenceData.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251112204434_SeedMetroAreasReferenceData.cs) - Data migration (fixed SQL)
+- [GetUserPreferredMetroAreasQueryHandler.cs](../src/LankaConnect.Application/Users/Queries/GetUserPreferredMetroAreas/GetUserPreferredMetroAreasQueryHandler.cs) - Shadow navigation access
+- [UpdateUserPreferredMetroAreasCommandHandler.cs](../src/LankaConnect.Application/Users/Commands/UpdatePreferredMetroAreas/UpdateUserPreferredMetroAreasCommandHandler.cs) - Removed diagnostic logs
+
+**Testing Results**:
+- ✅ PUT /api/Users/38012ea6-1248-47aa-a461-37c2cc82bf3a/preferred-metro-areas with LA & NYC → 204 No Content
+- ✅ GET /api/Users/38012ea6-1248-47aa-a461-37c2cc82bf3a/preferred-metro-areas → 200 OK
+- ✅ Response includes 2 metro areas: Los Angeles (CA) and New York City (NY) with full geographic data
+- ✅ Diagnostic logs confirmed: "Successfully committed 3 changes to database"
+- ✅ Verified data persists across requests (GET after PUT returns saved data)
+
+**Deployment Timeline**:
+- Run #96: 2025-11-13 00:59:25Z (Fixed metro areas migration) - Status: Success ✅
+- Run #99: 2025-11-13 01:03:05Z (GET handler shadow navigation fix) - Status: Success ✅
+- Run #100: TBD (Code cleanup) - Status: Pending
+
+**Architecture**: EF Core shadow navigation with ChangeTracker API (ADR-009), data migration seeding reference data
+
+**Metro Areas Seeded** (22 total):
+- Alabama: All Alabama, Birmingham, Montgomery, Mobile
+- Alaska: All Alaska, Anchorage
+- Arizona: All Arizona, Phoenix, Tucson, Mesa
+- California: All California, Los Angeles, San Francisco Bay Area, San Diego
+- Illinois: All Illinois, Chicago
+- New York: All New York, New York City
+- Texas: All Texas, Houston, Dallas-Fort Worth, Austin
+
+---
+
+## 🎯 Previous Session Status - PHASE 6A INFRASTRUCTURE COMPLETE ✅
 
 ### Session: EF Core OwnsMany Collections PropertyAccessMode Fix (2025-11-12)
 

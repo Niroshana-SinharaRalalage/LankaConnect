@@ -6,13 +6,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import {
-  getMetroById,
-  getMetrosGroupedByState,
-  US_STATES,
-  isStateLevelArea,
-  getStateLevelAreas,
-} from '@/domain/constants/metroAreas.constants';
+import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
+import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
 
 /**
@@ -30,6 +25,15 @@ export function PreferredMetroAreasSection() {
   const { user } = useAuthStore();
   const { profile, updatePreferredMetroAreas, sectionStates, error, isLoading } = useProfileStore();
 
+  // Phase 6A.9: Fetch metro areas from API instead of hardcoded constants
+  const {
+    metroAreas,
+    metroAreasByState,
+    stateLevelMetros,
+    isLoading: metrosLoading,
+    error: metrosError,
+  } = useMetroAreas();
+
   const [isEditing, setIsEditing] = useState(false);
   const [selectedMetroAreas, setSelectedMetroAreas] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string>('');
@@ -46,6 +50,45 @@ export function PreferredMetroAreasSection() {
   // Return null if user not authenticated
   if (!user) {
     return null;
+  }
+
+  // Show loading state while fetching metros
+  if (metrosLoading) {
+    return (
+      <Card role="region" aria-label="Preferred Metro Areas">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Preferred Metro Areas</CardTitle>
+          </div>
+          <CardDescription>Loading metro areas...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#FF7900' }}></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error if metros failed to load
+  if (metrosError) {
+    return (
+      <Card role="region" aria-label="Preferred Metro Areas">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Preferred Metro Areas</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-destructive" role="alert">
+            Failed to load metro areas: {metrosError}
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const handleEdit = () => {
@@ -109,8 +152,16 @@ export function PreferredMetroAreasSection() {
     }
   };
 
-  // Get metro areas grouped by state using helper function
-  const metrosByState = getMetrosGroupedByState();
+  // Helper to get metro by ID from API data
+  const getMetroById = (id: string) => {
+    return metroAreas.find(metro => metro.id === id);
+  };
+
+  // Helper to check if metro is state-level
+  const isStateLevelArea = (id: string) => {
+    const metro = getMetroById(id);
+    return metro?.isStateLevelArea ?? false;
+  };
 
   return (
     <Card role="region" aria-label="Preferred Metro Areas">
@@ -187,7 +238,7 @@ export function PreferredMetroAreasSection() {
                 State-Wide Selections
               </h4>
               <div className="space-y-2">
-                {getStateLevelAreas().map((metro) => {
+                {stateLevelMetros.map((metro) => {
                   const isSelected = selectedMetroAreas.includes(metro.id);
                   return (
                     <label
@@ -225,7 +276,7 @@ export function PreferredMetroAreasSection() {
               </h4>
               <div className="space-y-2">
                 {US_STATES.map((state) => {
-                  const metrosForState = metrosByState.get(state.code) || [];
+                  const metrosForState = metroAreasByState.get(state.code) || [];
                   // Filter to only city-level metros (not state-level)
                   const cityMetros = metrosForState.filter((m) => !isStateLevelArea(m.id));
 
@@ -294,10 +345,6 @@ export function PreferredMetroAreasSection() {
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-medium">{metro.name}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {metro.cities.slice(0, 2).join(', ')}
-                                    {metro.cities.length > 2 && `, +${metro.cities.length - 2} more`}
-                                  </div>
                                 </div>
                               </label>
                             );

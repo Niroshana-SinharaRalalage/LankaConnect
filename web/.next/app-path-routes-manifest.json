@@ -11,6 +11,7 @@
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
   "/page": "/",
+  "/templates/page": "/templates",
   "/test-events/page": "/test-events",
   "/test-simple/page": "/test-simple"
 }

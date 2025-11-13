@@ -353,6 +353,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Phase 6A.8: Role-based Dashboard Content */}
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Activity Feed (2/3 width on large screens) */}
@@ -373,7 +374,9 @@ export default function DashboardPage() {
                     color: 'white'
                   }}
                 >
-                  <h2 className="text-xl font-semibold">Community Activity</h2>
+                  <h2 className="text-xl font-semibold">
+                    {user?.role === UserRole.GeneralUser ? 'My Events & Sign-ups' : 'Community Activity'}
+                  </h2>
                   <select
                     className="px-4 py-2 rounded-md text-white text-sm outline-none cursor-pointer"
                     style={{
@@ -390,6 +393,28 @@ export default function DashboardPage() {
                   </select>
                 </div>
 
+                {/* Phase 6A.8: GeneralUser Events/Signups Section - Placeholder for future implementation */}
+                {user?.role === UserRole.GeneralUser ? (
+                  <div className="p-12 text-center">
+                    <Calendar className="w-16 h-16 mx-auto mb-4" style={{ color: '#FF7900' }} />
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: '#8B1538' }}>No Events or Sign-ups Yet</h3>
+                    <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
+                      You haven't registered for any events or sign-ups yet. Browse the community activity below to find events to join!
+                    </p>
+                    <Button
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className="rounded-lg"
+                      style={{
+                        background: '#FF7900',
+                        color: 'white'
+                      }}
+                      variant="default"
+                    >
+                      Browse Events
+                    </Button>
+                  </div>
+                ) : (
+                  <>
                 {/* Feed Items */}
                 {MOCK_ACTIVITIES.map((activity, index) => (
                   <div
@@ -491,9 +516,12 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+                  </>
+                )}
               </div>
 
               {/* Load More */}
+              {user?.role !== UserRole.GeneralUser && (
               <div className="text-center pt-6">
                 <Button
                   variant="outline"
@@ -514,6 +542,7 @@ export default function DashboardPage() {
                   Load More Activities
                 </Button>
               </div>
+              )}
             </div>
 
             {/* Right Column - Widgets (1/3 width on large screens) */}

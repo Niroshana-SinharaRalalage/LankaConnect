@@ -77,7 +77,7 @@ function RegisterPage() {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "min-h-screen flex items-center justify-center p-5",
         style: {
-            backgroundImage: 'url(/images/10934290-traditional-flower-pattern-of-sri-lanka-in-temple-of-tooth-of-buddha-candy-sri-lanka.jpg)',
+            backgroundImage: 'url(/images/ChatGPT%20Image%20Nov%208,%202025,%2001_03_23%20PM.png)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
@@ -108,7 +108,7 @@ function RegisterPage() {
                                 className: "flex items-center text-[2rem] font-bold mb-5",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"], {
-                                        src: "/lankaconnect-logo-transparent.png",
+                                        src: "/images/lankaconnect-logo.png",
                                         alt: "LankaConnect",
                                         width: 80,
                                         height: 80,
@@ -313,7 +313,7 @@ function RegisterPage() {
                             className: "mb-8 md:hidden text-center",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"], {
-                                    src: "/lankaconnect-logo-transparent.png",
+                                    src: "/images/lankaconnect-logo.png",
                                     alt: "LankaConnect",
                                     width: 60,
                                     height: 60,

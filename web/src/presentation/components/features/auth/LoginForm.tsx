@@ -45,14 +45,9 @@ export function LoginForm() {
       };
       setAuth(response.user, tokens);
 
-      // Phase 6A.2.8: Role-based redirect after login
-      // Admin and AdminManager go to admin dashboard (future Phase 6B)
-      // EventOrganizer and GeneralUser go to regular dashboard
-      const redirectPath = response.user.role === 'Admin' || response.user.role === 'AdminManager'
-        ? '/dashboard' // For MVP, all roles go to dashboard (admin dashboard in Phase 6B)
-        : '/dashboard';
-
-      router.push(redirectPath);
+      // Phase 6A.8: Redirect to landing page after login
+      // Users can access dashboard via menu or profile settings
+      router.push('/');
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.message);

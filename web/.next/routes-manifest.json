@@ -88,6 +88,12 @@
       "namedRegex": "^/reset\\-password(?:/)?$"
     },
     {
+      "page": "/templates",
+      "regex": "^/templates(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/templates(?:/)?$"
+    },
+    {
       "page": "/test-events",
       "regex": "^/test\\-events(?:/)?$",
       "routeKeys": {},

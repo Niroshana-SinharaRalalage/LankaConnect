@@ -44,6 +44,11 @@ try
             // This allows frontend to send camelCase (email, firstName, lastName)
             // while backend expects PascalCase (Email, FirstName, LastName)
             options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+            // Enable string-to-enum conversion for both regular and nullable enums
+            // This allows frontend to send enum values as strings (e.g., "EventOrganizer")
+            // which the deserializer will properly convert to UserRole enum values
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
     // Add Application Layer

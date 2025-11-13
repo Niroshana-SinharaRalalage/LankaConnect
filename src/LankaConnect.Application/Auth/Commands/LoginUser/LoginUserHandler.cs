@@ -143,7 +143,9 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 user.Role,
                 accessTokenResult.Value,
                 refreshTokenResult.Value,
-                tokenExpiresAt);
+                tokenExpiresAt,
+                user.PendingUpgradeRole,    // Phase 6A.7: Include pending role for UI display
+                user.UpgradeRequestedAt);   // Phase 6A.7: Include when upgrade was requested
 
             return Result<LoginUserResponse>.Success(response);
         }

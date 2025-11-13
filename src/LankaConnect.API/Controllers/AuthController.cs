@@ -115,10 +115,10 @@ public class AuthController : ControllerBase
             }
 
             _logger.LogInformation("User logged in successfully: {Email}", request.Email);
-            
+
             // Set refresh token as HttpOnly cookie for security
             SetRefreshTokenCookie(result.Value.RefreshToken);
-            
+
             return Ok(new
             {
                 user = new
@@ -126,7 +126,9 @@ public class AuthController : ControllerBase
                     result.Value.UserId,
                     result.Value.Email,
                     result.Value.FullName,
-                    result.Value.Role
+                    result.Value.Role,
+                    result.Value.PendingUpgradeRole, // Phase 6A.7: Include pending upgrade role for UI display
+                    result.Value.UpgradeRequestedAt   // Phase 6A.7: Include when upgrade was requested
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt

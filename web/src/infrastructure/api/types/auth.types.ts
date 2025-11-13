@@ -29,10 +29,10 @@ export interface UserDto {
   email: string;
   fullName: string; // Backend returns fullName, not firstName/lastName separately
   role: UserRole;
+  pendingUpgradeRole?: UserRole | null; // Phase 6A.7: Pending role upgrade (returned from login)
+  upgradeRequestedAt?: string | null; // Phase 6A.7: When upgrade was requested (returned from login)
   isEmailVerified?: boolean;
   createdAt?: string;
-  pendingUpgradeRole?: UserRole; // Phase 6A.7: Pending role upgrade
-  upgradeRequestedAt?: string; // Phase 6A.7: When upgrade was requested
 }
 
 export interface LoginResponse {

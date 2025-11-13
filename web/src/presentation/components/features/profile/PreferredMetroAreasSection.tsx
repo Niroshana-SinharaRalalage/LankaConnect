@@ -179,17 +179,26 @@ export function PreferredMetroAreasSection() {
   const handleSave = async () => {
     if (!user?.userId) return;
 
+    console.log('=== DEBUG: Attempting to save metro areas ===');
+    console.log('Selected IDs:', selectedMetroAreas);
+    console.log('Selected Count:', selectedMetroAreas.length);
+    selectedMetroAreas.forEach(id => {
+      const metro = getMetroById(id);
+      console.log(`  - ${id}: ${metro ? `${metro.name}, ${metro.state}` : 'NOT FOUND IN LOCAL DATA'}`);
+    });
+
     try {
       await updatePreferredMetroAreas(user.userId, {
         metroAreaIds: selectedMetroAreas,
       });
 
+      console.log('✅ Save successful');
       // Exit edit mode on success (store will set state to 'success')
       setIsEditing(false);
       setValidationError('');
     } catch (err) {
       // Error handled by store, stay in edit mode for retry
-      console.error('Failed to save preferred metro areas:', err);
+      console.error('❌ Save failed:', err);
     }
   };
 

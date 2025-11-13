@@ -33,7 +33,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       setShowSuccess(false);
       requestUpgrade.reset();
     }
-  }, [isOpen, requestUpgrade]);
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

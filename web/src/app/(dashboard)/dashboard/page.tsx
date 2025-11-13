@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
@@ -204,10 +205,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               {/* Logo + Navigation */}
               <div className="flex items-center gap-8">
-                <div className="flex items-center">
+                <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
                   <Logo size="md" showText={false} />
                   <span className="ml-3 text-2xl font-bold text-[#8B1538]">LankaConnect</span>
-                </div>
+                </Link>
 
                 {/* Navigation Links */}
                 <nav className="hidden md:flex items-center gap-6">

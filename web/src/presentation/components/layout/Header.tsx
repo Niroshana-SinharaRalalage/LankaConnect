@@ -9,7 +9,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, ChevronDown } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -153,21 +153,23 @@ export function Header({ className = '' }: HeaderProps) {
 
                 {/* User Menu Dropdown */}
                 <div className="relative" ref={userMenuRef}>
-                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setUserMenuOpen(!userMenuOpen);
+                      }
+                    }}
+                    title={user.fullName}
+                  >
                     {/* User Avatar */}
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
                       style={{
                         background: 'linear-gradient(135deg, #FF7900, #8B1538)',
-                      }}
-                      onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      title={user.fullName}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          setUserMenuOpen(!userMenuOpen);
-                        }
                       }}
                     >
                       {getUserInitials(user.fullName)}
@@ -177,6 +179,13 @@ export function Header({ className = '' }: HeaderProps) {
                     <span className="text-sm font-medium text-[#333] hidden lg:inline">
                       {user.fullName}
                     </span>
+
+                    {/* Dropdown Indicator Arrow */}
+                    <ChevronDown
+                      className={`w-4 h-4 text-[#666] transition-transform duration-200 hidden lg:block ${
+                        userMenuOpen ? 'transform rotate-180' : ''
+                      }`}
+                    />
                   </div>
 
                   {/* Dropdown Menu */}

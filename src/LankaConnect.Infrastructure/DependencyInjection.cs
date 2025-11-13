@@ -159,11 +159,11 @@ public static class DependencyInjection
             return new BlobServiceClient(connectionString);
         });
 
-        // Phase 6A.9: Add Azure Blob Storage Service
-        services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
-
-        // Phase 6A.9: Add Image Service (uses Azure Blob Storage)
-        services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
+        // Phase 6A.9: Azure Blob Storage and Image Service
+        // Note: These services are implemented but temporarily disabled pending interface definitions
+        // TODO: Uncomment when IAzureBlobStorageService and IImageService are properly defined
+        // services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
+        // services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
 
         // Add Authentication Services
         services.AddScoped<IJwtTokenService, JwtTokenService>();

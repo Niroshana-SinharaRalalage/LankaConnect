@@ -154,6 +154,70 @@ export function RegisterForm() {
               </div>
             </label>
 
+            {/* Business Owner Option - DISABLED (Phase 2) */}
+            <label
+              className="flex items-start p-4 border-2 rounded-lg cursor-not-allowed opacity-60 bg-gray-50 border-gray-200"
+              title="Coming in Phase 2 - Business features launching soon"
+            >
+              <input
+                type="radio"
+                value="BusinessOwner"
+                disabled
+                className="mt-1 h-4 w-4 text-gray-400 border-gray-300 cursor-not-allowed"
+              />
+              <div className="ml-3 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Business Owner</span>
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800">
+                    Coming in Phase 2
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Create business profiles and ads, manage your business presence
+                </div>
+                <div className="mt-2 space-y-1">
+                  <div className="inline-block px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
+                    Free for 6 months, then $10/month
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    ⚠️ Requires admin approval
+                  </div>
+                </div>
+              </div>
+            </label>
+
+            {/* Event Organizer + Business Owner Option - DISABLED (Phase 2) */}
+            <label
+              className="flex items-start p-4 border-2 rounded-lg cursor-not-allowed opacity-60 bg-gray-50 border-gray-200"
+              title="Coming in Phase 2 - Combined role with all features"
+            >
+              <input
+                type="radio"
+                value="EventOrganizerAndBusinessOwner"
+                disabled
+                className="mt-1 h-4 w-4 text-gray-400 border-gray-300 cursor-not-allowed"
+              />
+              <div className="ml-3 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Event Organizer + Business Owner</span>
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800">
+                    Coming in Phase 2
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  All features: Create events, posts, business profiles, and ads
+                </div>
+                <div className="mt-2 space-y-1">
+                  <div className="inline-block px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: '#FFEBEE', color: '#C62828' }}>
+                    Free for 6 months, then $15/month
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    ⚠️ Requires admin approval
+                  </div>
+                </div>
+              </div>
+            </label>
+
             {errors.selectedRole && (
               <p className="text-sm text-destructive">{errors.selectedRole.message}</p>
             )}

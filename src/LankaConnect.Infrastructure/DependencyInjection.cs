@@ -159,8 +159,11 @@ public static class DependencyInjection
             return new BlobServiceClient(connectionString);
         });
 
-        // Add Image Service
-        services.AddScoped<IImageService, BasicImageService>();
+        // Phase 6A.9: Add Azure Blob Storage Service
+        services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
+
+        // Phase 6A.9: Add Image Service (uses Azure Blob Storage)
+        services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
 
         // Add Authentication Services
         services.AddScoped<IJwtTokenService, JwtTokenService>();

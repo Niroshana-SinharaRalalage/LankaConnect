@@ -1,7 +1,9 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-12 (Current Session) - CRITICAL BUG FIX: GET /api/users/{id} 500 Error RESOLVED ✅*
+*Last Updated: 2025-11-12 (Current Session) - Phase 6A Infrastructure Complete ✅*
 
-## 🎯 Current Session Status - CRITICAL BUG FIX COMPLETED ✅
+**⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
+
+## 🎯 Current Session Status - PHASE 6A INFRASTRUCTURE COMPLETE ✅
 
 ### Session: EF Core OwnsMany Collections PropertyAccessMode Fix (2025-11-12)
 
@@ -105,52 +107,50 @@
 
 ---
 
-## PHASE 6A.0: REGISTRATION FLOW ENHANCEMENT - COMPLETE ✅
+## PHASE 6A.0: REGISTRATION ROLE SYSTEM - COMPLETE ✅
 
-### Session: Phase 6A.0 - Registration Role Selection (COMPLETED 2025-11-11)
+### Session: Phase 6A.0 - 7-Role System Infrastructure (COMPLETED 2025-11-11, Updated 2025-11-12)
 
-**Status**: ✅ COMPLETE - Registration flow enhanced with role selection and pricing display
+**Status**: ✅ COMPLETE - Complete 7-role system infrastructure with 6 enum values, role capabilities, and registration UI
+
+**7-Role System Specification** (Phase 1 MVP + Phase 2 ready):
+1. **GeneralUser** ($0, free, no approval) - Browse events, register
+2. **EventOrganizer** ($10/month, 6-month free trial, approval required) - Create events, posts
+3. **BusinessOwner** ($10/month, 6-month free trial, approval required, **Phase 2**) - Create business profiles/ads
+4. **EventOrganizerAndBusinessOwner** ($15/month, 6-month free trial, approval required, **Phase 2**) - All features
+5. **Admin** (N/A) - System administration, approvals, analytics
+6. **AdminManager** (N/A) - Super admin, manage admin users
+7. **UnRegistered** (implicit) - Read-only access to landing page
 
 **Completed Deliverables**:
-- ✅ Updated UserRole enum: GeneralUser (1), EventOrganizer (2), Admin (3), AdminManager (4)
-- ✅ Added UserRoleExtensions with helper methods (CanCreateEvents, RequiresSubscription, IsAdmin, etc.)
-- ✅ Updated User aggregate with PendingUpgradeRole and UpgradeRequestedAt properties
-- ✅ Implemented role upgrade domain methods: SetPendingUpgradeRole, ApproveRoleUpgrade, RejectRoleUpgrade, CancelRoleUpgrade
-- ✅ Created domain events: UserRoleUpgradeRequestedEvent, UserRoleUpgradeRejectedEvent, UserRoleChangedEvent
-- ✅ Updated RegisterUserCommand with SelectedRole? parameter
-- ✅ Updated RegisterUserHandler with Event Organizer pending approval logic
-- ✅ Updated RegisterUserValidator to validate SelectedRole
-- ✅ Fixed all authorization policies for new role system
-- ✅ Updated 5 test files with new UserRole.GeneralUser references
-- ✅ Updated UserConfiguration.cs EF Core config with new role properties
-- ✅ Updated frontend RegisterForm.tsx with role selection UI cards
-- ✅ Updated frontend auth.schemas.ts with Zod validation for selectedRole
-- ✅ Updated frontend auth.types.ts with UserRole enum and RegisterRequest
-- ✅ Created EF Core migration: 20251111055748_AddUserRoleUpgradeTracking.cs
-- ✅ Backend builds with ZERO errors
-- ✅ Frontend TypeScript errors resolved (2 RegisterForm errors fixed)
+- ✅ Backend UserRole enum: 6 values (GeneralUser=1, BusinessOwner=2, EventOrganizer=3, EventOrganizerAndBusinessOwner=4, Admin=5, AdminManager=6)
+- ✅ Frontend UserRole enum: 6 values matching backend exactly
+- ✅ UserRoleExtensions with 10 methods:
+  - `ToDisplayName()` - User-friendly role names (all 6 roles)
+  - `CanManageUsers()` - Admin and AdminManager only
+  - `CanCreateEvents()` - EventOrganizer, EventOrganizerAndBusinessOwner, Admin, AdminManager
+  - `CanModerateContent()` - Admin, AdminManager
+  - `IsEventOrganizer()` - EventOrganizer role check
+  - `IsAdmin()` - Admin and AdminManager check
+  - `RequiresSubscription()` - EventOrganizer, BusinessOwner, EventOrganizerAndBusinessOwner
+  - `CanCreateBusinessProfile()` - BusinessOwner, EventOrganizerAndBusinessOwner, Admin, AdminManager
+  - `CanCreatePosts()` - EventOrganizer, EventOrganizerAndBusinessOwner, Admin, AdminManager
+  - `GetMonthlySubscriptionPrice()` - Returns $10, $10, or $15
+- ✅ Case-insensitive JSON deserialization in Program.cs (fixes 400 errors on login/registration)
+- ✅ RegisterForm.tsx shows 4 options: 2 active (GeneralUser, EventOrganizer) + 2 disabled with "Coming in Phase 2" badge
+- ✅ Backend builds with ZERO errors (47.44s)
+- ✅ Frontend builds with ZERO TypeScript errors (24.9s)
+- ✅ Created PHASE_6A0_REGISTRATION_ROLE_SYSTEM_SUMMARY.md documentation
 
-**Files Modified** (20+ files):
-- **Domain**: User.cs, UserRole.cs, UserRoleUpgradeRequestedEvent.cs, UserRoleUpgradeRejectedEvent.cs, UserRoleChangedEvent.cs
-- **Application**: RegisterUserCommand.cs, RegisterUserHandler.cs, RegisterUserValidator.cs, LoginWithEntraCommandHandler.cs, SendWelcomeEmailCommandHandler.cs
-- **Infrastructure**: UserConfiguration.cs, AuthenticationExtensions.cs, Migration: AddUserRoleUpgradeTracking
-- **Frontend**: RegisterForm.tsx, auth.schemas.ts, auth.types.ts
-- **Tests**: 5 test files updated with new role references
+**Files Modified**:
+- **Domain**: UserRole.cs (enum with 6 values + 10 extension methods)
+- **API**: Program.cs (PropertyNameCaseInsensitive = true)
+- **Frontend**: auth.types.ts (UserRole enum), RegisterForm.tsx (4 role options)
 
-**Implementation Details**:
-- When Event Organizer is selected during registration, user is created as GeneralUser with PendingUpgradeRole = EventOrganizer
-- Admin approval workflow will be implemented in Phase 6A.5
-- Domain events enable future notification system integration (Phase 6A.6)
-- Role upgrade business logic encapsulated in User aggregate with proper validation
-- Frontend displays pricing: General User (Always Free), Event Organizer (Free 6 months, then $10/month)
-- Conditional approval checkbox appears when Event Organizer is selected
+**Documentation**:
+- ✅ PHASE_6A0_REGISTRATION_ROLE_SYSTEM_SUMMARY.md - Complete specification and implementation
 
-**Test Status**:
-- Backend: 0 compilation errors ✅
-- Frontend: Pre-existing Phase 5B errors only (RegisterForm errors FIXED) ✅
-- E2E tests pending (Phase 6A.0 test task deferred to after Phase 6A.1)
-
-**Next Steps**: Phase 6A.1 - Subscription System Implementation
+**Next Steps**: See PHASE_6A_MASTER_INDEX.md for complete roadmap
 
 ---
 

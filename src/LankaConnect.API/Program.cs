@@ -37,7 +37,14 @@ try
     builder.Host.UseSerilog();
 
     // Add services to the container
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            // Enable case-insensitive property name binding for JSON deserialization
+            // This allows frontend to send camelCase (email, firstName, lastName)
+            // while backend expects PascalCase (Email, FirstName, LastName)
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        });
 
     // Add Application Layer
     builder.Services.AddApplication();

@@ -51,6 +51,34 @@ To unite the Sri Lankan American diaspora by providing a centralized platform fo
 - **Forum Activity**: 500+ monthly discussions
 - **Revenue**: $50K monthly recurring revenue by month 12
 
+### 1.6 User Roles & Permissions (Phase 6A)
+
+**7-Role System with 6 Enum Values**:
+
+| Role | Enum Value | Monthly Price | Features | Free Trial | Approval Required | Phase |
+|------|-----------|---------------|----------|-----------|------------------|-------|
+| GeneralUser | 1 | $0 | Browse events, register, forum participation | N/A | No | 1 (MVP) |
+| EventOrganizer | 3 | $10 | Create events, posts, templates, analytics | 6 months | Yes | 1 (MVP) |
+| BusinessOwner | 2 | $10 | Create business profiles, ads, directory | 6 months | Yes | 2 |
+| EventOrganizerAndBusinessOwner | 4 | $15 | All features combined | 6 months | Yes | 2 |
+| Admin | 5 | N/A | System administration, approvals, analytics | N/A | N/A | 1 (MVP) |
+| AdminManager | 6 | N/A | Super admin, manage admin users | N/A | N/A | 1 (MVP) |
+
+**Capability Matrix**:
+- **CanCreateEvents**: EventOrganizer, EventOrganizerAndBusinessOwner, Admin, AdminManager
+- **CanCreateBusinessProfile**: BusinessOwner, EventOrganizerAndBusinessOwner, Admin, AdminManager
+- **CanCreatePosts**: EventOrganizer, EventOrganizerAndBusinessOwner, Admin, AdminManager
+- **CanManageUsers**: Admin, AdminManager
+- **CanModerateContent**: Admin, AdminManager
+- **RequiresSubscription**: EventOrganizer, BusinessOwner, EventOrganizerAndBusinessOwner
+- **GetMonthlySubscriptionPrice**: $0 (GeneralUser), $10 (EventOrganizer/BusinessOwner), $15 (Combined)
+
+**Subscription Details**:
+- Free Trial: 6 months for all subscription-required roles
+- Free Trial Initialization: Triggered on admin approval
+- Trial Expiration: User must upgrade to paid or lose event creation capability
+- Subscription Status Values: None, Trialing, Active, PastDue, Canceled, Expired
+
 ---
 
 ## 2. System Architecture

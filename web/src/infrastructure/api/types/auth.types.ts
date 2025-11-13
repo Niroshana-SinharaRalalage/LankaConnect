@@ -48,10 +48,12 @@ export interface RegisterResponse {
 }
 
 // Enums
-// Phase 6A.0: Updated role system for Event Organizer model
+// Phase 6A.0: Updated role system for Event Organizer + Business Owner model (6 roles)
 export enum UserRole {
   GeneralUser = 'GeneralUser',
+  BusinessOwner = 'BusinessOwner',
   EventOrganizer = 'EventOrganizer',
+  EventOrganizerAndBusinessOwner = 'EventOrganizerAndBusinessOwner',
   Admin = 'Admin',
   AdminManager = 'AdminManager',
 }

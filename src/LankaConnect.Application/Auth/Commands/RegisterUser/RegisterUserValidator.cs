@@ -1,5 +1,6 @@
 using FluentValidation;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Users.Enums;
 
 namespace LankaConnect.Application.Auth.Commands.RegisterUser;
 
@@ -42,7 +43,7 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
             .WithMessage("Last name must not exceed 50 characters");
 
         RuleFor(x => x.SelectedRole)
-            .IsInEnum()
+            .Must(role => !role.HasValue || Enum.IsDefined(typeof(UserRole), role.Value))
             .When(x => x.SelectedRole.HasValue)
             .WithMessage("Invalid user role");
     }

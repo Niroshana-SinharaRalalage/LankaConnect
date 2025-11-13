@@ -39,20 +39,31 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
             return Result<IReadOnlyList<MetroAreaDto>>.Failure("User not found");
         }
 
+        // Phase 6A.9 FIX: Access shadow navigation directly using EF.Property<>
+        // The domain's _preferredMetroAreaIds collection is not synchronized on load
+        // Infrastructure layer manages shadow navigation per ADR-009
+        var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
+            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+        // Load shadow navigation if not already tracked
+        var metroAreasCollection = dbContext.Entry(user).Collection("_preferredMetroAreaEntities");
+        await metroAreasCollection.LoadAsync(cancellationToken);
+
+        var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<Domain.Events.MetroArea>
+            ?? new List<Domain.Events.MetroArea>();
+
         // If user has no preferred metro areas, return empty list
-        if (!user.PreferredMetroAreaIds.Any())
+        if (!currentMetroAreas.Any())
         {
             return Result<IReadOnlyList<MetroAreaDto>>.Success(new List<MetroAreaDto>());
         }
 
-        // Get metro area details for user's preferred metros
-        var metroAreas = await _dbContext.MetroAreas
-            .Where(m => user.PreferredMetroAreaIds.Contains(m.Id))
+        // Map loaded entities to DTOs (already have full data)
+        var dtos = currentMetroAreas
             .OrderBy(m => m.State)
             .ThenBy(m => m.Name)
-            .ToListAsync(cancellationToken);
-
-        var dtos = metroAreas.Select(m => _mapper.Map<MetroAreaDto>(m)).ToList();
+            .Select(m => _mapper.Map<MetroAreaDto>(m))
+            .ToList();
 
         return Result<IReadOnlyList<MetroAreaDto>>.Success(dtos);
     }

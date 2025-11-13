@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { MapPin, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { MapPin, Check } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
+import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
@@ -13,9 +14,10 @@ import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
 /**
  * PreferredMetroAreasSection Component
  * Phase 5B: User Preferred Metro Areas
+ * Phase 6A.9: Updated to use TreeDropdown with API data
  *
  * Allows users to select 0-20 metro areas for location-based filtering
- * UI Pattern: State-grouped dropdown with expandable metros
+ * UI Pattern: Tree dropdown with state-grouped metros
  * - State-level selection (state-wide areas)
  * - City-level selection within expanded states
  * - Expand/collapse with [+] and [▼] indicators
@@ -37,7 +39,6 @@ export function PreferredMetroAreasSection() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedMetroAreas, setSelectedMetroAreas] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string>('');
-  const [expandedStates, setExpandedStates] = useState<Set<string>>(new Set());
 
   const sectionState = sectionStates.preferredMetroAreas;
   const isSuccess = sectionState === 'success';
@@ -46,6 +47,51 @@ export function PreferredMetroAreasSection() {
 
   const currentMetroAreas = profile?.preferredMetroAreas || [];
   const { max } = PROFILE_CONSTRAINTS.preferredMetroAreas;
+
+  // Convert metro areas data to tree structure for TreeDropdown
+  // MUST be called before any early returns (Rules of Hooks)
+  const treeNodes = useMemo<TreeNode[]>(() => {
+    const nodes: TreeNode[] = [];
+
+    US_STATES.forEach((state) => {
+      const metrosForState = metroAreasByState.get(state.code) || [];
+
+      if (metrosForState.length === 0) return;
+
+      // Separate state-level and city-level metros
+      const stateMetro = metrosForState.find((m) => m.isStateLevelArea);
+      const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
+
+      const children: TreeNode[] = [];
+
+      // Add state-level metro first if it exists
+      if (stateMetro) {
+        children.push({
+          id: stateMetro.id,
+          label: stateMetro.name,
+          checked: selectedMetroAreas.includes(stateMetro.id),
+        });
+      }
+
+      // Add city-level metros
+      cityMetros.forEach((metro) => {
+        children.push({
+          id: metro.id,
+          label: metro.name,
+          checked: selectedMetroAreas.includes(metro.id),
+        });
+      });
+
+      nodes.push({
+        id: state.code,
+        label: state.name,
+        checked: false, // Parent nodes don't have checkboxes in our design
+        children,
+      });
+    });
+
+    return nodes;
+  }, [metroAreasByState, stateLevelMetros, selectedMetroAreas]);
 
   // Return null if user not authenticated
   if (!user) {
@@ -95,25 +141,21 @@ export function PreferredMetroAreasSection() {
     setIsEditing(true);
     setSelectedMetroAreas([...currentMetroAreas]);
     setValidationError('');
-    // Reset expanded states when entering edit mode
-    setExpandedStates(new Set());
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setSelectedMetroAreas([]);
     setValidationError('');
-    setExpandedStates(new Set());
   };
 
-  const toggleStateExpansion = (stateCode: string) => {
-    const newExpanded = new Set(expandedStates);
-    if (newExpanded.has(stateCode)) {
-      newExpanded.delete(stateCode);
-    } else {
-      newExpanded.add(stateCode);
+  const handleSelectionChange = (newSelectedIds: string[]) => {
+    if (newSelectedIds.length > max) {
+      setValidationError(`You cannot select more than ${max} metro areas`);
+      return;
     }
-    setExpandedStates(newExpanded);
+    setValidationError('');
+    setSelectedMetroAreas(newSelectedIds);
   };
 
   const handleToggleMetroArea = (metroId: string) => {
@@ -137,18 +179,26 @@ export function PreferredMetroAreasSection() {
   const handleSave = async () => {
     if (!user?.userId) return;
 
+    console.log('=== SAVING METRO AREAS ===');
+    console.log('User ID:', user.userId);
+    console.log('Selected Metro Area IDs:', selectedMetroAreas);
+    console.log('Count:', selectedMetroAreas.length);
+
     try {
       await updatePreferredMetroAreas(user.userId, {
         metroAreaIds: selectedMetroAreas,
       });
 
+      console.log('✅ Save successful! Checking updated profile...');
+      console.log('Profile after save:', profile);
+      console.log('Preferred metro areas after save:', profile?.preferredMetroAreas);
+
       // Exit edit mode on success (store will set state to 'success')
       setIsEditing(false);
       setValidationError('');
-      setExpandedStates(new Set());
     } catch (err) {
       // Error handled by store, stay in edit mode for retry
-      console.error('Failed to save preferred metro areas:', err);
+      console.error('❌ Failed to save preferred metro areas:', err);
     }
   };
 
@@ -230,132 +280,21 @@ export function PreferredMetroAreasSection() {
             )}
           </div>
         ) : (
-          // ===== EDIT MODE: STATE-GROUPED DROPDOWN WITH EXPANDABLE METROS =====
+          // ===== EDIT MODE: TREE DROPDOWN =====
           <div className="space-y-3">
-            {/* State-Level Areas First (Statewide selections) */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#8B1538' }}>
-                State-Wide Selections
-              </h4>
-              <div className="space-y-2">
-                {stateLevelMetros.map((metro) => {
-                  const isSelected = selectedMetroAreas.includes(metro.id);
-                  return (
-                    <label
-                      key={metro.id}
-                      className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer transition-colors ${
-                        isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                      style={{
-                        background: isSelected ? '#FFE8CC' : 'white',
-                        borderColor: isSelected ? '#FF7900' : '#e2e8f0',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleMetroArea(metro.id)}
-                        disabled={isSaving}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        aria-label={`Select all of ${metro.name}`}
-                      />
-                      <span className="flex-1 text-sm font-medium">All {metro.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Select metro areas by expanding states and checking your preferred locations
+            </p>
 
-            {/* Divider */}
-            <div className="h-px bg-gray-200 my-4" />
-
-            {/* City-Level Areas (Grouped by State with Expand/Collapse) */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#8B1538' }}>
-                City Metro Areas
-              </h4>
-              <div className="space-y-2">
-                {US_STATES.map((state) => {
-                  const metrosForState = metroAreasByState.get(state.code) || [];
-                  // Filter to only city-level metros (not state-level)
-                  const cityMetros = metrosForState.filter((m) => !isStateLevelArea(m.id));
-
-                  if (cityMetros.length === 0) return null;
-
-                  const isExpanded = expandedStates.has(state.code);
-                  const selectedCountInState = selectedMetroAreas.filter(
-                    (id) => metrosForState.map((m) => m.id).includes(id) && !isStateLevelArea(id)
-                  ).length;
-
-                  return (
-                    <div key={state.code} className="border rounded-md overflow-hidden" style={{ borderColor: '#e2e8f0' }}>
-                      {/* State Collapse/Expand Header */}
-                      <button
-                        onClick={() => toggleStateExpansion(state.code)}
-                        disabled={isSaving}
-                        className={`w-full flex items-center gap-2 p-3 text-left transition-colors ${
-                          isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-                        }`}
-                        aria-expanded={isExpanded}
-                        aria-controls={`metros-${state.code}`}
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" style={{ color: '#FF7900' }} />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" style={{ color: '#FF7900' }} />
-                        )}
-                        <span className="flex-1 font-medium text-sm">{state.name}</span>
-                        {selectedCountInState > 0 && (
-                          <span
-                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                            style={{ background: '#FFE8CC', color: '#8B1538' }}
-                          >
-                            {selectedCountInState} selected
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Expandable Metro Area List */}
-                      {isExpanded && (
-                        <div
-                          id={`metros-${state.code}`}
-                          className="space-y-2 p-3 bg-gray-50 border-t"
-                          style={{ borderColor: '#e2e8f0' }}
-                        >
-                          {cityMetros.map((metro) => {
-                            const isSelected = selectedMetroAreas.includes(metro.id);
-                            return (
-                              <label
-                                key={metro.id}
-                                className={`flex items-start gap-3 p-2 rounded-md border cursor-pointer transition-colors ${
-                                  isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                                style={{
-                                  background: isSelected ? '#FFE8CC' : 'white',
-                                  borderColor: isSelected ? '#FF7900' : '#e2e8f0',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleToggleMetroArea(metro.id)}
-                                  disabled={isSaving}
-                                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                  aria-label={`${metro.name}, ${metro.state}`}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium">{metro.name}</div>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <TreeDropdown
+              nodes={treeNodes}
+              selectedIds={selectedMetroAreas}
+              onSelectionChange={handleSelectionChange}
+              placeholder={`Select up to ${max} metro areas`}
+              maxSelections={max}
+              disabled={isSaving}
+              className="w-full"
+            />
 
             {/* Selection counter and validation */}
             <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: '#e2e8f0' }}>

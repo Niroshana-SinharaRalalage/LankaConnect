@@ -142,7 +142,55 @@ Each event can include multiple **passes** or **tickets**, each with unique pric
 
 ---
 
-## 12. Future Enhancements (Optional)
+## 12. Event Notification Recipients (Email Group Management)
+
+- During event creation, the organizer can specify one or more email groups (lists of email addresses) that should receive notifications related to the event.
+
+  - Example: The organizer enters friends@community.org, volunteers@community.org, or manually adds individual emails separated by commas.
+
+  - The system stores these emails under the event configuration.
+
+- When sending notifications (such as event announcements, updates, or reminders), the system should:
+
+  - Retrieve the email group specified during event creation.
+
+  - Retrieve all registered participants’ emails for that event.
+
+  - Combine both lists, remove duplicates, and generate a consolidated email recipient list.
+
+  - Send notifications to the consolidated list.
+
+- Notifications may include:
+
+  - Event updates or changes.
+
+  - Reminders (e.g., “Event happening tomorrow”).
+
+  - Cancellation or rescheduling notices.
+
+  - Post-event thank-you messages.
+
+- The feature should support:
+
+  - Manual updates to the email group (add/remove addresses).
+
+  - Import from file (CSV of email addresses).
+
+  - Validation to ensure all email addresses are properly formatted.
+
+  - Optional opt-out mechanism for recipients who don’t want further notifications.
+
+- Technical Considerations:
+
+  - Use SendGrid or a similar service to handle large batch email sends.
+
+  - Maintain an email delivery log (success/failure).
+
+  - Handle unsubscribe preferences in compliance with email standards (CAN-SPAM).
+
+---
+
+## 13. Future Enhancements (Optional)
 - Event check-in via QR code scanning.
 - Event photo sharing and gallery integration.
 - Post-event feedback form and rating system.

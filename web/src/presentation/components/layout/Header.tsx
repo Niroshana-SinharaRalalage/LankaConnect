@@ -9,6 +9,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
+import { User, LogOut } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -21,14 +22,27 @@ export interface HeaderProps {
  * Styling: Sri Lankan flag colors (Maroon #8B1538, Saffron #FF7900)
  */
 export function Header({ className = '' }: HeaderProps) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, clearAuth } = useAuthStore();
   const router = useRouter();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
+  const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch unread notifications only when authenticated
   const { data: unreadNotifications = [] } = useUnreadNotifications({
     enabled: isAuthenticated,
   });
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   /**
    * Helper to get user initials from fullName
@@ -121,7 +135,7 @@ export function Header({ className = '' }: HeaderProps) {
           {/* Auth Section */}
           <div className="flex items-center gap-4">
             {isAuthenticated && user ? (
-              // Authenticated: Show notification bell and user avatar
+              // Authenticated: Show notification bell and user avatar with dropdown
               <div className="flex items-center gap-3">
                 {/* Notification Bell */}
                 <div className="relative">
@@ -136,28 +150,85 @@ export function Header({ className = '' }: HeaderProps) {
                   />
                 </div>
 
-                {/* User Name */}
-                <span className="text-sm font-medium text-[#333] hidden lg:inline">
-                  {user.fullName}
-                </span>
+                {/* User Menu Dropdown */}
+                <div className="relative" ref={userMenuRef}>
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
+                    {/* User Avatar */}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                      style={{
+                        background: 'linear-gradient(135deg, #FF7900, #8B1538)',
+                      }}
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      title={user.fullName}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setUserMenuOpen(!userMenuOpen);
+                        }
+                      }}
+                    >
+                      {getUserInitials(user.fullName)}
+                    </div>
 
-                {/* User Avatar */}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    background: 'linear-gradient(135deg, #FF7900, #8B1538)',
-                  }}
-                  onClick={() => router.push('/profile')}
-                  title={user.fullName}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      router.push('/profile');
-                    }
-                  }}
-                >
-                  {getUserInitials(user.fullName)}
+                    {/* User Name */}
+                    <span className="text-sm font-medium text-[#333] hidden lg:inline">
+                      {user.fullName}
+                    </span>
+                  </div>
+
+                  {/* Dropdown Menu */}
+                  {userMenuOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-48 rounded-lg shadow-lg overflow-hidden z-50"
+                      style={{
+                        background: 'white',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    >
+                      {/* User Info Section */}
+                      <div className="px-4 py-3 border-b border-gray-200" style={{ background: '#f7fafc' }}>
+                        <p className="text-sm font-medium text-[#333]">{user.fullName}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+
+                      {/* Profile Button */}
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          router.push('/profile');
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <User className="w-4 h-4" style={{ color: '#FF7900' }} />
+                        <span style={{ color: '#2d3748' }}>Profile</span>
+                      </button>
+
+                      <div style={{ borderTop: '1px solid #e2e8f0' }}></div>
+
+                      {/* Logout Button */}
+                      <button
+                        onClick={async () => {
+                          setUserMenuOpen(false);
+                          try {
+                            // Call logout endpoint if needed
+                            const { authRepository } = await import('@/infrastructure/api/repositories/auth.repository');
+                            await authRepository.logout();
+                          } catch (error) {
+                            // Silently handle logout errors
+                          } finally {
+                            clearAuth();
+                            router.push('/login');
+                          }
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
+                        <span style={{ color: '#2d3748' }}>Logout</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

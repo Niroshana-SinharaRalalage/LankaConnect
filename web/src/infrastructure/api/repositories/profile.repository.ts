@@ -138,6 +138,7 @@ export class ProfileRepository {
   /**
    * Update user's preferred metro areas for location-based filtering
    * Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
+   * Phase 6A.9 FIX: Backend returns 204 No Content, so we reload profile after update
    * @param userId User GUID
    * @param metroAreas Metro area IDs (0-20 items, GUIDs)
    * @returns Promise resolving to updated UserProfile
@@ -146,11 +147,15 @@ export class ProfileRepository {
     userId: string,
     request: UpdatePreferredMetroAreasRequest
   ): Promise<UserProfile> {
-    const response = await apiClient.put<UserProfile>(
+    // PUT request returns 204 No Content on success
+    await apiClient.put<void>(
       `${this.basePath}/${userId}/preferred-metro-areas`,
       request
     );
-    return response;
+
+    // Reload full profile to get updated preferredMetroAreas
+    const updatedProfile = await this.getProfile(userId);
+    return updatedProfile;
   }
 
   /**

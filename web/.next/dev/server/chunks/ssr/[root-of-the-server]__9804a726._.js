@@ -688,12 +688,16 @@ class ProfileRepository {
     /**
    * Update user's preferred metro areas for location-based filtering
    * Phase 5B: User Preferred Metro Areas - Expanded to 20 max limit
+   * Phase 6A.9 FIX: Backend returns 204 No Content, so we reload profile after update
    * @param userId User GUID
    * @param metroAreas Metro area IDs (0-20 items, GUIDs)
    * @returns Promise resolving to updated UserProfile
    */ async updatePreferredMetroAreas(userId, request) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${userId}/preferred-metro-areas`, request);
-        return response;
+        // PUT request returns 204 No Content on success
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${userId}/preferred-metro-areas`, request);
+        // Reload full profile to get updated preferredMetroAreas
+        const updatedProfile = await this.getProfile(userId);
+        return updatedProfile;
     }
     /**
    * Get user's preferred metro areas with full details
@@ -5160,8 +5164,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$map$2d$pin$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__MapPin$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/map-pin.js [app-ssr] (ecmascript) <export default as MapPin>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$check$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Check$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/check.js [app-ssr] (ecmascript) <export default as Check>");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-down.js [app-ssr] (ecmascript) <export default as ChevronDown>");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-right.js [app-ssr] (ecmascript) <export default as ChevronRight>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/components/ui/Card.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/components/ui/Button.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/store/useAuthStore.ts [app-ssr] (ecmascript)");
@@ -5188,7 +5190,6 @@ function PreferredMetroAreasSection() {
     const [isEditing, setIsEditing] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [selectedMetroAreas, setSelectedMetroAreas] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [validationError, setValidationError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
-    const [expandedStates, setExpandedStates] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(new Set());
     const sectionState = sectionStates.preferredMetroAreas;
     const isSuccess = sectionState === 'success';
     const isError = sectionState === 'error';
@@ -5217,7 +5218,7 @@ function PreferredMetroAreasSection() {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 61,
+                                    lineNumber: 62,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -5227,26 +5228,26 @@ function PreferredMetroAreasSection() {
                                     children: "Preferred Metro Areas"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 62,
+                                    lineNumber: 63,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 60,
+                            lineNumber: 61,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                             children: "Loading metro areas..."
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 64,
+                            lineNumber: 65,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 59,
+                    lineNumber: 60,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5259,23 +5260,23 @@ function PreferredMetroAreasSection() {
                             }
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 68,
+                            lineNumber: 69,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 67,
+                        lineNumber: 68,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 66,
+                    lineNumber: 67,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-            lineNumber: 58,
+            lineNumber: 59,
             columnNumber: 7
         }, this);
     }
@@ -5296,7 +5297,7 @@ function PreferredMetroAreasSection() {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 81,
+                                lineNumber: 82,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -5306,18 +5307,18 @@ function PreferredMetroAreasSection() {
                                 children: "Preferred Metro Areas"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 82,
+                                lineNumber: 83,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 80,
+                        lineNumber: 81,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 79,
+                    lineNumber: 80,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5330,18 +5331,18 @@ function PreferredMetroAreasSection() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 86,
+                        lineNumber: 87,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 85,
+                    lineNumber: 86,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-            lineNumber: 78,
+            lineNumber: 79,
             columnNumber: 7
         }, this);
     }
@@ -5351,23 +5352,19 @@ function PreferredMetroAreasSection() {
             ...currentMetroAreas
         ]);
         setValidationError('');
-        // Reset expanded states when entering edit mode
-        setExpandedStates(new Set());
     };
     const handleCancel = ()=>{
         setIsEditing(false);
         setSelectedMetroAreas([]);
         setValidationError('');
-        setExpandedStates(new Set());
     };
-    const toggleStateExpansion = (stateCode)=>{
-        const newExpanded = new Set(expandedStates);
-        if (newExpanded.has(stateCode)) {
-            newExpanded.delete(stateCode);
-        } else {
-            newExpanded.add(stateCode);
+    const handleSelectionChange = (newSelectedIds)=>{
+        if (newSelectedIds.length > max) {
+            setValidationError(`You cannot select more than ${max} metro areas`);
+            return;
         }
-        setExpandedStates(newExpanded);
+        setValidationError('');
+        setSelectedMetroAreas(newSelectedIds);
     };
     const handleToggleMetroArea = (metroId)=>{
         setSelectedMetroAreas((prev)=>{
@@ -5398,7 +5395,6 @@ function PreferredMetroAreasSection() {
             // Exit edit mode on success (store will set state to 'success')
             setIsEditing(false);
             setValidationError('');
-            setExpandedStates(new Set());
         } catch (err) {
             // Error handled by store, stay in edit mode for retry
             console.error('Failed to save preferred metro areas:', err);
@@ -5413,6 +5409,43 @@ function PreferredMetroAreasSection() {
         const metro = getMetroById(id);
         return metro?.isStateLevelArea ?? false;
     };
+    // Convert metro areas data to tree structure for TreeDropdown
+    const treeNodes = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["US_STATES"].map((state)=>{
+            const metrosForState = metroAreasByState.get(state.code) || [];
+            if (metrosForState.length === 0) return null;
+            // Separate state-level and city-level metros
+            const stateMetro = metrosForState.find((m)=>m.isStateLevelArea);
+            const cityMetros = metrosForState.filter((m)=>!m.isStateLevelArea);
+            const children = [];
+            // Add state-level metro first if it exists
+            if (stateMetro) {
+                children.push({
+                    id: stateMetro.id,
+                    label: stateMetro.name,
+                    checked: selectedMetroAreas.includes(stateMetro.id)
+                });
+            }
+            // Add city-level metros
+            cityMetros.forEach((metro)=>{
+                children.push({
+                    id: metro.id,
+                    label: metro.name,
+                    checked: selectedMetroAreas.includes(metro.id)
+                });
+            });
+            return {
+                id: state.code,
+                label: state.name,
+                checked: false,
+                children
+            };
+        }).filter((node)=>node !== null);
+    }, [
+        metroAreasByState,
+        stateLevelMetros,
+        selectedMetroAreas
+    ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
         role: "region",
         "aria-label": "Preferred Metro Areas",
@@ -5432,7 +5465,7 @@ function PreferredMetroAreasSection() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                        lineNumber: 171,
+                                        lineNumber: 208,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -5442,13 +5475,13 @@ function PreferredMetroAreasSection() {
                                         children: "Preferred Metro Areas"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                        lineNumber: 172,
+                                        lineNumber: 209,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 170,
+                                lineNumber: 207,
                                 columnNumber: 11
                             }, this),
                             !isEditing && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -5463,13 +5496,13 @@ function PreferredMetroAreasSection() {
                                 children: "Edit"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 175,
+                                lineNumber: 212,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 169,
+                        lineNumber: 206,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
@@ -5480,13 +5513,13 @@ function PreferredMetroAreasSection() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 186,
+                        lineNumber: 223,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                lineNumber: 168,
+                lineNumber: 205,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5510,20 +5543,20 @@ function PreferredMetroAreasSection() {
                                     ]
                                 }, metroId, true, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 200,
+                                    lineNumber: 237,
                                     columnNumber: 21
                                 }, this) : null;
                             })
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 196,
+                            lineNumber: 233,
                             columnNumber: 15
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "text-sm text-muted-foreground italic",
                             children: "No metro areas selected - Click Edit to add your preferred locations"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 212,
+                            lineNumber: 249,
                             columnNumber: 15
                         }, this),
                         isSuccess && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5536,20 +5569,20 @@ function PreferredMetroAreasSection() {
                                     className: "h-4 w-4"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 220,
+                                    lineNumber: 257,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                     children: "Preferred metro areas saved successfully!"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 221,
+                                    lineNumber: 258,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 219,
+                            lineNumber: 256,
                             columnNumber: 15
                         }, this),
                         isError && error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5558,13 +5591,13 @@ function PreferredMetroAreasSection() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 227,
+                            lineNumber: 264,
                             columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 194,
+                    lineNumber: 231,
                     columnNumber: 11
                 }, this) : // ===== EDIT MODE: STATE-GROUPED DROPDOWN WITH EXPANDABLE METROS =====
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5580,7 +5613,7 @@ function PreferredMetroAreasSection() {
                                     children: "State-Wide Selections"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 237,
+                                    lineNumber: 274,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5600,46 +5633,43 @@ function PreferredMetroAreasSection() {
                                                     onChange: ()=>handleToggleMetroArea(metro.id),
                                                     disabled: isSaving,
                                                     className: "h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary",
-                                                    "aria-label": `Select all of ${metro.name}`
+                                                    "aria-label": `Select ${metro.name}`
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                    lineNumber: 254,
+                                                    lineNumber: 291,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                     className: "flex-1 text-sm font-medium",
-                                                    children: [
-                                                        "All ",
-                                                        metro.name
-                                                    ]
-                                                }, void 0, true, {
+                                                    children: metro.name
+                                                }, void 0, false, {
                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                    lineNumber: 262,
+                                                    lineNumber: 299,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, metro.id, true, {
                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                            lineNumber: 244,
+                                            lineNumber: 281,
                                             columnNumber: 21
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 240,
+                                    lineNumber: 277,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 236,
+                            lineNumber: 273,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "h-px bg-gray-200 my-4"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 270,
+                            lineNumber: 307,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5652,7 +5682,7 @@ function PreferredMetroAreasSection() {
                                     children: "City Metro Areas"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 274,
+                                    lineNumber: 311,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5677,23 +5707,23 @@ function PreferredMetroAreasSection() {
                                                     "aria-expanded": isExpanded,
                                                     "aria-controls": `metros-${state.code}`,
                                                     children: [
-                                                        isExpanded ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
+                                                        isExpanded ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ChevronDown, {
                                                             className: "h-4 w-4",
                                                             style: {
                                                                 color: '#FF7900'
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                            lineNumber: 303,
+                                                            lineNumber: 340,
                                                             columnNumber: 27
-                                                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
+                                                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ChevronRight, {
                                                             className: "h-4 w-4",
                                                             style: {
                                                                 color: '#FF7900'
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                            lineNumber: 305,
+                                                            lineNumber: 342,
                                                             columnNumber: 27
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5701,7 +5731,7 @@ function PreferredMetroAreasSection() {
                                                             children: state.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                            lineNumber: 307,
+                                                            lineNumber: 344,
                                                             columnNumber: 25
                                                         }, this),
                                                         selectedCountInState > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5716,13 +5746,13 @@ function PreferredMetroAreasSection() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                            lineNumber: 309,
+                                                            lineNumber: 346,
                                                             columnNumber: 27
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                    lineNumber: 293,
+                                                    lineNumber: 330,
                                                     columnNumber: 23
                                                 }, this),
                                                 isExpanded && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5749,7 +5779,7 @@ function PreferredMetroAreasSection() {
                                                                     "aria-label": `${metro.name}, ${metro.state}`
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                                    lineNumber: 338,
+                                                                    lineNumber: 375,
                                                                     columnNumber: 33
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5759,42 +5789,42 @@ function PreferredMetroAreasSection() {
                                                                         children: metro.name
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                                        lineNumber: 347,
+                                                                        lineNumber: 384,
                                                                         columnNumber: 35
                                                                     }, this)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                                    lineNumber: 346,
+                                                                    lineNumber: 383,
                                                                     columnNumber: 33
                                                                 }, this)
                                                             ]
                                                         }, metro.id, true, {
                                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                            lineNumber: 328,
+                                                            lineNumber: 365,
                                                             columnNumber: 31
                                                         }, this);
                                                     })
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                                    lineNumber: 320,
+                                                    lineNumber: 357,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, state.code, true, {
                                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                            lineNumber: 291,
+                                            lineNumber: 328,
                                             columnNumber: 21
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 277,
+                                    lineNumber: 314,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 273,
+                            lineNumber: 310,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5813,7 +5843,7 @@ function PreferredMetroAreasSection() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 362,
+                                    lineNumber: 399,
                                     columnNumber: 15
                                 }, this),
                                 validationError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5822,13 +5852,13 @@ function PreferredMetroAreasSection() {
                                     children: validationError
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 367,
+                                    lineNumber: 404,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 361,
+                            lineNumber: 398,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5844,7 +5874,7 @@ function PreferredMetroAreasSection() {
                                     children: isSaving ? 'Saving...' : 'Save Changes'
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 375,
+                                    lineNumber: 412,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -5859,30 +5889,30 @@ function PreferredMetroAreasSection() {
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 383,
+                                    lineNumber: 420,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 374,
+                            lineNumber: 411,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 234,
+                    lineNumber: 271,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                lineNumber: 191,
+                lineNumber: 228,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-        lineNumber: 167,
+        lineNumber: 204,
         columnNumber: 5
     }, this);
 }

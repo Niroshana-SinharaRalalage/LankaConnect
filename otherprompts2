@@ -203,6 +203,7 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
+  Don't forget to follow these best practices
     1. Don't forget to follow UI/UX best practices.
     2. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
     3. Don't forget to consult architect when needed.
@@ -224,3 +225,52 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   7. ✅ Dashboard (/dashboard)
   8. ✅ Profile (/profile)
   9. ✅ 404 Page (/_not-found)
+
+  ------------------------------------
+  1. Why only 19, other US metro areas displayed? There are more metro area in the USA , is there any reason to display only a few?
+  2. "You cannot select more than 10 metro areas" why is this limitation?
+  3. After hitting the save button it says "Request failed with status code 400"
+  4. For a florida user, will he see "Florida Metro Areas", "Other US Metro Areas" and "State-Level Areas"?
+
+  What are these fucking asnwers?
+   | #   | Question                    | Answer                                      | Status      | Phase         |
+  |-----|-----------------------------|---------------------------------------------|-------------|---------------|
+  | 1   | 400 Error on Save?          | Metro ID mismatch (needs DB check)          | 🔴 BLOCKED  | Investigation | - Find the root cause and fix this.
+  | 2   | Why only 19 metros?         | MVP design - South Asian population focus   | ✅ By Design | Phase 5B      |  - Its my decision not yours. You need to add all the metro areas and all the states in to the database.      
+  | 3   | Why max 10 limit?           | UX + Performance + Product decision         | ✅ By Design | Phase 5B      |  - again, you can't decide it, You do what I ask you to do. Let's increase this limit to 20    
+  | 4a  | Newsletter integration?     | NOT IMPLEMENTED                             | ⏳ Pending   | Phase 5C      |  - Bullshit, I thought you are working on these. I asked you to implement these and you said you already have TODOs for these. Go back and check the history. Your primary object should be this integration. Don't wast my time, if you are not clear what needs to be done just ask.    
+  | 4b  | Community Activity metros?  | NOT IMPLEMENTED                             | ⏳ Pending   | Phase 5C      |  - I thought you are working on these. Your primary object should be this integration. Don't wast my time, if you are not clear what needs to be done just ask.      
+  | 4c  | Cached metros in dropdowns? | NOT IMPLEMENTED                             | ⏳ Pending   | Phase 5C      |  - I thought you are working on these. Your primary object should be this integration. Don't wast my time, if you are not clear what needs to be done just ask.     
+  | 5   | Florida user grouping?      | No "Florida Group" - falls under "Other US" | ✅ By Design | Phase 5B      |  - What the fuck is this? if the user is from Florida, he should be displayed "Florida Metro Areas", "Other US metro areas", and "State-Level Areas". If the user is from New York, "New York Metro Areas", "Other US metro areas", and "State-Level Areas". The system should be able to intelegent enough to find out user location by the IP address or his/her location/address and display. How about this? Display all the States in a drop down. Each state is a check box. Other than the check box there is a + sign to expand and display all the metro area in that state with check boxes as below:
+  ▼ Select States & Metros
+▢ California [+]
+    ▢ Los Angeles Metro
+    ▢ San Francisco Bay Area
+    ▢ San Diego Metro
+
+▢ Texas [+]
+    ▢ Dallas–Fort Worth Metroplex
+    ▢ Houston Metro
+    ▢ Austin Metro
+
+▢ Florida [+]
+    ▢ Miami–Fort Lauderdale
+    ▢ Orlando Metro
+    ▢ Tampa Bay Area
+
+▢ New York [+]
+    ▢ New York City Metro
+    ▢ Buffalo–Niagara Falls
+    ▢ Albany Metro
+
+Dev Tool - Network tab for 400 error:
+Request URL
+https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/users/38012ea6-1248-47aa-a461-37c2cc82bf3a/preferred-metro-areas
+Request Method
+PUT
+Status Code
+400 Bad Request
+Remote Address
+172.193.80.217:443
+Referrer Policy
+strict-origin-when-cross-origin

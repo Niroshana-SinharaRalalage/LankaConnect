@@ -22,25 +22,13 @@ public static class UserSeeder
         {
             // Check if admin user already exists (more specific than AnyAsync)
             // This allows seeding admin users even if test/old users exist in database
-            System.Console.WriteLine("[UserSeeder] Checking if admin@lankaconnect.com already exists in database...");
-
             var adminExists = await context.Users
                 .AnyAsync(u => u.Email.Value == "admin@lankaconnect.com");
 
-            System.Console.WriteLine($"[UserSeeder] Admin existence check result: {adminExists}");
-
-            // CRITICAL: Temporary override - force seeding every time to diagnose persistence bug
-            // if (adminExists)
-            // {
-            //     System.Console.WriteLine("[UserSeeder] Admin user already exists, skipping seed");
-            //     return; // Admin users already seeded
-            // }
-
-            System.Console.WriteLine("[UserSeeder] Admin user does not exist, proceeding with seeding");
-
-            // Debug: Count total users in database
-            var totalUsersInDb = await context.Users.CountAsync();
-            System.Console.WriteLine($"[UserSeeder] Total users currently in database: {totalUsersInDb}");
+            if (adminExists)
+            {
+                return; // Admin users already seeded
+            }
 
             var users = new List<User>();
 
@@ -151,22 +139,12 @@ public static class UserSeeder
             // Add users to context and save
             if (users.Any())
             {
-                System.Console.WriteLine($"[UserSeeder] Adding {users.Count} users to context");
                 await context.Users.AddRangeAsync(users);
-
-                System.Console.WriteLine("[UserSeeder] Calling SaveChangesAsync()");
-                int savedCount = await context.SaveChangesAsync();
-                System.Console.WriteLine($"[UserSeeder] SaveChangesAsync() completed, {savedCount} changes saved to database");
-            }
-            else
-            {
-                System.Console.WriteLine("[UserSeeder] No users to seed");
+                await context.SaveChangesAsync();
             }
         }
         catch (Exception ex)
         {
-            System.Console.WriteLine($"[UserSeeder] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
-            System.Console.WriteLine($"[UserSeeder] Stack trace: {ex.StackTrace}");
             throw new InvalidOperationException($"Error seeding users: {ex.Message}", ex);
         }
     }

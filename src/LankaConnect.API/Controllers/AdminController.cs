@@ -13,7 +13,6 @@ namespace LankaConnect.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-[Authorize(Policy = "RequireAdmin")]
 public class AdminController : BaseController<AdminController>
 {
     private readonly AppDbContext _context;
@@ -40,9 +39,11 @@ public class AdminController : BaseController<AdminController>
     /// Manually trigger database seeding (metro areas, users, events)
     /// ONLY available in Development and Staging environments
     /// Phase 6A.9: Allows on-demand seeding to unblock testing
+    /// NOTE: No authentication required to allow initial database population
     /// </summary>
     /// <returns>Success message with seeding results</returns>
     [HttpPost("seed")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
@@ -96,6 +97,7 @@ public class AdminController : BaseController<AdminController>
     /// </summary>
     /// <returns>Environment information</returns>
     [HttpGet("environment")]
+    [Authorize(Policy = "RequireAdmin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult GetEnvironment()
     {

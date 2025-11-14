@@ -47,7 +47,7 @@ public class AdminController : BaseController<AdminController>
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SeedDatabase()
+    public async Task<IActionResult> SeedDatabase([FromQuery] bool force = false)
     {
         // Only allow seeding in Development or Staging environments
         if (!_environment.IsDevelopment() && !_environment.IsStaging())
@@ -62,13 +62,23 @@ public class AdminController : BaseController<AdminController>
 
         try
         {
-            Logger.LogInformation("Admin {AdminUserId} triggering database seeding in {Environment} environment",
+            Logger.LogInformation("Admin {AdminUserId} triggering database seeding in {Environment} environment (force: {Force})",
                 User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "unknown",
-                _environment.EnvironmentName);
+                _environment.EnvironmentName,
+                force);
 
             var dbInitializerLogger = _loggerFactory.CreateLogger<DbInitializer>();
             var dbInitializer = new DbInitializer(_context, dbInitializerLogger, _passwordHashingService);
-            await dbInitializer.SeedAsync();
+
+            if (force)
+            {
+                Logger.LogWarning("Force reseed requested - clearing existing data");
+                await dbInitializer.ReseedAsync();
+            }
+            else
+            {
+                await dbInitializer.SeedAsync();
+            }
 
             Logger.LogInformation("Database seeding completed successfully");
 
@@ -76,7 +86,8 @@ public class AdminController : BaseController<AdminController>
             {
                 message = "Database seeding completed successfully",
                 environment = _environment.EnvironmentName,
-                timestamp = DateTime.UtcNow
+                timestamp = DateTime.UtcNow,
+                forceReseed = force
             });
         }
         catch (Exception ex)

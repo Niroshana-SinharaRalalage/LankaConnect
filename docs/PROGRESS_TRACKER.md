@@ -1,9 +1,54 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 Final Fixes - Data Consistency & API Integration ✅*
+*Last Updated: 2025-11-14 (Current Session) - Admin Seeding Bug Fix & Testing ⏳*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - PHASE 6A.9 DEPLOYMENT UNBLOCKED ✅
+## 🎯 Current Session Status - DEBUGGING USER SEEDING PERSISTENCE ⏳
+
+### Session: Admin Seeding Persistence Fix - Users Not Saving to Database (2025-11-14)
+
+**CRITICAL ISSUE UNDER INVESTIGATION**: User seeding endpoint returns HTTP 200 OK but users are NOT being persisted to database
+
+**Status**: 🔧 In Progress - Deployment #115 in progress with error handling improvements
+
+**Problem Reported**:
+- POST `/api/Admin/seed?seedType=users` returns HTTP 200 with success message
+- However, subsequent login attempts fail with "Invalid email or password"
+- All 4 test users (admin, admin1, organizer, user) fail to login
+- Indicates users are not actually being saved to database despite 200 OK response
+
+**Root Cause Analysis**:
+1. **Identified Issue**: `DbInitializer.SeedUsersAsync()` checks if ANY users exist (line 61)
+2. **Problem**: If any incomplete/partial user data exists, seeding is skipped silently
+3. **Potential Cause**: User records may be added to context but not committed to database due to:
+   - Transaction not completing properly
+   - Database context isolation between requests
+   - SaveChangesAsync() not actually persisting to database
+
+**Solution Applied**:
+1. Added try-catch wrapper to `UserSeeder.SeedAsync()` for better error reporting
+2. Added explicit SaveChangesAsync() capture to log number of records saved
+3. Will reveal actual database errors instead of silent failures
+
+**Commits**:
+- `57ffd27` - "fix(seeding): Add error handling and validation to UserSeeder to debug persistence issues"
+- `2eaf31d` - "fix(seeding): Fix UserSeeder namespace qualification to resolve compile errors"
+
+**Build Status**:
+- ✅ Local build: 0 errors
+- ⏳ GitHub Actions Run #115: In progress
+- Expected: Deployment will complete in ~5-10 minutes
+
+**Next Steps**:
+1. Wait for deployment to complete
+2. Call POST `/api/Admin/seed?seedType=users` again
+3. Test login with `admin@lankaconnect.com / Admin@123`
+4. If still failing, check API logs for actual error messages from UserSeeder
+5. If successful, proceed with admin approval workflow testing
+
+---
+
+## 🎯 Previous Session Status - PHASE 6A.9 DEPLOYMENT UNBLOCKED ✅
 
 ### Session: Phase 6A.9 Deployment Fix - AdminController Compilation Errors (2025-11-14)
 

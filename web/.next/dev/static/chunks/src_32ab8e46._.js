@@ -963,7 +963,8 @@ const useProfileStore = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node
         // Validates against max 20 limit (expanded from 10)
         updatePreferredMetroAreas: async (userId, metroAreas)=>{
             // Frontend validation: Check max 20 limit
-            if (metroAreas.metroAreaIds.length > 20) {
+            // Phase 6A.9 FIX: Property name changed to PascalCase to match backend
+            if (metroAreas.MetroAreaIds.length > 20) {
                 set((state)=>({
                         error: 'Cannot select more than 20 metro areas',
                         sectionStates: {
@@ -3003,16 +3004,57 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
         }
         setExpandedNodes(newExpanded);
     };
+    /**
+   * Recursively collect all child node IDs
+   */ const getAllChildIds = (node)=>{
+        const ids = [];
+        if (node.children) {
+            for (const child of node.children){
+                ids.push(child.id);
+                ids.push(...getAllChildIds(child));
+            }
+        }
+        return ids;
+    };
+    /**
+   * Find a node by ID in the tree
+   */ const findNodeById = (nodeId, searchNodes = nodes)=>{
+        for (const node of searchNodes){
+            if (node.id === nodeId) {
+                return node;
+            }
+            if (node.children) {
+                const found = findNodeById(nodeId, node.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
     const toggleSelection = (nodeId)=>{
         const newSelected = new Set(selectedIds);
+        const node = findNodeById(nodeId);
+        if (!node) return;
+        const hasChildren = node.children && node.children.length > 0;
         if (newSelected.has(nodeId)) {
+            // Unchecking: remove node and all children
             newSelected.delete(nodeId);
-        } else {
-            // Check max selections
-            if (maxSelections && newSelected.size >= maxSelections) {
-                return; // Don't add if max reached
+            if (hasChildren) {
+                const childIds = getAllChildIds(node);
+                childIds.forEach((id)=>newSelected.delete(id));
             }
-            newSelected.add(nodeId);
+        } else {
+            // Checking: add node and all children
+            const idsToAdd = [
+                nodeId
+            ];
+            if (hasChildren) {
+                idsToAdd.push(...getAllChildIds(node));
+            }
+            // Check max selections
+            if (maxSelections && newSelected.size + idsToAdd.length > maxSelections) {
+                return; // Don't add if max would be exceeded
+            }
+            idsToAdd.forEach((id)=>newSelected.add(id));
         }
         onSelectionChange(Array.from(newSelected));
     };
@@ -3043,7 +3085,7 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                lineNumber: 123,
+                                lineNumber: 170,
                                 columnNumber: 17
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
                                 className: "h-4 w-4",
@@ -3052,18 +3094,18 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                lineNumber: 125,
+                                lineNumber: 172,
                                 columnNumber: 17
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                            lineNumber: 114,
+                            lineNumber: 161,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                             className: "w-5"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                            lineNumber: 129,
+                            lineNumber: 176,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -3081,7 +3123,7 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                    lineNumber: 137,
+                                    lineNumber: 184,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3089,7 +3131,7 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                     children: node.label
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                    lineNumber: 147,
+                                    lineNumber: 194,
                                     columnNumber: 13
                                 }, this),
                                 isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$check$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Check$3e$__["Check"], {
@@ -3099,32 +3141,32 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                    lineNumber: 149,
+                                    lineNumber: 196,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                            lineNumber: 133,
+                            lineNumber: 180,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                    lineNumber: 108,
+                    lineNumber: 155,
                     columnNumber: 9
                 }, this),
                 hasChildren && isExpanded && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     children: node.children.map((child)=>renderTreeNode(child, level + 1))
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                    lineNumber: 156,
+                    lineNumber: 203,
                     columnNumber: 11
                 }, this)
             ]
         }, node.id, true, {
             fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-            lineNumber: 107,
+            lineNumber: 154,
             columnNumber: 7
         }, this);
     };
@@ -3150,7 +3192,7 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                         children: displayText
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                        lineNumber: 184,
+                        lineNumber: 231,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
@@ -3160,13 +3202,13 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                         }
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                        lineNumber: 187,
+                        lineNumber: 234,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                lineNumber: 173,
+                lineNumber: 220,
                 columnNumber: 7
             }, this),
             isOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3181,14 +3223,14 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                         children: "No items available"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                        lineNumber: 201,
+                        lineNumber: 248,
                         columnNumber: 13
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "py-1",
                         children: nodes.map((node)=>renderTreeNode(node))
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                        lineNumber: 205,
+                        lineNumber: 252,
                         columnNumber: 13
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3207,7 +3249,7 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                lineNumber: 216,
+                                lineNumber: 263,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3220,25 +3262,25 @@ function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Se
                                 children: "Done"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                                lineNumber: 220,
+                                lineNumber: 267,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                        lineNumber: 211,
+                        lineNumber: 258,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-                lineNumber: 195,
+                lineNumber: 242,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
-        lineNumber: 171,
+        lineNumber: 218,
         columnNumber: 5
     }, this);
 }
@@ -5784,16 +5826,24 @@ function PreferredMetroAreasSection() {
     };
     const handleSave = async ()=>{
         if (!user?.userId) return;
+        console.log('=== DEBUG: Attempting to save metro areas ===');
+        console.log('Selected IDs:', selectedMetroAreas);
+        console.log('Selected Count:', selectedMetroAreas.length);
+        selectedMetroAreas.forEach((id)=>{
+            const metro = getMetroById(id);
+            console.log(`  - ${id}: ${metro ? `${metro.name}, ${metro.state}` : 'NOT FOUND IN LOCAL DATA'}`);
+        });
         try {
             await updatePreferredMetroAreas(user.userId, {
-                metroAreaIds: selectedMetroAreas
+                MetroAreaIds: selectedMetroAreas
             });
+            console.log('✅ Save successful');
             // Exit edit mode on success (store will set state to 'success')
             setIsEditing(false);
             setValidationError('');
         } catch (err) {
             // Error handled by store, stay in edit mode for retry
-            console.error('Failed to save preferred metro areas:', err);
+            console.error('❌ Save failed:', err);
         }
     };
     // Helper to get metro by ID from API data
@@ -5824,7 +5874,7 @@ function PreferredMetroAreasSection() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                        lineNumber: 212,
+                                        lineNumber: 221,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -5834,13 +5884,13 @@ function PreferredMetroAreasSection() {
                                         children: "Preferred Metro Areas"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                        lineNumber: 213,
+                                        lineNumber: 222,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 211,
+                                lineNumber: 220,
                                 columnNumber: 11
                             }, this),
                             !isEditing && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -5855,13 +5905,13 @@ function PreferredMetroAreasSection() {
                                 children: "Edit"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                lineNumber: 216,
+                                lineNumber: 225,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 210,
+                        lineNumber: 219,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
@@ -5872,13 +5922,13 @@ function PreferredMetroAreasSection() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                        lineNumber: 227,
+                        lineNumber: 236,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                lineNumber: 209,
+                lineNumber: 218,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5902,20 +5952,20 @@ function PreferredMetroAreasSection() {
                                     ]
                                 }, metroId, true, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 241,
+                                    lineNumber: 250,
                                     columnNumber: 21
                                 }, this) : null;
                             })
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 237,
+                            lineNumber: 246,
                             columnNumber: 15
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "text-sm text-muted-foreground italic",
                             children: "No metro areas selected - Click Edit to add your preferred locations"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 253,
+                            lineNumber: 262,
                             columnNumber: 15
                         }, this),
                         isSuccess && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5928,20 +5978,20 @@ function PreferredMetroAreasSection() {
                                     className: "h-4 w-4"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 261,
+                                    lineNumber: 270,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                     children: "Preferred metro areas saved successfully!"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 262,
+                                    lineNumber: 271,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 260,
+                            lineNumber: 269,
                             columnNumber: 15
                         }, this),
                         isError && error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5950,13 +6000,13 @@ function PreferredMetroAreasSection() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 268,
+                            lineNumber: 277,
                             columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 235,
+                    lineNumber: 244,
                     columnNumber: 11
                 }, this) : // ===== EDIT MODE: TREE DROPDOWN =====
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5967,7 +6017,7 @@ function PreferredMetroAreasSection() {
                             children: "Select metro areas by expanding states and checking your preferred locations"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 276,
+                            lineNumber: 285,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$TreeDropdown$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TreeDropdown"], {
@@ -5980,7 +6030,7 @@ function PreferredMetroAreasSection() {
                             className: "w-full"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 280,
+                            lineNumber: 289,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5999,7 +6049,7 @@ function PreferredMetroAreasSection() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 292,
+                                    lineNumber: 301,
                                     columnNumber: 15
                                 }, this),
                                 validationError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6008,13 +6058,13 @@ function PreferredMetroAreasSection() {
                                     children: validationError
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 297,
+                                    lineNumber: 306,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 291,
+                            lineNumber: 300,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6030,7 +6080,7 @@ function PreferredMetroAreasSection() {
                                     children: isSaving ? 'Saving...' : 'Save Changes'
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 305,
+                                    lineNumber: 314,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -6045,30 +6095,30 @@ function PreferredMetroAreasSection() {
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                                    lineNumber: 313,
+                                    lineNumber: 322,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                            lineNumber: 304,
+                            lineNumber: 313,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                    lineNumber: 275,
+                    lineNumber: 284,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-                lineNumber: 232,
+                lineNumber: 241,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx",
-        lineNumber: 208,
+        lineNumber: 217,
         columnNumber: 5
     }, this);
 }

@@ -4645,6 +4645,464 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
 }),
+"[project]/src/presentation/components/ui/TreeDropdown.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "TreeDropdown",
+    ()=>TreeDropdown
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-down.js [app-client] (ecmascript) <export default as ChevronDown>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-right.js [app-client] (ecmascript) <export default as ChevronRight>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$check$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Check$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/check.js [app-client] (ecmascript) <export default as Check>");
+;
+var _s = __turbopack_context__.k.signature();
+'use client';
+;
+;
+function TreeDropdown({ nodes, selectedIds, onSelectionChange, placeholder = 'Select items', maxSelections, disabled = false, className = '' }) {
+    _s();
+    const [isOpen, setIsOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [expandedNodes, setExpandedNodes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Set());
+    const dropdownRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
+    // Close dropdown when clicking outside
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "TreeDropdown.useEffect": ()=>{
+            function handleClickOutside(event) {
+                if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                    setIsOpen(false);
+                }
+            }
+            if (isOpen) {
+                document.addEventListener('mousedown', handleClickOutside);
+                return ({
+                    "TreeDropdown.useEffect": ()=>document.removeEventListener('mousedown', handleClickOutside)
+                })["TreeDropdown.useEffect"];
+            }
+        }
+    }["TreeDropdown.useEffect"], [
+        isOpen
+    ]);
+    const toggleNode = (nodeId)=>{
+        const newExpanded = new Set(expandedNodes);
+        if (newExpanded.has(nodeId)) {
+            newExpanded.delete(nodeId);
+        } else {
+            newExpanded.add(nodeId);
+        }
+        setExpandedNodes(newExpanded);
+    };
+    /**
+   * Recursively collect all child node IDs
+   */ const getAllChildIds = (node)=>{
+        const ids = [];
+        if (node.children) {
+            for (const child of node.children){
+                ids.push(child.id);
+                ids.push(...getAllChildIds(child));
+            }
+        }
+        return ids;
+    };
+    /**
+   * Find a node by ID in the tree
+   */ const findNodeById = (nodeId, searchNodes = nodes)=>{
+        for (const node of searchNodes){
+            if (node.id === nodeId) {
+                return node;
+            }
+            if (node.children) {
+                const found = findNodeById(nodeId, node.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+    const toggleSelection = (nodeId)=>{
+        const newSelected = new Set(selectedIds);
+        const node = findNodeById(nodeId);
+        if (!node) return;
+        const hasChildren = node.children && node.children.length > 0;
+        if (newSelected.has(nodeId)) {
+            // Unchecking: remove node and all children
+            newSelected.delete(nodeId);
+            if (hasChildren) {
+                const childIds = getAllChildIds(node);
+                childIds.forEach((id)=>newSelected.delete(id));
+            }
+        } else {
+            // Checking: add node and all children
+            const idsToAdd = [
+                nodeId
+            ];
+            if (hasChildren) {
+                idsToAdd.push(...getAllChildIds(node));
+            }
+            // Check max selections
+            if (maxSelections && newSelected.size + idsToAdd.length > maxSelections) {
+                return; // Don't add if max would be exceeded
+            }
+            idsToAdd.forEach((id)=>newSelected.add(id));
+        }
+        onSelectionChange(Array.from(newSelected));
+    };
+    const renderTreeNode = (node, level = 0)=>{
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = expandedNodes.has(node.id);
+        const isSelected = selectedIds.includes(node.id);
+        const indentClass = level > 0 ? `ml-${level * 6}` : '';
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: `flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer ${indentClass}`,
+                    style: {
+                        paddingLeft: `${level * 24 + 12}px`
+                    },
+                    children: [
+                        hasChildren ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: (e)=>{
+                                e.stopPropagation();
+                                toggleNode(node.id);
+                            },
+                            className: "p-0.5 hover:bg-gray-200 rounded",
+                            "aria-label": isExpanded ? 'Collapse' : 'Expand',
+                            children: isExpanded ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
+                                className: "h-4 w-4",
+                                style: {
+                                    color: '#FF7900'
+                                }
+                            }, void 0, false, {
+                                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                lineNumber: 170,
+                                columnNumber: 17
+                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
+                                className: "h-4 w-4",
+                                style: {
+                                    color: '#FF7900'
+                                }
+                            }, void 0, false, {
+                                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                lineNumber: 172,
+                                columnNumber: 17
+                            }, this)
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                            lineNumber: 161,
+                            columnNumber: 13
+                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "w-5"
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                            lineNumber: 176,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                            className: "flex items-center gap-2 flex-1 cursor-pointer",
+                            onClick: (e)=>e.stopPropagation(),
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                    type: "checkbox",
+                                    checked: isSelected,
+                                    onChange: ()=>toggleSelection(node.id),
+                                    disabled: disabled,
+                                    className: "h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-offset-0",
+                                    style: {
+                                        accentColor: '#FF7900'
+                                    }
+                                }, void 0, false, {
+                                    fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                    lineNumber: 184,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "text-sm",
+                                    children: node.label
+                                }, void 0, false, {
+                                    fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                    lineNumber: 194,
+                                    columnNumber: 13
+                                }, this),
+                                isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$check$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Check$3e$__["Check"], {
+                                    className: "h-3.5 w-3.5 ml-auto",
+                                    style: {
+                                        color: '#006400'
+                                    }
+                                }, void 0, false, {
+                                    fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                    lineNumber: 196,
+                                    columnNumber: 15
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                            lineNumber: 180,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                    lineNumber: 155,
+                    columnNumber: 9
+                }, this),
+                hasChildren && isExpanded && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    children: node.children.map((child)=>renderTreeNode(child, level + 1))
+                }, void 0, false, {
+                    fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                    lineNumber: 203,
+                    columnNumber: 11
+                }, this)
+            ]
+        }, node.id, true, {
+            fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+            lineNumber: 154,
+            columnNumber: 7
+        }, this);
+    };
+    const selectedCount = selectedIds.length;
+    const displayText = selectedCount === 0 ? placeholder : `${selectedCount} ${selectedCount === 1 ? 'item' : 'items'} selected`;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        ref: dropdownRef,
+        className: `relative ${className}`,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                type: "button",
+                onClick: ()=>!disabled && setIsOpen(!isOpen),
+                disabled: disabled,
+                className: "w-full flex items-center justify-between px-4 py-2 bg-white border-2 rounded-lg text-sm transition-colors hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed",
+                style: {
+                    borderColor: isOpen ? '#FF7900' : '#e2e8f0'
+                },
+                "aria-haspopup": "listbox",
+                "aria-expanded": isOpen,
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        className: selectedCount === 0 ? 'text-gray-500' : 'text-gray-900',
+                        children: displayText
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                        lineNumber: 231,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
+                        className: `h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`,
+                        style: {
+                            color: '#8B1538'
+                        }
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                        lineNumber: 234,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                lineNumber: 220,
+                columnNumber: 7
+            }, this),
+            isOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "absolute z-50 w-full mt-2 bg-white border-2 rounded-lg shadow-lg max-h-96 overflow-y-auto",
+                style: {
+                    borderColor: '#FF7900'
+                },
+                role: "listbox",
+                children: [
+                    nodes.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "px-4 py-3 text-sm text-gray-500 text-center",
+                        children: "No items available"
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                        lineNumber: 248,
+                        columnNumber: 13
+                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "py-1",
+                        children: nodes.map((node)=>renderTreeNode(node))
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                        lineNumber: 252,
+                        columnNumber: 13
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "px-4 py-2 border-t bg-gray-50 flex items-center justify-between",
+                        style: {
+                            borderColor: '#e2e8f0'
+                        },
+                        children: [
+                            maxSelections && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "text-xs text-gray-600",
+                                children: [
+                                    selectedCount,
+                                    " of ",
+                                    maxSelections,
+                                    " selected"
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                lineNumber: 263,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>setIsOpen(false),
+                                className: "px-3 py-1 text-xs font-medium text-white rounded hover:opacity-90 transition-opacity",
+                                style: {
+                                    backgroundColor: '#FF7900'
+                                },
+                                children: "Done"
+                            }, void 0, false, {
+                                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                                lineNumber: 267,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                        lineNumber: 258,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+                lineNumber: 242,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/presentation/components/ui/TreeDropdown.tsx",
+        lineNumber: 218,
+        columnNumber: 5
+    }, this);
+}
+_s(TreeDropdown, "6IrrUpS5KP3z4r/2KGC5HtBH0Ko=");
+_c = TreeDropdown;
+var _c;
+__turbopack_context__.k.register(_c, "TreeDropdown");
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
+"[project]/src/infrastructure/api/repositories/metro-areas.repository.ts [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "metroAreasRepository",
+    ()=>metroAreasRepository
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/client/api-client.ts [app-client] (ecmascript)");
+;
+const metroAreasRepository = {
+    /**
+   * Get all active metro areas
+   * Endpoint: GET /api/metro-areas?activeOnly=true
+   */ async getAll (activeOnly = true) {
+        const data = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].get('/metro-areas', {
+            params: {
+                activeOnly
+            }
+        });
+        return data;
+    },
+    /**
+   * Get metro areas by state
+   * Client-side filtering of all metros by state code
+   */ async getByState (stateCode) {
+        const allMetros = await this.getAll();
+        return allMetros.filter((metro)=>metro.state === stateCode);
+    },
+    /**
+   * Get a single metro area by ID
+   * Client-side lookup from all metros
+   */ async getById (id) {
+        const allMetros = await this.getAll();
+        return allMetros.find((metro)=>metro.id === id);
+    }
+};
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
+"[project]/src/presentation/hooks/useMetroAreas.ts [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "useMetroAreas",
+    ()=>useMetroAreas
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$metro$2d$areas$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/repositories/metro-areas.repository.ts [app-client] (ecmascript)");
+var _s = __turbopack_context__.k.signature();
+;
+;
+function useMetroAreas() {
+    _s();
+    const [metroAreas, setMetroAreas] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "useMetroAreas.useEffect": ()=>{
+            let isMounted = true;
+            async function fetchMetroAreas() {
+                try {
+                    setIsLoading(true);
+                    setError(null);
+                    const data = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$metro$2d$areas$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["metroAreasRepository"].getAll(true);
+                    if (isMounted) {
+                        setMetroAreas(data);
+                    }
+                } catch (err) {
+                    if (isMounted) {
+                        const errorMessage = err instanceof Error ? err.message : 'Failed to load metro areas';
+                        setError(errorMessage);
+                        console.error('Error fetching metro areas:', err);
+                    }
+                } finally{
+                    if (isMounted) {
+                        setIsLoading(false);
+                    }
+                }
+            }
+            fetchMetroAreas();
+            return ({
+                "useMetroAreas.useEffect": ()=>{
+                    isMounted = false;
+                }
+            })["useMetroAreas.useEffect"];
+        }
+    }["useMetroAreas.useEffect"], []);
+    // Group metros by state
+    const metroAreasByState = new Map();
+    for (const metro of metroAreas){
+        if (!metroAreasByState.has(metro.state)) {
+            metroAreasByState.set(metro.state, []);
+        }
+        metroAreasByState.get(metro.state).push(metro);
+    }
+    // Sort metros within each state (state-level first, then alphabetically)
+    for (const [, metros] of metroAreasByState){
+        metros.sort((a, b)=>{
+            if (a.isStateLevelArea && !b.isStateLevelArea) return -1;
+            if (!a.isStateLevelArea && b.isStateLevelArea) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    }
+    // Separate state-level and city-level metros
+    const stateLevelMetros = metroAreas.filter((m)=>m.isStateLevelArea);
+    const cityLevelMetros = metroAreas.filter((m)=>!m.isStateLevelArea);
+    return {
+        metroAreas,
+        metroAreasByState,
+        stateLevelMetros,
+        cityLevelMetros,
+        isLoading,
+        error
+    };
+}
+_s(useMetroAreas, "kM3BQFfNye0Frg1odBZ0AW1+3WI=");
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
 "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -4654,19 +5112,21 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-down.js [app-client] (ecmascript) <export default as ChevronDown>");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-right.js [app-client] (ecmascript) <export default as ChevronRight>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/domain/constants/metroAreas.constants.ts [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$TreeDropdown$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/components/ui/TreeDropdown.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useMetroAreas$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/hooks/useMetroAreas.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
 ;
+;
 function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetrosChange, onReceiveAllChange, disabled = false, maxSelections = 20 }) {
     _s();
-    const [expandedStates, setExpandedStates] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Set());
     const [validationError, setValidationError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    // Phase 6A.9: Fetch metro areas from API instead of hardcoded constants
+    const { metroAreasByState, isLoading: metrosLoading, error: metrosError } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useMetroAreas$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMetroAreas"])();
     // Check validation whenever selectedMetroIds changes
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "NewsletterMetroSelector.useEffect": ()=>{
@@ -4680,28 +5140,47 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
         selectedMetroIds,
         maxSelections
     ]);
-    const metrosByState = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getMetrosGroupedByState"])();
-    const toggleStateExpansion = (stateCode)=>{
-        const newExpanded = new Set(expandedStates);
-        if (newExpanded.has(stateCode)) {
-            newExpanded.delete(stateCode);
-        } else {
-            newExpanded.add(stateCode);
+    /**
+   * Transform metro areas data into TreeNode format for TreeDropdown
+   * Each state becomes a parent node, city metros become children
+   */ const treeNodes = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "NewsletterMetroSelector.useMemo[treeNodes]": ()=>{
+            return __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["US_STATES"].map({
+                "NewsletterMetroSelector.useMemo[treeNodes]": (state)=>{
+                    const metrosForState = metroAreasByState.get(state.code) || [];
+                    // Filter out state-level metros (like "All Alabama")
+                    // Note: After database cleanup, there should be no state-level metros
+                    const cityMetros = metrosForState.filter({
+                        "NewsletterMetroSelector.useMemo[treeNodes].cityMetros": (m)=>!m.isStateLevelArea
+                    }["NewsletterMetroSelector.useMemo[treeNodes].cityMetros"]);
+                    // Only include states that have city metros
+                    if (cityMetros.length === 0) return null;
+                    // Create child nodes for each metro
+                    const children = cityMetros.map({
+                        "NewsletterMetroSelector.useMemo[treeNodes].children": (metro)=>({
+                                id: metro.id,
+                                label: metro.name,
+                                checked: selectedMetroIds.includes(metro.id)
+                            })
+                    }["NewsletterMetroSelector.useMemo[treeNodes].children"]);
+                    // Create parent node for the state
+                    return {
+                        id: `state-${state.code}`,
+                        label: state.name,
+                        checked: children.every({
+                            "NewsletterMetroSelector.useMemo[treeNodes]": (child)=>selectedMetroIds.includes(child.id)
+                        }["NewsletterMetroSelector.useMemo[treeNodes]"]),
+                        children
+                    };
+                }
+            }["NewsletterMetroSelector.useMemo[treeNodes]"]).filter({
+                "NewsletterMetroSelector.useMemo[treeNodes]": (node)=>node !== null
+            }["NewsletterMetroSelector.useMemo[treeNodes]"]);
         }
-        setExpandedStates(newExpanded);
-    };
-    const handleToggleMetroArea = (metroId)=>{
-        const newSelection = selectedMetroIds.includes(metroId) ? selectedMetroIds.filter((id)=>id !== metroId) : selectedMetroIds.length < maxSelections ? [
-            ...selectedMetroIds,
-            metroId
-        ] : selectedMetroIds;
-        if (newSelection.length > maxSelections) {
-            setValidationError(`You cannot select more than ${maxSelections} metro areas`);
-        } else {
-            setValidationError('');
-            onMetrosChange(newSelection);
-        }
-    };
+    }["NewsletterMetroSelector.useMemo[treeNodes]"], [
+        metroAreasByState,
+        selectedMetroIds
+    ]);
     const handleReceiveAllChange = (receiveAll)=>{
         onReceiveAllChange(receiveAll);
         if (receiveAll) {
@@ -4709,6 +5188,102 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
             setValidationError('');
         }
     };
+    const handleSelectionChange = (newSelectedIds)=>{
+        // Filter out state-level IDs (they start with "state-")
+        const metroIds = newSelectedIds.filter((id)=>!id.startsWith('state-'));
+        onMetrosChange(metroIds);
+    };
+    // Show loading state while fetching metros
+    if (metrosLoading) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "space-y-4",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                            className: "text-sm font-medium text-gray-700 mb-2 block",
+                            children: "Get notifications for events in:"
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                            lineNumber: 108,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-xs text-gray-500 mb-3",
+                            children: "Loading metro areas..."
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                            lineNumber: 111,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                    lineNumber: 107,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "flex items-center justify-center p-4",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "animate-spin rounded-full h-8 w-8 border-b-2",
+                        style: {
+                            borderColor: '#FF7900'
+                        }
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                        lineNumber: 114,
+                        columnNumber: 11
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                    lineNumber: 113,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+            lineNumber: 106,
+            columnNumber: 7
+        }, this);
+    }
+    // Show error if metros failed to load
+    if (metrosError) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "space-y-4",
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                        className: "text-sm font-medium text-gray-700 mb-2 block",
+                        children: "Get notifications for events in:"
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                        lineNumber: 125,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-xs text-red-600",
+                        role: "alert",
+                        children: [
+                            "Failed to load metro areas: ",
+                            metrosError
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                        lineNumber: 128,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+                lineNumber: 124,
+                columnNumber: 9
+            }, this)
+        }, void 0, false, {
+            fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
+            lineNumber: 123,
+            columnNumber: 7
+        }, this);
+    }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-4",
         children: [
@@ -4716,10 +5291,10 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
                         className: "text-sm font-medium text-gray-700 mb-2 block",
-                        children: "📍 Get notifications for events in:"
+                        children: "Get notifications for events in:"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 87,
+                        lineNumber: 140,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4731,13 +5306,13 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 90,
+                        lineNumber: 143,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 86,
+                lineNumber: 139,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4753,7 +5328,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             className: "mr-2 w-4 h-4 rounded border-gray-300 text-[#FF7900] focus:ring-2 focus:ring-[#FF7900]"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 98,
+                            lineNumber: 151,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4761,304 +5336,62 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             children: "Send me events from all locations"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 105,
+                            lineNumber: 158,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                    lineNumber: 97,
+                    lineNumber: 150,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 96,
+                lineNumber: 149,
                 columnNumber: 7
             }, this),
             !receiveAllLocations && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "border rounded-lg p-4 bg-white space-y-4",
+                className: "space-y-3",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
-                                className: "text-xs font-semibold uppercase tracking-wider text-gray-700 mb-3",
-                                children: "State-Wide Selections"
-                            }, void 0, false, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 114,
-                                columnNumber: 13
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2",
-                                children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getStateLevelAreas"])().map((metro)=>{
-                                    const isSelected = selectedMetroIds.includes(metro.id);
-                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                        className: `flex items-center gap-3 p-2 rounded-md border cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`,
-                                        style: {
-                                            background: isSelected ? '#FFE8CC' : 'white',
-                                            borderColor: isSelected ? '#FF7900' : '#e2e8f0'
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                type: "checkbox",
-                                                checked: isSelected,
-                                                onChange: ()=>handleToggleMetroArea(metro.id),
-                                                disabled: disabled,
-                                                className: "h-4 w-4 rounded border-gray-300",
-                                                "aria-label": `Select all of ${metro.name}`
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                lineNumber: 131,
-                                                columnNumber: 21
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "flex-1 text-sm font-medium",
-                                                children: [
-                                                    "All ",
-                                                    metro.name
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                lineNumber: 139,
-                                                columnNumber: 21
-                                            }, this)
-                                        ]
-                                    }, metro.id, true, {
-                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                        lineNumber: 121,
-                                        columnNumber: 19
-                                    }, this);
-                                })
-                            }, void 0, false, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 117,
-                                columnNumber: 13
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 113,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "h-px bg-gray-200"
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$TreeDropdown$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TreeDropdown"], {
+                        nodes: treeNodes,
+                        selectedIds: selectedMetroIds,
+                        onSelectionChange: handleSelectionChange,
+                        placeholder: "Select metro areas",
+                        maxSelections: maxSelections,
+                        disabled: disabled
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 147,
+                        lineNumber: 166,
                         columnNumber: 11
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
-                                className: "text-xs font-semibold uppercase tracking-wider text-gray-700 mb-3",
-                                children: "City Metro Areas"
-                            }, void 0, false, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 151,
-                                columnNumber: 13
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2",
-                                children: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["US_STATES"].map((state)=>{
-                                    const metrosForState = metrosByState.get(state.code) || [];
-                                    const cityMetros = metrosForState.filter((m)=>!(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isStateLevelArea"])(m.id));
-                                    if (cityMetros.length === 0) return null;
-                                    const isExpanded = expandedStates.has(state.code);
-                                    const selectedCountInState = selectedMetroIds.filter((id)=>metrosForState.map((m)=>m.id).includes(id) && !(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$domain$2f$constants$2f$metroAreas$2e$constants$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isStateLevelArea"])(id)).length;
-                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "border rounded-md overflow-hidden",
-                                        style: {
-                                            borderColor: '#e2e8f0'
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                onClick: ()=>toggleStateExpansion(state.code),
-                                                disabled: disabled,
-                                                className: `w-full flex items-center gap-2 p-3 text-left transition-colors text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`,
-                                                "aria-expanded": isExpanded,
-                                                "aria-controls": `newsletter-metros-${state.code}`,
-                                                children: [
-                                                    isExpanded ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
-                                                        className: "h-4 w-4",
-                                                        style: {
-                                                            color: '#FF7900'
-                                                        }
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                        lineNumber: 183,
-                                                        columnNumber: 25
-                                                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
-                                                        className: "h-4 w-4",
-                                                        style: {
-                                                            color: '#FF7900'
-                                                        }
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                        lineNumber: 185,
-                                                        columnNumber: 25
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: "flex-1 font-medium",
-                                                        children: state.name
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                        lineNumber: 187,
-                                                        columnNumber: 23
-                                                    }, this),
-                                                    selectedCountInState > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: "text-xs font-semibold px-2 py-0.5 rounded-full",
-                                                        style: {
-                                                            background: '#FFE8CC',
-                                                            color: '#8B1538'
-                                                        },
-                                                        children: [
-                                                            selectedCountInState,
-                                                            " selected"
-                                                        ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                        lineNumber: 189,
-                                                        columnNumber: 25
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                lineNumber: 173,
-                                                columnNumber: 21
-                                            }, this),
-                                            isExpanded && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                id: `newsletter-metros-${state.code}`,
-                                                className: "space-y-2 p-3 bg-gray-50 border-t",
-                                                style: {
-                                                    borderColor: '#e2e8f0'
-                                                },
-                                                children: cityMetros.map((metro)=>{
-                                                    const isSelected = selectedMetroIds.includes(metro.id);
-                                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                        className: `flex items-start gap-3 p-2 rounded-md border cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`,
-                                                        style: {
-                                                            background: isSelected ? '#FFE8CC' : 'white',
-                                                            borderColor: isSelected ? '#FF7900' : '#e2e8f0'
-                                                        },
-                                                        children: [
-                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                                type: "checkbox",
-                                                                checked: isSelected,
-                                                                onChange: ()=>handleToggleMetroArea(metro.id),
-                                                                disabled: disabled,
-                                                                className: "mt-0.5 h-4 w-4 rounded border-gray-300",
-                                                                "aria-label": `${metro.name}, ${metro.state}`
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                                lineNumber: 218,
-                                                                columnNumber: 31
-                                                            }, this),
-                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                className: "flex-1 min-w-0",
-                                                                children: [
-                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                        className: "text-sm font-medium",
-                                                                        children: metro.name
-                                                                    }, void 0, false, {
-                                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                                        lineNumber: 227,
-                                                                        columnNumber: 33
-                                                                    }, this),
-                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                        className: "text-xs text-gray-500",
-                                                                        children: [
-                                                                            metro.cities.slice(0, 2).join(', '),
-                                                                            metro.cities.length > 2 && `, +${metro.cities.length - 2} more`
-                                                                        ]
-                                                                    }, void 0, true, {
-                                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                                        lineNumber: 228,
-                                                                        columnNumber: 33
-                                                                    }, this)
-                                                                ]
-                                                            }, void 0, true, {
-                                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                                lineNumber: 226,
-                                                                columnNumber: 31
-                                                            }, this)
-                                                        ]
-                                                    }, metro.id, true, {
-                                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                        lineNumber: 208,
-                                                        columnNumber: 29
-                                                    }, this);
-                                                })
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                                lineNumber: 200,
-                                                columnNumber: 23
-                                            }, this)
-                                        ]
-                                    }, state.code, true, {
-                                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                        lineNumber: 167,
-                                        columnNumber: 19
-                                    }, this);
-                                })
-                            }, void 0, false, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 154,
-                                columnNumber: 13
-                            }, this)
-                        ]
-                    }, void 0, true, {
+                    validationError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-xs text-red-600",
+                        role: "alert",
+                        children: validationError
+                    }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 150,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "pt-2 border-t",
-                        style: {
-                            borderColor: '#e2e8f0'
-                        },
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "text-xs text-gray-600",
-                                children: [
-                                    selectedMetroIds.length,
-                                    " of ",
-                                    maxSelections,
-                                    " selected"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 246,
-                                columnNumber: 13
-                            }, this),
-                            validationError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "text-xs text-red-600 mt-1",
-                                role: "alert",
-                                children: validationError
-                            }, void 0, false, {
-                                fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                                lineNumber: 250,
-                                columnNumber: 15
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 245,
-                        columnNumber: 11
+                        lineNumber: 177,
+                        columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 111,
+                lineNumber: 164,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-        lineNumber: 84,
+        lineNumber: 137,
         columnNumber: 5
     }, this);
 }
-_s(NewsletterMetroSelector, "/DB2eX5YiMrCa1/rzBO+V5YHBlU=");
+_s(NewsletterMetroSelector, "XygrWInJXiBIrwexkwWY3pS5kdE=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useMetroAreas$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMetroAreas"]
+    ];
+});
 _c = NewsletterMetroSelector;
 var _c;
 __turbopack_context__.k.register(_c, "NewsletterMetroSelector");
@@ -9721,4 +10054,4 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 }),
 ]);
 
-//# sourceMappingURL=src_b8f490d4._.js.map
+//# sourceMappingURL=src_d5ab745d._.js.map

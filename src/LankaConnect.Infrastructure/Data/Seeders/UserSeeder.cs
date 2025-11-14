@@ -18,127 +18,134 @@ public static class UserSeeder
     /// </summary>
     public static async Task SeedAsync(AppDbContext context, IPasswordHashingService passwordHashingService)
     {
-        // Check if admin user already exists (more specific than AnyAsync)
-        // This allows seeding admin users even if test/old users exist in database
-        var adminExists = await context.Users
-            .AnyAsync(u => u.Email.Value == "admin@lankaconnect.com");
-
-        if (adminExists)
+        try
         {
-            return; // Admin users already seeded
-        }
+            // Check if admin user already exists (more specific than AnyAsync)
+            // This allows seeding admin users even if test/old users exist in database
+            var adminExists = await context.Users
+                .AnyAsync(u => u.Email.Value == "admin@lankaconnect.com");
 
-        var users = new List<User>();
-
-        // Admin Manager (super admin)
-        var adminManagerEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("admin@lankaconnect.com");
-        if (adminManagerEmail.IsSuccess)
-        {
-            var adminManager = User.Create(
-                adminManagerEmail.Value,
-                "Admin",
-                "Manager",
-                UserRole.AdminManager
-            );
-
-            if (adminManager.IsSuccess)
+            if (adminExists)
             {
-                var user = adminManager.Value;
+                return; // Admin users already seeded
+            }
 
-                // Set password: Admin@123
-                var passwordHash = passwordHashingService.HashPassword("Admin@123");
-                if (passwordHash.IsSuccess)
+            var users = new List<User>();
+
+            // Admin Manager (super admin)
+            var adminManagerEmail = Email.Create("admin@lankaconnect.com");
+            if (adminManagerEmail.IsSuccess)
+            {
+                var adminManager = User.Create(
+                    adminManagerEmail.Value,
+                    "Admin",
+                    "Manager",
+                    UserRole.AdminManager
+                );
+
+                if (adminManager.IsSuccess)
                 {
-                    user.SetPassword(passwordHash.Value);
-                    user.VerifyEmail(); // Auto-verify admin accounts
-                    users.Add(user);
+                    var user = adminManager.Value;
+
+                    // Set password: Admin@123
+                    var passwordHash = passwordHashingService.HashPassword("Admin@123");
+                    if (passwordHash.IsSuccess)
+                    {
+                        user.SetPassword(passwordHash.Value);
+                        user.VerifyEmail(); // Auto-verify admin accounts
+                        users.Add(user);
+                    }
                 }
             }
-        }
 
-        // Regular Admin
-        var adminEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("admin1@lankaconnect.com");
-        if (adminEmail.IsSuccess)
-        {
-            var admin = User.Create(
-                adminEmail.Value,
-                "John",
-                "Admin",
-                UserRole.Admin
-            );
-
-            if (admin.IsSuccess)
+            // Regular Admin
+            var adminEmail = Email.Create("admin1@lankaconnect.com");
+            if (adminEmail.IsSuccess)
             {
-                var user = admin.Value;
+                var admin = User.Create(
+                    adminEmail.Value,
+                    "John",
+                    "Admin",
+                    UserRole.Admin
+                );
 
-                // Set password: Admin@123
-                var passwordHash = passwordHashingService.HashPassword("Admin@123");
-                if (passwordHash.IsSuccess)
+                if (admin.IsSuccess)
                 {
-                    user.SetPassword(passwordHash.Value);
-                    user.VerifyEmail(); // Auto-verify admin accounts
-                    users.Add(user);
+                    var user = admin.Value;
+
+                    // Set password: Admin@123
+                    var passwordHash = passwordHashingService.HashPassword("Admin@123");
+                    if (passwordHash.IsSuccess)
+                    {
+                        user.SetPassword(passwordHash.Value);
+                        user.VerifyEmail(); // Auto-verify admin accounts
+                        users.Add(user);
+                    }
                 }
             }
-        }
 
-        // Event Organizer with active free trial
-        var organizerEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("organizer@lankaconnect.com");
-        if (organizerEmail.IsSuccess)
-        {
-            var organizer = User.Create(
-                organizerEmail.Value,
-                "Sarah",
-                "Organizer",
-                UserRole.EventOrganizer
-            );
-
-            if (organizer.IsSuccess)
+            // Event Organizer with active free trial
+            var organizerEmail = Email.Create("organizer@lankaconnect.com");
+            if (organizerEmail.IsSuccess)
             {
-                var user = organizer.Value;
+                var organizer = User.Create(
+                    organizerEmail.Value,
+                    "Sarah",
+                    "Organizer",
+                    UserRole.EventOrganizer
+                );
 
-                // Set password: Organizer@123
-                var passwordHash = passwordHashingService.HashPassword("Organizer@123");
-                if (passwordHash.IsSuccess)
+                if (organizer.IsSuccess)
                 {
-                    user.SetPassword(passwordHash.Value);
-                    user.VerifyEmail();
-                    users.Add(user);
+                    var user = organizer.Value;
+
+                    // Set password: Organizer@123
+                    var passwordHash = passwordHashingService.HashPassword("Organizer@123");
+                    if (passwordHash.IsSuccess)
+                    {
+                        user.SetPassword(passwordHash.Value);
+                        user.VerifyEmail();
+                        users.Add(user);
+                    }
                 }
             }
-        }
 
-        // General User
-        var generalUserEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("user@lankaconnect.com");
-        if (generalUserEmail.IsSuccess)
-        {
-            var generalUser = User.Create(
-                generalUserEmail.Value,
-                "Mike",
-                "User",
-                UserRole.GeneralUser
-            );
-
-            if (generalUser.IsSuccess)
+            // General User
+            var generalUserEmail = Email.Create("user@lankaconnect.com");
+            if (generalUserEmail.IsSuccess)
             {
-                var user = generalUser.Value;
+                var generalUser = User.Create(
+                    generalUserEmail.Value,
+                    "Mike",
+                    "User",
+                    UserRole.GeneralUser
+                );
 
-                // Set password: User@123
-                var passwordHash = passwordHashingService.HashPassword("User@123");
-                if (passwordHash.IsSuccess)
+                if (generalUser.IsSuccess)
                 {
-                    user.SetPassword(passwordHash.Value);
-                    user.VerifyEmail();
-                    users.Add(user);
+                    var user = generalUser.Value;
+
+                    // Set password: User@123
+                    var passwordHash = passwordHashingService.HashPassword("User@123");
+                    if (passwordHash.IsSuccess)
+                    {
+                        user.SetPassword(passwordHash.Value);
+                        user.VerifyEmail();
+                        users.Add(user);
+                    }
                 }
             }
-        }
 
-        // Add users to context
-        if (users.Any())
+            // Add users to context and save
+            if (users.Any())
+            {
+                await context.Users.AddRangeAsync(users);
+                int savedCount = await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
         {
-            await context.Users.AddRangeAsync(users);
-            await context.SaveChangesAsync();
+            throw new InvalidOperationException($"Error seeding users: {ex.Message}", ex);
         }
     }
 }

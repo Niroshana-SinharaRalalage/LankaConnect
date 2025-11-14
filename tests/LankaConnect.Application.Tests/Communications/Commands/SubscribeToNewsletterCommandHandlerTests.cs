@@ -197,9 +197,11 @@ public class SubscribeToNewsletterCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_EmailServiceFails_ReturnsFailure()
+    public async Task Handle_EmailServiceFails_ReturnsSuccess()
     {
         // Arrange
+        // Email service failure is non-critical for testing/staging environments
+        // The handler creates the subscription and only logs a warning if email fails
         var email = "test@example.com";
         var metroAreaIds = new List<Guid> { Guid.NewGuid() };
         var command = new SubscribeToNewsletterCommand(email, metroAreaIds);
@@ -220,10 +222,13 @@ public class SubscribeToNewsletterCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Contain("confirmation email");
+        // Subscription succeeds even if email fails - email is non-critical for testing
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value.Email.Should().Be(email);
+        result.Value.IsConfirmed.Should().BeFalse();
 
-        // Subscriber should still be created even if email fails
+        // Subscriber should be created and saved even if email fails
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<NewsletterSubscriber>(), It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -5097,6 +5097,10 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
     const handleSelectionChange = (newSelectedIds)=>{
         // Filter out state-level IDs (they start with "state-")
         const metroIds = newSelectedIds.filter((id)=>!id.startsWith('state-'));
+        console.log('[NewsletterMetroSelector] TreeDropdown selection changed:');
+        console.log('  Raw IDs from TreeDropdown:', newSelectedIds);
+        console.log('  Filtered metro IDs (state-* removed):', metroIds);
+        console.log('  Calling onMetrosChange with', metroIds.length, 'IDs');
         onMetrosChange(metroIds);
     };
     // Show loading state while fetching metros
@@ -5111,7 +5115,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             children: "Get notifications for events in:"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 108,
+                            lineNumber: 112,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5119,13 +5123,13 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             children: "Loading metro areas..."
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 111,
+                            lineNumber: 115,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                    lineNumber: 107,
+                    lineNumber: 111,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5137,18 +5141,18 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         }
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 114,
+                        lineNumber: 118,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                    lineNumber: 113,
+                    lineNumber: 117,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-            lineNumber: 106,
+            lineNumber: 110,
             columnNumber: 7
         }, this);
     }
@@ -5163,7 +5167,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         children: "Get notifications for events in:"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 125,
+                        lineNumber: 129,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5175,18 +5179,18 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 128,
+                        lineNumber: 132,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 124,
+                lineNumber: 128,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-            lineNumber: 123,
+            lineNumber: 127,
             columnNumber: 7
         }, this);
     }
@@ -5200,7 +5204,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         children: "Get notifications for events in:"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 140,
+                        lineNumber: 144,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5212,13 +5216,13 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 143,
+                        lineNumber: 147,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 139,
+                lineNumber: 143,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5234,7 +5238,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             className: "mr-2 w-4 h-4 rounded border-gray-300 text-[#FF7900] focus:ring-2 focus:ring-[#FF7900]"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 151,
+                            lineNumber: 155,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5242,18 +5246,18 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                             children: "Send me events from all locations"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                            lineNumber: 158,
+                            lineNumber: 162,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                    lineNumber: 150,
+                    lineNumber: 154,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 149,
+                lineNumber: 153,
                 columnNumber: 7
             }, this),
             !receiveAllLocations && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5268,7 +5272,7 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         disabled: disabled
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 166,
+                        lineNumber: 170,
                         columnNumber: 11
                     }, this),
                     validationError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5277,19 +5281,19 @@ function NewsletterMetroSelector({ selectedMetroIds, receiveAllLocations, onMetr
                         children: validationError
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                        lineNumber: 177,
+                        lineNumber: 181,
                         columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-                lineNumber: 164,
+                lineNumber: 168,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx",
-        lineNumber: 137,
+        lineNumber: 141,
         columnNumber: 5
     }, this);
 }
@@ -5440,14 +5444,22 @@ const Footer = ()=>{
     ];
     const handleNewsletterSubmit = async (e)=>{
         e.preventDefault();
+        console.log('[Footer] Newsletter form submitted:');
+        console.log('  Email:', email);
+        console.log('  Receive all locations:', receiveAllLocations);
+        console.log('  Selected metro IDs:', selectedMetroIds);
+        console.log('  Selected metro count:', selectedMetroIds.length);
         if (!email || !email.includes('@')) {
+            console.log('[Footer] ❌ Validation failed: Invalid email');
             setSubscribeStatus('error');
             return;
         }
         if (!receiveAllLocations && selectedMetroIds.length === 0) {
+            console.log('[Footer] ❌ Validation failed: No metros selected and not receiving all locations');
             setSubscribeStatus('error');
             return;
         }
+        console.log('[Footer] ✅ Validation passed, submitting...');
         setSubscribeStatus('loading');
         try {
             // Call .NET backend API
@@ -5458,14 +5470,15 @@ const Footer = ()=>{
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    email,
-                    metroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
-                    receiveAllLocations,
-                    timestamp: new Date().toISOString()
+                    Email: email,
+                    MetroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
+                    ReceiveAllLocations: receiveAllLocations,
+                    Timestamp: new Date().toISOString()
                 })
             });
             const data = await response.json();
-            if (data.success) {
+            console.log('[Footer] Backend response:', response.status, data);
+            if (data.success || data.Success) {
                 setSubscribeStatus('success');
                 setEmail('');
                 setSelectedMetroIds([]);
@@ -5502,12 +5515,12 @@ const Footer = ()=>{
                                             size: "md"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                            lineNumber: 159,
+                                            lineNumber: 171,
                                             columnNumber: 17
                                         }, ("TURBOPACK compile-time value", void 0))
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 158,
+                                        lineNumber: 170,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5515,13 +5528,13 @@ const Footer = ()=>{
                                         children: "Connecting the Sri Lankan diaspora worldwide. Share events, discover culture, and build community together."
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 161,
+                                        lineNumber: 173,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                lineNumber: 157,
+                                lineNumber: 169,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5532,7 +5545,7 @@ const Footer = ()=>{
                                         children: "Stay Connected"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 180,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5540,7 +5553,7 @@ const Footer = ()=>{
                                         children: "Subscribe to our newsletter for the latest events and community updates."
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 169,
+                                        lineNumber: 181,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -5558,7 +5571,7 @@ const Footer = ()=>{
                                                 required: true
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                                lineNumber: 173,
+                                                lineNumber: 185,
                                                 columnNumber: 17
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5571,12 +5584,12 @@ const Footer = ()=>{
                                                     disabled: subscribeStatus === 'loading'
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                                    lineNumber: 186,
+                                                    lineNumber: 198,
                                                     columnNumber: 19
                                                 }, ("TURBOPACK compile-time value", void 0))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                                lineNumber: 185,
+                                                lineNumber: 197,
                                                 columnNumber: 17
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5587,13 +5600,13 @@ const Footer = ()=>{
                                                 children: subscribeStatus === 'loading' ? 'Subscribing...' : subscribeStatus === 'success' ? 'Subscribed!' : 'Subscribe'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                                lineNumber: 195,
+                                                lineNumber: 207,
                                                 columnNumber: 17
                                             }, ("TURBOPACK compile-time value", void 0))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 172,
+                                        lineNumber: 184,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     subscribeStatus === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5602,7 +5615,7 @@ const Footer = ()=>{
                                         children: "Please enter a valid email address and select at least one location."
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 205,
+                                        lineNumber: 217,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     subscribeStatus === 'success' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5611,24 +5624,24 @@ const Footer = ()=>{
                                         children: "Thank you for subscribing!"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 210,
+                                        lineNumber: 222,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                lineNumber: 167,
+                                lineNumber: 179,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                        lineNumber: 155,
+                        lineNumber: 167,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                    lineNumber: 154,
+                    lineNumber: 166,
                     columnNumber: 9
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5640,7 +5653,7 @@ const Footer = ()=>{
                                     children: category.title
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                    lineNumber: 222,
+                                    lineNumber: 234,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -5653,28 +5666,28 @@ const Footer = ()=>{
                                                 children: link.label
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                                lineNumber: 226,
+                                                lineNumber: 238,
                                                 columnNumber: 21
                                             }, ("TURBOPACK compile-time value", void 0))
                                         }, link.label, false, {
                                             fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                            lineNumber: 225,
+                                            lineNumber: 237,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0)))
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                    lineNumber: 223,
+                                    lineNumber: 235,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, category.title, true, {
                             fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                            lineNumber: 221,
+                            lineNumber: 233,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0)))
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                    lineNumber: 219,
+                    lineNumber: 231,
                     columnNumber: 9
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5690,7 +5703,7 @@ const Footer = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                lineNumber: 239,
+                                lineNumber: 251,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5702,7 +5715,7 @@ const Footer = ()=>{
                                         children: "Privacy"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 243,
+                                        lineNumber: 255,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -5711,7 +5724,7 @@ const Footer = ()=>{
                                         children: "Terms"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 246,
+                                        lineNumber: 258,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -5720,35 +5733,35 @@ const Footer = ()=>{
                                         children: "Cookies"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                        lineNumber: 249,
+                                        lineNumber: 261,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                                lineNumber: 242,
+                                lineNumber: 254,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                        lineNumber: 238,
+                        lineNumber: 250,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-                    lineNumber: 237,
+                    lineNumber: 249,
                     columnNumber: 9
                 }, ("TURBOPACK compile-time value", void 0))
             ]
         }, void 0, true, {
             fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-            lineNumber: 152,
+            lineNumber: 164,
             columnNumber: 7
         }, ("TURBOPACK compile-time value", void 0))
     }, void 0, false, {
         fileName: "[project]/src/presentation/components/layout/Footer.tsx",
-        lineNumber: 151,
+        lineNumber: 163,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };

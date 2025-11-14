@@ -27,9 +27,11 @@ public static class UserSeeder
 
             if (adminExists)
             {
+                System.Console.WriteLine("[UserSeeder] Admin user already exists, skipping seed");
                 return; // Admin users already seeded
             }
 
+            System.Console.WriteLine("[UserSeeder] Admin user does not exist, proceeding with seeding");
             var users = new List<User>();
 
             // Admin Manager (super admin)
@@ -139,12 +141,22 @@ public static class UserSeeder
             // Add users to context and save
             if (users.Any())
             {
+                System.Console.WriteLine($"[UserSeeder] Adding {users.Count} users to context");
                 await context.Users.AddRangeAsync(users);
+
+                System.Console.WriteLine("[UserSeeder] Calling SaveChangesAsync()");
                 int savedCount = await context.SaveChangesAsync();
+                System.Console.WriteLine($"[UserSeeder] SaveChangesAsync() completed, {savedCount} changes saved to database");
+            }
+            else
+            {
+                System.Console.WriteLine("[UserSeeder] No users to seed");
             }
         }
         catch (Exception ex)
         {
+            System.Console.WriteLine($"[UserSeeder] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+            System.Console.WriteLine($"[UserSeeder] Stack trace: {ex.StackTrace}");
             throw new InvalidOperationException($"Error seeding users: {ex.Message}", ex);
         }
     }

@@ -98,15 +98,25 @@ const Footer: React.FC = () => {
   const handleNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    console.log('[Footer] Newsletter form submitted:');
+    console.log('  Email:', email);
+    console.log('  Receive all locations:', receiveAllLocations);
+    console.log('  Selected metro IDs:', selectedMetroIds);
+    console.log('  Selected metro count:', selectedMetroIds.length);
+
     if (!email || !email.includes('@')) {
+      console.log('[Footer] ❌ Validation failed: Invalid email');
       setSubscribeStatus('error');
       return;
     }
 
     if (!receiveAllLocations && selectedMetroIds.length === 0) {
+      console.log('[Footer] ❌ Validation failed: No metros selected and not receiving all locations');
       setSubscribeStatus('error');
       return;
     }
+
+    console.log('[Footer] ✅ Validation passed, submitting...');
 
     setSubscribeStatus('loading');
 
@@ -119,16 +129,18 @@ const Footer: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          metroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
-          receiveAllLocations,
-          timestamp: new Date().toISOString(),
+          Email: email,
+          MetroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
+          ReceiveAllLocations: receiveAllLocations,
+          Timestamp: new Date().toISOString(),
         }),
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      console.log('[Footer] Backend response:', response.status, data);
+
+      if (data.success || data.Success) {
         setSubscribeStatus('success');
         setEmail('');
         setSelectedMetroIds([]);

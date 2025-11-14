@@ -428,11 +428,6 @@ body {
   margin-right: auto;
 }
 
-.my-4 {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
 .my-\[30px\] {
   margin-top: 30px;
   margin-bottom: 30px;
@@ -1639,6 +1634,10 @@ body {
   padding: 0;
 }
 
+.p-0\.5 {
+  padding: .125rem;
+}
+
 .p-12 {
   padding: 3rem;
 }
@@ -1669,10 +1668,6 @@ body {
 
 .p-\[15px\] {
   padding: 15px;
-}
-
-.p-0\.5 {
-  padding: .125rem;
 }
 
 .px-1 {
@@ -2000,6 +1995,11 @@ body {
   color: rgb(51 51 51 / var(--tw-text-opacity, 1));
 }
 
+.text-\[\#666\] {
+  --tw-text-opacity: 1;
+  color: rgb(102 102 102 / var(--tw-text-opacity, 1));
+}
+
 .text-\[\#718096\] {
   --tw-text-opacity: 1;
   color: rgb(113 128 150 / var(--tw-text-opacity, 1));
@@ -2228,11 +2228,6 @@ body {
   color: rgb(250 204 21 / var(--tw-text-opacity, 1));
 }
 
-.text-\[\#666\] {
-  --tw-text-opacity: 1;
-  color: rgb(102 102 102 / var(--tw-text-opacity, 1));
-}
-
 .underline-offset-4 {
   text-underline-offset: 4px;
 }
@@ -2253,6 +2248,10 @@ body {
   opacity: .5;
 }
 
+.opacity-60 {
+  opacity: .6;
+}
+
 .opacity-75 {
   opacity: .75;
 }
@@ -2267,10 +2266,6 @@ body {
 
 .opacity-\[0\.05\] {
   opacity: .05;
-}
-
-.opacity-60 {
-  opacity: .6;
 }
 
 .\!shadow-none {
@@ -2537,6 +2532,11 @@ body {
   background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
 
+.hover\:bg-gray-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-gray-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
@@ -2567,11 +2567,6 @@ body {
 
 .hover\:bg-white\/20:hover {
   background-color: #fff3;
-}
-
-.hover\:bg-gray-200:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-opacity-100:hover {
@@ -2684,12 +2679,12 @@ body {
   --tw-ring-color: hsl(var(--primary));
 }
 
-.focus\:ring-offset-2:focus {
-  --tw-ring-offset-width: 2px;
-}
-
 .focus\:ring-offset-0:focus {
   --tw-ring-offset-width: 0px;
+}
+
+.focus\:ring-offset-2:focus {
+  --tw-ring-offset-width: 2px;
 }
 
 .focus-visible\:outline-none:focus-visible {

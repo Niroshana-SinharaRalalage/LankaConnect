@@ -97,6 +97,10 @@ export function NewsletterMetroSelector({
   const handleSelectionChange = (newSelectedIds: string[]) => {
     // Filter out state-level IDs (they start with "state-")
     const metroIds = newSelectedIds.filter((id) => !id.startsWith('state-'));
+    console.log('[NewsletterMetroSelector] TreeDropdown selection changed:');
+    console.log('  Raw IDs from TreeDropdown:', newSelectedIds);
+    console.log('  Filtered metro IDs (state-* removed):', metroIds);
+    console.log('  Calling onMetrosChange with', metroIds.length, 'IDs');
     onMetrosChange(metroIds);
   };
 

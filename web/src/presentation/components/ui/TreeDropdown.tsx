@@ -159,6 +159,7 @@ export function TreeDropdown({
           {/* Expand/Collapse button for parent nodes */}
           {hasChildren ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleNode(node.id);

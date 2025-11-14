@@ -29,11 +29,12 @@ public static class UserSeeder
 
             System.Console.WriteLine($"[UserSeeder] Admin existence check result: {adminExists}");
 
-            if (adminExists)
-            {
-                System.Console.WriteLine("[UserSeeder] Admin user already exists, skipping seed");
-                return; // Admin users already seeded
-            }
+            // CRITICAL: Temporary override - force seeding every time to diagnose persistence bug
+            // if (adminExists)
+            // {
+            //     System.Console.WriteLine("[UserSeeder] Admin user already exists, skipping seed");
+            //     return; // Admin users already seeded
+            // }
 
             System.Console.WriteLine("[UserSeeder] Admin user does not exist, proceeding with seeding");
 

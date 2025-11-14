@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Seeders;
 using LankaConnect.Application.Common.Interfaces;
@@ -78,7 +79,20 @@ public class AdminController : BaseController<AdminController>
                     await dbInitializer.SeedAsync();
                     break;
                 case "users":
+                    // Log user count BEFORE seeding
+                    var userCountBefore = await _context.Users.CountAsync();
+                    Logger.LogInformation("User count BEFORE seeding: {UserCount}", userCountBefore);
+
                     await UserSeeder.SeedAsync(_context, _passwordHashingService);
+
+                    // Log user count AFTER seeding to verify persistence
+                    var userCountAfter = await _context.Users.CountAsync();
+                    Logger.LogInformation("User count AFTER seeding: {UserCount}", userCountAfter);
+
+                    if (userCountAfter == userCountBefore)
+                    {
+                        Logger.LogWarning("WARNING: User count did not change after seeding! Check idempotency or database.");
+                    }
                     break;
                 case "metroareas":
                     await MetroAreaSeeder.SeedAsync(_context);
@@ -101,12 +115,23 @@ public class AdminController : BaseController<AdminController>
 
             Logger.LogInformation("Database seeding completed successfully for type: {SeedType}", seedType);
 
+            // Include database counts in response for verification
+            var finalUserCount = await _context.Users.CountAsync();
+            var finalEventCount = await _context.Events.CountAsync();
+            var finalMetroAreaCount = await _context.MetroAreas.CountAsync();
+
             return Ok(new
             {
                 message = $"Database seeding completed successfully for type: {seedType}",
                 environment = _environment.EnvironmentName,
                 timestamp = DateTime.UtcNow,
-                seedType = seedType
+                seedType = seedType,
+                databaseState = new
+                {
+                    userCount = finalUserCount,
+                    eventCount = finalEventCount,
+                    metroAreaCount = finalMetroAreaCount
+                }
             });
         }
         catch (Exception ex)

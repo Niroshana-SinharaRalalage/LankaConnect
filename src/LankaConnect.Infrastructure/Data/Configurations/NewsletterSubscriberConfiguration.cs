@@ -15,6 +15,7 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
 
         builder.HasKey(ns => ns.Id);
         builder.Property(ns => ns.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Configure Email value object (OwnsOne pattern)

@@ -51,6 +51,9 @@ try
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
+    // Add HttpContextAccessor for CurrentUserService and other services
+    builder.Services.AddHttpContextAccessor();
+
     // Add Application Layer
     builder.Services.AddApplication();
 

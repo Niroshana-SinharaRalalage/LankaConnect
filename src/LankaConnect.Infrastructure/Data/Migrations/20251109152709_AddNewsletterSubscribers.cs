@@ -10,6 +10,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "communications");
+
             migrationBuilder.CreateTable(
                 name: "newsletter_subscribers",
                 schema: "communications",

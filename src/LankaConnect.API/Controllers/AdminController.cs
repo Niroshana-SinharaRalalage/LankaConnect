@@ -44,13 +44,14 @@ public class AdminController : BaseController<AdminController>
     /// NOTE: No authentication required to allow initial database population
     /// </summary>
     /// <param name="seedType">Type of data to seed: "all" (default), "users", "events", "metroareas", "eventtemplates"</param>
+    /// <param name="resetUsers">If true, delete and re-create admin users (for fixing corrupted/stale data)</param>
     /// <returns>Success message with seeding results</returns>
     [HttpPost("seed")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SeedDatabase([FromQuery] string seedType = "all")
+    public async Task<IActionResult> SeedDatabase([FromQuery] string seedType = "all", [FromQuery] bool resetUsers = false)
     {
         // Only allow seeding in Development or Staging environments
         if (!_environment.IsDevelopment() && !_environment.IsStaging())
@@ -83,15 +84,34 @@ public class AdminController : BaseController<AdminController>
                     var userCountBefore = await _context.Users.CountAsync();
                     Logger.LogInformation("User count BEFORE seeding: {UserCount}", userCountBefore);
 
+                    // If resetUsers flag is set, delete and recreate admin users
+                    if (resetUsers)
+                    {
+                        Logger.LogWarning("resetUsers=true: Deleting existing admin users to force re-seeding");
+                        var adminUsers = await _context.Users
+                            .Where(u => u.Email.Value == "admin@lankaconnect.com" ||
+                                       u.Email.Value == "admin1@lankaconnect.com" ||
+                                       u.Email.Value == "organizer@lankaconnect.com" ||
+                                       u.Email.Value == "user@lankaconnect.com")
+                            .ToListAsync();
+
+                        if (adminUsers.Any())
+                        {
+                            _context.Users.RemoveRange(adminUsers);
+                            await _context.SaveChangesAsync();
+                            Logger.LogInformation("Deleted {Count} admin users for re-seeding", adminUsers.Count);
+                        }
+                    }
+
                     await UserSeeder.SeedAsync(_context, _passwordHashingService);
 
                     // Log user count AFTER seeding to verify persistence
                     var userCountAfter = await _context.Users.CountAsync();
                     Logger.LogInformation("User count AFTER seeding: {UserCount}", userCountAfter);
 
-                    if (userCountAfter == userCountBefore)
+                    if (userCountAfter == userCountBefore && !resetUsers)
                     {
-                        Logger.LogWarning("WARNING: User count did not change after seeding! Check idempotency or database.");
+                        Logger.LogWarning("WARNING: User count did not change after seeding! Check idempotency or database. Hint: Try seedType=users&resetUsers=true");
                     }
                     break;
                 case "metroareas":

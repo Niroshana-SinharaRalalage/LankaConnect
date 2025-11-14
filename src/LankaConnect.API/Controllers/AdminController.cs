@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Seeders;
 using LankaConnect.Application.Common.Interfaces;
 
 namespace LankaConnect.API.Controllers;
@@ -88,9 +89,7 @@ public class AdminController : BaseController<AdminController>
                     await _context.SaveChangesAsync();
                     break;
                 case "eventtemplates":
-                    var seedTemplates = EventTemplateSeeder.GetSeedEventTemplates();
-                    await _context.EventTemplates.AddRangeAsync(seedTemplates);
-                    await _context.SaveChangesAsync();
+                    await EventTemplateSeeder.SeedAsync(_context);
                     break;
                 default:
                     return BadRequest(new

@@ -22,8 +22,12 @@ public static class UserSeeder
         {
             // Check if admin user already exists (more specific than AnyAsync)
             // This allows seeding admin users even if test/old users exist in database
+            System.Console.WriteLine("[UserSeeder] Checking if admin@lankaconnect.com already exists in database...");
+
             var adminExists = await context.Users
                 .AnyAsync(u => u.Email.Value == "admin@lankaconnect.com");
+
+            System.Console.WriteLine($"[UserSeeder] Admin existence check result: {adminExists}");
 
             if (adminExists)
             {
@@ -32,6 +36,11 @@ public static class UserSeeder
             }
 
             System.Console.WriteLine("[UserSeeder] Admin user does not exist, proceeding with seeding");
+
+            // Debug: Count total users in database
+            var totalUsersInDb = await context.Users.CountAsync();
+            System.Console.WriteLine($"[UserSeeder] Total users currently in database: {totalUsersInDb}");
+
             var users = new List<User>();
 
             // Admin Manager (super admin)

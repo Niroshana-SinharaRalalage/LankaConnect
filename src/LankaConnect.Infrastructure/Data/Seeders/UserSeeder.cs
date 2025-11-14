@@ -33,7 +33,7 @@ public static class UserSeeder
             var users = new List<User>();
 
             // Admin Manager (super admin)
-            var adminManagerEmail = Email.Create("admin@lankaconnect.com");
+            var adminManagerEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("admin@lankaconnect.com");
             if (adminManagerEmail.IsSuccess)
             {
                 var adminManager = User.Create(
@@ -59,7 +59,7 @@ public static class UserSeeder
             }
 
             // Regular Admin
-            var adminEmail = Email.Create("admin1@lankaconnect.com");
+            var adminEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("admin1@lankaconnect.com");
             if (adminEmail.IsSuccess)
             {
                 var admin = User.Create(
@@ -85,7 +85,7 @@ public static class UserSeeder
             }
 
             // Event Organizer with active free trial
-            var organizerEmail = Email.Create("organizer@lankaconnect.com");
+            var organizerEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("organizer@lankaconnect.com");
             if (organizerEmail.IsSuccess)
             {
                 var organizer = User.Create(
@@ -111,7 +111,7 @@ public static class UserSeeder
             }
 
             // General User
-            var generalUserEmail = Email.Create("user@lankaconnect.com");
+            var generalUserEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("user@lankaconnect.com");
             if (generalUserEmail.IsSuccess)
             {
                 var generalUser = User.Create(

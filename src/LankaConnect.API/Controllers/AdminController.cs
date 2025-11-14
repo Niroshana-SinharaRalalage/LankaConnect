@@ -41,13 +41,14 @@ public class AdminController : BaseController<AdminController>
     /// Phase 6A.9: Allows on-demand seeding to unblock testing
     /// NOTE: No authentication required to allow initial database population
     /// </summary>
+    /// <param name="seedType">Type of data to seed: "all" (default), "users", "events", "metroareas", "eventtemplates"</param>
     /// <returns>Success message with seeding results</returns>
     [HttpPost("seed")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SeedDatabase([FromQuery] bool force = false)
+    public async Task<IActionResult> SeedDatabase([FromQuery] string seedType = "all")
     {
         // Only allow seeding in Development or Staging environments
         if (!_environment.IsDevelopment() && !_environment.IsStaging())
@@ -62,32 +63,51 @@ public class AdminController : BaseController<AdminController>
 
         try
         {
-            Logger.LogInformation("Admin {AdminUserId} triggering database seeding in {Environment} environment (force: {Force})",
+            Logger.LogInformation("Admin {AdminUserId} triggering database seeding in {Environment} environment (seedType: {SeedType})",
                 User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "unknown",
                 _environment.EnvironmentName,
-                force);
+                seedType);
 
             var dbInitializerLogger = _loggerFactory.CreateLogger<DbInitializer>();
             var dbInitializer = new DbInitializer(_context, dbInitializerLogger, _passwordHashingService);
 
-            if (force)
+            switch (seedType.ToLower())
             {
-                Logger.LogWarning("Force reseed requested - clearing existing data");
-                await dbInitializer.ReseedAsync();
-            }
-            else
-            {
-                await dbInitializer.SeedAsync();
+                case "all":
+                    await dbInitializer.SeedAsync();
+                    break;
+                case "users":
+                    await UserSeeder.SeedAsync(_context, _passwordHashingService);
+                    break;
+                case "metroareas":
+                    await MetroAreaSeeder.SeedAsync(_context);
+                    break;
+                case "events":
+                    var seedEvents = EventSeeder.GetSeedEvents();
+                    await _context.Events.AddRangeAsync(seedEvents);
+                    await _context.SaveChangesAsync();
+                    break;
+                case "eventtemplates":
+                    var seedTemplates = EventTemplateSeeder.GetSeedEventTemplates();
+                    await _context.EventTemplates.AddRangeAsync(seedTemplates);
+                    await _context.SaveChangesAsync();
+                    break;
+                default:
+                    return BadRequest(new
+                    {
+                        error = "Invalid seedType. Valid options: all, users, metroareas, events, eventtemplates",
+                        providedValue = seedType
+                    });
             }
 
-            Logger.LogInformation("Database seeding completed successfully");
+            Logger.LogInformation("Database seeding completed successfully for type: {SeedType}", seedType);
 
             return Ok(new
             {
-                message = "Database seeding completed successfully",
+                message = $"Database seeding completed successfully for type: {seedType}",
                 environment = _environment.EnvironmentName,
                 timestamp = DateTime.UtcNow,
-                forceReseed = force
+                seedType = seedType
             });
         }
         catch (Exception ex)

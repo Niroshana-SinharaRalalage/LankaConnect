@@ -146,7 +146,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       }
 
       const metroIds = [ohioMetroId];
-      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metroIds });
+      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metroIds });
       expect(updatedProfile).toBeDefined();
       expect(updatedProfile.preferredMetroAreas).toHaveLength(1);
       expect(updatedProfile.preferredMetroAreas).toContain(ohioMetroId);
@@ -162,7 +162,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
         cincinnatMetroId,
         nyMetroId,
       ];
-      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metroIds });
+      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metroIds });
       expect(updatedProfile).toBeDefined();
       expect(updatedProfile.preferredMetroAreas).toHaveLength(5);
       expect(updatedProfile.preferredMetroAreas).toEqual(expect.arrayContaining(metroIds));
@@ -172,7 +172,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const metroIds = [clevelandMetroId, columbusMetroId];
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metroIds });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metroIds });
       const retrievedProfile = await profileRepository.getProfile(testUser.id);
       expect(retrievedProfile).toBeDefined();
       expect(retrievedProfile.preferredMetroAreas).toContain(clevelandMetroId);
@@ -183,8 +183,8 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       if (!testUser.id) throw new Error('Test user ID not set');
 
       const metroIds = [ohioMetroId, clevelandMetroId];
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metroIds });
-      const clearedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metroIds });
+      const clearedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [] });
       expect(clearedProfile).toBeDefined();
       expect(clearedProfile.preferredMetroAreas).toHaveLength(0);
     });
@@ -197,7 +197,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
         return `${stateCode}000000-0000-0000-0000-000000000001`;
       });
 
-      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: excessiveMetroIds });
+      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: excessiveMetroIds });
       expect(updatedProfile?.preferredMetroAreas?.length ?? 0).toBeLessThanOrEqual(20);
     });
   });
@@ -209,7 +209,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   describe('Landing Page Event Filtering (Phase 5B.11.5)', () => {
     it('should show all events when no metros selected', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [] });
       const allEvents = await eventsRepository.getEvents();
       expect(allEvents).toBeDefined();
       expect(Array.isArray(allEvents)).toBe(true);
@@ -219,7 +219,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
 
     it('should filter events by single state metro area', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(allEvents).toBeDefined();
       expect(Array.isArray(allEvents)).toBe(true);
@@ -227,7 +227,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
 
     it('should filter events by single city metro area', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(allEvents).toBeDefined();
       expect(Array.isArray(allEvents)).toBe(true);
@@ -236,7 +236,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
     it('should filter by multiple metros using OR logic', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       const multipleMetros = [clevelandMetroId, columbusMetroId, cincinnatMetroId];
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: multipleMetros });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: multipleMetros });
       const allEvents = await eventsRepository.getEvents();
       expect(allEvents).toBeDefined();
       expect(Array.isArray(allEvents)).toBe(true);
@@ -245,7 +245,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
     it('should not duplicate events across sections', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
       const metrosWithOverlap = [ohioMetroId];
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metrosWithOverlap });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metrosWithOverlap });
       const allEvents = await eventsRepository.getEvents();
       const uniqueEventIds = new Set(allEvents.map((e) => e.id));
       expect(uniqueEventIds.size).toBe(allEvents.length);
@@ -253,7 +253,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
 
     it('should display accurate event count badges', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(allEvents).toBeDefined();
       expect(Array.isArray(allEvents)).toBe(true);
@@ -268,12 +268,12 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
     it('Phase 5B.11.4a: should subscribe to newsletter with selected metros', async () => {
       const newsletterSubscription = {
         email: testUser.email,
-        metroAreaIds: [ohioMetroId, clevelandMetroId],
+        MetroAreaIds: [ohioMetroId, clevelandMetroId],
       };
 
       try {
-        expect(newsletterSubscription.metroAreaIds).toHaveLength(2);
-        expect(newsletterSubscription.metroAreaIds).toContain(ohioMetroId);
+        expect(newsletterSubscription.MetroAreaIds).toHaveLength(2);
+        expect(newsletterSubscription.MetroAreaIds).toContain(ohioMetroId);
       } catch (error) {
         console.log('Newsletter endpoint not yet available in this phase');
       }
@@ -291,7 +291,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
       }
 
       const metrosFromNewsletter = [clevelandMetroId, columbusMetroId];
-      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: metrosFromNewsletter });
+      const updatedProfile = await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: metrosFromNewsletter });
 
       expect(updatedProfile.preferredMetroAreas).toEqual(
         expect.arrayContaining(metrosFromNewsletter)
@@ -315,7 +315,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
         apiClient.setAuthToken(testUser.accessToken);
       }
 
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [clevelandMetroId] });
       const profile = await profileRepository.getProfile(testUser.id);
       expect(profile).toBeDefined();
       expect(profile.preferredMetroAreas).toHaveLength(1);
@@ -363,7 +363,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
   describe('State-Level vs City-Level Metro Filtering (Phase 5B.11.5)', () => {
     it('should match state-level metro to any city in that state', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 
@@ -377,7 +377,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
 
     it('should match city-level metro to specific city only', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [clevelandMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [clevelandMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 
@@ -390,7 +390,7 @@ describe('Phase 5B.11: Metro Areas E2E Workflow', () => {
 
     it('should handle state name conversion (OH -> Ohio)', async () => {
       if (!testUser.id) throw new Error('Test user ID not set');
-      await profileRepository.updatePreferredMetroAreas(testUser.id, { metroAreaIds: [ohioMetroId] });
+      await profileRepository.updatePreferredMetroAreas(testUser.id, { MetroAreaIds: [ohioMetroId] });
       const allEvents = await eventsRepository.getEvents();
       expect(Array.isArray(allEvents)).toBe(true);
 

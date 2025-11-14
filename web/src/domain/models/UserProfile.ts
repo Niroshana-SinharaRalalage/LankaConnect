@@ -87,9 +87,10 @@ export interface UpdateBasicInfoRequest {
 
 /**
  * Phase 5B: Update user's preferred metro areas for location-based filtering
+ * Note: Property name must match backend PascalCase convention
  */
 export interface UpdatePreferredMetroAreasRequest {
-  metroAreaIds: string[]; // 0-10 metro area IDs
+  MetroAreaIds: string[]; // 0-20 metro area IDs (backend expects PascalCase)
 }
 
 /**

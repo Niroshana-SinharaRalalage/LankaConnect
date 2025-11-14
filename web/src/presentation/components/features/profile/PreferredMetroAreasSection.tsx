@@ -189,7 +189,7 @@ export function PreferredMetroAreasSection() {
 
     try {
       await updatePreferredMetroAreas(user.userId, {
-        metroAreaIds: selectedMetroAreas,
+        MetroAreaIds: selectedMetroAreas, // PascalCase to match backend
       });
 
       console.log('✅ Save successful');

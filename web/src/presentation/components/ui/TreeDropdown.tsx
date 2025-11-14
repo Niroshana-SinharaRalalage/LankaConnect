@@ -81,17 +81,64 @@ export function TreeDropdown({
     setExpandedNodes(newExpanded);
   };
 
+  /**
+   * Recursively collect all child node IDs
+   */
+  const getAllChildIds = (node: TreeNode): string[] => {
+    const ids: string[] = [];
+    if (node.children) {
+      for (const child of node.children) {
+        ids.push(child.id);
+        ids.push(...getAllChildIds(child));
+      }
+    }
+    return ids;
+  };
+
+  /**
+   * Find a node by ID in the tree
+   */
+  const findNodeById = (nodeId: string, searchNodes: TreeNode[] = nodes): TreeNode | null => {
+    for (const node of searchNodes) {
+      if (node.id === nodeId) {
+        return node;
+      }
+      if (node.children) {
+        const found = findNodeById(nodeId, node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   const toggleSelection = (nodeId: string) => {
     const newSelected = new Set(selectedIds);
+    const node = findNodeById(nodeId);
+
+    if (!node) return;
+
+    const hasChildren = node.children && node.children.length > 0;
 
     if (newSelected.has(nodeId)) {
+      // Unchecking: remove node and all children
       newSelected.delete(nodeId);
-    } else {
-      // Check max selections
-      if (maxSelections && newSelected.size >= maxSelections) {
-        return; // Don't add if max reached
+      if (hasChildren) {
+        const childIds = getAllChildIds(node);
+        childIds.forEach((id) => newSelected.delete(id));
       }
-      newSelected.add(nodeId);
+    } else {
+      // Checking: add node and all children
+      const idsToAdd = [nodeId];
+      if (hasChildren) {
+        idsToAdd.push(...getAllChildIds(node));
+      }
+
+      // Check max selections
+      if (maxSelections && newSelected.size + idsToAdd.length > maxSelections) {
+        return; // Don't add if max would be exceeded
+      }
+
+      idsToAdd.forEach((id) => newSelected.add(id));
     }
 
     onSelectionChange(Array.from(newSelected));

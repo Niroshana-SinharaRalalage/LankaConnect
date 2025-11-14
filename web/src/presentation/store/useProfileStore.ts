@@ -333,7 +333,8 @@ export const useProfileStore = create<ProfileState>()(
       // Validates against max 20 limit (expanded from 10)
       updatePreferredMetroAreas: async (userId, metroAreas) => {
         // Frontend validation: Check max 20 limit
-        if (metroAreas.metroAreaIds.length > 20) {
+        // Phase 6A.9 FIX: Property name changed to PascalCase to match backend
+        if (metroAreas.MetroAreaIds.length > 20) {
           set((state) => ({
             error: 'Cannot select more than 20 metro areas',
             sectionStates: { ...state.sectionStates, preferredMetroAreas: 'error' },

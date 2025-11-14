@@ -5,11 +5,10 @@ namespace LankaConnect.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Seeds comprehensive metro area data for the LankaConnect platform
-/// Phase 5B: User Preferred Metro Areas - State-grouped selector with 50 states + 300+ metros
+/// Phase 5B: User Preferred Metro Areas - State-grouped selector
 ///
 /// Data Structure:
-/// - 50 state-level entries (All California, All Texas, etc.) - isStateLevelArea: true
-/// - 300+ major US metro areas grouped by state
+/// - 74 major US metro areas grouped by state
 /// - Each metro has unique GUID (deterministic by state code)
 /// </summary>
 public static class MetroAreaSeeder
@@ -30,16 +29,6 @@ public static class MetroAreaSeeder
             // =====================
             // ALABAMA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("01000000-0000-0000-0000-000000000001"),
-                name: "All Alabama",
-                state: "AL",
-                centerLatitude: 32.8067,
-                centerLongitude: -86.7113,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("01111111-1111-1111-1111-111111111001"),
                 name: "Birmingham",
@@ -75,16 +64,6 @@ public static class MetroAreaSeeder
             // ALASKA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("02000000-0000-0000-0000-000000000001"),
-                name: "All Alaska",
-                state: "AK",
-                centerLatitude: 64.0685,
-                centerLongitude: -152.2782,
-                radiusMiles: 300,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("02111111-1111-1111-1111-111111111001"),
                 name: "Anchorage",
                 state: "AK",
@@ -98,16 +77,6 @@ public static class MetroAreaSeeder
             // =====================
             // ARIZONA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("04000000-0000-0000-0000-000000000001"),
-                name: "All Arizona",
-                state: "AZ",
-                centerLatitude: 33.7298,
-                centerLongitude: -111.4312,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("04111111-1111-1111-1111-111111111001"),
                 name: "Phoenix",
@@ -143,16 +112,6 @@ public static class MetroAreaSeeder
             // ARKANSAS
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("05000000-0000-0000-0000-000000000001"),
-                name: "All Arkansas",
-                state: "AR",
-                centerLatitude: 34.9697,
-                centerLongitude: -92.3731,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("05111111-1111-1111-1111-111111111001"),
                 name: "Little Rock",
                 state: "AR",
@@ -176,16 +135,6 @@ public static class MetroAreaSeeder
             // =====================
             // CALIFORNIA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("06000000-0000-0000-0000-000000000001"),
-                name: "All California",
-                state: "CA",
-                centerLatitude: 36.1162,
-                centerLongitude: -119.6816,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("06111111-1111-1111-1111-111111111001"),
                 name: "Los Angeles",
@@ -251,16 +200,6 @@ public static class MetroAreaSeeder
             // COLORADO
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("08000000-0000-0000-0000-000000000001"),
-                name: "All Colorado",
-                state: "CO",
-                centerLatitude: 39.0598,
-                centerLongitude: -105.3111,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("08111111-1111-1111-1111-111111111001"),
                 name: "Denver",
                 state: "CO",
@@ -284,16 +223,6 @@ public static class MetroAreaSeeder
             // =====================
             // CONNECTICUT
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("09000000-0000-0000-0000-000000000001"),
-                name: "All Connecticut",
-                state: "CT",
-                centerLatitude: 41.5978,
-                centerLongitude: -72.7554,
-                radiusMiles: 150,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("09111111-1111-1111-1111-111111111001"),
                 name: "Hartford",
@@ -319,16 +248,6 @@ public static class MetroAreaSeeder
             // DELAWARE
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("10000000-0000-0000-0000-000000000001"),
-                name: "All Delaware",
-                state: "DE",
-                centerLatitude: 39.3185,
-                centerLongitude: -75.5244,
-                radiusMiles: 120,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("10111111-1111-1111-1111-111111111001"),
                 name: "Wilmington",
                 state: "DE",
@@ -342,16 +261,6 @@ public static class MetroAreaSeeder
             // =====================
             // FLORIDA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("12000000-0000-0000-0000-000000000001"),
-                name: "All Florida",
-                state: "FL",
-                centerLatitude: 27.6648,
-                centerLongitude: -81.5158,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("12111111-1111-1111-1111-111111111001"),
                 name: "Miami",
@@ -397,16 +306,6 @@ public static class MetroAreaSeeder
             // GEORGIA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("13000000-0000-0000-0000-000000000001"),
-                name: "All Georgia",
-                state: "GA",
-                centerLatitude: 33.0406,
-                centerLongitude: -83.6431,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("13111111-1111-1111-1111-111111111001"),
                 name: "Atlanta",
                 state: "GA",
@@ -431,16 +330,6 @@ public static class MetroAreaSeeder
             // HAWAII
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("15000000-0000-0000-0000-000000000001"),
-                name: "All Hawaii",
-                state: "HI",
-                centerLatitude: 21.0943,
-                centerLongitude: -157.4981,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("15111111-1111-1111-1111-111111111001"),
                 name: "Honolulu",
                 state: "HI",
@@ -454,16 +343,6 @@ public static class MetroAreaSeeder
             // =====================
             // IDAHO
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("16000000-0000-0000-0000-000000000001"),
-                name: "All Idaho",
-                state: "ID",
-                centerLatitude: 44.2405,
-                centerLongitude: -114.4787,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("16111111-1111-1111-1111-111111111001"),
                 name: "Boise",
@@ -479,16 +358,6 @@ public static class MetroAreaSeeder
             // ILLINOIS
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("17000000-0000-0000-0000-000000000001"),
-                name: "All Illinois",
-                state: "IL",
-                centerLatitude: 40.3495,
-                centerLongitude: -88.9861,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("17111111-1111-1111-1111-111111111001"),
                 name: "Chicago",
                 state: "IL",
@@ -502,16 +371,6 @@ public static class MetroAreaSeeder
             // =====================
             // INDIANA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("18000000-0000-0000-0000-000000000001"),
-                name: "All Indiana",
-                state: "IN",
-                centerLatitude: 39.8494,
-                centerLongitude: -86.2604,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("18111111-1111-1111-1111-111111111001"),
                 name: "Indianapolis",
@@ -527,16 +386,6 @@ public static class MetroAreaSeeder
             // IOWA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("19000000-0000-0000-0000-000000000001"),
-                name: "All Iowa",
-                state: "IA",
-                centerLatitude: 42.0115,
-                centerLongitude: -93.2105,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("19111111-1111-1111-1111-111111111001"),
                 name: "Des Moines",
                 state: "IA",
@@ -550,16 +399,6 @@ public static class MetroAreaSeeder
             // =====================
             // KANSAS
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("20000000-0000-0000-0000-000000000001"),
-                name: "All Kansas",
-                state: "KS",
-                centerLatitude: 38.5266,
-                centerLongitude: -96.7265,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("20111111-1111-1111-1111-111111111001"),
                 name: "Kansas City",
@@ -575,16 +414,6 @@ public static class MetroAreaSeeder
             // KENTUCKY
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("21000000-0000-0000-0000-000000000001"),
-                name: "All Kentucky",
-                state: "KY",
-                centerLatitude: 37.6681,
-                centerLongitude: -84.6701,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("21111111-1111-1111-1111-111111111001"),
                 name: "Louisville",
                 state: "KY",
@@ -598,16 +427,6 @@ public static class MetroAreaSeeder
             // =====================
             // LOUISIANA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("22000000-0000-0000-0000-000000000001"),
-                name: "All Louisiana",
-                state: "LA",
-                centerLatitude: 31.1695,
-                centerLongitude: -91.8749,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("22111111-1111-1111-1111-111111111001"),
                 name: "New Orleans",
@@ -623,16 +442,6 @@ public static class MetroAreaSeeder
             // MAINE
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("23000000-0000-0000-0000-000000000001"),
-                name: "All Maine",
-                state: "ME",
-                centerLatitude: 44.6939,
-                centerLongitude: -69.3819,
-                radiusMiles: 180,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("23111111-1111-1111-1111-111111111001"),
                 name: "Portland",
                 state: "ME",
@@ -646,16 +455,6 @@ public static class MetroAreaSeeder
             // =====================
             // MARYLAND
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("24000000-0000-0000-0000-000000000001"),
-                name: "All Maryland",
-                state: "MD",
-                centerLatitude: 39.0639,
-                centerLongitude: -76.8021,
-                radiusMiles: 180,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("24111111-1111-1111-1111-111111111001"),
                 name: "Baltimore",
@@ -671,16 +470,6 @@ public static class MetroAreaSeeder
             // MASSACHUSETTS
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("25000000-0000-0000-0000-000000000001"),
-                name: "All Massachusetts",
-                state: "MA",
-                centerLatitude: 42.2352,
-                centerLongitude: -71.0275,
-                radiusMiles: 150,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("25111111-1111-1111-1111-111111111001"),
                 name: "Boston",
                 state: "MA",
@@ -694,16 +483,6 @@ public static class MetroAreaSeeder
             // =====================
             // MICHIGAN
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("26000000-0000-0000-0000-000000000001"),
-                name: "All Michigan",
-                state: "MI",
-                centerLatitude: 43.3266,
-                centerLongitude: -84.5361,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("26111111-1111-1111-1111-111111111001"),
                 name: "Detroit",
@@ -719,16 +498,6 @@ public static class MetroAreaSeeder
             // MINNESOTA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("27000000-0000-0000-0000-000000000001"),
-                name: "All Minnesota",
-                state: "MN",
-                centerLatitude: 45.6945,
-                centerLongitude: -93.9196,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("27111111-1111-1111-1111-111111111001"),
                 name: "Minneapolis-St. Paul",
                 state: "MN",
@@ -743,16 +512,6 @@ public static class MetroAreaSeeder
             // MISSISSIPPI
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("28000000-0000-0000-0000-000000000001"),
-                name: "All Mississippi",
-                state: "MS",
-                centerLatitude: 32.7416,
-                centerLongitude: -89.6787,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("28111111-1111-1111-1111-111111111001"),
                 name: "Jackson",
                 state: "MS",
@@ -766,16 +525,6 @@ public static class MetroAreaSeeder
             // =====================
             // MISSOURI
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("29000000-0000-0000-0000-000000000001"),
-                name: "All Missouri",
-                state: "MO",
-                centerLatitude: 38.4561,
-                centerLongitude: -92.2884,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("29111111-1111-1111-1111-111111111001"),
                 name: "St. Louis",
@@ -801,16 +550,6 @@ public static class MetroAreaSeeder
             // MONTANA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("30000000-0000-0000-0000-000000000001"),
-                name: "All Montana",
-                state: "MT",
-                centerLatitude: 46.9219,
-                centerLongitude: -109.6333,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("30111111-1111-1111-1111-111111111001"),
                 name: "Billings",
                 state: "MT",
@@ -825,16 +564,6 @@ public static class MetroAreaSeeder
             // NEBRASKA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("31000000-0000-0000-0000-000000000001"),
-                name: "All Nebraska",
-                state: "NE",
-                centerLatitude: 41.4925,
-                centerLongitude: -99.9018,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("31111111-1111-1111-1111-111111111001"),
                 name: "Omaha",
                 state: "NE",
@@ -848,16 +577,6 @@ public static class MetroAreaSeeder
             // =====================
             // NEVADA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("32000000-0000-0000-0000-000000000001"),
-                name: "All Nevada",
-                state: "NV",
-                centerLatitude: 38.8026,
-                centerLongitude: -117.0554,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("32111111-1111-1111-1111-111111111001"),
                 name: "Las Vegas",
@@ -883,16 +602,6 @@ public static class MetroAreaSeeder
             // NEW HAMPSHIRE
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("33000000-0000-0000-0000-000000000001"),
-                name: "All New Hampshire",
-                state: "NH",
-                centerLatitude: 43.4525,
-                centerLongitude: -71.3102,
-                radiusMiles: 150,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("33111111-1111-1111-1111-111111111001"),
                 name: "Manchester",
                 state: "NH",
@@ -906,16 +615,6 @@ public static class MetroAreaSeeder
             // =====================
             // NEW JERSEY
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("34000000-0000-0000-0000-000000000001"),
-                name: "All New Jersey",
-                state: "NJ",
-                centerLatitude: 40.2206,
-                centerLongitude: -74.7597,
-                radiusMiles: 150,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("34111111-1111-1111-1111-111111111001"),
                 name: "Newark",
@@ -931,16 +630,6 @@ public static class MetroAreaSeeder
             // NEW MEXICO
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("35000000-0000-0000-0000-000000000001"),
-                name: "All New Mexico",
-                state: "NM",
-                centerLatitude: 34.8405,
-                centerLongitude: -106.2371,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("35111111-1111-1111-1111-111111111001"),
                 name: "Albuquerque",
                 state: "NM",
@@ -954,16 +643,6 @@ public static class MetroAreaSeeder
             // =====================
             // NEW YORK
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("36000000-0000-0000-0000-000000000001"),
-                name: "All New York",
-                state: "NY",
-                centerLatitude: 42.1657,
-                centerLongitude: -74.9481,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("36111111-1111-1111-1111-111111111001"),
                 name: "New York City",
@@ -999,16 +678,6 @@ public static class MetroAreaSeeder
             // NORTH CAROLINA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("37000000-0000-0000-0000-000000000001"),
-                name: "All North Carolina",
-                state: "NC",
-                centerLatitude: 35.6301,
-                centerLongitude: -79.8064,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("37111111-1111-1111-1111-111111111001"),
                 name: "Charlotte",
                 state: "NC",
@@ -1032,30 +701,10 @@ public static class MetroAreaSeeder
             // =====================
             // NORTH DAKOTA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("38000000-0000-0000-0000-000000000001"),
-                name: "All North Dakota",
-                state: "ND",
-                centerLatitude: 47.5289,
-                centerLongitude: -99.7840,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
 
             // =====================
             // OHIO
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("39000000-0000-0000-0000-000000000001"),
-                name: "All Ohio",
-                state: "OH",
-                centerLatitude: 40.4173,
-                centerLongitude: -82.9071,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("39111111-1111-1111-1111-111111111001"),
                 name: "Cleveland",
@@ -1101,16 +750,6 @@ public static class MetroAreaSeeder
             // OKLAHOMA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("40000000-0000-0000-0000-000000000001"),
-                name: "All Oklahoma",
-                state: "OK",
-                centerLatitude: 35.5653,
-                centerLongitude: -96.9289,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("40111111-1111-1111-1111-111111111001"),
                 name: "Oklahoma City",
                 state: "OK",
@@ -1125,16 +764,6 @@ public static class MetroAreaSeeder
             // OREGON
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("41000000-0000-0000-0000-000000000001"),
-                name: "All Oregon",
-                state: "OR",
-                centerLatitude: 43.8041,
-                centerLongitude: -120.5542,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("41111111-1111-1111-1111-111111111001"),
                 name: "Portland",
                 state: "OR",
@@ -1148,16 +777,6 @@ public static class MetroAreaSeeder
             // =====================
             // PENNSYLVANIA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("42000000-0000-0000-0000-000000000001"),
-                name: "All Pennsylvania",
-                state: "PA",
-                centerLatitude: 40.5908,
-                centerLongitude: -77.2098,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("42111111-1111-1111-1111-111111111001"),
                 name: "Philadelphia",
@@ -1183,16 +802,6 @@ public static class MetroAreaSeeder
             // RHODE ISLAND
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("44000000-0000-0000-0000-000000000001"),
-                name: "All Rhode Island",
-                state: "RI",
-                centerLatitude: 41.6809,
-                centerLongitude: -71.5118,
-                radiusMiles: 120,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("44111111-1111-1111-1111-111111111001"),
                 name: "Providence",
                 state: "RI",
@@ -1207,16 +816,6 @@ public static class MetroAreaSeeder
             // SOUTH CAROLINA
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("45000000-0000-0000-0000-000000000001"),
-                name: "All South Carolina",
-                state: "SC",
-                centerLatitude: 33.8361,
-                centerLongitude: -80.9066,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("45111111-1111-1111-1111-111111111001"),
                 name: "Charleston",
                 state: "SC",
@@ -1230,30 +829,10 @@ public static class MetroAreaSeeder
             // =====================
             // SOUTH DAKOTA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("46000000-0000-0000-0000-000000000001"),
-                name: "All South Dakota",
-                state: "SD",
-                centerLatitude: 44.2998,
-                centerLongitude: -99.4388,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
 
             // =====================
             // TENNESSEE
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("47000000-0000-0000-0000-000000000001"),
-                name: "All Tennessee",
-                state: "TN",
-                centerLatitude: 35.7478,
-                centerLongitude: -86.6923,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("47111111-1111-1111-1111-111111111001"),
                 name: "Nashville",
@@ -1278,16 +857,6 @@ public static class MetroAreaSeeder
             // =====================
             // TEXAS
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("48000000-0000-0000-0000-000000000001"),
-                name: "All Texas",
-                state: "TX",
-                centerLatitude: 31.9686,
-                centerLongitude: -99.9018,
-                radiusMiles: 300,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("48111111-1111-1111-1111-111111111001"),
                 name: "Houston",
@@ -1333,16 +902,6 @@ public static class MetroAreaSeeder
             // UTAH
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("49000000-0000-0000-0000-000000000001"),
-                name: "All Utah",
-                state: "UT",
-                centerLatitude: 39.3210,
-                centerLongitude: -111.0937,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("49111111-1111-1111-1111-111111111001"),
                 name: "Salt Lake City",
                 state: "UT",
@@ -1356,30 +915,10 @@ public static class MetroAreaSeeder
             // =====================
             // VERMONT
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("50000000-0000-0000-0000-000000000001"),
-                name: "All Vermont",
-                state: "VT",
-                centerLatitude: 44.0459,
-                centerLongitude: -72.7107,
-                radiusMiles: 150,
-                isStateLevelArea: true,
-                isActive: true
-            ),
 
             // =====================
             // VIRGINIA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("51000000-0000-0000-0000-000000000001"),
-                name: "All Virginia",
-                state: "VA",
-                centerLatitude: 37.7693,
-                centerLongitude: -78.1694,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("51111111-1111-1111-1111-111111111001"),
                 name: "Richmond",
@@ -1395,16 +934,6 @@ public static class MetroAreaSeeder
             // WASHINGTON
             // =====================
             MetroArea.Create(
-                id: Guid.Parse("53000000-0000-0000-0000-000000000001"),
-                name: "All Washington",
-                state: "WA",
-                centerLatitude: 47.7511,
-                centerLongitude: -120.7401,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
-            MetroArea.Create(
                 id: Guid.Parse("53111111-1111-1111-1111-111111111001"),
                 name: "Seattle",
                 state: "WA",
@@ -1418,30 +947,10 @@ public static class MetroAreaSeeder
             // =====================
             // WEST VIRGINIA
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("54000000-0000-0000-0000-000000000001"),
-                name: "All West Virginia",
-                state: "WV",
-                centerLatitude: 38.5976,
-                centerLongitude: -80.4549,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
 
             // =====================
             // WISCONSIN
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("55000000-0000-0000-0000-000000000001"),
-                name: "All Wisconsin",
-                state: "WI",
-                centerLatitude: 44.2685,
-                centerLongitude: -89.6165,
-                radiusMiles: 200,
-                isStateLevelArea: true,
-                isActive: true
-            ),
             MetroArea.Create(
                 id: Guid.Parse("55111111-1111-1111-1111-111111111001"),
                 name: "Milwaukee",
@@ -1456,16 +965,6 @@ public static class MetroAreaSeeder
             // =====================
             // WYOMING
             // =====================
-            MetroArea.Create(
-                id: Guid.Parse("56000000-0000-0000-0000-000000000001"),
-                name: "All Wyoming",
-                state: "WY",
-                centerLatitude: 42.7559,
-                centerLongitude: -107.3025,
-                radiusMiles: 250,
-                isStateLevelArea: true,
-                isActive: true
-            ),
         };
 
         await context.MetroAreas.AddRangeAsync(metroAreas);

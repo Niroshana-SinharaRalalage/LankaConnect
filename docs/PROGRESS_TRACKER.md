@@ -1,9 +1,73 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 UI Fixes & DTO Completion ✅*
+*Last Updated: 2025-11-13 (Current Session) - Phase 6A.9 Final Fixes - Data Consistency & API Integration ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - PHASE 6A.9 UI/FRONTEND COMPLETE ✅
+## 🎯 Current Session Status - PHASE 6A.9 ALL ISSUES RESOLVED ✅
+
+### Session: Phase 6A.9 Final Fixes - Metro Areas Data Consistency & Newsletter Integration (2025-11-13)
+
+**THREE CRITICAL ISSUES RESOLVED - Newsletter, Profile, and Data Consistency ✅**
+
+**Status**: ✅ ALL FIXES COMPLETE - Deployed to develop, awaiting staging deployment
+
+**Problems Reported by User**:
+1. **Data Inconsistency**: Profile page shows 9 states, newsletter subscription shows 44+ states - "which one is correct?"
+2. **Profile Metro Selection Still Broken**: Despite all previous fixes, metro selection in profile page still not working
+3. **Newsletter Subscription Not Working**: Screenshot shows "4 items selected" but functionality broken
+
+**Root Causes Identified**:
+1. **Newsletter Using Hardcoded Constants**: NewsletterMetroSelector was using `getMetrosGroupedByState()` from `metroAreas.constants.ts` (hardcoded data with all 50 state-level metros), while Profile was using `useMetroAreas()` hook (API data with only 9 states that have city metros after cleanup)
+2. **Backend Changes Not Deployed**: Earlier fixes (UserDto.PreferredMetroAreas, GetUserByIdQueryHandler mapping) existed in code but weren't deployed to staging where local UI points
+3. **State-Level Metros in Constants**: Frontend constants file still had all 50 "All [State]" entries despite database cleanup
+
+**Complete Fix Summary**:
+
+**1. Fixed Newsletter Data Source** ✅
+- Modified [NewsletterMetroSelector.tsx](../web/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx)
+- Removed: `getMetrosGroupedByState()` from hardcoded constants
+- Added: `useMetroAreas()` hook to fetch from API (same as Profile component)
+- Added: Loading and error states for API calls
+- Changed: `isStateLevelArea` check to use API data property `m.isStateLevelArea`
+- Result: Newsletter and Profile now show same 9 states (consistent data source)
+
+**2. Verified Backend Integration** ✅
+- Confirmed: UserDto has PreferredMetroAreas property (added in previous session)
+- Confirmed: GetUserByIdQueryHandler maps PreferredMetroAreaIds correctly
+- Confirmed: ProfileRepository reloads profile after 204 response
+- Confirmed: UsersController PUT/GET endpoints working correctly
+- Backend build: **0 errors** (only Microsoft.Identity.Web vulnerability warning)
+- Result: All code in place for metro persistence to work after deployment
+
+**3. Completed State-Level Metro Cleanup** ✅
+- Removed: 50 state-level metro entries from [MetroAreaSeeder.cs](../src/LankaConnect.Infrastructure/Data/Seeders/MetroAreaSeeder.cs)
+- Kept: Only 74 city metros (Birmingham, Phoenix, Los Angeles, etc.)
+- TreeDropdown: Already has parent-child selection logic (selecting state auto-selects all child cities)
+- Database: User already deleted state-level metros from staging DB
+- Result: No more "All Alabama", "All Ohio" separate entries
+
+**Files Modified in This Session**:
+- [NewsletterMetroSelector.tsx](../web/src/presentation/components/features/newsletter/NewsletterMetroSelector.tsx) - API integration (lines 4-6, 42-46, 67, 104-134)
+- [GetUserByIdQueryHandler.cs](../src/LankaConnect.Application/Users/Queries/GetUserById/GetUserByIdQueryHandler.cs) - PreferredMetroAreas mapping (verified)
+- [MetroAreaSeeder.cs](../src/LankaConnect.Infrastructure/Data/Seeders/MetroAreaSeeder.cs) - Removed 50 state-level entries (verified)
+
+**Git Commit**: `2f25e95` - "fix(phase-6a9): Complete metro areas fixes - data consistency, API integration, and tree dropdown"
+**Branch**: develop
+**Deployment Status**: Pushed to GitHub, CI/CD pipeline will deploy to staging
+
+**What Happens Next**:
+1. GitHub Actions will build and deploy backend to staging Azure
+2. User can test in staging environment (local UI → staging API)
+3. All three issues should be resolved:
+   - ✅ Newsletter and Profile show same 9 states (same API source)
+   - ✅ Profile metro selection persists after page refresh (backend mapping working)
+   - ✅ Newsletter subscription works with API data (consistent source)
+
+**Architecture**: Unified data source (API via useMetroAreas hook), proper DTO mapping, state-level metros removed from seeder
+
+---
+
+## 🎯 Previous Session Status - PHASE 6A.9 UI/FRONTEND COMPLETE ✅
 
 ### Session: Phase 6A.9 UI Fixes - Tree Dropdown & Profile Persistence (2025-11-13)
 

@@ -88,18 +88,31 @@ public class AdminController : BaseController<AdminController>
                     if (resetUsers)
                     {
                         Logger.LogWarning("resetUsers=true: Deleting existing admin users to force re-seeding");
+                        var adminEmails = new[]
+                        {
+                            "admin@lankaconnect.com",
+                            "admin1@lankaconnect.com",
+                            "organizer@lankaconnect.com",
+                            "user@lankaconnect.com"
+                        };
+
                         var adminUsers = await _context.Users
-                            .Where(u => u.Email.Value == "admin@lankaconnect.com" ||
-                                       u.Email.Value == "admin1@lankaconnect.com" ||
-                                       u.Email.Value == "organizer@lankaconnect.com" ||
-                                       u.Email.Value == "user@lankaconnect.com")
+                            .Where(u => adminEmails.Contains(u.Email.Value))
                             .ToListAsync();
 
                         if (adminUsers.Any())
                         {
+                            Logger.LogWarning("Found {Count} admin users to delete: {Emails}",
+                                adminUsers.Count,
+                                string.Join(", ", adminUsers.Select(u => u.Email.Value)));
+
                             _context.Users.RemoveRange(adminUsers);
                             await _context.SaveChangesAsync();
-                            Logger.LogInformation("Deleted {Count} admin users for re-seeding", adminUsers.Count);
+                            Logger.LogInformation("Successfully deleted {Count} admin users for re-seeding", adminUsers.Count);
+                        }
+                        else
+                        {
+                            Logger.LogInformation("No admin users found to delete");
                         }
                     }
 

@@ -43,7 +43,7 @@ export class ProfileRepository {
    */
   async uploadProfilePhoto(userId: string, file: File): Promise<PhotoUploadResponse> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image', file); // Backend expects 'image' parameter (UsersController.cs line 112)
 
     const response = await apiClient.postMultipart<PhotoUploadResponse>(
       `${this.basePath}/${userId}/profile-photo`,
@@ -83,6 +83,7 @@ export class ProfileRepository {
 
   /**
    * Update cultural interests
+   * Phase 6A.9 FIX: Backend returns 204 No Content, so we reload profile after update
    * @param userId User GUID
    * @param interests Cultural interests (0-10 items)
    * @returns Promise resolving to updated UserProfile
@@ -91,11 +92,15 @@ export class ProfileRepository {
     userId: string,
     interests: UpdateCulturalInterestsRequest
   ): Promise<UserProfile> {
-    const response = await apiClient.put<UserProfile>(
+    // PUT request returns 204 No Content on success (UsersController.cs line 295)
+    await apiClient.put<void>(
       `${this.basePath}/${userId}/cultural-interests`,
       interests
     );
-    return response;
+
+    // Reload full profile to get updated culturalInterests
+    const updatedProfile = await this.getProfile(userId);
+    return updatedProfile;
   }
 
   /**

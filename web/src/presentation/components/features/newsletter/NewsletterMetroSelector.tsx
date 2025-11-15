@@ -59,7 +59,9 @@ export function NewsletterMetroSelector({
    * Each state becomes a parent node, city metros become children
    */
   const treeNodes: TreeNode[] = useMemo(() => {
-    return US_STATES.map((state) => {
+    const nodes: TreeNode[] = [];
+
+    for (const state of US_STATES) {
       const metrosForState = metroAreasByState.get(state.code) || [];
 
       // Filter out state-level metros (like "All Alabama")
@@ -67,7 +69,7 @@ export function NewsletterMetroSelector({
       const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
 
       // Only include states that have city metros
-      if (cityMetros.length === 0) return null;
+      if (cityMetros.length === 0) continue;
 
       // Create child nodes for each metro
       const children: TreeNode[] = cityMetros.map((metro) => ({
@@ -77,13 +79,15 @@ export function NewsletterMetroSelector({
       }));
 
       // Create parent node for the state
-      return {
+      nodes.push({
         id: `state-${state.code}`,
         label: state.name,
         checked: children.every((child) => selectedMetroIds.includes(child.id)),
         children,
-      };
-    }).filter((node): node is TreeNode => node !== null);
+      });
+    }
+
+    return nodes;
   }, [metroAreasByState, selectedMetroIds]);
 
   const handleReceiveAllChange = (receiveAll: boolean) => {

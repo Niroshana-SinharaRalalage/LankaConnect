@@ -44,15 +44,18 @@ export function useMetroAreas(): MetroAreasState {
 
     async function fetchMetroAreas() {
       try {
+        console.log('[useMetroAreas] Starting to fetch metro areas...');
         setIsLoading(true);
         setError(null);
 
         const data = await metroAreasRepository.getAll(true);
+        console.log('[useMetroAreas] Successfully fetched', data.length, 'metro areas');
 
         if (isMounted) {
           setMetroAreas(data);
         }
       } catch (err) {
+        console.error('[useMetroAreas] ERROR fetching metro areas:', err);
         if (isMounted) {
           const errorMessage = err instanceof Error ? err.message : 'Failed to load metro areas';
           setError(errorMessage);
@@ -60,6 +63,7 @@ export function useMetroAreas(): MetroAreasState {
         }
       } finally {
         if (isMounted) {
+          console.log('[useMetroAreas] Finished fetching (loading=false)');
           setIsLoading(false);
         }
       }

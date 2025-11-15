@@ -244,7 +244,7 @@ public class AdminController : BaseController<AdminController>
     /// <summary>
     /// Fix admin user passwords (force reset to known defaults)
     /// ONLY available in Development and Staging for testing/debugging
-    /// Phase 6A.9: Fixes login issues by resetting passwords to Admin@123, Organizer@123, User@123
+    /// Phase 6A.9: Fixes login issues by resetting passwords to Admin@2025!, Organizer@2025!, User@2025!
     /// </summary>
     /// <returns>Success message with password reset results</returns>
     [HttpPost("fix-passwords")]
@@ -271,13 +271,13 @@ public class AdminController : BaseController<AdminController>
             var allUsers = await _context.Users.ToListAsync();
             Logger.LogInformation("Loaded {Count} users from database", allUsers.Count);
 
-            // Define password mappings
+            // Define password mappings (passwords must meet validation: 8+ chars, upper+lower+digit+special, no sequential chars)
             var passwordMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "admin@lankaconnect.com", "Admin@123" },
-                { "admin1@lankaconnect.com", "Admin@123" },
-                { "organizer@lankaconnect.com", "Organizer@123" },
-                { "user@lankaconnect.com", "User@123" }
+                { "admin@lankaconnect.com", "Admin@2025!" },
+                { "admin1@lankaconnect.com", "Admin@2025!" },
+                { "organizer@lankaconnect.com", "Organizer@2025!" },
+                { "user@lankaconnect.com", "User@2025!" }
             };
 
             var updated = 0;
@@ -321,7 +321,7 @@ public class AdminController : BaseController<AdminController>
                 environment = _environment.EnvironmentName,
                 timestamp = DateTime.UtcNow,
                 passwordsReset = updated,
-                details = "Passwords reset to: Admin@123 for admin/admin1, Organizer@123 for organizer, User@123 for user"
+                details = "Passwords reset to: Admin@2025! for admin/admin1, Organizer@2025! for organizer, User@2025! for user"
             });
         }
         catch (Exception ex)

@@ -81,8 +81,8 @@ public static class UserSeeder
                     System.Console.WriteLine("[UserSeeder] User entity created, hashing password...");
                     var user = adminManager.Value;
 
-                    // Set password: Admin@123
-                    var passwordHash = passwordHashingService.HashPassword("Admin@123");
+                    // Set password: Admin@2025! (no sequential characters, meets all requirements)
+                    var passwordHash = passwordHashingService.HashPassword("Admin@2025!");
                     if (!passwordHash.IsSuccess)
                     {
                         System.Console.WriteLine($"[UserSeeder] FAILED to hash password for Admin Manager: {passwordHash.Error}");
@@ -113,8 +113,8 @@ public static class UserSeeder
                 {
                     var user = admin.Value;
 
-                    // Set password: Admin@123
-                    var passwordHash = passwordHashingService.HashPassword("Admin@123");
+                    // Set password: Admin@2025! (no sequential characters, meets all requirements)
+                    var passwordHash = passwordHashingService.HashPassword("Admin@2025!");
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);
@@ -139,8 +139,8 @@ public static class UserSeeder
                 {
                     var user = organizer.Value;
 
-                    // Set password: Organizer@123
-                    var passwordHash = passwordHashingService.HashPassword("Organizer@123");
+                    // Set password: Organizer@2025! (no sequential characters, meets all requirements)
+                    var passwordHash = passwordHashingService.HashPassword("Organizer@2025!");
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);
@@ -165,8 +165,8 @@ public static class UserSeeder
                 {
                     var user = generalUser.Value;
 
-                    // Set password: User@123
-                    var passwordHash = passwordHashingService.HashPassword("User@123");
+                    // Set password: User@2025! (no sequential characters, meets all requirements)
+                    var passwordHash = passwordHashingService.HashPassword("User@2025!");
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);

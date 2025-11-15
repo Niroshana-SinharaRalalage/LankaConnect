@@ -18,6 +18,7 @@ public static class UserSeeder
     /// </summary>
     public static async Task SeedAsync(AppDbContext context, IPasswordHashingService passwordHashingService)
     {
+        System.Console.WriteLine("[UserSeeder] SeedAsync started");
         try
         {
             // Check if ALL 4 admin users already exist
@@ -34,16 +35,23 @@ public static class UserSeeder
             // EF Core cannot reliably translate .Contains() queries on owned entity properties (Email is OwnsOne)
             // This was causing the idempotency check to fail silently, preventing proper user creation/deletion
             var allUsers = await context.Users.ToListAsync();
+            System.Console.WriteLine($"[UserSeeder] Loaded {allUsers.Count} total users from database");
+
             var existingAdminEmails = allUsers
                 .Select(u => u.Email.Value)
                 .Where(email => requiredAdminEmails.Contains(email))
                 .ToList();
 
+            System.Console.WriteLine($"[UserSeeder] Found {existingAdminEmails.Count} existing admin users: {string.Join(", ", existingAdminEmails)}");
+
             // If all 4 admin users already exist, skip seeding
             if (existingAdminEmails.Count == requiredAdminEmails.Length)
             {
+                System.Console.WriteLine("[UserSeeder] All 4 admin users exist, skipping seeding (idempotency)");
                 return; // All admin users already seeded
             }
+
+            System.Console.WriteLine($"[UserSeeder] Seeding required - {4 - existingAdminEmails.Count} admin users missing");
 
             var users = new List<User>();
 
@@ -154,12 +162,19 @@ public static class UserSeeder
             // Add users to context and save
             if (users.Any())
             {
+                System.Console.WriteLine($"[UserSeeder] Adding {users.Count} users to context");
                 await context.Users.AddRangeAsync(users);
-                await context.SaveChangesAsync();
+                var saveResult = await context.SaveChangesAsync();
+                System.Console.WriteLine($"[UserSeeder] SaveChangesAsync returned {saveResult} rows affected");
+            }
+            else
+            {
+                System.Console.WriteLine("[UserSeeder] No users to add (all idempotent checks passed)");
             }
         }
         catch (Exception ex)
         {
+            System.Console.WriteLine($"[UserSeeder] Exception: {ex}");
             throw new InvalidOperationException($"Error seeding users: {ex.Message}", ex);
         }
     }

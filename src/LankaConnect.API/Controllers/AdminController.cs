@@ -138,8 +138,13 @@ public class AdminController : BaseController<AdminController>
                                     string.Join(", ", adminUsers.Select(u => u.Email.Value)));
 
                                 _context.Users.RemoveRange(adminUsers);
-                                await _context.SaveChangesAsync();
+                                var deleteResult = await _context.SaveChangesAsync();
+                                Logger.LogInformation("SaveChangesAsync returned {RowsAffected} rows affected", deleteResult);
                                 Logger.LogInformation("Successfully deleted {Count} admin users for re-seeding", adminUsers.Count);
+
+                                // Verify deletion actually occurred
+                                var usersAfterDelete = await _context.Users.CountAsync();
+                                Logger.LogInformation("User count immediately after deletion: {UserCount}", usersAfterDelete);
                             }
                             else
                             {

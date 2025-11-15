@@ -197,6 +197,39 @@ public class SubscribeToNewsletterCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_EmptyMetroArrayWithReceiveAllLocations_ShouldSucceed()
+    {
+        // Arrange
+        // This test covers the bug fix: UI sends empty array [] when "All Locations" is selected
+        // The validator was incorrectly rejecting empty arrays with .NotEmpty() even when ReceiveAllLocations = true
+        var email = "emptyarray@example.com";
+        var command = new SubscribeToNewsletterCommand(email, new List<Guid>(), ReceiveAllLocations: true);
+
+        _mockRepository
+            .Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NewsletterSubscriber?)null);
+
+        _mockEmailService
+            .Setup(s => s.SendTemplatedEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value.Email.Should().Be(email);
+        result.Value.MetroAreaId.Should().BeNull();
+        result.Value.ReceiveAllLocations.Should().BeTrue();
+        result.Value.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Handle_EmailServiceFails_ReturnsSuccess()
     {
         // Arrange

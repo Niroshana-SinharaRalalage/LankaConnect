@@ -16,13 +16,10 @@ public class SubscribeToNewsletterCommandValidator : AbstractValidator<Subscribe
             .Must(BeValidEmail)
             .WithMessage("Invalid email format");
 
-        RuleFor(x => x.MetroAreaIds)
-            .NotEmpty()
-            .WithMessage("Metro areas are required when not receiving all locations")
-            .When(x => !x.ReceiveAllLocations);
-
-        RuleFor(x => x.ReceiveAllLocations)
-            .Must((command, receiveAll) => receiveAll || (command.MetroAreaIds != null && command.MetroAreaIds.Count > 0))
+        // Phase 5B: Comprehensive validation rule that allows empty arrays when ReceiveAllLocations = true
+        // Removed redundant .NotEmpty() rule that incorrectly rejected empty arrays
+        RuleFor(x => x)
+            .Must(command => command.ReceiveAllLocations || (command.MetroAreaIds != null && command.MetroAreaIds.Any()))
             .WithMessage("Either specify metro areas or select to receive all locations");
     }
 

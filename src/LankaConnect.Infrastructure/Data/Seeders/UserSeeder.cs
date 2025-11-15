@@ -20,14 +20,25 @@ public static class UserSeeder
     {
         try
         {
-            // Check if admin user already exists (more specific than AnyAsync)
-            // This allows seeding admin users even if test/old users exist in database
-            var adminExists = await context.Users
-                .AnyAsync(u => u.Email.Value == "admin@lankaconnect.com");
-
-            if (adminExists)
+            // Check if ALL 4 admin users already exist
+            // Only skip seeding if all admin users are present
+            var requiredAdminEmails = new[]
             {
-                return; // Admin users already seeded
+                "admin@lankaconnect.com",
+                "admin1@lankaconnect.com",
+                "organizer@lankaconnect.com",
+                "user@lankaconnect.com"
+            };
+
+            var existingAdminEmails = await context.Users
+                .Where(u => requiredAdminEmails.Contains(u.Email.Value))
+                .Select(u => u.Email.Value)
+                .ToListAsync();
+
+            // If all 4 admin users already exist, skip seeding
+            if (existingAdminEmails.Count == requiredAdminEmails.Length)
+            {
+                return; // All admin users already seeded
             }
 
             var users = new List<User>();

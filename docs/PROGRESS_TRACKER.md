@@ -1,17 +1,56 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-14 (Current Session) - Fixed Deployment Blocker, Implemented Seeding Reset ✅*
+*Last Updated: 2025-11-15 (Current Session) - Newsletter Subscription FluentValidation Fix - Partially Resolved ⚠️*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - DEPLOYMENT BLOCKER FIXED, SEEDING RESET IMPLEMENTED ✅
+## 🎯 Current Session Status - NEWSLETTER SUBSCRIPTION VALIDATION FIXED, HANDLER ERROR REMAINS ⚠️
 
-### Session: User Seeding Persistence - Deployment Fix & Diagnostic Enhancement (2025-11-14)
+### Session: Newsletter Subscription 400 Bad Request - FluentValidation Fix (2025-11-15)
+
+**VALIDATION BUG FIXED**: FluentValidation was rejecting empty arrays when ReceiveAllLocations=true
+
+**Status**: ⚠️ PARTIAL - Validation fixed and deployed (Run #131), but new handler error discovered
+
+---
+
+## Previous Session: User Seeding Persistence - Deployment Fix & Diagnostic Enhancement (2025-11-14)
 
 **ROOT CAUSE IDENTIFIED & FIXED**: Newsletter test was blocking deployments; admin users in DB have stale credentials
 
 **Status**: ✅ COMPLETE - All fixes deployed, reset endpoint ready to fix database
 
-### **Session Achievements** ✅:
+### **Current Session Achievements** ⚠️:
+
+**1. Fixed FluentValidation Bug** (Commit: `d6bd457`, Run #131) ✅
+- **Root Cause**: FluentValidation rule `.NotEmpty()` rejected empty arrays `[]` even when `ReceiveAllLocations = true`
+- **The Fix**: Removed redundant `.NotEmpty()` rule, kept comprehensive `Must()` validation
+- **File**: `src/LankaConnect.Application/.../SubscribeToNewsletterCommandValidator.cs`
+- **Testing**: Added unit test `Handle_EmptyMetroArrayWithReceiveAllLocations_ShouldSucceed`
+- **Result**: All 7 tests pass, validation now correctly allows empty arrays
+
+**2. Consulted System-Architect** ✅
+- Created comprehensive diagnosis document: `docs/NEWSLETTER_SUBSCRIPTION_DIAGNOSIS.md`
+- Analyzed entire newsletter subscription flow end-to-end
+- Identified that UI code in Footer.tsx was correct - issue was 100% backend
+
+**3. Deployed to Staging** ✅
+- Deployment Run #131 completed successfully at 2025-11-15 00:25:25Z
+- Commit `d6bd457` deployed to Azure Container Apps staging
+
+**4. NEW ISSUE DISCOVERED** ⚠️
+- **After deployment**, validation now passes but subscription fails with different error
+- **Error Response**: `{"success":false,"message":"An error occurred while processing your subscription","errorCode":"SUBSCRIPTION_FAILED"}`
+- **This is NOT a validation error** - something is failing in the handler or repository layer
+- **Action Needed**: Further investigation required to identify handler/repository error
+- **Logs**: Unable to retrieve detailed exception from Container App logs
+
+### **Session Summary**:
+✅ **Fixed**: FluentValidation bug - empty arrays now accepted when `ReceiveAllLocations = true`
+⚠️ **Ongoing**: New handler/repository error causing `SUBSCRIPTION_FAILED` - requires further investigation
+
+---
+
+### **Previous Session Achievements** ✅:
 
 **1. Unblocked Deployment Pipeline** (Commit: `f702c09`)
 - Fixed failing test: `SubscribeToNewsletterCommandHandlerTests.Handle_EmailServiceFails_ReturnsFailure`

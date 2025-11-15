@@ -89,31 +89,63 @@ public class AdminController : BaseController<AdminController>
                     {
                         Logger.LogWarning("resetUsers=true: Deleting existing admin users to force re-seeding");
 
-                        // Use direct email matching with OR conditions for reliable EF Core translation
-                        var adminUsers = await _context.Users
-                            .Where(u => u.Email.Value == "admin@lankaconnect.com" ||
-                                       u.Email.Value == "admin1@lankaconnect.com" ||
-                                       u.Email.Value == "organizer@lankaconnect.com" ||
-                                       u.Email.Value == "user@lankaconnect.com")
-                            .ToListAsync();
-
-                        if (adminUsers.Any())
+                        try
                         {
-                            Logger.LogWarning("Found {Count} admin users to delete: {Emails}",
-                                adminUsers.Count,
-                                string.Join(", ", adminUsers.Select(u => u.Email.Value)));
+                            // First, get all existing admin users - need to load them first due to EF Core translation limits
+                            // Then filter in memory to ensure we get exact matches
+                            var allUsers = await _context.Users.ToListAsync();
+                            Logger.LogInformation("Loaded {Count} total users from database", allUsers.Count);
 
-                            _context.Users.RemoveRange(adminUsers);
-                            await _context.SaveChangesAsync();
-                            Logger.LogInformation("Successfully deleted {Count} admin users for re-seeding", adminUsers.Count);
+                            var adminEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                            {
+                                "admin@lankaconnect.com",
+                                "admin1@lankaconnect.com",
+                                "organizer@lankaconnect.com",
+                                "user@lankaconnect.com"
+                            };
+
+                            // Debug: Log all user emails to see what we're working with
+                            var allEmails = allUsers.Select(u => u.Email.Value).ToList();
+                            Logger.LogInformation("Existing emails in DB: {Emails}", string.Join(", ", allEmails.Take(10)));
+
+                            var adminUsers = allUsers
+                                .Where(u => adminEmails.Contains(u.Email.Value))
+                                .ToList();
+
+                            Logger.LogInformation("Found {Count} matching admin users for deletion", adminUsers.Count);
+
+                            if (adminUsers.Any())
+                            {
+                                Logger.LogWarning("Found {Count} admin users to delete: {Emails}",
+                                    adminUsers.Count,
+                                    string.Join(", ", adminUsers.Select(u => u.Email.Value)));
+
+                                _context.Users.RemoveRange(adminUsers);
+                                await _context.SaveChangesAsync();
+                                Logger.LogInformation("Successfully deleted {Count} admin users for re-seeding", adminUsers.Count);
+                            }
+                            else
+                            {
+                                Logger.LogInformation("No admin users found to delete");
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            Logger.LogInformation("No admin users found to delete");
+                            Logger.LogError(ex, "Error during resetUsers deletion: {Message}", ex.Message);
+                            throw;
                         }
                     }
 
-                    await UserSeeder.SeedAsync(_context, _passwordHashingService);
+                    try
+                    {
+                        await UserSeeder.SeedAsync(_context, _passwordHashingService);
+                        Logger.LogInformation("UserSeeder.SeedAsync completed without exception");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Error in UserSeeder.SeedAsync: {Message}", ex.Message);
+                        throw;
+                    }
 
                     // Log user count AFTER seeding to verify persistence
                     var userCountAfter = await _context.Users.CountAsync();

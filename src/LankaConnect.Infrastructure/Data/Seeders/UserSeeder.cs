@@ -30,10 +30,14 @@ public static class UserSeeder
                 "user@lankaconnect.com"
             };
 
-            var existingAdminEmails = await context.Users
-                .Where(u => requiredAdminEmails.Contains(u.Email.Value))
+            // CRITICAL FIX: Load all users into memory first, then filter client-side
+            // EF Core cannot reliably translate .Contains() queries on owned entity properties (Email is OwnsOne)
+            // This was causing the idempotency check to fail silently, preventing proper user creation/deletion
+            var allUsers = await context.Users.ToListAsync();
+            var existingAdminEmails = allUsers
                 .Select(u => u.Email.Value)
-                .ToListAsync();
+                .Where(email => requiredAdminEmails.Contains(email))
+                .ToList();
 
             // If all 4 admin users already exist, skip seeding
             if (existingAdminEmails.Count == requiredAdminEmails.Length)

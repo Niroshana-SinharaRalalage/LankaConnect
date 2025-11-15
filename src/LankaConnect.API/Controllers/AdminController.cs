@@ -242,6 +242,101 @@ public class AdminController : BaseController<AdminController>
     }
 
     /// <summary>
+    /// Fix admin user passwords (force reset to known defaults)
+    /// ONLY available in Development and Staging for testing/debugging
+    /// Phase 6A.9: Fixes login issues by resetting passwords to Admin@123, Organizer@123, User@123
+    /// </summary>
+    /// <returns>Success message with password reset results</returns>
+    [HttpPost("fix-passwords")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> FixAdminPasswords()
+    {
+        // Only allow in Development or Staging
+        if (!_environment.IsDevelopment() && !_environment.IsStaging())
+        {
+            Logger.LogWarning("Fix passwords endpoint called in {Environment} - DENIED", _environment.EnvironmentName);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Password fixing is only available in Development and Staging environments"
+            });
+        }
+
+        try
+        {
+            Logger.LogInformation("Starting admin password reset process...");
+
+            // Load all users
+            var allUsers = await _context.Users.ToListAsync();
+            Logger.LogInformation("Loaded {Count} users from database", allUsers.Count);
+
+            // Define password mappings
+            var passwordMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "admin@lankaconnect.com", "Admin@123" },
+                { "admin1@lankaconnect.com", "Admin@123" },
+                { "organizer@lankaconnect.com", "Organizer@123" },
+                { "user@lankaconnect.com", "User@123" }
+            };
+
+            var updated = 0;
+            foreach (var kvp in passwordMappings)
+            {
+                var email = kvp.Key;
+                var password = kvp.Value;
+
+                var user = allUsers.FirstOrDefault(u => u.Email.Value.Equals(email, StringComparison.OrdinalIgnoreCase));
+                if (user != null)
+                {
+                    Logger.LogWarning("Resetting password for {Email}", email);
+                    var hashResult = _passwordHashingService.HashPassword(password);
+                    if (hashResult.IsSuccess)
+                    {
+                        user.SetPassword(hashResult.Value);
+                        // Ensure email is verified so login works
+                        if (!user.IsEmailVerified)
+                        {
+                            user.VerifyEmail();
+                            Logger.LogWarning("Email verification enabled for {Email}", email);
+                        }
+                        updated++;
+                    }
+                }
+                else
+                {
+                    Logger.LogWarning("Admin user not found: {Email}", email);
+                }
+            }
+
+            if (updated > 0)
+            {
+                await _context.SaveChangesAsync();
+                Logger.LogInformation("Successfully updated {Count} admin user passwords", updated);
+            }
+
+            return Ok(new
+            {
+                message = "Admin password reset completed",
+                environment = _environment.EnvironmentName,
+                timestamp = DateTime.UtcNow,
+                passwordsReset = updated,
+                details = "Passwords reset to: Admin@123 for admin/admin1, Organizer@123 for organizer, User@123 for user"
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resetting admin passwords");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Password Reset Error",
+                Detail = ex.Message,
+                Status = StatusCodes.Status500InternalServerError
+            });
+        }
+    }
+
+    /// <summary>
     /// Get system environment information
     /// Phase 6A.9: Diagnostic endpoint to verify environment configuration
     /// </summary>

@@ -84,6 +84,23 @@ public class AdminController : BaseController<AdminController>
                     var userCountBefore = await _context.Users.CountAsync();
                     Logger.LogInformation("User count BEFORE seeding: {UserCount}", userCountBefore);
 
+                    // Check which admin users actually exist BEFORE deletion
+                    var allUsersBeforeDelete = await _context.Users.ToListAsync();
+                    var requiredAdminEmails = new[]
+                    {
+                        "admin@lankaconnect.com",
+                        "admin1@lankaconnect.com",
+                        "organizer@lankaconnect.com",
+                        "user@lankaconnect.com"
+                    };
+                    var existingAdminEmails = allUsersBeforeDelete
+                        .Select(u => u.Email.Value)
+                        .Where(email => requiredAdminEmails.Contains(email))
+                        .ToList();
+
+                    Logger.LogInformation("BEFORE deletion - Admin users that exist: {Emails}",
+                        existingAdminEmails.Any() ? string.Join(", ", existingAdminEmails) : "(none)");
+
                     // If resetUsers flag is set, delete and recreate admin users
                     if (resetUsers)
                     {
@@ -106,7 +123,7 @@ public class AdminController : BaseController<AdminController>
 
                             // Debug: Log all user emails to see what we're working with
                             var allEmails = allUsers.Select(u => u.Email.Value).ToList();
-                            Logger.LogInformation("Existing emails in DB: {Emails}", string.Join(", ", allEmails.Take(10)));
+                            Logger.LogInformation("Existing emails in DB: {Emails}", string.Join(", ", allEmails.Take(20)));
 
                             var adminUsers = allUsers
                                 .Where(u => adminEmails.Contains(u.Email.Value))
@@ -138,6 +155,7 @@ public class AdminController : BaseController<AdminController>
 
                     try
                     {
+                        Logger.LogInformation("Starting UserSeeder.SeedAsync...");
                         await UserSeeder.SeedAsync(_context, _passwordHashingService);
                         Logger.LogInformation("UserSeeder.SeedAsync completed without exception");
                     }
@@ -150,6 +168,16 @@ public class AdminController : BaseController<AdminController>
                     // Log user count AFTER seeding to verify persistence
                     var userCountAfter = await _context.Users.CountAsync();
                     Logger.LogInformation("User count AFTER seeding: {UserCount}", userCountAfter);
+
+                    // Check which admin users exist AFTER seeding
+                    var allUsersAfterSeed = await _context.Users.ToListAsync();
+                    var existingAdminEmailsAfterSeed = allUsersAfterSeed
+                        .Select(u => u.Email.Value)
+                        .Where(email => requiredAdminEmails.Contains(email))
+                        .ToList();
+
+                    Logger.LogInformation("AFTER seeding - Admin users that exist: {Emails}",
+                        existingAdminEmailsAfterSeed.Any() ? string.Join(", ", existingAdminEmailsAfterSeed) : "(none)");
 
                     if (userCountAfter == userCountBefore && !resetUsers)
                     {

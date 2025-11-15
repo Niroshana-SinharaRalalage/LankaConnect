@@ -1,17 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddNewsletterSubscribers : Migration
+    public partial class FixNewsletterVersionColumnNullability : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "communications");
+            // Fix the version column - drop and recreate the table with correct column definition
+            migrationBuilder.Sql(@"
+                DROP TABLE IF EXISTS communications.newsletter_subscribers;
+            ");
 
             migrationBuilder.CreateTable(
                 name: "newsletter_subscribers",
@@ -73,9 +75,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "newsletter_subscribers",
-                schema: "communications");
+            // This migration fixes a bug in the original migration, so there's no going back
+            throw new NotSupportedException("This migration fixes a critical bug and cannot be rolled back.");
         }
     }
 }

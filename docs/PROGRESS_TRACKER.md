@@ -1,15 +1,92 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-15 (Current Session) - Newsletter Subscription Issues - COMPLETELY RESOLVED ✅*
+*Last Updated: 2025-11-15 (Current Session) - Profile Page UI Fixes - COMPLETE ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - NEWSLETTER SUBSCRIPTION COMPLETELY FIXED ✅
+## 🎯 Current Session Status - PROFILE PAGE 4 CRITICAL ISSUES FIXED ✅
 
-### Session: Newsletter Subscription Issues - Complete Resolution (2025-11-15)
+### Session: Profile Page UI & Persistence Fixes (2025-11-15)
+
+**FOUR CRITICAL ISSUES IDENTIFIED AND RESOLVED**: Photo upload API parameter mismatch, Cultural Interests/Metro Areas persistence, Logo link, Footer missing
+
+**Status**: ✅ COMPLETE - All profile page issues fixed, committed (94dd909), and pushed to develop
+
+### **Current Session Achievements** ✅:
+
+**1. Fixed Profile Photo Upload 400 Error** (Commit: `94dd909`) ✅
+- **Root Cause**: Frontend sending form data parameter as `'file'` but backend expecting `'image'`
+- **The Fix**: Changed `formData.append('file', file)` to `formData.append('image', file)`
+- **File**: [web/src/infrastructure/api/repositories/profile.repository.ts:46](../web/src/infrastructure/api/repositories/profile.repository.ts#L46)
+- **Backend Reference**: [UsersController.cs:112](../src/LankaConnect.API/Controllers/UsersController.cs#L112) - `IFormFile image` parameter
+- **Result**: Profile photo uploads now work correctly
+
+**2. Fixed Cultural Interests Persistence Issue** (Commit: `94dd909`) ✅
+- **Root Cause**: Backend returns `204 No Content` but frontend expected updated `UserProfile` object
+- **The Fix**: Reload full profile after successful PUT request
+- **File**: [web/src/infrastructure/api/repositories/profile.repository.ts:91-104](../web/src/infrastructure/api/repositories/profile.repository.ts#L91-L104)
+- **Backend Reference**: [UsersController.cs:295](../src/LankaConnect.API/Controllers/UsersController.cs#L295) - Returns `NoContent()`
+- **Result**: Cultural Interests selections now persist correctly after saving
+
+**3. Fixed Preferred Metro Areas Persistence** (Already Fixed in Phase 6A.9) ✅
+- **Status**: Already had fix in place (lines 146-159 of profile.repository.ts)
+- **Implementation**: Same pattern as Cultural Interests - reload profile after 204 response
+- **Result**: Confirmed working correctly
+
+**4. Fixed Logo Link and Added Footer** (Commit: `94dd909`) ✅
+- **Logo Link Issue**: Logo was not clickable, should navigate to homepage
+- **The Fix**: Wrapped Logo component in `<Link href="/">` component
+- **File**: [web/src/app/(dashboard)/profile/page.tsx:88-90](../web/src/app/(dashboard)/profile/page.tsx#L88-L90)
+- **Footer Issue**: Profile page had no footer section
+- **The Fix**: Imported and added `<Footer />` component at bottom of page
+- **File**: [web/src/app/(dashboard)/profile/page.tsx:192](../web/src/app/(dashboard)/profile/page.tsx#L192)
+- **Result**: Logo now clickable, Footer displays with newsletter subscription
+
+**5. Fixed TypeScript Compilation Errors** (Commit: `94dd909`) ✅
+- **Fixed NewsletterMetroSelector.tsx**: Changed `.map().filter()` pattern to `for` loop with `.push()` to avoid nullable types
+- **Fixed Footer import**: Changed from named import to default import
+- **Result**: Zero TypeScript compilation errors in profile-related files
+
+### **Session Summary**:
+✅ **Issue #1 Fixed**: Profile photo upload 400 error - Form data parameter mismatch
+✅ **Issue #2 Fixed**: Cultural Interests not persisting - Backend 204 response handling
+✅ **Issue #3 Verified**: Preferred Metro Areas already working - No changes needed
+✅ **Issue #4 Fixed**: Logo link and Footer - Added navigation and footer component
+✅ **Status**: All profile page functionality working end-to-end
+✅ **Commit**: 94dd909 pushed to develop branch
+
+---
+
+## Previous Session: Newsletter Subscription Issues - Complete Resolution (2025-11-15 Earlier)
 
 **TWO CRITICAL ISSUES IDENTIFIED AND RESOLVED**: FluentValidation bug + Database schema mismatch
 
 **Status**: ✅ COMPLETE - Both validation and database issues fixed, newsletter subscription working end-to-end
+
+**Session Achievements**:
+
+**1. Fixed FluentValidation Bug** (Commit: `d6bd457`, Run #131) ✅
+- **Root Cause**: FluentValidation rule `.NotEmpty()` rejected empty arrays `[]` even when `ReceiveAllLocations = true`
+- **The Fix**: Removed redundant `.NotEmpty()` rule, kept comprehensive `Must()` validation
+- **File**: [src/LankaConnect.Application/.../SubscribeToNewsletterCommandValidator.cs](../src/LankaConnect.Application/Communications/Commands/SubscribeToNewsletter/SubscribeToNewsletterCommandValidator.cs)
+- **Testing**: Added unit test `Handle_EmptyMetroArrayWithReceiveAllLocations_ShouldSucceed`
+- **Result**: All 7 tests pass, validation now correctly allows empty arrays
+
+**2. Fixed Database Schema Issue** (Direct SQL Execution) ✅
+- **Root Cause**: Database `version` column was nullable, but EF Core required non-nullable for row versioning
+- **Error**: `"null value in column 'version' violates not-null constraint"`
+- **The Fix**: Direct SQL via Azure Portal Query Editor (following architect recommendation)
+  - Dropped table: `DROP TABLE IF EXISTS communications.newsletter_subscribers CASCADE`
+  - Recreated with correct schema: `version BYTEA NOT NULL DEFAULT '\x0000000000000001'::bytea`
+  - Updated migration history: Marked `20251115044807_RecreateNewsletterTableFixVersionColumn` as applied
+- **Why Direct SQL**: Container App auto-migration wasn't applying, CLI migrations had connection issues
+- **Documentation**: Created [NEWSLETTER_SCHEMA_FIX_COMMANDS.md](./NEWSLETTER_SCHEMA_FIX_COMMANDS.md) and [ADR_001_NEWSLETTER_SCHEMA_EMERGENCY_FIX.md](./ADR_001_NEWSLETTER_SCHEMA_EMERGENCY_FIX.md)
+- **Result**: User confirmed "It works" after applying SQL fix
+
+**3. End-to-End Verification** ✅
+- **Test 1**: Empty array with `ReceiveAllLocations=true` → HTTP 200, `success: true`, subscriber ID returned
+- **Test 2**: Specific metro area ID → HTTP 200, `success: true`, subscriber ID returned
+- **Database Verified**: Version column is `bytea NOT NULL` with default value
+- **Container App**: Restarted automatically, no more database constraint violations
 
 ---
 

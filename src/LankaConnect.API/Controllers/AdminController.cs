@@ -88,16 +88,13 @@ public class AdminController : BaseController<AdminController>
                     if (resetUsers)
                     {
                         Logger.LogWarning("resetUsers=true: Deleting existing admin users to force re-seeding");
-                        var adminEmails = new[]
-                        {
-                            "admin@lankaconnect.com",
-                            "admin1@lankaconnect.com",
-                            "organizer@lankaconnect.com",
-                            "user@lankaconnect.com"
-                        };
 
+                        // Use direct email matching with OR conditions for reliable EF Core translation
                         var adminUsers = await _context.Users
-                            .Where(u => adminEmails.Contains(u.Email.Value))
+                            .Where(u => u.Email.Value == "admin@lankaconnect.com" ||
+                                       u.Email.Value == "admin1@lankaconnect.com" ||
+                                       u.Email.Value == "organizer@lankaconnect.com" ||
+                                       u.Email.Value == "user@lankaconnect.com")
                             .ToListAsync();
 
                         if (adminUsers.Any())

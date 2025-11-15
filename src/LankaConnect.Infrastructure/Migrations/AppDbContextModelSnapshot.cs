@@ -668,7 +668,8 @@ namespace LankaConnect.Infrastructure.Migrations
             modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.NewsletterSubscriber", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("ConfirmationSentAt")
                         .HasColumnType("timestamp with time zone")

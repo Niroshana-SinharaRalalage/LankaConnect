@@ -163,9 +163,104 @@ public static class UserSeeder
             if (users.Any())
             {
                 System.Console.WriteLine($"[UserSeeder] Adding {users.Count} users to context");
+
+                // Add users to change tracker
                 await context.Users.AddRangeAsync(users);
-                var saveResult = await context.SaveChangesAsync();
-                System.Console.WriteLine($"[UserSeeder] SaveChangesAsync returned {saveResult} rows affected");
+
+                // CRITICAL DIAGNOSTICS: Examine EF Core change tracking BEFORE SaveChangesAsync
+                System.Console.WriteLine("[UserSeeder] === CHANGE TRACKING DIAGNOSTICS (PRE-SAVE) ===");
+
+                var trackedEntries = context.ChangeTracker.Entries().ToList();
+                System.Console.WriteLine($"[UserSeeder] Total tracked entries: {trackedEntries.Count}");
+
+                foreach (var entry in trackedEntries)
+                {
+                    System.Console.WriteLine($"[UserSeeder]   - {entry.Entity.GetType().Name}: {entry.State}");
+
+                    // For User entities, show detailed info
+                    if (entry.Entity is User user)
+                    {
+                        System.Console.WriteLine($"[UserSeeder]     User ID: {user.Id}");
+                        System.Console.WriteLine($"[UserSeeder]     Email: {user.Email.Value}");
+                        System.Console.WriteLine($"[UserSeeder]     Role: {user.Role}");
+                        System.Console.WriteLine($"[UserSeeder]     Name: {user.FullName}");
+                        System.Console.WriteLine($"[UserSeeder]     HasPasswordHash: {!string.IsNullOrEmpty(user.PasswordHash)}");
+                        System.Console.WriteLine($"[UserSeeder]     IsEmailVerified: {user.IsEmailVerified}");
+                    }
+                }
+
+                // Check for any validation errors or issues
+                var validationErrors = context.ChangeTracker.Entries()
+                    .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified)
+                    .SelectMany(e =>
+                    {
+                        try
+                        {
+                            // Try to get validation errors if any
+                            return new[] { $"{e.Entity.GetType().Name}: OK" };
+                        }
+                        catch (Exception ex)
+                        {
+                            return new[] { $"{e.Entity.GetType().Name}: ERROR - {ex.Message}" };
+                        }
+                    })
+                    .ToList();
+
+                if (validationErrors.Any())
+                {
+                    System.Console.WriteLine("[UserSeeder] Validation status:");
+                    foreach (var error in validationErrors)
+                    {
+                        System.Console.WriteLine($"[UserSeeder]   {error}");
+                    }
+                }
+
+                System.Console.WriteLine("[UserSeeder] === EXECUTING SaveChangesAsync ===");
+
+                try
+                {
+                    var saveResult = await context.SaveChangesAsync();
+                    System.Console.WriteLine($"[UserSeeder] SaveChangesAsync returned {saveResult} rows affected");
+
+                    // POST-SAVE DIAGNOSTICS: Verify what was actually persisted
+                    System.Console.WriteLine("[UserSeeder] === CHANGE TRACKING DIAGNOSTICS (POST-SAVE) ===");
+
+                    var postSaveEntries = context.ChangeTracker.Entries().ToList();
+                    System.Console.WriteLine($"[UserSeeder] Total tracked entries after save: {postSaveEntries.Count}");
+
+                    foreach (var entry in postSaveEntries)
+                    {
+                        System.Console.WriteLine($"[UserSeeder]   - {entry.Entity.GetType().Name}: {entry.State}");
+                    }
+
+                    // CRITICAL: Verify users are actually in database by querying immediately
+                    var verifyCount = await context.Users.CountAsync();
+                    System.Console.WriteLine($"[UserSeeder] VERIFICATION: Database now contains {verifyCount} total users");
+
+                    // Check specifically for admin users
+                    var allUsersAfterSave = await context.Users.ToListAsync();
+                    var adminUsersAfterSave = allUsersAfterSave
+                        .Where(u => requiredAdminEmails.Contains(u.Email.Value))
+                        .ToList();
+
+                    System.Console.WriteLine($"[UserSeeder] VERIFICATION: Found {adminUsersAfterSave.Count} admin users in database:");
+                    foreach (var admin in adminUsersAfterSave)
+                    {
+                        System.Console.WriteLine($"[UserSeeder]   - {admin.Email.Value} (Role: {admin.Role})");
+                    }
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    System.Console.WriteLine($"[UserSeeder] DbUpdateException during SaveChangesAsync: {dbEx.Message}");
+                    System.Console.WriteLine($"[UserSeeder] Inner Exception: {dbEx.InnerException?.Message}");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    System.Console.WriteLine($"[UserSeeder] Unexpected exception during SaveChangesAsync: {ex.Message}");
+                    System.Console.WriteLine($"[UserSeeder] Stack Trace: {ex.StackTrace}");
+                    throw;
+                }
             }
             else
             {

@@ -79,6 +79,59 @@ See **[PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md)** for complete sing
 
 ---
 
+## ⚠️ CURRENT STATUS - PHASE 5B.8 NEWSLETTER VALIDATION FIX - PARTIAL RESOLUTION (2025-11-15)
+**Date**: 2025-11-15 (Current Session)
+**Session**: PHASE 5B.8 - NEWSLETTER SUBSCRIPTION VALIDATION BUG FIX
+**Status**: ⚠️ PARTIAL - FluentValidation bug fixed and deployed (Run #131), handler error discovered
+**Build Status**: ✅ Zero Tolerance Maintained - 7/7 tests passing, 0 build errors
+
+### NEWSLETTER SUBSCRIPTION VALIDATION FIX (Commit: d6bd457, Deploy: Run #131) ⚠️
+
+**Root Cause Identified**: FluentValidation rule `.NotEmpty()` was rejecting empty arrays `[]` when `ReceiveAllLocations = true`
+
+**Fix Applied**:
+- ✅ **SubscribeToNewsletterCommandValidator.cs** - Removed redundant `.NotEmpty()` rule
+- ✅ **SubscribeToNewsletterCommandHandlerTests.cs** - Added test `Handle_EmptyMetroArrayWithReceiveAllLocations_ShouldSucceed`
+- ✅ **All 7 tests passing** (was 6 tests before fix)
+- ✅ **Deployed to staging** via Run #131 (2025-11-15 00:25:25Z)
+
+**The Validation Bug**:
+```csharp
+// ❌ BEFORE (WRONG): Rejected empty arrays even when ReceiveAllLocations = true
+RuleFor(x => x.MetroAreaIds)
+    .NotEmpty()
+    .When(x => !x.ReceiveAllLocations);
+
+// ✅ AFTER (FIXED): Allows empty arrays when ReceiveAllLocations = true
+RuleFor(x => x)
+    .Must(command => command.ReceiveAllLocations ||
+                    (command.MetroAreaIds != null && command.MetroAreaIds.Any()))
+    .WithMessage("Either specify metro areas or select to receive all locations");
+```
+
+**Issue Discovery Post-Deployment**:
+- ⚠️ After deployment, validation now passes BUT subscription fails with different error
+- ⚠️ **New Error**: `{"success":false,"message":"An error occurred while processing your subscription","errorCode":"SUBSCRIPTION_FAILED"}`
+- ⚠️ **Root Cause**: Something in the command handler or repository layer is failing
+- ⚠️ **Not a validation error** - validation fix worked, but uncovered a separate handler/repository issue
+
+**Next Steps**:
+1. ⏳ Investigate handler/repository error causing SUBSCRIPTION_FAILED
+2. ⏳ Retrieve detailed exception logs from Azure Container App
+3. ⏳ Manual testing on staging after handler fix
+
+**Files Modified**:
+- `src/LankaConnect.Application/Communications/Commands/SubscribeToNewsletter/SubscribeToNewsletterCommandValidator.cs` (validation fix)
+- `tests/LankaConnect.Application.Tests/Communications/Commands/SubscribeToNewsletterCommandHandlerTests.cs` (new test)
+- `docs/PROGRESS_TRACKER.md` (documentation update)
+- `docs/NEWSLETTER_SUBSCRIPTION_DIAGNOSIS.md` (433-line root cause analysis)
+
+**Documentation**:
+- ✅ Root cause analysis: [NEWSLETTER_SUBSCRIPTION_DIAGNOSIS.md](./NEWSLETTER_SUBSCRIPTION_DIAGNOSIS.md)
+- ✅ Session summary: [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md)
+
+---
+
 ## 🎉 PREVIOUS STATUS - PHASE 5B METRO AREAS EXPANSION (GUID + MAX 20) ✅
 **Date**: 2025-11-10 (Previous Session)
 **Session**: PHASE 5B - METRO AREAS GUID SYNCHRONIZATION & UI REDESIGN
@@ -211,7 +264,7 @@ See **[PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md)** for complete sing
 3. ✅ **Import Validation**: Removed unused imports from PreferredMetroAreasSection.tsx
 
 **🚨 NEXT ACTION ITEMS (Phase 5B.8-5B.12):**
-1. **Phase 5B.8**: Newsletter integration - Load user's preferred metros in "Get notifications for" dropdown
+1. ⚠️ **Phase 5B.8**: Newsletter integration - **PARTIAL** - Validation fixed (Run #131), handler error investigation needed
 2. **Phase 5B.9**: Community Activity - Display "My Preferred Metros" vs "Other Metros" on landing
 3. **Phase 5B.10**: Deploy MetroAreaSeeder with 300+ metros to staging database
 4. **Phase 5B.11**: E2E testing - Verify Profile → Newsletter → Community Activity flow

@@ -3,8 +3,24 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A INFRASTRUCTURE COMPLETE ✅
-**Date**: 2025-11-12 (Current Session - Session 3)
+## 🎯 CURRENT SESSION STATUS - PHASE 5B.8 NEWSLETTER VALIDATION FIX - PARTIAL RESOLUTION ⚠️
+**Date**: 2025-11-15 (Current Session)
+**Session**: PHASE 5B.8 - NEWSLETTER SUBSCRIPTION VALIDATION BUG FIX
+**Progress**: **⚠️ PARTIAL** - FluentValidation bug fixed and deployed (Run #131), handler error discovered
+**MILESTONE**: **⚠️ VALIDATION FIXED, HANDLER ERROR INVESTIGATION NEEDED**
+
+### Newsletter Subscription Validation Fix Summary:
+- ✅ **Root Cause**: FluentValidation `.NotEmpty()` rule rejected empty arrays when `ReceiveAllLocations = true`
+- ✅ **Fix Applied**: Removed redundant validation rule, kept comprehensive `Must()` validation
+- ✅ **Tests**: Added `Handle_EmptyMetroArrayWithReceiveAllLocations_ShouldSucceed` - 7/7 tests passing
+- ✅ **Deployment**: Commit d6bd457 deployed via Run #131 (2025-11-15 00:25:25Z)
+- ⚠️ **New Issue**: Handler/repository error causing `SUBSCRIPTION_FAILED` after validation passes
+- ⏳ **Next Steps**: Investigate handler error, retrieve Container App logs, manual testing
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - PHASE 6A INFRASTRUCTURE COMPLETE ✅
+**Date**: 2025-11-12 (Previous Session - Session 3)
 **Session**: PHASE 6A - 7-ROLE SYSTEM INFRASTRUCTURE COMPLETE
 **Progress**: **✅ Phase 6A.0-6A.9 DOCUMENTATION COMPLETE** - All 9 features documented, 7 summary files created
 **MILESTONE**: **✅ 9/12 PHASES DOCUMENTED - 7-ROLE INFRASTRUCTURE READY FOR PHASE 2**

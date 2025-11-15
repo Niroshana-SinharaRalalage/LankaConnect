@@ -56,9 +56,15 @@ public static class UserSeeder
             var users = new List<User>();
 
             // Admin Manager (super admin)
+            System.Console.WriteLine("[UserSeeder] Creating Admin Manager (admin@lankaconnect.com)...");
             var adminManagerEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("admin@lankaconnect.com");
-            if (adminManagerEmail.IsSuccess)
+            if (!adminManagerEmail.IsSuccess)
             {
+                System.Console.WriteLine($"[UserSeeder] FAILED to create Email for Admin Manager: {adminManagerEmail.Error}");
+            }
+            else
+            {
+                System.Console.WriteLine("[UserSeeder] Email created successfully, creating User entity...");
                 var adminManager = User.Create(
                     adminManagerEmail.Value,
                     "Admin",
@@ -66,17 +72,28 @@ public static class UserSeeder
                     UserRole.AdminManager
                 );
 
-                if (adminManager.IsSuccess)
+                if (!adminManager.IsSuccess)
                 {
+                    System.Console.WriteLine($"[UserSeeder] FAILED to create Admin Manager User: {adminManager.Error}");
+                }
+                else
+                {
+                    System.Console.WriteLine("[UserSeeder] User entity created, hashing password...");
                     var user = adminManager.Value;
 
                     // Set password: Admin@123
                     var passwordHash = passwordHashingService.HashPassword("Admin@123");
-                    if (passwordHash.IsSuccess)
+                    if (!passwordHash.IsSuccess)
                     {
+                        System.Console.WriteLine($"[UserSeeder] FAILED to hash password for Admin Manager: {passwordHash.Error}");
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("[UserSeeder] Password hashed, setting on user and adding to list");
                         user.SetPassword(passwordHash.Value);
                         user.VerifyEmail(); // Auto-verify admin accounts
                         users.Add(user);
+                        System.Console.WriteLine("[UserSeeder] Admin Manager added successfully");
                     }
                 }
             }

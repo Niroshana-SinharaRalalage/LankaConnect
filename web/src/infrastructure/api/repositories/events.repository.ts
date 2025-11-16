@@ -215,6 +215,14 @@ export class EventsRepository {
     return await apiClient.get<EventDto[]>(`${this.basePath}/upcoming`);
   }
 
+  /**
+   * Get events created by current user
+   * Returns all events user has created as organizer
+   */
+  async getUserCreatedEvents(): Promise<EventDto[]> {
+    return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+  }
+
   // ==================== WAITING LIST ====================
 
   /**

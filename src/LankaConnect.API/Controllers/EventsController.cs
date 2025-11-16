@@ -15,6 +15,8 @@ using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
+using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
+using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
 using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
@@ -380,19 +382,40 @@ public class EventsController : BaseController<EventsController>
     // ==================== USER DASHBOARD ENDPOINTS ====================
 
     /// <summary>
-    /// Get user's RSVPs (Authenticated users)
+    /// Get events created by current user (Authenticated Event Organizers/Admins)
+    /// Epic 1: Dashboard my-events endpoint
+    /// </summary>
+    [HttpGet("my-events")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyEvents()
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Getting events created by user: {UserId}", userId);
+
+        var query = new GetEventsByOrganizerQuery(userId);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get events user has registered for (Authenticated users)
+    /// Epic 1: Returns full EventDto instead of RsvpDto for better dashboard UX
     /// </summary>
     [HttpGet("my-rsvps")]
     [Authorize]
-    [ProducesResponseType(typeof(IReadOnlyList<RsvpDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyRsvps()
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting RSVPs for user: {UserId}", userId);
+        Logger.LogInformation("Getting registered events for user: {UserId}", userId);
 
-        var query = new GetUserRsvpsQuery(userId);
+        var query = new GetMyRegisteredEventsQuery(userId);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

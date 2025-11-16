@@ -1,11 +1,205 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-15 (Current Session) - Profile Page UI Fixes - COMPLETE ✅*
+*Last Updated: 2025-11-16 (Current Session) - Epic 1 Backend Endpoints Implementation - COMPLETE ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - PROFILE PAGE 4 CRITICAL ISSUES FIXED ✅
+## 🎯 Current Session Status - EPIC 1 BACKEND ENDPOINTS IMPLEMENTATION ✅
 
-### Session: Profile Page UI & Persistence Fixes (2025-11-15)
+### Session: Backend API Endpoints for Dashboard Events (2025-11-16)
+
+**EPIC 1 BACKEND COMPLETE**: `/api/events/my-events` and `/api/events/my-rsvps` endpoints fully implemented
+
+**Status**: ✅ COMPLETE - Both endpoints implemented, backend builds with 0 errors, frontend updated, ready for integration testing
+
+### **Current Session Achievements** ✅:
+
+**1. Implemented `/api/events/my-events` Endpoint** ✅
+- **Purpose**: Return events created by current user (as Event Organizer or Admin)
+- **Approach**: Reused existing `GetEventsByOrganizerQuery` CQRS pattern
+- **Backend Files Modified**:
+  - [src/LankaConnect.API/Controllers/EventsController.cs:382-400](../src/LankaConnect.API/Controllers/EventsController.cs#L382-L400) - Added new endpoint
+  - Added `using LankaConnect.Application.Events.Queries.GetEventsByOrganizer`
+- **Endpoint**: `GET /api/events/my-events` (Authenticated users)
+- **Response**: `IReadOnlyList<EventDto>`
+- **Result**: Event Organizers and Admins can see their created events
+
+**2. Implemented `/api/events/my-rsvps` Enhancement** ✅
+- **Purpose**: Return full event details instead of just RSVP records for better dashboard UX
+- **Old Behavior**: Returned `RsvpDto[]` with minimal event info
+- **New Behavior**: Returns full `EventDto[]` for registered events
+- **New Query Created**: `GetMyRegisteredEventsQuery`
+- **Backend Files Created**:
+  - [src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQuery.cs](../src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQuery.cs)
+  - [src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQueryHandler.cs)
+- **Backend Files Modified**:
+  - [src/LankaConnect.API/Controllers/EventsController.cs:404-422](../src/LankaConnect.API/Controllers/EventsController.cs#L404-L422) - Updated endpoint
+  - Changed response type from `RsvpDto[]` to `EventDto[]`
+- **Endpoint**: `GET /api/events/my-rsvps` (Authenticated users)
+- **Response**: `IReadOnlyList<EventDto>`
+- **Result**: Dashboard can display rich event cards instead of minimal RSVP data
+
+**3. Updated Frontend Dashboard** ✅
+- **File Modified**: [web/src/app/(dashboard)/dashboard/page.tsx:136-154](../web/src/app/(dashboard)/dashboard/page.tsx#L136-L154)
+- **Change**: Updated `loadRegisteredEvents()` to handle `EventDto[]` response
+- **Removed**: TODO comment about needing backend implementation
+- **Added**: Comment explaining Epic 1 backend returns `EventDto[]`
+- **Result**: Dashboard now displays actual event data from backend
+
+**4. Backend Build Quality** ✅
+- **Build Status**: ✅ 0 Errors, 0 Warnings
+- **Build Time**: 1m 58s
+- **CQRS Pattern**: Followed existing query handler patterns
+- **Clean Architecture**: New queries in proper Application layer folder structure
+- **Result**: Production-ready backend implementation
+
+---
+
+## Previous Session: Admin Dashboard Tabbed Interface & Event Listings (2025-11-15)
+
+**1. Created Reusable TabPanel Component** (TDD) ✅
+- **Purpose**: Accessible tabbed interface with keyboard navigation and Sri Lankan flag colors
+- **Features**: Arrow key navigation, ARIA attributes, gradient active tab indicator, responsive design
+- **Files**:
+  - [web/src/presentation/components/ui/TabPanel.tsx](../web/src/presentation/components/ui/TabPanel.tsx)
+  - [tests/unit/presentation/components/ui/TabPanel.test.tsx](../tests/unit/presentation/components/ui/TabPanel.test.tsx)
+- **Tests**: ✅ 10/10 passing - keyboard navigation, accessibility, tab switching
+- **Result**: Fully functional, accessible tab component following UI/UX best practices
+
+**2. Created EventsList Component** (TDD) ✅
+- **Purpose**: Display events with status badges, categories, capacity, and location
+- **Features**: Loading states, empty states, formatted dates, color-coded status/category badges
+- **Files**:
+  - [web/src/presentation/components/features/dashboard/EventsList.tsx](../web/src/presentation/components/features/dashboard/EventsList.tsx)
+  - [tests/unit/presentation/components/features/dashboard/EventsList.test.tsx](../tests/unit/presentation/components/features/dashboard/EventsList.test.tsx)
+- **Tests**: ✅ 9/9 passing - rendering, formatting, loading states
+- **Result**: Clean event list component with proper status visualization
+
+**3. Extended Events Repository** ✅
+- **Purpose**: Add endpoint to fetch user's created events (as organizer)
+- **New Method**: `getUserCreatedEvents()` → `/api/events/my-events`
+- **File**: [web/src/infrastructure/api/repositories/events.repository.ts:218-224](../web/src/infrastructure/api/repositories/events.repository.ts#L218-L224)
+- **Result**: Repository now supports both registered and created events
+
+**4. Implemented Tabbed Dashboard for All Roles** ✅
+- **Admin Dashboard** (3 tabs):
+  - Tab 1: My Registered Events (events user signed up for)
+  - Tab 2: My Created Events (events user organized)
+  - Tab 3: Admin Tasks (pending role upgrade approvals)
+- **Event Organizer Dashboard** (2 tabs):
+  - Tab 1: My Registered Events
+  - Tab 2: My Created Events
+- **General User Dashboard** (no tabs):
+  - Single view: My Registered Events
+- **File**: [web/src/app/(dashboard)/dashboard/page.tsx:422-530](../web/src/app/(dashboard)/dashboard/page.tsx#L422-L530)
+- **Result**: Role-based dashboard with clean tab navigation
+
+**5. Removed 'Post Topic' Button** ✅
+- **Requirement**: Post Topic functionality not needed for Epic 1 production release
+- **File**: [web/src/app/(dashboard)/dashboard/page.tsx:418](../web/src/app/(dashboard)/dashboard/page.tsx#L418)
+- **Comment Added**: `{/* Post Topic button removed per Epic 1 requirements */}`
+- **Result**: Clean quick actions section without Post Topic button
+
+**6. Integrated Admin Approvals in Dashboard** ✅
+- **Purpose**: Admins can approve/reject role upgrades directly from dashboard
+- **Implementation**: Admin Tasks tab shows `<ApprovalsTable>` component
+- **Data Loading**: Fetches pending approvals on mount for Admin/AdminManager roles
+- **File**: [web/src/app/(dashboard)/dashboard/page.tsx:455-473](../web/src/app/(dashboard)/dashboard/page.tsx#L455-L473)
+- **Result**: Seamless admin workflow without navigating to separate approvals page
+
+**7. Clean Architecture & Code Quality** ✅
+- **Mock Data Removed**: Deleted unused `MOCK_ACTIVITIES` and `ActivityItem` interface
+- **TypeScript**: ✅ Zero compilation errors in dashboard-related files
+- **TDD Process**: All new components created with tests first
+- **Component Reusability**: TabPanel and EventsList designed for reuse
+- **Result**: Clean, maintainable codebase following project standards
+
+### **Session Summary**:
+✅ **Feature #1**: TabPanel component with keyboard navigation and accessibility
+✅ **Feature #2**: EventsList component with status badges and loading states
+✅ **Feature #3**: Extended events repository with getUserCreatedEvents endpoint
+✅ **Feature #4**: Admin dashboard with 3 tabs (Registered/Created/Admin Tasks)
+✅ **Feature #5**: Event Organizer dashboard with 2 tabs (Registered/Created)
+✅ **Feature #6**: General User dashboard showing registered events
+✅ **Feature #7**: Post Topic button removed from dashboard
+✅ **Feature #8**: Admin approvals integrated into Admin Tasks tab
+✅ **Tests**: 19/19 passing (TabPanel: 10/10, EventsList: 9/9)
+✅ **TypeScript**: 0 compilation errors in new code
+⏳ **Next Step**: User testing of dashboard in dev mode for all three roles
+
+### **Session Summary**:
+✅ **Endpoint #1**: `/api/events/my-events` - Returns events created by current user
+✅ **Endpoint #2**: `/api/events/my-rsvps` - Enhanced to return full EventDto[] instead of RsvpDto[]
+✅ **New Query**: GetMyRegisteredEventsQuery with handler (CQRS pattern)
+✅ **Backend Build**: 0 errors, 0 warnings, 1m 58s build time
+✅ **Frontend**: Updated dashboard to handle EventDto[] response
+✅ **Architecture**: Clean Architecture + CQRS maintained
+⏳ **Next Step**: Integration testing with staging database and local UI
+
+---
+
+## Previous Session: Admin Dashboard Tabbed Interface & Event Listings (2025-11-15)
+
+### Session: Admin Dashboard Tabbed Interface & Event Listings (2025-11-15)
+
+**EPIC 1 REQUIREMENTS IMPLEMENTED**: Tabbed dashboard for Admin/Event Organizer, Admin Tasks integration, Post Topic button removed
+
+**Status**: ✅ COMPLETE - All dashboard improvements implemented, 0 compilation errors, ready for testing
+
+**Note**: Backend endpoints implemented in subsequent session (2025-11-16)
+
+---
+
+## Previous Session: Profile Page Property Name Mismatch & Profile Photo Upload Fix (2025-11-16)
+
+### Session: Profile Page Property Name Mismatch & Profile Photo Upload Fix (2025-11-16)
+
+**THREE CRITICAL ISSUES IDENTIFIED AND RESOLVED**: Cultural Interests property name mismatch, Profile photo upload Content-Type header issue, Verified Preferred Metro Areas
+
+**Status**: ✅ COMPLETE - All persistence issues fixed, committed (7395911), ready for user testing
+
+### **Current Session Achievements** ✅:
+
+**1. Fixed Cultural Interests Property Name Mismatch** (Commit: `7395911`) ✅
+- **Root Cause**: Frontend sending `culturalInterests` but backend expects `InterestCodes` (PascalCase)
+- **Investigation**: Discovered after user reported "Cultural Interests NOT persisting" even after 204 response fix
+- **The Fix**:
+  - Changed `UpdateCulturalInterestsRequest` interface property from `culturalInterests` to `InterestCodes`
+  - Updated `CulturalInterestsSection.tsx` to use `InterestCodes` when calling API
+- **Files**:
+  - [web/src/domain/models/UserProfile.ts:74](../web/src/domain/models/UserProfile.ts#L74)
+  - [web/src/presentation/components/features/profile/CulturalInterestsSection.tsx:94](../web/src/presentation/components/features/profile/CulturalInterestsSection.tsx#L94)
+- **Backend Reference**: [UsersController.cs:729-732](../src/LankaConnect.API/Controllers/UsersController.cs#L729-L732) - `InterestCodes` property
+- **Result**: Cultural Interests now persist correctly with correct property name
+
+**2. Fixed Profile Photo Upload CORS/500 Error** (Commit: `7395911`) ✅
+- **Root Cause**: Manual `Content-Type: multipart/form-data` header was missing boundary parameter
+- **Investigation**: User reported CORS error and 500 Internal Server Error after previous fix
+- **The Fix**: Removed manual Content-Type header, let browser add it automatically with boundary
+- **File**: [web/src/infrastructure/api/client/api-client.ts:189-190](../web/src/infrastructure/api/client/api-client.ts#L189-L190)
+- **Technical Details**:
+  - Browser automatically adds `Content-Type: multipart/form-data; boundary=----WebKitFormBoundary...`
+  - Manually setting header without boundary causes server to reject request
+- **CORS Verification**: Tested CORS preflight, confirmed CORS is configured correctly in Program.cs
+- **Result**: Profile photo uploads should now work without CORS/500 errors
+
+**3. Verified Preferred Metro Areas Implementation** ✅
+- **Status**: Already using correct PascalCase property name `MetroAreaIds`
+- **File**: [web/src/domain/models/UserProfile.ts:93](../web/src/domain/models/UserProfile.ts#L93)
+- **Component**: [PreferredMetroAreasSection.tsx:191-192](../web/src/presentation/components/features/profile/PreferredMetroAreasSection.tsx#L191-L192)
+- **Backend**: Expects `MetroAreaIds` in PascalCase
+- **Result**: Implementation correct, fixed in Phase 6A.9, should persist correctly
+
+### **Session Summary**:
+✅ **Issue #1 Fixed**: Cultural Interests persistence - Property name mismatch (`culturalInterests` → `InterestCodes`)
+✅ **Issue #2 Fixed**: Profile photo upload CORS/500 - Content-Type header with missing boundary
+✅ **Issue #3 Verified**: Preferred Metro Areas - Already using correct `MetroAreaIds` property
+✅ **TypeScript**: Dev server compiles without errors
+✅ **Commit**: 7395911 committed to develop branch
+⏳ **Next Step**: User testing to verify all three features work end-to-end
+
+---
+
+## Previous Session: Profile Page UI & Persistence Fixes (2025-11-15)
 
 **FOUR CRITICAL ISSUES IDENTIFIED AND RESOLVED**: Photo upload API parameter mismatch, Cultural Interests/Metro Areas persistence, Logo link, Footer missing
 

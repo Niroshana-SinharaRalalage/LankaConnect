@@ -4,37 +4,39 @@ import Link from 'next/link';
 import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/Card';
+import { TabPanel } from '@/presentation/components/ui/TabPanel';
 import { Logo } from '@/presentation/components/atoms/Logo';
 import Footer from '@/presentation/components/layout/Footer';
 import { useRouter } from 'next/navigation';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
-import { canCreateEvents } from '@/infrastructure/api/utils/role-helpers';
+import { canCreateEvents, isAdmin } from '@/infrastructure/api/utils/role-helpers';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 import {
-  Bell,
   Calendar,
-  MapPin,
-  MessageSquare,
-  Store,
   Users,
-  Heart,
-  MessageCircle,
-  Share2,
   ChevronDown,
   User,
   LogOut,
-  Sparkles
+  Sparkles,
+  ClipboardCheck,
+  FolderOpen
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { CulturalCalendar } from '@/presentation/components/features/dashboard/CulturalCalendar';
 import { FeaturedBusinesses } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
 import { CommunityStats } from '@/presentation/components/features/dashboard/CommunityStats';
+import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
+import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
 import { UpgradePendingBanner } from '@/presentation/components/features/role-upgrade/UpgradePendingBanner';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
 import type { CulturalEvent } from '@/presentation/components/features/dashboard/CulturalCalendar';
 import type { Business } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
 import type { CommunityStatsData } from '@/presentation/components/features/dashboard/CommunityStats';
+import type { EventDto } from '@/infrastructure/api/types/events.types';
+import type { RsvpDto } from '@/infrastructure/api/types/events.types';
+import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 
 // Mock data for widgets
 const MOCK_CULTURAL_EVENTS: CulturalEvent[] = [
@@ -97,64 +99,23 @@ const MOCK_COMMUNITY_STATS: CommunityStatsData = {
   upcomingEventsTrend: { value: '+5.7%', direction: 'up' }
 };
 
-// Mock activity data
-interface ActivityItem {
-  id: string;
-  type: 'event' | 'post' | 'business';
-  author: {
-    name: string;
-    avatar: string;
-  };
-  content: string;
-  location: string;
-  timestamp: string;
-  likes: number;
-  comments: number;
-  image?: string;
-}
-
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'event',
-    author: { name: 'Priya Perera', avatar: 'PP' },
-    content: 'Organizing a traditional Sri Lankan New Year celebration in Toronto! Join us for games, food, and cultural performances.',
-    location: 'Toronto, ON',
-    timestamp: '2 hours ago',
-    likes: 24,
-    comments: 8,
-    image: undefined
-  },
-  {
-    id: '2',
-    type: 'post',
-    author: { name: 'Raj Fernando', avatar: 'RF' },
-    content: 'Just discovered an amazing Sri Lankan grocery store in Vancouver! They have fresh hoppers and all the spices you need.',
-    location: 'Vancouver, BC',
-    timestamp: '4 hours ago',
-    likes: 15,
-    comments: 5
-  },
-  {
-    id: '3',
-    type: 'business',
-    author: { name: 'Lanka Restaurant', avatar: 'LR' },
-    content: 'New menu items available! Try our authentic kottu roti and string hoppers. Special discount for community members this week.',
-    location: 'Montreal, QC',
-    timestamp: '6 hours ago',
-    likes: 42,
-    comments: 12
-  }
-];
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
-  const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // State for events
+  const [registeredEvents, setRegisteredEvents] = useState<EventDto[]>([]);
+  const [createdEvents, setCreatedEvents] = useState<EventDto[]>([]);
+  const [loadingRegistered, setLoadingRegistered] = useState(false);
+  const [loadingCreated, setLoadingCreated] = useState(false);
+
+  // State for admin approvals
+  const [pendingApprovals, setPendingApprovals] = useState<PendingRoleUpgradeDto[]>([]);
+  const [loadingApprovals, setLoadingApprovals] = useState(false);
 
   // Set mounted state after client-side hydration
   useEffect(() => {
@@ -171,6 +132,73 @@ export default function DashboardPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Load registered events
+  useEffect(() => {
+    const loadRegisteredEvents = async () => {
+      try {
+        setLoadingRegistered(true);
+        // Epic 1: Backend now returns full EventDto[] instead of RsvpDto[]
+        const events = await eventsRepository.getUserRsvps();
+        setRegisteredEvents(events);
+      } catch (error) {
+        console.error('Error loading registered events:', error);
+      } finally {
+        setLoadingRegistered(false);
+      }
+    };
+
+    if (user) {
+      loadRegisteredEvents();
+    }
+  }, [user]);
+
+  // Load created events (for Event Organizers and Admins)
+  useEffect(() => {
+    const loadCreatedEvents = async () => {
+      try {
+        setLoadingCreated(true);
+        const events = await eventsRepository.getUserCreatedEvents();
+        setCreatedEvents(events);
+      } catch (error) {
+        console.error('Error loading created events:', error);
+      } finally {
+        setLoadingCreated(false);
+      }
+    };
+
+    if (user && (user.role === UserRole.EventOrganizer || isAdmin(user.role as UserRole))) {
+      loadCreatedEvents();
+    }
+  }, [user]);
+
+  // Load pending approvals (for Admins only)
+  useEffect(() => {
+    const loadApprovals = async () => {
+      try {
+        setLoadingApprovals(true);
+        const approvals = await approvalsRepository.getPendingApprovals();
+        setPendingApprovals(approvals);
+      } catch (error) {
+        console.error('Error loading approvals:', error);
+      } finally {
+        setLoadingApprovals(false);
+      }
+    };
+
+    if (user && isAdmin(user.role as UserRole)) {
+      loadApprovals();
+    }
+  }, [user]);
+
+  const handleApprovalsUpdate = async () => {
+    try {
+      const approvals = await approvalsRepository.getPendingApprovals();
+      setPendingApprovals(approvals);
+    } catch (error) {
+      console.error('Error refreshing approvals:', error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -301,10 +329,10 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* Quick Actions - Phase 6A.2: Role-based visibility */}
+          {/* Quick Actions - Epic 1: Role-based visibility, Post Topic removed */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* Phase 6A.7: Show 'Upgrade to Event Organizer' button for GeneralUser (if not already pending) */}
+              {/* Show 'Upgrade to Event Organizer' button for GeneralUser (if not already pending) */}
               {user && user.role === UserRole.GeneralUser && !user.pendingUpgradeRole && (
                 <Button
                   onClick={() => setShowUpgradeModal(true)}
@@ -320,7 +348,7 @@ export default function DashboardPage() {
                   Upgrade to Event Organizer
                 </Button>
               )}
-              {/* Phase 6A.2.5: Hide 'Create Event' for GeneralUser */}
+              {/* Hide 'Create Event' for GeneralUser */}
               {user && canCreateEvents(user.role as UserRole) && (
                 <Button
                   onClick={() => router.push('/events/create')}
@@ -336,214 +364,105 @@ export default function DashboardPage() {
                   Create Event
                 </Button>
               )}
-              {/* Phase 6A.2.6: Show 'Post Topic' for all authenticated users (already shown) */}
-              <Button
-                onClick={() => router.push('/forum/new')}
-                className="flex-1 sm:flex-none rounded-lg"
-                variant="outline"
-                style={{
-                  background: 'white',
-                  borderColor: '#FF7900',
-                  color: '#FF7900'
-                }}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Post Topic
-              </Button>
-              {/* Phase 6A.2.7: Remove 'Find Business' button (Phase 2 feature) - REMOVED */}
+              {/* Post Topic button removed per Epic 1 requirements */}
             </div>
           </div>
 
-          {/* Phase 6A.8: Role-based Dashboard Content */}
-          {/* Two Column Layout */}
+          {/* Epic 1: Tabbed Dashboard Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Activity Feed (2/3 width on large screens) */}
-            <div className="lg:col-span-2 space-y-0">
-              {/* Activity Feed Container */}
-              <div
-                className="rounded-xl overflow-hidden"
-                style={{
-                  background: 'white',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-                }}
-              >
-                {/* Feed Header with Location Selector */}
-                <div
-                  className="p-6 flex justify-between items-center"
-                  style={{
-                    background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)',
-                    color: 'white'
-                  }}
-                >
-                  <h2 className="text-xl font-semibold">
-                    {user?.role === UserRole.GeneralUser ? 'My Events & Sign-ups' : 'Community Activity'}
-                  </h2>
-                  <select
-                    className="px-4 py-2 rounded-md text-white text-sm outline-none cursor-pointer"
-                    style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      border: 'none'
-                    }}
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                  >
-                    <option style={{ color: '#2d3748' }}>All Locations</option>
-                    <option style={{ color: '#2d3748' }}>Toronto, ON</option>
-                    <option style={{ color: '#2d3748' }}>Vancouver, BC</option>
-                    <option style={{ color: '#2d3748' }}>Montreal, QC</option>
-                  </select>
-                </div>
-
-                {/* Phase 6A.8: GeneralUser Events/Signups Section - Placeholder for future implementation */}
-                {user?.role === UserRole.GeneralUser ? (
-                  <div className="p-12 text-center">
-                    <Calendar className="w-16 h-16 mx-auto mb-4" style={{ color: '#FF7900' }} />
-                    <h3 className="text-lg font-semibold mb-2" style={{ color: '#8B1538' }}>No Events or Sign-ups Yet</h3>
-                    <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
-                      You haven't registered for any events or sign-ups yet. Browse the community activity below to find events to join!
-                    </p>
-                    <Button
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className="rounded-lg"
-                      style={{
-                        background: '#FF7900',
-                        color: 'white'
-                      }}
-                      variant="default"
-                    >
-                      Browse Events
-                    </Button>
-                  </div>
+            {/* Left Column - Tabbed Content (2/3 width on large screens) */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-sm">
+                {/* Render tabs based on user role */}
+                {user && isAdmin(user.role as UserRole) ? (
+                  <TabPanel
+                    tabs={[
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <EventsList
+                            events={registeredEvents}
+                            isLoading={loadingRegistered}
+                            emptyMessage="You haven't registered for any events yet"
+                          />
+                        ),
+                      },
+                      {
+                        id: 'created',
+                        label: 'My Created Events',
+                        icon: FolderOpen,
+                        content: (
+                          <EventsList
+                            events={createdEvents}
+                            isLoading={loadingCreated}
+                            emptyMessage="You haven't created any events yet"
+                          />
+                        ),
+                      },
+                      {
+                        id: 'admin',
+                        label: 'Admin Tasks',
+                        icon: ClipboardCheck,
+                        content: (
+                          <div>
+                            <h3 className="text-lg font-semibold mb-4 text-[#8B1538]">
+                              Pending Approvals
+                            </h3>
+                            {loadingApprovals ? (
+                              <div className="text-center py-8">
+                                <p className="text-gray-600">Loading approvals...</p>
+                              </div>
+                            ) : (
+                              <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
+                            )}
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                ) : user && user.role === UserRole.EventOrganizer ? (
+                  <TabPanel
+                    tabs={[
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <EventsList
+                            events={registeredEvents}
+                            isLoading={loadingRegistered}
+                            emptyMessage="You haven't registered for any events yet"
+                          />
+                        ),
+                      },
+                      {
+                        id: 'created',
+                        label: 'My Created Events',
+                        icon: FolderOpen,
+                        content: (
+                          <EventsList
+                            events={createdEvents}
+                            isLoading={loadingCreated}
+                            emptyMessage="You haven't created any events yet"
+                          />
+                        ),
+                      },
+                    ]}
+                  />
                 ) : (
-                  <>
-                {/* Feed Items */}
-                {MOCK_ACTIVITIES.map((activity, index) => (
-                  <div
-                    key={activity.id}
-                    className="p-6 transition-colors hover:bg-opacity-100"
-                    style={{
-                      borderBottom: index === MOCK_ACTIVITIES.length - 1 ? 'none' : '1px solid #e2e8f0',
-                      background: 'white'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#f8f9ff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'white';
-                    }}
-                  >
-                    {/* Activity Header */}
-                    <div className="flex items-center mb-3">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mr-3"
-                        style={{ background: 'linear-gradient(135deg, #FF7900, #8B1538)' }}
-                      >
-                        {activity.author.avatar}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold" style={{ color: '#8B1538' }}>{activity.author.name}</p>
-                        <p className="text-xs" style={{ color: '#718096' }}>
-                          {activity.timestamp} • {activity.location}
-                        </p>
-                      </div>
-                      <span
-                        className="px-2 py-1 text-xs font-semibold rounded capitalize ml-auto"
-                        style={{
-                          background: activity.type === 'event' ? '#FFE8CC' :
-                                     activity.type === 'post' ? '#FFDAB3' : '#D4EDDA',
-                          color: activity.type === 'event' ? '#8B1538' :
-                                 activity.type === 'post' ? '#FF7900' : '#006400'
-                        }}
-                      >
-                        {activity.type}
-                      </span>
-                    </div>
-
-                    {/* Activity Content */}
-                    <div className="mb-4">
-                      <h3 className="font-semibold mb-2" style={{ fontSize: '1.1rem', color: '#8B1538' }}>
-                        {activity.type === 'event' ? 'Join Our Event' :
-                         activity.type === 'business' ? 'Special Announcement' : 'Community Discussion'}
-                      </h3>
-                      <p style={{ color: '#718096', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                        {activity.content}
-                      </p>
-                    </div>
-
-                    {/* Activity Actions */}
-                    <div
-                      className="flex gap-4 pt-4"
-                      style={{ borderTop: '1px solid #f1f5f9' }}
-                    >
-                      <button
-                        className="flex items-center gap-2 transition-colors text-sm"
-                        style={{ color: '#718096' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#FF7900';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#718096';
-                        }}
-                      >
-                        <Heart className="w-4 h-4" />
-                        <span>{activity.likes}</span>
-                      </button>
-                      <button
-                        className="flex items-center gap-2 transition-colors text-sm"
-                        style={{ color: '#718096' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#FF7900';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#718096';
-                        }}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{activity.comments}</span>
-                      </button>
-                      <button
-                        className="flex items-center gap-2 transition-colors text-sm ml-auto"
-                        style={{ color: '#718096' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#FF7900';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#718096';
-                        }}
-                      >
-                        <Share2 className="w-4 h-4" />
-                        <span>Share</span>
-                      </button>
-                    </div>
+                  /* General User - Show only registered events */
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold mb-4 text-[#8B1538]">My Registered Events</h2>
+                    <EventsList
+                      events={registeredEvents}
+                      isLoading={loadingRegistered}
+                      emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                    />
                   </div>
-                ))}
-                  </>
                 )}
               </div>
-
-              {/* Load More */}
-              {user?.role !== UserRole.GeneralUser && (
-              <div className="text-center pt-6">
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  style={{
-                    borderColor: '#FF7900',
-                    color: '#FF7900'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#FF7900';
-                    e.currentTarget.style.color = 'white';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#FF7900';
-                  }}
-                >
-                  Load More Activities
-                </Button>
-              </div>
-              )}
             </div>
 
             {/* Right Column - Widgets (1/3 width on large screens) */}

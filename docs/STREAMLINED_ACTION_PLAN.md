@@ -7,45 +7,55 @@
 
 ---
 
-## 🎉 CURRENT STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅ (2025-11-16)
-**Date**: 2025-11-16 (Current Session - Session 3)
-**Session**: CRITICAL AUTH BUGFIX - JWT Role Claim Missing
-**Status**: ✅ COMPLETE - Role claim added to JWT tokens, all admin endpoints now functional
-**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors/0 warnings, Deployed to staging
-**User Verification**: ✅ User confirmed fix works - Admin approvals now visible in Admin Tasks tab
+## 🎉 CURRENT STATUS - EPIC 1 DASHBOARD UX IMPROVEMENTS COMPLETE ✅ (2025-11-16)
+**Date**: 2025-11-16 (Current Session - Session 4)
+**Session**: EPIC 1 - Dashboard UX Improvements Based on User Testing Feedback
+**Status**: ✅ COMPLETE - All 4 UX issues resolved, NotificationsList component added via TDD
+**Build Status**: ✅ Zero Tolerance Maintained - Frontend: 0 TypeScript errors, 11/11 new tests passing
+**User Verification**: ✅ All 4 user-reported issues addressed and deployed to staging
 
-### CRITICAL BUGFIX - JWT ROLE CLAIM (2025-11-16):
-- 🐛 **Bug**: Admin Tasks tab showed "No pending approvals" even when users had pending requests
-- 🔍 **Root Cause**: `JwtTokenService.GenerateAccessTokenAsync()` missing `ClaimTypes.Role` claim
-- ✅ **Fix**: Added `new(ClaimTypes.Role, user.Role.ToString())` to JWT claims list
-- 📝 **File**: [src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs:58](../src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs#L58)
-- 🚀 **Impact**: All role-based authorization policies now work correctly
-- ✅ **Verified**: User tested in staging, admin approvals now visible
-- ⚠️ **Note**: Users must log out and back in to get new JWT with role claim
+### SESSION 4 - DASHBOARD UX IMPROVEMENTS (2025-11-16):
+**User Testing Feedback** (4 issues from Epic 1 staging test):
+1. ✅ **Phase 1**: Admin Tasks table overflow - can't see Approve/Reject buttons
+   - Fixed: Changed `overflow-hidden` to `overflow-x-auto` in ApprovalsTable.tsx
+2. ✅ **Phase 2**: Duplicate widgets on dashboard
+   - Fixed: Removed duplicate widgets from dashboard layout
+3. ✅ **Phase 2.3**: Redundant /admin/approvals page (no back button, duplicate of Admin Tasks tab)
+   - Fixed: Deleted `/admin/approvals` directory, removed "Admin" navigation link from Header
+4. ✅ **Phase 3**: Add notifications to dashboard as another tab
+   - Fixed: Created NotificationsList component via TDD (11/11 tests), added to all role dashboards
 
 ### EPIC 1 DASHBOARD IMPROVEMENTS (All Items Complete):
 - ✅ **TabPanel Component** - Reusable tabbed UI with keyboard navigation, ARIA accessibility, Sri Lankan flag colors
 - ✅ **EventsList Component** - Event display with status badges, categories, capacity, loading/empty states
-- ✅ **Admin Dashboard (3 tabs)** - My Registered Events | My Created Events | Admin Tasks (approvals)
-- ✅ **Event Organizer Dashboard (2 tabs)** - My Registered Events | My Created Events
-- ✅ **General User Dashboard** - Single view showing My Registered Events
+- ✅ **NotificationsList Component** - Notifications display with loading/empty/error states, time formatting, keyboard accessible
+- ✅ **Admin Dashboard (4 tabs)** - My Registered Events | My Created Events | Admin Tasks | **Notifications**
+- ✅ **Event Organizer Dashboard (3 tabs)** - My Registered Events | My Created Events | **Notifications**
+- ✅ **General User Dashboard (2 tabs)** - My Registered Events | **Notifications** (now uses TabPanel)
 - ✅ **Post Topic Button Removed** - Removed from dashboard (not in Epic 1 scope)
 - ✅ **Admin Approvals Integration** - Admin Tasks tab shows pending role upgrade approvals
 - ✅ **Events Repository Extended** - Added `getUserCreatedEvents()` method
+- ✅ **Admin Page Cleanup** - Removed redundant `/admin/approvals` standalone page
 
 ### EPIC 1 TEST RESULTS:
 - ✅ **TabPanel Tests**: 10/10 passing (keyboard navigation, accessibility, tab switching)
 - ✅ **EventsList Tests**: 9/9 passing (rendering, formatting, loading states)
+- ✅ **NotificationsList Tests**: 11/11 passing (loading/empty/error states, time formatting, keyboard navigation)
 - ✅ **TypeScript Compilation**: 0 errors in dashboard-related files
-- ✅ **Total New Tests**: 19/19 passing
+- ✅ **Total New Tests**: 30/30 passing
 
 ### EPIC 1 FILES CREATED/MODIFIED:
 - ✅ `web/src/presentation/components/ui/TabPanel.tsx` - New reusable tab component
 - ✅ `web/src/presentation/components/features/dashboard/EventsList.tsx` - New event list component
+- ✅ `web/src/presentation/components/features/dashboard/NotificationsList.tsx` - New notifications list component
 - ✅ `web/src/infrastructure/api/repositories/events.repository.ts` - Added getUserCreatedEvents()
-- ✅ `web/src/app/(dashboard)/dashboard/page.tsx` - Complete tabbed dashboard implementation
+- ✅ `web/src/app/(dashboard)/dashboard/page.tsx` - Complete tabbed dashboard with notifications
+- ✅ `web/src/presentation/components/layout/Header.tsx` - Removed redundant Admin navigation link
+- ✅ `web/src/presentation/components/features/admin/ApprovalsTable.tsx` - Fixed table overflow
 - ✅ `tests/unit/presentation/components/ui/TabPanel.test.tsx` - 10 tests
 - ✅ `tests/unit/presentation/components/features/dashboard/EventsList.test.tsx` - 9 tests
+- ✅ `tests/unit/presentation/components/features/dashboard/NotificationsList.test.tsx` - 11 tests
+- ✅ `web/src/app/(dashboard)/admin/` - DELETED (redundant approvals page removed)
 
 ### EPIC 1 BACKEND IMPLEMENTATION (2025-11-16):
 - ✅ **COMPLETE**: `/api/events/my-events` endpoint (returns events created by current user as organizer)
@@ -61,23 +71,51 @@
 - ✅ **Frontend Updated**: Dashboard now handles `EventDto[]` responses
 
 ### EPIC 1 USER EXPERIENCE:
-**Admin Role**:
+**Admin Role** (4 tabs):
 - Tab 1: My Registered Events (events they signed up for)
 - Tab 2: My Created Events (events they organized)
 - Tab 3: Admin Tasks (approve/reject role upgrades, future: event approvals, business approvals)
+- Tab 4: Notifications (real-time updates, 30s auto-refresh, mark as read)
 
-**Event Organizer Role**:
+**Event Organizer Role** (3 tabs):
 - Tab 1: My Registered Events
 - Tab 2: My Created Events (manage their organized events)
+- Tab 3: Notifications (real-time updates, 30s auto-refresh, mark as read)
 
-**General User Role**:
-- Single view: My Registered Events (no tabs needed)
+**General User Role** (2 tabs):
+- Tab 1: My Registered Events (no tabs needed)
+- Tab 2: Notifications (real-time updates, 30s auto-refresh, mark as read)
+
+### SESSION 4 COMMITS:
+- ✅ `9d4957b` - "Fix Admin Tasks table overflow and clean up dashboard UX" (Phases 1 & 2)
+- ✅ `cb1f4a6` - "Remove redundant /admin/approvals page" (Phase 2.3)
+- ✅ `e7d1845` - "Add Notifications tab to dashboard for all user roles" (Phase 3)
+- ✅ `f4cbebf` - "Update PROGRESS_TRACKER with Session 4 complete summary"
 
 ### NEXT STEPS FOR EPIC 1:
-1. ⏳ User testing of dashboard in dev mode for all three roles
-2. ⏳ Backend team implements `/api/events/my-events` and enhances `/api/events/my-rsvps`
-3. ⏳ Add Event Creation approval workflow to Admin Tasks tab (Epic 1 Phase 2)
-4. ⏳ Add Business Profile approval workflow to Admin Tasks tab (Epic 2)
+1. ✅ User testing of dashboard in staging → 4 UX issues found and fixed (Session 4)
+2. ✅ Backend team implements `/api/events/my-events` and enhances `/api/events/my-rsvps` (Session 2)
+3. ✅ Dashboard UX improvements based on user feedback (Session 4)
+4. ⏳ Add Event Creation approval workflow to Admin Tasks tab (Epic 1 Phase 2)
+5. ⏳ Add Business Profile approval workflow to Admin Tasks tab (Epic 2)
+
+---
+
+## 🎉 PREVIOUS STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅ (2025-11-16)
+**Date**: 2025-11-16 (Session 3)
+**Session**: CRITICAL AUTH BUGFIX - JWT Role Claim Missing
+**Status**: ✅ COMPLETE - Role claim added to JWT tokens, all admin endpoints now functional
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors/0 warnings, Deployed to staging
+**User Verification**: ✅ User confirmed fix works - Admin approvals now visible in Admin Tasks tab
+
+### CRITICAL BUGFIX - JWT ROLE CLAIM (2025-11-16):
+- 🐛 **Bug**: Admin Tasks tab showed "No pending approvals" even when users had pending requests
+- 🔍 **Root Cause**: `JwtTokenService.GenerateAccessTokenAsync()` missing `ClaimTypes.Role` claim
+- ✅ **Fix**: Added `new(ClaimTypes.Role, user.Role.ToString())` to JWT claims list
+- 📝 **File**: [src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs:58](../src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs#L58)
+- 🚀 **Impact**: All role-based authorization policies now work correctly
+- ✅ **Verified**: User tested in staging, admin approvals now visible
+- ⚠️ **Note**: Users must log out and back in to get new JWT with role claim
 
 ---
 

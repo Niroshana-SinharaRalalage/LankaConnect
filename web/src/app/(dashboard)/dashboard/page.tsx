@@ -19,15 +19,18 @@ import {
   LogOut,
   Sparkles,
   ClipboardCheck,
-  FolderOpen
+  FolderOpen,
+  Bell
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
 import { UpgradePendingBanner } from '@/presentation/components/features/role-upgrade/UpgradePendingBanner';
+import { NotificationsList } from '@/presentation/components/features/dashboard/NotificationsList';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
+import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 
@@ -48,6 +51,10 @@ export default function DashboardPage() {
   // State for admin approvals
   const [pendingApprovals, setPendingApprovals] = useState<PendingRoleUpgradeDto[]>([]);
   const [loadingApprovals, setLoadingApprovals] = useState(false);
+
+  // Notifications
+  const { data: notifications = [], isLoading: loadingNotifications } = useUnreadNotifications();
+  const markAsRead = useMarkNotificationAsRead();
 
   // Set mounted state after client-side hydration
   useEffect(() => {
@@ -129,6 +136,14 @@ export default function DashboardPage() {
       setPendingApprovals(approvals);
     } catch (error) {
       console.error('Error refreshing approvals:', error);
+    }
+  };
+
+  const handleNotificationClick = async (notificationId: string) => {
+    try {
+      await markAsRead.mutateAsync(notificationId);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
     }
   };
 
@@ -352,6 +367,18 @@ export default function DashboardPage() {
                           </div>
                         ),
                       },
+                      {
+                        id: 'notifications',
+                        label: 'Notifications',
+                        icon: Bell,
+                        content: (
+                          <NotificationsList
+                            notifications={notifications}
+                            isLoading={loadingNotifications}
+                            onNotificationClick={handleNotificationClick}
+                          />
+                        ),
+                      },
                     ]}
                   />
                 ) : user && user.role === UserRole.EventOrganizer ? (
@@ -381,18 +408,50 @@ export default function DashboardPage() {
                           />
                         ),
                       },
+                      {
+                        id: 'notifications',
+                        label: 'Notifications',
+                        icon: Bell,
+                        content: (
+                          <NotificationsList
+                            notifications={notifications}
+                            isLoading={loadingNotifications}
+                            onNotificationClick={handleNotificationClick}
+                          />
+                        ),
+                      },
                     ]}
                   />
                 ) : (
-                  /* General User - Show only registered events */
-                  <div className="p-6">
-                    <h2 className="text-xl font-semibold mb-4 text-[#8B1538]">My Registered Events</h2>
-                    <EventsList
-                      events={registeredEvents}
-                      isLoading={loadingRegistered}
-                      emptyMessage="You haven't registered for any events yet. Browse events to join!"
-                    />
-                  </div>
+                  /* General User - Tabbed interface with Registered Events and Notifications */
+                  <TabPanel
+                    tabs={[
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <EventsList
+                            events={registeredEvents}
+                            isLoading={loadingRegistered}
+                            emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                          />
+                        ),
+                      },
+                      {
+                        id: 'notifications',
+                        label: 'Notifications',
+                        icon: Bell,
+                        content: (
+                          <NotificationsList
+                            notifications={notifications}
+                            isLoading={loadingNotifications}
+                            onNotificationClick={handleNotificationClick}
+                          />
+                        ),
+                      },
+                    ]}
+                  />
                 )}
               </div>
             </div>

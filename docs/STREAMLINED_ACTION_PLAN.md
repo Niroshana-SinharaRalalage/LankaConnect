@@ -7,11 +7,21 @@
 
 ---
 
-## 🎉 CURRENT STATUS - EPIC 1 BACKEND ENDPOINTS IMPLEMENTATION COMPLETE ✅ (2025-11-16)
-**Date**: 2025-11-16 (Current Session)
-**Session**: EPIC 1 - Backend API Endpoints for Dashboard Events
-**Status**: ✅ COMPLETE - Both `/api/events/my-events` and `/api/events/my-rsvps` endpoints fully implemented
-**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors/0 warnings, Frontend: updated and working
+## 🎉 CURRENT STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅ (2025-11-16)
+**Date**: 2025-11-16 (Current Session - Session 3)
+**Session**: CRITICAL AUTH BUGFIX - JWT Role Claim Missing
+**Status**: ✅ COMPLETE - Role claim added to JWT tokens, all admin endpoints now functional
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors/0 warnings, Deployed to staging
+**User Verification**: ✅ User confirmed fix works - Admin approvals now visible in Admin Tasks tab
+
+### CRITICAL BUGFIX - JWT ROLE CLAIM (2025-11-16):
+- 🐛 **Bug**: Admin Tasks tab showed "No pending approvals" even when users had pending requests
+- 🔍 **Root Cause**: `JwtTokenService.GenerateAccessTokenAsync()` missing `ClaimTypes.Role` claim
+- ✅ **Fix**: Added `new(ClaimTypes.Role, user.Role.ToString())` to JWT claims list
+- 📝 **File**: [src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs:58](../src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs#L58)
+- 🚀 **Impact**: All role-based authorization policies now work correctly
+- ✅ **Verified**: User tested in staging, admin approvals now visible
+- ⚠️ **Note**: Users must log out and back in to get new JWT with role claim
 
 ### EPIC 1 DASHBOARD IMPROVEMENTS (All Items Complete):
 - ✅ **TabPanel Component** - Reusable tabbed UI with keyboard navigation, ARIA accessibility, Sri Lankan flag colors

@@ -3,30 +3,49 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - EPIC 1 ADMIN DASHBOARD IMPROVEMENTS COMPLETE ✅
-**Date**: 2025-11-15 (Current Session)
-**Session**: EPIC 1 - Admin Dashboard Tabbed Interface & Event Management
-**Progress**: **✅ COMPLETE** - Tabbed dashboard for Admin/Event Organizer/General User, Admin Tasks integration
-**MILESTONE**: **✅ ALL EPIC 1 DASHBOARD REQUIREMENTS IMPLEMENTED - 19/19 TESTS PASSING - READY FOR USER TESTING**
+## 🎯 CURRENT SESSION STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅
+**Date**: 2025-11-16 (Current Session - Session 3)
+**Session**: CRITICAL BUGFIX - JWT Role Claim Missing in Authorization
+**Progress**: **✅ COMPLETE** - Role claim added to JWT tokens, all admin endpoints now functional
+**MILESTONE**: **✅ ADMIN APPROVALS NOW WORKING - USER VERIFIED IN STAGING**
 
-### Epic 1 Dashboard Implementation Summary:
-- ✅ **TabPanel Component**: Reusable tabbed UI with keyboard navigation, ARIA accessibility (10/10 tests passing)
-- ✅ **EventsList Component**: Event display with status badges, categories, capacity (9/9 tests passing)
-- ✅ **Admin Dashboard (3 tabs)**: My Registered Events | My Created Events | Admin Tasks
-- ✅ **Event Organizer Dashboard (2 tabs)**: My Registered Events | My Created Events
-- ✅ **General User Dashboard**: Single view showing My Registered Events
-- ✅ **Post Topic Button**: Removed from dashboard (not in Epic 1 scope)
-- ✅ **Admin Approvals**: Integrated into Admin Tasks tab
-- ✅ **Events Repository**: Extended with `getUserCreatedEvents()` method
-- ✅ **TypeScript Compilation**: 0 errors in dashboard-related files
-- ⚠️ **Backend TODO**: Implement `/api/events/my-events` and enhance `/api/events/my-rsvps` endpoints
-- ⏳ **Next Steps**: User testing of dashboard for all three roles
+### Critical Auth Bugfix Summary:
+- 🐛 **Bug Report**: Admin Tasks tab showed "No pending approvals" despite pending user requests
+- 🔍 **Root Cause**: `JwtTokenService.GenerateAccessTokenAsync()` missing `ClaimTypes.Role` claim
+- ✅ **Fix**: Added `new(ClaimTypes.Role, user.Role.ToString())` to JWT claims on line 58
+- 📝 **File Modified**: `src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs`
+- 🚀 **Impact**: All `[Authorize(Policy = "RequireAdmin")]` and role-based policies now work
+- ✅ **Build**: 0 errors, 0 warnings (54s build time)
+- ✅ **Deployment**: Commit c0d457c deployed via GitHub Actions Run #19409823348
+- ✅ **Verification**: User confirmed fix works - Admin approvals now visible after re-login
+- ⚠️ **User Action Required**: Must log out and back in to get new JWT with role claim
+
+### Files Modified:
+- `src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs` (MODIFIED - line 58)
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - EPIC 1 BACKEND ENDPOINTS COMPLETE ✅
+**Date**: 2025-11-16 (Previous Session - Session 2)
+**Session**: EPIC 1 - Backend API Endpoints for Dashboard Events
+**Progress**: **✅ COMPLETE** - `/api/events/my-events` and `/api/events/my-rsvps` endpoints implemented
+**MILESTONE**: **✅ BOTH BACKEND ENDPOINTS DEPLOYED TO STAGING**
+
+### Epic 1 Backend Implementation Summary:
+- ✅ **`/api/events/my-events`**: Returns events created by current user as organizer
+- ✅ **`/api/events/my-rsvps`**: Enhanced to return full `EventDto[]` instead of `RsvpDto[]`
+- ✅ **New Query**: `GetMyRegisteredEventsQuery` and handler created
+- ✅ **Backend Build**: 0 errors, 0 warnings (1m 58s)
+- ✅ **Frontend Updated**: Dashboard handles `EventDto[]` responses
+- ✅ **Deployment**: Commit a1b0d7d deployed to staging
 
 ### Files Created/Modified:
+- `src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQuery.cs` (NEW)
+- `src/LankaConnect.Application/Events/Queries/GetMyRegisteredEvents/GetMyRegisteredEventsQueryHandler.cs` (NEW)
+- `src/LankaConnect.API/Controllers/EventsController.cs` (MODIFIED - lines 382-422)
+- `web/src/app/(dashboard)/dashboard/page.tsx` (MODIFIED - lines 136-154)
 - `web/src/presentation/components/ui/TabPanel.tsx` (NEW)
 - `web/src/presentation/components/features/dashboard/EventsList.tsx` (NEW)
-- `web/src/infrastructure/api/repositories/events.repository.ts` (MODIFIED - added getUserCreatedEvents)
-- `web/src/app/(dashboard)/dashboard/page.tsx` (MODIFIED - complete tabbed dashboard)
 - `tests/unit/presentation/components/ui/TabPanel.test.tsx` (NEW - 10 tests)
 - `tests/unit/presentation/components/features/dashboard/EventsList.test.tsx` (NEW - 9 tests)
 

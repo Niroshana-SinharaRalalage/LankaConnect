@@ -1,15 +1,64 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-16 (Current Session) - Epic 1 Backend Endpoints Implementation - COMPLETE ✅*
+*Last Updated: 2025-11-16 (Current Session) - CRITICAL AUTH BUGFIX - Admin Approvals Now Working ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - EPIC 1 BACKEND ENDPOINTS IMPLEMENTATION ✅
+## 🎯 Current Session Status - CRITICAL AUTH BUGFIX: JWT ROLE CLAIM ✅
 
-### Session: Backend API Endpoints for Dashboard Events (2025-11-16)
+### Session: Fix Missing Role Claim in JWT Tokens (2025-11-16 - Session 3)
+
+**CRITICAL BUGFIX DEPLOYED**: JWT tokens now include role claim, admin endpoints fully functional
+
+**Status**: ✅ COMPLETE - Role claim added, admin approvals working, deployed to staging
+
+### **Root Cause Identified** 🔍:
+
+**User Report**: Admin Tasks tab showed "No pending approvals" even when users had pending upgrade requests
+
+**Investigation Results**:
+- User `niroshhh2@gmail.com` had pending Event Organizer upgrade request visible in their dashboard
+- Admin user `admin1@lankaconnect.com` could NOT see this request in Admin Tasks tab
+- Testing `/api/approvals/pending` endpoint resulted in authorization failure
+
+**Bug Found**: `JwtTokenService.GenerateAccessTokenAsync()` was missing `ClaimTypes.Role` claim
+- File: [src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs:53-66](../src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs#L53-L66)
+- Authorization policies like `RequireAdmin` use `policy.RequireRole()` which requires `ClaimTypes.Role` in JWT
+- Without this claim, ALL role-based authorization was failing silently
+
+### **The Fix** ✅:
+
+**Single Line Addition**:
+```csharp
+new(ClaimTypes.Role, user.Role.ToString()), // Line 58
+```
+
+**Impact**:
+- ✅ Admin Tasks tab now displays pending approvals correctly
+- ✅ All `[Authorize(Policy = "RequireAdmin")]` endpoints now accessible
+- ✅ All `[Authorize(Policy = "RequireEventOrganizer")]` endpoints now accessible
+- ✅ All role-based authorization policies now function correctly
+
+### **Files Modified** 📝:
+- [src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs:58](../src/LankaConnect.Infrastructure/Security/Services/JwtTokenService.cs#L58) - Added role claim
+
+### **Build & Deployment** 🚀:
+- **Build Status**: ✅ 0 Errors, 0 Warnings (54s build time)
+- **Commit**: c0d457c - "fix(auth): Add role claim to JWT tokens for authorization policies"
+- **Deployment**: GitHub Actions Run #19409823348
+- **Verification**: User confirmed fix works in staging
+
+### **Testing Notes** ✅:
+- User must **log out and log back in** to get new JWT token with role claim
+- After re-login, pending approvals are visible in Admin Tasks tab
+- All admin functions now operational
+
+---
+
+## Previous Session: Epic 1 Backend Endpoints Implementation (2025-11-16 - Session 2)
 
 **EPIC 1 BACKEND COMPLETE**: `/api/events/my-events` and `/api/events/my-rsvps` endpoints fully implemented
 
-**Status**: ✅ COMPLETE - Both endpoints implemented, backend builds with 0 errors, frontend updated, ready for integration testing
+**Status**: ✅ COMPLETE - Both endpoints implemented, backend builds with 0 errors, frontend updated, deployed to staging
 
 ### **Current Session Achievements** ✅:
 

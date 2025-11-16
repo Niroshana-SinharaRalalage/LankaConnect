@@ -91,7 +91,7 @@ export function CulturalInterestsSection() {
 
     try {
       await updateCulturalInterests(user.userId, {
-        culturalInterests: selectedInterests,
+        InterestCodes: selectedInterests, // PascalCase to match backend (UsersController.cs:731)
       });
       // Exit edit mode on success (store sets state to 'success')
       setIsEditing(false);

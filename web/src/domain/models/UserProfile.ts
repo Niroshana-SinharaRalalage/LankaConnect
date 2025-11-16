@@ -71,7 +71,7 @@ export interface UpdateLocationRequest {
 }
 
 export interface UpdateCulturalInterestsRequest {
-  culturalInterests: string[]; // 0-10 items
+  InterestCodes: string[]; // 0-10 items (backend expects PascalCase - UsersController.cs:731)
 }
 
 export interface UpdateLanguagesRequest {

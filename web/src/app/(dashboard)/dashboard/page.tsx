@@ -22,82 +22,14 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { CulturalCalendar } from '@/presentation/components/features/dashboard/CulturalCalendar';
-import { FeaturedBusinesses } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
-import { CommunityStats } from '@/presentation/components/features/dashboard/CommunityStats';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
 import { UpgradePendingBanner } from '@/presentation/components/features/role-upgrade/UpgradePendingBanner';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
-import type { CulturalEvent } from '@/presentation/components/features/dashboard/CulturalCalendar';
-import type { Business } from '@/presentation/components/features/dashboard/FeaturedBusinesses';
-import type { CommunityStatsData } from '@/presentation/components/features/dashboard/CommunityStats';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
-import type { RsvpDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
-
-// Mock data for widgets
-const MOCK_CULTURAL_EVENTS: CulturalEvent[] = [
-  {
-    id: '1',
-    name: 'Vesak Day Celebration',
-    date: '2025-05-23',
-    category: 'religious'
-  },
-  {
-    id: '2',
-    name: 'Sri Lankan Independence Day',
-    date: '2025-02-04',
-    category: 'national'
-  },
-  {
-    id: '3',
-    name: 'Sinhala & Tamil New Year',
-    date: '2025-04-14',
-    category: 'cultural'
-  },
-  {
-    id: '4',
-    name: 'Poson Poya Day',
-    date: '2025-06-21',
-    category: 'holiday'
-  }
-];
-
-const MOCK_BUSINESSES: Business[] = [
-  {
-    id: '1',
-    name: 'Ceylon Spice Market',
-    category: 'Grocery',
-    rating: 4.8,
-    reviewCount: 125
-  },
-  {
-    id: '2',
-    name: 'Lanka Restaurant',
-    category: 'Restaurant',
-    rating: 4.6,
-    reviewCount: 89
-  },
-  {
-    id: '3',
-    name: 'Serendib Boutique',
-    category: 'Retail',
-    rating: 4.9,
-    reviewCount: 203
-  }
-];
-
-const MOCK_COMMUNITY_STATS: CommunityStatsData = {
-  activeUsers: 12500,
-  activeUsersTrend: { value: '+8.5%', direction: 'up' },
-  recentPosts: 450,
-  recentPostsTrend: { value: '+12.3%', direction: 'up' },
-  upcomingEvents: 2200,
-  upcomingEventsTrend: { value: '+5.7%', direction: 'up' }
-};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -368,10 +300,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Epic 1: Tabbed Dashboard Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Tabbed Content (2/3 width on large screens) */}
-            <div className="lg:col-span-2">
+          {/* Epic 1: Tabbed Dashboard Content - Full width layout (Culture Calendar & Featured Businesses removed) */}
+          <div>
+            {/* Dashboard Content - Full width */}
+            <div>
               <div className="bg-white rounded-xl shadow-sm">
                 {/* Render tabs based on user role */}
                 {user && isAdmin(user.role as UserRole) ? (
@@ -463,18 +395,6 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Right Column - Widgets (1/3 width on large screens) */}
-            <div className="space-y-8">
-              {/* Cultural Calendar Widget */}
-              <CulturalCalendar events={MOCK_CULTURAL_EVENTS} />
-
-              {/* Featured Businesses Widget */}
-              <FeaturedBusinesses businesses={MOCK_BUSINESSES} />
-
-              {/* Community Stats Widget */}
-              <CommunityStats stats={MOCK_COMMUNITY_STATS} />
             </div>
           </div>
         </main>

@@ -201,10 +201,11 @@ export class EventsRepository {
 
   /**
    * Get current user's RSVPs
+   * Epic 1: Backend now returns full EventDto[] instead of RsvpDto[] for better UX
    * Returns all events user has registered for
    */
-  async getUserRsvps(): Promise<RsvpDto[]> {
-    return await apiClient.get<RsvpDto[]>(`${this.basePath}/my-rsvps`);
+  async getUserRsvps(): Promise<EventDto[]> {
+    return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
   }
 
   /**

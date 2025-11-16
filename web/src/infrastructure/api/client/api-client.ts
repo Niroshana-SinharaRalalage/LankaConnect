@@ -176,20 +176,26 @@ export class ApiClient {
 
   /**
    * POST request with multipart/form-data (for file uploads)
-   * Note: Don't set Content-Type header - let browser add boundary automatically
+   * Note: Explicitly delete Content-Type header to let browser add boundary automatically
    */
   public async postMultipart<T = any>(
     url: string,
     formData: FormData,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.post(url, formData, {
+    // Create new config without Content-Type header
+    const requestConfig: AxiosRequestConfig = {
       ...config,
       headers: {
-        // Don't set Content-Type - browser will add 'multipart/form-data; boundary=...'
         ...config?.headers,
       },
-    });
+    };
+
+    // Explicitly delete Content-Type to let browser add multipart/form-data with boundary
+    delete requestConfig.headers?.['Content-Type'];
+    delete requestConfig.headers?.['content-type'];
+
+    const response: AxiosResponse<T> = await this.axiosInstance.post(url, formData, requestConfig);
     return response.data;
   }
 }

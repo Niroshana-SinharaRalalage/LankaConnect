@@ -121,16 +121,6 @@ export function Header({ className = '' }: HeaderProps) {
                 </Link>
               </li>
             )}
-            {isAuthenticated && (user?.role === 'Admin' || user?.role === 'AdminManager') && (
-              <li>
-                <Link
-                  href="/admin/approvals"
-                  className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-                >
-                  Admin
-                </Link>
-              </li>
-            )}
           </ul>
 
           {/* Auth Section */}

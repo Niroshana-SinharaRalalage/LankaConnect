@@ -176,20 +176,20 @@ export class ApiClient {
 
   /**
    * POST request with multipart/form-data (for file uploads)
-   * Note: Set Content-Type to undefined to override instance default and let browser add boundary
+   * Note: Use transformRequest to prevent axios from setting Content-Type, letting browser add boundary
    */
   public async postMultipart<T = any>(
     url: string,
     formData: FormData,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    // Set Content-Type to undefined to override axios instance default 'application/json'
-    // This allows browser to set 'multipart/form-data; boundary=...' automatically
+    // Use transformRequest to bypass axios default header handling
+    // This lets the browser set the correct multipart/form-data header with boundary
     const response: AxiosResponse<T> = await this.axiosInstance.post(url, formData, {
       ...config,
+      transformRequest: [(data) => data], // Return data as-is, don't transform
       headers: {
         ...config?.headers,
-        'Content-Type': undefined,
       },
     });
     return response.data;

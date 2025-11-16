@@ -40,16 +40,43 @@ export class ProfileRepository {
    * @param userId User GUID
    * @param file Image file (max 5MB)
    * @returns Promise resolving to PhotoUploadResponse with new URL
+   *
+   * Note: Uses native fetch instead of Axios to avoid Content-Type header issues with multipart/form-data
    */
   async uploadProfilePhoto(userId: string, file: File): Promise<PhotoUploadResponse> {
     const formData = new FormData();
     formData.append('image', file); // Backend expects 'image' parameter (UsersController.cs line 112)
 
-    const response = await apiClient.postMultipart<PhotoUploadResponse>(
-      `${this.basePath}/${userId}/profile-photo`,
-      formData
-    );
-    return response;
+    // Use native fetch API for file uploads to avoid Axios header conflicts
+    // Fetch automatically sets correct Content-Type with boundary for FormData
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const url = `${baseURL}${this.basePath}/${userId}/profile-photo`;
+
+    const token = apiClient['authToken']; // Access private token field
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      // Don't set Content-Type - browser will add it with boundary automatically
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Upload failed with status ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || errorMessage;
+      } catch {
+        // Not JSON, use text
+      }
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
   }
 
   /**

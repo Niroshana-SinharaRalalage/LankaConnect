@@ -127,10 +127,16 @@ export function TreeDropdown({
         childIds.forEach((id) => newSelected.delete(id));
       }
     } else {
-      // Checking: add node and all children
-      const idsToAdd = [nodeId];
+      // Checking: For parent nodes with children, only add children (not parent itself)
+      // For leaf nodes, add the node itself
+      const idsToAdd: string[] = [];
+
       if (hasChildren) {
+        // Parent node: only add children, not the parent ID
         idsToAdd.push(...getAllChildIds(node));
+      } else {
+        // Leaf node: add the node itself
+        idsToAdd.push(nodeId);
       }
 
       // Check max selections

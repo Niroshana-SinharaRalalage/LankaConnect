@@ -153,7 +153,17 @@ export function TreeDropdown({
   const renderTreeNode = (node: TreeNode, level: number = 0) => {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
-    const isSelected = selectedIds.includes(node.id);
+
+    // Phase 6A.9 FIX: For parent nodes, check if ALL children are selected
+    // This ensures state checkboxes show as checked when all cities are selected
+    let isSelected = selectedIds.includes(node.id);
+    if (hasChildren && !isSelected) {
+      const childIds = getAllChildIds(node);
+      if (childIds.length > 0) {
+        isSelected = childIds.every(childId => selectedIds.includes(childId));
+      }
+    }
+
     const indentClass = level > 0 ? `ml-${level * 6}` : '';
 
     return (

@@ -214,6 +214,16 @@ try
     }
 
     // Configure the HTTP request pipeline
+
+    // CRITICAL FIX Phase 6A.9: Apply CORS BEFORE other middleware to handle preflight requests
+    // CORS must come before UseHttpsRedirection, UseAuthentication, etc.
+    if (app.Environment.IsDevelopment())
+        app.UseCors("Development");
+    else if (app.Environment.IsStaging())
+        app.UseCors("Staging");
+    else
+        app.UseCors("Production");
+
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
         app.UseSwagger();
@@ -223,19 +233,11 @@ try
             c.RoutePrefix = string.Empty; // Make Swagger available at root
             c.DisplayRequestDuration();
         });
-
-        if (app.Environment.IsDevelopment())
-            app.UseCors("Development");
-        else if (app.Environment.IsStaging())
-            app.UseCors("Staging");
-        else
-            app.UseCors("Production");
     }
     else
     {
         app.UseExceptionHandler("/Error");
         app.UseHsts();
-        app.UseCors("Production");
     }
 
     app.UseHttpsRedirection();

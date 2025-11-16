@@ -582,6 +582,21 @@ public class User : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.9 FIX: Sync domain's metro area ID list from loaded EF Core entities
+    /// This method is called ONLY by infrastructure layer after loading user from database
+    /// Does NOT mark entity as updated or raise events - this is a hydration concern
+    /// Per ADR-009: Domain maintains List&lt;Guid&gt; for business logic, EF Core has shadow navigation for persistence
+    /// </summary>
+    /// <param name="metroAreaIds">IDs extracted from loaded shadow navigation entities</param>
+    internal void SyncPreferredMetroAreaIdsFromEntities(IEnumerable<Guid> metroAreaIds)
+    {
+        _preferredMetroAreaIds.Clear();
+        _preferredMetroAreaIds.AddRange(metroAreaIds);
+        // NOTE: Do NOT call MarkAsUpdated() - this is a read operation, not a modification
+        // NOTE: Do NOT raise domain events - this is infrastructure hydration, not business operation
+    }
+
     // External Login Management (Epic 1 Phase 2 - Social Login)
 
     /// <summary>

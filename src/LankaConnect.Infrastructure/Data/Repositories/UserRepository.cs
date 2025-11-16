@@ -20,10 +20,11 @@ public class UserRepository : Repository<User>, IUserRepository
     /// are automatically loaded by EF Core due to AutoInclude() configuration in UserConfiguration.cs.
     /// However, we keep explicit Include() for clarity and to ensure proper split query optimization.
     /// The nested LanguageCode owned entity is loaded automatically - no ThenInclude() needed.
+    /// Phase 6A.9 FIX: After loading, sync shadow navigation entities to domain's metro area ID list
     /// </summary>
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet
+        var user = await _dbSet
             .AsSplitQuery()
             .Include(u => u.CulturalInterests)
             .Include(u => u.Languages)
@@ -32,6 +33,24 @@ public class UserRepository : Repository<User>, IUserRepository
             // This populates _preferredMetroAreaEntities so EF Core can track changes to junction table
             .Include("_preferredMetroAreaEntities")  // String-based for shadow property
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+        // Phase 6A.9 FIX: Sync loaded shadow navigation entities to domain's metro area ID list
+        // This bridges the gap between EF Core's entity references and domain's business logic IDs
+        if (user != null)
+        {
+            // Access the shadow navigation using EF Core's Entry API
+            var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");
+            var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<Domain.Events.MetroArea>;
+
+            if (metroAreaEntities != null)
+            {
+                // Extract IDs and sync to domain's _preferredMetroAreaIds list
+                var metroAreaIds = metroAreaEntities.Select(m => m.Id).ToList();
+                user.SyncPreferredMetroAreaIdsFromEntities(metroAreaIds);
+            }
+        }
+
+        return user;
     }
 
     public async Task<User?> GetByEmailAsync(UserEmail email, CancellationToken cancellationToken = default)

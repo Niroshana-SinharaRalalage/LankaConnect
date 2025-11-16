@@ -13,7 +13,7 @@
 1. ✅ Admin Tasks table overflow - can't see Approve/Reject buttons
 2. ✅ Duplicate widgets - Culture Calendar and Featured Businesses on both landing & dashboard
 3. ✅ Redundant /admin/approvals page - Admin Tasks tab provides same functionality
-4. ⏸️ Notifications tab request - DEFERRED for next session
+4. ✅ Notifications tab added to dashboard
 
 ### **Phase 1: Fix Admin Tasks Table Overflow** ✅
 
@@ -56,15 +56,45 @@
 
 **Result**: Admin users now access approvals exclusively via dashboard Admin Tasks tab
 
-### **Build & Deployment** 🚀:
-- **Build Status**: ✅ TypeScript compiled successfully
-- **Commits**:
-  - 9d4957b - "feat(dashboard): Fix Admin Tasks table overflow and clean up dashboard UX"
-  - cb1f4a6 - "feat(dashboard): Remove redundant /admin/approvals page"
+### **Phase 3: Add Notifications Tab to Dashboard** ✅
 
-### **Deferred to Next Session** ⏸️:
-- Add Notifications tab to dashboard (4th tab for all users)
-- Fix bell icon dropdown functionality
+**User Request**: "How about adding notification to the dashboard as another tab?"
+
+**Implementation**: Created reusable NotificationsList component following TDD
+
+**Components Created**:
+- [web/src/presentation/components/features/dashboard/NotificationsList.tsx](../web/src/presentation/components/features/dashboard/NotificationsList.tsx)
+  - Reusable notifications list component with loading/empty/error states
+  - Time formatting ("5 minutes ago", "2 hours ago", etc.)
+  - Keyboard accessible (Enter/Space key support)
+  - Unread indicator, click handling with optimistic updates
+
+- [web/tests/unit/presentation/components/features/dashboard/NotificationsList.test.tsx](../web/tests/unit/presentation/components/features/dashboard/NotificationsList.test.tsx)
+  - 11 comprehensive tests (✅ 100% passing)
+  - Tests: Component rendering, time formatting, user interactions, notification types
+
+**Dashboard Integration**:
+- [web/src/app/(dashboard)/dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx)
+  - **Admin**: 4 tabs (Registered Events, Created Events, Admin Tasks, **Notifications**)
+  - **Event Organizer**: 3 tabs (Registered Events, Created Events, **Notifications**)
+  - **General User**: 2 tabs (Registered Events, **Notifications**) - Now uses TabPanel
+  - Integrated `useUnreadNotifications()` hook (auto-refresh every 30s)
+  - Integrated `useMarkNotificationAsRead()` mutation
+  - Added Bell icon from lucide-react
+
+**Result**: All users can access notifications directly from dashboard
+
+### **Bell Icon Status** ✅:
+**Already Working**: Bell icon dropdown fully functional in Header.tsx (verified during investigation)
+- No changes needed - feature already complete
+
+### **Build & Deployment** 🚀:
+- **TypeScript**: ✅ Compiled successfully (0 errors)
+- **Tests**: ✅ 11/11 NotificationsList tests passing
+- **Commits**:
+  - 9d4957b - "Fix Admin Tasks table overflow and clean up dashboard UX"
+  - cb1f4a6 - "Remove redundant /admin/approvals page"
+  - e7d1845 - "Add Notifications tab to dashboard for all user roles"
 
 ---
 

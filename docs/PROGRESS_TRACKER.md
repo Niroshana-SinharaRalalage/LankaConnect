@@ -1,11 +1,74 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-16 (Current Session) - CRITICAL AUTH BUGFIX - Admin Approvals Now Working ✅*
+*Last Updated: 2025-11-16 (Current Session) - Dashboard UX Improvements ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - CRITICAL AUTH BUGFIX: JWT ROLE CLAIM ✅
+## 🎯 Current Session Status - Dashboard UX Improvements ✅
 
-### Session: Fix Missing Role Claim in JWT Tokens (2025-11-16 - Session 3)
+### Session: Dashboard UX Cleanup & Admin Page Removal (2025-11-16 - Session 4)
+
+**Status**: ✅ COMPLETE - Dashboard cleaned up, redundant admin page removed
+
+**User Feedback After Epic 1 Staging Test**:
+1. ✅ Admin Tasks table overflow - can't see Approve/Reject buttons
+2. ✅ Duplicate widgets - Culture Calendar and Featured Businesses on both landing & dashboard
+3. ✅ Redundant /admin/approvals page - Admin Tasks tab provides same functionality
+4. ⏸️ Notifications tab request - DEFERRED for next session
+
+### **Phase 1: Fix Admin Tasks Table Overflow** ✅
+
+**Problem**: Pending approvals table was cut off, Approve/Reject buttons not visible
+
+**Solution**: Changed overflow behavior to allow horizontal scrolling
+
+**Files Modified**:
+- [web/src/presentation/components/features/admin/ApprovalsTable.tsx:79](../web/src/presentation/components/features/admin/ApprovalsTable.tsx#L79)
+  - Changed `overflow-hidden` → `overflow-x-auto` on table container
+  - Table now scrolls horizontally when content exceeds viewport width
+
+**Result**: Approve/Reject buttons now always visible with horizontal scrolling
+
+### **Phase 2: Remove Dashboard Widget Duplication** ✅
+
+**Problem**: Culture Calendar and Featured Businesses widgets duplicated from landing page
+
+**Solution**: Removed widgets and MOCK data, changed to full-width layout
+
+**Files Modified**:
+- [web/src/app/(dashboard)/dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx)
+  - Removed CulturalCalendar, FeaturedBusinesses, CommunityStats components
+  - Removed all MOCK data imports (67 lines total)
+  - Changed layout from 2-column grid to full-width
+  - Fixed `getUserRsvps()` return type from `Promise<RsvpDto[]>` → `Promise<EventDto[]>`
+
+**Result**: Dashboard now focuses on user-specific content (events and admin tasks)
+
+### **Phase 2.3: Remove Redundant /admin/approvals Page** ✅
+
+**Problem**: Dedicated admin approvals page with no back button, redundant with Admin Tasks tab
+
+**Solution**: Deleted page and removed navigation link
+
+**Files Modified/Deleted**:
+- Deleted [web/src/app/(dashboard)/admin/approvals/page.tsx](../web/src/app/(dashboard)/admin/approvals/page.tsx)
+- [web/src/presentation/components/layout/Header.tsx:124-133](../web/src/presentation/components/layout/Header.tsx#L124-L133)
+  - Removed "Admin" navigation link
+
+**Result**: Admin users now access approvals exclusively via dashboard Admin Tasks tab
+
+### **Build & Deployment** 🚀:
+- **Build Status**: ✅ TypeScript compiled successfully
+- **Commits**:
+  - 9d4957b - "feat(dashboard): Fix Admin Tasks table overflow and clean up dashboard UX"
+  - cb1f4a6 - "feat(dashboard): Remove redundant /admin/approvals page"
+
+### **Deferred to Next Session** ⏸️:
+- Add Notifications tab to dashboard (4th tab for all users)
+- Fix bell icon dropdown functionality
+
+---
+
+## Previous Session: Fix Missing Role Claim in JWT Tokens (2025-11-16 - Session 3)
 
 **CRITICAL BUGFIX DEPLOYED**: JWT tokens now include role claim, admin endpoints fully functional
 

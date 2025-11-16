@@ -3,8 +3,47 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅
-**Date**: 2025-11-16 (Current Session - Session 3)
+## 🎯 CURRENT SESSION STATUS - EPIC 1 DASHBOARD UX IMPROVEMENTS COMPLETE ✅
+**Date**: 2025-11-16 (Current Session - Session 4)
+**Session**: EPIC 1 - Dashboard UX Improvements Based on User Testing Feedback
+**Progress**: **✅ COMPLETE** - All 4 UX issues resolved, NotificationsList component added via TDD
+**MILESTONE**: **✅ ALL USER-REPORTED ISSUES FIXED - NOTIFICATIONS TAB ADDED TO ALL ROLES**
+
+### Session 4 - Dashboard UX Improvements Summary:
+**User Testing Feedback** (4 issues from Epic 1 staging test):
+1. ✅ **Phase 1**: Admin Tasks table overflow - can't see Approve/Reject buttons
+   - Fixed: Changed `overflow-hidden` to `overflow-x-auto` in [ApprovalsTable.tsx](../web/src/presentation/components/features/admin/ApprovalsTable.tsx#L79)
+2. ✅ **Phase 2**: Duplicate widgets on dashboard
+   - Fixed: Removed duplicate widgets from dashboard layout
+3. ✅ **Phase 2.3**: Redundant /admin/approvals page (no back button, duplicate of Admin Tasks tab)
+   - Fixed: Deleted `/admin/approvals` directory, removed "Admin" navigation link from [Header.tsx](../web/src/presentation/components/layout/Header.tsx)
+4. ✅ **Phase 3**: Add notifications to dashboard as another tab
+   - Fixed: Created [NotificationsList.tsx](../web/src/presentation/components/features/dashboard/NotificationsList.tsx) via TDD (11/11 tests), added to all role dashboards
+
+### Build & Test Results:
+- ✅ **NotificationsList Tests**: 11/11 passing (loading/empty/error states, time formatting, keyboard navigation)
+- ✅ **TypeScript Compilation**: 0 errors
+- ✅ **Total Epic 1 Tests**: 30/30 passing (TabPanel: 10, EventsList: 9, NotificationsList: 11)
+
+### Files Created/Modified:
+- `web/src/presentation/components/features/dashboard/NotificationsList.tsx` (NEW)
+- `web/tests/unit/presentation/components/features/dashboard/NotificationsList.test.tsx` (NEW - 11 tests)
+- `web/src/app/(dashboard)/dashboard/page.tsx` (MODIFIED - added Notifications tab to all roles)
+- `web/src/presentation/components/layout/Header.tsx` (MODIFIED - removed Admin nav link)
+- `web/src/presentation/components/features/admin/ApprovalsTable.tsx` (MODIFIED - fixed overflow)
+- `web/src/app/(dashboard)/admin/` (DELETED - redundant approvals page)
+
+### Commits:
+- ✅ `9d4957b` - "Fix Admin Tasks table overflow and clean up dashboard UX" (Phases 1 & 2)
+- ✅ `cb1f4a6` - "Remove redundant /admin/approvals page" (Phase 2.3)
+- ✅ `e7d1845` - "Add Notifications tab to dashboard for all user roles" (Phase 3)
+- ✅ `f4cbebf` - "Update PROGRESS_TRACKER with Session 4 complete summary"
+- ✅ `e683b2d` - "Update STREAMLINED_ACTION_PLAN with Session 4 completion"
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - CRITICAL AUTH BUGFIX COMPLETE ✅
+**Date**: 2025-11-16 (Session 3)
 **Session**: CRITICAL BUGFIX - JWT Role Claim Missing in Authorization
 **Progress**: **✅ COMPLETE** - Role claim added to JWT tokens, all admin endpoints now functional
 **MILESTONE**: **✅ ADMIN APPROVALS NOW WORKING - USER VERIFIED IN STAGING**
@@ -26,7 +65,7 @@
 ---
 
 ## 🎯 PREVIOUS SESSION STATUS - EPIC 1 BACKEND ENDPOINTS COMPLETE ✅
-**Date**: 2025-11-16 (Previous Session - Session 2)
+**Date**: 2025-11-16 (Session 2)
 **Session**: EPIC 1 - Backend API Endpoints for Dashboard Events
 **Progress**: **✅ COMPLETE** - `/api/events/my-events` and `/api/events/my-rsvps` endpoints implemented
 **MILESTONE**: **✅ BOTH BACKEND ENDPOINTS DEPLOYED TO STAGING**

@@ -145,7 +145,8 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 refreshTokenResult.Value,
                 tokenExpiresAt,
                 user.PendingUpgradeRole,    // Phase 6A.7: Include pending role for UI display
-                user.UpgradeRequestedAt);   // Phase 6A.7: Include when upgrade was requested
+                user.UpgradeRequestedAt,    // Phase 6A.7: Include when upgrade was requested
+                user.ProfilePhotoUrl);      // Include profile photo URL for header display
 
             return Result<LoginUserResponse>.Success(response);
         }

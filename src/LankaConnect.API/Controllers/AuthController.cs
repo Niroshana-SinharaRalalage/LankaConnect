@@ -128,7 +128,8 @@ public class AuthController : ControllerBase
                     result.Value.FullName,
                     result.Value.Role,
                     result.Value.PendingUpgradeRole, // Phase 6A.7: Include pending upgrade role for UI display
-                    result.Value.UpgradeRequestedAt   // Phase 6A.7: Include when upgrade was requested
+                    result.Value.UpgradeRequestedAt,  // Phase 6A.7: Include when upgrade was requested
+                    result.Value.ProfilePhotoUrl      // Include profile photo URL for header display
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt

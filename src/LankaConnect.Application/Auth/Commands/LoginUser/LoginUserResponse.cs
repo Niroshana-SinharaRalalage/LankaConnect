@@ -12,4 +12,5 @@ public record LoginUserResponse(
     string RefreshToken,
     DateTime TokenExpiresAt,
     UserRole? PendingUpgradeRole = null,  // Phase 6A.7: Pending role upgrade (if user requested upgrade)
-    DateTime? UpgradeRequestedAt = null); // Phase 6A.7: When upgrade was requested
+    DateTime? UpgradeRequestedAt = null,  // Phase 6A.7: When upgrade was requested
+    string? ProfilePhotoUrl = null);      // Profile photo URL for header display

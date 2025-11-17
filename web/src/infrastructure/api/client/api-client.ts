@@ -19,6 +19,11 @@ export interface ApiClientConfig {
 }
 
 /**
+ * Callback for handling 401 Unauthorized errors (token expiration)
+ */
+type UnauthorizedCallback = () => void;
+
+/**
  * API Client
  * Singleton pattern for managing HTTP requests
  */
@@ -26,6 +31,7 @@ export class ApiClient {
   private static instance: ApiClient;
   private axiosInstance: AxiosInstance;
   private authToken: string | null = null;
+  private onUnauthorized: UnauthorizedCallback | null = null;
 
   private constructor(config?: Partial<ApiClientConfig>) {
     const baseURL = config?.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -97,6 +103,10 @@ export class ApiClient {
         case 400:
           return new ValidationError(message, data?.errors || data?.validationErrors);
         case 401:
+          // Token expired or invalid - trigger logout callback
+          if (this.onUnauthorized) {
+            this.onUnauthorized();
+          }
           return new UnauthorizedError(message);
         case 403:
           return new ForbiddenError(message);
@@ -118,6 +128,13 @@ export class ApiClient {
     }
 
     return new ApiError('An unknown error occurred');
+  }
+
+  /**
+   * Set callback for handling 401 Unauthorized errors
+   */
+  public setUnauthorizedCallback(callback: UnauthorizedCallback): void {
+    this.onUnauthorized = callback;
   }
 
   /**

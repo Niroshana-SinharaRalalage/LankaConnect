@@ -1,9 +1,59 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-16 (Current Session) - Dashboard UX Improvements ✅*
+*Last Updated: 2025-11-16 (Current Session) - Token Expiration Bugfix ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Dashboard UX Improvements ✅
+## 🎯 Current Session Status - Token Expiration Bugfix ✅
+
+### Session: Automatic Logout on Token Expiration (2025-11-16 - Session 4 Continued)
+
+**Status**: ✅ COMPLETE - Token expiration now triggers automatic logout and redirect
+
+**User Report**: "Unauthorized (token expiration) doesn't log out and direct to log in page even after token expiration"
+
+### **Bugfix: Automatic Logout on 401 Unauthorized** ✅
+
+**Problem**:
+- Users seeing 401 errors in dashboard but remained logged in
+- No automatic logout when JWT token expires (after 1 hour)
+- Poor UX - users had to manually logout and login again
+
+**Solution**:
+1. **Added 401 Callback to API Client** ([api-client.ts](../web/src/infrastructure/api/client/api-client.ts))
+   - Added `UnauthorizedCallback` type
+   - Added `onUnauthorized` private property
+   - Added `setUnauthorizedCallback()` public method
+   - Modified `handleError()` to trigger callback on 401 (lines 105-110)
+
+2. **Created AuthProvider Component** ([AuthProvider.tsx](../web/src/presentation/providers/AuthProvider.tsx))
+   - Sets up global 401 error handler on app mount
+   - When 401 occurs: clears auth state + redirects to `/login`
+   - Prevents multiple simultaneous logout/redirect with flag
+
+3. **Integrated into App Providers** ([providers.tsx](../web/src/app/providers.tsx))
+   - Wrapped entire app with `<AuthProvider>`
+   - Works with React Query and other providers
+
+**Files Created/Modified**:
+- [web/src/infrastructure/api/client/api-client.ts](../web/src/infrastructure/api/client/api-client.ts) - Added callback mechanism
+- [web/src/presentation/providers/AuthProvider.tsx](../web/src/presentation/providers/AuthProvider.tsx) - NEW provider component
+- [web/src/app/providers.tsx](../web/src/app/providers.tsx) - Integrated AuthProvider
+
+**UX Flow After Fix**:
+1. User's JWT token expires (after 1 hour)
+2. Any API call returns 401 Unauthorized
+3. API client triggers `onUnauthorized` callback
+4. `AuthProvider` clears auth state (`useAuthStore.clearAuth()`)
+5. `AuthProvider` redirects to `/login` page
+6. User sees login page with clean state
+
+**Build Status**: ✅ Compiled successfully (0 errors)
+
+**Commit**: `95a0121` - "fix(auth): Add automatic logout and redirect on token expiration (401)"
+
+---
+
+## 🎯 Previous Session Status - Dashboard UX Improvements ✅
 
 ### Session: Dashboard UX Cleanup & Admin Page Removal (2025-11-16 - Session 4)
 

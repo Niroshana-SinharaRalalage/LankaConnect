@@ -7,8 +7,60 @@
 
 ---
 
-## 🎉 CURRENT STATUS - EPIC 1 DASHBOARD UX IMPROVEMENTS COMPLETE ✅ (2025-11-16)
-**Date**: 2025-11-16 (Current Session - Session 4)
+## 🎉 CURRENT STATUS - TOKEN EXPIRATION BUGFIX COMPLETE ✅ (2025-11-16)
+**Date**: 2025-11-16 (Current Session - Session 4 Continued)
+**Session**: BUGFIX - Automatic Logout on Token Expiration (401 Unauthorized)
+**Status**: ✅ COMPLETE - Token expiration now triggers automatic logout and redirect to login
+**Build Status**: ✅ Zero Tolerance Maintained - Frontend: 0 TypeScript errors
+**User Verification**: ✅ Users no longer stuck on dashboard with expired tokens
+
+### TOKEN EXPIRATION BUGFIX (2025-11-16):
+**User Report**: "Unauthorized (token expiration) doesn't log out and direct to log in page even after token expiration"
+
+**Problem**:
+- Users seeing 401 errors in dashboard but remained logged in
+- No automatic logout when JWT token expires (after 1 hour)
+- Poor UX - users had to manually logout and login again
+
+**Solution**:
+1. **API Client Enhancement** - Added 401 callback mechanism
+   - Added `UnauthorizedCallback` type for handling 401 errors
+   - Added `setUnauthorizedCallback()` method to ApiClient
+   - Modified `handleError()` to trigger callback on 401 (lines 100-103)
+   - File: `web/src/infrastructure/api/client/api-client.ts`
+
+2. **AuthProvider Component** - NEW global 401 handler
+   - Sets up 401 error handler on app mount
+   - Clears auth state and redirects to `/login` on token expiration
+   - Prevents multiple simultaneous logout/redirect with flag
+   - File: `web/src/presentation/providers/AuthProvider.tsx` (NEW)
+
+3. **App Integration** - Wrapped entire app
+   - Integrated AuthProvider into providers.tsx
+   - Works with React Query and other providers
+   - File: `web/src/app/providers.tsx`
+
+**UX Flow After Fix**:
+1. User's JWT token expires (after 1 hour)
+2. Any API call returns 401 Unauthorized
+3. API client triggers `onUnauthorized` callback
+4. AuthProvider clears auth state (`useAuthStore.clearAuth()`)
+5. AuthProvider redirects to `/login` page
+6. User sees login page with clean state
+
+**Files Created/Modified**:
+- ✅ `web/src/infrastructure/api/client/api-client.ts` - Added callback mechanism
+- ✅ `web/src/presentation/providers/AuthProvider.tsx` - NEW provider component
+- ✅ `web/src/app/providers.tsx` - Integrated AuthProvider
+
+**Commits**:
+- ✅ `95a0121` - "fix(auth): Add automatic logout and redirect on token expiration (401)"
+- ✅ `3603ef4` - "docs: Update PROGRESS_TRACKER with token expiration bugfix"
+
+---
+
+## 🎉 PREVIOUS STATUS - EPIC 1 DASHBOARD UX IMPROVEMENTS COMPLETE ✅ (2025-11-16)
+**Date**: 2025-11-16 (Session 4)
 **Session**: EPIC 1 - Dashboard UX Improvements Based on User Testing Feedback
 **Status**: ✅ COMPLETE - All 4 UX issues resolved, NotificationsList component added via TDD
 **Build Status**: ✅ Zero Tolerance Maintained - Frontend: 0 TypeScript errors, 11/11 new tests passing

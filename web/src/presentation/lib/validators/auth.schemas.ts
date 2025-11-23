@@ -45,6 +45,7 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 /**
  * Register Form Schema
  * Updated for Phase 6A.0 - includes role selection
+ * Metro areas required: Minimum 1, Maximum 20
  */
 export const registerSchema = z
   .object({
@@ -54,6 +55,10 @@ export const registerSchema = z
     firstName: nameSchema,
     lastName: nameSchema,
     selectedRole: z.enum(['GeneralUser', 'EventOrganizer']),
+    preferredMetroAreaIds: z
+      .array(z.string())
+      .min(1, 'Please select at least one metro area')
+      .max(20, 'Maximum 20 metro areas allowed'),
     agreeToTerms: z.boolean().refine((val) => val === true, {
       message: 'You must agree to the terms and conditions',
     }),

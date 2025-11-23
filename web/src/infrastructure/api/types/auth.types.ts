@@ -15,6 +15,7 @@ export interface RegisterRequest {
   firstName: string;
   lastName: string;
   selectedRole?: UserRole; // Phase 6A.0: Optional role selection (defaults to GeneralUser)
+  preferredMetroAreaIds?: string[]; // Required: Minimum 1, Maximum 20 metro areas
 }
 
 // Response DTOs
@@ -33,6 +34,7 @@ export interface UserDto {
   upgradeRequestedAt?: string | null; // Phase 6A.7: When upgrade was requested (returned from login)
   isEmailVerified?: boolean;
   createdAt?: string;
+  profilePhotoUrl?: string | null; // User's profile photo URL from Azure Blob Storage
 }
 
 export interface LoginResponse {

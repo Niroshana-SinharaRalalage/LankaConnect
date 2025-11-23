@@ -46,6 +46,15 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
             .Must(role => !role.HasValue || Enum.IsDefined(typeof(UserRole), role.Value))
             .When(x => x.SelectedRole.HasValue)
             .WithMessage("Invalid user role");
+
+        // Metro Areas - Required for registration (min 1, max 20)
+        RuleFor(x => x.PreferredMetroAreaIds)
+            .NotNull()
+            .WithMessage("At least one metro area must be selected")
+            .Must(ids => ids != null && ids.Count >= 1)
+            .WithMessage("At least one metro area must be selected")
+            .Must(ids => ids == null || ids.Count <= 20)
+            .WithMessage("Maximum 20 metro areas allowed");
     }
 
     private static bool BeValidEmail(string email)

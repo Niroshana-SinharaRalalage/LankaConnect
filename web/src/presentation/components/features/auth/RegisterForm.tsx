@@ -12,6 +12,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
+import { MetroAreasSelector } from '@/presentation/components/features/auth/MetroAreasSelector';
 
 /**
  * RegisterForm Component
@@ -29,15 +30,18 @@ export function RegisterForm() {
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       selectedRole: 'GeneralUser',
+      preferredMetroAreaIds: [],
     },
   });
 
   const selectedRole = watch('selectedRole');
+  const preferredMetroAreaIds = watch('preferredMetroAreaIds') || [];
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -50,6 +54,7 @@ export function RegisterForm() {
         firstName: data.firstName,
         lastName: data.lastName,
         selectedRole: data.selectedRole === 'GeneralUser' ? UserRole.GeneralUser : UserRole.EventOrganizer,
+        preferredMetroAreaIds: data.preferredMetroAreaIds,
       });
 
       if (data.selectedRole === 'EventOrganizer') {
@@ -270,6 +275,16 @@ export function RegisterForm() {
               <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
           </div>
+
+          {/* Metro Areas Selection - Required for registration */}
+          <MetroAreasSelector
+            value={preferredMetroAreaIds}
+            onChange={(ids) => setValue('preferredMetroAreaIds', ids, { shouldValidate: true })}
+            error={errors.preferredMetroAreaIds?.message}
+            required={true}
+            minSelection={1}
+            maxSelection={20}
+          />
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">

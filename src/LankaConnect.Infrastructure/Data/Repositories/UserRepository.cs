@@ -134,4 +134,33 @@ public class UserRepository : Repository<User>, IUserRepository
             .OrderBy(u => u.UpgradeRequestedAt)
             .ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Override to sync shadow navigation for metro areas when adding new user
+    /// Phase 6A.9 FIX: When creating a new user with metro areas, the domain's _preferredMetroAreaIds list
+    /// contains the metro area GUIDs, but the shadow navigation _preferredMetroAreaEntities needs to be populated
+    /// with actual MetroArea entities for EF Core to create the many-to-many junction table rows.
+    /// </summary>
+    public override async Task AddAsync(User entity, CancellationToken cancellationToken = default)
+    {
+        // Call base implementation to add entity to DbSet
+        await base.AddAsync(entity, cancellationToken);
+
+        // Sync metro areas from domain list to shadow navigation for persistence
+        // This bridges the gap between domain's List<Guid> and EF Core's ICollection<MetroArea>
+        if (entity.PreferredMetroAreaIds.Any())
+        {
+            // Load the MetroArea entities from the database based on the domain's ID list
+            var metroAreaEntities = await _context.Set<Domain.Events.MetroArea>()
+                .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
+                .ToListAsync(cancellationToken);
+
+            // Access shadow navigation using EF Core's Entry API
+            var metroAreasCollection = _context.Entry(entity).Collection("_preferredMetroAreaEntities");
+
+            // Set the loaded entities into the shadow navigation
+            // EF Core will detect this and create rows in user_preferred_metro_areas junction table
+            metroAreasCollection.CurrentValue = metroAreaEntities;
+        }
+    }
 }

@@ -1,9 +1,95 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-22 (Current Session) - Registration Metro Areas Requirement ✅*
+*Last Updated: 2025-11-23 (Current Session) - Bug Fixes: Metro Areas Persistence + Profile Photo Upload ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Registration Metro Areas Requirement ✅
+## 🎯 Current Session Status - Bug Fixes: Metro Areas Persistence + Profile Photo Upload ✅
+
+### Session: Fix Registration Metro Areas Persistence + Profile Photo CORS (2025-11-23 - Session 7)
+
+**Status**: ✅ COMPLETE - Fixed two critical bugs affecting user registration and profile management
+
+**User-Reported Issues**:
+1. Metro areas selected during registration don't appear in profile page (empty array returned from API)
+2. Profile photo upload fails with CORS error + 500 Internal Server Error
+
+### **Bug Fix 1: Metro Areas Not Persisting on Registration** ✅
+
+**Root Cause**:
+- Frontend correctly sends `preferredMetroAreaIds` in registration request
+- Backend `RegisterUserHandler` calls `user.UpdatePreferredMetroAreas()` to populate domain's `_preferredMetroAreaIds` list
+- But `UserRepository.AddAsync()` (inherited from base) doesn't sync shadow navigation `_preferredMetroAreaEntities`
+- EF Core needs shadow navigation populated to create junction table rows
+- Phase 6A.9 implemented sync logic for LOADING users, but missing for CREATING users
+
+**Solution**: Override `UserRepository.AddAsync()` to sync shadow navigation before persisting
+1. Call base.AddAsync() to add entity to DbSet
+2. Load MetroArea entities from DB based on domain's PreferredMetroAreaIds
+3. Set loaded entities into `_preferredMetroAreaEntities` shadow navigation using Entry API
+4. EF Core detects changes and creates junction table rows on SaveChanges()
+
+**Per ADR-009**:
+- Domain maintains `List<Guid>` for business logic (read operations)
+- EF Core uses `ICollection<MetroArea>` shadow navigation for persistence (write operations)
+- Infrastructure layer bridges gap between domain IDs and EF entities
+
+**Files Modified**:
+- [src/LankaConnect.Infrastructure/Data/Repositories/UserRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/UserRepository.cs:138-165) - Added AddAsync override with shadow navigation sync
+
+**Commit**: `e3bf970` - "fix(registration): Sync shadow navigation for metro areas on user creation"
+
+### **Bug Fix 2: Profile Photo Upload CORS + 500 Error** ✅
+
+**Root Cause**:
+- Azure Container App environment variable still using old name: `AzureBlobStorage__ConnectionString`
+- Phase 5 changed configuration section from `AzureBlobStorage` to `AzureStorage` in appsettings
+- Code expects `AzureStorage__ConnectionString` but Container App has wrong variable name
+- Mismatch causes 500 error (connection string not found)
+- 500 responses don't include CORS headers, causing secondary CORS error
+
+**Solution**: Update Container App environment variable name
+- Changed from: `AzureBlobStorage__ConnectionString`
+- Changed to: `AzureStorage__ConnectionString`
+- Both reference same secret: `azure-storage-connection-string`
+- New revision deployed: `lankaconnect-api-staging--0000134`
+
+**Azure CLI Command**:
+```bash
+az containerapp update \
+  --name lankaconnect-api-staging \
+  --resource-group LankaConnect-Staging \
+  --set-env-vars "AzureStorage__ConnectionString=secretref:azure-storage-connection-string" \
+  --remove-env-vars "AzureBlobStorage__ConnectionString"
+```
+
+**Result**: Profile photo upload will now succeed (500 error resolved, CORS headers returned)
+
+### **Testing & Validation**:
+- ✅ Backend build: 0 errors
+- ✅ Azure Container App updated successfully
+- ✅ New revision deployed and running
+- ✅ Zero tolerance for compilation errors maintained
+- 🔄 **User to test**: Register new user with metro areas, verify they appear in profile page
+- 🔄 **User to test**: Upload profile photo, verify no CORS/500 errors
+
+**Debug Logging Added**:
+- Added console.log statements in RegisterForm.tsx to track data flow:
+  - Logs form data before submission
+  - Logs metro areas array being sent to API
+  - Logs API response
+- Commit: `db300c4` - "debug: Add logging to registration form to track metro areas data"
+- **To be removed** after user confirms fixes work
+
+**Build Status**: ✅ Backend compiles with 0 errors
+
+**Commits**:
+- `db300c4` - Debug logging (temporary)
+- `e3bf970` - Metro areas persistence fix
+- Azure deployment: revision `0000134`
+
+---
+
+## 📜 Historical Sessions
 
 ### Session: Required Metro Areas Selection for User Registration (2025-11-22 - Session 6)
 

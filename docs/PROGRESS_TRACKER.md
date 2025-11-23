@@ -1,9 +1,57 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-23 (Current Session) - Bug Fixes: Metro Areas Persistence + Profile Photo Upload ✅*
+*Last Updated: 2025-11-16 (Current Session) - Phase 6C.1: Landing Page Redesign (In Progress) 🟡*
 
-**⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B features, phase numbers, and status. All documentation must stay synchronized with master index.
+**⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Bug Fixes: Metro Areas Persistence + Profile Photo Upload ✅
+## 🎯 Current Session Status - Phase 6C.1: Landing Page Redesign (In Progress) 🟡
+
+### Session: Landing Page UI/UX Modernization (2025-11-16 - Session 8)
+
+**Status**: 🟡 IN PROGRESS - Phase 1 Complete (Backups + Review)
+
+**Goal**: Implement new landing page design from Figma with modern UI/UX, following incremental TDD approach
+
+**Phase 6C.1 Sub-Tasks**:
+- ✅ Phase 1: Preparation (Backups, component review, tracking docs)
+- 🔵 Phase 2: Foundation (Component library with TDD)
+- ⏳ Phase 3: Landing page sections
+- ⏳ Phase 4: Integration & polish
+- ⏳ Phase 5: Documentation & deployment
+
+**Completed Steps**:
+1. ✅ Created backups of page.tsx, Header.tsx, Footer.tsx
+2. ✅ Reviewed existing reusable components (StatCard, FeedCard, Button, Card)
+3. ✅ Reserved Phase 6C.1 in master index
+4. 🔵 Updating tracking documents
+
+**Files Backed Up**:
+- `web/src/app/page.tsx.backup`
+- `web/src/presentation/components/layout/Header.tsx.backup`
+- `web/src/presentation/components/layout/Footer.tsx.backup`
+
+**Reusable Components Identified**:
+- StatCard.tsx ✅ (extend for hero stats)
+- FeedCard.tsx ✅ (reference for card patterns)
+- Button.tsx ✅ (reuse with CVA)
+- Card.tsx ✅ (base card component)
+
+**New Components to Create** (TDD):
+- Badge, IconButton, FeatureCard, EventCard, ForumPostCard, ProductCard, NewsItem, CulturalCard
+
+**Next Steps**:
+1. Update STREAMLINED_ACTION_PLAN.md
+2. Begin Phase 2: Create Badge component (TDD)
+3. Build and verify 0 errors after each component
+
+**Documentation**:
+- Design Plan: [LAYOUT_REDESIGN_PLAN.md](./LAYOUT_REDESIGN_PLAN.md)
+- Phase Summary: TBD (will create after completion)
+
+---
+
+## 📋 Previous Sessions
+
+### Bug Fixes: Metro Areas Persistence + Profile Photo Upload ✅ (2025-11-23 - Session 7)
 
 ### Session: Fix Registration Metro Areas Persistence + Profile Photo CORS (2025-11-23 - Session 7)
 
@@ -64,28 +112,29 @@ az containerapp update \
 
 **Result**: Profile photo upload will now succeed (500 error resolved, CORS headers returned)
 
-### **Testing & Validation**:
+### **Testing & Validation**: ✅ ALL TESTS PASSED
+
+**Test Results**:
+- ✅ **Metro Areas Persistence**: User created new account, selected metro areas during registration, confirmed they appear correctly in profile page after login
+- ✅ **Profile Photo Upload**: User uploaded profile photo successfully, no CORS errors, no 500 errors
 - ✅ Backend build: 0 errors
-- ✅ Azure Container App updated successfully
-- ✅ New revision deployed and running
+- ✅ Frontend build: 0 errors
+- ✅ Azure Container App revision 0000136 deployed and active
 - ✅ Zero tolerance for compilation errors maintained
-- 🔄 **User to test**: Register new user with metro areas, verify they appear in profile page
-- 🔄 **User to test**: Upload profile photo, verify no CORS/500 errors
 
-**Debug Logging Added**:
-- Added console.log statements in RegisterForm.tsx to track data flow:
-  - Logs form data before submission
-  - Logs metro areas array being sent to API
-  - Logs API response
-- Commit: `db300c4` - "debug: Add logging to registration form to track metro areas data"
-- **To be removed** after user confirms fixes work
+**Important Note**: The fix only applies to **new users** created after the deployment. Existing users (like varunipw@gmail.com) created before the fix will still have empty metro areas - this is expected behavior as the bug prevented their metro areas from being saved during registration.
 
-**Build Status**: ✅ Backend compiles with 0 errors
+**Build Status**: ✅ Backend + Frontend compile with 0 errors
 
 **Commits**:
-- `db300c4` - Debug logging (temporary)
+- `db300c4` - Debug logging (temporary - removed in `87af532`)
 - `e3bf970` - Metro areas persistence fix
-- Azure deployment: revision `0000134`
+- `e44fe4d` - CI/CD workflow fix for Azure Storage env var
+- `87af532` - Cleanup: Removed debug logging
+- Azure deployments:
+  - Manual update: revision `0000134` (overwritten by CI/CD)
+  - CI/CD with old config: revision `0000135` (incorrect env var)
+  - CI/CD with fixed config: revision `0000136` (✅ ACTIVE - both fixes working)
 
 ---
 

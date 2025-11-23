@@ -125,7 +125,7 @@ jobs:
               Email__SmtpUsername=secretref:smtp-username \
               Email__SmtpPassword=secretref:smtp-password \
               Email__FromEmail=secretref:email-from-address \
-              AzureBlobStorage__ConnectionString=secretref:azure-storage-connection-string
+              AzureStorage__ConnectionString=secretref:azure-storage-connection-string
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

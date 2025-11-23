@@ -48,6 +48,10 @@ export function RegisterForm() {
       setApiError(null);
       setSuccessMessage(null);
 
+      // Debug logging
+      console.log('[RegisterForm] Form data:', data);
+      console.log('[RegisterForm] Metro areas to send:', data.preferredMetroAreaIds);
+
       const response = await authRepository.register({
         email: data.email,
         password: data.password,
@@ -56,6 +60,8 @@ export function RegisterForm() {
         selectedRole: data.selectedRole === 'GeneralUser' ? UserRole.GeneralUser : UserRole.EventOrganizer,
         preferredMetroAreaIds: data.preferredMetroAreaIds,
       });
+
+      console.log('[RegisterForm] Registration response:', response);
 
       if (data.selectedRole === 'EventOrganizer') {
         setSuccessMessage(

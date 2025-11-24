@@ -8,10 +8,21 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { Sparkles, ArrowRight, Calendar, MapPin, Users, Clock, Store, MessageSquare, Newspaper, Star, ThumbsUp, Flame, ShoppingBag } from 'lucide-react';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 
 export default function Home() {
   const { user } = useAuthStore();
-  const { data: featuredEvents, isLoading: eventsLoading, error: eventsError } = useFeaturedEvents(user?.userId);
+
+  // For anonymous users, detect location via IP/browser geolocation
+  const isAnonymous = !user?.userId;
+  const { latitude, longitude, loading: locationLoading } = useGeolocation(isAnonymous);
+
+  // Fetch featured events with location-based sorting
+  const { data: featuredEvents, isLoading: eventsLoading, error: eventsError } = useFeaturedEvents(
+    user?.userId,
+    isAnonymous ? latitude ?? undefined : undefined,
+    isAnonymous ? longitude ?? undefined : undefined
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -81,7 +92,7 @@ export default function Home() {
 
             {/* Right - Featured Events Cards (from Database) */}
             <div className="relative hidden lg:block">
-              {eventsLoading ? (
+              {eventsLoading || (isAnonymous && locationLoading) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[...Array(2)].map((_, i) => (

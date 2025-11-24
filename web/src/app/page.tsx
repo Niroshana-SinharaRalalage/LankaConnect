@@ -79,42 +79,102 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right - Feature Cards */}
+            {/* Right - Featured Events Cards (from Database) */}
             <div className="relative hidden lg:block">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
-                      🎉
-                    </div>
-                    <div className="text-neutral-900 font-semibold mb-1">Avurudu Festival</div>
-                    <div className="text-sm text-neutral-500">Tomorrow at 6:00 PM</div>
+              {eventsLoading ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100 animate-pulse">
+                        <div className="w-12 h-12 rounded-xl bg-neutral-200 mb-4"></div>
+                        <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center text-2xl mb-4">
-                      🛍️
-                    </div>
-                    <div className="text-neutral-900 font-semibold mb-1">Fresh Groceries</div>
-                    <div className="text-sm text-neutral-500">50+ Sri Lankan products</div>
-                  </div>
-                </div>
-                <div className="space-y-4 mt-8">
-                  <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
-                      💬
-                    </div>
-                    <div className="text-neutral-900 font-semibold mb-1">Community Chat</div>
-                    <div className="text-sm text-neutral-500">234 active discussions</div>
-                  </div>
-                  <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center text-2xl mb-4">
-                      🎭
-                    </div>
-                    <div className="text-neutral-900 font-semibold mb-1">Cultural Events</div>
-                    <div className="text-sm text-neutral-500">Dance & Music classes</div>
+                  <div className="space-y-4 mt-8">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100 animate-pulse">
+                        <div className="w-12 h-12 rounded-xl bg-neutral-200 mb-4"></div>
+                        <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              ) : eventsError || !featuredEvents || featuredEvents.length === 0 ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
+                        🎉
+                      </div>
+                      <div className="text-neutral-900 font-semibold mb-1">No Events Yet</div>
+                      <div className="text-sm text-neutral-500">Check back soon</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center text-2xl mb-4">
+                        📅
+                      </div>
+                      <div className="text-neutral-900 font-semibold mb-1">Coming Soon</div>
+                      <div className="text-sm text-neutral-500">New events weekly</div>
+                    </div>
+                  </div>
+                  <div className="space-y-4 mt-8">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
+                        🎭
+                      </div>
+                      <div className="text-neutral-900 font-semibold mb-1">Cultural Events</div>
+                      <div className="text-sm text-neutral-500">Stay tuned</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center text-2xl mb-4">
+                        🌟
+                      </div>
+                      <div className="text-neutral-900 font-semibold mb-1">Join Community</div>
+                      <div className="text-sm text-neutral-500">Connect with us</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {featuredEvents.slice(0, 2).map((event) => (
+                      <div key={event.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
+                          {event.images && event.images.length > 0 ? (
+                            <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                          ) : (
+                            '🎉'
+                          )}
+                        </div>
+                        <div className="text-neutral-900 font-semibold mb-1 line-clamp-1">{event.title}</div>
+                        <div className="text-sm text-neutral-500">
+                          {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-4 mt-8">
+                    {featuredEvents.slice(2, 4).map((event) => (
+                      <div key={event.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
+                          {event.images && event.images.length > 0 ? (
+                            <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                          ) : (
+                            '🎭'
+                          )}
+                        </div>
+                        <div className="text-neutral-900 font-semibold mb-1 line-clamp-1">{event.title}</div>
+                        <div className="text-sm text-neutral-500">
+                          {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* View All Events Button - Below feature cards */}
               <div className="mt-6 flex justify-center">
@@ -551,116 +611,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Events Section */}
-      <section id="events" className="py-16 bg-white">
-        <div className="container mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-neutral-900 mb-2">Featured Events</h2>
-              <p className="text-neutral-600">Discover upcoming Sri Lankan cultural events near you</p>
-            </div>
-            <button className="text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1">
-              View All
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </div>
-
-          {eventsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="rounded-xl border border-neutral-200 overflow-hidden bg-white">
-                    <div className="h-48 bg-neutral-200"></div>
-                    <div className="p-4 space-y-3">
-                      <div className="h-4 bg-neutral-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
-                      <div className="h-3 bg-neutral-200 rounded w-2/3"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : eventsError ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
-              <p className="text-neutral-600">Unable to load events at this time</p>
-            </div>
-          ) : !featuredEvents || featuredEvents.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
-              <p className="text-neutral-600">No events available at the moment</p>
-              <p className="text-sm text-neutral-500 mt-2">Check back soon for upcoming events!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredEvents.map((event) => (
-                <div key={event.id} className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-orange-200 transition-all hover:shadow-lg bg-white cursor-pointer">
-                  {/* Event Image */}
-                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-orange-100 to-rose-100">
-                    {event.images && event.images.length > 0 ? (
-                      <img
-                        src={event.images[0].imageUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Calendar className="h-16 w-16 text-orange-300" />
-                      </div>
-                    )}
-                    {event.isFree && (
-                      <Badge className="absolute top-3 right-3 bg-green-500 text-white">
-                        Free
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Event Details */}
-                  <div className="p-4">
-                    <h3 className="font-semibold text-neutral-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
-                      {event.title}
-                    </h3>
-
-                    <div className="space-y-2 text-sm text-neutral-600">
-                      {/* Date */}
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-orange-600 flex-shrink-0" />
-                        <span className="line-clamp-1">
-                          {new Date(event.startDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-
-                      {/* Location */}
-                      {event.city && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-orange-600 flex-shrink-0" />
-                          <span className="line-clamp-1">
-                            {event.city}{event.state ? `, ${event.state}` : ''}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Capacity */}
-                      {event.capacity > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-orange-600 flex-shrink-0" />
-                          <span>
-                            {event.currentRegistrations} / {event.capacity} registered
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
       <Footer />
     </div>

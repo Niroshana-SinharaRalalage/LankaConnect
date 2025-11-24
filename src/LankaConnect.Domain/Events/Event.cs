@@ -2,6 +2,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
@@ -12,6 +13,8 @@ public class Event : BaseEntity
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
     private readonly List<EventVideo> _videos = new(); // Epic 2 Phase 2: Event videos support
     private readonly List<WaitingListEntry> _waitingList = new(); // Epic 2: Waiting List support
+    private readonly List<EventPass> _passes = new(); // Event passes/tickets support
+    private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
@@ -32,6 +35,8 @@ public class Event : BaseEntity
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
     public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly(); // Epic 2: Read-only waiting list collection
+    public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
+    public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
 
     public int CurrentRegistrations => _registrations
         .Where(r => r.Status == RegistrationStatus.Confirmed)
@@ -806,6 +811,137 @@ public class Event : BaseEntity
             sortedEntries[i].UpdatePosition(i + 1);
         }
     }
+
+    #endregion
+
+    #region Pass Management
+
+    /// <summary>
+    /// Adds a pass/ticket type to the event
+    /// </summary>
+    public Result AddPass(EventPass eventPass)
+    {
+        if (eventPass == null)
+            return Result.Failure("Event pass cannot be null");
+
+        // Check for duplicate pass names
+        if (_passes.Any(p => p.Name.Value.Equals(eventPass.Name.Value, StringComparison.OrdinalIgnoreCase)))
+            return Result.Failure($"A pass with the name '{eventPass.Name}' already exists");
+
+        _passes.Add(eventPass);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new PassAddedToEventDomainEvent(Id, eventPass.Id, eventPass.Name, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes a pass from the event
+    /// Cannot remove if there are existing reservations
+    /// </summary>
+    public Result RemovePass(Guid passId)
+    {
+        var pass = _passes.FirstOrDefault(p => p.Id == passId);
+        if (pass == null)
+            return Result.Failure($"Pass with ID {passId} not found");
+
+        // Business rule: Cannot remove pass with existing reservations
+        if (pass.ReservedQuantity > 0)
+            return Result.Failure("Cannot remove pass with existing reservations");
+
+        _passes.Remove(pass);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new PassRemovedFromEventDomainEvent(Id, passId, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Gets a pass by ID
+    /// </summary>
+    public EventPass? GetPass(Guid passId)
+    {
+        return _passes.FirstOrDefault(p => p.Id == passId);
+    }
+
+    /// <summary>
+    /// Checks if event has any passes configured
+    /// </summary>
+    public bool HasPasses() => _passes.Any();
+
+    #endregion
+
+    #region Sign-Up List Management
+
+    /// <summary>
+    /// Adds a sign-up list to the event for volunteers/items
+    /// Example: Food sign-up where users can commit to bringing dishes
+    /// </summary>
+    public Result AddSignUpList(SignUpList signUpList)
+    {
+        if (signUpList == null)
+            return Result.Failure("Sign-up list cannot be null");
+
+        // Check for duplicate categories
+        if (_signUpLists.Any(s => s.Category.Equals(signUpList.Category, StringComparison.OrdinalIgnoreCase)))
+            return Result.Failure($"A sign-up list with category '{signUpList.Category}' already exists");
+
+        _signUpLists.Add(signUpList);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new SignUpListAddedToEventDomainEvent(Id, signUpList.Id, signUpList.Category, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes a sign-up list from the event
+    /// Cannot remove if there are existing commitments
+    /// </summary>
+    public Result RemoveSignUpList(Guid signUpListId)
+    {
+        var signUpList = _signUpLists.FirstOrDefault(s => s.Id == signUpListId);
+        if (signUpList == null)
+            return Result.Failure($"Sign-up list with ID {signUpListId} not found");
+
+        // Business rule: Cannot remove sign-up list with existing commitments
+        if (signUpList.HasCommitments())
+            return Result.Failure("Cannot remove sign-up list with existing commitments");
+
+        _signUpLists.Remove(signUpList);
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new SignUpListRemovedFromEventDomainEvent(Id, signUpListId, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Gets a sign-up list by ID
+    /// </summary>
+    public SignUpList? GetSignUpList(Guid signUpListId)
+    {
+        return _signUpLists.FirstOrDefault(s => s.Id == signUpListId);
+    }
+
+    /// <summary>
+    /// Gets a sign-up list by category
+    /// </summary>
+    public SignUpList? GetSignUpListByCategory(string category)
+    {
+        return _signUpLists.FirstOrDefault(s => s.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Checks if event has any sign-up lists
+    /// </summary>
+    public bool HasSignUpLists() => _signUpLists.Any();
 
     #endregion
 }

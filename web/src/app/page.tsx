@@ -189,7 +189,7 @@ export default function Home() {
 
               {/* View All Events Button - Below feature cards */}
               <div className="mt-6 flex justify-center">
-                <a href="#events" className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-neutral-100 shadow-lg rounded-lg font-semibold transition-all">
+                <a href="/events" className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-neutral-100 shadow-lg rounded-lg font-semibold transition-all">
                   <Calendar className="mr-2 h-5 w-5" />
                   View All Events
                 </a>

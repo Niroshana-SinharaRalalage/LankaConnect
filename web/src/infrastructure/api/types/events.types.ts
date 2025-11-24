@@ -166,6 +166,12 @@ export interface WaitingListEntryDto {
 /**
  * Get events query filters
  * Matches backend GetEventsQuery parameters
+ *
+ * Location-based sorting parameters:
+ * - For authenticated users with preferred metros: userId (uses user's preferred metro areas)
+ * - For authenticated users without preferences: userId (uses user's home location)
+ * - For anonymous users: latitude + longitude (uses provided coordinates)
+ * - For specific metro filter: metroAreaIds
  */
 export interface GetEventsRequest {
   status?: EventStatus;
@@ -174,6 +180,11 @@ export interface GetEventsRequest {
   startDateTo?: string; // ISO 8601 date
   isFreeOnly?: boolean;
   city?: string;
+  state?: string; // NEW: State filter for location-based filtering
+  userId?: string; // NEW: Authenticated user ID for location-based sorting
+  latitude?: number; // NEW: Latitude for anonymous user location-based sorting
+  longitude?: number; // NEW: Longitude for anonymous user location-based sorting
+  metroAreaIds?: string[]; // NEW: Specific metro area IDs filter
 }
 
 /**

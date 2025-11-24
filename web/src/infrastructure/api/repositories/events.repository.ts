@@ -42,18 +42,34 @@ export class EventsRepository {
   // ==================== PUBLIC QUERIES ====================
 
   /**
-   * Get all events with optional filtering
+   * Get all events with optional filtering and location-based sorting
    * Maps to backend GetEventsQuery
+   *
+   * Location-based sorting:
+   * - For authenticated users: Pass userId to sort by preferred metros or home location
+   * - For anonymous users: Pass latitude + longitude to sort by coordinates
+   * - For specific metro filter: Pass metroAreaIds
    */
   async getEvents(filters: GetEventsRequest = {}): Promise<EventDto[]> {
     const params = new URLSearchParams();
 
+    // Traditional filters
     if (filters.status !== undefined) params.append('status', String(filters.status));
     if (filters.category !== undefined) params.append('category', String(filters.category));
     if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
     if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
     if (filters.isFreeOnly !== undefined) params.append('isFreeOnly', String(filters.isFreeOnly));
     if (filters.city) params.append('city', filters.city);
+
+    // NEW: Location-based sorting parameters
+    if (filters.state) params.append('state', filters.state);
+    if (filters.userId) params.append('userId', filters.userId);
+    if (filters.latitude !== undefined) params.append('latitude', String(filters.latitude));
+    if (filters.longitude !== undefined) params.append('longitude', String(filters.longitude));
+    if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
+      // Add each metro area ID as a separate query parameter
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
 
     const queryString = params.toString();
     const url = queryString ? `${this.basePath}?${queryString}` : this.basePath;

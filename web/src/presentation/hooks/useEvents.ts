@@ -43,6 +43,7 @@ export const eventKeys = {
   details: () => [...eventKeys.all, 'detail'] as const,
   detail: (id: string) => [...eventKeys.details(), id] as const,
   search: (searchTerm: string) => [...eventKeys.all, 'search', searchTerm] as const,
+  featured: (userId?: string, lat?: number, lng?: number) => [...eventKeys.all, 'featured', { userId, lat, lng }] as const,
 };
 
 /**
@@ -152,6 +153,48 @@ export function useSearchEvents(
     enabled: !!searchTerm && searchTerm.length >= 2, // Only search with 2+ characters
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false, // Don't refetch searches on focus
+    ...options,
+  });
+}
+
+/**
+ * useFeaturedEvents Hook
+ *
+ * Fetches featured events for the landing page
+ *
+ * Features:
+ * - Returns up to 4 events sorted by location relevance
+ * - For authenticated users: Uses preferred metro areas
+ * - For anonymous users: Uses provided coordinates or default location
+ * - 5-minute stale time for landing page performance
+ * - Automatic refetch on window focus
+ *
+ * @param userId - Optional authenticated user ID
+ * @param latitude - Optional latitude for anonymous users
+ * @param longitude - Optional longitude for anonymous users
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * // Authenticated user
+ * const { data: events } = useFeaturedEvents(user?.userId);
+ *
+ * // Anonymous user with location
+ * const { data: events } = useFeaturedEvents(undefined, 34.0522, -118.2437);
+ * ```
+ */
+export function useFeaturedEvents(
+  userId?: string,
+  latitude?: number,
+  longitude?: number,
+  options?: Omit<UseQueryOptions<EventDto[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: eventKeys.featured(userId, latitude, longitude),
+    queryFn: () => eventsRepository.getFeaturedEvents(userId, latitude, longitude),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
     ...options,
   });
 }
@@ -422,6 +465,7 @@ export default {
   useEvents,
   useEventById,
   useSearchEvents,
+  useFeaturedEvents,
   useCreateEvent,
   useUpdateEvent,
   useDeleteEvent,

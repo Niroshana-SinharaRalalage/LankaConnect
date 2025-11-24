@@ -22,6 +22,7 @@ using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
+using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
@@ -37,6 +38,14 @@ using LankaConnect.Application.Events.Commands.RemoveFromWaitingList;
 using LankaConnect.Application.Events.Commands.PromoteFromWaitingList;
 using LankaConnect.Application.Events.Queries.GetWaitingList;
 using LankaConnect.Application.Events.Queries.GetEventIcs;
+using LankaConnect.Application.Events.Commands.AddPassToEvent;
+using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
+using LankaConnect.Application.Events.Queries.GetEventPasses;
+using LankaConnect.Application.Events.Commands.AddSignUpListToEvent;
+using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
+using LankaConnect.Application.Events.Commands.CommitToSignUp;
+using LankaConnect.Application.Events.Commands.CancelSignUpCommitment;
+using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -177,6 +186,32 @@ public class EventsController : BaseController<EventsController>
             latitude, longitude, radiusKm);
 
         var query = new GetNearbyEventsQuery(latitude, longitude, radiusKm, category, isFreeOnly, startDateFrom);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get featured events for the landing page
+    /// Returns up to 4 events sorted by location relevance
+    /// - For authenticated users: Uses preferred metro areas or user location
+    /// - For anonymous users: Uses provided coordinates or default location
+    /// </summary>
+    /// <param name="userId">Optional authenticated user ID</param>
+    /// <param name="latitude">Optional latitude for anonymous users</param>
+    /// <param name="longitude">Optional longitude for anonymous users</param>
+    [HttpGet("featured")]
+    [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetFeaturedEvents(
+        [FromQuery] Guid? userId = null,
+        [FromQuery] decimal? latitude = null,
+        [FromQuery] decimal? longitude = null)
+    {
+        Logger.LogInformation("Getting featured events: userId={UserId}, lat={Latitude}, lon={Longitude}",
+            userId, latitude, longitude);
+
+        var query = new GetFeaturedEventsQuery(userId, latitude, longitude);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -832,6 +867,192 @@ public class EventsController : BaseController<EventsController>
     }
 
     #endregion
+
+    #region Event Pass Management
+
+    /// <summary>
+    /// Get all passes/tickets for an event
+    /// </summary>
+    [HttpGet("{id:guid}/passes")]
+    [ProducesResponseType(typeof(IReadOnlyList<EventPassDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventPasses(Guid id)
+    {
+        Logger.LogInformation("Getting passes for event {EventId}", id);
+
+        var query = new GetEventPassesQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Add a new pass/ticket type to an event (Event Organizer/Admin only)
+    /// </summary>
+    [HttpPost("{id:guid}/passes")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddPassToEvent(Guid id, [FromBody] AddPassRequest request)
+    {
+        Logger.LogInformation("Adding pass '{PassName}' to event {EventId}", request.PassName, id);
+
+        var command = new AddPassToEventCommand(
+            id,
+            request.PassName,
+            request.PassDescription,
+            request.PriceAmount,
+            request.PriceCurrency,
+            request.TotalQuantity);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Remove a pass/ticket type from an event (Event Organizer/Admin only)
+    /// </summary>
+    [HttpDelete("{eventId:guid}/passes/{passId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemovePassFromEvent(Guid eventId, Guid passId)
+    {
+        Logger.LogInformation("Removing pass {PassId} from event {EventId}", passId, eventId);
+
+        var command = new RemovePassFromEventCommand(eventId, passId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
+    #region Sign-Up Lists Management
+
+    /// <summary>
+    /// Get all sign-up lists for an event
+    /// </summary>
+    [HttpGet("{id:guid}/signups")]
+    [ProducesResponseType(typeof(List<SignUpListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventSignUpLists(Guid id)
+    {
+        Logger.LogInformation("Getting sign-up lists for event {EventId}", id);
+
+        var query = new GetEventSignUpListsQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Add a new sign-up list to an event (Event Organizer/Admin only)
+    /// </summary>
+    [HttpPost("{id:guid}/signups")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddSignUpListToEvent(Guid id, [FromBody] AddSignUpListRequest request)
+    {
+        Logger.LogInformation("Adding sign-up list '{Category}' to event {EventId}", request.Category, id);
+
+        var command = new AddSignUpListToEventCommand(
+            id,
+            request.Category,
+            request.Description,
+            request.SignUpType,
+            request.PredefinedItems);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Remove a sign-up list from an event (Event Organizer/Admin only)
+    /// </summary>
+    [HttpDelete("{eventId:guid}/signups/{signupId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveSignUpListFromEvent(Guid eventId, Guid signupId)
+    {
+        Logger.LogInformation("Removing sign-up list {SignUpId} from event {EventId}", signupId, eventId);
+
+        var command = new RemoveSignUpListFromEventCommand(eventId, signupId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// User commits to bringing an item for a sign-up list
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/commit")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CommitToSignUp(Guid eventId, Guid signupId, [FromBody] CommitToSignUpRequest request)
+    {
+        Logger.LogInformation("User {UserId} committing to sign-up {SignUpId} for event {EventId}",
+            request.UserId, signupId, eventId);
+
+        var command = new CommitToSignUpCommand(
+            eventId,
+            signupId,
+            request.UserId,
+            request.ItemDescription,
+            request.Quantity);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// User cancels their commitment to a sign-up list
+    /// </summary>
+    [HttpDelete("{eventId:guid}/signups/{signupId:guid}/commit")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelSignUpCommitment(Guid eventId, Guid signupId, [FromBody] CancelCommitmentRequest request)
+    {
+        Logger.LogInformation("User {UserId} cancelling commitment to sign-up {SignUpId} for event {EventId}",
+            request.UserId, signupId, eventId);
+
+        var command = new CancelSignUpCommitmentCommand(eventId, signupId, request.UserId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
 }
 
 // Request DTOs
@@ -843,3 +1064,23 @@ public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2
 public record RecordShareRequest(string? Platform = null); // Epic 2: Social sharing tracking
+public record AddPassRequest(
+    string PassName,
+    string PassDescription,
+    decimal PriceAmount,
+    Currency PriceCurrency,
+    int TotalQuantity); // Event Pass management
+
+public record AddSignUpListRequest(
+    string Category,
+    string Description,
+    SignUpType SignUpType,
+    List<string>? PredefinedItems = null); // Sign-up list management
+
+public record CommitToSignUpRequest(
+    Guid UserId,
+    string ItemDescription,
+    int Quantity); // User commitment to sign-up
+
+public record CancelCommitmentRequest(
+    Guid UserId); // Cancel user commitment

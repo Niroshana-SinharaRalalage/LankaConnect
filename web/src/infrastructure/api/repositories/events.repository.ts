@@ -107,6 +107,29 @@ export class EventsRepository {
     return await apiClient.get<EventDto[]>(`${this.basePath}/nearby?${params.toString()}`);
   }
 
+  /**
+   * Get featured events for landing page
+   * Returns up to 4 events sorted by location relevance
+   * For authenticated users: Uses preferred metro areas
+   * For anonymous users: Uses provided coordinates or default location
+   */
+  async getFeaturedEvents(
+    userId?: string,
+    latitude?: number,
+    longitude?: number
+  ): Promise<EventDto[]> {
+    const params = new URLSearchParams();
+
+    if (userId) params.append('userId', userId);
+    if (latitude !== undefined) params.append('latitude', String(latitude));
+    if (longitude !== undefined) params.append('longitude', String(longitude));
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.basePath}/featured?${queryString}` : `${this.basePath}/featured`;
+
+    return await apiClient.get<EventDto[]>(url);
+  }
+
   // ==================== AUTHENTICATED MUTATIONS ====================
 
   /**

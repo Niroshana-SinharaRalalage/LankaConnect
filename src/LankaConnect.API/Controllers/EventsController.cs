@@ -62,7 +62,7 @@ public class EventsController : BaseController<EventsController>
     // ==================== PUBLIC ENDPOINTS ====================
 
     /// <summary>
-    /// Get all events with optional filtering
+    /// Get all events with optional filtering and location-based sorting
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
@@ -73,12 +73,30 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] DateTime? startDateFrom = null,
         [FromQuery] DateTime? startDateTo = null,
         [FromQuery] bool? isFreeOnly = null,
-        [FromQuery] string? city = null)
+        [FromQuery] string? city = null,
+        [FromQuery] string? state = null,
+        [FromQuery] Guid? userId = null,
+        [FromQuery] decimal? latitude = null,
+        [FromQuery] decimal? longitude = null,
+        [FromQuery] List<Guid>? metroAreaIds = null)
     {
-        Logger.LogInformation("Getting events with filters: status={Status}, category={Category}, city={City}",
-            status, category, city);
+        Logger.LogInformation(
+            "Getting events with filters: status={Status}, category={Category}, city={City}, state={State}, userId={UserId}",
+            status, category, city, state, userId);
 
-        var query = new GetEventsQuery(status, category, startDateFrom, startDateTo, isFreeOnly, city);
+        var query = new GetEventsQuery(
+            status,
+            category,
+            startDateFrom,
+            startDateTo,
+            isFreeOnly,
+            city,
+            state,
+            userId,
+            latitude,
+            longitude,
+            metroAreaIds);
+
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

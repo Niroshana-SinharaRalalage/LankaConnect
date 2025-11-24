@@ -10,6 +10,8 @@ import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
+import { useQueryClient } from '@tanstack/react-query';
+import { eventKeys } from '@/presentation/hooks/useEvents';
 
 /**
  * PreferredMetroAreasSection Component
@@ -26,6 +28,7 @@ import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
 export function PreferredMetroAreasSection() {
   const { user } = useAuthStore();
   const { profile, updatePreferredMetroAreas, sectionStates, error, isLoading } = useProfileStore();
+  const queryClient = useQueryClient();
 
   // Phase 6A.9: Fetch metro areas from API instead of hardcoded constants
   const {
@@ -193,6 +196,13 @@ export function PreferredMetroAreasSection() {
       });
 
       console.log('✅ Save successful');
+
+      // Invalidate featured events cache to force refetch with new metro preferences
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.featured(user.userId)
+      });
+      console.log('✅ Featured events cache invalidated');
+
       // Exit edit mode on success (store will set state to 'success')
       setIsEditing(false);
       setValidationError('');

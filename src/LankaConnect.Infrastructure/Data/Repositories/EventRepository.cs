@@ -1,13 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 
 namespace LankaConnect.Infrastructure.Data.Repositories;
 
 public class EventRepository : Repository<Event>, IEventRepository
 {
-    public EventRepository(AppDbContext context) : base(context)
+    private readonly IGeoLocationService _geoLocationService;
+
+    public EventRepository(AppDbContext context, IGeoLocationService geoLocationService) : base(context)
     {
+        _geoLocationService = geoLocationService;
     }
 
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)
@@ -118,22 +122,30 @@ public class EventRepository : Repository<Event>, IEventRepository
 
     public async Task<IReadOnlyList<Event>> GetNearestEventsAsync(decimal latitude, decimal longitude, int maxResults = 10, CancellationToken cancellationToken = default)
     {
-        // Create search point using NetTopologySuite
-        var geometryFactory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
-        var searchPoint = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate((double)longitude, (double)latitude));
-
-        return await _dbSet
+        // Fetch published future events with valid coordinates
+        // Client-side distance calculation using Haversine formula
+        var events = await _dbSet
             .AsNoTracking()
             .Where(e => e.Location != null && e.Location.Coordinates != null)
             .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
-            .OrderBy(e => searchPoint.Distance(
-                geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(
-                    (double)e.Location!.Coordinates!.Longitude,
-                    (double)e.Location.Coordinates.Latitude
-                ))
-            ))
-            .Take(maxResults)
             .ToListAsync(cancellationToken);
+
+        // Calculate distances and sort client-side
+        return events
+            .Select(e => new
+            {
+                Event = e,
+                Distance = _geoLocationService.CalculateDistanceKm(
+                    latitude,
+                    longitude,
+                    e.Location!.Coordinates!.Latitude,
+                    e.Location.Coordinates.Longitude
+                )
+            })
+            .OrderBy(x => x.Distance)
+            .Take(maxResults)
+            .Select(x => x.Event)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<Event>> GetEventsStartingInTimeWindowAsync(

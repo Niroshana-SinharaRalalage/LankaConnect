@@ -745,6 +745,16 @@ public static class MetroAreaSeeder
                 isStateLevelArea: false,
                 isActive: true
             ),
+            MetroArea.Create(
+                id: Guid.Parse("39111111-1111-1111-1111-111111111005"),
+                name: "Akron",
+                state: "OH",
+                centerLatitude: 41.0823,
+                centerLongitude: -81.5178,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
 
             // =====================
             // OKLAHOMA

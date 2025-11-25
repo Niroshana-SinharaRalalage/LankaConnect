@@ -184,22 +184,19 @@ export default function DashboardPage() {
 
                 {/* Navigation Links */}
                 <nav className="hidden md:flex items-center gap-6">
-                  <a href="/" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Home
-                  </a>
-                  <a href="#events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
+                  <a href="/events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
                     Events
                   </a>
-                  <a href="#forums" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
+                  <a href="/forums" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
                     Forums
                   </a>
-                  <a href="#business" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
+                  <a href="/business" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
                     Business
                   </a>
-                  <a href="#culture" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Culture
+                  <a href="/marketplace" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
+                    Marketplace
                   </a>
-                  <a href="/dashboard" className="text-[#FF7900] hover:text-[#FF7900] font-medium transition-colors">
+                  <a href="/dashboard" className="text-[#FF7900] font-medium transition-colors">
                     Dashboard
                   </a>
                 </nav>

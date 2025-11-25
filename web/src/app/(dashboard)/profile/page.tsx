@@ -68,16 +68,8 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen" style={{ background: '#f7fafc' }}>
-        {/* Sri Lankan Flag Stripe Header */}
-        <div
-          className="h-2 fixed top-0 left-0 right-0 z-50"
-          style={{
-            background: 'linear-gradient(90deg, #FF7900 0%, #FF7900 33%, #8B1538 33%, #8B1538 66%, #006400 66%, #006400 100%)'
-          }}
-        ></div>
-
         {/* Header */}
-        <header className="bg-white border-b sticky top-2 z-40" style={{
+        <header className="bg-white border-b sticky top-0 z-40" style={{
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
           boxShadow: '0 2px 20px rgba(0,0,0,0.1)'

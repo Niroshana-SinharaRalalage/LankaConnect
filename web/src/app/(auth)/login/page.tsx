@@ -23,18 +23,25 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-2 bg-white rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
         {/* Left Panel - Branding */}
         <div
-          className="hidden md:flex flex-col justify-center text-white px-10 py-[60px]"
+          className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)'
           }}
         >
+          {/* Decorative gradient blobs */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
+          </div>
+
           {/* Logo Section */}
-          <div className="mb-8">
+          <div className="mb-8 relative z-10">
             <OfficialLogo size="md" textColor="text-white" subtitleColor="text-white/90" linkTo="/" />
           </div>
 
           {/* Welcome Text */}
-          <div>
+          <div className="relative z-10">
             <h1 className="text-[1.75rem] font-semibold mb-4 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.2)]">
               Welcome Back!
             </h1>
@@ -44,7 +51,7 @@ export default function LoginPage() {
           </div>
 
           {/* Features */}
-          <div>
+          <div className="relative z-10">
             <div className="flex items-center mb-[15px] p-[15px] bg-white/10 backdrop-blur-[10px] rounded-[10px]">
               <div className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[1.3rem] mr-[15px] flex-shrink-0" style={{ background: '#FFD700' }}>
                 🎉

@@ -26,14 +26,12 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-2 bg-white rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
         {/* Left Panel - Branding */}
         <div className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)' }}>
-          {/* Animated Background - Pulsing radial gradient */}
-          <div
-            className="absolute -top-1/2 -right-1/2 w-[200%] h-[200%] pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              animation: 'pulse 8s ease-in-out infinite'
-            }}
-          />
+          {/* Decorative gradient blobs */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
+          </div>
 
           {/* Logo Section */}
           <div className="relative z-10 mb-8">

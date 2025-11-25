@@ -9,7 +9,7 @@ import { LocationSection } from '@/presentation/components/features/profile/Loca
 import { CulturalInterestsSection } from '@/presentation/components/features/profile/CulturalInterestsSection';
 import { PreferredMetroAreasSection } from '@/presentation/components/features/profile/PreferredMetroAreasSection';
 import { Button } from '@/presentation/components/ui/Button';
-import { Logo } from '@/presentation/components/atoms/Logo';
+import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { useRouter } from 'next/navigation';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
 import { ArrowLeft } from 'lucide-react';
@@ -85,9 +85,7 @@ export default function ProfilePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Link href="/" className="cursor-pointer">
-                  <Logo size="md" showText={true} />
-                </Link>
+                <OfficialLogo size="md" />
                 <div className="h-6 w-px bg-gray-300"></div>
                 <h1 className="text-2xl font-bold" style={{ color: '#8B1538' }}>My Profile</h1>
               </div>

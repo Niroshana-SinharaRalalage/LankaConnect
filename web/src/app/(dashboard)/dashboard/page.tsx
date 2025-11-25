@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
 import { TabPanel } from '@/presentation/components/ui/TabPanel';
-import { Logo } from '@/presentation/components/atoms/Logo';
+import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import Footer from '@/presentation/components/layout/Footer';
 import { useRouter } from 'next/navigation';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
@@ -180,10 +180,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               {/* Logo + Navigation */}
               <div className="flex items-center gap-8">
-                <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
-                  <Logo size="md" showText={false} />
-                  <span className="ml-3 text-2xl font-bold text-[#8B1538]">LankaConnect</span>
-                </Link>
+                <OfficialLogo size="md" />
 
                 {/* Navigation Links */}
                 <nav className="hidden md:flex items-center gap-6">

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '../atoms/Logo';
 import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
+import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 interface FooterLinkProps {
   href: string;
@@ -12,7 +14,7 @@ interface FooterLinkProps {
 }
 
 const FooterLink: React.FC<FooterLinkProps> = ({ href, children, external = false }) => {
-  const linkClasses = "text-white/80 hover:text-[#FF7900] transition-colors duration-200";
+  const linkClasses = "text-white/80 hover:text-white transition-colors duration-200 text-sm";
 
   if (external) {
     return (
@@ -45,11 +47,12 @@ interface LinkCategory {
 }
 
 const Footer: React.FC = () => {
+  const { isAuthenticated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [receiveAllLocations, setReceiveAllLocations] = useState(false);
-  const [currentYear, setCurrentYear] = useState<number>(2025); // Initialize with static value
+  const [currentYear, setCurrentYear] = useState<number>(2025);
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
@@ -58,39 +61,39 @@ const Footer: React.FC = () => {
 
   const linkCategories: LinkCategory[] = [
     {
-      title: 'About',
-      links: [
-        { label: 'About Us', href: '/about' },
-        { label: 'Our Mission', href: '/mission' },
-        { label: 'Team', href: '/team' },
-        { label: 'Contact', href: '/contact' },
-      ],
-    },
-    {
       title: 'Community',
       links: [
         { label: 'Events', href: '/events' },
         { label: 'Forums', href: '/forums' },
-        { label: 'Businesses', href: '/businesses' },
-        { label: 'Culture', href: '/culture' },
+        { label: 'Cultural Hub', href: '/culture' },
+        ...(isAuthenticated ? [{ label: 'Dashboard', href: '/dashboard' }] : []),
+      ],
+    },
+    {
+      title: 'Marketplace',
+      links: [
+        { label: 'Browse Listings', href: '/marketplace' },
+        { label: 'Businesses', href: '/business' },
+        { label: 'Services', href: '/services' },
+        { label: 'Sell Items', href: '/marketplace/sell' },
       ],
     },
     {
       title: 'Resources',
       links: [
         { label: 'Help Center', href: '/help' },
-        { label: 'Privacy Policy', href: '/privacy' },
-        { label: 'Terms of Service', href: '/terms' },
-        { label: 'FAQ', href: '/faq' },
+        { label: 'Guidelines', href: '/guidelines' },
+        { label: 'Safety', href: '/safety' },
+        { label: 'Blog', href: '/blog' },
       ],
     },
     {
-      title: 'Connect',
+      title: 'About',
       links: [
-        { label: 'Facebook', href: 'https://facebook.com', external: true },
-        { label: 'Twitter', href: 'https://twitter.com', external: true },
-        { label: 'Instagram', href: 'https://instagram.com', external: true },
-        { label: 'LinkedIn', href: 'https://linkedin.com', external: true },
+        { label: 'Our Story', href: '/about' },
+        { label: 'Contact Us', href: '/contact' },
+        { label: 'Careers', href: '/careers' },
+        { label: 'Press', href: '/press' },
       ],
     },
   ];
@@ -160,79 +163,72 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-gradient-to-b from-[#8B1538] to-[#6B0F28] text-white" role="contentinfo">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Logo, Tagline & Newsletter Section */}
-        <div className="mb-12 pb-8 border-b border-white/10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            {/* Logo and Tagline */}
-            <div className="flex-1">
-              <div className="mb-3">
-                <Logo size="md" />
-              </div>
-              <p className="text-white/70 text-sm max-w-md">
-                Connecting the Sri Lankan diaspora worldwide. Share events, discover culture, and build community together.
-              </p>
-            </div>
+    <footer className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 text-white mt-24 relative overflow-hidden">
+      {/* Decorative Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
 
-            {/* Newsletter Signup */}
-            <div className="flex-1 max-w-md">
-              <h3 className="text-lg font-semibold mb-3">Stay Connected</h3>
-              <p className="text-white/70 text-sm mb-4">
-                Subscribe to our newsletter for the latest events and community updates.
-              </p>
-              <form onSubmit={handleNewsletterSubmit} className="space-y-3">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg bg-white text-[#8B1538] placeholder-[#8B1538]/50 focus:outline-none focus:ring-2 focus:ring-[#FF7900]"
-                  aria-label="Email address for newsletter"
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Newsletter Section */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-12 border border-white/20">
+          <div className="max-w-3xl mx-auto">
+            <h3 className="text-2xl font-semibold mb-2 text-center">Stay Connected</h3>
+            <p className="text-white/90 mb-6 text-center">Subscribe to our newsletter for the latest events and community updates.</p>
+
+            <form onSubmit={handleNewsletterSubmit} className="space-y-4">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                aria-label="Email address for newsletter"
+                disabled={subscribeStatus === 'loading'}
+                required
+              />
+
+              <div className="bg-white/95 p-4 rounded-lg text-gray-800">
+                <NewsletterMetroSelector
+                  selectedMetroIds={selectedMetroIds}
+                  receiveAllLocations={receiveAllLocations}
+                  onMetrosChange={setSelectedMetroIds}
+                  onReceiveAllChange={setReceiveAllLocations}
                   disabled={subscribeStatus === 'loading'}
-                  required
                 />
+              </div>
 
-                {/* Metro Area Selection Component - Phase 5B.8 */}
-                <div className="bg-white/95 p-4 rounded-lg text-gray-800">
-                  <NewsletterMetroSelector
-                    selectedMetroIds={selectedMetroIds}
-                    receiveAllLocations={receiveAllLocations}
-                    onMetrosChange={setSelectedMetroIds}
-                    onReceiveAllChange={setReceiveAllLocations}
-                    disabled={subscribeStatus === 'loading'}
-                  />
-                </div>
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={subscribeStatus === 'loading'}
+                aria-label="Subscribe to newsletter"
+              >
+                {subscribeStatus === 'loading' ? 'Subscribing...' : subscribeStatus === 'success' ? 'Subscribed!' : 'Subscribe'}
+              </button>
+            </form>
 
-                <button
-                  type="submit"
-                  className="w-full px-6 py-2.5 bg-[#FF7900] hover:bg-[#E56D00] text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={subscribeStatus === 'loading'}
-                  aria-label="Subscribe to newsletter"
-                >
-                  {subscribeStatus === 'loading' ? 'Subscribing...' : subscribeStatus === 'success' ? 'Subscribed!' : 'Subscribe'}
-                </button>
-              </form>
-              {subscribeStatus === 'error' && (
-                <p className="text-red-300 text-sm mt-2" role="alert">
-                  Please enter a valid email address and select at least one location.
-                </p>
-              )}
-              {subscribeStatus === 'success' && (
-                <p className="text-green-300 text-sm mt-2" role="alert">
-                  Thank you for subscribing!
-                </p>
-              )}
-            </div>
+            {subscribeStatus === 'error' && (
+              <p className="text-red-300 text-sm mt-2 text-center" role="alert">
+                Please enter a valid email address and select at least one location.
+              </p>
+            )}
+            {subscribeStatus === 'success' && (
+              <p className="text-green-300 text-sm mt-2 text-center" role="alert">
+                Thank you for subscribing!
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Link Categories Grid */}
+        {/* Links Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {linkCategories.map((category) => (
             <div key={category.title}>
-              <h3 className="text-lg font-semibold mb-4 text-white">{category.title}</h3>
-              <ul className="space-y-3" role="list">
+              <h4 className="text-white font-semibold mb-4">{category.title}</h4>
+              <ul className="space-y-2" role="list">
                 {category.links.map((link) => (
                   <li key={link.label}>
                     <FooterLink href={link.href} external={link.external}>
@@ -245,23 +241,60 @@ const Footer: React.FC = () => {
           ))}
         </div>
 
-        {/* Copyright Section */}
-        <div className="pt-8 border-t border-white/10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-white/60">
-            <p>
-              &copy; {currentYear} LankaConnect. All rights reserved.
-            </p>
-            <div className="flex gap-6">
-              <Link href="/privacy" className="hover:text-[#FF7900] transition-colors duration-200">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-[#FF7900] transition-colors duration-200">
-                Terms
-              </Link>
-              <Link href="/cookies" className="hover:text-[#FF7900] transition-colors duration-200">
-                Cookies
-              </Link>
+        {/* Bottom Section */}
+        <div className="pt-8 border-t border-white/20 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Logo size="md" showText={false} />
+            <div>
+              <div className="text-white font-semibold">LankaConnect</div>
+              <div className="text-white/80 text-sm">&copy; {currentYear} All rights reserved</div>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+              aria-label="Facebook"
+            >
+              <Facebook className="h-5 w-5" />
+            </a>
+            <a
+              href="https://twitter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+              aria-label="Twitter"
+            >
+              <Twitter className="h-5 w-5" />
+            </a>
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+              aria-label="Instagram"
+            >
+              <Instagram className="h-5 w-5" />
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+              aria-label="YouTube"
+            >
+              <Youtube className="h-5 w-5" />
+            </a>
+            <a
+              href="mailto:contact@lankaconnect.com"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+              aria-label="Email"
+            >
+              <Mail className="h-5 w-5" />
+            </a>
           </div>
         </div>
       </div>

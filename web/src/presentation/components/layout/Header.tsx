@@ -3,13 +3,13 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Logo } from '@/presentation/components/atoms/Logo';
+import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
-import { User, LogOut, ChevronDown } from 'lucide-react';
+import { User, LogOut, ChevronDown, Search } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -27,18 +27,23 @@ export function Header({ className = '' }: HeaderProps) {
   const router = useRouter();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
+  const searchRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch unread notifications only when authenticated
   const { data: unreadNotifications = [] } = useUnreadNotifications({
     enabled: isAuthenticated,
   });
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setUserMenuOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -63,65 +68,66 @@ export function Header({ className = '' }: HeaderProps) {
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4">
-          {/* Logo with LankaConnect Text - Both Clickable */}
-          <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
-            <Logo size="lg" showText={false} />
-            <span className="ml-3 text-2xl font-bold text-[#8B1538]">LankaConnect</span>
-          </Link>
+          {/* Official LankaConnect Logo with Subtitle */}
+          <OfficialLogo size="md" />
 
-          {/* Navigation Links - Hidden on mobile */}
-          <ul className="hidden md:flex items-center gap-8">
-            <li>
-              <Link
-                href="/"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-              >
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="#events"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-              >
-                Events
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="#forums"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-              >
-                Forums
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="#business"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-              >
-                Business
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="#culture"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-              >
-                Culture
-              </Link>
-            </li>
+          {/* Navigation Links - Responsive */}
+          <nav className="hidden lg:flex items-center gap-6">
+            <Link
+              href="/events"
+              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+            >
+              Events
+            </Link>
+            <Link
+              href="/forums"
+              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+            >
+              Forums
+            </Link>
+            <Link
+              href="/business"
+              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+            >
+              Business
+            </Link>
+            <Link
+              href="/marketplace"
+              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+            >
+              Marketplace
+            </Link>
             {isAuthenticated && (
-              <li>
-                <Link
-                  href="/dashboard"
-                  className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-                >
-                  Dashboard
-                </Link>
-              </li>
+              <Link
+                href="/dashboard"
+                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
+              >
+                Dashboard
+              </Link>
             )}
-          </ul>
+
+            {/* Search */}
+            <div className="relative" ref={searchRef}>
+              <button
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="p-2 text-[#333] hover:text-[#FF7900] transition-colors"
+                aria-label="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+
+              {searchOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
+                  <input
+                    type="text"
+                    placeholder="Search events, forums, businesses..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+          </nav>
 
           {/* Auth Section */}
           <div className="flex items-center gap-4">

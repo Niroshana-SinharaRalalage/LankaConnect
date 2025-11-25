@@ -156,25 +156,26 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         }
         else if (request.MetroAreaIds != null && request.MetroAreaIds.Any())
         {
-            // Filter by specific metro areas
-            var metroSortedEvents = await SortEventsByMetroAreasAsync(
+            // Filter by specific metro areas - ONLY return events within metro area radius
+            var metroFilteredEvents = await FilterEventsByMetroAreasAsync(
                 remainingEvents,
                 request.MetroAreaIds,
                 now,
                 cancellationToken);
 
-            sortedEvents.AddRange(metroSortedEvents);
-            remainingEvents = remainingEvents.Except(metroSortedEvents).ToList();
+            sortedEvents.AddRange(metroFilteredEvents);
+            remainingEvents.Clear(); // Clear remaining since we're filtering, not just sorting
         }
 
         // PRIORITY 4: Add remaining events (will be sorted by date later)
+        // Only add remaining if we didn't apply metro area filtering
         sortedEvents.AddRange(remainingEvents);
 
         return sortedEvents;
     }
 
     /// <summary>
-    /// Sorts events by their distance to specific metro areas
+    /// Sorts events by their distance to specific metro areas (for preferred metros - doesn't filter)
     /// </summary>
     private async Task<List<Event>> SortEventsByMetroAreasAsync(
         List<Event> events,
@@ -199,6 +200,64 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         }
 
         return sortedEvents;
+    }
+
+    /// <summary>
+    /// Filters events to only those within the radius of specified metro areas
+    /// </summary>
+    private async Task<List<Event>> FilterEventsByMetroAreasAsync(
+        List<Event> events,
+        List<Guid> metroAreaIds,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var matchingEvents = new List<Event>();
+
+        foreach (var metroId in metroAreaIds)
+        {
+            var metroData = await GetMetroAreaDataAsync(metroId, cancellationToken);
+            if (metroData.HasValue)
+            {
+                // Filter events within this metro area's radius
+                var eventsInMetro = events
+                    .Where(e => e.Location?.Coordinates != null)
+                    .Where(e => {
+                        var distance = CalculateDistance(
+                            metroData.Value.Latitude,
+                            metroData.Value.Longitude,
+                            e.Location!.Coordinates!.Latitude,
+                            e.Location.Coordinates.Longitude);
+                        // Convert radius from miles to kilometers (1 mile = 1.60934 km)
+                        var radiusKm = metroData.Value.RadiusMiles * 1.60934;
+                        return distance <= radiusKm;
+                    })
+                    .ToList();
+
+                // Add events not already in the result
+                foreach (var evt in eventsInMetro)
+                {
+                    if (!matchingEvents.Contains(evt))
+                    {
+                        matchingEvents.Add(evt);
+                    }
+                }
+            }
+        }
+
+        // Sort by distance to first selected metro area
+        if (metroAreaIds.Any() && matchingEvents.Any())
+        {
+            var firstMetroData = await GetMetroAreaDataAsync(metroAreaIds[0], cancellationToken);
+            if (firstMetroData.HasValue)
+            {
+                matchingEvents = SortEventsByDistance(
+                    matchingEvents,
+                    firstMetroData.Value.Latitude,
+                    firstMetroData.Value.Longitude);
+            }
+        }
+
+        return matchingEvents;
     }
 
     /// <summary>
@@ -261,6 +320,27 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         if (metroArea != null)
         {
             return ((decimal)metroArea.CenterLatitude, (decimal)metroArea.CenterLongitude);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets full metro area data including radius for filtering
+    /// </summary>
+    private async Task<(decimal Latitude, decimal Longitude, int RadiusMiles)?> GetMetroAreaDataAsync(
+        Guid metroAreaId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
+            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
+            .FindAsync(new object[] { metroAreaId }, cancellationToken);
+
+        if (metroArea != null)
+        {
+            return ((decimal)metroArea.CenterLatitude, (decimal)metroArea.CenterLongitude, metroArea.RadiusMiles);
         }
 
         return null;

@@ -125,6 +125,10 @@
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
   </ItemGroup>
+  <!-- Stripe Payment Integration (Phase 6A.4) -->
+  <ItemGroup>
+    <PackageVersion Include="Stripe.net" Version="47.4.0" />
+  </ItemGroup>
   <!-- Source Link -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />

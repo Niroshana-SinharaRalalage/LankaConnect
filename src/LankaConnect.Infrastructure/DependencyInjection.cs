@@ -23,6 +23,10 @@ using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Infrastructure.Payments.Configuration;
+using LankaConnect.Infrastructure.Payments.Repositories;
+using LankaConnect.Domain.Payments;
+using Stripe;
 
 namespace LankaConnect.Infrastructure;
 
@@ -223,6 +227,27 @@ public static class DependencyInjection
             options.WorkerCount = 1; // Start with 1 worker for development
             options.SchedulePollingInterval = TimeSpan.FromMinutes(1); // Check for scheduled jobs every minute
         });
+
+        // Add Stripe Services (Phase 6A.4: Stripe Payment Integration - MVP)
+        services.Configure<StripeOptions>(configuration.GetSection(StripeOptions.SectionName));
+
+        // Configure Stripe client as singleton
+        services.AddSingleton<IStripeClient>(provider =>
+        {
+            var stripeOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<StripeOptions>>().Value;
+
+            if (string.IsNullOrWhiteSpace(stripeOptions.SecretKey))
+            {
+                throw new InvalidOperationException(
+                    "Stripe:SecretKey is not configured. Please add it to appsettings.json or environment variables.");
+            }
+
+            return new StripeClient(stripeOptions.SecretKey);
+        });
+
+        // Register Stripe repositories
+        services.AddScoped<IStripeCustomerRepository, StripeCustomerRepository>();
+        services.AddScoped<IStripeWebhookEventRepository, StripeWebhookEventRepository>();
 
         return services;
     }

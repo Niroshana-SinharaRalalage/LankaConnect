@@ -27,6 +27,7 @@
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
+    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -9,7 +9,7 @@ export default function RegisterPage() {
     <div
       className="min-h-screen flex items-center justify-center p-5"
       style={{
-        backgroundImage: 'url(/images/ChatGPT%20Image%20Nov%208,%202025,%2001_03_23%20PM.png)',
+        backgroundImage: 'url(/images/batik-sri-lanka.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -30,14 +30,14 @@ export default function RegisterPage() {
           />
 
           {/* Logo Section */}
-          <div className="relative z-10 mb-10">
-            <div className="flex items-center text-[2rem] font-bold mb-5">
+          <div className="relative z-10 mb-8">
+            <div className="flex items-center text-[1.5rem] font-semibold mb-4">
               <Image
                 src="/images/lankaconnect-logo.png"
                 alt="LankaConnect"
-                width={80}
-                height={80}
-                className="mr-5"
+                width={50}
+                height={50}
+                className="mr-3"
                 priority
               />
               LankaConnect
@@ -46,10 +46,10 @@ export default function RegisterPage() {
 
           {/* Welcome Text */}
           <div className="relative z-10">
-            <h1 className="text-[2.5rem] font-bold mb-5 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.2)]">
+            <h1 className="text-[1.75rem] font-semibold mb-4 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.2)]">
               Join Our Community!
             </h1>
-            <p className="text-[1.1rem] opacity-95 leading-[1.6] mb-[30px]">
+            <p className="text-base opacity-95 leading-relaxed mb-6">
               Become part of the vibrant Sri Lankan American community. Create your account to access events, connect with others, and explore cultural opportunities.
             </p>
           </div>
@@ -89,16 +89,16 @@ export default function RegisterPage() {
         {/* Right Panel - Register Form */}
         <div className="flex flex-col justify-center px-[50px] py-[60px]" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #fef9f5 100%)' }}>
           {/* Mobile Logo */}
-          <div className="mb-8 md:hidden text-center">
+          <div className="mb-6 md:hidden text-center">
             <Image
               src="/images/lankaconnect-logo.png"
               alt="LankaConnect"
-              width={60}
-              height={60}
+              width={40}
+              height={40}
               className="mx-auto mb-2"
               priority
             />
-            <span className="text-2xl font-bold" style={{ color: '#8B1538' }}>LankaConnect</span>
+            <span className="text-lg font-semibold" style={{ color: '#8B1538' }}>LankaConnect</span>
           </div>
 
           <RegisterForm />

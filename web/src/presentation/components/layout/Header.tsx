@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { Button } from '@/presentation/components/ui/Button';
@@ -162,14 +163,24 @@ export function Header({ className = '' }: HeaderProps) {
                     title={user.fullName}
                   >
                     {/* User Avatar */}
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                      style={{
-                        background: 'linear-gradient(135deg, #FF7900, #8B1538)',
-                      }}
-                    >
-                      {getUserInitials(user.fullName)}
-                    </div>
+                    {user.profilePhotoUrl ? (
+                      <Image
+                        src={user.profilePhotoUrl}
+                        alt={user.fullName}
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                        style={{
+                          background: 'linear-gradient(135deg, #FF7900, #8B1538)',
+                        }}
+                      >
+                        {getUserInitials(user.fullName)}
+                      </div>
+                    )}
 
                     {/* User Name */}
                     <span className="text-sm font-medium text-[#333] hidden lg:inline">

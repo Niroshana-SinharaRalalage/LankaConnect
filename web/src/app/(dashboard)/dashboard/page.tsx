@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
@@ -210,12 +211,22 @@ export default function DashboardPage() {
                       onClick={() => setShowUserMenu(!showUserMenu)}
                       className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors"
                     >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                        style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)' }}
-                      >
-                        {getInitials(user?.fullName || 'U')}
-                      </div>
+                      {user?.profilePhotoUrl ? (
+                        <Image
+                          src={user.profilePhotoUrl}
+                          alt={user.fullName}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                          style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)' }}
+                        >
+                          {getInitials(user?.fullName || 'U')}
+                        </div>
+                      )}
                       <div className="hidden md:block text-left">
                         <p className="text-sm font-medium" style={{ color: '#8B1538' }}>{user?.fullName}</p>
                         <p className="text-xs" style={{ color: '#718096' }}>{user?.role}</p>

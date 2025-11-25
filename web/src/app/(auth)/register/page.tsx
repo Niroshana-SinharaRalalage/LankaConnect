@@ -1,5 +1,5 @@
 import { RegisterForm } from '@/presentation/components/features/auth/RegisterForm';
-import Image from 'next/image';
+import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -9,12 +9,18 @@ export default function RegisterPage() {
     <div
       className="min-h-screen flex items-center justify-center p-5"
       style={{
-        backgroundImage: 'url(/images/batik-sri-lanka.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        background: 'linear-gradient(to-r, #FF7900, #8B1538, #006400)'
       }}
     >
+      {/* Decorative Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        ></div>
+      </div>
 
       {/* Split Panel Container */}
       <div className="relative z-10 w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-2 bg-white rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
@@ -31,17 +37,7 @@ export default function RegisterPage() {
 
           {/* Logo Section */}
           <div className="relative z-10 mb-8">
-            <div className="flex items-center text-[1.5rem] font-semibold mb-4">
-              <Image
-                src="/images/lankaconnect-logo.png"
-                alt="LankaConnect"
-                width={50}
-                height={50}
-                className="mr-3"
-                priority
-              />
-              LankaConnect
-            </div>
+            <OfficialLogo size="md" textColor="text-white" subtitleColor="text-white/90" linkTo="/" />
           </div>
 
           {/* Welcome Text */}
@@ -90,15 +86,7 @@ export default function RegisterPage() {
         <div className="flex flex-col justify-center px-[50px] py-[60px]" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #fef9f5 100%)' }}>
           {/* Mobile Logo */}
           <div className="mb-6 md:hidden text-center">
-            <Image
-              src="/images/lankaconnect-logo.png"
-              alt="LankaConnect"
-              width={40}
-              height={40}
-              className="mx-auto mb-2"
-              priority
-            />
-            <span className="text-lg font-semibold" style={{ color: '#8B1538' }}>LankaConnect</span>
+            <OfficialLogo size="sm" linkTo="/" />
           </div>
 
           <RegisterForm />

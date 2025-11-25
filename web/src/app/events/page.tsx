@@ -13,6 +13,7 @@ import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
+import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 
 /**
  * Events Listing Page
@@ -42,11 +43,11 @@ export default function EventsPage() {
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | undefined>(undefined);
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
-  const [sortByDate, setSortByDate] = useState<'upcoming' | 'all'>('upcoming');
+  const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
 
   // Build filters for useEvents hook
   const filters = useMemo(() => {
-    const now = new Date().toISOString();
+    const dateRange = getDateRangeForOption(dateRangeOption);
     return {
       category: selectedCategory,
       userId: user?.userId,
@@ -54,9 +55,9 @@ export default function EventsPage() {
       longitude: isAnonymous ? longitude ?? undefined : undefined,
       metroAreaIds: selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
       state: selectedState,
-      startDateFrom: sortByDate === 'upcoming' ? now : undefined,
+      ...dateRange, // Spread startDateFrom and startDateTo from date range
     };
-  }, [selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, sortByDate]);
+  }, [selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
@@ -114,18 +115,18 @@ export default function EventsPage() {
     setSelectedCategory(value === '' ? undefined : Number(value) as EventCategory);
   };
 
-  const handleDateSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortByDate(e.target.value as 'upcoming' | 'all');
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDateRangeOption(e.target.value as DateRangeOption);
   };
 
   const clearFilters = () => {
     setSelectedCategory(undefined);
     setSelectedMetroIds([]);
     setSelectedState(undefined);
-    setSortByDate('upcoming');
+    setDateRangeOption('upcoming');
   };
 
-  const hasActiveFilters = selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || sortByDate !== 'upcoming';
+  const hasActiveFilters = selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {
@@ -224,12 +225,15 @@ export default function EventsPage() {
                   Event Date
                 </label>
                 <select
-                  value={sortByDate}
-                  onChange={handleDateSortChange}
+                  value={dateRangeOption}
+                  onChange={handleDateRangeChange}
                   className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   disabled={isLoading}
                 >
                   <option value="upcoming">Upcoming Events</option>
+                  <option value="thisWeek">This Week</option>
+                  <option value="nextWeek">Next Week</option>
+                  <option value="nextMonth">Next Month</option>
                   <option value="all">All Events</option>
                 </select>
               </div>

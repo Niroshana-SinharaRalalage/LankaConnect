@@ -25,7 +25,7 @@ export default function RegisterPage() {
       {/* Split Panel Container */}
       <div className="relative z-10 w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-2 bg-white rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
         {/* Left Panel - Branding */}
-        <div className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)' }}>
+        <div className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800">
           {/* Decorative gradient blobs */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>

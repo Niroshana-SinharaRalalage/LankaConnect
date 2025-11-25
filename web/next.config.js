@@ -11,6 +11,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io',
       },
+      {
+        protocol: 'https',
+        hostname: 'lankaconnectstrgaccount.blob.core.windows.net',
+      },
     ],
   },
   env: {

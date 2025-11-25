@@ -174,7 +174,7 @@ const Footer: React.FC = () => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Newsletter Section */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-12 border border-white/20">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-xl mx-auto">
             <h3 className="text-2xl font-semibold mb-2 text-center">Stay Connected</h3>
             <p className="text-white/90 mb-6 text-center">Subscribe to our newsletter for the latest events and community updates.</p>
 

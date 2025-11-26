@@ -332,7 +332,10 @@ function EventCard({
   });
 
   return (
-    <Card className="hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer overflow-hidden">
+    <Card
+      className="hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer overflow-hidden"
+      onClick={() => window.location.href = `/events/${event.id}`}
+    >
       {/* Event Image */}
       <div className="relative h-48 bg-gradient-to-br from-orange-500 to-rose-500">
         {event.images && event.images.length > 0 ? (

@@ -32,11 +32,29 @@
 - ✅ Git commit: feat(events): Add Event Creation Form for organizers (Option 1)
 - ✅ **Total**: 682 lines of new code
 
-**Option 2: Organizer Dashboard** ⏳ IN PROGRESS:
-- ⏳ Building dashboard to list all events created by organizer
-- ⏳ Quick stats display (total events, registrations, revenue)
-- ⏳ Edit/delete functionality for event management
-- ⏳ Filter by event status (upcoming, past, draft)
+**Option 2: Organizer Dashboard** ✅ COMPLETE (2025-11-26):
+- ✅ Added `getMyEvents()` repository method ([web/src/infrastructure/api/repositories/events.repository.ts](../web/src/infrastructure/api/repositories/events.repository.ts) - 11 lines)
+  - Calls backend GET /api/Events/my-events endpoint
+  - Returns all events created by authenticated user
+- ✅ Added `useMyEvents()` React Query hook ([web/src/presentation/hooks/useEvents.ts](../web/src/presentation/hooks/useEvents.ts) - 33 lines)
+  - Query key: ['events', 'my-events']
+  - 5-minute stale time with refetch on window focus
+  - Automatic cache invalidation after mutations
+- ✅ Created /events/my-events dashboard page ([web/src/app/events/my-events/page.tsx](../web/src/app/events/my-events/page.tsx) - 415 lines)
+  - **Stats Dashboard**: 4 cards showing Total Events, Upcoming Events, Total Registrations, Total Revenue
+  - **Status Filter**: Buttons for all event statuses (All, Draft, Published, Active, Postponed, Cancelled, Completed, Archived, Under Review)
+  - **Event List Cards**: Each card displays:
+    - Event title with status badge (color-coded) and category badge
+    - Date, location, registrations (X / capacity), pricing info
+    - View, Edit, Delete action buttons
+    - Delete confirmation flow (2-step: Delete → Confirm Delete / Cancel)
+  - **Empty States**: Different messages for no events vs filtered results
+  - **Loading/Error States**: Skeleton cards and error handling
+  - **Authentication Guard**: Redirects to login if not authenticated
+  - **Responsive Layout**: Grid layout with Tailwind CSS breakpoints
+- ✅ Build verification: 0 TypeScript errors in new code
+- ✅ Git commit: feat(events): Add Organizer Dashboard (My Events) page
+- ✅ **Total**: 459 lines of new code
 
 **Option 3: Sign-Up List Management** ⏸️ PENDING:
 - Build UI for organizers to create sign-up lists

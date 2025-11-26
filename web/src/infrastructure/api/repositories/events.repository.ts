@@ -150,6 +150,17 @@ export class EventsRepository {
     return await apiClient.get<EventDto[]>(url);
   }
 
+  // ==================== AUTHENTICATED QUERIES ====================
+
+  /**
+   * Get events created by the current authenticated user (organizer dashboard)
+   * Requires authentication
+   * Maps to backend GET /api/Events/my-events
+   */
+  async getMyEvents(): Promise<EventDto[]> {
+    return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+  }
+
   // ==================== AUTHENTICATED MUTATIONS ====================
 
   /**

@@ -328,7 +328,7 @@
 - ✅ Phase 6A.1: **Subscription System** - SubscriptionStatus enum, free trial (6 months), pricing ($10/$15), FreeTrialCountdown component
 - ✅ Phase 6A.2: **Dashboard Fixes** - 9 role-based dashboard fixes, FreeTrialCountdown integration, Quick Actions organization
 - ✅ Phase 6A.3: **Backend Authorization** - Policy-based authorization (CanCreateEvents, CanCreateBusinessProfile, etc.)
-- 🟡 Phase 6A.4: **Stripe Payment Integration** - IN PROGRESS (70% Complete - Backend API complete, frontend remaining)
+- 🟡 Phase 6A.4: **Stripe Payment Integration** - IN PROGRESS (95% Complete - Backend + Frontend UI complete, E2E testing remaining)
 - ✅ Phase 6A.5: **Admin Approval Workflow** - Admin approvals page, approve/reject, free trial initialization, notifications
 - ✅ Phase 6A.6: **Notification System** - In-app notifications, bell icon with badge, dropdown, inbox page
 - ✅ Phase 6A.7: **User Upgrade Workflow** - User upgrade request, pending banner, admin approval integration
@@ -364,7 +364,7 @@
 
 **Completed Time**: 30+ hours of infrastructure + documentation
 **Remaining Phase 6A Items**:
-- Phase 6A.4: Stripe integration (70% complete - backend API complete, frontend integration pending)
+- Phase 6A.4: Stripe integration (95% complete - backend + frontend UI complete, E2E testing pending)
 - Phase 6A.10/11: Deferred features (numbered for future)
 
 **Prerequisites**:
@@ -374,7 +374,7 @@
 - ✅ Admin approval workflow: COMPLETE
 - ✅ Notification system: COMPLETE
 - ✅ Authorization policies: COMPLETE
-- 🟡 Stripe Payment Integration: 70% COMPLETE (backend API complete, frontend integration pending)
+- 🟡 Stripe Payment Integration: 95% COMPLETE (backend + frontend UI complete, E2E testing pending)
 - ✅ Phase 2 UI (BusinessOwner): Disabled with "Coming in Phase 2" badge
 
 ### PHASE 6B SCOPE (Phase 2 Production - After Thanksgiving):

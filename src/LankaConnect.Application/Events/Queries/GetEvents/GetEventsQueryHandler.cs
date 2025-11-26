@@ -107,8 +107,21 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         var sortedEvents = new List<Event>();
         var remainingEvents = events.ToList();
 
-        // PRIORITY 1: Get events from preferred metro areas (for authenticated users)
-        if (request.UserId.HasValue)
+        // PRIORITY 1: Explicit metro area filter (applies to all users)
+        if (request.MetroAreaIds != null && request.MetroAreaIds.Any())
+        {
+            // Filter by specific metro areas - ONLY return events within metro area radius
+            var metroFilteredEvents = await FilterEventsByMetroAreasAsync(
+                remainingEvents,
+                request.MetroAreaIds,
+                now,
+                cancellationToken);
+
+            sortedEvents.AddRange(metroFilteredEvents);
+            remainingEvents.Clear(); // Clear remaining since we're filtering, not just sorting
+        }
+        // PRIORITY 2: Get events from preferred metro areas (for authenticated users without explicit filter)
+        else if (request.UserId.HasValue)
         {
             var user = await _userRepository.GetByIdAsync(request.UserId.Value, cancellationToken);
             if (user != null && user.PreferredMetroAreaIds.Any())
@@ -123,7 +136,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 remainingEvents = remainingEvents.Except(metroSortedEvents).ToList();
             }
 
-            // PRIORITY 2: If user exists, sort remaining by user's home location
+            // PRIORITY 3: If user exists, sort remaining by user's home location
             if (user != null && user.Location != null && remainingEvents.Any())
             {
                 var homeCoordinates = await GetMetroAreaCoordinatesByCityStateAsync(
@@ -143,9 +156,9 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 }
             }
         }
+        // PRIORITY 4: Anonymous user with provided coordinates
         else if (request.Latitude.HasValue && request.Longitude.HasValue)
         {
-            // PRIORITY 3: Anonymous user with provided coordinates
             var locationSortedEvents = SortEventsByDistance(
                 remainingEvents,
                 request.Latitude.Value,
@@ -154,21 +167,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
             sortedEvents.AddRange(locationSortedEvents);
             remainingEvents.Clear();
         }
-        else if (request.MetroAreaIds != null && request.MetroAreaIds.Any())
-        {
-            // Filter by specific metro areas - ONLY return events within metro area radius
-            var metroFilteredEvents = await FilterEventsByMetroAreasAsync(
-                remainingEvents,
-                request.MetroAreaIds,
-                now,
-                cancellationToken);
 
-            sortedEvents.AddRange(metroFilteredEvents);
-            remainingEvents.Clear(); // Clear remaining since we're filtering, not just sorting
-        }
-
-        // PRIORITY 4: Add remaining events (will be sorted by date later)
-        // Only add remaining if we didn't apply metro area filtering
+        // PRIORITY 5: Add remaining events (will be sorted by date later)
         sortedEvents.AddRange(remainingEvents);
 
         return sortedEvents;

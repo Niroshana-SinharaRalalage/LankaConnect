@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { SubscriptionStatus } from '@/infrastructure/api/types/subscription.types';
 import { getFreeTrialDaysRemaining } from '@/infrastructure/api/utils/role-helpers';
+import { SubscriptionUpgradeModal } from '@/presentation/components/features/payments/SubscriptionUpgradeModal';
+import { PricingTier } from '@/infrastructure/api/types/payments.types';
 
 export interface FreeTrialCountdownProps {
   subscriptionStatus: SubscriptionStatus;
@@ -25,6 +27,7 @@ export function FreeTrialCountdown({
   className = ''
 }: FreeTrialCountdownProps) {
   const router = useRouter();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const daysRemaining = getFreeTrialDaysRemaining(freeTrialEndsAt);
 
   // Don't show component if no trial data
@@ -83,7 +86,7 @@ export function FreeTrialCountdown({
                 Your trial is ending soon. Subscribe now to continue creating events.
               </p>
               <Button
-                onClick={() => router.push('/subscription/upgrade')}
+                onClick={() => setShowUpgradeModal(true)}
                 className="w-full"
                 style={{
                   background: '#FF7900',
@@ -94,6 +97,13 @@ export function FreeTrialCountdown({
               </Button>
             </div>
           )}
+
+          {/* Subscription Upgrade Modal */}
+          <SubscriptionUpgradeModal
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+            tier={PricingTier.EventOrganizer}
+          />
 
           {!isExpiringSoon && (
             <p className="text-sm text-blue-600">
@@ -132,7 +142,7 @@ export function FreeTrialCountdown({
               : 'Your subscription was canceled. Reactivate to continue creating events.'}
           </p>
           <Button
-            onClick={() => router.push('/subscription/upgrade')}
+            onClick={() => setShowUpgradeModal(true)}
             className="w-full"
             style={{
               background: '#8B1538',
@@ -143,6 +153,13 @@ export function FreeTrialCountdown({
               ? 'Update Payment'
               : 'Subscribe Now - $10/month'}
           </Button>
+
+          {/* Subscription Upgrade Modal */}
+          <SubscriptionUpgradeModal
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+            tier={PricingTier.EventOrganizer}
+          />
         </CardContent>
       </Card>
     );

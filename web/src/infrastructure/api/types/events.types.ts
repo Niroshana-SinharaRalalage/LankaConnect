@@ -161,6 +161,42 @@ export interface WaitingListEntryDto {
   position: number;
 }
 
+// ==================== Sign-Up Management ====================
+
+/**
+ * Sign-up type enum matching backend SignUpType
+ */
+export enum SignUpType {
+  Open = 0,
+  Predefined = 1,
+}
+
+/**
+ * Sign-up commitment DTO
+ * Represents a user's commitment to bring an item to an event
+ */
+export interface SignUpCommitmentDto {
+  id: string;
+  userId: string;
+  itemDescription: string;
+  quantity: number;
+  committedAt: string; // ISO 8601 date-time
+}
+
+/**
+ * Sign-up list DTO
+ * Matches backend SignUpListDto
+ */
+export interface SignUpListDto {
+  id: string;
+  category: string;
+  description: string;
+  signUpType: SignUpType;
+  predefinedItems: string[];
+  commitments: SignUpCommitmentDto[];
+  commitmentCount: number;
+}
+
 // ==================== Request DTOs ====================
 
 /**
@@ -295,6 +331,32 @@ export interface CancelEventRequest {
  */
 export interface PostponeEventRequest {
   reason: string;
+}
+
+/**
+ * Add sign-up list to event request
+ */
+export interface AddSignUpListRequest {
+  category: string;
+  description: string;
+  signUpType: SignUpType;
+  predefinedItems?: string[];
+}
+
+/**
+ * Commit to sign-up request
+ */
+export interface CommitToSignUpRequest {
+  userId: string;
+  itemDescription: string;
+  quantity: number;
+}
+
+/**
+ * Cancel sign-up commitment request
+ */
+export interface CancelCommitmentRequest {
+  userId: string;
 }
 
 // ==================== Response DTOs ====================

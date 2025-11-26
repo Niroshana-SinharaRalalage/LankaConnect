@@ -15,6 +15,10 @@ import type {
   PostponeEventRequest,
   CreateEventResponse,
   EventImageDto,
+  SignUpListDto,
+  AddSignUpListRequest,
+  CommitToSignUpRequest,
+  CancelCommitmentRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -286,6 +290,63 @@ export class EventsRepository {
    */
   async getWaitingList(eventId: string): Promise<WaitingListEntryDto[]> {
     return await apiClient.get<WaitingListEntryDto[]>(`${this.basePath}/${eventId}/waiting-list`);
+  }
+
+  // ==================== SIGN-UP MANAGEMENT ====================
+
+  /**
+   * Get all sign-up lists for an event
+   * Returns sign-up lists with commitments
+   * Maps to backend GET /api/events/{id}/signups
+   */
+  async getEventSignUpLists(eventId: string): Promise<SignUpListDto[]> {
+    return await apiClient.get<SignUpListDto[]>(`${this.basePath}/${eventId}/signups`);
+  }
+
+  /**
+   * Add a sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups
+   */
+  async addSignUpList(eventId: string, request: AddSignUpListRequest): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/signups`, request);
+  }
+
+  /**
+   * Remove a sign-up list from event
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}
+   */
+  async removeSignUpList(eventId: string, signupId: string): Promise<void> {
+    await apiClient.delete<void>(`${this.basePath}/${eventId}/signups/${signupId}`);
+  }
+
+  /**
+   * Commit to bringing an item to event
+   * User commits to sign-up list
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/commit
+   */
+  async commitToSignUp(
+    eventId: string,
+    signupId: string,
+    request: CommitToSignUpRequest
+  ): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/signups/${signupId}/commit`, request);
+  }
+
+  /**
+   * Cancel user's commitment to sign-up list
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/commit
+   */
+  async cancelCommitment(
+    eventId: string,
+    signupId: string,
+    request: CancelCommitmentRequest
+  ): Promise<void> {
+    await apiClient.delete<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/commit`,
+      { data: request }
+    );
   }
 
   // ==================== MEDIA OPERATIONS ====================

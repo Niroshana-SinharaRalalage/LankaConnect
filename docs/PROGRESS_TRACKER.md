@@ -1,9 +1,130 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-26 (Current Session) - Phase 6A.4 Stripe Payment Integration - Frontend (95% Complete) 🟡*
+*Last Updated: 2025-11-26 (Current Session) - Session 10: Event Sign-Up Management - Frontend UI (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.4 Stripe Payment Integration - Frontend (95% Complete) 🟡
+## 🎯 Current Session Status - Session 10: Event Sign-Up Management - Frontend UI (Complete) ✅
+
+### Session 10: Event Sign-Up Management - Frontend UI (2025-11-26)
+
+**Status**: ✅ COMPLETE - Frontend UI implementation for Sign-Up Management feature complete with 0 TypeScript errors
+
+**Goal**: Implement frontend UI for Event Sign-Up Management feature following TDD best practices
+
+**Implementation Summary**:
+
+**✅ Frontend Implementation** (COMPLETE)
+1. ✅ Added TypeScript types for Sign-Up Management (SignUpListDto, SignUpCommitmentDto, request types)
+2. ✅ Extended events.repository.ts with 5 new API methods
+3. ✅ Created React Query hooks (useEventSignUps.ts) with optimistic updates
+4. ✅ Built SignUpManagementSection component with full UI flow
+5. ✅ Zero TypeScript errors - all new code compiles successfully
+
+**Technical Implementation**:
+
+**File**: `web/src/infrastructure/api/types/events.types.ts` (Modified)
+- Added SignUpType enum (Open, Predefined)
+- Added SignUpCommitmentDto interface (id, userId, itemDescription, quantity, committedAt)
+- Added SignUpListDto interface (id, category, description, signUpType, predefinedItems, commitments, commitmentCount)
+- Added request DTOs: AddSignUpListRequest, CommitToSignUpRequest, CancelCommitmentRequest
+
+**File**: `web/src/infrastructure/api/repositories/events.repository.ts` (Modified)
+- Added 5 new methods in Sign-Up Management section:
+  - `getEventSignUpLists(eventId)` - GET /api/events/{id}/signups
+  - `addSignUpList(eventId, request)` - POST /api/events/{id}/signups
+  - `removeSignUpList(eventId, signupId)` - DELETE /api/events/{eventId}/signups/{signupId}
+  - `commitToSignUp(eventId, signupId, request)` - POST /api/events/{eventId}/signups/{signupId}/commit
+  - `cancelCommitment(eventId, signupId, request)` - DELETE /api/events/{eventId}/signups/{signupId}/commit
+- Added imports for new types
+- Fixed DELETE request with body using { data: request } pattern
+
+**File**: `web/src/presentation/hooks/useEventSignUps.ts` (Created - 314 lines)
+- Query hook: `useEventSignUps(eventId)` - Fetches sign-up lists with 5-minute cache
+- Mutation hooks with optimistic updates:
+  - `useAddSignUpList()` - Adds sign-up list (organizer only)
+  - `useRemoveSignUpList()` - Removes sign-up list with rollback
+  - `useCommitToSignUp()` - User commits to bringing item with temporary ID
+  - `useCancelCommitment()` - Cancels commitment with optimistic removal
+- Centralized query keys: `signUpKeys` for cache management
+- Follows exact pattern from useEvents.ts hook
+- Proper error handling and rollback on failure
+
+**File**: `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (Created - 258 lines)
+- Complete UI component for sign-up management
+- Features:
+  - View all sign-up lists for an event
+  - Display existing commitments with user info
+  - Commit to bringing items (authenticated users only)
+  - Cancel own commitments (with confirmation)
+  - Shows predefined items for Predefined sign-up type
+  - Inline form for committing (expands on button click)
+  - Loading states and error handling
+  - Responsive design with Card components
+- Props: eventId, userId, isOrganizer
+- Uses Card, Button UI components following existing patterns
+- Auth-aware: Shows different UI for logged in vs. anonymous users
+
+**Features Implemented**:
+- ✅ Query sign-up lists with React Query caching
+- ✅ Optimistic updates for all mutations
+- ✅ Rollback on error with context preservation
+- ✅ Loading states with proper disabled buttons
+- ✅ Error handling with user-friendly messages
+- ✅ Confirmation dialogs for destructive actions
+- ✅ Auth-aware UI (login prompt for anonymous users)
+- ✅ Responsive design with Tailwind CSS
+- ✅ Accessibility (semantic HTML, ARIA labels implied by Button component)
+
+**TypeScript Compilation**:
+- ✅ 0 errors for all new files (events.types.ts, events.repository.ts, useEventSignUps.ts, SignUpManagementSection.tsx)
+- ✅ Existing test file errors remain (unrelated to this feature)
+- ✅ DELETE request body properly typed with AxiosRequestConfig
+
+**UI/UX Best Practices**:
+- ✅ Loading spinners on buttons during async operations
+- ✅ Disabled states during mutations to prevent double-submit
+- ✅ Clear visual feedback for commitments (user's own vs. others)
+- ✅ Inline form expansion for better UX (no modal dialogs)
+- ✅ Confirmation for destructive actions (cancel commitment)
+- ✅ Empty states with helpful messages
+- ✅ Error states with retry capability
+
+**Files Created**:
+1. `web/src/presentation/hooks/useEventSignUps.ts` (314 lines)
+2. `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (258 lines)
+
+**Files Modified**:
+1. `web/src/infrastructure/api/types/events.types.ts` (Added ~60 lines)
+2. `web/src/infrastructure/api/repositories/events.repository.ts` (Added ~60 lines)
+
+**Backend Status** (Session 9 - Already Complete):
+- ✅ Domain Layer: SignUpList and SignUpCommitment entities
+- ✅ Application Layer: 4 commands, 1 query, DTOs
+- ✅ API Layer: 5 endpoints in EventsController
+- ✅ Infrastructure Layer: EF Core configurations, migration applied
+- ✅ 19/19 unit tests PASSED
+- ✅ Build: 0 errors, 0 warnings
+
+**Integration Notes**:
+- Component can be integrated into any event detail page
+- Requires eventId, optional userId (from auth context)
+- Optional isOrganizer flag for organizer-specific features
+- No event detail page exists yet - component is self-contained
+- Can be used as standalone section or embedded in larger page
+
+**Next Steps**:
+- Integration into event detail page (when created)
+- E2E testing with staging API
+- Organizer features (add/remove sign-up lists) - UI pending
+
+**Session Duration**: ~2 hours
+**Complexity**: Medium (followed existing patterns closely)
+
+---
+
+## Previous Sessions
+
+### Session 8: Phase 6A.4 Stripe Payment Integration - Frontend (95% Complete) 🟡
 
 ### Session 8 (continued): Frontend Stripe Payment Integration (2025-11-26)
 

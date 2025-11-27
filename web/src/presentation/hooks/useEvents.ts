@@ -44,7 +44,6 @@ export const eventKeys = {
   detail: (id: string) => [...eventKeys.details(), id] as const,
   search: (searchTerm: string) => [...eventKeys.all, 'search', searchTerm] as const,
   featured: (userId?: string, lat?: number, lng?: number) => [...eventKeys.all, 'featured', { userId, lat, lng }] as const,
-  myEvents: () => [...eventKeys.all, 'my-events'] as const,
 };
 
 /**
@@ -116,38 +115,6 @@ export function useEventById(
     enabled: !!id, // Only fetch when ID is provided
     staleTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
-    ...options,
-  });
-}
-
-/**
- * useMyEvents Hook
- *
- * Fetches events created by the current authenticated user (Organizer Dashboard)
- *
- * Features:
- * - Requires authentication
- * - Returns all events where user is the organizer
- * - 5-minute stale time
- * - Automatic refetch on window focus
- * - Ideal for organizer dashboard
- *
- * @param options - Additional React Query options
- *
- * @example
- * ```tsx
- * const { data: myEvents, isLoading } = useMyEvents();
- * ```
- */
-export function useMyEvents(
-  options?: Omit<UseQueryOptions<EventDto[], ApiError>, 'queryKey' | 'queryFn'>
-) {
-  return useQuery({
-    queryKey: eventKeys.myEvents(),
-    queryFn: () => eventsRepository.getMyEvents(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-    retry: 1,
     ...options,
   });
 }

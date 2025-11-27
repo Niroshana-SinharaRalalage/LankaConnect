@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
+import { Button } from '@/presentation/components/ui/Button';
 import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
-import { Calendar, MapPin, Users, DollarSign, Filter } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, Filter, Plus } from 'lucide-react';
 import { useEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -14,6 +16,7 @@ import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
+import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
  * Events Listing Page
@@ -26,6 +29,7 @@ import { getDateRangeForOption, type DateRangeOption } from '@/presentation/util
  * - Works for authenticated and anonymous users
  */
 export default function EventsPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
 
   // For anonymous users, detect location via IP/browser geolocation
@@ -142,6 +146,13 @@ export default function EventsPage() {
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
+  // Check if user can create events (EventOrganizer, Admin, or AdminManager)
+  const canUserCreateEvents = user && (
+    user.role === UserRole.EventOrganizer ||
+    user.role === UserRole.Admin ||
+    user.role === UserRole.AdminManager
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <Header />
@@ -166,13 +177,26 @@ export default function EventsPage() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Discover Events
-            </h1>
-            <p className="text-lg text-white/90 max-w-2xl mx-auto">
-              Find cultural, community, and social events relevant to you
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold text-white mb-4">
+                Discover Events
+              </h1>
+              <p className="text-lg text-white/90 max-w-2xl">
+                Find cultural, community, and social events relevant to you
+              </p>
+            </div>
+            {/* Create Event Button - Show for EventOrganizer, Admin, AdminManager */}
+            {canUserCreateEvents && (
+              <Button
+                onClick={() => router.push('/events/create')}
+                className="flex items-center gap-2"
+                style={{ background: '#FF7900' }}
+              >
+                <Plus className="h-5 w-5" />
+                Create Event
+              </Button>
+            )}
           </div>
         </div>
       </div>

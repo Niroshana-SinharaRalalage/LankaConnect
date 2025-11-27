@@ -8,6 +8,7 @@ import { EventCreationForm } from '@/presentation/components/features/events/Eve
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
+import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
  * Event Creation Page
@@ -23,10 +24,21 @@ export default function CreateEventPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated, or to dashboard if unauthorized
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {
       router.push('/login?redirect=' + encodeURIComponent('/events/create'));
+      return;
+    }
+
+    // Check if user has permission to create events (EventOrganizer, Admin, or AdminManager)
+    const canCreate = user.role === UserRole.EventOrganizer ||
+                       user.role === UserRole.Admin ||
+                       user.role === UserRole.AdminManager;
+
+    if (!canCreate) {
+      // Redirect unauthorized users to dashboard
+      router.push('/dashboard');
     }
   }, [isAuthenticated, user, router]);
 

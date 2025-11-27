@@ -16,6 +16,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users } from 'lucide-react';
 import { SignUpType, type AddSignUpListRequest } from '@/infrastructure/api/types/events.types';
+import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
  * Manage Sign-Up Lists Page
@@ -54,14 +55,22 @@ export default function ManageSignUpsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Redirect if not authenticated or not organizer
+  // Redirect if not authenticated or not authorized
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {
       router.push('/login?redirect=' + encodeURIComponent(`/events/${eventId}/manage-signups`));
       return;
     }
 
-    if (event && event.organizerId !== user.userId) {
+    // Check if user is organizer or admin
+    const isAuthorized = event && (
+      event.organizerId === user.userId ||
+      user.role === UserRole.Admin ||
+      user.role === UserRole.AdminManager
+    );
+
+    if (event && !isAuthorized) {
+      // Redirect unauthorized users to event detail page
       router.push(`/events/${eventId}`);
     }
   }, [isAuthenticated, user, event, eventId, router]);

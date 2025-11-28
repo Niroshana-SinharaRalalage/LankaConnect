@@ -249,9 +249,34 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventCommand command)
     {
-        Logger.LogInformation("Creating event: {Title} by user: {UserId}", command.Title, User.TryGetUserId());
+        // PHASE 6A.10: Comprehensive diagnostic logging
+        var userId = User.TryGetUserId();
+        var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
 
+        Logger.LogInformation("🎯 CreateEvent - Request Details:");
+        Logger.LogInformation("   User ID: {UserId}", userId);
+        Logger.LogInformation("   User Role: {UserRole}", userRole);
+        Logger.LogInformation("   Is Authenticated: {IsAuthenticated}", isAuthenticated);
+        Logger.LogInformation("   Event Title: {Title}", command.Title);
+        Logger.LogInformation("   Organizer ID: {OrganizerId}", command.OrganizerId);
+        Logger.LogInformation("   Authorization Policy: CanCreateEvents");
+
+        // Log all user claims for debugging
+        var claims = User.Claims.Select(c => $"{c.Type}={c.Value}");
+        Logger.LogInformation("   User Claims: {Claims}", string.Join(", ", claims));
+
+        Logger.LogInformation("⏳ Sending command to MediatR handler...");
         var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation("✅ Event created successfully: EventId={EventId}", result.Value);
+        }
+        else
+        {
+            Logger.LogError("❌ Event creation failed: {Errors}", string.Join(", ", result.Errors));
+        }
 
         return HandleResultWithCreated(result, nameof(GetEventById), new { id = result.Value });
     }

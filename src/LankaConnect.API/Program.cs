@@ -219,7 +219,12 @@ try
     // This middleware runs BEFORE standard CORS to guarantee headers even on 500 errors
     app.Use(async (context, next) =>
     {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
         var origin = context.Request.Headers.Origin.ToString();
+
+        logger.LogInformation("🌐 CORS Middleware - Request received: Method={Method}, Path={Path}, Origin={Origin}",
+            context.Request.Method, context.Request.Path, origin);
+
         if (!string.IsNullOrEmpty(origin))
         {
             var allowedOrigins = app.Environment.IsDevelopment()
@@ -228,24 +233,40 @@ try
                     ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
                     : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
 
+            logger.LogInformation("🔍 CORS Middleware - Environment={Environment}, AllowedOrigins={AllowedOrigins}",
+                app.Environment.EnvironmentName, string.Join(", ", allowedOrigins));
+
             if (allowedOrigins.Contains(origin))
             {
+                logger.LogInformation("✅ CORS Middleware - Origin ALLOWED, adding CORS headers");
                 context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
                 context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
                 context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
                 context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Correlation-ID, X-Request-ID");
                 context.Response.Headers.Append("Access-Control-Max-Age", "3600");
             }
+            else
+            {
+                logger.LogWarning("❌ CORS Middleware - Origin NOT ALLOWED: {Origin} not in {AllowedOrigins}",
+                    origin, string.Join(", ", allowedOrigins));
+            }
+        }
+        else
+        {
+            logger.LogInformation("ℹ️ CORS Middleware - No Origin header in request");
         }
 
         // Handle OPTIONS preflight requests immediately
         if (context.Request.Method == "OPTIONS")
         {
+            logger.LogInformation("✋ CORS Middleware - OPTIONS preflight request, returning 204");
             context.Response.StatusCode = 204; // No Content
             return;
         }
 
+        logger.LogInformation("➡️ CORS Middleware - Passing request to next middleware");
         await next();
+        logger.LogInformation("⬅️ CORS Middleware - Response: StatusCode={StatusCode}", context.Response.StatusCode);
     });
 
     // CRITICAL FIX Phase 6A.9: Apply CORS BEFORE other middleware to handle preflight requests

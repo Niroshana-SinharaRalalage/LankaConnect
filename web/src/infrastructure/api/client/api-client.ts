@@ -69,15 +69,67 @@ export class ApiClient {
         if (this.authToken) {
           config.headers.Authorization = `Bearer ${this.authToken}`;
         }
+
+        // PHASE 6A.10: Comprehensive request logging for debugging
+        console.log('🚀 API Request:', {
+          method: config.method?.toUpperCase(),
+          url: config.url,
+          baseURL: config.baseURL,
+          fullURL: `${config.baseURL}${config.url}`,
+          headers: {
+            'Content-Type': config.headers['Content-Type'],
+            'Authorization': config.headers.Authorization ? `Bearer ${config.headers.Authorization.substring(7, 30)}...` : 'Not set',
+            'Origin': config.headers.Origin || window.location.origin,
+          },
+          data: config.data ? JSON.stringify(config.data).substring(0, 200) : 'No data',
+        });
+
         return config;
       },
-      (error) => Promise.reject(this.handleError(error))
+      (error) => {
+        console.error('❌ Request Interceptor Error:', error);
+        return Promise.reject(this.handleError(error));
+      }
     );
 
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
-      (response) => response,
-      (error) => Promise.reject(this.handleError(error))
+      (response) => {
+        // PHASE 6A.10: Log successful responses
+        console.log('✅ API Response Success:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.config.url,
+          headers: {
+            'Access-Control-Allow-Origin': response.headers['access-control-allow-origin'],
+            'Access-Control-Allow-Credentials': response.headers['access-control-allow-credentials'],
+            'Content-Type': response.headers['content-type'],
+          },
+          dataSize: JSON.stringify(response.data || {}).length,
+        });
+        return response;
+      },
+      (error) => {
+        // PHASE 6A.10: Comprehensive error logging
+        console.error('❌ API Response Error:', {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          request: error.request ? {
+            method: error.config?.method,
+            url: error.config?.url,
+            headers: error.config?.headers,
+          } : 'No request object',
+          response: error.response ? {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            headers: error.response.headers,
+            data: error.response.data,
+          } : 'No response object',
+          isAxiosError: axios.isAxiosError(error),
+        });
+        return Promise.reject(this.handleError(error));
+      }
     );
   }
 

@@ -57,6 +57,14 @@ export function EventCreationForm() {
     try {
       setSubmitError(null);
 
+      // PHASE 6A.10: Log user authentication state
+      console.log('📋 Form Submission - User Context:', {
+        userId: user.userId,
+        userRole: user.role,
+        userName: user.firstName,
+        isAuthenticated: true,
+      });
+
       // Prepare event data for backend
       // IMPORTANT: Location fields are ALL required if ANY location field is provided
       // Database constraint: Address must have Street, City, State, ZipCode, Country
@@ -82,15 +90,29 @@ export function EventCreationForm() {
         ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
       };
 
-      // Log the payload for debugging
-      console.log('Creating event with payload:', JSON.stringify(eventData, null, 2));
+      // PHASE 6A.10: Comprehensive payload logging
+      console.log('📤 Creating event with payload:', JSON.stringify(eventData, null, 2));
+      console.log('📊 Payload Analysis:', {
+        hasLocation: hasCompleteLocation,
+        isFree: data.isFree,
+        hasTicketPrice: !!data.ticketPriceAmount,
+        categoryValue: data.category,
+        dataSize: JSON.stringify(eventData).length,
+      });
 
+      console.log('⏳ Sending request to API...');
       const eventId = await createEventMutation.mutateAsync(eventData);
+      console.log('✅ Event created successfully! ID:', eventId);
 
       // Redirect to event detail page
       router.push(`/events/${eventId}`);
     } catch (err) {
-      console.error('Event creation failed:', err);
+      // PHASE 6A.10: Enhanced error logging
+      console.error('❌ Event creation failed - Detailed Analysis:');
+      console.error('Error Type:', err?.constructor?.name);
+      console.error('Error Message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error Stack:', err instanceof Error ? err.stack : 'No stack trace');
+
       // Extract detailed error message from API response
       const errorMessage = err instanceof Error
         ? err.message
@@ -100,7 +122,15 @@ export function EventCreationForm() {
       setSubmitError(errorMessage);
 
       // Log full error for debugging
-      console.error('Full error object:', err);
+      console.error('Full error object:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+
+      // Check if error has response data
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as any;
+        console.error('Response Status:', axiosError.response?.status);
+        console.error('Response Headers:', axiosError.response?.headers);
+        console.error('Response Data:', axiosError.response?.data);
+      }
     }
   });
 

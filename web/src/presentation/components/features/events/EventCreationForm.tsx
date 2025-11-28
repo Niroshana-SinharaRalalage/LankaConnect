@@ -82,13 +82,25 @@ export function EventCreationForm() {
         ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
       };
 
+      // Log the payload for debugging
+      console.log('Creating event with payload:', JSON.stringify(eventData, null, 2));
+
       const eventId = await createEventMutation.mutateAsync(eventData);
 
       // Redirect to event detail page
       router.push(`/events/${eventId}`);
     } catch (err) {
       console.error('Event creation failed:', err);
-      setSubmitError(err instanceof Error ? err.message : 'Failed to create event. Please try again.');
+      // Extract detailed error message from API response
+      const errorMessage = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? String(err.message)
+        : 'Failed to create event. Please try again.';
+      setSubmitError(errorMessage);
+
+      // Log full error for debugging
+      console.error('Full error object:', err);
     }
   });
 

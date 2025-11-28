@@ -74,7 +74,10 @@ public static class AuthenticationExtensions
                                  UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
 
             options.AddPolicy("RequireEventOrganizer", policy =>
-                policy.RequireRole(UserRole.EventOrganizer.ToString(), UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString()));
 
             options.AddPolicy("RequireAdmin", policy =>
                 policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
@@ -98,7 +101,10 @@ public static class AuthenticationExtensions
 
             options.AddPolicy("VerifiedEventOrganizer", policy =>
             {
-                policy.RequireRole(UserRole.EventOrganizer.ToString(), UserRole.Admin.ToString(), UserRole.AdminManager.ToString());
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString());
                 policy.RequireClaim("isActive", "true");
             });
 
@@ -113,7 +119,10 @@ public static class AuthenticationExtensions
                 policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
 
             options.AddPolicy("CanCreateEvents", policy =>
-                policy.RequireRole(UserRole.EventOrganizer.ToString(), UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString()));
 
             options.AddPolicy("CanModerateContent", policy =>
                 policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));

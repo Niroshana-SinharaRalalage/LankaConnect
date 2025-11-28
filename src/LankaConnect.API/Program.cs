@@ -225,33 +225,57 @@ try
     else
         app.UseCors("Production");
 
-    // CRITICAL FIX Phase 6A.13: Ensure CORS headers are preserved even on error responses
+    // CRITICAL FIX Phase 6A.14: Ensure CORS headers are preserved even on error responses
     // This middleware runs AFTER UseCors but captures the Origin header so we can re-apply CORS headers if an error occurs
     app.Use(async (context, next) =>
     {
         // Capture the origin BEFORE calling next middleware
         var origin = context.Request.Headers.Origin.ToString();
+        var allowedOrigins = app.Environment.IsDevelopment()
+            ? new[] { "http://localhost:3000", "https://localhost:3001" }
+            : app.Environment.IsStaging()
+                ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
+                : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
 
         try
         {
             await next();
-        }
-        catch (Exception)
-        {
-            // If an exception occurs, re-ensure CORS headers are present
-            // The error handling middleware will create a new response, losing CORS headers
-            // So we need to add them back
-            var allowedOrigins = app.Environment.IsDevelopment()
-                ? new[] { "http://localhost:3000", "https://localhost:3001" }
-                : app.Environment.IsStaging()
-                    ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
-                    : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
 
-            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin) && !context.Response.HasStarted)
+            // PHASE 6A.14: Also ensure CORS headers on successful responses
+            // In case they were lost somewhere in the pipeline
+            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin))
             {
-                context.Response.Headers["Access-Control-Allow-Origin"] = origin;
-                context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+                if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            // PHASE 6A.14: Always add CORS headers BEFORE starting response
+            // This ensures headers are present even if exception occurs early in pipeline
+            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin))
+            {
+                // Check if we can still modify headers
+                if (!context.Response.HasStarted)
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+
+                    // Also add Vary header to prevent caching issues
+                    context.Response.Headers["Vary"] = "Origin";
+                }
+            }
+
+            // Log the exception for debugging
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Unhandled exception in request pipeline for {Method} {Path}. Origin: {Origin}. CORS headers added: {CorsAdded}",
+                context.Request.Method,
+                context.Request.Path,
+                origin,
+                !context.Response.HasStarted);
 
             // Re-throw the exception so error handling middleware can process it
             throw;

@@ -19,7 +19,24 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/events/[id]",
+      "regex": "^/events/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/events/[id]/manage-signups",
+      "regex": "^/events/([^/]+?)/manage\\-signups(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage\\-signups(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -40,16 +57,28 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
-      "page": "/admin/approvals",
-      "regex": "^/admin/approvals(?:/)?$",
+      "page": "/component-demo",
+      "regex": "^/component\\-demo(?:/)?$",
       "routeKeys": {},
-      "namedRegex": "^/admin/approvals(?:/)?$"
+      "namedRegex": "^/component\\-demo(?:/)?$"
     },
     {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/events",
+      "regex": "^/events(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/events(?:/)?$"
+    },
+    {
+      "page": "/events/create",
+      "regex": "^/events/create(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/events/create(?:/)?$"
     },
     {
       "page": "/forgot-password",

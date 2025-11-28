@@ -59,14 +59,14 @@ export default function Home() {
 
               {/* Heading */}
               <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
-                Your Community,
+                One Country,
                 <br />
-                <span className="text-white drop-shadow-lg">Your Heritage</span>
+                <span className="text-white drop-shadow-lg">One Community</span>
               </h1>
 
               {/* Description */}
               <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
-                Join the largest Sri Lankan diaspora platform. Discover events, connect
+                Join the largest Sri Lankan community platform. Discover events, connect
                 with businesses, engage in discussions, and celebrate our rich culture
                 together.
               </p>

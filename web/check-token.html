@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Token Inspector</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .token-section {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            background: #FF7900;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #e66d00;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        .claim {
+            margin: 8px 0;
+            padding: 8px;
+            background: #fff;
+            border-left: 3px solid #4CAF50;
+        }
+        .claim-key {
+            font-weight: bold;
+            color: #1976D2;
+        }
+        .claim-value {
+            color: #333;
+            margin-left: 10px;
+        }
+        .role-highlight {
+            background: #fff3cd;
+            border-left-color: #FF7900;
+            font-size: 16px;
+            padding: 12px;
+        }
+        .auto-load {
+            background: #f1f8e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 JWT Token Inspector</h1>
+
+        <div class="info">
+            <strong>Instructions:</strong> This tool will automatically load your JWT token from localStorage and decode it.
+            You can see your role and all claims in your current session.
+        </div>
+
+        <div class="auto-load" id="autoLoadSection">
+            <button onclick="loadFromLocalStorage()">📥 Load Token from LocalStorage</button>
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                Make sure you've logged in on localhost:3000 first
+            </p>
+        </div>
+
+        <div class="token-section">
+            <label for="tokenInput"><strong>Or paste your JWT token manually:</strong></label>
+            <textarea id="tokenInput" placeholder="Paste your JWT token here..."></textarea>
+            <button onclick="decodeToken()">🔓 Decode Token</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function loadFromLocalStorage() {
+            try {
+                // Try to load from zustand store (auth-storage)
+                const authStorage = localStorage.getItem('auth-storage');
+                if (authStorage) {
+                    const parsed = JSON.parse(authStorage);
+                    const token = parsed.state?.accessToken;
+
+                    if (token) {
+                        document.getElementById('tokenInput').value = token;
+                        decodeToken();
+                        return;
+                    }
+                }
+
+                alert('No token found in localStorage. Please log in first on localhost:3000');
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                alert('Error loading token: ' + error.message);
+            }
+        }
+
+        function decodeToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!token) {
+                resultDiv.innerHTML = '<div class="result" style="background: #ffebee; border-color: #f44336;"><strong>Error:</strong> Please enter a JWT token</div>';
+                return;
+            }
+
+            try {
+                // JWT is in format: header.payload.signature
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format. Expected 3 parts separated by dots.');
+                }
+
+                // Decode the payload (second part)
+                const payload = JSON.parse(atob(parts[1]));
+
+                // Find the role claim
+                const roleClaim = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                                 payload['role'] ||
+                                 'Not found';
+
+                // Find important claims
+                const userId = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+                              payload['sub'] ||
+                              'Not found';
+
+                const email = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
+                             payload['email'] ||
+                             'Not found';
+
+                const name = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
+                            payload['name'] ||
+                            'Not found';
+
+                // Build result HTML
+                let html = '<div class="result">';
+                html += '<h3>✅ Token Decoded Successfully</h3>';
+
+                // Highlight role
+                html += '<div class="claim role-highlight">';
+                html += '<span class="claim-key">🎭 ROLE:</span>';
+                html += '<span class="claim-value" style="font-weight: bold; font-size: 18px;">' + roleClaim + '</span>';
+                html += '</div>';
+
+                // Other important claims
+                html += '<div class="claim">';
+                html += '<span class="claim-key">User ID:</span>';
+                html += '<span class="claim-value">' + userId + '</span>';
+                html += '</div>';
+
+                html += '<div class="claim">';
+                html += '<span class="claim-key">Email:</span>';
+                html += '<span class="claim-value">' + email + '</span>';
+                html += '</div>';
+
+                html += '<div class="claim">';
+                html += '<span class="claim-key">Name:</span>';
+                html += '<span class="claim-value">' + name + '</span>';
+                html += '</div>';
+
+                // Full payload
+                html += '<h4 style="margin-top: 20px;">Full Token Payload:</h4>';
+                html += '<pre>' + JSON.stringify(payload, null, 2) + '</pre>';
+                html += '</div>';
+
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="result" style="background: #ffebee; border-color: #f44336;">';
+                resultDiv.innerHTML += '<strong>❌ Error:</strong> ' + error.message;
+                resultDiv.innerHTML += '</div>';
+            }
+        }
+
+        // Auto-load on page load if running from localhost:3000
+        window.addEventListener('load', () => {
+            if (window.location.hostname === 'localhost' && window.location.port === '3000') {
+                loadFromLocalStorage();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -225,6 +225,39 @@ try
     else
         app.UseCors("Production");
 
+    // CRITICAL FIX Phase 6A.13: Ensure CORS headers are preserved even on error responses
+    // This middleware runs AFTER UseCors but captures the Origin header so we can re-apply CORS headers if an error occurs
+    app.Use(async (context, next) =>
+    {
+        // Capture the origin BEFORE calling next middleware
+        var origin = context.Request.Headers.Origin.ToString();
+
+        try
+        {
+            await next();
+        }
+        catch (Exception)
+        {
+            // If an exception occurs, re-ensure CORS headers are present
+            // The error handling middleware will create a new response, losing CORS headers
+            // So we need to add them back
+            var allowedOrigins = app.Environment.IsDevelopment()
+                ? new[] { "http://localhost:3000", "https://localhost:3001" }
+                : app.Environment.IsStaging()
+                    ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
+                    : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+
+            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin) && !context.Response.HasStarted)
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+            }
+
+            // Re-throw the exception so error handling middleware can process it
+            throw;
+        }
+    });
+
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
         app.UseSwagger();

@@ -193,6 +193,19 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   - Social login Azure config can come last (nice-to-have, not blocking)
  -------------------------------------------
 
+We are woking on UI impelemation for Epic 1 and Epic 2 in order to go production. We have a newsletter subscribe functionality, but currently is not working fine. Please go ahead and find out why it is not working. Don't forget to follow these best practices
+    1. Don't forget to follow UI/UX best practices.
+    2. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
+    3. Don't forget to consult architect when needed.
+    4. Before make any code changes, make sure you are not duplicating the code by reviewing whether there are similar implemenation or some reusable componants are available.
+    5. For more details refer: c:\Work\LankaConnect\CLAUDE.md
+    6. Also, update the status in c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md and c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md whenever possible acording to
+  c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+    7. For database migrations we should always use EF core migrations.
+    8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs. If you have any questions, please let me know.
+
+ -------------------------------------------
+
  Go ahead.
   1. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
   2. Don't forget to consult architect when needed.
@@ -203,20 +216,21 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
-  Don't forget to follow these best practices
+  
+Don't forget to follow these best practices:
     1. Don't forget to follow UI/UX best practices.
     2. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
     3. Don't forget to consult architect when needed.
     4. Before make any code changes, make sure you are not duplicating the code by reviewing whether there are similar implemenation or some reusable componants are available.
     5. For more details refer: c:\Work\LankaConnect\CLAUDE.md
-    6. Also, update the status in c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md whenever possible acording to
+    6. Make sure the commit the changes and Update the status in both c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md whenever possible acording to
   c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
     7. For database migrations we should always use EF core migrations.
     8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------------
 
-  1. ✅ Landing Page (/)
+  1. ✅ Landing Page (/) --
   2. ✅ Login (/login)
   3. ✅ Register (/register)
   4. ✅ Forgot Password (/forgot-password)

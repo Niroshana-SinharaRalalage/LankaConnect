@@ -300,8 +300,8 @@ export default function DashboardPage() {
                   Upgrade to Event Organizer
                 </Button>
               )}
-              {/* Hide 'Create Event' for GeneralUser */}
-              {user && canCreateEvents(user.role as UserRole) && (
+              {/* Show 'Create Event' for EventOrganizer, Admin, and AdminManager */}
+              {user && (user.role === UserRole.EventOrganizer || user.role === UserRole.Admin || user.role === UserRole.AdminManager) && (
                 <Button
                   onClick={() => router.push('/events/create')}
                   className="flex-1 sm:flex-none rounded-lg"

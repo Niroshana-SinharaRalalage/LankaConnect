@@ -50,6 +50,11 @@
         "protocol": "https",
         "hostname": "^(?:^(?:lankaconnect\\-api\\-staging\\.politebay\\-79d6e8a2\\.eastus2\\.azurecontainerapps\\.io)$)$",
         "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$"
+      },
+      {
+        "protocol": "https",
+        "hostname": "^(?:^(?:lankaconnectstrgaccount\\.blob\\.core\\.windows\\.net)$)$",
+        "pathname": "^(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?)\\/?)$"
       }
     ],
     "qualities": [

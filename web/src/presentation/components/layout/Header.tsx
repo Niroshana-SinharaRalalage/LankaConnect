@@ -10,7 +10,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
-import { User, LogOut, ChevronDown, Search } from 'lucide-react';
+import { User, LogOut, ChevronDown, Search, Menu, X } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -22,6 +22,7 @@ export interface HeaderProps {
  * Features: Sticky navigation, authentication state, responsive design
  * Styling: Sri Lankan flag colors (Maroon #8B1538, Saffron #FF7900)
  * Phase 6A.8: Added user dropdown menu with Profile and Logout options
+ * Phase 6A.4: Fixed mobile responsive navigation with hamburger menu
  */
 export function Header({ className = '' }: HeaderProps) {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
@@ -29,6 +30,7 @@ export function Header({ className = '' }: HeaderProps) {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
@@ -72,7 +74,20 @@ export function Header({ className = '' }: HeaderProps) {
           {/* Official LankaConnect Logo with Subtitle */}
           <OfficialLogo size="md" />
 
-          {/* Navigation Links - Responsive */}
+          {/* Mobile Hamburger Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 text-[#333] hover:text-[#FF7900] transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
+
+          {/* Navigation Links - Desktop */}
           <nav className="hidden lg:flex items-center gap-6">
             <Link
               href="/events"
@@ -271,6 +286,89 @@ export function Header({ className = '' }: HeaderProps) {
             )}
           </div>
         </div>
+
+        {/* Mobile Menu - Dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 py-4">
+            <div className="flex flex-col gap-4">
+              {/* Mobile Navigation Links */}
+              <Link
+                href="/events"
+                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Events
+              </Link>
+              <Link
+                href="/forums"
+                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Forums
+              </Link>
+              <Link
+                href="/business"
+                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Business
+              </Link>
+              <Link
+                href="/marketplace"
+                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Marketplace
+              </Link>
+              {isAuthenticated && (
+                <Link
+                  href="/dashboard"
+                  className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
+
+              {/* Mobile Search */}
+              <div className="px-4">
+                <input
+                  type="text"
+                  placeholder="Search events, forums, businesses..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
+                />
+              </div>
+
+              {/* Mobile Auth Buttons (if not authenticated) */}
+              {!isAuthenticated && (
+                <div className="flex flex-col gap-2 px-4 pt-4 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="w-full border-[#8B1538] text-[#8B1538] hover:bg-[#8B1538] hover:text-white font-semibold transition-all"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      router.push('/login');
+                    }}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="default"
+                    className="w-full bg-[#FF7900] hover:bg-[#E66D00] text-white font-semibold transition-all"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      router.push('/register');
+                    }}
+                  >
+                    Sign Up
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
     </header>
   );

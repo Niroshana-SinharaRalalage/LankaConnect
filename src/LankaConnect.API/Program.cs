@@ -215,8 +215,8 @@ try
 
     // Configure the HTTP request pipeline
 
-    // CRITICAL FIX Phase 6A.10: Add CORS error handling middleware to ensure headers on ALL responses
-    // This middleware runs BEFORE standard CORS to guarantee headers even on 500 errors
+    // CRITICAL FIX Phase 6A.11: Add CORS error handling middleware with exception protection
+    // This middleware ensures CORS headers are ALWAYS added, even when exceptions occur downstream
     app.Use(async (context, next) =>
     {
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -225,31 +225,45 @@ try
         logger.LogInformation("🌐 CORS Middleware - Request received: Method={Method}, Path={Path}, Origin={Origin}",
             context.Request.Method, context.Request.Path, origin);
 
-        if (!string.IsNullOrEmpty(origin))
+        // Determine allowed origins based on environment
+        var allowedOrigins = app.Environment.IsDevelopment()
+            ? new[] { "http://localhost:3000", "https://localhost:3001" }
+            : app.Environment.IsStaging()
+                ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
+                : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+
+        logger.LogInformation("🔍 CORS Middleware - Environment={Environment}, AllowedOrigins={AllowedOrigins}",
+            app.Environment.EnvironmentName, string.Join(", ", allowedOrigins));
+
+        // Store whether origin is allowed for later use
+        bool isOriginAllowed = !string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin);
+
+        // Add CORS headers BEFORE calling next middleware
+        if (isOriginAllowed)
         {
-            var allowedOrigins = app.Environment.IsDevelopment()
-                ? new[] { "http://localhost:3000", "https://localhost:3001" }
-                : app.Environment.IsStaging()
-                    ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
-                    : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+            logger.LogInformation("✅ CORS Middleware - Origin ALLOWED, adding CORS headers");
 
-            logger.LogInformation("🔍 CORS Middleware - Environment={Environment}, AllowedOrigins={AllowedOrigins}",
-                app.Environment.EnvironmentName, string.Join(", ", allowedOrigins));
-
-            if (allowedOrigins.Contains(origin))
+            // CRITICAL: Use OnStarting callback to ensure headers are added even if exception occurs
+            context.Response.OnStarting(() =>
             {
-                logger.LogInformation("✅ CORS Middleware - Origin ALLOWED, adding CORS headers");
-                context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-                context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
-                context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
-                context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Correlation-ID, X-Request-ID");
-                context.Response.Headers.Append("Access-Control-Max-Age", "3600");
-            }
-            else
-            {
-                logger.LogWarning("❌ CORS Middleware - Origin NOT ALLOWED: {Origin} not in {AllowedOrigins}",
-                    origin, string.Join(", ", allowedOrigins));
-            }
+                // These headers will be added right before the response starts,
+                // ensuring they're present even if an exception occurred during processing
+                if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+                {
+                    context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                    context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+                    context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+                    context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Correlation-ID, X-Request-ID");
+                    context.Response.Headers.Append("Access-Control-Max-Age", "3600");
+                    logger.LogInformation("🔒 CORS Middleware - OnStarting: CORS headers secured before response");
+                }
+                return Task.CompletedTask;
+            });
+        }
+        else if (!string.IsNullOrEmpty(origin))
+        {
+            logger.LogWarning("❌ CORS Middleware - Origin NOT ALLOWED: {Origin} not in {AllowedOrigins}",
+                origin, string.Join(", ", allowedOrigins));
         }
         else
         {
@@ -265,8 +279,27 @@ try
         }
 
         logger.LogInformation("➡️ CORS Middleware - Passing request to next middleware");
-        await next();
-        logger.LogInformation("⬅️ CORS Middleware - Response: StatusCode={StatusCode}", context.Response.StatusCode);
+
+        try
+        {
+            await next();
+            logger.LogInformation("⬅️ CORS Middleware - Response: StatusCode={StatusCode}", context.Response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "❌ CORS Middleware - Exception occurred in pipeline: {Message}", ex.Message);
+
+            // Re-ensure CORS headers are present even after exception
+            if (isOriginAllowed && !context.Response.HasStarted)
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+                logger.LogInformation("🔧 CORS Middleware - Re-added CORS headers after exception");
+            }
+
+            // Re-throw to let error handling middleware process it
+            throw;
+        }
     });
 
     // CRITICAL FIX Phase 6A.9: Apply CORS BEFORE other middleware to handle preflight requests

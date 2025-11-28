@@ -215,6 +215,39 @@ try
 
     // Configure the HTTP request pipeline
 
+    // CRITICAL FIX Phase 6A.10: Add CORS error handling middleware to ensure headers on ALL responses
+    // This middleware runs BEFORE standard CORS to guarantee headers even on 500 errors
+    app.Use(async (context, next) =>
+    {
+        var origin = context.Request.Headers.Origin.ToString();
+        if (!string.IsNullOrEmpty(origin))
+        {
+            var allowedOrigins = app.Environment.IsDevelopment()
+                ? new[] { "http://localhost:3000", "https://localhost:3001" }
+                : app.Environment.IsStaging()
+                    ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
+                    : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+
+            if (allowedOrigins.Contains(origin))
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+                context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+                context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Correlation-ID, X-Request-ID");
+                context.Response.Headers.Append("Access-Control-Max-Age", "3600");
+            }
+        }
+
+        // Handle OPTIONS preflight requests immediately
+        if (context.Request.Method == "OPTIONS")
+        {
+            context.Response.StatusCode = 204; // No Content
+            return;
+        }
+
+        await next();
+    });
+
     // CRITICAL FIX Phase 6A.9: Apply CORS BEFORE other middleware to handle preflight requests
     // CORS must come before UseHttpsRedirection, UseAuthentication, etc.
     if (app.Environment.IsDevelopment())

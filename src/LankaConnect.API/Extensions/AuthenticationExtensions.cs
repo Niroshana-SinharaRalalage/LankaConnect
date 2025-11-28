@@ -66,6 +66,10 @@ public static class AuthenticationExtensions
 
     public static IServiceCollection AddCustomAuthorization(this IServiceCollection services)
     {
+        // Phase 6A.10: Add diagnostic authorization handler for troubleshooting
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+            LankaConnect.API.Security.LoggingAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
             // Basic role-based policies - Phase 6A.0: Updated for new role system

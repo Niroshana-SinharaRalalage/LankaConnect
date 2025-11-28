@@ -58,6 +58,10 @@ export function EventCreationForm() {
       setSubmitError(null);
 
       // Prepare event data for backend
+      // IMPORTANT: Location fields are ALL required if ANY location field is provided
+      // Database constraint: Address must have Street, City, State, ZipCode, Country
+      const hasCompleteLocation = !!(data.locationAddress && data.locationCity);
+
       const eventData = {
         title: data.title,
         description: data.description,
@@ -66,11 +70,14 @@ export function EventCreationForm() {
         organizerId: user.userId,
         capacity: data.capacity,
         category: data.category,
-        locationAddress: data.locationAddress || undefined,
-        locationCity: data.locationCity || undefined,
-        locationState: data.locationState || undefined,
-        locationZipCode: data.locationZipCode || undefined,
-        locationCountry: data.locationCountry || undefined,
+        // Only include location if we have at least address and city
+        ...(hasCompleteLocation && {
+          locationAddress: data.locationAddress,
+          locationCity: data.locationCity,
+          locationState: data.locationState || '',
+          locationZipCode: data.locationZipCode || '',
+          locationCountry: data.locationCountry || 'Sri Lanka',
+        }),
         ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
         ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
       };

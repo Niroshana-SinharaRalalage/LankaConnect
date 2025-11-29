@@ -36,13 +36,25 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Debug: Log event object to see what fields are available
-  console.log('🔍 EventEditForm - Event object:', {
-    eventId: event.id,
-    eventIdExists: !!event.id,
-    eventKeys: Object.keys(event),
-    fullEvent: event,
-  });
+  // Convert string enum to number (backend returns enums as strings due to JsonStringEnumConverter)
+  const convertCategoryToNumber = (category: any): number => {
+    // If it's already a number, return it
+    if (typeof category === 'number') return category;
+
+    // If it's a string, map it to the enum value
+    const categoryMap: Record<string, EventCategory> = {
+      'Religious': EventCategory.Religious,
+      'Cultural': EventCategory.Cultural,
+      'Community': EventCategory.Community,
+      'Educational': EventCategory.Educational,
+      'Social': EventCategory.Social,
+      'Business': EventCategory.Business,
+      'Charity': EventCategory.Charity,
+      'Entertainment': EventCategory.Entertainment,
+    };
+
+    return categoryMap[category] ?? EventCategory.Community;
+  };
 
   // Format dates for datetime-local input
   const formatDateForInput = (dateString: string | Date) => {
@@ -68,7 +80,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
     defaultValues: {
       title: event.title,
       description: event.description,
-      category: Number(event.category), // Ensure it's a number for the select
+      category: convertCategoryToNumber(event.category),
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
@@ -85,16 +97,18 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
   // Reset form with event data when event changes (ensures dropdown values are set)
   useEffect(() => {
+    const categoryNumber = convertCategoryToNumber(event.category);
     console.log('🔄 Resetting form with event data:', {
       category: event.category,
       categoryType: typeof event.category,
+      categoryNumber,
       isFree: event.isFree,
     });
 
     reset({
       title: event.title,
       description: event.description,
-      category: Number(event.category), // Ensure it's a number for the select
+      category: categoryNumber,
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
@@ -107,7 +121,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
     });
-  }, [event, reset]);
+  }, [event, reset, convertCategoryToNumber]);
 
   const isFree = watch('isFree');
 

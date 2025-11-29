@@ -158,10 +158,12 @@ export class EventsRepository {
    * Create a new event
    * Requires authentication
    * Maps to backend CreateEventCommand
+   * Backend returns the event ID as a plain JSON string
    */
   async createEvent(data: CreateEventRequest): Promise<string> {
-    const response = await apiClient.post<CreateEventResponse>(this.basePath, data);
-    return response.id;
+    // Backend returns event ID as a plain JSON string (e.g., "40b297c9-2867-4f6b-900c-b5d0f230efe8")
+    const eventId = await apiClient.post<string>(this.basePath, data);
+    return eventId;
   }
 
   /**
@@ -221,9 +223,10 @@ export class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */
   async rsvpToEvent(eventId: string, userId: string, quantity: number = 1): Promise<void> {
-    const request: RsvpRequest = { eventId, userId, quantity };
+    const request = { userId, quantity };
     await apiClient.post<void>(`${this.basePath}/${eventId}/rsvp`, request);
   }
 

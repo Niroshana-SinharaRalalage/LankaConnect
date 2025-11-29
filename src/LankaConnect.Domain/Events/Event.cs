@@ -54,8 +54,9 @@ public class Event : BaseEntity
     {
         Title = title;
         Description = description;
-        StartDate = startDate;
-        EndDate = endDate;
+        // Ensure dates are always stored as UTC for PostgreSQL compatibility
+        StartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        EndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
         OrganizerId = organizerId;
         Capacity = capacity;
         Status = EventStatus.Draft;

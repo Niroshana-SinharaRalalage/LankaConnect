@@ -176,8 +176,19 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
-  // Check if event is in Draft status
-  const isDraft = event.status === EventStatus.Draft;
+  // Check if event is in Draft status (API returns string "Draft" instead of number 0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isDraft = (event.status as any) === EventStatus.Draft ||
+                   (event.status as any) === 'Draft' ||
+                   String(event.status).toLowerCase() === 'draft';
+
+  // Debug: log the actual status value
+  console.log('Event Status Check:', {
+    rawStatus: event.status,
+    statusType: typeof event.status,
+    isDraft,
+    EventStatusDraft: EventStatus.Draft
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">

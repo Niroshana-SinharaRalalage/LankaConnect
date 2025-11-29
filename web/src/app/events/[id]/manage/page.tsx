@@ -188,6 +188,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Check if event is in Draft status (handle both number and string)
   const isDraft = Number(event.status) === EventStatus.Draft;
+  console.log('isDraft:', isDraft);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -219,7 +220,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           <Button
             variant="outline"
             onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-neutral-900 border-neutral-300"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
@@ -496,15 +497,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Manage Sign-up Lists
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => router.push(`/events/${id}`)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View as Attendee
                 </Button>
               </CardContent>
             </Card>

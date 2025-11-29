@@ -104,7 +104,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 table: "users",
                 column: "StripeCustomerId",
                 unique: true,
-                filter: "stripe_customer_id IS NOT NULL");
+                filter: "\"StripeCustomerId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_stripe_subscription_id",
@@ -112,7 +112,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 table: "users",
                 column: "StripeSubscriptionId",
                 unique: true,
-                filter: "stripe_subscription_id IS NOT NULL");
+                filter: "\"StripeSubscriptionId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_subscription_status",

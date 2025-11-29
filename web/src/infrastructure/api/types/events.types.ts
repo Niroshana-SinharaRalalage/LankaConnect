@@ -303,10 +303,9 @@ export interface UpdateEventRequest {
 
 /**
  * RSVP to event request
- * Matches backend RsvpToEventCommand
+ * Matches backend RsvpRequest (eventId comes from URL path parameter)
  */
 export interface RsvpRequest {
-  eventId: string;
   userId: string;
   quantity?: number; // Default: 1
 }

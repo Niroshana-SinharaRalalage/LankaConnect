@@ -61,7 +61,7 @@ export function EventCreationForm() {
       console.log('📋 Form Submission - User Context:', {
         userId: user.userId,
         userRole: user.role,
-        userName: user.firstName,
+        userName: user.fullName,
         isAuthenticated: true,
       });
 
@@ -471,6 +471,28 @@ export function EventCreationForm() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Note about Media */}
+      <Card>
+        <CardContent className="py-6">
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                📸 Upload Images & Videos After Creation
+              </h4>
+              <p className="text-sm text-blue-700">
+                You'll be able to add event images and videos from the event detail page after creating your event.
+                This helps make your event more attractive to attendees!
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

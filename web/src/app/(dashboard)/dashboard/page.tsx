@@ -148,6 +148,14 @@ export default function DashboardPage() {
     }
   };
 
+  const handleEventClick = (eventId: string) => {
+    router.push(`/events/${eventId}`);
+  };
+
+  const handleManageEventClick = (eventId: string) => {
+    router.push(`/events/${eventId}/manage`);
+  };
+
   const handleLogout = async () => {
     try {
       await authRepository.logout();
@@ -338,6 +346,7 @@ export default function DashboardPage() {
                             events={registeredEvents}
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet"
+                            onEventClick={handleEventClick}
                           />
                         ),
                       },
@@ -350,6 +359,7 @@ export default function DashboardPage() {
                             events={createdEvents}
                             isLoading={loadingCreated}
                             emptyMessage="You haven't created any events yet"
+                            onEventClick={handleManageEventClick}
                           />
                         ),
                       },
@@ -398,6 +408,7 @@ export default function DashboardPage() {
                             events={registeredEvents}
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet"
+                            onEventClick={handleEventClick}
                           />
                         ),
                       },
@@ -410,6 +421,7 @@ export default function DashboardPage() {
                             events={createdEvents}
                             isLoading={loadingCreated}
                             emptyMessage="You haven't created any events yet"
+                            onEventClick={handleManageEventClick}
                           />
                         ),
                       },
@@ -440,6 +452,7 @@ export default function DashboardPage() {
                             events={registeredEvents}
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                            onEventClick={handleEventClick}
                           />
                         ),
                       },

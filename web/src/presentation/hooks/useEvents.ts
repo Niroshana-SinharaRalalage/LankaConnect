@@ -362,7 +362,8 @@ export function useDeleteEvent() {
  *
  * await rsvpToEvent.mutateAsync({
  *   eventId: 'event-123',
- *   status: 'attending'
+ *   userId: 'user-456',
+ *   quantity: 1
  * });
  * ```
  */
@@ -370,7 +371,7 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: RsvpRequest) =>
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number }) =>
       eventsRepository.rsvpToEvent(data.eventId, data.userId, data.quantity),
     onMutate: async ({ eventId }) => {
       // Cancel queries

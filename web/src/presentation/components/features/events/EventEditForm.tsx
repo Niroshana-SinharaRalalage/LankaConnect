@@ -162,18 +162,17 @@ export function EventEditForm({ event }: EventEditFormProps) {
         endDate: endDateISO,
         capacity: data.capacity,
         category: data.category,
-        isFree: data.isFree,
-        // Only include location if we have at least address and city
-        // Backend expects: address, city, state, zipCode, country (not locationAddress, etc.)
+        // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
+        // Backend infers isFree from ticketPriceAmount being null, so don't send isFree
         ...(hasCompleteLocation && {
-          address: data.locationAddress,
-          city: data.locationCity,
-          state: data.locationState || '',
-          zipCode: data.locationZipCode || '',
-          country: data.locationCountry || 'Sri Lanka',
+          locationAddress: data.locationAddress,
+          locationCity: data.locationCity,
+          locationState: data.locationState || '',
+          locationZipCode: data.locationZipCode || '',
+          locationCountry: data.locationCountry || 'Sri Lanka',
         }),
-        ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
-        ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
+        ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,
+        ticketPriceCurrency: data.isFree ? null : data.ticketPriceCurrency!,
       };
 
       console.log('📤 Updating event with payload:', JSON.stringify(eventData, null, 2));

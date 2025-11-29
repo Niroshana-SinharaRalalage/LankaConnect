@@ -179,6 +179,16 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
+  // Debug logging
+  console.log('Event status:', event.status, 'Type:', typeof event.status);
+  console.log('EventStatus.Draft:', EventStatus.Draft, 'Type:', typeof EventStatus.Draft);
+  console.log('Status === Draft:', event.status === EventStatus.Draft);
+  console.log('Status === 0:', event.status === 0);
+  console.log('Number(status) === 0:', Number(event.status) === 0);
+
+  // Check if event is in Draft status (handle both number and string)
+  const isDraft = Number(event.status) === EventStatus.Draft;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <Header />
@@ -216,33 +226,23 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           </Button>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* View Public Page */}
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/events/${id}`)}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              View Public Page
-            </Button>
-
-            {/* Publish/Unpublish Button */}
-            {event.status === EventStatus.Draft && (
+            {/* Publish/Unpublish Button - Show for Draft events */}
+            {isDraft && (
               <Button
                 onClick={handlePublishEvent}
                 disabled={isPublishing}
-                className="flex items-center gap-2"
-                style={{ background: '#10B981' }}
+                className="flex items-center gap-2 text-white"
+                style={{ background: '#10B981', color: 'white' }}
               >
                 {isPublishing ? 'Publishing...' : 'Publish Event'}
               </Button>
             )}
 
-            {/* Edit Event Button */}
+            {/* Edit Event Button - Temporarily disabled until page is created */}
             <Button
-              onClick={() => router.push(`/events/${id}/edit`)}
-              className="flex items-center gap-2"
-              style={{ background: '#FF7900' }}
+              onClick={() => alert('Edit Event page is not yet implemented. Please create /events/[id]/edit page.')}
+              className="flex items-center gap-2 text-white"
+              style={{ background: '#FF7900', color: 'white' }}
             >
               <Edit className="h-4 w-4" />
               Edit Event
@@ -327,6 +327,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 <CardDescription>Your event information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Event Title */}
+                <div>
+                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Event Title</h4>
+                  <p className="text-lg font-semibold text-neutral-900">{event.title}</p>
+                </div>
+
                 {/* Description */}
                 <div>
                   <h4 className="text-sm font-semibold text-neutral-700 mb-2">Description</h4>
@@ -470,6 +476,19 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Publish Event Button - Show for Draft events */}
+                {isDraft && (
+                  <Button
+                    onClick={handlePublishEvent}
+                    disabled={isPublishing}
+                    className="w-full justify-start text-white"
+                    style={{ background: '#10B981', color: 'white' }}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isPublishing ? 'Publishing...' : 'Publish Event'}
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   className="w-full justify-start"

@@ -10,10 +10,7 @@ import {
   Calendar,
   MapPin,
   DollarSign,
-  Eye,
-  Settings,
-  Image as ImageIcon,
-  Video
+  Image as ImageIcon
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -239,9 +236,19 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
               </Button>
             )}
 
-            {/* Edit Event Button - Temporarily disabled until page is created */}
+            {/* Manage Sign-up Lists Button */}
             <Button
-              onClick={() => alert('Edit Event page is not yet implemented. Please create /events/[id]/edit page.')}
+              onClick={() => router.push(`/events/${id}/manage-signups`)}
+              className="flex items-center gap-2 text-white"
+              style={{ background: '#8B1538', color: 'white' }}
+            >
+              <Users className="h-4 w-4" />
+              Manage Sign-up Lists
+            </Button>
+
+            {/* Edit Event Button */}
+            <Button
+              onClick={() => router.push(`/events/${id}/edit`)}
               className="flex items-center gap-2 text-white"
               style={{ background: '#FF7900', color: 'white' }}
             >
@@ -402,7 +409,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
             <SignUpManagementSection eventId={id} isOrganizer={true} />
           </div>
 
-          {/* Right Column - Media & Actions */}
+          {/* Right Column - Media */}
           <div className="space-y-6">
             {/* Image Upload */}
             <Card>
@@ -464,39 +471,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   {isUploading ? 'Uploading...' : 'Upload Image'}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" style={{ color: '#FF7900' }} />
-                  <CardTitle style={{ color: '#8B1538' }}>Quick Actions</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Publish Event Button - Show for Draft events */}
-                {isDraft && (
-                  <Button
-                    onClick={handlePublishEvent}
-                    disabled={isPublishing}
-                    className="w-full justify-start text-white"
-                    style={{ background: '#10B981', color: 'white' }}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {isPublishing ? 'Publishing...' : 'Publish Event'}
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => router.push(`/events/${id}/manage-signups`)}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Manage Sign-up Lists
                 </Button>
               </CardContent>
             </Card>

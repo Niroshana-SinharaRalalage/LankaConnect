@@ -235,11 +235,11 @@ export default function ManageSignUpsPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Button
             variant="outline"
-            onClick={() => router.push(`/events/${eventId}`)}
-            className="mb-4 text-white border-white hover:bg-white/10"
+            onClick={() => router.push(`/events/${eventId}/manage`)}
+            className="mb-4 bg-white/10 text-white border-white/30 hover:bg-white/20 hover:border-white/50"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Event
+            Back to Manage Event
           </Button>
 
           <h1 className="text-3xl font-bold text-white mb-2">

@@ -72,7 +72,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
-      isFree: event.isFree,
+      isFree: event.isFree ?? true, // Ensure it's always a boolean
       ticketPriceAmount: event.ticketPriceAmount || undefined,
       ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
       locationAddress: event.address || undefined,

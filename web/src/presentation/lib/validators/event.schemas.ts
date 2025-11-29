@@ -78,8 +78,8 @@ export const createEventSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  // Pricing (Optional)
-  isFree: z.boolean().default(true),
+  // Pricing (Required)
+  isFree: z.boolean(),
 
   ticketPriceAmount: z
     .number()

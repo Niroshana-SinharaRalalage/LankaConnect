@@ -1,9 +1,73 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-26 (Current Session) - Session 12: Event Organizer Features (Complete) ✅*
+*Last Updated: 2025-11-28 (Current Session) - Session 13: Event Creation Bug Fixes (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 12: Event Organizer Features (Complete) ✅
+## 🎯 Current Session Status - Session 13: Event Creation Bug Fixes (Complete) ✅
+
+### Session 13: Event Creation Bug Fixes (2025-11-28)
+
+**Status**: ✅ COMPLETE - Event creation working end-to-end
+
+**Goal**: Fix 500 Internal Server Error when creating events from localhost:3000 to Azure staging API
+
+**Session Summary**:
+- **Issue**: Frontend showed misleading CORS error; actual cause was backend 500 errors
+- **Root Causes Identified**: 2 separate backend issues causing sequential failures
+- **Fixes Applied**: 2 commits with migration and domain entity fixes
+- **Testing**: Event creation verified working via Swagger with HTTP 201 response
+- **Build Status**: ✅ 0 compilation errors maintained
+
+**Implementation Progress**:
+
+**Issue 1: PostgreSQL Case Sensitivity in Migration** ✅ FIXED (2025-11-28):
+- **Error**: `column "stripe_customer_id" does not exist` (PostgreSQL Error 42703)
+- **Root Cause**: Migration used lowercase `stripe_customer_id` in filter clauses but column defined as `"StripeCustomerId"` (PascalCase)
+- **File Modified**: [src/LankaConnect.Infrastructure/Data/Migrations/20251124194005_AddStripePaymentInfrastructure.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251124194005_AddStripePaymentInfrastructure.cs)
+- **Changes**:
+  - Line 107: `filter: "stripe_customer_id IS NOT NULL"` → `filter: "\"StripeCustomerId\" IS NOT NULL"`
+  - Line 115: `filter: "stripe_subscription_id IS NOT NULL"` → `filter: "\"StripeSubscriptionId\" IS NOT NULL"`
+- **Reason**: PostgreSQL requires quoted identifiers for case-sensitive column names
+- ✅ Git commit: `fix(migration): Fix PostgreSQL case sensitivity in Stripe migration filters` (346e10d)
+- ✅ Deployed to Azure staging successfully
+
+**Issue 2: DateTime Kind=Unspecified for PostgreSQL** ✅ FIXED (2025-11-28):
+- **Error**: `Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone', only UTC is supported` (System.ArgumentException)
+- **Root Cause**: Frontend sent DateTime values without UTC designation; Event entity constructor didn't convert them
+- **File Modified**: [src/LankaConnect.Domain/Events/Event.cs](../src/LankaConnect.Domain/Events/Event.cs)
+- **Changes** (Lines 58-59):
+  ```csharp
+  // Ensure dates are always stored as UTC for PostgreSQL compatibility
+  StartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+  EndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+  ```
+- **Reason**: PostgreSQL `timestamp with time zone` columns require DateTimeKind.Utc
+- ✅ Git commit: `fix(domain): Ensure Event DateTimes are UTC for PostgreSQL compatibility` (304d0a3)
+- ✅ Deployed to Azure staging successfully
+
+**Verification** ✅ COMPLETE (2025-11-28):
+- ✅ API Health Check: Healthy (PostgreSQL: Healthy, EF Core: Healthy, Redis: Degraded)
+- ✅ Event Creation Test via Swagger: HTTP 201 Created
+  - Event ID: `40b297c9-2867-4f6b-900c-b5d0f230efe8`
+  - Title: "Monthly Dhana December 2025"
+  - Duration: 1505ms
+  - All fields saved correctly to Azure PostgreSQL database
+
+**Key Learnings**:
+1. **CORS errors can be misleading**: Browser shows CORS error when backend crashes before sending response headers; always check backend logs first
+2. **PostgreSQL case sensitivity**: Always use quoted identifiers for PascalCase column names in filter clauses
+3. **DateTime.Kind matters**: PostgreSQL requires explicit UTC designation for timestamp with time zone columns
+4. **Systematic debugging**: OPTIONS request succeeding + POST failing = backend error, not CORS
+
+**Technical Details**:
+- **Frontend**: Next.js 16.0.1 with Turbopack on localhost:3000
+- **Backend**: ASP.NET Core API on Azure Container Apps
+- **Database**: PostgreSQL on Azure (timestamp with time zone requires UTC)
+- **CORS**: Already configured correctly; not the issue
+- **Deployment**: GitHub Actions CI/CD to Azure staging
+- **Testing**: Swagger UI with bearer token authentication
+
+---
 
 ### Session 12: Event Organizer Features (2025-11-26)
 

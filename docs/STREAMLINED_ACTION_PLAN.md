@@ -7,7 +7,45 @@
 
 ---
 
-## ✅ CURRENT STATUS - EVENT ORGANIZER FEATURES (COMPLETE) (2025-11-26)
+## ✅ CURRENT STATUS - EVENT CREATION BUG FIXES (COMPLETE) (2025-11-28)
+**Date**: 2025-11-28 (Session 13)
+**Session**: Event Creation Bug Fixes - PostgreSQL Case Sensitivity & DateTime UTC
+**Status**: ✅ COMPLETE - Event creation working end-to-end from localhost:3000 to Azure staging
+**Build Status**: ✅ Zero Tolerance Maintained - 0 compilation errors
+
+### SESSION 13: EVENT CREATION BUG FIXES (2025-11-28)
+**Goal**: Fix 500 Internal Server Error when creating events from localhost:3000 to Azure staging API
+
+**Issues Fixed**:
+
+**Issue 1: PostgreSQL Case Sensitivity in Migration** ✅ FIXED:
+- **Error**: `column "stripe_customer_id" does not exist`
+- **Root Cause**: Migration used lowercase in filter clauses but column was PascalCase
+- **Fix**: Updated migration to use quoted identifiers `"StripeCustomerId"` and `"StripeSubscriptionId"`
+- **File**: [AddStripePaymentInfrastructure.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251124194005_AddStripePaymentInfrastructure.cs)
+- **Commit**: 346e10d - `fix(migration): Fix PostgreSQL case sensitivity in Stripe migration filters`
+
+**Issue 2: DateTime Kind=Unspecified** ✅ FIXED:
+- **Error**: `Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone'`
+- **Root Cause**: Frontend sent DateTime without UTC designation; domain entity didn't convert
+- **Fix**: Modified Event constructor to ensure DateTimes are UTC using `DateTime.SpecifyKind()`
+- **File**: [Event.cs](../src/LankaConnect.Domain/Events/Event.cs) (Lines 58-59)
+- **Commit**: 304d0a3 - `fix(domain): Ensure Event DateTimes are UTC for PostgreSQL compatibility`
+
+**Verification** ✅ COMPLETE:
+- ✅ API Health: Healthy (PostgreSQL, EF Core working)
+- ✅ Event Creation: HTTP 201 via Swagger with event ID `40b297c9-2867-4f6b-900c-b5d0f230efe8`
+- ✅ Deployed to Azure staging successfully
+
+**Key Learnings**:
+1. CORS errors can mislead - always check backend logs first
+2. PostgreSQL requires quoted identifiers for PascalCase columns
+3. PostgreSQL timestamp with time zone requires UTC DateTimes
+4. OPTIONS success + POST failure = backend error, not CORS
+
+---
+
+## ✅ PREVIOUS STATUS - EVENT ORGANIZER FEATURES (COMPLETE) (2025-11-26)
 **Date**: 2025-11-26 (Session 12)
 **Session**: Event Organizer Features - Event Creation Form, Organizer Dashboard, Sign-Up Management
 **Status**: ✅ COMPLETE - All 3 options implemented with 1,731 lines of new code

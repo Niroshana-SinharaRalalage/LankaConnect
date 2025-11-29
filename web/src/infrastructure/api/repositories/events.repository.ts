@@ -172,7 +172,7 @@ export class EventsRepository {
    * Maps to backend UpdateEventCommand
    */
   async updateEvent(id: string, data: UpdateEventRequest): Promise<void> {
-    await apiClient.put<void>(`${this.basePath}/${id}`, { ...data, eventId: id });
+    await apiClient.put<void>(`${this.basePath}/${id}`, data);
   }
 
   /**

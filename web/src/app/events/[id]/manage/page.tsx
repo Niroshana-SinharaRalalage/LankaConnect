@@ -176,7 +176,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
-  // Check if event is in Draft status (handle both number and string from API)
+  // Check if event is in Draft status (API returns string "Draft" instead of number 0)
   const isDraft = event.status === EventStatus.Draft ||
                    event.status === 'Draft' ||
                    String(event.status).toLowerCase() === 'draft';

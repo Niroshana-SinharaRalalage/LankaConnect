@@ -176,16 +176,10 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
-  // Debug logging
-  console.log('Event status:', event.status, 'Type:', typeof event.status);
-  console.log('EventStatus.Draft:', EventStatus.Draft, 'Type:', typeof EventStatus.Draft);
-  console.log('Status === Draft:', event.status === EventStatus.Draft);
-  console.log('Status === 0:', event.status === 0);
-  console.log('Number(status) === 0:', Number(event.status) === 0);
-
-  // Check if event is in Draft status (handle both number and string)
-  const isDraft = Number(event.status) === EventStatus.Draft;
-  console.log('isDraft:', isDraft);
+  // Check if event is in Draft status (handle both number and string from API)
+  const isDraft = event.status === EventStatus.Draft ||
+                   event.status === 'Draft' ||
+                   String(event.status).toLowerCase() === 'draft';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">

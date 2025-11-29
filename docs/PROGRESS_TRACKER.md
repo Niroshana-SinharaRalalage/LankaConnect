@@ -1,9 +1,56 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-28 (Current Session) - Session 13: Event Creation Bug Fixes (Complete) ✅*
+*Last Updated: 2025-11-29 (Current Session) - Session 14: Event Management UI Improvements (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 13: Event Creation Bug Fixes (Complete) ✅
+## 🎯 Current Session Status - Session 14: Event Management UI Improvements (Complete) ✅
+
+### Session 14: Event Management UI Improvements (2025-11-29)
+
+**Status**: ✅ COMPLETE - Event management UI streamlined with improved navigation
+
+**Goal**: Improve event management page UX by reorganizing buttons and fixing navigation issues
+
+**Session Summary**:
+- **Quick Actions Removal**: Cleaner layout with Event Images section only in right column
+- **Top-Level Action Buttons**: Publish Event, Manage Sign-up Lists, and Edit Event buttons moved to header
+- **Navigation Fixes**: Back button on manage-signups page now properly navigates to /manage with visible styling
+- **Code Cleanup**: Removed unused imports (Eye, Settings, Video)
+- **Build Status**: ✅ 0 new compilation errors (existing test errors are pre-existing)
+
+**Implementation Progress**:
+
+**UI Layout Improvements** ✅ COMPLETE (2025-11-29):
+- ✅ Removed Quick Actions card from right column on manage page
+- ✅ Added "Manage Sign-up Lists" button at header level (burgundy #8B1538)
+- ✅ Kept "Publish Event" button at header level for Draft events (green #10B981)
+- ✅ "Edit Event" button remains at header level (orange #FF7900)
+- ✅ Right column now dedicated to Event Images only
+
+**Navigation Improvements** ✅ COMPLETE (2025-11-29):
+- ✅ Fixed back button on manage-signups page ([web/src/app/events/[id]/manage-signups/page.tsx](../web/src/app/events/[id]/manage-signups/page.tsx))
+  - Changed navigation from `/events/{id}` to `/events/{id}/manage`
+  - Improved visibility with semi-transparent white background (`bg-white/10`)
+  - Updated button text to "Back to Manage Event" for clarity
+  - Added hover states for better UX
+
+**Code Quality** ✅ COMPLETE (2025-11-29):
+- ✅ Removed unused imports from manage page ([web/src/app/events/[id]/manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx))
+  - Removed: Eye, Settings, Video icons
+  - Kept only used icons: ArrowLeft, Edit, Upload, Users, Calendar, MapPin, DollarSign, ImageIcon
+- ✅ Git commit: `fix(events): Improve event management UI and navigation` (187861b)
+
+**Files Modified**:
+1. [web/src/app/events/[id]/manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx) - 43 lines removed, 17 lines added
+2. [web/src/app/events/[id]/manage-signups/page.tsx](../web/src/app/events/[id]/manage-signups/page.tsx) - Minor navigation fix
+
+**Key Benefits**:
+- Cleaner, more focused layout without duplicate action buttons
+- Better visual hierarchy with top-level actions
+- Improved user flow between manage pages
+- Consistent button styling and positioning
+
+---
 
 ### Session 13: Event Creation Bug Fixes (2025-11-28)
 

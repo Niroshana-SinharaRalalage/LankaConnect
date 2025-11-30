@@ -585,25 +585,35 @@ public class AuthController : ControllerBase
 
     private void SetRefreshTokenCookie(string refreshToken, int expirationDays = 7)
     {
+        // Allow HTTP cookies in Development and Staging (accessed from HTTP localhost:3000)
+        // Require HTTPS only in Production
+        var isLocalDevelopment = _env.IsDevelopment() || _env.IsStaging();
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !_env.IsDevelopment(), // Require HTTPS in production, allow HTTP in dev
-            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev, None for cross-origin in production
+            Secure = !isLocalDevelopment, // Allow HTTP in dev/staging, require HTTPS in production
+            SameSite = isLocalDevelopment ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev/staging, None for production cross-origin
             Expires = DateTime.UtcNow.AddDays(expirationDays), // Matches refresh token expiry
             Path = "/"
         };
+
+        _logger.LogDebug("Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, Expires={Expires}, Environment={Environment}",
+            cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires, _env.EnvironmentName);
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 
     private void ClearRefreshTokenCookie()
     {
+        // Use same security settings as SetRefreshTokenCookie
+        var isLocalDevelopment = _env.IsDevelopment() || _env.IsStaging();
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !_env.IsDevelopment(), // Require HTTPS in production, allow HTTP in dev
-            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev, None for cross-origin in production
+            Secure = !isLocalDevelopment, // Allow HTTP in dev/staging, require HTTPS in production
+            SameSite = isLocalDevelopment ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev/staging, None for production cross-origin
             Expires = DateTime.UtcNow.AddDays(-1),
             Path = "/"
         };

@@ -34,14 +34,78 @@ This document outlines the detailed requirements for the **Event Management** mo
 ---
 
 ## 3. Sign-Up Management
-- Events can include multiple sign-up categories (e.g., food, gifts, logistics).
-- Sign-ups can be:
-  - **Predefined list:** Specific items participants can select (e.g., 10 food dishes).
-  - **Open sign-up:** Participants can decide what to bring.
-- Users can view, join, or cancel sign-ups.
-- Once a user signs up, the button updates to “You are signed up.”
-- Users can view the list of all current sign-ups for transparency.
-- This feature is similar to [SignupGenius](https://www.signupgenius.com/).
+
+### Overview
+Events can include multiple sign-up lists to manage participant contributions. Each sign-up list can contain items across three priority categories. Event organizers can choose which category combinations work best for their event.
+
+### Sign-Up Categories (Priority-Based System)
+Each sign-up list can include items from one or more of the following categories:
+
+1. **Mandatory Items** (Required)
+   - Items that MUST be brought by participants
+   - Example: "Main dish for 10 people", "Table decorations"
+   - Organizers can require commitment to at least one mandatory item before registration
+
+2. **Preferred Items** (Highly Desired)
+   - Items that are strongly encouraged but not required
+   - Example: "Desserts", "Beverages", "Appetizers"
+   - Helps organizers prioritize what they need most
+
+3. **Suggested Items** (Optional)
+   - Items that would be nice to have but are completely optional
+   - Example: "Extra chairs", "Paper plates", "Decorative items"
+   - Provides flexibility for participants to contribute
+
+### Item Structure
+Each item in a sign-up list includes:
+- **Item Description**: What needs to be brought (e.g., "Vegetable Salad")
+- **Quantity**: How many units/servings are needed (e.g., "2 large bowls")
+- **Category**: Mandatory, Preferred, or Suggested
+- **Current Commitments**: Track who has committed to bringing this item
+
+### Sign-Up List Creation
+When creating a sign-up list, organizers can:
+1. **Choose Categories**: Select which category types to enable (can select one, two, or all three)
+   - Example 1: Potluck event might enable all three categories
+   - Example 2: Essential supplies event might only use "Mandatory Items"
+   - Example 3: Community picnic might use "Preferred" and "Suggested" only
+
+2. **Add Items per Category**: For each enabled category, add multiple items with:
+   - Item description
+   - Required quantity
+   - Optional notes
+
+3. **Set Rules** (Optional):
+   - Require at least X mandatory items to be fulfilled before event
+   - Limit commitments per user
+   - Allow multiple users to commit to same item (if quantity > 1)
+
+### User Interaction
+- Users can view all sign-up lists for an event
+- Items are grouped by category (Mandatory → Preferred → Suggested)
+- Users can commit to bringing one or more items
+- Once committed, the button shows "You are signed up"
+- Users can view who else has committed to items (for transparency)
+- Users can cancel their commitments before the event deadline
+
+### Example Use Cases
+
+**Example 1: Potluck Dinner**
+- **Mandatory Items**: Main Dishes (Chicken Curry x2, Fish Fry x1)
+- **Preferred Items**: Side Dishes (Rice x3, Salad x2)
+- **Suggested Items**: Desserts, Beverages, Paper plates
+
+**Example 2: Temple Decoration Event**
+- **Mandatory Items**: Flowers (Lotus x50, Jasmine x100), Oil lamps x20
+- **Preferred Items**: Incense sticks x10 boxes, Candles x50
+- **Suggested Items**: Decorative fabric, Ribbons
+
+**Example 3: Community Cleanup**
+- **Mandatory Items**: Garbage bags (100), Gloves (50 pairs)
+- **Preferred Items**: (not used)
+- **Suggested Items**: Brooms, Rakes, Water bottles
+
+This feature is inspired by [SignupGenius](https://www.signupgenius.com/) with enhanced category-based organization.
 
 ---
 

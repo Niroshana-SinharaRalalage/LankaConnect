@@ -28,6 +28,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -115,6 +116,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  // Handle Publish Event
+  const handlePublishEvent = async () => {
+    if (!event || event.organizerId !== user?.userId) {
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      setError(null);
+      await eventsRepository.publishEvent(id);
+      setIsPublishing(false);
+      // Reload page to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to publish event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to publish event. Please try again.');
+      setIsPublishing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -182,16 +203,45 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <Header />
 
-      {/* Back Button */}
+      {/* Back Button and Organizer Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push('/events')}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Events
-        </Button>
+        <div className="flex items-center justify-between gap-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/events')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Events
+          </Button>
+
+          {/* Organizer-only actions */}
+          {event && user && event.organizerId === user.userId && (
+            <div className="flex items-center gap-3">
+              {/* Publish button - only show for Draft events */}
+              {event.status === EventStatus.Draft && (
+                <Button
+                  onClick={handlePublishEvent}
+                  disabled={isPublishing}
+                  className="flex items-center gap-2"
+                  style={{ background: '#10B981' }}
+                >
+                  {isPublishing ? 'Publishing...' : 'Publish Event'}
+                </Button>
+              )}
+
+              {/* Manage Signups button */}
+              <Button
+                onClick={() => router.push(`/events/${id}/manage-signups`)}
+                variant="outline"
+                className="flex items-center gap-2"
+                style={{ borderColor: '#FF7900', color: '#FF7900' }}
+              >
+                Manage Sign-ups
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Event Hero Section */}

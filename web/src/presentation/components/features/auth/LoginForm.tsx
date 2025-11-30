@@ -35,7 +35,9 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setApiError(null);
-      const response = await authRepository.login(data);
+
+      // Phase AUTH-IMPROVEMENT: Pass rememberMe to backend for extended sessions
+      const response = await authRepository.login(data, rememberMe);
 
       // Set auth state
       const tokens: AuthTokens = {

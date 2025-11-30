@@ -16,11 +16,16 @@ export class AuthRepository {
 
   /**
    * Login user
+   * @param credentials User email and password
+   * @param rememberMe Keep user logged in for 30 days (like Facebook/Gmail)
    */
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
+  async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>(
       `${this.basePath}/login`,
-      credentials
+      {
+        ...credentials,
+        rememberMe,
+      }
     );
     return response;
   }

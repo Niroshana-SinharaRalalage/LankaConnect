@@ -53,6 +53,9 @@ export function EventsList({
   };
 
   const getStatusLabel = (status: EventStatus): string => {
+    // Debug logging to identify the issue
+    console.log('Event status value:', status, 'Type:', typeof status);
+
     switch (status) {
       case EventStatus.Published:
         return 'Published';
@@ -71,7 +74,9 @@ export function EventsList({
       case EventStatus.Archived:
         return 'Archived';
       default:
-        return 'Unknown';
+        // Additional debug info
+        console.warn(`Unknown status value: ${status}, Type: ${typeof status}, EventStatus.Draft=${EventStatus.Draft}`);
+        return `Unknown (${status})`;
     }
   };
 

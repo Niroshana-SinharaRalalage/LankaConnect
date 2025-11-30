@@ -114,10 +114,13 @@ public class AuthController : ControllerBase
                 return BadRequest(new { error = result.Error });
             }
 
-            _logger.LogInformation("User logged in successfully: {Email}", request.Email);
+            _logger.LogInformation("User logged in successfully: {Email} (RememberMe: {RememberMe})",
+                request.Email, request.RememberMe);
 
             // Set refresh token as HttpOnly cookie for security
-            SetRefreshTokenCookie(result.Value.RefreshToken);
+            // Cookie expiration matches refresh token expiration (7 or 30 days)
+            var cookieDays = request.RememberMe ? 30 : 7;
+            SetRefreshTokenCookie(result.Value.RefreshToken, cookieDays);
 
             return Ok(new
             {
@@ -580,14 +583,14 @@ public class AuthController : ControllerBase
         return ipAddress ?? "unknown";
     }
 
-    private void SetRefreshTokenCookie(string refreshToken)
+    private void SetRefreshTokenCookie(string refreshToken, int expirationDays = 7)
     {
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = true, // Use HTTPS in production
             SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddDays(7), // Should match refresh token expiry
+            Expires = DateTime.UtcNow.AddDays(expirationDays), // Matches refresh token expiry
             Path = "/"
         };
 

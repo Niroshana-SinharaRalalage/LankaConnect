@@ -8,6 +8,7 @@ import {
   NotFoundError,
   ServerError,
 } from './api-errors';
+import { tokenRefreshService } from '../services/tokenRefreshService';
 
 /**
  * API Client Configuration
@@ -72,6 +73,11 @@ export class ApiClient {
         }
 
         // PHASE 6A.10: Comprehensive request logging for debugging
+        const authHeader = config.headers.Authorization;
+        const authValue = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? `Bearer ${authHeader.substring(7, 30)}...`
+          : 'Not set';
+
         console.log('🚀 API Request:', {
           method: config.method?.toUpperCase(),
           url: config.url,
@@ -79,8 +85,8 @@ export class ApiClient {
           fullURL: `${config.baseURL}${config.url}`,
           headers: {
             'Content-Type': config.headers['Content-Type'],
-            'Authorization': config.headers.Authorization ? `Bearer ${config.headers.Authorization.substring(7, 30)}...` : 'Not set',
-            'Origin': config.headers.Origin || window.location.origin,
+            'Authorization': authValue,
+            'Origin': config.headers.Origin || (typeof window !== 'undefined' ? window.location.origin : 'SSR'),
           },
           data: config.data ? JSON.stringify(config.data).substring(0, 200) : 'No data',
         });
@@ -110,7 +116,43 @@ export class ApiClient {
         });
         return response;
       },
-      (error) => {
+      async (error) => {
+        const originalRequest = error.config;
+
+        // Check if this is a 401 error and we haven't already retried
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          // Skip refresh for auth endpoints (login, register, refresh)
+          const isAuthEndpoint = originalRequest.url?.includes('/Auth/login') ||
+                                  originalRequest.url?.includes('/Auth/register') ||
+                                  originalRequest.url?.includes('/Auth/refresh');
+
+          if (!isAuthEndpoint) {
+            console.log('🔓 401 Unauthorized - attempting token refresh...');
+
+            // Mark that we've tried to refresh for this request
+            originalRequest._retry = true;
+
+            try {
+              // Attempt to refresh the token
+              const newToken = await tokenRefreshService.refreshAccessToken();
+
+              if (newToken) {
+                // Update the Authorization header with the new token
+                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+
+                console.log('🔄 Retrying request with new token...');
+
+                // Retry the original request
+                return this.axiosInstance(originalRequest);
+              }
+            } catch (refreshError) {
+              console.error('❌ Token refresh failed, redirecting to login');
+              // Token refresh failed - user will be redirected to login by tokenRefreshService
+              return Promise.reject(refreshError);
+            }
+          }
+        }
+
         // PHASE 6A.10: Comprehensive error logging
         console.error('❌ API Response Error:', {
           message: error.message,

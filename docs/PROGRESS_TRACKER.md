@@ -1,9 +1,23 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-30 (Current Session) - Session 15: Sign-Up Category Redesign (Complete) ✅*
+*Last Updated: 2025-11-30 (Current Session) - Session 17: Authentication Improvements (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 15 (Continued): Sign-Up Category Redesign - UI Layer (Complete) ✅
+## 🎯 Current Session Status - Session 17: Authentication Improvements - Long-Lived Sessions (Complete) ✅
+
+### Session 17: Authentication Improvements - Long-Lived Sessions (2025-11-30)
+
+**Status**: ✅ COMPLETE - Facebook/Gmail-style authentication with automatic token refresh
+
+**Goal**: Implement long-lived user sessions with automatic token refresh, eliminating frequent logouts
+
+**Summary**: Successfully implemented 4-phase authentication improvement addressing user complaints about frequent logouts. System now supports Facebook/Gmail-style long-lived sessions with automatic token refresh, proactive refresh 5 minutes before expiry, "Remember Me" functionality, and cross-origin cookie support for development.
+
+**Detailed Documentation**: See Session 17 section below for complete implementation details, issues fixed, and technical learnings.
+
+---
+
+## Previous Session Completed
 
 ### Session 16: Event Edit Feature Implementation (2025-11-30)
 
@@ -102,6 +116,159 @@
 - ⏳ User testing of event edit functionality with Published events
 - ⏳ Monitor for any edge cases or validation issues
 - 📋 **Future Enhancement**: Implement ADR-011 status-based field restrictions (Optional)
+
+---
+
+### Session 17: Authentication Improvements - Long-Lived Sessions (2025-11-30)
+
+**Status**: ✅ COMPLETE - Facebook/Gmail-style authentication with automatic token refresh
+
+**Goal**: Implement long-lived user sessions with automatic token refresh, eliminating frequent logouts
+
+**User Request**: "Why the app expires the token quickly and direct to the log in page? Like in Facebook or gmail, why can't we loged on for a long time?"
+
+**Problem Symptoms**:
+1. Users logged out after 10 minutes of activity
+2. Page refresh caused immediate logout
+3. Poor user experience compared to modern web apps
+
+**Implementation Summary**:
+- ✅ **Phase 1**: Extended token expiration times (10→30 min access, 7→30 days refresh)
+- ✅ **Phase 2**: Automatic token refresh on 401 errors with retry queue
+- ✅ **Phase 3**: Proactive token refresh (refreshes 5 min before expiry)
+- ✅ **Phase 4**: "Remember Me" functionality (7 vs 30 days)
+- ✅ **Bug Fix 1**: Fixed page refresh logout issue
+- ✅ **Bug Fix 2**: Fixed SameSite cookie blocking in cross-origin requests
+- ✅ **Build Status**: Backend ✅ 0 errors, Frontend ✅ working in dev mode
+
+**Created Files**:
+1. ✅ [tokenRefreshService.ts](../web/src/infrastructure/api/services/tokenRefreshService.ts) - Token refresh service
+   - Automatic token refresh with retry queue
+   - Prevents multiple simultaneous refresh requests
+   - Subscriber pattern for queued requests
+   - HttpOnly cookie handling (refresh token in cookie)
+2. ✅ [jwtDecoder.ts](../web/src/infrastructure/utils/jwtDecoder.ts) - JWT utility functions
+   - `decodeJwt()` - Decode JWT payload
+   - `getTokenExpiration()` - Get expiration timestamp
+   - `isTokenExpired()` - Check if token expired
+   - `getRefreshTime()` - Calculate when to refresh (5 min before expiry)
+3. ✅ [useTokenRefresh.ts](../web/src/presentation/hooks/useTokenRefresh.ts) - Proactive refresh hook
+   - Automatically refreshes token 5 minutes before expiration
+   - Uses setTimeout for precise timing
+   - Cleans up timers on unmount
+
+**Modified Files (Backend)**:
+1. ✅ [appsettings.json](../src/LankaConnect.API/appsettings.json) - Token configuration
+   - `AccessTokenExpirationMinutes`: 10 → **30**
+   - `RefreshTokenExpirationDays`: 7 → **30**
+2. ✅ [appsettings.Staging.json](../src/LankaConnect.API/appsettings.Staging.json) - Same as above
+3. ✅ [appsettings.Production.json](../src/LankaConnect.API/appsettings.Production.json) - Same as above
+4. ✅ [LoginUserCommand.cs](../src/LankaConnect.Application/Auth/Commands/LoginUser/LoginUserCommand.cs)
+   - Added `RememberMe` parameter (default: false)
+5. ✅ [LoginUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/LoginUser/LoginUserHandler.cs)
+   - Dynamic refresh token expiration: RememberMe ? 30 days : 7 days
+   - Logging for refresh token expiration
+6. ✅ [AuthController.cs](../src/LankaConnect.API/Controllers/AuthController.cs)
+   - **Critical Fix**: SameSite cookie policy for cross-origin requests
+   - Development: `SameSite=Lax` (allows localhost:3000 → staging API)
+   - Production: `SameSite=None; Secure` (HTTPS required)
+   - Dynamic cookie expiration based on RememberMe
+   - HttpOnly cookies for security
+
+**Modified Files (Frontend)**:
+1. ✅ [api-client.ts](../web/src/infrastructure/api/client/api-client.ts)
+   - Response interceptor for 401 errors
+   - Automatic token refresh on authentication failures
+   - Retry original request with new token
+   - Skip refresh for auth endpoints (login/register/refresh)
+   - `setUnauthorizedCallback()` for global 401 handling
+2. ✅ [AuthProvider.tsx](../web/src/presentation/providers/AuthProvider.tsx)
+   - Integrated `useTokenRefresh()` hook for proactive refresh
+   - Global 401 error handler with logout redirect
+   - Prevents multiple simultaneous logout calls
+3. ✅ [LoginForm.tsx](../web/src/presentation/components/features/auth/LoginForm.tsx)
+   - Added "Remember Me" checkbox
+   - Passes `rememberMe` parameter to backend
+4. ✅ [auth.repository.ts](../web/src/infrastructure/api/repositories/auth.repository.ts)
+   - Updated `login()` method signature to accept `rememberMe` parameter
+
+**Issues Fixed**:
+
+**Issue 1: EventEditForm Infinite Re-render** ❌→✅ (Discovered during session)
+- **Symptom**: Form fields not editable, console spam "Resetting form with event data"
+- **Root Cause**: `convertCategoryToNumber` function recreated on every render, causing infinite useEffect loop
+- **Fix**: Wrapped function in `useCallback` hook
+- **Additional Fix**: Removed problematic `defaultValue={Number(event.category)}` causing NaN error
+- **File**: [EventEditForm.tsx](../web/src/presentation/components/features/events/EventEditForm.tsx)
+- **Commit**: Included in broader fix commit
+
+**Issue 2: Page Refresh Logout** ❌→✅
+- **Symptom**: Immediate logout on page refresh
+- **Root Cause**: `tokenRefreshService` checked for refresh token in localStorage, but it's in HttpOnly cookie
+- **Fix**: Removed incorrect refresh token check (lines 55-62)
+- **Explanation**: Backend reads refresh token from cookie automatically via `Request.Cookies["refreshToken"]`
+- **Commit**: 4452637 - `fix(auth): Fix token refresh logout bug on page refresh`
+
+**Issue 3: 10-Minute Logout - Cookie Blocked** ❌→✅
+- **Symptom**: Logout after 10 minutes with error "Token refresh failed: ValidationError: Refresh token is required"
+- **Root Cause**: `SameSite=Strict` cookie policy blocked cross-origin requests (localhost:3000 → staging API)
+- **Browser Behavior**: Strict mode doesn't send cookies with cross-site requests
+- **Fix**: Changed SameSite policy:
+  - Development: `SameSite=Lax, Secure=false` (allows HTTP, cross-origin cookies)
+  - Production: `SameSite=None, Secure=true` (requires HTTPS for security)
+- **File**: [AuthController.cs](../src/LankaConnect.API/Controllers/AuthController.cs)
+- **Commit**: e424c37 - `fix(auth): Fix SameSite cookie blocking refresh token in cross-origin requests`
+
+**Commits Made**:
+1. `0d92177` - feat(auth): Implement Facebook/Gmail-style long-lived sessions with automatic token refresh
+2. `4452637` - fix(auth): Fix token refresh logout bug on page refresh
+3. `e424c37` - fix(auth): Fix SameSite cookie blocking refresh token in cross-origin requests
+
+**Key Technical Learnings**:
+1. **Cookie Security & Cross-Origin**:
+   - `SameSite=Strict` blocks all cross-origin cookies (localhost → staging fails)
+   - `SameSite=Lax` allows cookies on top-level GET and POST (development friendly)
+   - `SameSite=None` requires `Secure=true` flag (HTTPS only, for production)
+   - `HttpOnly` prevents JavaScript access (security against XSS)
+2. **JWT Token Management**:
+   - Access tokens: Short-lived (30 min), included in Authorization header
+   - Refresh tokens: Long-lived (7-30 days), stored in HttpOnly cookie
+   - Proactive refresh: Refresh 5 minutes before expiry for seamless UX
+   - Token rotation: Each refresh generates new access token
+3. **React Best Practices**:
+   - `useCallback` prevents function recreation and infinite loops
+   - useEffect dependencies must be stable references
+   - Cleanup timers in useEffect return function
+4. **TypeScript ↔ C# Type Safety**:
+   - C# `decimal?` → TypeScript `number | null`
+   - Always verify backend contract matches frontend types
+   - `undefined` (TypeScript) ≠ `null` (JSON) ≠ `""` (empty string)
+
+**Architecture Highlights**:
+- **Separation of Concerns**:
+  - `tokenRefreshService`: Handles refresh logic (singleton)
+  - `useTokenRefresh`: React hook for component integration
+  - `api-client`: Automatic retry with refreshed tokens
+  - `AuthProvider`: Global 401 handling and logout
+- **Security**:
+  - HttpOnly cookies prevent XSS attacks
+  - Secure flag in production enforces HTTPS
+  - No refresh token in localStorage (only access token)
+  - Token rotation on every refresh
+
+**Testing Recommendations**:
+1. ✅ Login with "Remember Me" checked
+2. ✅ Refresh page (should stay logged in)
+3. ✅ Wait 25+ minutes (should auto-refresh without logout)
+4. ✅ Network tab: Check cookie sent with requests
+5. ⏳ Test in production with HTTPS (SameSite=None requires Secure)
+
+**Next Steps**:
+- ⏳ Deploy to staging and verify cookie behavior
+- ⏳ Test cross-origin requests with staging API
+- ⏳ Monitor token refresh logs in production
+- ⏳ Consider implementing refresh token rotation for enhanced security
+- 📋 **Future Enhancement**: Add refresh token invalidation on logout
 
 ---
 

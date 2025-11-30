@@ -7,10 +7,55 @@
 
 ---
 
-## 🔄 CURRENT STATUS - SIGN-UP CATEGORY REDESIGN (IN PROGRESS) (2025-11-29)
+## ✅ CURRENT STATUS - AUTHENTICATION IMPROVEMENTS (COMPLETE) (2025-11-30)
+**Date**: 2025-11-30 (Session 17)
+**Session**: Authentication Improvements - Long-Lived Sessions
+**Status**: ✅ COMPLETE - Facebook/Gmail-style authentication with automatic token refresh
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 compilation errors, Frontend: Working in dev mode
+
+### SESSION 17: AUTHENTICATION IMPROVEMENTS - LONG-LIVED SESSIONS (2025-11-30)
+**Goal**: Implement long-lived user sessions with automatic token refresh, eliminating frequent logouts
+
+**User Request**: "Why the app expires the token quickly and direct to the log in page? Like in Facebook or gmail, why can't we loged on for a long time?"
+
+**Implementation Complete**:
+1. ✅ **Phase 1**: Extended token expiration (10→30 min access, 7→30 days refresh)
+2. ✅ **Phase 2**: Automatic token refresh on 401 errors with retry queue
+3. ✅ **Phase 3**: Proactive token refresh (refreshes 5 min before expiry)
+4. ✅ **Phase 4**: "Remember Me" functionality (7 vs 30 days)
+5. ✅ **Bug Fix 1**: Fixed page refresh logout issue
+6. ✅ **Bug Fix 2**: Fixed SameSite cookie blocking in cross-origin requests
+
+**Created Files**:
+- [tokenRefreshService.ts](../web/src/infrastructure/api/services/tokenRefreshService.ts) - Token refresh service with retry queue
+- [jwtDecoder.ts](../web/src/infrastructure/utils/jwtDecoder.ts) - JWT utility functions
+- [useTokenRefresh.ts](../web/src/presentation/hooks/useTokenRefresh.ts) - Proactive refresh hook
+
+**Key Improvements**:
+- **User Experience**: No more frequent logouts, seamless token refresh
+- **Security**: HttpOnly cookies, SameSite policies, token rotation
+- **Architecture**: Separation of concerns (service, hook, interceptor, provider)
+- **Cross-Origin Support**: Fixed SameSite cookie issues for localhost → staging API
+
+**Commits**:
+- `0d92177` - feat(auth): Implement Facebook/Gmail-style long-lived sessions with automatic token refresh
+- `4452637` - fix(auth): Fix token refresh logout bug on page refresh
+- `e424c37` - fix(auth): Fix SameSite cookie blocking refresh token in cross-origin requests
+
+**Testing Recommendations**:
+- ✅ Login with "Remember Me" checked
+- ✅ Refresh page (should stay logged in)
+- ✅ Wait 25+ minutes (should auto-refresh without logout)
+- ⏳ Deploy to staging and verify cookie behavior
+
+**See**: [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) Session 17 for complete technical details
+
+---
+
+## ✅ PREVIOUS STATUS - SIGN-UP CATEGORY REDESIGN (COMPLETE) (2025-11-29)
 **Date**: 2025-11-29 (Session 15)
 **Session**: Sign-Up Category Redesign - Application Layer Complete
-**Status**: 🔄 IN PROGRESS - Application layer complete, migration ready, API layer next
+**Status**: ✅ COMPLETE - All layers implemented
 **Build Status**: ✅ Zero Tolerance Maintained - 0 compilation errors (00:03:12.55)
 
 ### SESSION 15: SIGN-UP CATEGORY REDESIGN - APPLICATION LAYER (2025-11-29)

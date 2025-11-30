@@ -9,15 +9,16 @@
 
 **Status**: ✅ COMPLETE - Event edit functionality working with proper validation
 
-**Goal**: Implement event edit page with pre-filled form data and fix API payload issues
+**Goal**: Implement event edit page with pre-filled form data and fix API/backend issues
 
 **Session Summary**:
 - **Frontend**: ✅ Complete (EventEditForm component, edit page route, validation)
 - **Type Fixes**: ✅ Complete (UpdateEventRequest interface aligned with backend)
 - **Payload Fixes**: ✅ Complete (null handling for nullable C# types)
 - **Form State**: ✅ Complete (Fixed infinite re-render preventing edits)
-- **Build Status**: ✅ 0 compilation errors
-- **Ready for Testing**: ✅ All fixes committed
+- **Backend**: ✅ Complete (Removed Draft-only restriction)
+- **Build Status**: ✅ 0 compilation errors (Frontend & Backend)
+- **Ready for Testing**: ✅ All fixes committed, requires staging deployment
 
 **Implementation Details**:
 
@@ -60,6 +61,19 @@
 - **Details**: C# nullable types (string?) expect JSON `null`, not empty strings
 - **Commit**: dd3bb0c
 
+**Issue 4: 400 Bad Request - Draft-Only Restriction** ❌→✅
+- **Symptom**: API returned 400 "Only draft events can be updated" for Published events
+- **Root Cause**: Backend UpdateEventCommandHandler enforced Draft-only editing (line 29-30)
+- **Investigation**:
+  - Consulted system architect for business rule decision
+  - Architect created ADR-011 with 3 options for event editing permissions
+  - User selected Option A: Quick fix (remove restriction)
+- **Fix**: Removed Draft status check from UpdateEventCommandHandler
+- **File**: [UpdateEventCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs)
+- **Build**: ✅ dotnet build succeeded - 0 errors, 0 warnings
+- **Future**: ADR-011 describes status-based field restrictions for future implementation
+- **Commit**: cb1da43
+
 **Commits Made**:
 1. `9b1a22c` - feat: Add event edit functionality with form validation
 2. `4772711` - fix(events): Fix event update API payload for backend compatibility
@@ -67,6 +81,7 @@
 4. `b80b771` - fix(events): Fix form fields not editable in EventEditForm
 5. `e815ef6` - fix(events): Fix UpdateEventRequest type and use null for nullable fields
 6. `dd3bb0c` - fix(events): Use null instead of empty strings for optional location fields
+7. `cb1da43` - fix(events): Remove Draft-only restriction from UpdateEvent command
 
 **Key Learnings**:
 1. **TypeScript ↔ C# Type Mapping**:
@@ -83,8 +98,10 @@
    - Backend inference patterns (isFree inferred from ticketPriceAmount)
 
 **Next Steps**:
-- ✅ User testing of event edit functionality
+- ⏳ **Deploy to staging** using `deploy-staging.yml` workflow
+- ⏳ User testing of event edit functionality with Published events
 - ⏳ Monitor for any edge cases or validation issues
+- 📋 **Future Enhancement**: Implement ADR-011 status-based field restrictions (Optional)
 
 ---
 

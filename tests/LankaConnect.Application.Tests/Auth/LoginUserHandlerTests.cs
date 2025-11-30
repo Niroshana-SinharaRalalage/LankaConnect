@@ -55,7 +55,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithValidCredentials_ShouldReturnSuccessWithTokens()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123", "127.0.0.1");
+        var request = new LoginUserCommand("test@example.com", "password123", false, "127.0.0.1");
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -345,7 +345,7 @@ public class LoginUserHandlerTests
     public async Task Handle_ShouldAddRefreshTokenToUser()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123", "127.0.0.1");
+        var request = new LoginUserCommand("test@example.com", "password123", false, "127.0.0.1");
         var email = Email.Create(request.Email).Value;
         var initialRefreshTokenCount = _testUser.RefreshTokens.Count;
 

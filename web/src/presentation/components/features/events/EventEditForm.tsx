@@ -196,14 +196,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
         category: data.category,
         // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
         // Backend infers isFree from ticketPriceAmount being null, so don't send isFree
+        // CRITICAL: Use null for empty optional fields, NOT empty strings
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
           locationCity: data.locationCity,
-          locationState: data.locationState || '',
-          locationZipCode: data.locationZipCode || '',
-          locationCountry: data.locationCountry || 'United States',
-          locationLatitude,
-          locationLongitude,
+          locationState: data.locationState || null,
+          locationZipCode: data.locationZipCode || null,
+          locationCountry: data.locationCountry || null,
+          locationLatitude: locationLatitude ?? null,
+          locationLongitude: locationLongitude ?? null,
         }),
         // Use null (not undefined) for nullable fields to match C# nullable types
         ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,

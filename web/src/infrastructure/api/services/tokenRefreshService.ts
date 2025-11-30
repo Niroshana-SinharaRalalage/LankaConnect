@@ -52,21 +52,13 @@ class TokenRefreshService {
       });
     }
 
-    const { refreshToken, clearAuth } = useAuthStore.getState();
-
-    // No refresh token available
-    if (!refreshToken) {
-      console.error('🔒 No refresh token available - redirecting to login');
-      clearAuth();
-      return null;
-    }
-
     this.isRefreshing = true;
 
     try {
       console.log('🔄 Attempting to refresh access token...');
 
       // Call the refresh endpoint
+      // Note: Refresh token is in HttpOnly cookie, backend reads it automatically
       const response = await apiClient.post<{
         accessToken: string;
         tokenExpiresAt: string;
@@ -83,7 +75,7 @@ class TokenRefreshService {
       if (user) {
         setAuth(user, {
           accessToken,
-          refreshToken, // Keep existing refresh token (backend rotates it via cookie)
+          refreshToken: '', // Refresh token is in HttpOnly cookie (not in localStorage)
           expiresIn: 1800, // 30 minutes (matches backend config)
         });
       }

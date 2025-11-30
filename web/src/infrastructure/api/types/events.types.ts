@@ -172,29 +172,65 @@ export enum SignUpType {
 }
 
 /**
+ * Sign-up item category enum matching backend SignUpItemCategory
+ * For category-based sign-up lists
+ */
+export enum SignUpItemCategory {
+  Mandatory = 0,
+  Preferred = 1,
+  Suggested = 2,
+}
+
+/**
  * Sign-up commitment DTO
  * Represents a user's commitment to bring an item to an event
  */
 export interface SignUpCommitmentDto {
   id: string;
+  signUpItemId?: string | null; // Null for legacy Open sign-ups
   userId: string;
   itemDescription: string;
   quantity: number;
   committedAt: string; // ISO 8601 date-time
+  notes?: string | null;
+}
+
+/**
+ * Sign-up item DTO
+ * Represents a specific item in a category-based sign-up list
+ */
+export interface SignUpItemDto {
+  id: string;
+  itemDescription: string;
+  quantity: number;
+  remainingQuantity: number;
+  itemCategory: SignUpItemCategory;
+  notes?: string | null;
+  commitments: SignUpCommitmentDto[];
+  isFullyCommitted: boolean;
+  committedQuantity: number;
 }
 
 /**
  * Sign-up list DTO
- * Matches backend SignUpListDto
+ * Matches backend SignUpListDto - supports both legacy and category-based models
  */
 export interface SignUpListDto {
   id: string;
   category: string;
   description: string;
   signUpType: SignUpType;
+
+  // Legacy fields (for Open/Predefined sign-ups)
   predefinedItems: string[];
   commitments: SignUpCommitmentDto[];
   commitmentCount: number;
+
+  // New category-based fields
+  hasMandatoryItems: boolean;
+  hasPreferredItems: boolean;
+  hasSuggestedItems: boolean;
+  items: SignUpItemDto[];
 }
 
 // ==================== Request DTOs ====================
@@ -357,6 +393,36 @@ export interface CommitToSignUpRequest {
  */
 export interface CancelCommitmentRequest {
   userId: string;
+}
+
+/**
+ * Add category-based sign-up list request
+ */
+export interface AddSignUpListWithCategoriesRequest {
+  category: string;
+  description: string;
+  hasMandatoryItems: boolean;
+  hasPreferredItems: boolean;
+  hasSuggestedItems: boolean;
+}
+
+/**
+ * Add sign-up item request
+ */
+export interface AddSignUpItemRequest {
+  itemDescription: string;
+  quantity: number;
+  itemCategory: SignUpItemCategory;
+  notes?: string | null;
+}
+
+/**
+ * Commit to sign-up item request
+ */
+export interface CommitToSignUpItemRequest {
+  userId: string;
+  quantity: number;
+  notes?: string | null;
 }
 
 // ==================== Response DTOs ====================

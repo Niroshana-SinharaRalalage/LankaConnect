@@ -26,16 +26,44 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
             Category = signUpList.Category,
             Description = signUpList.Description,
             SignUpType = signUpList.SignUpType,
+
+            // Legacy fields (for Open/Predefined sign-ups)
             PredefinedItems = signUpList.PredefinedItems.ToList(),
             Commitments = signUpList.Commitments.Select(c => new SignUpCommitmentDto
             {
                 Id = c.Id,
+                SignUpItemId = c.SignUpItemId,
                 UserId = c.UserId,
                 ItemDescription = c.ItemDescription,
                 Quantity = c.Quantity,
-                CommittedAt = c.CommittedAt
+                CommittedAt = c.CommittedAt,
+                Notes = c.Notes
             }).ToList(),
-            CommitmentCount = signUpList.GetCommitmentCount()
+            CommitmentCount = signUpList.GetCommitmentCount(),
+
+            // New category-based fields
+            HasMandatoryItems = signUpList.HasMandatoryItems,
+            HasPreferredItems = signUpList.HasPreferredItems,
+            HasSuggestedItems = signUpList.HasSuggestedItems,
+            Items = signUpList.Items.Select(item => new SignUpItemDto
+            {
+                Id = item.Id,
+                ItemDescription = item.ItemDescription,
+                Quantity = item.Quantity,
+                RemainingQuantity = item.RemainingQuantity,
+                ItemCategory = item.ItemCategory,
+                Notes = item.Notes,
+                Commitments = item.Commitments.Select(c => new SignUpCommitmentDto
+                {
+                    Id = c.Id,
+                    SignUpItemId = c.SignUpItemId,
+                    UserId = c.UserId,
+                    ItemDescription = c.ItemDescription,
+                    Quantity = c.Quantity,
+                    CommittedAt = c.CommittedAt,
+                    Notes = c.Notes
+                }).ToList()
+            }).ToList()
         }).ToList();
 
         return Result<List<SignUpListDto>>.Success(signUpListDtos);

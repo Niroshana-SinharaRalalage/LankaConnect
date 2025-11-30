@@ -7,7 +7,41 @@
 
 ---
 
-## ✅ CURRENT STATUS - EVENT CREATION BUG FIXES (COMPLETE) (2025-11-28)
+## 🔄 CURRENT STATUS - SIGN-UP CATEGORY REDESIGN (IN PROGRESS) (2025-11-29)
+**Date**: 2025-11-29 (Session 15)
+**Session**: Sign-Up Category Redesign - Application Layer Complete
+**Status**: 🔄 IN PROGRESS - Application layer complete, migration ready, API layer next
+**Build Status**: ✅ Zero Tolerance Maintained - 0 compilation errors (00:03:12.55)
+
+### SESSION 15: SIGN-UP CATEGORY REDESIGN - APPLICATION LAYER (2025-11-29)
+**Goal**: Replace binary "Open/Predefined" sign-up model with flexible category-based system (Mandatory, Preferred, Suggested items)
+
+**Progress Summary**:
+1. ✅ **Domain Layer**: SignUpItemCategory enum, SignUpItem entity, updated relationships
+2. ✅ **Infrastructure Layer**: EF Core configurations, migration 20251129201535_AddSignUpItemCategorySupport.cs
+3. ✅ **Application Layer**: 8 new commands/handlers + 2 updated files
+4. ⏳ **Migration**: Ready to apply to Azure staging database
+5. ⏳ **API Layer**: Controller endpoints and DTOs (NEXT)
+6. ⏳ **Frontend Layer**: TypeScript types, React hooks, UI redesign (AFTER API)
+
+**Application Layer Changes**:
+- Created 8 new command/handler files for category-based sign-ups
+- Extended SignUpListDto with category flags and Items collection
+- Updated GetEventSignUpListsQueryHandler for backward compatibility
+- Zero compilation errors maintained
+
+**Next Steps**:
+1. Apply EF Core migration to Azure staging database
+2. Update EventsController with new endpoints
+3. Create Request/Response DTOs for API layer
+4. Update frontend TypeScript types
+5. Update React hooks for sign-ups
+6. Redesign manage-signups UI page
+7. Test end-to-end and commit
+
+---
+
+## ✅ PREVIOUS STATUS - EVENT CREATION BUG FIXES (COMPLETE) (2025-11-28)
 **Date**: 2025-11-28 (Session 13)
 **Session**: Event Creation Bug Fixes - PostgreSQL Case Sensitivity & DateTime UTC
 **Status**: ✅ COMPLETE - Event creation working end-to-end from localhost:3000 to Azure staging

@@ -10,9 +10,12 @@
  * - Commit to bringing items (authenticated users)
  * - Cancel commitments (own commitments only)
  * - Organizer can add/remove sign-up lists
+ * - NEW: Category-based sign-ups (Mandatory, Preferred, Suggested)
+ * - Backward compatible with legacy Open/Predefined sign-ups
  *
  * @requires useEventSignUps hook
  * @requires useCommitToSignUp, useCancelCommitment mutations
+ * @requires useCommitToSignUpItem mutation (category-based)
  */
 
 'use client';
@@ -24,8 +27,9 @@ import {
   useCancelCommitment,
   useAddSignUpList,
   useRemoveSignUpList,
+  useCommitToSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -58,12 +62,18 @@ export function SignUpManagementSection({
   const [itemDescription, setItemDescription] = useState('');
   const [quantity, setQuantity] = useState(1);
 
+  // Category-based sign-up state
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [commitQuantity, setCommitQuantity] = useState(1);
+  const [commitNotes, setCommitNotes] = useState('');
+
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
 
   // Mutations
   const commitToSignUp = useCommitToSignUp();
   const cancelCommitment = useCancelCommitment();
+  const commitToSignUpItem = useCommitToSignUpItem();
 
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
@@ -119,6 +129,66 @@ export function SignUpManagementSection({
     }
   };
 
+  // Handle commit to specific item (category-based)
+  const handleCommitToItem = async (signUpId: string, itemId: string) => {
+    if (!userId) {
+      alert('Please log in to commit to items');
+      return;
+    }
+
+    if (commitQuantity < 1) {
+      alert('Please enter a valid quantity');
+      return;
+    }
+
+    try {
+      await commitToSignUpItem.mutateAsync({
+        eventId,
+        signupId: signUpId,
+        itemId,
+        userId,
+        quantity: commitQuantity,
+        notes: commitNotes.trim() || undefined,
+      });
+
+      // Reset form
+      setSelectedItemId(null);
+      setCommitQuantity(1);
+      setCommitNotes('');
+    } catch (err) {
+      console.error('Failed to commit to item:', err);
+      alert('Failed to commit. Please try again.');
+    }
+  };
+
+  // Get category badge color
+  const getCategoryColor = (category: SignUpItemCategory) => {
+    switch (category) {
+      case SignUpItemCategory.Mandatory:
+        return 'bg-red-100 text-red-800 border-red-300';
+      case SignUpItemCategory.Preferred:
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case SignUpItemCategory.Suggested:
+        return 'bg-green-100 text-green-800 border-green-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Get category label
+  const getCategoryLabel = (category: SignUpItemCategory) => {
+    switch (category) {
+      case SignUpItemCategory.Mandatory:
+        return 'Mandatory';
+      case SignUpItemCategory.Preferred:
+        return 'Preferred';
+      case SignUpItemCategory.Suggested:
+        return 'Suggested';
+      default:
+        return 'Unknown';
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -164,125 +234,326 @@ export function SignUpManagementSection({
         // Check if current user has committed to this list
         const userCommitment = signUpList.commitments.find((c) => c.userId === userId);
 
+        // Check if this is a category-based sign-up (has items)
+        const isCategoryBased = signUpList.items && signUpList.items.length > 0;
+
         return (
           <Card key={signUpList.id}>
             <CardHeader>
               <CardTitle>{signUpList.category}</CardTitle>
               <CardDescription>{signUpList.description}</CardDescription>
               <div className="text-sm text-muted-foreground">
-                Type: {signUpList.signUpType === SignUpType.Predefined ? 'Predefined Items' : 'Open'}
+                {isCategoryBased ? (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {signUpList.hasMandatoryItems && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                        Has Mandatory Items
+                      </span>
+                    )}
+                    {signUpList.hasPreferredItems && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        Has Preferred Items
+                      </span>
+                    )}
+                    {signUpList.hasSuggestedItems && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Has Suggested Items
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span>Type: {signUpList.signUpType === SignUpType.Predefined ? 'Predefined Items' : 'Open'}</span>
+                )}
               </div>
             </CardHeader>
 
             <CardContent>
-              {/* Predefined items */}
-              {signUpList.signUpType === SignUpType.Predefined && signUpList.predefinedItems.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="font-semibold mb-2">Suggested Items:</h4>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground">
-                    {signUpList.predefinedItems.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {/* CATEGORY-BASED SIGN-UPS (NEW) */}
+              {isCategoryBased ? (
+                <div className="space-y-6">
+                  {/* Group items by category */}
+                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Preferred, SignUpItemCategory.Suggested].map((category) => {
+                    const categoryItems = signUpList.items.filter(item => item.itemCategory === category);
 
-              {/* Existing commitments */}
-              {signUpList.commitments.length > 0 ? (
-                <div>
-                  <h4 className="font-semibold mb-2">
-                    Commitments ({signUpList.commitmentCount}):
-                  </h4>
-                  <div className="space-y-2">
-                    {signUpList.commitments.map((commitment) => (
-                      <div
-                        key={commitment.id}
-                        className="flex justify-between items-center p-2 bg-muted rounded-md"
-                      >
-                        <div>
-                          <p className="font-medium">{commitment.itemDescription}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Quantity: {commitment.quantity}
-                          </p>
+                    if (categoryItems.length === 0) return null;
+
+                    return (
+                      <div key={category} className="space-y-3">
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(category)}`}>
+                            {getCategoryLabel(category)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            ({categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'})
+                          </span>
+                        </h4>
+
+                        <div className="space-y-3">
+                          {categoryItems.map((item) => {
+                            const userItemCommitment = item.commitments.find(c => c.userId === userId);
+                            const remainingQty = item.remainingQuantity;
+                            const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
+
+                            return (
+                              <div key={item.id} className="border rounded-lg p-4 space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium">{item.itemDescription}</p>
+                                    {item.notes && (
+                                      <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <p className={`text-sm font-medium ${remainingQty === 0 ? 'text-green-600' : 'text-blue-600'}`}>
+                                      {item.committedQuantity} of {item.quantity} committed
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {remainingQty} remaining
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Progress bar */}
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${
+                                      percentCommitted === 100 ? 'bg-green-500' : 'bg-blue-500'
+                                    }`}
+                                    style={{ width: `${percentCommitted}%` }}
+                                  />
+                                </div>
+
+                                {/* Commitments */}
+                                {item.commitments.length > 0 && (
+                                  <div className="space-y-1 mt-2">
+                                    <p className="text-xs font-medium text-muted-foreground">Commitments:</p>
+                                    {item.commitments.map((commitment) => (
+                                      <div key={commitment.id} className="text-sm bg-muted p-2 rounded">
+                                        <div className="flex justify-between items-center">
+                                          <span>Quantity: {commitment.quantity}</span>
+                                          {commitment.userId === userId && (
+                                            <span className="text-xs text-blue-600 font-medium">(You)</span>
+                                          )}
+                                        </div>
+                                        {commitment.notes && (
+                                          <p className="text-xs text-muted-foreground mt-1">Note: {commitment.notes}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Commit button */}
+                                {!userItemCommitment && userId && remainingQty > 0 && (
+                                  <div className="mt-3">
+                                    {selectedItemId === item.id ? (
+                                      <div className="space-y-2">
+                                        <div>
+                                          <label className="block text-sm font-medium mb-1">
+                                            Quantity (max: {remainingQty})
+                                          </label>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            max={remainingQty}
+                                            value={commitQuantity}
+                                            onChange={(e) => setCommitQuantity(Math.min(parseInt(e.target.value) || 1, remainingQty))}
+                                            className="w-full px-3 py-2 border rounded-md"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium mb-1">
+                                            Notes (optional)
+                                          </label>
+                                          <textarea
+                                            value={commitNotes}
+                                            onChange={(e) => setCommitNotes(e.target.value)}
+                                            placeholder="Any additional details..."
+                                            rows={2}
+                                            className="w-full px-3 py-2 border rounded-md"
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            onClick={() => handleCommitToItem(signUpList.id, item.id)}
+                                            disabled={commitToSignUpItem.isPending}
+                                            size="sm"
+                                          >
+                                            {commitToSignUpItem.isPending ? 'Committing...' : 'Confirm Commitment'}
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              setSelectedItemId(null);
+                                              setCommitQuantity(1);
+                                              setCommitNotes('');
+                                            }}
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        onClick={() => {
+                                          setSelectedItemId(item.id);
+                                          setCommitQuantity(Math.min(1, remainingQty));
+                                        }}
+                                        size="sm"
+                                        variant="outline"
+                                      >
+                                        I can bring this
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+
+                                {!userId && remainingQty > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Please log in to commit to this item
+                                  </p>
+                                )}
+
+                                {userItemCommitment && (
+                                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                                    <p className="text-sm font-medium text-blue-800">
+                                      You committed to bring {userItemCommitment.quantity} of this item
+                                    </p>
+                                  </div>
+                                )}
+
+                                {remainingQty === 0 && !userItemCommitment && (
+                                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                    <p className="text-sm font-medium text-green-800">
+                                      ✓ Fully committed - Thank you everyone!
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                        {commitment.userId === userId && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleCancel(signUpList.id)}
-                            disabled={cancelCommitment.isPending}
-                          >
-                            {cancelCommitment.isPending ? 'Canceling...' : 'Cancel'}
-                          </Button>
-                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No commitments yet. Be the first!</p>
-              )}
-            </CardContent>
+                /* LEGACY OPEN/PREDEFINED SIGN-UPS */
+                <>
+                  {/* Predefined items */}
+                  {signUpList.signUpType === SignUpType.Predefined && signUpList.predefinedItems.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold mb-2">Suggested Items:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground">
+                        {signUpList.predefinedItems.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-            <CardFooter>
-              {!userCommitment && userId && (
-                <div className="w-full space-y-3">
-                  {selectedSignUpId === signUpList.id ? (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">
-                          Item Description *
-                        </label>
-                        <input
-                          type="text"
-                          value={itemDescription}
-                          onChange={(e) => setItemDescription(e.target.value)}
-                          placeholder="What will you bring?"
-                          className="w-full px-3 py-2 border rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Quantity</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={quantity}
-                          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                          className="w-full px-3 py-2 border rounded-md"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleCommit(signUpList.id)}
-                          disabled={commitToSignUp.isPending || !itemDescription.trim()}
-                        >
-                          {commitToSignUp.isPending ? 'Committing...' : 'Confirm'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedSignUpId(null);
-                            setItemDescription('');
-                            setQuantity(1);
-                          }}
-                        >
-                          Cancel
-                        </Button>
+                  {/* Existing commitments */}
+                  {signUpList.commitments.length > 0 ? (
+                    <div>
+                      <h4 className="font-semibold mb-2">
+                        Commitments ({signUpList.commitmentCount}):
+                      </h4>
+                      <div className="space-y-2">
+                        {signUpList.commitments.map((commitment) => (
+                          <div
+                            key={commitment.id}
+                            className="flex justify-between items-center p-2 bg-muted rounded-md"
+                          >
+                            <div>
+                              <p className="font-medium">{commitment.itemDescription}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Quantity: {commitment.quantity}
+                              </p>
+                            </div>
+                            {commitment.userId === userId && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCancel(signUpList.id)}
+                                disabled={cancelCommitment.isPending}
+                              >
+                                {cancelCommitment.isPending ? 'Canceling...' : 'Cancel'}
+                              </Button>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ) : (
-                    <Button onClick={() => setSelectedSignUpId(signUpList.id)}>
-                      I can bring something
-                    </Button>
+                    <p className="text-sm text-muted-foreground">No commitments yet. Be the first!</p>
                   )}
-                </div>
+                </>
               )}
-              {!userId && (
-                <p className="text-sm text-muted-foreground">
-                  Please log in to commit to items
-                </p>
-              )}
-            </CardFooter>
+            </CardContent>
+
+            {/* Footer only for legacy sign-ups */}
+            {!isCategoryBased && (
+              <CardFooter>
+                {!userCommitment && userId && (
+                  <div className="w-full space-y-3">
+                    {selectedSignUpId === signUpList.id ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Item Description *
+                          </label>
+                          <input
+                            type="text"
+                            value={itemDescription}
+                            onChange={(e) => setItemDescription(e.target.value)}
+                            placeholder="What will you bring?"
+                            className="w-full px-3 py-2 border rounded-md"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                            className="w-full px-3 py-2 border rounded-md"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleCommit(signUpList.id)}
+                            disabled={commitToSignUp.isPending || !itemDescription.trim()}
+                          >
+                            {commitToSignUp.isPending ? 'Committing...' : 'Confirm'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedSignUpId(null);
+                              setItemDescription('');
+                              setQuantity(1);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button onClick={() => setSelectedSignUpId(signUpList.id)}>
+                        I can bring something
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {!userId && (
+                  <p className="text-sm text-muted-foreground">
+                    Please log in to commit to items
+                  </p>
+                )}
+              </CardFooter>
+            )}
           </Card>
         );
       })}

@@ -1,9 +1,234 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-29 (Current Session) - Session 14: Event Management UI Improvements (Complete) ✅*
+*Last Updated: 2025-11-30 (Current Session) - Session 15: Sign-Up Category Redesign (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 14: Event Management UI Improvements (Complete) ✅
+## 🎯 Current Session Status - Session 15 (Continued): Sign-Up Category Redesign - UI Layer (Complete) ✅
+
+### Session 16: Event Edit Feature Implementation (2025-11-30)
+
+**Status**: ✅ COMPLETE - Event edit functionality working with proper validation
+
+**Goal**: Implement event edit page with pre-filled form data and fix API payload issues
+
+**Session Summary**:
+- **Frontend**: ✅ Complete (EventEditForm component, edit page route, validation)
+- **Type Fixes**: ✅ Complete (UpdateEventRequest interface aligned with backend)
+- **Payload Fixes**: ✅ Complete (null handling for nullable C# types)
+- **Form State**: ✅ Complete (Fixed infinite re-render preventing edits)
+- **Build Status**: ✅ 0 compilation errors
+- **Ready for Testing**: ✅ All fixes committed
+
+**Implementation Details**:
+
+**Created Files**:
+1. ✅ [EventEditForm.tsx](../web/src/presentation/components/features/events/EventEditForm.tsx) - Event edit form component
+   - Pre-fills form with existing event data
+   - Category string→number conversion for API compatibility
+   - Geocoding support for location-based filtering
+   - Proper null handling for optional fields
+2. ✅ [edit/page.tsx](../web/src/app/events/[id]/edit/page.tsx) - Event edit page route
+   - Authentication/authorization checks
+   - Loading and error states
+   - Back navigation to manage page
+
+**Modified Files**:
+1. ✅ [UpdateEventRequest](../web/src/infrastructure/api/types/events.types.ts) - Fixed type interface
+   - Changed `address/city/state` → `locationAddress/locationCity/locationState`
+   - Added `| null` to all nullable fields to match C# types
+   - Removed `isFree` field (backend infers from ticketPriceAmount)
+2. ✅ [manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx) - Added "Edit Event" button
+
+**Issues Fixed**:
+
+**Issue 1: Form Fields Not Editable** ❌→✅
+- **Symptom**: Could not type in any form field
+- **Root Cause**: useEffect dependency array included entire `event` object causing infinite re-renders
+- **Fix**: Changed dependency from `[event, reset, convertCategoryToNumber]` to `[event.id]`
+- **Commit**: b80b771
+
+**Issue 2: TypeScript Type Mismatch** ❌→✅
+- **Symptom**: Build error - `number | null` not assignable to `number | undefined`
+- **Root Cause**: UpdateEventRequest interface had wrong field names and types
+- **Fix**: Updated interface to match backend UpdateEventCommand exactly
+- **Commit**: e815ef6
+
+**Issue 3: 400 Bad Request - Empty Strings** ❌→✅
+- **Symptom**: API returned 400 error when updating events
+- **Root Cause**: Sending empty strings `""` instead of `null` for optional location fields
+- **Fix**: Changed `|| ''` to `|| null` for all optional fields
+- **Details**: C# nullable types (string?) expect JSON `null`, not empty strings
+- **Commit**: dd3bb0c
+
+**Commits Made**:
+1. `9b1a22c` - feat: Add event edit functionality with form validation
+2. `4772711` - fix(events): Fix event update API payload for backend compatibility
+3. `1faaa3a` - fix(events): Fix category dropdown in EventEditForm to handle string enums
+4. `b80b771` - fix(events): Fix form fields not editable in EventEditForm
+5. `e815ef6` - fix(events): Fix UpdateEventRequest type and use null for nullable fields
+6. `dd3bb0c` - fix(events): Use null instead of empty strings for optional location fields
+
+**Key Learnings**:
+1. **TypeScript ↔ C# Type Mapping**:
+   - C# `decimal?` → TypeScript `number | null` (NOT `number | undefined`)
+   - C# `string?` → TypeScript `string | null` (NOT empty string)
+   - JSON serialization: C# null → JSON null, TypeScript undefined → omitted from JSON
+2. **React Hook Form Best Practices**:
+   - useEffect dependencies must be stable to prevent infinite loops
+   - Use `event.id` instead of entire `event` object in dependencies
+   - Wrap helper functions in useCallback for stability
+3. **Backend Contract Matching**:
+   - Frontend types must exactly match backend command signatures
+   - Field naming must be consistent (locationAddress not address)
+   - Backend inference patterns (isFree inferred from ticketPriceAmount)
+
+**Next Steps**:
+- ✅ User testing of event edit functionality
+- ⏳ Monitor for any edge cases or validation issues
+
+---
+
+## Previous Sessions
+
+### Session 15 (Continued): Sign-Up Category Redesign - Complete Implementation (2025-11-30)
+
+**Status**: ✅ COMPLETE - All layers implemented and UI redesigned
+
+**Goal**: Replace binary "Open/Predefined" sign-up model with flexible category-based system (Mandatory, Preferred, Suggested items)
+
+**Complete Implementation Summary**:
+- ✅ **Domain Layer**: SignUpItemCategory enum, SignUpItem entity (Previous session)
+- ✅ **Infrastructure Layer**: EF Core configurations, migration applied to Azure staging (Previous session)
+- ✅ **Application Layer**: 8 new command/handler files + 2 updated files (Previous session)
+- ✅ **Database Migration**: Successfully applied to Azure staging database (2025-11-30)
+- ✅ **API Layer**: 4 new controller endpoints with DTOs (2025-11-30)
+- ✅ **Frontend TypeScript**: Types updated for category-based system (2025-11-30)
+- ✅ **Repository Layer**: 4 new repository methods (2025-11-30)
+- ✅ **React Hooks**: 4 new mutation hooks with optimistic updates (2025-11-30)
+- ✅ **UI Components**: SignUpManagementSection completely redesigned (2025-11-30)
+- ✅ **Build Status**: 0 compilation errors, dev server running successfully
+
+**UI Layer Implementation** ✅ COMPLETE (2025-11-30):
+
+**Modified Files**:
+1. ✅ [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) - Complete UI redesign
+   - Added SignUpItemCategory import for category-based rendering
+   - Added useCommitToSignUpItem hook for item-specific commitments
+   - Added category-based state management (selectedItemId, commitQuantity, commitNotes)
+   - Implemented handleCommitToItem function for item commitments
+   - Created getCategoryColor and getCategoryLabel helper functions
+   - **Dual-Mode Rendering**:
+     - **Category-Based Sign-Ups** (NEW):
+       - Groups items by category (Mandatory, Preferred, Suggested)
+       - Color-coded category badges (Red=Mandatory, Blue=Preferred, Green=Suggested)
+       - Individual item cards with quantity tracking (X of Y committed)
+       - Visual progress bars showing commitment percentage
+       - Remaining quantity display with validation
+       - Inline commitment forms with quantity and notes
+       - Optimistic UI updates with loading states
+       - User commitment indicators ("You" badge)
+       - Full/Empty state messages
+     - **Legacy Sign-Ups** (Backward Compatible):
+       - Continues to support Open/Predefined sign-ups
+       - Original UI preserved for existing sign-up lists
+       - No breaking changes to legacy functionality
+
+**UI/UX Features**:
+- **Visual Hierarchy**: Category badges with color coding for easy scanning
+- **Progress Tracking**: Real-time progress bars and quantity indicators
+- **User Feedback**: Clear indicators for user's own commitments
+- **Form Validation**: Max quantity validation prevents over-commitment
+- **Responsive Design**: Flexible layouts with proper spacing
+- **Accessibility**: Clear labels and semantic HTML structure
+- **Loading States**: Disabled buttons during API calls
+- **Error Prevention**: Validation before submission
+- **Notes Field**: Optional notes for commitments with multi-line support
+
+**Technical Implementation**:
+- **Optimistic Updates**: Immediate UI feedback before server response
+- **Cache Invalidation**: Proper React Query cache management
+- **Type Safety**: Full TypeScript type checking with zero errors
+- **Conditional Rendering**: Smart detection of category-based vs legacy sign-ups
+- **Component Composition**: Reusable UI patterns for items and commitments
+
+**Session Summary**:
+- **Domain Layer**: ✅ Complete (SignUpItemCategory enum, SignUpItem entity, updated relationships)
+- **Infrastructure Layer**: ✅ Complete (EF Core configurations, migration generated)
+- **Application Layer**: ✅ Complete (Commands, Queries, DTOs with backward compatibility)
+- **Build Status**: ✅ 0 compilation errors (00:03:12.55)
+- **Migration Status**: ⏳ Ready to apply to Azure staging database
+- **Next Steps**: API layer, then Frontend layer
+
+**Implementation Progress**:
+
+**Application Layer - DTOs** ✅ COMPLETE (2025-11-29):
+- ✅ Extended [SignUpListDto.cs](../src/LankaConnect.Application/Events/Common/SignUpListDto.cs) with category flags
+  - Added: `HasMandatoryItems`, `HasPreferredItems`, `HasSuggestedItems`
+  - Added: `List<SignUpItemDto> Items` collection
+- ✅ Created `SignUpItemDto` class with quantity tracking
+  - Properties: Id, ItemDescription, Quantity, RemainingQuantity, ItemCategory, Notes, Commitments
+  - Computed: `IsFullyCommitted`, `CommittedQuantity`
+- ✅ Updated `SignUpCommitmentDto` to include `SignUpItemId` and `Notes`
+- ✅ **Backward Compatibility**: Legacy fields preserved (PredefinedItems, Commitments for Open sign-ups)
+
+**Application Layer - Commands** ✅ COMPLETE (2025-11-29):
+- ✅ Created [AddSignUpListWithCategoriesCommand](../src/LankaConnect.Application/Events/Commands/AddSignUpListWithCategories/AddSignUpListWithCategoriesCommand.cs)
+  - Parameters: EventId, Category, Description, HasMandatoryItems, HasPreferredItems, HasSuggestedItems
+  - Handler validates event exists and calls `SignUpList.CreateWithCategories()`
+- ✅ Created [AddSignUpItemCommand](../src/LankaConnect.Application/Events/Commands/AddSignUpItem/AddSignUpItemCommand.cs)
+  - Parameters: EventId, SignUpListId, ItemDescription, Quantity, ItemCategory, Notes
+  - Returns: `Result<Guid>` with newly created item ID
+  - Handler validates category is enabled before adding item
+- ✅ Created [RemoveSignUpItemCommand](../src/LankaConnect.Application/Events/Commands/RemoveSignUpItem/RemoveSignUpItemCommand.cs)
+  - Parameters: EventId, SignUpListId, SignUpItemId
+  - Handler prevents removal if item has commitments (domain rule)
+- ✅ Created [CommitToSignUpItemCommand](../src/LankaConnect.Application/Events/Commands/CommitToSignUpItem/CommitToSignUpItemCommand.cs)
+  - Parameters: EventId, SignUpListId, SignUpItemId, UserId, Quantity, Notes
+  - Handler validates remaining quantity before commitment
+
+**Application Layer - Queries** ✅ COMPLETE (2025-11-29):
+- ✅ Updated [GetEventSignUpListsQueryHandler](../src/LankaConnect.Application/Events/Queries/GetEventSignUpLists/GetEventSignUpListsQueryHandler.cs)
+  - Populates both legacy fields (for Open/Predefined) and new category fields
+  - Maps `Items` collection with nested commitments
+  - Returns `SignUpListDto` supporting both models
+
+**Errors Fixed**:
+- ❌ **Error 1**: `GetByIdWithSignUpListsAsync` method not found in IEventRepository
+  - **Root Cause**: Incorrectly assumed specialized repository method existed
+  - **Investigation**: Read IEventRepository.cs interface, found only GetByIdAsync
+  - **Fix**: Changed all command handlers to use `GetByIdAsync` (EF Core loads navigation properties)
+  - **Files Affected**: AddSignUpItemCommandHandler.cs, RemoveSignUpItemCommandHandler.cs, CommitToSignUpItemCommandHandler.cs
+  - **Build Result**: ✅ 0 errors after fix
+
+**Files Created** (8 new command/handler files):
+1. [AddSignUpListWithCategoriesCommand.cs](../src/LankaConnect.Application/Events/Commands/AddSignUpListWithCategories/AddSignUpListWithCategoriesCommand.cs)
+2. [AddSignUpListWithCategoriesCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/AddSignUpListWithCategories/AddSignUpListWithCategoriesCommandHandler.cs)
+3. [AddSignUpItemCommand.cs](../src/LankaConnect.Application/Events/Commands/AddSignUpItem/AddSignUpItemCommand.cs)
+4. [AddSignUpItemCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/AddSignUpItem/AddSignUpItemCommandHandler.cs)
+5. [RemoveSignUpItemCommand.cs](../src/LankaConnect.Application/Events/Commands/RemoveSignUpItem/RemoveSignUpItemCommand.cs)
+6. [RemoveSignUpItemCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/RemoveSignUpItem/RemoveSignUpItemCommandHandler.cs)
+7. [CommitToSignUpItemCommand.cs](../src/LankaConnect.Application/Events/Commands/CommitToSignUpItem/CommitToSignUpItemCommand.cs)
+8. [CommitToSignUpItemCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CommitToSignUpItem/CommitToSignUpItemCommandHandler.cs)
+
+**Files Modified** (2 files):
+1. [SignUpListDto.cs](../src/LankaConnect.Application/Events/Common/SignUpListDto.cs) - Extended for category-based model
+2. [GetEventSignUpListsQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetEventSignUpLists/GetEventSignUpListsQueryHandler.cs) - Updated mapping
+
+**Key Design Decisions**:
+1. **Backward Compatibility**: SignUpListDto supports both legacy (Open/Predefined) and new (Category-based) models
+2. **Repository Pattern**: Used existing GetByIdAsync instead of creating specialized method
+3. **Command Structure**: Followed existing patterns from AddSignUpListToEventCommand
+4. **Result Pattern**: All commands return Result/Result<T> for consistent error handling
+5. **Domain Validation**: Commands delegate business rules to domain entities (SignUpList, SignUpItem)
+
+**Next Steps** (Remaining):
+1. ⏳ **Apply Migration**: Run EF Core migration on Azure staging database
+2. ⏳ **API Layer**: Create controller endpoints and Request/Response DTOs
+3. ⏳ **Frontend Layer**: Update TypeScript types, React hooks, redesign manage-signups UI
+4. ⏳ **Testing**: End-to-end testing on staging environment
+5. ⏳ **Documentation**: Update progress docs and commit changes
+
+---
 
 ### Session 14: Event Management UI Improvements (2025-11-29)
 

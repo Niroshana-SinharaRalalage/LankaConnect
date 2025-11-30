@@ -9,8 +9,6 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
 {
     public void Configure(EntityTypeBuilder<SignUpList> builder)
     {
-        builder.ToTable("sign_up_lists");
-
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
@@ -33,7 +31,20 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
             .HasMaxLength(20)
             .IsRequired();
 
-        // Store predefined items as JSON array
+        // New category flags
+        builder.Property(s => s.HasMandatoryItems)
+            .HasColumnName("has_mandatory_items")
+            .HasDefaultValue(false);
+
+        builder.Property(s => s.HasPreferredItems)
+            .HasColumnName("has_preferred_items")
+            .HasDefaultValue(false);
+
+        builder.Property(s => s.HasSuggestedItems)
+            .HasColumnName("has_suggested_items")
+            .HasDefaultValue(false);
+
+        // Store predefined items as JSON array (legacy)
         builder.Property<List<string>>("_predefinedItems")
             .HasColumnName("predefined_items")
             .HasColumnType("jsonb");
@@ -51,10 +62,16 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
         builder.Property<DateTime?>("UpdatedAt")
             .HasColumnName("updated_at");
 
-        // Configure relationship to SignUpCommitments
+        // Configure relationship to SignUpCommitments (legacy)
         builder.HasMany(s => s.Commitments)
             .WithOne()
             .HasForeignKey("SignUpListId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure relationship to SignUpItems (new category-based model)
+        builder.HasMany(s => s.Items)
+            .WithOne()
+            .HasForeignKey(i => i.SignUpListId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes

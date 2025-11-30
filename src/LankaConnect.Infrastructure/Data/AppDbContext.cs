@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
@@ -60,6 +61,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
+        modelBuilder.ApplyConfiguration(new SignUpListConfiguration()); // Sign-up lists
+        modelBuilder.ApplyConfiguration(new SignUpItemConfiguration()); // Sign-up items (category-based)
+        modelBuilder.ApplyConfiguration(new SignUpCommitmentConfiguration()); // User commitments
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
         modelBuilder.ApplyConfiguration(new MetroAreaConfiguration()); // Phase 5
@@ -104,6 +108,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Events schema
         modelBuilder.Entity<Event>().ToTable("events", "events");
         modelBuilder.Entity<Registration>().ToTable("registrations", "events");
+        modelBuilder.Entity<SignUpList>().ToTable("sign_up_lists", "events");
+        modelBuilder.Entity<SignUpItem>().ToTable("sign_up_items", "events");
+        modelBuilder.Entity<SignUpCommitment>().ToTable("sign_up_commitments", "events");
         modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
         modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
         
@@ -142,6 +149,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventImage), // Epic 2 Phase 2
             typeof(EventVideo),  // Epic 2 Phase 2
             typeof(Registration),
+            typeof(SignUpList), // Sign-up lists
+            typeof(SignUpItem), // Sign-up items (category-based)
+            typeof(SignUpCommitment), // User commitments
             typeof(MetroArea), // Phase 5C
             typeof(EventTemplate), // Phase 6A.8
             typeof(ForumTopic),

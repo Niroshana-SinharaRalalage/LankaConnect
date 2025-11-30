@@ -19,6 +19,9 @@ import type {
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
+  AddSignUpListWithCategoriesRequest,
+  AddSignUpItemRequest,
+  CommitToSignUpItemRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -351,6 +354,62 @@ export class EventsRepository {
     await apiClient.delete<void>(
       `${this.basePath}/${eventId}/signups/${signupId}/commit`,
       { data: request }
+    );
+  }
+
+  // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
+
+  /**
+   * Add a category-based sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups/categories
+   */
+  async addSignUpListWithCategories(
+    eventId: string,
+    request: AddSignUpListWithCategoriesRequest
+  ): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/signups/categories`, request);
+  }
+
+  /**
+   * Add an item to a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
+   */
+  async addSignUpItem(
+    eventId: string,
+    signupId: string,
+    request: AddSignUpItemRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+  }
+
+  /**
+   * Remove an item from a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */
+  async removeSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string
+  ): Promise<void> {
+    await apiClient.delete<void>(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+  }
+
+  /**
+   * User commits to bringing a specific item
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
+   */
+  async commitToSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string,
+    request: CommitToSignUpItemRequest
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`,
+      request
     );
   }
 

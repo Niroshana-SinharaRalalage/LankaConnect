@@ -22,6 +22,9 @@ import type {
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
+  AddSignUpListWithCategoriesRequest,
+  AddSignUpItemRequest,
+  CommitToSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -321,6 +324,205 @@ export function useCancelCommitment() {
   });
 }
 
+// ==================== CATEGORY-BASED SIGN-UP HOOKS ====================
+
+/**
+ * useAddSignUpListWithCategories Hook
+ *
+ * Mutation hook for adding a category-based sign-up list (organizer only)
+ *
+ * Features:
+ * - Automatic cache invalidation after success
+ * - Proper error handling
+ * - Invalidates sign-up lists and event detail
+ *
+ * @example
+ * ```tsx
+ * const addCategoryList = useAddSignUpListWithCategories();
+ *
+ * await addCategoryList.mutateAsync({
+ *   eventId: 'event-123',
+ *   category: 'Potluck Items',
+ *   description: 'Bring food for the community potluck',
+ *   hasMandatoryItems: true,
+ *   hasPreferredItems: true,
+ *   hasSuggestedItems: false
+ * });
+ * ```
+ */
+export function useAddSignUpListWithCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      ...data
+    }: { eventId: string } & AddSignUpListWithCategoriesRequest) =>
+      eventsRepository.addSignUpListWithCategories(eventId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useAddSignUpItem Hook
+ *
+ * Mutation hook for adding an item to a category-based sign-up list (organizer only)
+ *
+ * Features:
+ * - Returns the newly created item ID
+ * - Optimistic update adds item to cache
+ * - Automatic cache invalidation
+ * - Rollback on error
+ *
+ * @example
+ * ```tsx
+ * const addItem = useAddSignUpItem();
+ *
+ * const itemId = await addItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemDescription: 'Rice (5 cups)',
+ *   quantity: 2,
+ *   itemCategory: SignUpItemCategory.Mandatory,
+ *   notes: 'Basmati preferred'
+ * });
+ * ```
+ */
+export function useAddSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+    } & AddSignUpItemRequest) => eventsRepository.addSignUpItem(eventId, signupId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useRemoveSignUpItem Hook
+ *
+ * Mutation hook for removing an item from a category-based sign-up list (organizer only)
+ *
+ * Features:
+ * - Optimistic update removes item from cache
+ * - Automatic cache invalidation
+ * - Rollback on error
+ *
+ * @example
+ * ```tsx
+ * const removeItem = useRemoveSignUpItem();
+ *
+ * await removeItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789'
+ * });
+ * ```
+ */
+export function useRemoveSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    }) => eventsRepository.removeSignUpItem(eventId, signupId, itemId),
+    onMutate: async ({ eventId, signupId, itemId }) => {
+      await queryClient.cancelQueries({ queryKey: signUpKeys.list(eventId) });
+
+      const previousSignUps = queryClient.getQueryData<SignUpListDto[]>(
+        signUpKeys.list(eventId)
+      );
+
+      // Optimistically remove item
+      queryClient.setQueryData<SignUpListDto[]>(signUpKeys.list(eventId), (old) => {
+        if (!old) return old;
+
+        return old.map((signUp) => {
+          if (signUp.id !== signupId) return signUp;
+
+          return {
+            ...signUp,
+            items: signUp.items.filter((item) => item.id !== itemId),
+          };
+        });
+      });
+
+      return { previousSignUps };
+    },
+    onError: (err, { eventId }, context) => {
+      if (context?.previousSignUps) {
+        queryClient.setQueryData(signUpKeys.list(eventId), context.previousSignUps);
+      }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useCommitToSignUpItem Hook
+ *
+ * Mutation hook for user to commit to bringing a specific item
+ *
+ * Features:
+ * - Optimistic update adds commitment to item
+ * - Updates remaining quantity
+ * - Automatic cache invalidation
+ * - Rollback on error
+ *
+ * @example
+ * ```tsx
+ * const commitToItem = useCommitToSignUpItem();
+ *
+ * await commitToItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789',
+ *   userId: 'user-abc',
+ *   quantity: 1,
+ *   notes: 'Will bring brown rice'
+ * });
+ * ```
+ */
+export function useCommitToSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    } & CommitToSignUpItemRequest) =>
+      eventsRepository.commitToSignUpItem(eventId, signupId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
 /**
  * Export all hooks
  */
@@ -330,4 +532,8 @@ export default {
   useRemoveSignUpList,
   useCommitToSignUp,
   useCancelCommitment,
+  useAddSignUpListWithCategories,
+  useAddSignUpItem,
+  useRemoveSignUpItem,
+  useCommitToSignUpItem,
 };

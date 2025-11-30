@@ -205,8 +205,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationLatitude,
           locationLongitude,
         }),
-        ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
-        ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
+        // Use null (not undefined) for nullable fields to match C# nullable types
+        ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,
+        ticketPriceCurrency: data.isFree ? null : data.ticketPriceCurrency!,
       };
 
       console.log('📤 Updating event with payload:', JSON.stringify(eventData, null, 2));

@@ -276,6 +276,7 @@ export interface CreateEventRequest {
 
 /**
  * Update event request
+ * Matches backend UpdateEventCommand signature exactly
  */
 export interface UpdateEventRequest {
   eventId: string;
@@ -286,19 +287,19 @@ export interface UpdateEventRequest {
   capacity?: number;
   category?: EventCategory;
 
-  // Location
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-  latitude?: number;
-  longitude?: number;
+  // Location (with "Location" prefix to match backend)
+  locationAddress?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  locationZipCode?: string | null;
+  locationCountry?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 
-  // Pricing
-  ticketPriceAmount?: number;
-  ticketPriceCurrency?: Currency;
-  isFree?: boolean;
+  // Pricing (nullable to match C# decimal? and Currency?)
+  ticketPriceAmount?: number | null;
+  ticketPriceCurrency?: Currency | null;
+  // Note: isFree is NOT in backend UpdateEventCommand - backend infers it from ticketPriceAmount
 }
 
 /**

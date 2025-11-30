@@ -25,9 +25,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         if (@event == null)
             return Result.Failure("Event not found");
 
-        // Only draft events can be fully updated
-        if (@event.Status != Domain.Events.Enums.EventStatus.Draft)
-            return Result.Failure("Only draft events can be updated");
+        // NOTE: Allowing updates for all event statuses
+        // Future enhancement: Implement status-based field restrictions (see ADR-011)
+        // For now, organizers can update events regardless of status
 
         // Create updated value objects
         var titleResult = EventTitle.Create(request.Title);

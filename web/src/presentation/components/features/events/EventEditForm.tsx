@@ -74,7 +74,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
     register,
     handleSubmit,
     watch,
-    setValue,
     reset,
     formState: { errors },
   } = useForm<CreateEventFormData>({
@@ -97,10 +96,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
     },
   });
 
-  // Reset form with event data when event changes (ensures dropdown values are set)
+  // Reset form ONLY when event ID changes (prevents infinite re-renders)
+  // We don't want to reset when user is typing!
   useEffect(() => {
     const categoryNumber = convertCategoryToNumber(event.category);
     console.log('🔄 Resetting form with event data:', {
+      eventId: event.id,
       category: event.category,
       categoryType: typeof event.category,
       categoryNumber,
@@ -123,7 +124,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
     });
-  }, [event, reset, convertCategoryToNumber]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]); // Only reset when navigating to different event
 
   const isFree = watch('isFree');
 
@@ -203,8 +205,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationLatitude,
           locationLongitude,
         }),
-        ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,
-        ticketPriceCurrency: data.isFree ? null : data.ticketPriceCurrency!,
+        ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
+        ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
       };
 
       console.log('📤 Updating event with payload:', JSON.stringify(eventData, null, 2));

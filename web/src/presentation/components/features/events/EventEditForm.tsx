@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -12,6 +12,7 @@ import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency, type EventDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 
 interface EventEditFormProps {
   event: EventDto;
@@ -37,7 +38,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Convert string enum to number (backend returns enums as strings due to JsonStringEnumConverter)
-  const convertCategoryToNumber = (category: any): number => {
+  // Wrapped in useCallback to prevent infinite re-renders in useEffect
+  const convertCategoryToNumber = useCallback((category: any): number => {
     // If it's already a number, return it
     if (typeof category === 'number') return category;
 
@@ -54,7 +56,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
     };
 
     return categoryMap[category] ?? EventCategory.Community;
-  };
+  }, []);
 
   // Format dates for datetime-local input
   const formatDateForInput = (dateString: string | Date) => {
@@ -150,6 +152,34 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // UpdateEventRequest matches backend contract (excludes organizerId)
       const hasCompleteLocation = !!(data.locationAddress && data.locationCity);
 
+      // Geocode address to get lat/long coordinates for location-based filtering
+      let locationLatitude: number | undefined;
+      let locationLongitude: number | undefined;
+
+      if (hasCompleteLocation) {
+        console.log('🗺️ Geocoding address for location-based filtering...');
+        const geocodeResult = await geocodeAddress(
+          data.locationAddress!,
+          data.locationCity!,
+          data.locationState || undefined,
+          data.locationCountry || 'United States',
+          data.locationZipCode || undefined
+        );
+
+        if (geocodeResult) {
+          locationLatitude = geocodeResult.latitude;
+          locationLongitude = geocodeResult.longitude;
+          console.log('✅ Geocoding successful:', {
+            lat: locationLatitude,
+            lon: locationLongitude,
+            display: geocodeResult.displayName,
+          });
+        } else {
+          console.warn('⚠️ Geocoding failed - event will not appear in location-based filters');
+          // Continue anyway - location text will still be saved
+        }
+      }
+
       // Convert datetime-local format to ISO 8601
       const startDateISO = new Date(data.startDate).toISOString();
       const endDateISO = new Date(data.endDate).toISOString();
@@ -169,7 +199,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationCity: data.locationCity,
           locationState: data.locationState || '',
           locationZipCode: data.locationZipCode || '',
-          locationCountry: data.locationCountry || 'Sri Lanka',
+          locationCountry: data.locationCountry || 'United States',
+          locationLatitude,
+          locationLongitude,
         }),
         ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,
         ticketPriceCurrency: data.isFree ? null : data.ticketPriceCurrency!,
@@ -288,7 +320,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
                   errors.category ? 'border-destructive' : 'border-neutral-300'
                 }`}
                 {...register('category', { valueAsNumber: true })}
-                defaultValue={Number(event.category)}
               >
                 {categoryOptions.map((option) => (
                   <option key={option.value} value={option.value}>

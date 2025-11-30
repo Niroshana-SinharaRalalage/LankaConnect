@@ -12,6 +12,7 @@ import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/
 import { useCreateEvent } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
+import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 
 /**
  * Event Creation Form Component
@@ -43,6 +44,7 @@ export function EventCreationForm() {
       isFree: true,
       capacity: 50,
       ticketPriceCurrency: Currency.USD,
+      category: EventCategory.Community, // Default to Community instead of empty
     },
   });
 
@@ -70,6 +72,34 @@ export function EventCreationForm() {
       // Database constraint: Address must have Street, City, State, ZipCode, Country
       const hasCompleteLocation = !!(data.locationAddress && data.locationCity);
 
+      // Geocode address to get lat/long coordinates for location-based filtering
+      let locationLatitude: number | undefined;
+      let locationLongitude: number | undefined;
+
+      if (hasCompleteLocation) {
+        console.log('🗺️ Geocoding address for location-based filtering...');
+        const geocodeResult = await geocodeAddress(
+          data.locationAddress!,
+          data.locationCity!,
+          data.locationState || undefined,
+          data.locationCountry || 'United States',
+          data.locationZipCode || undefined
+        );
+
+        if (geocodeResult) {
+          locationLatitude = geocodeResult.latitude;
+          locationLongitude = geocodeResult.longitude;
+          console.log('✅ Geocoding successful:', {
+            lat: locationLatitude,
+            lon: locationLongitude,
+            display: geocodeResult.displayName,
+          });
+        } else {
+          console.warn('⚠️ Geocoding failed - event will not appear in location-based filters');
+          // Continue anyway - location text will still be saved
+        }
+      }
+
       const eventData = {
         title: data.title,
         description: data.description,
@@ -84,7 +114,9 @@ export function EventCreationForm() {
           locationCity: data.locationCity,
           locationState: data.locationState || '',
           locationZipCode: data.locationZipCode || '',
-          locationCountry: data.locationCountry || 'Sri Lanka',
+          locationCountry: data.locationCountry || 'United States',
+          locationLatitude,
+          locationLongitude,
         }),
         ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
         ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
@@ -94,6 +126,7 @@ export function EventCreationForm() {
       console.log('📤 Creating event with payload:', JSON.stringify(eventData, null, 2));
       console.log('📊 Payload Analysis:', {
         hasLocation: hasCompleteLocation,
+        hasCoordinates: !!(locationLatitude && locationLongitude),
         isFree: data.isFree,
         hasTicketPrice: !!data.ticketPriceAmount,
         categoryValue: data.category,
@@ -210,7 +243,6 @@ export function EventCreationForm() {
                 }`}
                 {...register('category', { valueAsNumber: true })}
               >
-                <option value="">Select a category</option>
                 {categoryOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}

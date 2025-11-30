@@ -241,6 +241,7 @@ class ApiClient {
         this.axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$axios$2f$lib$2f$axios$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].create({
             baseURL,
             timeout: config?.timeout || 30000,
+            withCredentials: true,
             headers: {
                 'Content-Type': 'application/json',
                 ...config?.headers
@@ -266,6 +267,8 @@ class ApiClient {
                 config.headers.Authorization = `Bearer ${this.authToken}`;
             }
             // PHASE 6A.10: Comprehensive request logging for debugging
+            const authHeader = config.headers.Authorization;
+            const authValue = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? `Bearer ${authHeader.substring(7, 30)}...` : 'Not set';
             console.log('🚀 API Request:', {
                 method: config.method?.toUpperCase(),
                 url: config.url,
@@ -273,8 +276,8 @@ class ApiClient {
                 fullURL: `${config.baseURL}${config.url}`,
                 headers: {
                     'Content-Type': config.headers['Content-Type'],
-                    'Authorization': config.headers.Authorization ? `Bearer ${config.headers.Authorization.substring(7, 30)}...` : 'Not set',
-                    'Origin': config.headers.Origin || window.location.origin
+                    'Authorization': authValue,
+                    'Origin': config.headers.Origin || (("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : 'SSR')
                 },
                 data: config.data ? JSON.stringify(config.data).substring(0, 200) : 'No data'
             });

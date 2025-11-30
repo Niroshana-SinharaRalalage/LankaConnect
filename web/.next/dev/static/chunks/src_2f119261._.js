@@ -5253,9 +5253,11 @@ class EventsRepository {
    * Create a new event
    * Requires authentication
    * Maps to backend CreateEventCommand
+   * Backend returns the event ID as a plain JSON string
    */ async createEvent(data) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
-        return response.id;
+        // Backend returns event ID as a plain JSON string (e.g., "40b297c9-2867-4f6b-900c-b5d0f230efe8")
+        const eventId = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
+        return eventId;
     }
     /**
    * Update an existing event
@@ -5308,9 +5310,9 @@ class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */ async rsvpToEvent(eventId, userId, quantity = 1) {
         const request = {
-            eventId,
             userId,
             quantity
         };

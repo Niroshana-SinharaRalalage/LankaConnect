@@ -588,8 +588,8 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // Use HTTPS in production
-            SameSite = SameSiteMode.Strict,
+            Secure = !_env.IsDevelopment(), // Require HTTPS in production, allow HTTP in dev
+            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev, None for cross-origin in production
             Expires = DateTime.UtcNow.AddDays(expirationDays), // Matches refresh token expiry
             Path = "/"
         };
@@ -602,8 +602,8 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = !_env.IsDevelopment(), // Require HTTPS in production, allow HTTP in dev
+            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev, None for cross-origin in production
             Expires = DateTime.UtcNow.AddDays(-1),
             Path = "/"
         };

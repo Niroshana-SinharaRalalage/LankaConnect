@@ -5128,19 +5128,18 @@ class EventsRepository {
    * Create a new event
    * Requires authentication
    * Maps to backend CreateEventCommand
+   * Backend returns the event ID as a plain JSON string
    */ async createEvent(data) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
-        return response.id;
+        // Backend returns event ID as a plain JSON string (e.g., "40b297c9-2867-4f6b-900c-b5d0f230efe8")
+        const eventId = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
+        return eventId;
     }
     /**
    * Update an existing event
    * Requires authentication and ownership
    * Maps to backend UpdateEventCommand
    */ async updateEvent(id, data) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, {
-            ...data,
-            eventId: id
-        });
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, data);
     }
     /**
    * Delete an event
@@ -5183,9 +5182,9 @@ class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */ async rsvpToEvent(eventId, userId, quantity = 1) {
         const request = {
-            eventId,
             userId,
             quantity
         };
@@ -5280,6 +5279,34 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/commit`, {
             data: request
         });
+    }
+    // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
+    /**
+   * Add a category-based sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups/categories
+   */ async addSignUpListWithCategories(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+    }
+    /**
+   * Add an item to a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
+   */ async addSignUpItem(eventId, signupId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+    }
+    /**
+   * Remove an item from a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */ async removeSignUpItem(eventId, signupId, itemId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+    }
+    /**
+   * User commits to bringing a specific item
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
+   */ async commitToSignUpItem(eventId, signupId, itemId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
     }
     // ==================== MEDIA OPERATIONS ====================
     /**

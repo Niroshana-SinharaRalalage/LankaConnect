@@ -3884,8 +3884,13 @@ class AuthRepository {
     basePath = '/auth';
     /**
    * Login user
-   */ async login(credentials) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, credentials);
+   * @param credentials User email and password
+   * @param rememberMe Keep user logged in for 30 days (like Facebook/Gmail)
+   */ async login(credentials, rememberMe = false) {
+        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, {
+            ...credentials,
+            rememberMe
+        });
         return response;
     }
     /**
@@ -4126,6 +4131,8 @@ function getFreeTrialDaysRemaining(freeTrialEndsAt) {
     ()=>EventStatus,
     "RegistrationStatus",
     ()=>RegistrationStatus,
+    "SignUpItemCategory",
+    ()=>SignUpItemCategory,
     "SignUpType",
     ()=>SignUpType
 ]);
@@ -4175,6 +4182,12 @@ var SignUpType = /*#__PURE__*/ function(SignUpType) {
     SignUpType[SignUpType["Predefined"] = 1] = "Predefined";
     return SignUpType;
 }({});
+var SignUpItemCategory = /*#__PURE__*/ function(SignUpItemCategory) {
+    SignUpItemCategory[SignUpItemCategory["Mandatory"] = 0] = "Mandatory";
+    SignUpItemCategory[SignUpItemCategory["Preferred"] = 1] = "Preferred";
+    SignUpItemCategory[SignUpItemCategory["Suggested"] = 2] = "Suggested";
+    return SignUpItemCategory;
+}({});
 }),
 "[project]/src/presentation/components/features/dashboard/EventsList.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -4222,6 +4235,8 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
         }
     };
     const getStatusLabel = (status)=>{
+        // Debug logging to identify the issue
+        console.log('Event status value:', status, 'Type:', typeof status);
         switch(status){
             case __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventStatus"].Published:
                 return 'Published';
@@ -4240,7 +4255,9 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
             case __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventStatus"].Archived:
                 return 'Archived';
             default:
-                return 'Unknown';
+                // Additional debug info
+                console.warn(`Unknown status value: ${status}, Type: ${typeof status}, EventStatus.Draft=${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventStatus"].Draft}`);
+                return `Unknown (${status})`;
         }
     };
     const getCategoryLabel = (category)=>{
@@ -4276,7 +4293,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                         role: "status"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                        lineNumber: 105,
+                        lineNumber: 110,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4284,18 +4301,18 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                         children: "Loading events..."
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                        lineNumber: 109,
+                        lineNumber: 114,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                lineNumber: 104,
+                lineNumber: 109,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-            lineNumber: 103,
+            lineNumber: 108,
             columnNumber: 7
         }, this);
     }
@@ -4307,7 +4324,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                     className: "w-16 h-16 mx-auto mb-4 text-gray-400"
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                    lineNumber: 118,
+                    lineNumber: 123,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4315,13 +4332,13 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                     children: emptyMessage
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                    lineNumber: 119,
+                    lineNumber: 124,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-            lineNumber: 117,
+            lineNumber: 122,
             columnNumber: 7
         }, this);
     }
@@ -4339,7 +4356,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                 children: event.title
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                lineNumber: 136,
+                                lineNumber: 141,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4352,18 +4369,18 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                     children: getStatusLabel(event.status)
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                    lineNumber: 139,
+                                    lineNumber: 144,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                lineNumber: 137,
+                                lineNumber: 142,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                        lineNumber: 135,
+                        lineNumber: 140,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4376,7 +4393,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         className: "w-4 h-4 mr-2 text-[#FF7900]"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 152,
+                                        lineNumber: 157,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4391,13 +4408,13 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 153,
+                                        lineNumber: 158,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                lineNumber: 151,
+                                lineNumber: 156,
                                 columnNumber: 13
                             }, this),
                             event.city && event.state && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4407,7 +4424,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         className: "w-4 h-4 mr-2 text-[#FF7900]"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 164,
+                                        lineNumber: 169,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4418,13 +4435,13 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 165,
+                                        lineNumber: 170,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                lineNumber: 163,
+                                lineNumber: 168,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4434,7 +4451,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         className: "w-4 h-4 mr-2 text-[#FF7900]"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 173,
+                                        lineNumber: 178,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4446,19 +4463,19 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                        lineNumber: 174,
+                                        lineNumber: 179,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                lineNumber: 172,
+                                lineNumber: 177,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                        lineNumber: 149,
+                        lineNumber: 154,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4471,7 +4488,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                     children: getCategoryLabel(event.category)
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                    lineNumber: 184,
+                                    lineNumber: 189,
                                     columnNumber: 15
                                 }, this),
                                 event.isFree && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4479,7 +4496,7 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                     children: "Free"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                    lineNumber: 190,
+                                    lineNumber: 195,
                                     columnNumber: 17
                                 }, this),
                                 !event.isFree && event.ticketPriceAmount && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4490,29 +4507,29 @@ function EventsList({ events, isLoading = false, emptyMessage = 'No events to di
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                                    lineNumber: 197,
+                                    lineNumber: 202,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                            lineNumber: 182,
+                            lineNumber: 187,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                        lineNumber: 181,
+                        lineNumber: 186,
                         columnNumber: 11
                     }, this)
                 ]
             }, event.id, true, {
                 fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-                lineNumber: 127,
+                lineNumber: 132,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/src/presentation/components/features/dashboard/EventsList.tsx",
-        lineNumber: 125,
+        lineNumber: 130,
         columnNumber: 5
     }, this);
 }
@@ -6153,19 +6170,18 @@ class EventsRepository {
    * Create a new event
    * Requires authentication
    * Maps to backend CreateEventCommand
+   * Backend returns the event ID as a plain JSON string
    */ async createEvent(data) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
-        return response.id;
+        // Backend returns event ID as a plain JSON string (e.g., "40b297c9-2867-4f6b-900c-b5d0f230efe8")
+        const eventId = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
+        return eventId;
     }
     /**
    * Update an existing event
    * Requires authentication and ownership
    * Maps to backend UpdateEventCommand
    */ async updateEvent(id, data) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, {
-            ...data,
-            eventId: id
-        });
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, data);
     }
     /**
    * Delete an event
@@ -6208,9 +6224,9 @@ class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */ async rsvpToEvent(eventId, userId, quantity = 1) {
         const request = {
-            eventId,
             userId,
             quantity
         };
@@ -6305,6 +6321,34 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/commit`, {
             data: request
         });
+    }
+    // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
+    /**
+   * Add a category-based sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups/categories
+   */ async addSignUpListWithCategories(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+    }
+    /**
+   * Add an item to a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
+   */ async addSignUpItem(eventId, signupId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+    }
+    /**
+   * Remove an item from a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */ async removeSignUpItem(eventId, signupId, itemId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+    }
+    /**
+   * User commits to bringing a specific item
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
+   */ async commitToSignUpItem(eventId, signupId, itemId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
     }
     // ==================== MEDIA OPERATIONS ====================
     /**
@@ -6678,6 +6722,12 @@ function DashboardPage() {
             console.error('Failed to mark notification as read:', error);
         }
     };
+    const handleEventClick = (eventId)=>{
+        router.push(`/events/${eventId}`);
+    };
+    const handleManageEventClick = (eventId)=>{
+        router.push(`/events/${eventId}/manage`);
+    };
     const handleLogout = async ()=>{
         try {
             await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$auth$2e$repository$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["authRepository"].logout();
@@ -6718,7 +6768,7 @@ function DashboardPage() {
                                             size: "md"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                            lineNumber: 184,
+                                            lineNumber: 192,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -6730,7 +6780,7 @@ function DashboardPage() {
                                                     children: "Events"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 188,
+                                                    lineNumber: 196,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6739,7 +6789,7 @@ function DashboardPage() {
                                                     children: "Forums"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 191,
+                                                    lineNumber: 199,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6748,7 +6798,7 @@ function DashboardPage() {
                                                     children: "Business"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 194,
+                                                    lineNumber: 202,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6757,7 +6807,7 @@ function DashboardPage() {
                                                     children: "Marketplace"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 197,
+                                                    lineNumber: 205,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6766,19 +6816,19 @@ function DashboardPage() {
                                                     children: "Dashboard"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 200,
+                                                    lineNumber: 208,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                            lineNumber: 187,
+                                            lineNumber: 195,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                    lineNumber: 183,
+                                    lineNumber: 191,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6800,7 +6850,7 @@ function DashboardPage() {
                                                         className: "w-10 h-10 rounded-full object-cover"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 215,
+                                                        lineNumber: 223,
                                                         columnNumber: 25
                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                         className: "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold",
@@ -6810,7 +6860,7 @@ function DashboardPage() {
                                                         children: getInitials(user?.fullName || 'U')
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 223,
+                                                        lineNumber: 231,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6824,7 +6874,7 @@ function DashboardPage() {
                                                                 children: user?.fullName
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 231,
+                                                                lineNumber: 239,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6835,26 +6885,26 @@ function DashboardPage() {
                                                                 children: user?.role
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 232,
+                                                                lineNumber: 240,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 230,
+                                                        lineNumber: 238,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
                                                         className: `w-4 h-4 text-gray-600 transition-transform ${showUserMenu ? 'rotate-180' : ''}`
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 234,
+                                                        lineNumber: 242,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                lineNumber: 210,
+                                                lineNumber: 218,
                                                 columnNumber: 21
                                             }, this),
                                             showUserMenu && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6878,7 +6928,7 @@ function DashboardPage() {
                                                                 }
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 253,
+                                                                lineNumber: 261,
                                                                 columnNumber: 27
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6888,13 +6938,13 @@ function DashboardPage() {
                                                                 children: "Profile"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 254,
+                                                                lineNumber: 262,
                                                                 columnNumber: 27
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 246,
+                                                        lineNumber: 254,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6903,7 +6953,7 @@ function DashboardPage() {
                                                         }
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 256,
+                                                        lineNumber: 264,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6920,7 +6970,7 @@ function DashboardPage() {
                                                                 }
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 264,
+                                                                lineNumber: 272,
                                                                 columnNumber: 27
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6930,46 +6980,46 @@ function DashboardPage() {
                                                                 children: "Logout"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 265,
+                                                                lineNumber: 273,
                                                                 columnNumber: 27
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                        lineNumber: 257,
+                                                        lineNumber: 265,
                                                         columnNumber: 25
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                lineNumber: 239,
+                                                lineNumber: 247,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 209,
+                                        lineNumber: 217,
                                         columnNumber: 19
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                    lineNumber: 206,
+                                    lineNumber: 214,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                            lineNumber: 181,
+                            lineNumber: 189,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                        lineNumber: 180,
+                        lineNumber: 188,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                    lineNumber: 175,
+                    lineNumber: 183,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -6979,7 +7029,7 @@ function DashboardPage() {
                             upgradeRequestedAt: user.upgradeRequestedAt ? new Date(user.upgradeRequestedAt) : undefined
                         }, void 0, false, {
                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                            lineNumber: 279,
+                            lineNumber: 287,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7001,14 +7051,14 @@ function DashboardPage() {
                                                 className: "w-4 h-4 mr-2"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                lineNumber: 299,
+                                                lineNumber: 307,
                                                 columnNumber: 19
                                             }, this),
                                             "Upgrade to Event Organizer"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 289,
+                                        lineNumber: 297,
                                         columnNumber: 17
                                     }, this),
                                     user && (user.role === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$auth$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].EventOrganizer || user.role === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$auth$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].Admin || user.role === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$auth$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].AdminManager) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -7025,25 +7075,25 @@ function DashboardPage() {
                                                 className: "w-4 h-4 mr-2"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                lineNumber: 315,
+                                                lineNumber: 323,
                                                 columnNumber: 19
                                             }, this),
                                             "Create Event"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 305,
+                                        lineNumber: 313,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                lineNumber: 286,
+                                lineNumber: 294,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                            lineNumber: 285,
+                            lineNumber: 293,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7059,10 +7109,11 @@ function DashboardPage() {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$dashboard$2f$EventsList$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventsList"], {
                                                     events: registeredEvents,
                                                     isLoading: loadingRegistered,
-                                                    emptyMessage: "You haven't registered for any events yet"
+                                                    emptyMessage: "You haven't registered for any events yet",
+                                                    onEventClick: handleEventClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 337,
+                                                    lineNumber: 345,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7073,10 +7124,11 @@ function DashboardPage() {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$dashboard$2f$EventsList$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventsList"], {
                                                     events: createdEvents,
                                                     isLoading: loadingCreated,
-                                                    emptyMessage: "You haven't created any events yet"
+                                                    emptyMessage: "You haven't created any events yet",
+                                                    onEventClick: handleManageEventClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 349,
+                                                    lineNumber: 358,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7091,7 +7143,7 @@ function DashboardPage() {
                                                             children: "Pending Approvals"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                            lineNumber: 362,
+                                                            lineNumber: 372,
                                                             columnNumber: 29
                                                         }, void 0),
                                                         loadingApprovals ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7101,25 +7153,25 @@ function DashboardPage() {
                                                                 children: "Loading approvals..."
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                                lineNumber: 367,
+                                                                lineNumber: 377,
                                                                 columnNumber: 33
                                                             }, void 0)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                            lineNumber: 366,
+                                                            lineNumber: 376,
                                                             columnNumber: 31
                                                         }, void 0) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$admin$2f$ApprovalsTable$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ApprovalsTable"], {
                                                             approvals: pendingApprovals,
                                                             onUpdate: handleApprovalsUpdate
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                            lineNumber: 370,
+                                                            lineNumber: 380,
                                                             columnNumber: 31
                                                         }, void 0)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 361,
+                                                    lineNumber: 371,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7133,14 +7185,14 @@ function DashboardPage() {
                                                     onNotificationClick: handleNotificationClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 380,
+                                                    lineNumber: 390,
                                                     columnNumber: 27
                                                 }, void 0)
                                             }
                                         ]
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 330,
+                                        lineNumber: 338,
                                         columnNumber: 19
                                     }, this) : user && user.role === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$auth$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].EventOrganizer ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$TabPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TabPanel"], {
                                         tabs: [
@@ -7151,10 +7203,11 @@ function DashboardPage() {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$dashboard$2f$EventsList$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventsList"], {
                                                     events: registeredEvents,
                                                     isLoading: loadingRegistered,
-                                                    emptyMessage: "You haven't registered for any events yet"
+                                                    emptyMessage: "You haven't registered for any events yet",
+                                                    onEventClick: handleEventClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 397,
+                                                    lineNumber: 407,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7165,10 +7218,11 @@ function DashboardPage() {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$dashboard$2f$EventsList$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventsList"], {
                                                     events: createdEvents,
                                                     isLoading: loadingCreated,
-                                                    emptyMessage: "You haven't created any events yet"
+                                                    emptyMessage: "You haven't created any events yet",
+                                                    onEventClick: handleManageEventClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 409,
+                                                    lineNumber: 420,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7182,14 +7236,14 @@ function DashboardPage() {
                                                     onNotificationClick: handleNotificationClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 421,
+                                                    lineNumber: 433,
                                                     columnNumber: 27
                                                 }, void 0)
                                             }
                                         ]
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 390,
+                                        lineNumber: 400,
                                         columnNumber: 19
                                     }, this) : /* General User - Tabbed interface with Registered Events and Notifications */ /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$TabPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TabPanel"], {
                                         tabs: [
@@ -7200,10 +7254,11 @@ function DashboardPage() {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$dashboard$2f$EventsList$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventsList"], {
                                                     events: registeredEvents,
                                                     isLoading: loadingRegistered,
-                                                    emptyMessage: "You haven't registered for any events yet. Browse events to join!"
+                                                    emptyMessage: "You haven't registered for any events yet. Browse events to join!",
+                                                    onEventClick: handleEventClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 439,
+                                                    lineNumber: 451,
                                                     columnNumber: 27
                                                 }, void 0)
                                             },
@@ -7217,40 +7272,40 @@ function DashboardPage() {
                                                     onNotificationClick: handleNotificationClick
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                                    lineNumber: 451,
+                                                    lineNumber: 464,
                                                     columnNumber: 27
                                                 }, void 0)
                                             }
                                         ]
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                        lineNumber: 432,
+                                        lineNumber: 444,
                                         columnNumber: 19
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                    lineNumber: 327,
+                                    lineNumber: 335,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                                lineNumber: 326,
+                                lineNumber: 334,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                            lineNumber: 324,
+                            lineNumber: 332,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                    lineNumber: 276,
+                    lineNumber: 284,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Footer$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                    lineNumber: 467,
+                    lineNumber: 480,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$features$2f$role$2d$upgrade$2f$UpgradeModal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UpgradeModal"], {
@@ -7258,18 +7313,18 @@ function DashboardPage() {
                     onClose: ()=>setShowUpgradeModal(false)
                 }, void 0, false, {
                     fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-                    lineNumber: 470,
+                    lineNumber: 483,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-            lineNumber: 173,
+            lineNumber: 181,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/(dashboard)/dashboard/page.tsx",
-        lineNumber: 172,
+        lineNumber: 180,
         columnNumber: 5
     }, this);
 }

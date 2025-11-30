@@ -5087,8 +5087,8 @@ const createEventSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_m
     locationState: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().max(100, 'State must be less than 100 characters').optional().or(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal('')),
     locationZipCode: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().regex(/^\d{5}(-\d{4})?$/, 'ZIP code must be in format 12345 or 12345-6789').optional().or(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal('')),
     locationCountry: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().max(100, 'Country must be less than 100 characters').optional().or(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal('')),
-    // Pricing (Optional)
-    isFree: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean().default(true),
+    // Pricing (Required)
+    isFree: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean(),
     ticketPriceAmount: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].number().min(0, 'Price cannot be negative').max(10000, 'Price cannot exceed $10,000').optional().nullable(),
     ticketPriceCurrency: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].nativeEnum(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Currency"]).optional().nullable()
 }).refine((data)=>{
@@ -5212,19 +5212,18 @@ class EventsRepository {
    * Create a new event
    * Requires authentication
    * Maps to backend CreateEventCommand
+   * Backend returns the event ID as a plain JSON string
    */ async createEvent(data) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
-        return response.id;
+        // Backend returns event ID as a plain JSON string (e.g., "40b297c9-2867-4f6b-900c-b5d0f230efe8")
+        const eventId = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(this.basePath, data);
+        return eventId;
     }
     /**
    * Update an existing event
    * Requires authentication and ownership
    * Maps to backend UpdateEventCommand
    */ async updateEvent(id, data) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, {
-            ...data,
-            eventId: id
-        });
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, data);
     }
     /**
    * Delete an event
@@ -5267,9 +5266,9 @@ class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */ async rsvpToEvent(eventId, userId, quantity = 1) {
         const request = {
-            eventId,
             userId,
             quantity
         };
@@ -5742,7 +5741,8 @@ function EventCreationForm() {
         defaultValues: {
             isFree: true,
             capacity: 50,
-            ticketPriceCurrency: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Currency"].USD
+            ticketPriceCurrency: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Currency"].USD,
+            category: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["EventCategory"].Community
         }
     });
     const isFree = watch('isFree');
@@ -5757,7 +5757,7 @@ function EventCreationForm() {
             console.log('📋 Form Submission - User Context:', {
                 userId: user.userId,
                 userRole: user.role,
-                userName: user.firstName,
+                userName: user.fullName,
                 isAuthenticated: true
             });
             // Prepare event data for backend
@@ -5870,7 +5870,7 @@ function EventCreationForm() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 155,
+                                        lineNumber: 157,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -5880,26 +5880,26 @@ function EventCreationForm() {
                                         children: "Basic Information"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 156,
+                                        lineNumber: 158,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 154,
+                                lineNumber: 156,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Provide the essential details about your event"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 158,
+                                lineNumber: 160,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 153,
+                        lineNumber: 155,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -5913,7 +5913,7 @@ function EventCreationForm() {
                                         children: "Event Title *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 165,
+                                        lineNumber: 167,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -5924,7 +5924,7 @@ function EventCreationForm() {
                                         ...register('title')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 170,
                                         columnNumber: 13
                                     }, this),
                                     errors.title && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5932,13 +5932,13 @@ function EventCreationForm() {
                                         children: errors.title.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 176,
+                                        lineNumber: 178,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 164,
+                                lineNumber: 166,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5949,7 +5949,7 @@ function EventCreationForm() {
                                         children: "Event Description *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 182,
+                                        lineNumber: 184,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -5960,7 +5960,7 @@ function EventCreationForm() {
                                         ...register('description')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 185,
+                                        lineNumber: 187,
                                         columnNumber: 13
                                     }, this),
                                     errors.description && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5968,13 +5968,13 @@ function EventCreationForm() {
                                         children: errors.description.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 195,
+                                        lineNumber: 197,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 181,
+                                lineNumber: 183,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5985,7 +5985,7 @@ function EventCreationForm() {
                                         children: "Event Category *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 201,
+                                        lineNumber: 203,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5995,7 +5995,7 @@ function EventCreationForm() {
                                                 className: "absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 205,
+                                                lineNumber: 207,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -6004,33 +6004,23 @@ function EventCreationForm() {
                                                 ...register('category', {
                                                     valueAsNumber: true
                                                 }),
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                        value: "",
-                                                        children: "Select a category"
-                                                    }, void 0, false, {
+                                                children: categoryOptions.map((option)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                        value: option.value,
+                                                        children: option.label
+                                                    }, option.value, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 213,
-                                                        columnNumber: 17
-                                                    }, this),
-                                                    categoryOptions.map((option)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                            value: option.value,
-                                                            children: option.label
-                                                        }, option.value, false, {
-                                                            fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                            lineNumber: 215,
-                                                            columnNumber: 19
-                                                        }, this))
-                                                ]
-                                            }, void 0, true, {
+                                                        lineNumber: 216,
+                                                        columnNumber: 19
+                                                    }, this))
+                                            }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 206,
+                                                lineNumber: 208,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 204,
+                                        lineNumber: 206,
                                         columnNumber: 13
                                     }, this),
                                     errors.category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6038,25 +6028,25 @@ function EventCreationForm() {
                                         children: errors.category.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 222,
+                                        lineNumber: 223,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 200,
+                                lineNumber: 202,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 162,
+                        lineNumber: 164,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 152,
+                lineNumber: 154,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
@@ -6073,7 +6063,7 @@ function EventCreationForm() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 232,
+                                        lineNumber: 233,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6083,26 +6073,26 @@ function EventCreationForm() {
                                         children: "Date & Time"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 233,
+                                        lineNumber: 234,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 231,
+                                lineNumber: 232,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Specify when your event will take place"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 235,
+                                lineNumber: 236,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 230,
+                        lineNumber: 231,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6118,7 +6108,7 @@ function EventCreationForm() {
                                             children: "Start Date & Time *"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 243,
+                                            lineNumber: 244,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6128,7 +6118,7 @@ function EventCreationForm() {
                                             ...register('startDate')
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 246,
+                                            lineNumber: 247,
                                             columnNumber: 15
                                         }, this),
                                         errors.startDate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6136,13 +6126,13 @@ function EventCreationForm() {
                                             children: errors.startDate.message
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 253,
+                                            lineNumber: 254,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                    lineNumber: 242,
+                                    lineNumber: 243,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6153,7 +6143,7 @@ function EventCreationForm() {
                                             children: "End Date & Time *"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 259,
+                                            lineNumber: 260,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6163,7 +6153,7 @@ function EventCreationForm() {
                                             ...register('endDate')
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 263,
                                             columnNumber: 15
                                         }, this),
                                         errors.endDate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6171,30 +6161,30 @@ function EventCreationForm() {
                                             children: errors.endDate.message
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                            lineNumber: 269,
+                                            lineNumber: 270,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                    lineNumber: 258,
+                                    lineNumber: 259,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                            lineNumber: 240,
+                            lineNumber: 241,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 239,
+                        lineNumber: 240,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 229,
+                lineNumber: 230,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
@@ -6211,7 +6201,7 @@ function EventCreationForm() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 280,
+                                        lineNumber: 281,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6221,26 +6211,26 @@ function EventCreationForm() {
                                         children: "Location"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 281,
+                                        lineNumber: 282,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 279,
+                                lineNumber: 280,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Where will the event take place? (Optional but recommended)"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 283,
+                                lineNumber: 284,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 278,
+                        lineNumber: 279,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6254,7 +6244,7 @@ function EventCreationForm() {
                                         children: "Street Address"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 290,
+                                        lineNumber: 291,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6265,7 +6255,7 @@ function EventCreationForm() {
                                         ...register('locationAddress')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 293,
+                                        lineNumber: 294,
                                         columnNumber: 13
                                     }, this),
                                     errors.locationAddress && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6273,13 +6263,13 @@ function EventCreationForm() {
                                         children: errors.locationAddress.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 301,
+                                        lineNumber: 302,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 289,
+                                lineNumber: 290,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6293,7 +6283,7 @@ function EventCreationForm() {
                                                 children: "City"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 308,
+                                                lineNumber: 309,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6304,7 +6294,7 @@ function EventCreationForm() {
                                                 ...register('locationCity')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 311,
+                                                lineNumber: 312,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationCity && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6312,13 +6302,13 @@ function EventCreationForm() {
                                                 children: errors.locationCity.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 319,
+                                                lineNumber: 320,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 307,
+                                        lineNumber: 308,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6329,7 +6319,7 @@ function EventCreationForm() {
                                                 children: "State"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 325,
+                                                lineNumber: 326,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6340,7 +6330,7 @@ function EventCreationForm() {
                                                 ...register('locationState')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 328,
+                                                lineNumber: 329,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationState && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6348,19 +6338,19 @@ function EventCreationForm() {
                                                 children: errors.locationState.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 336,
+                                                lineNumber: 337,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 324,
+                                        lineNumber: 325,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 305,
+                                lineNumber: 306,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6374,7 +6364,7 @@ function EventCreationForm() {
                                                 children: "ZIP Code"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 344,
+                                                lineNumber: 345,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6385,7 +6375,7 @@ function EventCreationForm() {
                                                 ...register('locationZipCode')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 347,
+                                                lineNumber: 348,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationZipCode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6393,13 +6383,13 @@ function EventCreationForm() {
                                                 children: errors.locationZipCode.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 355,
+                                                lineNumber: 356,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 343,
+                                        lineNumber: 344,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6410,7 +6400,7 @@ function EventCreationForm() {
                                                 children: "Country"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 361,
+                                                lineNumber: 362,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6421,7 +6411,7 @@ function EventCreationForm() {
                                                 ...register('locationCountry')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 364,
+                                                lineNumber: 365,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationCountry && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6429,31 +6419,31 @@ function EventCreationForm() {
                                                 children: errors.locationCountry.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 372,
+                                                lineNumber: 373,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 360,
+                                        lineNumber: 361,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 341,
+                                lineNumber: 342,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 287,
+                        lineNumber: 288,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 277,
+                lineNumber: 278,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
@@ -6470,7 +6460,7 @@ function EventCreationForm() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 383,
+                                        lineNumber: 384,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6480,26 +6470,26 @@ function EventCreationForm() {
                                         children: "Capacity & Pricing"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 384,
+                                        lineNumber: 385,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 382,
+                                lineNumber: 383,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Set attendance limits and ticket pricing"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 386,
+                                lineNumber: 387,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 381,
+                        lineNumber: 382,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6513,7 +6503,7 @@ function EventCreationForm() {
                                         children: "Maximum Capacity *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 393,
+                                        lineNumber: 394,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6528,7 +6518,7 @@ function EventCreationForm() {
                                         })
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 396,
+                                        lineNumber: 397,
                                         columnNumber: 13
                                     }, this),
                                     errors.capacity && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6536,13 +6526,13 @@ function EventCreationForm() {
                                         children: errors.capacity.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 406,
+                                        lineNumber: 407,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 392,
+                                lineNumber: 393,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6555,7 +6545,7 @@ function EventCreationForm() {
                                         ...register('isFree')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 412,
+                                        lineNumber: 413,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -6564,13 +6554,13 @@ function EventCreationForm() {
                                         children: "This is a free event (no ticket purchase required)"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 418,
+                                        lineNumber: 419,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 411,
+                                lineNumber: 412,
                                 columnNumber: 11
                             }, this),
                             !isFree && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6586,7 +6576,7 @@ function EventCreationForm() {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 427,
+                                                lineNumber: 428,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
@@ -6594,13 +6584,13 @@ function EventCreationForm() {
                                                 children: "Ticket Pricing"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 428,
+                                                lineNumber: 429,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 426,
+                                        lineNumber: 427,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6614,7 +6604,7 @@ function EventCreationForm() {
                                                         children: "Ticket Price *"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 434,
+                                                        lineNumber: 435,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -6630,7 +6620,7 @@ function EventCreationForm() {
                                                         })
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 437,
+                                                        lineNumber: 438,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.ticketPriceAmount && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6638,13 +6628,13 @@ function EventCreationForm() {
                                                         children: errors.ticketPriceAmount.message
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 448,
+                                                        lineNumber: 449,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 433,
+                                                lineNumber: 434,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6655,7 +6645,7 @@ function EventCreationForm() {
                                                         children: "Currency *"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 454,
+                                                        lineNumber: 455,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -6670,7 +6660,7 @@ function EventCreationForm() {
                                                                 children: "USD ($)"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                                lineNumber: 464,
+                                                                lineNumber: 465,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -6678,13 +6668,13 @@ function EventCreationForm() {
                                                                 children: "LKR (Rs)"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                                lineNumber: 465,
+                                                                lineNumber: 466,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 457,
+                                                        lineNumber: 458,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.ticketPriceCurrency && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6692,37 +6682,109 @@ function EventCreationForm() {
                                                         children: errors.ticketPriceCurrency.message
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                        lineNumber: 468,
+                                                        lineNumber: 469,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                                lineNumber: 453,
+                                                lineNumber: 454,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                        lineNumber: 431,
+                                        lineNumber: 432,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                                lineNumber: 425,
+                                lineNumber: 426,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 390,
+                        lineNumber: 391,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 380,
+                lineNumber: 381,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Card"], {
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
+                    className: "py-6",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex-shrink-0",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
+                                    className: "w-5 h-5 text-blue-600 mt-0.5",
+                                    fill: "currentColor",
+                                    viewBox: "0 0 20 20",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                                        fillRule: "evenodd",
+                                        d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z",
+                                        clipRule: "evenodd"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                        lineNumber: 484,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                    lineNumber: 483,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                lineNumber: 482,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex-1",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
+                                        className: "text-sm font-semibold text-blue-900 mb-1",
+                                        children: "📸 Upload Images & Videos After Creation"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                        lineNumber: 488,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-sm text-blue-700",
+                                        children: "You'll be able to add event images and videos from the event detail page after creating your event. This helps make your event more attractive to attendees!"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                        lineNumber: 491,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                                lineNumber: 487,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                        lineNumber: 481,
+                        columnNumber: 11
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                    lineNumber: 480,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
+                lineNumber: 479,
                 columnNumber: 7
             }, this),
             submitError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6732,12 +6794,12 @@ function EventCreationForm() {
                     children: submitError
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                    lineNumber: 480,
+                    lineNumber: 503,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 479,
+                lineNumber: 502,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6751,7 +6813,7 @@ function EventCreationForm() {
                         children: "Cancel"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 486,
+                        lineNumber: 509,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -6764,19 +6826,19 @@ function EventCreationForm() {
                         children: isSubmitting || createEventMutation.isPending ? 'Creating...' : 'Create Event'
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                        lineNumber: 494,
+                        lineNumber: 517,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-                lineNumber: 485,
+                lineNumber: 508,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/events/EventCreationForm.tsx",
-        lineNumber: 150,
+        lineNumber: 152,
         columnNumber: 5
     }, this);
 }

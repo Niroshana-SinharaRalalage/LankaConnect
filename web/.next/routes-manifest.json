@@ -29,6 +29,22 @@
       "namedRegex": "^/events/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/events/[id]/edit",
+      "regex": "^/events/([^/]+?)/edit(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/edit(?:/)?$"
+    },
+    {
+      "page": "/events/[id]/manage",
+      "regex": "^/events/([^/]+?)/manage(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage(?:/)?$"
+    },
+    {
       "page": "/events/[id]/manage-signups",
       "regex": "^/events/([^/]+?)/manage\\-signups(?:/)?$",
       "routeKeys": {

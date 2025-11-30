@@ -14,8 +14,13 @@ class AuthRepository {
     basePath = '/auth';
     /**
    * Login user
-   */ async login(credentials) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, credentials);
+   * @param credentials User email and password
+   * @param rememberMe Keep user logged in for 30 days (like Facebook/Gmail)
+   */ async login(credentials, rememberMe = false) {
+        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, {
+            ...credentials,
+            rememberMe
+        });
         return response;
     }
     /**

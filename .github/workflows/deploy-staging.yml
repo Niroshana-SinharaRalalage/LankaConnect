@@ -113,9 +113,9 @@ jobs:
               ASPNETCORE_ENVIRONMENT=Staging \
               ConnectionStrings__DefaultConnection=secretref:database-connection-string \
               ConnectionStrings__Redis=localhost:6379 \
-              JwtSettings__SecretKey=secretref:jwt-secret-key \
-              JwtSettings__Issuer=secretref:jwt-issuer \
-              JwtSettings__Audience=secretref:jwt-audience \
+              Jwt__Key=secretref:jwt-secret-key \
+              Jwt__Issuer=secretref:jwt-issuer \
+              Jwt__Audience=secretref:jwt-audience \
               EntraExternalId__IsEnabled=secretref:entra-enabled \
               EntraExternalId__TenantId=secretref:entra-tenant-id \
               EntraExternalId__ClientId=secretref:entra-client-id \

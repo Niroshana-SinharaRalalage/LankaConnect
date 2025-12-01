@@ -246,9 +246,9 @@ Calling login API with: { credentials: { email: "test@example.com", password: "p
 ✅ Token refreshed successfully
 ```
 
-## What Was Fixed (Backend)
+## What Was Fixed
 
-### LoginUserCommand - Property-Based Record Pattern
+### Fix 1: LoginUserCommand - Property-Based Record Pattern
 
 **Before** (Positional - can have binding issues):
 ```csharp
@@ -275,6 +275,30 @@ This change ensures:
 - ✅ Explicit property names (better API contracts)
 - ✅ Default values always applied correctly
 - ✅ Works perfectly with ASP.NET Core 8 model binding
+
+### Fix 2: JWT Configuration Environment Variables (CRITICAL)
+
+**Problem**: Environment variables didn't match configuration section names
+
+**Before** (.github/workflows/deploy-staging.yml):
+```yaml
+JwtSettings__SecretKey=secretref:jwt-secret-key
+JwtSettings__Issuer=secretref:jwt-issuer
+JwtSettings__Audience=secretref:jwt-audience
+```
+
+**After**:
+```yaml
+Jwt__Key=secretref:jwt-secret-key
+Jwt__Issuer=secretref:jwt-issuer
+Jwt__Audience=secretref:jwt-audience
+```
+
+**Why this was critical**:
+- Code expects `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` (see AuthenticationExtensions.cs:12, JwtTokenService.cs:50)
+- Environment variable `JwtSettings__SecretKey` overrides `JwtSettings:SecretKey`, NOT `Jwt:Key`
+- This caused JWT generation to fail with "Failed to generate access token"
+- Placeholders in appsettings.Staging.json like `${JWT_SECRET_KEY}` were never replaced
 
 ## Deployment Status
 

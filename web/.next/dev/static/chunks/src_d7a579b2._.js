@@ -5318,6 +5318,34 @@ class EventsRepository {
             data: request
         });
     }
+    // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
+    /**
+   * Add a category-based sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups/categories
+   */ async addSignUpListWithCategories(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+    }
+    /**
+   * Add an item to a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
+   */ async addSignUpItem(eventId, signupId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+    }
+    /**
+   * Remove an item from a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */ async removeSignUpItem(eventId, signupId, itemId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+    }
+    /**
+   * User commits to bringing a specific item
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
+   */ async commitToSignUpItem(eventId, signupId, itemId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
+    }
     // ==================== MEDIA OPERATIONS ====================
     /**
    * Upload image to event gallery
@@ -5774,14 +5802,22 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     ()=>__TURBOPACK__default__export__,
     "signUpKeys",
     ()=>signUpKeys,
+    "useAddSignUpItem",
+    ()=>useAddSignUpItem,
     "useAddSignUpList",
     ()=>useAddSignUpList,
+    "useAddSignUpListWithCategories",
+    ()=>useAddSignUpListWithCategories,
     "useCancelCommitment",
     ()=>useCancelCommitment,
     "useCommitToSignUp",
     ()=>useCommitToSignUp,
+    "useCommitToSignUpItem",
+    ()=>useCommitToSignUpItem,
     "useEventSignUps",
     ()=>useEventSignUps,
+    "useRemoveSignUpItem",
+    ()=>useRemoveSignUpItem,
     "useRemoveSignUpList",
     ()=>useRemoveSignUpList
 ]);
@@ -5790,7 +5826,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/repositories/events.repository.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/hooks/useEvents.ts [app-client] (ecmascript)");
-var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature(), _s4 = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature(), _s4 = __turbopack_context__.k.signature(), _s5 = __turbopack_context__.k.signature(), _s6 = __turbopack_context__.k.signature(), _s7 = __turbopack_context__.k.signature(), _s8 = __turbopack_context__.k.signature();
 ;
 ;
 ;
@@ -6037,12 +6073,142 @@ _s4(useCancelCommitment, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
     ];
 });
+function useAddSignUpListWithCategories() {
+    _s5();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: {
+            "useAddSignUpListWithCategories.useMutation": ({ eventId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].addSignUpListWithCategories(eventId, data)
+        }["useAddSignUpListWithCategories.useMutation"],
+        onSuccess: {
+            "useAddSignUpListWithCategories.useMutation": (_data, variables)=>{
+                queryClient.invalidateQueries({
+                    queryKey: signUpKeys.list(variables.eventId)
+                });
+                queryClient.invalidateQueries({
+                    queryKey: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(variables.eventId)
+                });
+            }
+        }["useAddSignUpListWithCategories.useMutation"]
+    });
+}
+_s5(useAddSignUpListWithCategories, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
+    ];
+});
+function useAddSignUpItem() {
+    _s6();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: {
+            "useAddSignUpItem.useMutation": ({ eventId, signupId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].addSignUpItem(eventId, signupId, data)
+        }["useAddSignUpItem.useMutation"],
+        onSuccess: {
+            "useAddSignUpItem.useMutation": (_data, variables)=>{
+                queryClient.invalidateQueries({
+                    queryKey: signUpKeys.list(variables.eventId)
+                });
+            }
+        }["useAddSignUpItem.useMutation"]
+    });
+}
+_s6(useAddSignUpItem, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
+    ];
+});
+function useRemoveSignUpItem() {
+    _s7();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: {
+            "useRemoveSignUpItem.useMutation": ({ eventId, signupId, itemId })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].removeSignUpItem(eventId, signupId, itemId)
+        }["useRemoveSignUpItem.useMutation"],
+        onMutate: {
+            "useRemoveSignUpItem.useMutation": async ({ eventId, signupId, itemId })=>{
+                await queryClient.cancelQueries({
+                    queryKey: signUpKeys.list(eventId)
+                });
+                const previousSignUps = queryClient.getQueryData(signUpKeys.list(eventId));
+                // Optimistically remove item
+                queryClient.setQueryData(signUpKeys.list(eventId), {
+                    "useRemoveSignUpItem.useMutation": (old)=>{
+                        if (!old) return old;
+                        return old.map({
+                            "useRemoveSignUpItem.useMutation": (signUp)=>{
+                                if (signUp.id !== signupId) return signUp;
+                                return {
+                                    ...signUp,
+                                    items: signUp.items.filter({
+                                        "useRemoveSignUpItem.useMutation": (item)=>item.id !== itemId
+                                    }["useRemoveSignUpItem.useMutation"])
+                                };
+                            }
+                        }["useRemoveSignUpItem.useMutation"]);
+                    }
+                }["useRemoveSignUpItem.useMutation"]);
+                return {
+                    previousSignUps
+                };
+            }
+        }["useRemoveSignUpItem.useMutation"],
+        onError: {
+            "useRemoveSignUpItem.useMutation": (err, { eventId }, context)=>{
+                if (context?.previousSignUps) {
+                    queryClient.setQueryData(signUpKeys.list(eventId), context.previousSignUps);
+                }
+            }
+        }["useRemoveSignUpItem.useMutation"],
+        onSuccess: {
+            "useRemoveSignUpItem.useMutation": (_data, variables)=>{
+                queryClient.invalidateQueries({
+                    queryKey: signUpKeys.list(variables.eventId)
+                });
+            }
+        }["useRemoveSignUpItem.useMutation"]
+    });
+}
+_s7(useRemoveSignUpItem, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
+    ];
+});
+function useCommitToSignUpItem() {
+    _s8();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: {
+            "useCommitToSignUpItem.useMutation": ({ eventId, signupId, itemId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].commitToSignUpItem(eventId, signupId, itemId, data)
+        }["useCommitToSignUpItem.useMutation"],
+        onSuccess: {
+            "useCommitToSignUpItem.useMutation": (_data, variables)=>{
+                queryClient.invalidateQueries({
+                    queryKey: signUpKeys.list(variables.eventId)
+                });
+            }
+        }["useCommitToSignUpItem.useMutation"]
+    });
+}
+_s8(useCommitToSignUpItem, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
+    ];
+});
 const __TURBOPACK__default__export__ = {
     useEventSignUps,
     useAddSignUpList,
     useRemoveSignUpList,
     useCommitToSignUp,
-    useCancelCommitment
+    useCancelCommitment,
+    useAddSignUpListWithCategories,
+    useAddSignUpItem,
+    useRemoveSignUpItem,
+    useCommitToSignUpItem
 };
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
@@ -6217,6 +6383,8 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     ()=>EventStatus,
     "RegistrationStatus",
     ()=>RegistrationStatus,
+    "SignUpItemCategory",
+    ()=>SignUpItemCategory,
     "SignUpType",
     ()=>SignUpType
 ]);
@@ -6265,6 +6433,12 @@ var SignUpType = /*#__PURE__*/ function(SignUpType) {
     SignUpType[SignUpType["Open"] = 0] = "Open";
     SignUpType[SignUpType["Predefined"] = 1] = "Predefined";
     return SignUpType;
+}({});
+var SignUpItemCategory = /*#__PURE__*/ function(SignUpItemCategory) {
+    SignUpItemCategory[SignUpItemCategory["Mandatory"] = 0] = "Mandatory";
+    SignUpItemCategory[SignUpItemCategory["Preferred"] = 1] = "Preferred";
+    SignUpItemCategory[SignUpItemCategory["Suggested"] = 2] = "Suggested";
+    return SignUpItemCategory;
 }({});
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
@@ -6318,6 +6492,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$left$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowLeft$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/arrow-left.js [app-client] (ecmascript) <export default as ArrowLeft>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$list$2d$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ListPlus$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/list-plus.js [app-client] (ecmascript) <export default as ListPlus>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$users$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Users$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/users.js [app-client] (ecmascript) <export default as Users>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/x.js [app-client] (ecmascript) <export default as X>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/types/events.types.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$auth$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/types/auth.types.ts [app-client] (ecmascript)");
 ;
@@ -6349,6 +6524,9 @@ function ManageSignUpsPage() {
     // Mutations
     const addSignUpListMutation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpList"])();
     const removeSignUpListMutation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRemoveSignUpList"])();
+    const addSignUpListWithCategoriesMutation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpListWithCategories"])();
+    const addSignUpItemMutation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpItem"])();
+    const removeSignUpItemMutation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRemoveSignUpItem"])();
     // Form state
     const [showForm, setShowForm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [category, setCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
@@ -6358,6 +6536,16 @@ function ManageSignUpsPage() {
     const [newItem, setNewItem] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [deleteConfirmId, setDeleteConfirmId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [submitError, setSubmitError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    // Category-based sign-up state
+    const [hasMandatoryItems, setHasMandatoryItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [hasPreferredItems, setHasPreferredItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [hasSuggestedItems, setHasSuggestedItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [categoryItems, setCategoryItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [newItemDescription, setNewItemDescription] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    const [newItemQuantity, setNewItemQuantity] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(1);
+    const [newItemCategory, setNewItemCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Mandatory);
+    const [newItemNotes, setNewItemNotes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    const [createdSignUpId, setCreatedSignUpId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     // Redirect if not authenticated or not authorized
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ManageSignUpsPage.useEffect": ()=>{
@@ -6393,6 +6581,36 @@ function ManageSignUpsPage() {
     const handleRemovePredefinedItem = (index)=>{
         setPredefinedItems(predefinedItems.filter((_, i)=>i !== index));
     };
+    // Handle add category item
+    const handleAddCategoryItem = ()=>{
+        if (!newItemDescription.trim()) {
+            setSubmitError('Item description is required');
+            return;
+        }
+        if (newItemQuantity < 1) {
+            setSubmitError('Quantity must be at least 1');
+            return;
+        }
+        setCategoryItems([
+            ...categoryItems,
+            {
+                description: newItemDescription.trim(),
+                quantity: newItemQuantity,
+                category: newItemCategory,
+                notes: newItemNotes.trim()
+            }
+        ]);
+        // Reset item form
+        setNewItemDescription('');
+        setNewItemQuantity(1);
+        setNewItemCategory(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Mandatory);
+        setNewItemNotes('');
+        setSubmitError(null);
+    };
+    // Handle remove category item
+    const handleRemoveCategoryItem = (index)=>{
+        setCategoryItems(categoryItems.filter((_, i)=>i !== index));
+    };
     // Handle create sign-up list
     const handleCreateSignUpList = async ()=>{
         if (!category.trim()) {
@@ -6403,6 +6621,50 @@ function ManageSignUpsPage() {
             setSubmitError('Description is required');
             return;
         }
+        // Category-based sign-up
+        if (signUpType === 'Categories') {
+            if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems) {
+                setSubmitError('Please select at least one category (Mandatory, Preferred, or Suggested)');
+                return;
+            }
+            try {
+                setSubmitError(null);
+                // Create the sign-up list first
+                const signUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
+                    eventId,
+                    category: category.trim(),
+                    description: description.trim(),
+                    hasMandatoryItems,
+                    hasPreferredItems,
+                    hasSuggestedItems
+                });
+                // Then add all the items
+                for (const item of categoryItems){
+                    await addSignUpItemMutation.mutateAsync({
+                        eventId,
+                        signupId: signUpId,
+                        itemDescription: item.description,
+                        quantity: item.quantity,
+                        itemCategory: item.category,
+                        notes: item.notes || undefined
+                    });
+                }
+                // Reset form
+                setCategory('');
+                setDescription('');
+                setSignUpType(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Open);
+                setHasMandatoryItems(false);
+                setHasPreferredItems(false);
+                setHasSuggestedItems(false);
+                setCategoryItems([]);
+                setShowForm(false);
+            } catch (err) {
+                console.error('Failed to create category-based sign-up list:', err);
+                setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
+            }
+            return;
+        }
+        // Legacy Open/Predefined sign-up
         if (signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined && predefinedItems.length === 0) {
             setSubmitError('Please add at least one predefined item');
             return;
@@ -6478,7 +6740,7 @@ function ManageSignUpsPage() {
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Header"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 177,
+                    lineNumber: 283,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6490,28 +6752,28 @@ function ManageSignUpsPage() {
                             children: "Redirecting to login..."
                         }, void 0, false, {
                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                            lineNumber: 180,
+                            lineNumber: 286,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 179,
+                        lineNumber: 285,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 178,
+                    lineNumber: 284,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Footer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 183,
+                    lineNumber: 289,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-            lineNumber: 176,
+            lineNumber: 282,
             columnNumber: 7
         }, this);
     }
@@ -6522,7 +6784,7 @@ function ManageSignUpsPage() {
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Header"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 192,
+                    lineNumber: 298,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6534,28 +6796,28 @@ function ManageSignUpsPage() {
                             children: "Loading event..."
                         }, void 0, false, {
                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                            lineNumber: 195,
+                            lineNumber: 301,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 194,
+                        lineNumber: 300,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 193,
+                    lineNumber: 299,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Footer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 198,
+                    lineNumber: 304,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-            lineNumber: 191,
+            lineNumber: 297,
             columnNumber: 7
         }, this);
     }
@@ -6566,7 +6828,7 @@ function ManageSignUpsPage() {
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Header"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 207,
+                    lineNumber: 313,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6578,28 +6840,28 @@ function ManageSignUpsPage() {
                             children: "You are not authorized to manage this event"
                         }, void 0, false, {
                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                            lineNumber: 210,
+                            lineNumber: 316,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 209,
+                        lineNumber: 315,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 208,
+                    lineNumber: 314,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Footer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                    lineNumber: 213,
+                    lineNumber: 319,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-            lineNumber: 206,
+            lineNumber: 312,
             columnNumber: 7
         }, this);
     }
@@ -6609,7 +6871,7 @@ function ManageSignUpsPage() {
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Header"], {}, void 0, false, {
                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                lineNumber: 222,
+                lineNumber: 328,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6624,12 +6886,12 @@ function ManageSignUpsPage() {
                             }
                         }, void 0, false, {
                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                            lineNumber: 227,
+                            lineNumber: 333,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 226,
+                        lineNumber: 332,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6644,14 +6906,14 @@ function ManageSignUpsPage() {
                                         className: "h-4 w-4 mr-2"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 241,
+                                        lineNumber: 347,
                                         columnNumber: 13
                                     }, this),
                                     "Back to Manage Event"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 236,
+                                lineNumber: 342,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -6659,7 +6921,7 @@ function ManageSignUpsPage() {
                                 children: "Manage Sign-Up Lists"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 245,
+                                lineNumber: 351,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6667,19 +6929,19 @@ function ManageSignUpsPage() {
                                 children: event.title
                             }, void 0, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 248,
+                                lineNumber: 354,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 235,
+                        lineNumber: 341,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                lineNumber: 225,
+                lineNumber: 331,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6701,7 +6963,7 @@ function ManageSignUpsPage() {
                                                         children: "Total Sign-Up Lists"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 262,
+                                                        lineNumber: 368,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6709,13 +6971,13 @@ function ManageSignUpsPage() {
                                                         children: signUpLists?.length || 0
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 263,
+                                                        lineNumber: 369,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 261,
+                                                lineNumber: 367,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6730,28 +6992,28 @@ function ManageSignUpsPage() {
                                                     }
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 268,
+                                                    lineNumber: 374,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 267,
+                                                lineNumber: 373,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 260,
+                                        lineNumber: 366,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 259,
+                                    lineNumber: 365,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 258,
+                                lineNumber: 364,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6767,7 +7029,7 @@ function ManageSignUpsPage() {
                                                         children: "Total Commitments"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 278,
+                                                        lineNumber: 384,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6775,13 +7037,13 @@ function ManageSignUpsPage() {
                                                         children: totalCommitments
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 279,
+                                                        lineNumber: 385,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 277,
+                                                lineNumber: 383,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6796,34 +7058,34 @@ function ManageSignUpsPage() {
                                                     }
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 282,
+                                                    lineNumber: 388,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 281,
+                                                lineNumber: 387,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 276,
+                                        lineNumber: 382,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 275,
+                                    lineNumber: 381,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 274,
+                                lineNumber: 380,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 257,
+                        lineNumber: 363,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6837,7 +7099,7 @@ function ManageSignUpsPage() {
                                 children: "Sign-Up Lists"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 291,
+                                lineNumber: 397,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6852,14 +7114,14 @@ function ManageSignUpsPage() {
                                                 className: "h-4 w-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 301,
+                                                lineNumber: 407,
                                                 columnNumber: 17
                                             }, this),
                                             "Download CSV"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 296,
+                                        lineNumber: 402,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -6873,26 +7135,26 @@ function ManageSignUpsPage() {
                                                 className: "h-4 w-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 310,
+                                                lineNumber: 416,
                                                 columnNumber: 15
                                             }, this),
                                             showForm ? 'Cancel' : 'Create Sign-Up List'
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 305,
+                                        lineNumber: 411,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 294,
+                                lineNumber: 400,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 290,
+                        lineNumber: 396,
                         columnNumber: 9
                     }, this),
                     showForm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6907,20 +7169,20 @@ function ManageSignUpsPage() {
                                         children: "Create New Sign-Up List"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 320,
+                                        lineNumber: 426,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                         children: "Add a new sign-up list for attendees to commit to bringing items"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 321,
+                                        lineNumber: 427,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 319,
+                                lineNumber: 425,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6934,7 +7196,7 @@ function ManageSignUpsPage() {
                                                 children: "Category *"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 328,
+                                                lineNumber: 434,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6945,13 +7207,13 @@ function ManageSignUpsPage() {
                                                 onChange: (e)=>setCategory(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 331,
+                                                lineNumber: 437,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 327,
+                                        lineNumber: 433,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6962,7 +7224,7 @@ function ManageSignUpsPage() {
                                                 children: "Description *"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 342,
+                                                lineNumber: 448,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -6974,58 +7236,173 @@ function ManageSignUpsPage() {
                                                 onChange: (e)=>setDescription(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 345,
+                                                lineNumber: 451,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 341,
+                                        lineNumber: 447,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                htmlFor: "signUpType",
-                                                className: "block text-sm font-medium text-neutral-700 mb-2",
+                                                className: "block text-sm font-medium text-neutral-700 mb-3",
                                                 children: "Sign-Up Type *"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 357,
+                                                lineNumber: 463,
                                                 columnNumber: 17
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
-                                                id: "signUpType",
-                                                className: "w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500",
-                                                value: signUpType,
-                                                onChange: (e)=>setSignUpType(Number(e.target.value)),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "space-y-3",
                                                 children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                        value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Open,
-                                                        children: "Open (Users can specify any item)"
-                                                    }, void 0, false, {
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                type: "radio",
+                                                                name: "signUpType",
+                                                                value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Open,
+                                                                checked: signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Open,
+                                                                onChange: (e)=>setSignUpType(Number(e.target.value)),
+                                                                className: "mt-1"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 469,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "font-medium text-neutral-900",
+                                                                        children: "Open List"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 478,
+                                                                        columnNumber: 23
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "text-sm text-neutral-500",
+                                                                        children: "Users can specify any item they want to bring"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 479,
+                                                                        columnNumber: 23
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 477,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 366,
+                                                        lineNumber: 468,
                                                         columnNumber: 19
                                                     }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                        value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined,
-                                                        children: "Predefined (Users choose from list)"
-                                                    }, void 0, false, {
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                type: "radio",
+                                                                name: "signUpType",
+                                                                value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined,
+                                                                checked: signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined,
+                                                                onChange: (e)=>setSignUpType(Number(e.target.value)),
+                                                                className: "mt-1"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 485,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "font-medium text-neutral-900",
+                                                                        children: "Predefined List"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 494,
+                                                                        columnNumber: 23
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "text-sm text-neutral-500",
+                                                                        children: "Users choose from a predefined list of items"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 495,
+                                                                        columnNumber: 23
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 493,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 367,
+                                                        lineNumber: 484,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                type: "radio",
+                                                                name: "signUpType",
+                                                                value: "Categories",
+                                                                checked: signUpType === 'Categories',
+                                                                onChange: ()=>setSignUpType('Categories'),
+                                                                className: "mt-1"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 501,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "font-medium text-neutral-900",
+                                                                        children: "Category-Based List (NEW)"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 510,
+                                                                        columnNumber: 23
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                        className: "text-sm text-neutral-500",
+                                                                        children: "Items organized by priority: Mandatory, Preferred, Suggested"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 511,
+                                                                        columnNumber: 23
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 509,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 500,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 360,
+                                                lineNumber: 466,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 356,
+                                        lineNumber: 462,
                                         columnNumber: 15
                                     }, this),
                                     signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7035,7 +7412,7 @@ function ManageSignUpsPage() {
                                                 children: "Predefined Items *"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 374,
+                                                lineNumber: 520,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7051,7 +7428,7 @@ function ManageSignUpsPage() {
                                                                     className: "flex-1"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                    lineNumber: 381,
+                                                                    lineNumber: 527,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -7062,18 +7439,18 @@ function ManageSignUpsPage() {
                                                                         className: "h-4 w-4"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                        lineNumber: 392,
+                                                                        lineNumber: 538,
                                                                         columnNumber: 27
                                                                     }, this)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                    lineNumber: 387,
+                                                                    lineNumber: 533,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, index, true, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 380,
+                                                            lineNumber: 526,
                                                             columnNumber: 23
                                                         }, this)),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7093,7 +7470,7 @@ function ManageSignUpsPage() {
                                                                 className: "flex-1"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                lineNumber: 399,
+                                                                lineNumber: 545,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -7105,25 +7482,478 @@ function ManageSignUpsPage() {
                                                                 children: "Add Item"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                lineNumber: 412,
+                                                                lineNumber: 558,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 398,
+                                                        lineNumber: 544,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 377,
+                                                lineNumber: 523,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 373,
+                                        lineNumber: 519,
+                                        columnNumber: 17
+                                    }, this),
+                                    signUpType === 'Categories' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-4",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "block text-sm font-medium text-neutral-700 mb-3",
+                                                        children: "Select Item Categories * (at least one required)"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 575,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "space-y-2",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                className: "flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                        type: "checkbox",
+                                                                        checked: hasMandatoryItems,
+                                                                        onChange: (e)=>setHasMandatoryItems(e.target.checked),
+                                                                        className: "w-4 h-4 text-red-600"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 580,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "font-medium text-neutral-900",
+                                                                                children: "Mandatory Items"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 587,
+                                                                                columnNumber: 27
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "text-sm text-neutral-500",
+                                                                                children: "Required items that must be brought"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 588,
+                                                                                columnNumber: 27
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 586,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 579,
+                                                                columnNumber: 23
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                className: "flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                        type: "checkbox",
+                                                                        checked: hasPreferredItems,
+                                                                        onChange: (e)=>setHasPreferredItems(e.target.checked),
+                                                                        className: "w-4 h-4 text-blue-600"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 593,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "font-medium text-neutral-900",
+                                                                                children: "Preferred Items"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 600,
+                                                                                columnNumber: 27
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "text-sm text-neutral-500",
+                                                                                children: "Highly desired items"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 601,
+                                                                                columnNumber: 27
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 599,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 592,
+                                                                columnNumber: 23
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                className: "flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                        type: "checkbox",
+                                                                        checked: hasSuggestedItems,
+                                                                        onChange: (e)=>setHasSuggestedItems(e.target.checked),
+                                                                        className: "w-4 h-4 text-green-600"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 606,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "font-medium text-neutral-900",
+                                                                                children: "Suggested Items"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 613,
+                                                                                columnNumber: 27
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "text-sm text-neutral-500",
+                                                                                children: "Optional items that would be nice to have"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 614,
+                                                                                columnNumber: 27
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 612,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 605,
+                                                                columnNumber: 23
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 578,
+                                                        columnNumber: 21
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                lineNumber: 574,
+                                                columnNumber: 19
+                                            }, this),
+                                            categoryItems.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "block text-sm font-medium text-neutral-700 mb-2",
+                                                        children: [
+                                                            "Items (",
+                                                            categoryItems.length,
+                                                            ")"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 623,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "space-y-2",
+                                                        children: categoryItems.map((item, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                className: "flex items-start gap-2 p-3 border rounded-lg bg-neutral-50",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        className: "flex-1",
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                                className: "flex items-center gap-2 mb-1",
+                                                                                children: [
+                                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                                        className: `px-2 py-1 rounded text-xs font-medium ${item.category === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Mandatory ? 'bg-red-100 text-red-800' : item.category === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Preferred ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`,
+                                                                                        children: item.category === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Mandatory ? 'Mandatory' : item.category === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Preferred ? 'Preferred' : 'Suggested'
+                                                                                    }, void 0, false, {
+                                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                        lineNumber: 631,
+                                                                                        columnNumber: 33
+                                                                                    }, this),
+                                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                                        className: "text-sm font-medium",
+                                                                                        children: [
+                                                                                            "Qty: ",
+                                                                                            item.quantity
+                                                                                        ]
+                                                                                    }, void 0, true, {
+                                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                        lineNumber: 646,
+                                                                                        columnNumber: 33
+                                                                                    }, this)
+                                                                                ]
+                                                                            }, void 0, true, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 630,
+                                                                                columnNumber: 31
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "text-sm font-medium text-neutral-900",
+                                                                                children: item.description
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 648,
+                                                                                columnNumber: 31
+                                                                            }, this),
+                                                                            item.notes && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                                className: "text-sm text-neutral-500 mt-1",
+                                                                                children: item.notes
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 650,
+                                                                                columnNumber: 33
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 629,
+                                                                        columnNumber: 29
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                                                        variant: "outline",
+                                                                        size: "sm",
+                                                                        onClick: ()=>handleRemoveCategoryItem(index),
+                                                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
+                                                                            className: "h-4 w-4"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                            lineNumber: 658,
+                                                                            columnNumber: 31
+                                                                        }, this)
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 653,
+                                                                        columnNumber: 29
+                                                                    }, this)
+                                                                ]
+                                                            }, index, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 628,
+                                                                columnNumber: 27
+                                                            }, this))
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 626,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                lineNumber: 622,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "border-t pt-4",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                        className: "block text-sm font-medium text-neutral-700 mb-3",
+                                                        children: "Add New Item"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 668,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "space-y-3",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                        className: "block text-xs font-medium text-neutral-600 mb-1",
+                                                                        children: "Item Description *"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 673,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
+                                                                        type: "text",
+                                                                        placeholder: "e.g., Rice (5 cups)",
+                                                                        value: newItemDescription,
+                                                                        onChange: (e)=>setNewItemDescription(e.target.value)
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 676,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 672,
+                                                                columnNumber: 23
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                className: "grid grid-cols-2 gap-3",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                                className: "block text-xs font-medium text-neutral-600 mb-1",
+                                                                                children: "Quantity *"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 686,
+                                                                                columnNumber: 27
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
+                                                                                type: "number",
+                                                                                min: "1",
+                                                                                value: newItemQuantity,
+                                                                                onChange: (e)=>setNewItemQuantity(parseInt(e.target.value) || 1)
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 689,
+                                                                                columnNumber: 27
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 685,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        children: [
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                                className: "block text-xs font-medium text-neutral-600 mb-1",
+                                                                                children: "Category *"
+                                                                            }, void 0, false, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 698,
+                                                                                columnNumber: 27
+                                                                            }, this),
+                                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                                                                className: "w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500",
+                                                                                value: newItemCategory,
+                                                                                onChange: (e)=>setNewItemCategory(Number(e.target.value)),
+                                                                                children: [
+                                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                                                        value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Mandatory,
+                                                                                        children: "Mandatory"
+                                                                                    }, void 0, false, {
+                                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                        lineNumber: 706,
+                                                                                        columnNumber: 29
+                                                                                    }, this),
+                                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                                                        value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Preferred,
+                                                                                        children: "Preferred"
+                                                                                    }, void 0, false, {
+                                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                        lineNumber: 707,
+                                                                                        columnNumber: 29
+                                                                                    }, this),
+                                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                                                        value: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpItemCategory"].Suggested,
+                                                                                        children: "Suggested"
+                                                                                    }, void 0, false, {
+                                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                        lineNumber: 708,
+                                                                                        columnNumber: 29
+                                                                                    }, this)
+                                                                                ]
+                                                                            }, void 0, true, {
+                                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                                lineNumber: 701,
+                                                                                columnNumber: 27
+                                                                            }, this)
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 697,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 684,
+                                                                columnNumber: 23
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                        className: "block text-xs font-medium text-neutral-600 mb-1",
+                                                                        children: "Notes (optional)"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 714,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
+                                                                        rows: 2,
+                                                                        placeholder: "Any additional details...",
+                                                                        className: "w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none",
+                                                                        value: newItemNotes,
+                                                                        onChange: (e)=>setNewItemNotes(e.target.value)
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 717,
+                                                                        columnNumber: 25
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 713,
+                                                                columnNumber: 23
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                                                type: "button",
+                                                                onClick: handleAddCategoryItem,
+                                                                variant: "outline",
+                                                                className: "w-full",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Plus$3e$__["Plus"], {
+                                                                        className: "h-4 w-4 mr-2"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                        lineNumber: 732,
+                                                                        columnNumber: 25
+                                                                    }, this),
+                                                                    "Add Item to List"
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                                lineNumber: 726,
+                                                                columnNumber: 23
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                        lineNumber: 671,
+                                                        columnNumber: 21
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                                lineNumber: 667,
+                                                columnNumber: 19
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
+                                        lineNumber: 572,
                                         columnNumber: 17
                                     }, this),
                                     submitError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7133,12 +7963,12 @@ function ManageSignUpsPage() {
                                             children: submitError
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 427,
+                                            lineNumber: 743,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 426,
+                                        lineNumber: 742,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7157,7 +7987,7 @@ function ManageSignUpsPage() {
                                                 children: "Cancel"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 433,
+                                                lineNumber: 749,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -7169,25 +7999,25 @@ function ManageSignUpsPage() {
                                                 children: addSignUpListMutation.isPending ? 'Creating...' : 'Create Sign-Up List'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                lineNumber: 446,
+                                                lineNumber: 762,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 432,
+                                        lineNumber: 748,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 325,
+                                lineNumber: 431,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 318,
+                        lineNumber: 424,
                         columnNumber: 11
                     }, this),
                     signUpsLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7203,30 +8033,30 @@ function ManageSignUpsPage() {
                                             className: "h-6 bg-neutral-200 rounded w-1/3 mb-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 464,
+                                            lineNumber: 780,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             className: "h-4 bg-neutral-200 rounded w-2/3"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 465,
+                                            lineNumber: 781,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 463,
+                                    lineNumber: 779,
                                     columnNumber: 17
                                 }, this)
                             }, i, false, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 462,
+                                lineNumber: 778,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 460,
+                        lineNumber: 776,
                         columnNumber: 11
                     }, this) : signUpLists && signUpLists.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "grid grid-cols-1 gap-6",
@@ -7245,7 +8075,7 @@ function ManageSignUpsPage() {
                                                             children: list.category
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 477,
+                                                            lineNumber: 793,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
@@ -7253,13 +8083,13 @@ function ManageSignUpsPage() {
                                                             children: list.description
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 478,
+                                                            lineNumber: 794,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 476,
+                                                    lineNumber: 792,
                                                     columnNumber: 21
                                                 }, this),
                                                 deleteConfirmId === list.id ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7273,7 +8103,7 @@ function ManageSignUpsPage() {
                                                             children: "Confirm Delete"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 482,
+                                                            lineNumber: 798,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -7283,13 +8113,13 @@ function ManageSignUpsPage() {
                                                             children: "Cancel"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 490,
+                                                            lineNumber: 806,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 481,
+                                                    lineNumber: 797,
                                                     columnNumber: 23
                                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
                                                     variant: "outline",
@@ -7301,25 +8131,25 @@ function ManageSignUpsPage() {
                                                             className: "h-4 w-4 mr-2"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 505,
+                                                            lineNumber: 821,
                                                             columnNumber: 25
                                                         }, this),
                                                         "Delete"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 499,
+                                                    lineNumber: 815,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 475,
+                                            lineNumber: 791,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 474,
+                                        lineNumber: 790,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -7337,12 +8167,12 @@ function ManageSignUpsPage() {
                                                         children: list.signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Open ? 'Open List' : 'Predefined List'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                        lineNumber: 515,
+                                                        lineNumber: 831,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 514,
+                                                    lineNumber: 830,
                                                     columnNumber: 21
                                                 }, this),
                                                 list.signUpType === __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$types$2f$events$2e$types$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SignUpType"].Predefined && list.predefinedItems.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7352,7 +8182,7 @@ function ManageSignUpsPage() {
                                                             children: "Available Items:"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 523,
+                                                            lineNumber: 839,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7362,18 +8192,18 @@ function ManageSignUpsPage() {
                                                                     children: item
                                                                 }, index, false, {
                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                    lineNumber: 526,
+                                                                    lineNumber: 842,
                                                                     columnNumber: 29
                                                                 }, this))
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 524,
+                                                            lineNumber: 840,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 522,
+                                                    lineNumber: 838,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7387,7 +8217,7 @@ function ManageSignUpsPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 539,
+                                                            lineNumber: 855,
                                                             columnNumber: 23
                                                         }, this),
                                                         list.commitments.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7403,7 +8233,7 @@ function ManageSignUpsPage() {
                                                                                     children: commitment.itemDescription
                                                                                 }, void 0, false, {
                                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                                    lineNumber: 550,
+                                                                                    lineNumber: 866,
                                                                                     columnNumber: 33
                                                                                 }, this),
                                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7417,13 +8247,13 @@ function ManageSignUpsPage() {
                                                                                     ]
                                                                                 }, void 0, true, {
                                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                                    lineNumber: 553,
+                                                                                    lineNumber: 869,
                                                                                     columnNumber: 33
                                                                                 }, this)
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                            lineNumber: 549,
+                                                                            lineNumber: 865,
                                                                             columnNumber: 31
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7431,53 +8261,53 @@ function ManageSignUpsPage() {
                                                                             children: new Date(commitment.committedAt).toLocaleDateString()
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                            lineNumber: 557,
+                                                                            lineNumber: 873,
                                                                             columnNumber: 31
                                                                         }, this)
                                                                     ]
                                                                 }, commitment.id, true, {
                                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                                    lineNumber: 545,
+                                                                    lineNumber: 861,
                                                                     columnNumber: 29
                                                                 }, this))
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 543,
+                                                            lineNumber: 859,
                                                             columnNumber: 25
                                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                             className: "text-neutral-500 text-sm italic",
                                                             children: "No commitments yet"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                            lineNumber: 564,
+                                                            lineNumber: 880,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                                    lineNumber: 538,
+                                                    lineNumber: 854,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 512,
+                                            lineNumber: 828,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                        lineNumber: 511,
+                                        lineNumber: 827,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, list.id, true, {
                                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                lineNumber: 473,
+                                lineNumber: 789,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 471,
+                        lineNumber: 787,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -7487,7 +8317,7 @@ function ManageSignUpsPage() {
                                     className: "h-16 w-16 mx-auto mb-4 text-neutral-400"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 577,
+                                    lineNumber: 893,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -7495,7 +8325,7 @@ function ManageSignUpsPage() {
                                     children: "No Sign-Up Lists Yet"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 578,
+                                    lineNumber: 894,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7503,7 +8333,7 @@ function ManageSignUpsPage() {
                                     children: "Create your first sign-up list to let attendees commit to bringing items"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 581,
+                                    lineNumber: 897,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -7516,46 +8346,46 @@ function ManageSignUpsPage() {
                                             className: "h-4 w-4 mr-2"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                            lineNumber: 588,
+                                            lineNumber: 904,
                                             columnNumber: 17
                                         }, this),
                                         "Create Sign-Up List"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                                    lineNumber: 584,
+                                    lineNumber: 900,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                            lineNumber: 576,
+                            lineNumber: 892,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                        lineNumber: 575,
+                        lineNumber: 891,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                lineNumber: 255,
+                lineNumber: 361,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$layout$2f$Footer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-                lineNumber: 596,
+                lineNumber: 912,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/events/[id]/manage-signups/page.tsx",
-        lineNumber: 221,
+        lineNumber: 327,
         columnNumber: 5
     }, this);
 }
-_s(ManageSignUpsPage, "T8MpgIJ4Mi0U1tCc7+AHsbDr9h8=", false, function() {
+_s(ManageSignUpsPage, "Pobm866ALTNYJqW42m4JFtWfe7I=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useParams"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"],
@@ -7563,7 +8393,10 @@ _s(ManageSignUpsPage, "T8MpgIJ4Mi0U1tCc7+AHsbDr9h8=", false, function() {
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEventById"],
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEventSignUps"],
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpList"],
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRemoveSignUpList"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRemoveSignUpList"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpListWithCategories"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAddSignUpItem"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRemoveSignUpItem"]
     ];
 });
 _c = ManageSignUpsPage;

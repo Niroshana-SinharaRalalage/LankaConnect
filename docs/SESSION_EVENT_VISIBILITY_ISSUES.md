@@ -67,15 +67,22 @@ Events without coordinates are filtered out before distance calculation.
 
 **MANUAL ACTION REQUIRED**: You need to edit and save the event to trigger geocoding.
 
+**WHY MANUAL EDIT IS NEEDED:**
+- Backend UpdateEventCommandHandler.cs (lines 72-83) accepts `locationLatitude` and `locationLongitude` but does NOT geocode
+- Backend design: Frontend geocodes, backend stores coordinates
+- Event was created before frontend geocoding was implemented (commit c3e7ed7)
+- Geocoding happens in EventEditForm.tsx (lines 154-180), not in backend
+- Therefore: Edit event → frontend geocodes → backend saves coordinates
+
 #### Steps to Fix:
 
 1. Navigate to: http://localhost:3000/events/0458806b-8672-4ad5-a7cb-f5346f1b282a/edit
 2. The form will load with existing data (address already filled in)
 3. Click "Save" (no need to change anything)
 4. The EventEditForm will:
-   - Geocode "943 Penny Lane, Aurora, OH 44202"
+   - Geocode "943 Penny Lane, Aurora, OH 44202" via Nominatim API
    - Send coordinates to backend: `locationLatitude` and `locationLongitude`
-   - Update database with coordinates
+   - Backend UpdateEventCommandHandler saves coordinates to database
 
 **Expected Console Output:**
 ```
@@ -281,6 +288,7 @@ If you have many events without coordinates, you could:
 ## Next Steps
 
 1. **For User:** Edit and save the event to add coordinates
-2. **For Dev Team:** Consider creating migration script for bulk geocoding
-3. **For Future:** Add geocoding to backend CreateEvent/UpdateEvent handlers
+2. **For Dev Team:** Consider creating migration script for bulk geocoding existing events
+3. **Architecture Decision:** Keep geocoding in frontend (correct separation of concerns)
 4. **For Monitoring:** Add metrics to track events without coordinates
+5. **Optional Enhancement:** Add admin UI to batch geocode events without coordinates

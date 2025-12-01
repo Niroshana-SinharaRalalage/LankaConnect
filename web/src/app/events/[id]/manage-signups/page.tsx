@@ -60,16 +60,29 @@ export default function ManageSignUpsPage() {
   const [hasMandatoryItems, setHasMandatoryItems] = useState(false);
   const [hasPreferredItems, setHasPreferredItems] = useState(false);
   const [hasSuggestedItems, setHasSuggestedItems] = useState(false);
-  const [categoryItems, setCategoryItems] = useState<Array<{
+
+  // Separate item arrays for each category
+  type ItemType = {
     description: string;
     quantity: number;
-    category: SignUpItemCategory;
     notes: string;
-  }>>([]);
-  const [newItemDescription, setNewItemDescription] = useState('');
-  const [newItemQuantity, setNewItemQuantity] = useState(1);
-  const [newItemCategory, setNewItemCategory] = useState<SignUpItemCategory>(SignUpItemCategory.Mandatory);
-  const [newItemNotes, setNewItemNotes] = useState('');
+  };
+  const [mandatoryItems, setMandatoryItems] = useState<ItemType[]>([]);
+  const [preferredItems, setPreferredItems] = useState<ItemType[]>([]);
+  const [suggestedItems, setSuggestedItems] = useState<ItemType[]>([]);
+
+  // Separate form state for each category
+  const [newMandatoryDesc, setNewMandatoryDesc] = useState('');
+  const [newMandatoryQty, setNewMandatoryQty] = useState(1);
+  const [newMandatoryNotes, setNewMandatoryNotes] = useState('');
+
+  const [newPreferredDesc, setNewPreferredDesc] = useState('');
+  const [newPreferredQty, setNewPreferredQty] = useState(1);
+  const [newPreferredNotes, setNewPreferredNotes] = useState('');
+
+  const [newSuggestedDesc, setNewSuggestedDesc] = useState('');
+  const [newSuggestedQty, setNewSuggestedQty] = useState(1);
+  const [newSuggestedNotes, setNewSuggestedNotes] = useState('');
   // Redirect if not authenticated or not authorized
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {
@@ -90,42 +103,83 @@ export default function ManageSignUpsPage() {
     }
   }, [isAuthenticated, user, event, eventId, router]);
 
-  // Handle add category item
-  const handleAddCategoryItem = () => {
-    if (!newItemDescription.trim()) {
+  // Handle add mandatory item
+  const handleAddMandatoryItem = () => {
+    if (!newMandatoryDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-
-    if (newItemQuantity < 1) {
+    if (newMandatoryQty < 1) {
       setSubmitError('Quantity must be at least 1');
       return;
     }
-
-    setCategoryItems([
-      ...categoryItems,
-      {
-        description: newItemDescription.trim(),
-        quantity: newItemQuantity,
-        category: newItemCategory,
-        notes: newItemNotes.trim(),
-      },
-    ]);
-
-    // Reset item form
-    setNewItemDescription('');
-    setNewItemQuantity(1);
-    setNewItemCategory(SignUpItemCategory.Mandatory);
-    setNewItemNotes('');
+    setMandatoryItems([...mandatoryItems, {
+      description: newMandatoryDesc.trim(),
+      quantity: newMandatoryQty,
+      notes: newMandatoryNotes.trim(),
+    }]);
+    setNewMandatoryDesc('');
+    setNewMandatoryQty(1);
+    setNewMandatoryNotes('');
     setSubmitError(null);
   };
 
-  // Handle remove category item
-  const handleRemoveCategoryItem = (index: number) => {
-    setCategoryItems(categoryItems.filter((_, i) => i !== index));
+  // Handle add preferred item
+  const handleAddPreferredItem = () => {
+    if (!newPreferredDesc.trim()) {
+      setSubmitError('Item description is required');
+      return;
+    }
+    if (newPreferredQty < 1) {
+      setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    setPreferredItems([...preferredItems, {
+      description: newPreferredDesc.trim(),
+      quantity: newPreferredQty,
+      notes: newPreferredNotes.trim(),
+    }]);
+    setNewPreferredDesc('');
+    setNewPreferredQty(1);
+    setNewPreferredNotes('');
+    setSubmitError(null);
   };
 
-  // Handle create sign-up list
+  // Handle add suggested item
+  const handleAddSuggestedItem = () => {
+    if (!newSuggestedDesc.trim()) {
+      setSubmitError('Item description is required');
+      return;
+    }
+    if (newSuggestedQty < 1) {
+      setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    setSuggestedItems([...suggestedItems, {
+      description: newSuggestedDesc.trim(),
+      quantity: newSuggestedQty,
+      notes: newSuggestedNotes.trim(),
+    }]);
+    setNewSuggestedDesc('');
+    setNewSuggestedQty(1);
+    setNewSuggestedNotes('');
+    setSubmitError(null);
+  };
+
+  // Handle remove item from category
+  const handleRemoveMandatoryItem = (index: number) => {
+    setMandatoryItems(mandatoryItems.filter((_, i) => i !== index));
+  };
+
+  const handleRemovePreferredItem = (index: number) => {
+    setPreferredItems(preferredItems.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveSuggestedItem = (index: number) => {
+    setSuggestedItems(suggestedItems.filter((_, i) => i !== index));
+  };
+
+  // Handle create sign-up lists (one per selected category)
   const handleCreateSignUpList = async () => {
     if (!category.trim()) {
       setSubmitError('Category is required');
@@ -145,26 +199,76 @@ export default function ManageSignUpsPage() {
     try {
       setSubmitError(null);
 
-      // Create the sign-up list first
-      const signUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
-        eventId,
-        category: category.trim(),
-        description: description.trim(),
-        hasMandatoryItems,
-        hasPreferredItems,
-        hasSuggestedItems,
-      });
-
-      // Then add all the items
-      for (const item of categoryItems) {
-        await addSignUpItemMutation.mutateAsync({
+      // Create Mandatory sign-up list if selected
+      if (hasMandatoryItems && mandatoryItems.length > 0) {
+        const mandatorySignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
           eventId,
-          signupId: signUpId as unknown as string,
-          itemDescription: item.description,
-          quantity: item.quantity,
-          itemCategory: item.category,
-          notes: item.notes || undefined,
+          category: `${category.trim()} - Mandatory Items`,
+          description: description.trim(),
+          hasMandatoryItems: true,
+          hasPreferredItems: false,
+          hasSuggestedItems: false,
         });
+
+        // Add all mandatory items
+        for (const item of mandatoryItems) {
+          await addSignUpItemMutation.mutateAsync({
+            eventId,
+            signupId: mandatorySignUpId as unknown as string,
+            itemDescription: item.description,
+            quantity: item.quantity,
+            itemCategory: SignUpItemCategory.Mandatory,
+            notes: item.notes || undefined,
+          });
+        }
+      }
+
+      // Create Preferred sign-up list if selected
+      if (hasPreferredItems && preferredItems.length > 0) {
+        const preferredSignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
+          eventId,
+          category: `${category.trim()} - Preferred Items`,
+          description: description.trim(),
+          hasMandatoryItems: false,
+          hasPreferredItems: true,
+          hasSuggestedItems: false,
+        });
+
+        // Add all preferred items
+        for (const item of preferredItems) {
+          await addSignUpItemMutation.mutateAsync({
+            eventId,
+            signupId: preferredSignUpId as unknown as string,
+            itemDescription: item.description,
+            quantity: item.quantity,
+            itemCategory: SignUpItemCategory.Preferred,
+            notes: item.notes || undefined,
+          });
+        }
+      }
+
+      // Create Suggested sign-up list if selected
+      if (hasSuggestedItems && suggestedItems.length > 0) {
+        const suggestedSignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
+          eventId,
+          category: `${category.trim()} - Suggested Items`,
+          description: description.trim(),
+          hasMandatoryItems: false,
+          hasPreferredItems: false,
+          hasSuggestedItems: true,
+        });
+
+        // Add all suggested items
+        for (const item of suggestedItems) {
+          await addSignUpItemMutation.mutateAsync({
+            eventId,
+            signupId: suggestedSignUpId as unknown as string,
+            itemDescription: item.description,
+            quantity: item.quantity,
+            itemCategory: SignUpItemCategory.Suggested,
+            notes: item.notes || undefined,
+          });
+        }
       }
 
       // Reset form
@@ -173,11 +277,13 @@ export default function ManageSignUpsPage() {
       setHasMandatoryItems(false);
       setHasPreferredItems(false);
       setHasSuggestedItems(false);
-      setCategoryItems([]);
+      setMandatoryItems([]);
+      setPreferredItems([]);
+      setSuggestedItems([]);
       setShowForm(false);
     } catch (err) {
-      console.error('Failed to create category-based sign-up list:', err);
-      setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
+      console.error('Failed to create sign-up lists:', err);
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up lists');
     }
   };
 
@@ -453,123 +559,311 @@ export default function ManageSignUpsPage() {
                     </div>
                   </div>
 
-                  {/* Items List */}
-                  {categoryItems.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Items ({categoryItems.length})
-                      </label>
-                      <div className="space-y-2">
-                        {categoryItems.map((item, index) => (
-                          <div key={index} className="flex items-start gap-2 p-3 border rounded-lg bg-neutral-50">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    item.category === SignUpItemCategory.Mandatory
-                                      ? 'bg-red-100 text-red-800'
-                                      : item.category === SignUpItemCategory.Preferred
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-green-100 text-green-800'
-                                  }`}
-                                >
-                                  {item.category === SignUpItemCategory.Mandatory
-                                    ? 'Mandatory'
-                                    : item.category === SignUpItemCategory.Preferred
-                                    ? 'Preferred'
-                                    : 'Suggested'}
-                                </span>
-                                <span className="text-sm font-medium">Qty: {item.quantity}</span>
-                              </div>
-                              <p className="text-sm font-medium text-neutral-900">{item.description}</p>
-                              {item.notes && (
-                                <p className="text-sm text-neutral-500 mt-1">{item.notes}</p>
-                              )}
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveCategoryItem(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                  {/* Mandatory Items Section */}
+                  {hasMandatoryItems && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                          Mandatory Items
+                        </span>
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Left: Add Item Form */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Item Description *
+                            </label>
+                            <Input
+                              type="text"
+                              placeholder="e.g., Rice (5 cups)"
+                              value={newMandatoryDesc}
+                              onChange={(e) => setNewMandatoryDesc(e.target.value)}
+                            />
                           </div>
-                        ))}
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Quantity *
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={newMandatoryQty}
+                              onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Notes (optional)
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Any additional details..."
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                              value={newMandatoryNotes}
+                              onChange={(e) => setNewMandatoryNotes(e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleAddMandatoryItem}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </div>
+
+                        {/* Right: Items Table */}
+                        <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                          {mandatoryItems.length === 0 ? (
+                            <div className="p-4 text-center text-neutral-500 text-sm">
+                              No items added yet
+                            </div>
+                          ) : (
+                            <table className="w-full">
+                              <thead className="bg-neutral-100 sticky top-0">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {mandatoryItems.map((item, index) => (
+                                  <tr key={index} className="border-t">
+                                    <td className="px-3 py-2 text-sm">
+                                      <div>
+                                        <p className="font-medium">{item.description}</p>
+                                        {item.notes && (
+                                          <p className="text-xs text-neutral-500">{item.notes}</p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleRemoveMandatoryItem(index)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Add Item Form */}
-                  <div className="border-t pt-4">
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">
-                      Add New Item
-                    </label>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">
-                          Item Description *
-                        </label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., Rice (5 cups)"
-                          value={newItemDescription}
-                          onChange={(e) => setNewItemDescription(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-600 mb-1">
-                            Quantity *
-                          </label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={newItemQuantity}
-                            onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-600 mb-1">
-                            Category *
-                          </label>
-                          <select
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            value={newItemCategory}
-                            onChange={(e) => setNewItemCategory(Number(e.target.value) as SignUpItemCategory)}
+                  {/* Preferred Items Section */}
+                  {hasPreferredItems && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          Preferred Items
+                        </span>
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Left: Add Item Form */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Item Description *
+                            </label>
+                            <Input
+                              type="text"
+                              placeholder="e.g., Side dish"
+                              value={newPreferredDesc}
+                              onChange={(e) => setNewPreferredDesc(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Quantity *
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={newPreferredQty}
+                              onChange={(e) => setNewPreferredQty(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Notes (optional)
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Any additional details..."
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                              value={newPreferredNotes}
+                              onChange={(e) => setNewPreferredNotes(e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleAddPreferredItem}
+                            variant="outline"
+                            className="w-full"
                           >
-                            <option value={SignUpItemCategory.Mandatory}>Mandatory</option>
-                            <option value={SignUpItemCategory.Preferred}>Preferred</option>
-                            <option value={SignUpItemCategory.Suggested}>Suggested</option>
-                          </select>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </div>
+
+                        {/* Right: Items Table */}
+                        <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                          {preferredItems.length === 0 ? (
+                            <div className="p-4 text-center text-neutral-500 text-sm">
+                              No items added yet
+                            </div>
+                          ) : (
+                            <table className="w-full">
+                              <thead className="bg-neutral-100 sticky top-0">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {preferredItems.map((item, index) => (
+                                  <tr key={index} className="border-t">
+                                    <td className="px-3 py-2 text-sm">
+                                      <div>
+                                        <p className="font-medium">{item.description}</p>
+                                        {item.notes && (
+                                          <p className="text-xs text-neutral-500">{item.notes}</p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleRemovePreferredItem(index)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
                         </div>
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">
-                          Notes (optional)
-                        </label>
-                        <textarea
-                          rows={2}
-                          placeholder="Any additional details..."
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-                          value={newItemNotes}
-                          onChange={(e) => setNewItemNotes(e.target.value)}
-                        />
-                      </div>
-
-                      <Button
-                        type="button"
-                        onClick={handleAddCategoryItem}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Item to List
-                      </Button>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Suggested Items Section */}
+                  {hasSuggestedItems && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                          Suggested Items
+                        </span>
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Left: Add Item Form */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Item Description *
+                            </label>
+                            <Input
+                              type="text"
+                              placeholder="e.g., Dessert"
+                              value={newSuggestedDesc}
+                              onChange={(e) => setNewSuggestedDesc(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Quantity *
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={newSuggestedQty}
+                              onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Notes (optional)
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Any additional details..."
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                              value={newSuggestedNotes}
+                              onChange={(e) => setNewSuggestedNotes(e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleAddSuggestedItem}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </div>
+
+                        {/* Right: Items Table */}
+                        <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                          {suggestedItems.length === 0 ? (
+                            <div className="p-4 text-center text-neutral-500 text-sm">
+                              No items added yet
+                            </div>
+                          ) : (
+                            <table className="w-full">
+                              <thead className="bg-neutral-100 sticky top-0">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {suggestedItems.map((item, index) => (
+                                  <tr key={index} className="border-t">
+                                    <td className="px-3 py-2 text-sm">
+                                      <div>
+                                        <p className="font-medium">{item.description}</p>
+                                        {item.notes && (
+                                          <p className="text-xs text-neutral-500">{item.notes}</p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleRemoveSuggestedItem(index)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Error Message */}
@@ -590,7 +884,9 @@ export default function ManageSignUpsPage() {
                     setHasMandatoryItems(false);
                     setHasPreferredItems(false);
                     setHasSuggestedItems(false);
-                    setCategoryItems([]);
+                    setMandatoryItems([]);
+                    setPreferredItems([]);
+                    setSuggestedItems([]);
                     setSubmitError(null);
                   }}
                 >

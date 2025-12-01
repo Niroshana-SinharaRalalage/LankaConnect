@@ -55,7 +55,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithValidCredentials_ShouldReturnSuccessWithTokens()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123", false, "127.0.0.1");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123", RememberMe = false, IpAddress = "127.0.0.1" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -94,7 +94,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithInvalidEmail_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("invalid-email", "password123");
+        var request = new LoginUserCommand { Email = "invalid-email", Password = "password123" };
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);
@@ -108,7 +108,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithNonExistentUser_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("nonexistent@example.com", "password123");
+        var request = new LoginUserCommand { Email = "nonexistent@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -126,7 +126,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithLockedAccount_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         // Lock the user account
@@ -150,7 +150,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithInactiveUser_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _testUser.Deactivate();
@@ -170,7 +170,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithWrongPassword_ShouldReturnFailureAndRecordFailedAttempt()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "wrongpassword");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "wrongpassword" };
         var email = Email.Create(request.Email).Value;
         var initialFailedAttempts = _testUser.FailedLoginAttempts;
 
@@ -198,7 +198,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithUnverifiedEmail_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create("unverified@example.com").Value;
         var unverifiedUser = User.Create(email, "Jane", "Doe").Value;
         unverifiedUser.SetPassword("hashedpassword123");
@@ -222,7 +222,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithUserWithoutPasswordHash_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
         var userWithoutPassword = User.Create(email, "Jane", "Doe").Value;
         userWithoutPassword.VerifyEmail();
@@ -243,7 +243,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithTokenGenerationFailure_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -267,7 +267,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithRefreshTokenGenerationFailure_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -294,7 +294,7 @@ public class LoginUserHandlerTests
     public async Task Handle_ShouldRecordSuccessfulLogin()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
         var lastLoginBefore = _testUser.LastLoginAt;
 
@@ -327,7 +327,7 @@ public class LoginUserHandlerTests
     public async Task Handle_WithDatabaseException_ShouldReturnFailure()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -345,7 +345,7 @@ public class LoginUserHandlerTests
     public async Task Handle_ShouldAddRefreshTokenToUser()
     {
         // Arrange
-        var request = new LoginUserCommand("test@example.com", "password123", false, "127.0.0.1");
+        var request = new LoginUserCommand { Email = "test@example.com", Password = "password123", RememberMe = false, IpAddress = "127.0.0.1" };
         var email = Email.Create(request.Email).Value;
         var initialRefreshTokenCount = _testUser.RefreshTokens.Count;
 

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency, type EventDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
+import { eventKeys } from '@/presentation/hooks/useEvents';
 
 interface EventEditFormProps {
   event: EventDto;
@@ -33,6 +35,7 @@ interface EventEditFormProps {
  */
 export function EventEditForm({ event }: EventEditFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -235,8 +238,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
       await eventsRepository.updateEvent(event.id, eventData);
       console.log('✅ Event updated successfully!');
 
-      // Redirect to event detail page
-      router.push(`/events/${event.id}`);
+      // Invalidate React Query cache to refresh event data
+      await queryClient.invalidateQueries({ queryKey: eventKeys.detail(event.id) });
+      await queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      console.log('🔄 Cache invalidated - fresh data will be fetched');
+
+      // Redirect to event manage page
+      router.push(`/events/${event.id}/manage`);
     } catch (err) {
       console.error('❌ Event update failed:', err);
 

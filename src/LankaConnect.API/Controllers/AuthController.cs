@@ -585,21 +585,30 @@ public class AuthController : ControllerBase
 
     private void SetRefreshTokenCookie(string refreshToken, int expirationDays = 7)
     {
-        // Allow HTTP cookies in Development and Staging (accessed from HTTP localhost:3000)
-        // Require HTTPS only in Production
-        var isLocalDevelopment = _env.IsDevelopment() || _env.IsStaging();
+        // Determine cookie security based on actual connection type, not just environment
+        // Azure Container Apps (staging/prod) always use HTTPS
+        // Only local development with HTTP should use Secure=false
+        var isHttpOnly = _env.IsDevelopment() && !Request.IsHttps;
 
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !isLocalDevelopment, // Allow HTTP in dev/staging, require HTTPS in production
-            SameSite = isLocalDevelopment ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev/staging, None for production cross-origin
-            Expires = DateTime.UtcNow.AddDays(expirationDays), // Matches refresh token expiry
-            Path = "/"
+            // Secure=true for all HTTPS connections (staging, prod, and local HTTPS)
+            // Secure=false only for local development over HTTP
+            Secure = !isHttpOnly,
+            // SameSite=Lax for same-origin (local dev), None for cross-origin (requires Secure=true)
+            SameSite = isHttpOnly ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddDays(expirationDays),
+            Path = "/",
+            // Domain only in production for subdomain sharing
+            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
 
-        _logger.LogDebug("Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, Expires={Expires}, Environment={Environment}",
-            cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires, _env.EnvironmentName);
+        _logger.LogDebug(
+            "Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, " +
+            "Expires={Expires}, Environment={Environment}, IsHttps={IsHttps}, Path={Path}",
+            cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires,
+            _env.EnvironmentName, Request.IsHttps, cookieOptions.Path);
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
@@ -607,16 +616,21 @@ public class AuthController : ControllerBase
     private void ClearRefreshTokenCookie()
     {
         // Use same security settings as SetRefreshTokenCookie
-        var isLocalDevelopment = _env.IsDevelopment() || _env.IsStaging();
+        var isHttpOnly = _env.IsDevelopment() && !Request.IsHttps;
 
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !isLocalDevelopment, // Allow HTTP in dev/staging, require HTTPS in production
-            SameSite = isLocalDevelopment ? SameSiteMode.Lax : SameSiteMode.None, // Lax for dev/staging, None for production cross-origin
+            Secure = !isHttpOnly,
+            SameSite = isHttpOnly ? SameSiteMode.Lax : SameSiteMode.None,
             Expires = DateTime.UtcNow.AddDays(-1),
-            Path = "/"
+            Path = "/",
+            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
+
+        _logger.LogDebug(
+            "Clearing refresh token cookie: Secure={Secure}, SameSite={SameSite}, Environment={Environment}, IsHttps={IsHttps}",
+            cookieOptions.Secure, cookieOptions.SameSite, _env.EnvironmentName, Request.IsHttps);
 
         Response.Cookies.Append("refreshToken", "", cookieOptions);
     }

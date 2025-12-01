@@ -93,8 +93,10 @@ feat(events): Add category-based sign-up creation UI to manage-signups page
 - **Payload Fixes**: ✅ Complete (null handling for nullable C# types)
 - **Form State**: ✅ Complete (Fixed infinite re-render preventing edits)
 - **Backend**: ✅ Complete (Removed Draft-only restriction)
+- **Cache Management**: ✅ Complete (React Query invalidation after updates)
+- **Navigation**: ✅ Complete (Fixed redirect to manage page)
 - **Build Status**: ✅ 0 compilation errors (Frontend & Backend)
-- **Ready for Testing**: ✅ All fixes committed, requires staging deployment
+- **Ready for Testing**: ✅ All fixes committed, requires hard refresh
 
 **Implementation Details**:
 
@@ -150,6 +152,20 @@ feat(events): Add category-based sign-up creation UI to manage-signups page
 - **Future**: ADR-011 describes status-based field restrictions for future implementation
 - **Commit**: cb1da43
 
+**Issue 5: Wrong Redirect & Stale Cache After Update** ❌→✅
+- **Symptom 1**: After clicking "Update Event", redirected to event detail page instead of manage page
+- **Symptom 2**: Only title updated in dashboard list, other changes (description, capacity) not visible
+- **Symptom 3**: Returning to edit page showed old data, not the changes just made
+- **Root Cause**:
+  - Wrong redirect URL: `/events/{id}` instead of `/events/{id}/manage`
+  - Missing React Query cache invalidation after update
+- **Fix**:
+  - Changed redirect to `/events/${event.id}/manage`
+  - Added `queryClient.invalidateQueries()` for both event detail and event lists
+  - Cache invalidation forces refetch of fresh data across all pages
+- **Files**: [EventEditForm.tsx](../web/src/presentation/components/features/events/EventEditForm.tsx)
+- **Commit**: a8b2cbd
+
 **Commits Made**:
 1. `9b1a22c` - feat: Add event edit functionality with form validation
 2. `4772711` - fix(events): Fix event update API payload for backend compatibility
@@ -158,6 +174,7 @@ feat(events): Add category-based sign-up creation UI to manage-signups page
 5. `e815ef6` - fix(events): Fix UpdateEventRequest type and use null for nullable fields
 6. `dd3bb0c` - fix(events): Use null instead of empty strings for optional location fields
 7. `cb1da43` - fix(events): Remove Draft-only restriction from UpdateEvent command
+8. `a8b2cbd` - fix(events): Fix redirect and cache invalidation after event update
 
 **Key Learnings**:
 1. **TypeScript ↔ C# Type Mapping**:
@@ -172,6 +189,11 @@ feat(events): Add category-based sign-up creation UI to manage-signups page
    - Frontend types must exactly match backend command signatures
    - Field naming must be consistent (locationAddress not address)
    - Backend inference patterns (isFree inferred from ticketPriceAmount)
+4. **React Query Cache Management**:
+   - ALWAYS invalidate cache after mutations (create/update/delete)
+   - Invalidate both specific detail cache AND list caches
+   - Without invalidation, UI shows stale data even after successful updates
+   - Use `await queryClient.invalidateQueries()` for immediate refetch
 
 **Next Steps**:
 - ⏳ **Deploy to staging** using `deploy-staging.yml` workflow

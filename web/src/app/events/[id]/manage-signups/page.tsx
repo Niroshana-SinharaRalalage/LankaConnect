@@ -512,55 +512,26 @@ export default function ManageSignUpsPage() {
 
               {/* Category-Based Items */}
               <div className="space-y-4">
-                  {/* Category Checkboxes */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">
-                      Select Item Categories * (at least one required)
+                  <label className="block text-sm font-medium text-neutral-700 mb-3">
+                    Select Item Categories * (at least one required)
+                  </label>
+
+                  {/* Mandatory Items Checkbox + Section */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                      <input
+                        type="checkbox"
+                        checked={hasMandatoryItems}
+                        onChange={(e) => setHasMandatoryItems(e.target.checked)}
+                        className="w-4 h-4 text-red-600"
+                      />
+                      <div>
+                        <p className="font-medium text-neutral-900">Mandatory Items</p>
+                        <p className="text-sm text-neutral-500">Required items that must be brought</p>
+                      </div>
                     </label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                        <input
-                          type="checkbox"
-                          checked={hasMandatoryItems}
-                          onChange={(e) => setHasMandatoryItems(e.target.checked)}
-                          className="w-4 h-4 text-red-600"
-                        />
-                        <div>
-                          <p className="font-medium text-neutral-900">Mandatory Items</p>
-                          <p className="text-sm text-neutral-500">Required items that must be brought</p>
-                        </div>
-                      </label>
 
-                      <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                        <input
-                          type="checkbox"
-                          checked={hasPreferredItems}
-                          onChange={(e) => setHasPreferredItems(e.target.checked)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <div>
-                          <p className="font-medium text-neutral-900">Preferred Items</p>
-                          <p className="text-sm text-neutral-500">Highly desired items</p>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                        <input
-                          type="checkbox"
-                          checked={hasSuggestedItems}
-                          onChange={(e) => setHasSuggestedItems(e.target.checked)}
-                          className="w-4 h-4 text-green-600"
-                        />
-                        <div>
-                          <p className="font-medium text-neutral-900">Suggested Items</p>
-                          <p className="text-sm text-neutral-500">Optional items that would be nice to have</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Mandatory Items Section */}
-                  {hasMandatoryItems && (
+                    {hasMandatoryItems && (
                     <div className="border-t pt-4">
                       <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
                         <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
@@ -660,8 +631,23 @@ export default function ManageSignUpsPage() {
                       </div>
                     </div>
                   )}
+                  </div>
 
-                  {/* Preferred Items Section */}
+                  {/* Preferred Items Checkbox + Section */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                      <input
+                        type="checkbox"
+                        checked={hasPreferredItems}
+                        onChange={(e) => setHasPreferredItems(e.target.checked)}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <div>
+                        <p className="font-medium text-neutral-900">Preferred Items</p>
+                        <p className="text-sm text-neutral-500">Highly desired items that would be helpful</p>
+                      </div>
+                    </label>
+
                   {hasPreferredItems && (
                     <div className="border-t pt-4">
                       <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
@@ -762,8 +748,23 @@ export default function ManageSignUpsPage() {
                       </div>
                     </div>
                   )}
+                  </div>
 
-                  {/* Suggested Items Section */}
+                  {/* Suggested Items Checkbox + Section */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                      <input
+                        type="checkbox"
+                        checked={hasSuggestedItems}
+                        onChange={(e) => setHasSuggestedItems(e.target.checked)}
+                        className="w-4 h-4 text-green-600"
+                      />
+                      <div>
+                        <p className="font-medium text-neutral-900">Suggested Items</p>
+                        <p className="text-sm text-neutral-500">Optional items that would be nice to have</p>
+                      </div>
+                    </label>
+
                   {hasSuggestedItems && (
                     <div className="border-t pt-4">
                       <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
@@ -864,6 +865,7 @@ export default function ManageSignUpsPage() {
                       </div>
                     </div>
                   )}
+                  </div>
               </div>
 
               {/* Error Message */}

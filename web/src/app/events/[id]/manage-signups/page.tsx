@@ -8,7 +8,6 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import {
   useEventSignUps,
-  useAddSignUpList,
   useRemoveSignUpList,
   useAddSignUpListWithCategories,
   useAddSignUpItem,
@@ -18,7 +17,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X } from 'lucide-react';
-import { SignUpType, SignUpItemCategory, type AddSignUpListRequest } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -45,7 +44,6 @@ export default function ManageSignUpsPage() {
   const { data: signUpLists, isLoading: signUpsLoading } = useEventSignUps(eventId);
 
   // Mutations
-  const addSignUpListMutation = useAddSignUpList();
   const removeSignUpListMutation = useRemoveSignUpList();
   const addSignUpListWithCategoriesMutation = useAddSignUpListWithCategories();
   const addSignUpItemMutation = useAddSignUpItem();
@@ -55,13 +53,10 @@ export default function ManageSignUpsPage() {
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [signUpType, setSignUpType] = useState<SignUpType | 'Categories'>(SignUpType.Open);
-  const [predefinedItems, setPredefinedItems] = useState<string[]>([]);
-  const [newItem, setNewItem] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Category-based sign-up state
+  // Category checkboxes - organizer selects which categories to enable
   const [hasMandatoryItems, setHasMandatoryItems] = useState(false);
   const [hasPreferredItems, setHasPreferredItems] = useState(false);
   const [hasSuggestedItems, setHasSuggestedItems] = useState(false);
@@ -75,8 +70,6 @@ export default function ManageSignUpsPage() {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [newItemCategory, setNewItemCategory] = useState<SignUpItemCategory>(SignUpItemCategory.Mandatory);
   const [newItemNotes, setNewItemNotes] = useState('');
-  const [createdSignUpId, setCreatedSignUpId] = useState<string | null>(null);
-
   // Redirect if not authenticated or not authorized
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {
@@ -96,19 +89,6 @@ export default function ManageSignUpsPage() {
       router.push(`/events/${eventId}`);
     }
   }, [isAuthenticated, user, event, eventId, router]);
-
-  // Handle add predefined item
-  const handleAddPredefinedItem = () => {
-    if (newItem.trim()) {
-      setPredefinedItems([...predefinedItems, newItem.trim()]);
-      setNewItem('');
-    }
-  };
-
-  // Handle remove predefined item
-  const handleRemovePredefinedItem = (index: number) => {
-    setPredefinedItems(predefinedItems.filter((_, i) => i !== index));
-  };
 
   // Handle add category item
   const handleAddCategoryItem = () => {
@@ -157,80 +137,46 @@ export default function ManageSignUpsPage() {
       return;
     }
 
-    // Category-based sign-up
-    if (signUpType === 'Categories') {
-      if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems) {
-        setSubmitError('Please select at least one category (Mandatory, Preferred, or Suggested)');
-        return;
-      }
-
-      try {
-        setSubmitError(null);
-
-        // Create the sign-up list first
-        const signUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
-          eventId,
-          category: category.trim(),
-          description: description.trim(),
-          hasMandatoryItems,
-          hasPreferredItems,
-          hasSuggestedItems,
-        });
-
-        // Then add all the items
-        for (const item of categoryItems) {
-          await addSignUpItemMutation.mutateAsync({
-            eventId,
-            signupId: signUpId as unknown as string,
-            itemDescription: item.description,
-            quantity: item.quantity,
-            itemCategory: item.category,
-            notes: item.notes || undefined,
-          });
-        }
-
-        // Reset form
-        setCategory('');
-        setDescription('');
-        setSignUpType(SignUpType.Open);
-        setHasMandatoryItems(false);
-        setHasPreferredItems(false);
-        setHasSuggestedItems(false);
-        setCategoryItems([]);
-        setShowForm(false);
-      } catch (err) {
-        console.error('Failed to create category-based sign-up list:', err);
-        setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
-      }
-      return;
-    }
-
-    // Legacy Open/Predefined sign-up
-    if (signUpType === SignUpType.Predefined && predefinedItems.length === 0) {
-      setSubmitError('Please add at least one predefined item');
+    if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems) {
+      setSubmitError('Please select at least one category (Mandatory, Preferred, or Suggested)');
       return;
     }
 
     try {
       setSubmitError(null);
 
-      const request: AddSignUpListRequest = {
+      // Create the sign-up list first
+      const signUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
+        eventId,
         category: category.trim(),
         description: description.trim(),
-        signUpType,
-        predefinedItems: signUpType === SignUpType.Predefined ? predefinedItems : undefined,
-      };
+        hasMandatoryItems,
+        hasPreferredItems,
+        hasSuggestedItems,
+      });
 
-      await addSignUpListMutation.mutateAsync({ eventId, ...request });
+      // Then add all the items
+      for (const item of categoryItems) {
+        await addSignUpItemMutation.mutateAsync({
+          eventId,
+          signupId: signUpId as unknown as string,
+          itemDescription: item.description,
+          quantity: item.quantity,
+          itemCategory: item.category,
+          notes: item.notes || undefined,
+        });
+      }
 
       // Reset form
       setCategory('');
       setDescription('');
-      setSignUpType(SignUpType.Open);
-      setPredefinedItems([]);
+      setHasMandatoryItems(false);
+      setHasPreferredItems(false);
+      setHasSuggestedItems(false);
+      setCategoryItems([]);
       setShowForm(false);
     } catch (err) {
-      console.error('Failed to create sign-up list:', err);
+      console.error('Failed to create category-based sign-up list:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
     }
   };
@@ -458,118 +404,8 @@ export default function ManageSignUpsPage() {
                 />
               </div>
 
-              {/* Sign-Up Type Selection with Radio Buttons */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-3">
-                  Sign-Up Type *
-                </label>
-                <div className="space-y-3">
-                  {/* Open Type */}
-                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                    <input
-                      type="radio"
-                      name="signUpType"
-                      value={SignUpType.Open}
-                      checked={signUpType === SignUpType.Open}
-                      onChange={(e) => setSignUpType(Number(e.target.value) as SignUpType)}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium text-neutral-900">Open List</p>
-                      <p className="text-sm text-neutral-500">Users can specify any item they want to bring</p>
-                    </div>
-                  </label>
-
-                  {/* Predefined Type */}
-                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                    <input
-                      type="radio"
-                      name="signUpType"
-                      value={SignUpType.Predefined}
-                      checked={signUpType === SignUpType.Predefined}
-                      onChange={(e) => setSignUpType(Number(e.target.value) as SignUpType)}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium text-neutral-900">Predefined List</p>
-                      <p className="text-sm text-neutral-500">Users choose from a predefined list of items</p>
-                    </div>
-                  </label>
-
-                  {/* Category-based Type */}
-                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                    <input
-                      type="radio"
-                      name="signUpType"
-                      value="Categories"
-                      checked={signUpType === 'Categories'}
-                      onChange={() => setSignUpType('Categories')}
-                      className="mt-1"
-                    />
-                    <div>
-                      <p className="font-medium text-neutral-900">Category-Based List (NEW)</p>
-                      <p className="text-sm text-neutral-500">Items organized by priority: Mandatory, Preferred, Suggested</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Predefined Items (shown only for Predefined type) */}
-              {signUpType === SignUpType.Predefined && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Predefined Items *
-                  </label>
-                  <div className="space-y-2">
-                    {/* List of predefined items */}
-                    {predefinedItems.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={item}
-                          disabled
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemovePredefinedItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-
-                    {/* Add new item */}
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        placeholder="Enter item name"
-                        value={newItem}
-                        onChange={(e) => setNewItem(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddPredefinedItem();
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleAddPredefinedItem}
-                        style={{ background: '#FF7900' }}
-                      >
-                        Add Item
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Category-Based Items (shown only for Categories type) */}
-              {signUpType === 'Categories' && (
-                <div className="space-y-4">
+              {/* Category-Based Items */}
+              <div className="space-y-4">
                   {/* Category Checkboxes */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-3">
@@ -734,8 +570,7 @@ export default function ManageSignUpsPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
-              )}
+              </div>
 
               {/* Error Message */}
               {submitError && (
@@ -752,8 +587,10 @@ export default function ManageSignUpsPage() {
                     setShowForm(false);
                     setCategory('');
                     setDescription('');
-                    setSignUpType(SignUpType.Open);
-                    setPredefinedItems([]);
+                    setHasMandatoryItems(false);
+                    setHasPreferredItems(false);
+                    setHasSuggestedItems(false);
+                    setCategoryItems([]);
                     setSubmitError(null);
                   }}
                 >
@@ -761,10 +598,10 @@ export default function ManageSignUpsPage() {
                 </Button>
                 <Button
                   onClick={handleCreateSignUpList}
-                  disabled={addSignUpListMutation.isPending}
+                  disabled={addSignUpListWithCategoriesMutation.isPending}
                   style={{ background: '#FF7900' }}
                 >
-                  {addSignUpListMutation.isPending ? 'Creating...' : 'Create Sign-Up List'}
+                  {addSignUpListWithCategoriesMutation.isPending ? 'Creating...' : 'Create Sign-Up List'}
                 </Button>
               </div>
             </CardContent>
@@ -826,30 +663,6 @@ export default function ManageSignUpsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Type Badge */}
-                    <div>
-                      <span className="inline-block px-3 py-1 text-sm font-medium rounded-full border-2" style={{ borderColor: '#FF7900', color: '#FF7900', background: 'white' }}>
-                        {list.signUpType === SignUpType.Open ? 'Open List' : 'Predefined List'}
-                      </span>
-                    </div>
-
-                    {/* Predefined Items */}
-                    {list.signUpType === SignUpType.Predefined && list.predefinedItems.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-neutral-700 mb-2">Available Items:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {list.predefinedItems.map((item, index) => (
-                            <span
-                              key={index}
-                              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-full"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Commitments */}
                     <div>
                       <h4 className="text-sm font-semibold text-neutral-700 mb-3">

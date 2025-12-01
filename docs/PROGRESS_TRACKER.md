@@ -1,5 +1,5 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-11-30 (Current Session) - Session 17: Authentication Improvements (Complete) ✅*
+*Last Updated: 2025-12-01 (Current Session) - Session 17: Authentication Improvements (Complete) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
@@ -219,10 +219,34 @@
 - **File**: [AuthController.cs](../src/LankaConnect.API/Controllers/AuthController.cs)
 - **Commit**: e424c37 - `fix(auth): Fix SameSite cookie blocking refresh token in cross-origin requests`
 
+**Issue 4: Login API Returns "Failed to generate access token"** ❌→✅ (2025-12-01)
+- **Symptom**: Login API returned 400 Bad Request with `{"error": "Failed to generate access token"}`
+- **Root Cause**: JWT configuration environment variable naming mismatch
+  - Code expected: `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` (see AuthenticationExtensions.cs:12, JwtTokenService.cs:50)
+  - Deployment set: `JwtSettings__SecretKey`, `JwtSettings__Issuer`, `JwtSettings__Audience`
+  - ASP.NET Core env var override: `JwtSettings__SecretKey` → `JwtSettings:SecretKey` (NOT `Jwt:Key`)
+  - Placeholders in appsettings.Staging.json like `${JWT_SECRET_KEY}` were never replaced
+- **Investigation Process**:
+  1. Reviewed LoginUserHandler.cs line 95-99 - JWT generation code
+  2. Checked JwtTokenService.cs - reads from `_configuration["Jwt:Key"]`
+  3. Compared appsettings.Staging.json section names vs deployment env vars
+  4. Identified mismatch: `"Jwt"` section vs `JwtSettings__*` env vars
+- **Fix**: Updated [deploy-staging.yml](.github/workflows/deploy-staging.yml):
+  - `JwtSettings__SecretKey` → `Jwt__Key`
+  - `JwtSettings__Issuer` → `Jwt__Issuer`
+  - `JwtSettings__Audience` → `Jwt__Audience`
+- **Verification**: Tested login API after deployment - ✅ Returns valid JWT token
+- **Commit**: 1cb8a91 - `fix(auth): Fix JWT configuration environment variable mismatch causing login failures`
+
 **Commits Made**:
 1. `0d92177` - feat(auth): Implement Facebook/Gmail-style long-lived sessions with automatic token refresh
 2. `4452637` - fix(auth): Fix token refresh logout bug on page refresh
 3. `e424c37` - fix(auth): Fix SameSite cookie blocking refresh token in cross-origin requests
+4. `6adb3a1` - fix(auth): Fix SameSite cookie settings for Staging environment
+5. `556488f` - fix(auth): Fix LoginUserHandlerTests to use new RememberMe parameter
+6. `b5d1214` - fix(auth): Convert LoginUserCommand to property-based record for reliable JSON binding
+7. `5d750dc` - fix(auth): Fix integration tests after LoginUserCommand signature change
+8. `1cb8a91` - fix(auth): Fix JWT configuration environment variable mismatch causing login failures
 
 **Key Technical Learnings**:
 1. **Cookie Security & Cross-Origin**:
@@ -243,6 +267,12 @@
    - C# `decimal?` → TypeScript `number | null`
    - Always verify backend contract matches frontend types
    - `undefined` (TypeScript) ≠ `null` (JSON) ≠ `""` (empty string)
+5. **ASP.NET Core Configuration Environment Variables** (CRITICAL):
+   - Environment variable override pattern: `Section__Property` → `Section:Property`
+   - Example: `Jwt__Key` overrides `Jwt:Key`, NOT `JwtSettings:Key`
+   - Mismatch causes configuration placeholders to remain unresolved
+   - Always verify appsettings.json section names match deployment env var prefixes
+   - Azure Container App env vars must use correct double underscore (`__`) syntax
 
 **Architecture Highlights**:
 - **Separation of Concerns**:

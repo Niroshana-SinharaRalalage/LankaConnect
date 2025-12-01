@@ -118,7 +118,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         // First register a user
         await RegisterAndVerifyUser(email, password, "John", "Doe");
 
-        var loginRequest = new LoginUserCommand(email, password);
+        var loginRequest = new LoginUserCommand { Email = email, Password = password };
 
         // Act
         var response = await HttpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
@@ -146,7 +146,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
     public async Task Login_WithInvalidCredentials_ShouldReturn400BadRequest()
     {
         // Arrange
-        var loginRequest = new LoginUserCommand("nonexistent@example.com", "wrongpassword");
+        var loginRequest = new LoginUserCommand { Email = "nonexistent@example.com", Password = "wrongpassword" };
 
         // Act
         var response = await HttpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
@@ -166,7 +166,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         var registerRequest = new RegisterUserCommand(email, password, "John", "Doe");
         await HttpClient.PostAsJsonAsync("/api/auth/register", registerRequest);
 
-        var loginRequest = new LoginUserCommand(email, password);
+        var loginRequest = new LoginUserCommand { Email = email, Password = password };
 
         // Act
         var response = await HttpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
@@ -236,7 +236,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         await RegisterAndVerifyUser(email, password, "John", "Doe");
         
         // Login to get tokens and cookies
-        var loginRequest = new LoginUserCommand(email, password);
+        var loginRequest = new LoginUserCommand { Email = email, Password = password };
         var loginResponse = await HttpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
         
         // Extract access token
@@ -328,12 +328,12 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         // Attempt multiple failed logins
         for (int i = 0; i < 5; i++)
         {
-            var failedRequest = new LoginUserCommand(email, "wrongpassword");
+            var failedRequest = new LoginUserCommand { Email = email, Password = "wrongpassword" };
             await HttpClient.PostAsJsonAsync("/api/auth/login", failedRequest);
         }
 
         // Act - Try with correct password
-        var validRequest = new LoginUserCommand(email, password);
+        var validRequest = new LoginUserCommand { Email = email, Password = password };
         var response = await HttpClient.PostAsJsonAsync("/api/auth/login", validRequest);
 
         // Assert
@@ -648,7 +648,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
 
     private async Task<string> LoginAndGetToken(string email, string password)
     {
-        var loginRequest = new LoginUserCommand(email, password);
+        var loginRequest = new LoginUserCommand { Email = email, Password = password };
         var response = await HttpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
         
         var content = await response.Content.ReadAsStringAsync();

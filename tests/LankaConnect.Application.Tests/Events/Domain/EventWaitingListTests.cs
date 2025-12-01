@@ -187,7 +187,7 @@ public class EventWaitingListTests
         @event.AddToWaitingList(waitingUser);
 
         // Act
-        var result = @event.CancelRegistration(registeredUser);
+        var result = @event.CancelRegistration(registeredUser!.Value);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -211,7 +211,7 @@ public class EventWaitingListTests
 
         // Simulate someone canceling (freeing up a spot)
         var registeredUser = @event.Registrations.First().UserId;
-        @event.CancelRegistration(registeredUser);
+        @event.CancelRegistration(registeredUser!.Value);
 
         // Now event is 4/5, and user is first on waiting list
         @event.HasCapacityFor(1).Should().BeTrue();

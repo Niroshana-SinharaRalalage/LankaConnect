@@ -71,11 +71,19 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
 
             foreach (var registration in confirmedRegistrations)
             {
-                var user = await _userRepository.GetByIdAsync(registration.UserId, cancellationToken);
+                // Skip anonymous registrations - they don't have email in user repository
+                if (!registration.UserId.HasValue)
+                {
+                    _logger.LogInformation("Skipping anonymous registration {RegistrationId} for postponed event notification",
+                        registration.Id);
+                    continue;
+                }
+
+                var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
                 if (user == null)
                 {
                     _logger.LogWarning("User {UserId} not found for registration {RegistrationId}",
-                        registration.UserId, registration.Id);
+                        registration.UserId.Value, registration.Id);
                     continue;
                 }
 

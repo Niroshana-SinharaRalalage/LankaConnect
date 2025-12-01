@@ -164,10 +164,37 @@ public class Event : BaseEntity
 
         _registrations.Add(registrationResult.Value);
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId, quantity, DateTime.UtcNow));
-        
+
+        return Result.Success();
+    }
+
+    public Result RegisterAnonymous(AttendeeInfo attendeeInfo, int quantity)
+    {
+        if (Status != EventStatus.Published)
+            return Result.Failure("Cannot register for unpublished event");
+
+        if (attendeeInfo == null)
+            return Result.Failure("Attendee information is required");
+
+        if (quantity <= 0)
+            return Result.Failure("Quantity must be greater than 0");
+
+        if (!HasCapacityFor(quantity))
+            return Result.Failure("Event is at full capacity");
+
+        var registrationResult = Registration.CreateAnonymous(Id, attendeeInfo, quantity);
+        if (registrationResult.IsFailure)
+            return Result.Failure(registrationResult.Errors);
+
+        _registrations.Add(registrationResult.Value);
+        MarkAsUpdated();
+
+        // Raise domain event for anonymous registration
+        RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, attendeeInfo.Email.Value, quantity, DateTime.UtcNow));
+
         return Result.Success();
     }
 

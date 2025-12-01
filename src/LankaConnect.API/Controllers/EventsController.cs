@@ -12,6 +12,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
+using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
@@ -418,6 +419,33 @@ public class EventsController : BaseController<EventsController>
             request.UserId, id, request.Quantity);
 
         var command = new RsvpToEventCommand(id, request.UserId, request.Quantity);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Register anonymous attendee for an event (No authentication required)
+    /// </summary>
+    [HttpPost("{id:guid}/register-anonymous")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegisterAnonymousAttendee(Guid id, [FromBody] AnonymousRegistrationRequest request)
+    {
+        Logger.LogInformation("Anonymous attendee {Email} registering for event {EventId}",
+            request.Email, id);
+
+        var command = new RegisterAnonymousAttendeeCommand(
+            id,
+            request.Name,
+            request.Age,
+            request.Address,
+            request.Email,
+            request.PhoneNumber,
+            request.Quantity
+        );
+
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -1210,6 +1238,13 @@ public class EventsController : BaseController<EventsController>
 public record CancelEventRequest(string Reason);
 public record PostponeEventRequest(string Reason);
 public record RsvpRequest(Guid UserId, int Quantity = 1);
+public record AnonymousRegistrationRequest(
+    string Name,
+    int Age,
+    string Address,
+    string Email,
+    string PhoneNumber,
+    int Quantity = 1);
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);

@@ -1,26 +1,41 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
 public class Registration : BaseEntity
 {
     public Guid EventId { get; private set; }
-    public Guid UserId { get; private set; }
+    public Guid? UserId { get; private set; }  // Nullable for anonymous registrations
+    public AttendeeInfo? AttendeeInfo { get; private set; }  // For anonymous registrations
     public int Quantity { get; private set; }
     public RegistrationStatus Status { get; private set; }
 
     // EF Core constructor
     private Registration() { }
 
+    // Authenticated user registration
     private Registration(Guid eventId, Guid userId, int quantity)
     {
         EventId = eventId;
         UserId = userId;
+        AttendeeInfo = null;
         Quantity = quantity;
         Status = RegistrationStatus.Confirmed;
     }
 
+    // Anonymous user registration
+    private Registration(Guid eventId, AttendeeInfo attendeeInfo, int quantity)
+    {
+        EventId = eventId;
+        UserId = null;
+        AttendeeInfo = attendeeInfo;
+        Quantity = quantity;
+        Status = RegistrationStatus.Confirmed;
+    }
+
+    // Factory method for authenticated users
     public static Result<Registration> Create(Guid eventId, Guid userId, int quantity)
     {
         if (eventId == Guid.Empty)
@@ -34,6 +49,29 @@ public class Registration : BaseEntity
 
         var registration = new Registration(eventId, userId, quantity);
         return Result<Registration>.Success(registration);
+    }
+
+    // Factory method for anonymous users
+    public static Result<Registration> CreateAnonymous(Guid eventId, AttendeeInfo attendeeInfo, int quantity)
+    {
+        if (eventId == Guid.Empty)
+            return Result<Registration>.Failure("Event ID is required");
+
+        if (attendeeInfo == null)
+            return Result<Registration>.Failure("Attendee information is required");
+
+        if (quantity <= 0)
+            return Result<Registration>.Failure("Quantity must be greater than 0");
+
+        var registration = new Registration(eventId, attendeeInfo, quantity);
+        return Result<Registration>.Success(registration);
+    }
+
+    // Validation method to ensure XOR constraint (either UserId OR AttendeeInfo, not both)
+    public bool IsValid()
+    {
+        return (UserId.HasValue && AttendeeInfo == null) ||
+               (!UserId.HasValue && AttendeeInfo != null);
     }
 
     public void Cancel()

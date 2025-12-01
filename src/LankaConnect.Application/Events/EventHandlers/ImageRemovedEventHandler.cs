@@ -14,13 +14,16 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class ImageRemovedEventHandler : INotificationHandler<DomainEventNotification<ImageRemovedFromEventDomainEvent>>
 {
     private readonly IImageService _imageService;
+    private readonly IAzureBlobStorageService _blobStorageService;
     private readonly ILogger<ImageRemovedEventHandler> _logger;
 
     public ImageRemovedEventHandler(
         IImageService imageService,
+        IAzureBlobStorageService blobStorageService,
         ILogger<ImageRemovedEventHandler> logger)
     {
         _imageService = imageService;
+        _blobStorageService = blobStorageService;
         _logger = logger;
     }
 
@@ -34,9 +37,8 @@ public class ImageRemovedEventHandler : INotificationHandler<DomainEventNotifica
                 "Processing ImageRemovedFromEventDomainEvent: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}",
                 domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName);
 
-            // Construct blob URL from blob name (assumes standard Azure Blob Storage URL pattern)
-            // In a real scenario, you might store the full URL or have a method to construct it
-            var imageUrl = $"https://placeholder/{domainEvent.BlobName}"; // TODO: Get proper URL from configuration
+            // Construct blob URL from blob name using Azure Blob Storage service
+            var imageUrl = _blobStorageService.GetBlobUrl(domainEvent.BlobName);
 
             // Delete image from Azure Blob Storage
             var deleteResult = await _imageService.DeleteImageAsync(imageUrl, cancellationToken);

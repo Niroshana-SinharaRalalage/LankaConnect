@@ -200,6 +200,70 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Session 21: Registers multiple attendees with detailed information (name + age for each)
+    /// Supports both anonymous and authenticated user registration
+    /// </summary>
+    /// <param name="userId">Optional user ID (null for anonymous registration)</param>
+    /// <param name="attendees">List of attendees with names and ages</param>
+    /// <param name="contact">Shared contact information for all attendees</param>
+    /// <returns>Result indicating success or failure</returns>
+    public Result RegisterWithAttendees(
+        Guid? userId,
+        IEnumerable<AttendeeDetails> attendees,
+        RegistrationContact contact)
+    {
+        if (Status != EventStatus.Published)
+            return Result.Failure("Cannot register for unpublished event");
+
+        if (attendees == null || !attendees.Any())
+            return Result.Failure("At least one attendee is required");
+
+        var attendeeList = attendees.ToList();
+
+        if (contact == null)
+            return Result.Failure("Contact information is required");
+
+        // Check capacity for all attendees
+        if (!HasCapacityFor(attendeeList.Count))
+            return Result.Failure("Event does not have enough capacity for all attendees");
+
+        // Calculate total price based on attendee ages
+        var priceResult = CalculatePriceForAttendees(attendeeList);
+        if (priceResult.IsFailure)
+            return Result.Failure(priceResult.Errors);
+
+        var totalPrice = priceResult.Value;
+
+        // Create registration with all attendees
+        var registrationResult = Registration.CreateWithAttendees(
+            Id,
+            userId,
+            attendeeList,
+            contact,
+            totalPrice);
+
+        if (registrationResult.IsFailure)
+            return Result.Failure(registrationResult.Errors);
+
+        _registrations.Add(registrationResult.Value);
+        MarkAsUpdated();
+
+        // Raise appropriate domain event
+        if (userId.HasValue)
+        {
+            // Authenticated user registration
+            RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeList.Count, DateTime.UtcNow));
+        }
+        else
+        {
+            // Anonymous registration
+            RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeList.Count, DateTime.UtcNow));
+        }
+
+        return Result.Success();
+    }
+
     public Result CancelRegistration(Guid userId)
     {
         var registration = _registrations.FirstOrDefault(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);

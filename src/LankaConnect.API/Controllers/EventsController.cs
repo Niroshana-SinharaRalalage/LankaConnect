@@ -436,14 +436,16 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Anonymous attendee {Email} registering for event {EventId}",
             request.Email, id);
 
+        // Session 21: Updated for new command signature (backward compatible)
         var command = new RegisterAnonymousAttendeeCommand(
-            id,
-            request.Name,
-            request.Age,
-            request.Address,
-            request.Email,
-            request.PhoneNumber,
-            request.Quantity
+            EventId: id,
+            Name: request.Name,
+            Age: request.Age,
+            Attendees: null, // Legacy format - no detailed attendees
+            Email: request.Email,
+            PhoneNumber: request.PhoneNumber,
+            Address: request.Address,
+            Quantity: request.Quantity
         );
 
         var result = await Mediator.Send(command);

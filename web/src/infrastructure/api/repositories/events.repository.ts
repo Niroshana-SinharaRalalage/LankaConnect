@@ -21,7 +21,7 @@ import type {
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
-  AddSignUpListWithCategoriesRequest,
+  CreateSignUpListRequest,
   AddSignUpItemRequest,
   CommitToSignUpItemRequest,
 } from '../types/events.types';
@@ -371,15 +371,16 @@ export class EventsRepository {
   // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
 
   /**
-   * Add a category-based sign-up list to event
+   * Create sign-up list WITH items in a single API call
    * Organizer-only operation
-   * Maps to backend POST /api/events/{id}/signups/categories
+   * Maps to backend POST /api/events/{id}/signups
+   * Returns the created sign-up list ID
    */
-  async addSignUpListWithCategories(
+  async createSignUpList(
     eventId: string,
-    request: AddSignUpListWithCategoriesRequest
-  ): Promise<void> {
-    await apiClient.post<void>(`${this.basePath}/${eventId}/signups/categories`, request);
+    request: CreateSignUpListRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/signups`, request);
   }
 
   /**
@@ -465,20 +466,11 @@ export class EventsRepository {
     const formData = new FormData();
     formData.append('image', file);
 
-    // Using fetch directly for multipart/form-data
-    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include', // Include cookies for authentication
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Upload failed' }));
-      throw new Error(error.message || `Upload failed with status ${response.status}`);
-    }
-
-    return await response.json();
+    // Use apiClient.postMultipart for proper authentication and error handling
+    return await apiClient.postMultipart<EventImageDto>(
+      `${this.basePath}/${eventId}/images`,
+      formData
+    );
   }
 
   /**
@@ -545,19 +537,11 @@ export class EventsRepository {
     formData.append('video', videoFile);
     formData.append('thumbnail', thumbnailFile);
 
-    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Video upload failed' }));
-      throw new Error(error.message || `Video upload failed with status ${response.status}`);
-    }
-
-    return await response.json();
+    // Use apiClient.postMultipart for proper authentication and error handling
+    return await apiClient.postMultipart<EventVideoDto>(
+      `${this.basePath}/${eventId}/videos`,
+      formData
+    );
   }
 
   /**

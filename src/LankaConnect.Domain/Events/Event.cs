@@ -29,7 +29,8 @@ public class Event : BaseEntity
     public string? CancellationReason { get; private set; }
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
-    public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support
+    public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
+    public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
@@ -449,12 +450,102 @@ public class Event : BaseEntity
 
     #endregion
 
-    #region Pricing Management (Epic 2 Phase 2)
+    #region Pricing Management (Epic 2 Phase 2 + Session 21)
 
     /// <summary>
     /// Checks if event is free (no ticket price or zero ticket price)
+    /// Supports both legacy single pricing and new dual pricing
     /// </summary>
-    public bool IsFree() => TicketPrice == null || TicketPrice.IsZero;
+    public bool IsFree()
+    {
+        // New dual pricing system
+        if (Pricing != null)
+            return Pricing.AdultPrice.IsZero;
+
+        // Legacy single pricing
+        return TicketPrice == null || TicketPrice.IsZero;
+    }
+
+    /// <summary>
+    /// Sets dual pricing for event (adult + optional child pricing)
+    /// Session 21: Dual Ticket Pricing feature
+    /// </summary>
+    /// <param name="pricing">Ticket pricing configuration with adult and optional child prices</param>
+    public Result SetDualPricing(TicketPricing pricing)
+    {
+        if (pricing == null)
+            return Result.Failure("Pricing cannot be null");
+
+        Pricing = pricing;
+
+        // Maintain backward compatibility: Set TicketPrice to AdultPrice
+        TicketPrice = pricing.AdultPrice;
+
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Calculates total price for a list of attendees based on their ages
+    /// Session 21: Multi-attendee registration with age-based pricing
+    /// </summary>
+    /// <param name="attendees">List of attendees with ages</param>
+    /// <returns>Total price for all attendees</returns>
+    public Result<Money> CalculatePriceForAttendees(IEnumerable<AttendeeDetails> attendees)
+    {
+        if (attendees == null || !attendees.Any())
+            return Result<Money>.Failure("At least one attendee is required");
+
+        // Free event
+        if (IsFree())
+        {
+            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, Shared.Enums.Currency.USD).Value;
+            return Result<Money>.Success(freePrice);
+        }
+
+        // Calculate based on pricing configuration
+        if (Pricing != null)
+        {
+            // Dual pricing: Calculate for each attendee based on age
+            Money? totalPrice = null;
+
+            foreach (var attendee in attendees)
+            {
+                var attendeePrice = Pricing.CalculateForAttendee(attendee.Age);
+
+                if (totalPrice == null)
+                {
+                    totalPrice = attendeePrice;
+                }
+                else
+                {
+                    var addResult = totalPrice.Add(attendeePrice);
+                    if (addResult.IsFailure)
+                        return Result<Money>.Failure(addResult.Errors);
+
+                    totalPrice = addResult.Value;
+                }
+            }
+
+            return Result<Money>.Success(totalPrice!);
+        }
+
+        // Legacy single pricing: Multiply ticket price by quantity
+        if (TicketPrice != null)
+        {
+            var multiplyResult = TicketPrice.Multiply(attendees.Count());
+            if (multiplyResult.IsFailure)
+                return Result<Money>.Failure(multiplyResult.Errors);
+
+            return Result<Money>.Success(multiplyResult.Value);
+        }
+
+        return Result<Money>.Failure("Event pricing is not configured");
+    }
 
     #endregion
 

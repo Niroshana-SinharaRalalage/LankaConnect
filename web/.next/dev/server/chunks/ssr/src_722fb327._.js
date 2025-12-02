@@ -6249,6 +6249,13 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/rsvp`, request);
     }
     /**
+   * Register anonymous attendee for an event
+   * No authentication required - for users without accounts
+   * Maps to backend RegisterAnonymousAttendeeCommand
+   */ async registerAnonymous(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/register-anonymous`, request);
+    }
+    /**
    * Get current user's RSVPs
    * Epic 1: Backend now returns full EventDto[] instead of RsvpDto[] for better UX
    * Returns all events user has registered for
@@ -6384,6 +6391,77 @@ class EventsRepository {
    */ async recordEventShare(eventId, platform) {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/share`, {
             platform
+        });
+    }
+    // ==================== MEDIA MANAGEMENT ====================
+    /**
+   * Upload an image to an event
+   * Maps to backend POST /api/events/{id}/images
+   *
+   * @param eventId - Event ID (GUID)
+   * @param file - Image file to upload (max 10MB, jpg/png/gif/webp)
+   * @returns EventImageDto with image metadata
+   */ async uploadEventImage(eventId, file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        // Using fetch directly for multipart/form-data
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(()=>({
+                    message: 'Upload failed'
+                }));
+            throw new Error(error.message || `Upload failed with status ${response.status}`);
+        }
+        return await response.json();
+    }
+    /**
+   * Delete an image from an event
+   * Maps to backend DELETE /api/events/{eventId}/images/{imageId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param imageId - Image ID (GUID)
+   */ async deleteEventImage(eventId, imageId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/images/${imageId}`);
+    }
+    /**
+   * Replace an existing event image
+   * Maps to backend PUT /api/events/{eventId}/images/{imageId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param imageId - Image ID (GUID) to replace
+   * @param file - New image file
+   * @returns Updated EventImageDto
+   */ async replaceEventImage(eventId, imageId, file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images/${imageId}`, {
+            method: 'PUT',
+            body: formData,
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(()=>({
+                    message: 'Replace failed'
+                }));
+            throw new Error(error.message || `Replace failed with status ${response.status}`);
+        }
+        return await response.json();
+    }
+    /**
+   * Reorder event images
+   * Maps to backend PUT /api/events/{id}/images/reorder
+   *
+   * @param eventId - Event ID (GUID)
+   * @param newOrders - Map of image ID to new display order (1-indexed)
+   */ async reorderEventImages(eventId, newOrders) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/images/reorder`, {
+            newOrders
         });
     }
 }

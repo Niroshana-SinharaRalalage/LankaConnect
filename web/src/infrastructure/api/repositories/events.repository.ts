@@ -472,6 +472,86 @@ export class EventsRepository {
   async recordEventShare(eventId: string, platform?: string): Promise<void> {
     await apiClient.post<void>(`${this.basePath}/${eventId}/share`, { platform });
   }
+
+  // ==================== MEDIA MANAGEMENT ====================
+
+  /**
+   * Upload an image to an event
+   * Maps to backend POST /api/events/{id}/images
+   *
+   * @param eventId - Event ID (GUID)
+   * @param file - Image file to upload (max 10MB, jpg/png/gif/webp)
+   * @returns EventImageDto with image metadata
+   */
+  async uploadEventImage(eventId: string, file: File): Promise<EventImageDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    // Using fetch directly for multipart/form-data
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include', // Include cookies for authentication
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(error.message || `Upload failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete an image from an event
+   * Maps to backend DELETE /api/events/{eventId}/images/{imageId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param imageId - Image ID (GUID)
+   */
+  async deleteEventImage(eventId: string, imageId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/images/${imageId}`);
+  }
+
+  /**
+   * Replace an existing event image
+   * Maps to backend PUT /api/events/{eventId}/images/{imageId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param imageId - Image ID (GUID) to replace
+   * @param file - New image file
+   * @returns Updated EventImageDto
+   */
+  async replaceEventImage(eventId: string, imageId: string, file: File): Promise<EventImageDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images/${imageId}`, {
+      method: 'PUT',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Replace failed' }));
+      throw new Error(error.message || `Replace failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Reorder event images
+   * Maps to backend PUT /api/events/{id}/images/reorder
+   *
+   * @param eventId - Event ID (GUID)
+   * @param newOrders - Map of image ID to new display order (1-indexed)
+   */
+  async reorderEventImages(eventId: string, newOrders: Record<string, number>): Promise<void> {
+    await apiClient.put(`${this.basePath}/${eventId}/images/reorder`, { newOrders });
+  }
 }
 
 /**

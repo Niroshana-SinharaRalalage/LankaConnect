@@ -5207,6 +5207,13 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/rsvp`, request);
     }
     /**
+   * Register anonymous attendee for an event
+   * No authentication required - for users without accounts
+   * Maps to backend RegisterAnonymousAttendeeCommand
+   */ async registerAnonymous(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/register-anonymous`, request);
+    }
+    /**
    * Get current user's RSVPs
    * Epic 1: Backend now returns full EventDto[] instead of RsvpDto[] for better UX
    * Returns all events user has registered for

@@ -33,30 +33,34 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return forwardRequest(request, params.path, 'POST');
+  const resolvedParams = await params;
+  return forwardRequest(request, resolvedParams.path, 'POST');
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return forwardRequest(request, params.path, 'PUT');
+  const resolvedParams = await params;
+  return forwardRequest(request, resolvedParams.path, 'PUT');
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return forwardRequest(request, params.path, 'DELETE');
+  const resolvedParams = await params;
+  return forwardRequest(request, resolvedParams.path, 'DELETE');
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return forwardRequest(request, params.path, 'PATCH');
+  const resolvedParams = await params;
+  return forwardRequest(request, resolvedParams.path, 'PATCH');
 }
 
 async function forwardRequest(

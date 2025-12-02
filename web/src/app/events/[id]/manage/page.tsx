@@ -19,6 +19,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -41,8 +42,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const { user } = useAuthStore();
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError, refetch } = useEventById(id);
@@ -91,26 +90,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Handle Image Upload
-  const handleImageUpload = async () => {
-    if (!selectedImage || !event) {
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      setError(null);
-      await eventsRepository.uploadEventImage(id, selectedImage);
-      setSelectedImage(null);
-      setIsUploading(false);
-      // Refetch to show new image
-      await refetch();
-    } catch (err) {
-      console.error('Failed to upload image:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload image. Please try again.');
-      setIsUploading(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -423,58 +402,15 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 </div>
                 <CardDescription>Upload photos to attract attendees</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Current Images */}
-                {event.images && event.images.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-neutral-700">Current Images ({event.images.length})</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {event.images.slice(0, 4).map((image) => (
-                        <div key={image.id} className="relative aspect-square">
-                          <img
-                            src={image.imageUrl}
-                            alt="Event"
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Upload Form */}
-                <div>
-                  <label
-                    htmlFor="image-upload"
-                    className="block text-sm font-medium text-neutral-700 mb-2"
-                  >
-                    Upload New Image
-                  </label>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-                  />
-                </div>
-
-                {selectedImage && (
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-blue-700 font-medium mb-1">Selected:</p>
-                    <p className="text-xs text-blue-600">{selectedImage.name}</p>
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleImageUpload}
-                  disabled={!selectedImage || isUploading}
-                  className="w-full"
-                  style={{ background: '#FF7900' }}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isUploading ? 'Uploading...' : 'Upload Image'}
-                </Button>
+              <CardContent>
+                <ImageUploader
+                  eventId={id}
+                  existingImages={event.images ? [...event.images] : []}
+                  maxImages={10}
+                  onUploadComplete={async () => {
+                    await refetch();
+                  }}
+                />
               </CardContent>
             </Card>
           </div>

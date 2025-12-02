@@ -434,6 +434,22 @@ body {
   top: 1rem;
 }
 
+.bottom-2 {
+  bottom: .5rem;
+}
+
+.bottom-4 {
+  bottom: 1rem;
+}
+
+.left-4 {
+  left: 1rem;
+}
+
+.right-2 {
+  right: .5rem;
+}
+
 .z-10 {
   z-index: 10;
 }
@@ -650,6 +666,10 @@ body {
   aspect-ratio: 1;
 }
 
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
 .h-1 {
   height: .25rem;
 }
@@ -754,6 +774,10 @@ body {
   height: 1px;
 }
 
+.h-\[90vh\] {
+  height: 90vh;
+}
+
 .max-h-40 {
   max-height: 10rem;
 }
@@ -768,6 +792,10 @@ body {
 
 .max-h-\[90vh\] {
   max-height: 90vh;
+}
+
+.max-h-full {
+  max-height: 100%;
 }
 
 .min-h-\[calc\(100vh-8px\)\] {
@@ -960,6 +988,10 @@ body {
 
 .max-w-xl {
   max-width: 36rem;
+}
+
+.max-w-full {
+  max-width: 100%;
 }
 
 .flex-1 {
@@ -1362,6 +1394,10 @@ body {
   border-top-width: 1px;
 }
 
+.border-t-2 {
+  border-top-width: 2px;
+}
+
 .border-dashed {
   border-style: dashed;
 }
@@ -1538,6 +1574,11 @@ body {
 .border-red-300 {
   --tw-border-opacity: 1;
   border-color: rgb(252 165 165 / var(--tw-border-opacity, 1));
+}
+
+.border-orange-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(249 115 22 / var(--tw-border-opacity, 1));
 }
 
 .border-t-\[\#FF7900\] {
@@ -1813,6 +1854,30 @@ body {
 .bg-green-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(34 197 94 / var(--tw-bg-opacity, 1));
+}
+
+.bg-black\/30 {
+  background-color: #0000004d;
+}
+
+.bg-black\/50 {
+  background-color: #00000080;
+}
+
+.bg-black\/70 {
+  background-color: #000000b3;
+}
+
+.bg-black\/95 {
+  background-color: #000000f2;
+}
+
+.bg-white\/90 {
+  background-color: #ffffffe6;
+}
+
+.bg-black\/80 {
+  background-color: #000c;
 }
 
 .bg-opacity-50 {
@@ -2859,6 +2924,11 @@ body {
   color: rgb(124 45 18 / var(--tw-text-opacity, 1));
 }
 
+.text-neutral-800 {
+  --tw-text-opacity: 1;
+  color: rgb(38 38 38 / var(--tw-text-opacity, 1));
+}
+
 .underline-offset-4 {
   text-underline-offset: 4px;
 }
@@ -3528,6 +3598,10 @@ body {
   background-color: #0006;
 }
 
+.group:hover .group-hover\:bg-black\/10 {
+  background-color: #0000001a;
+}
+
 .group:hover .group-hover\:text-amber-600 {
   --tw-text-opacity: 1;
   color: rgb(217 119 6 / var(--tw-text-opacity, 1));
@@ -3575,6 +3649,16 @@ body {
   background-color: #450a0a33;
 }
 
+.dark\:bg-neutral-800:is(.dark *) {
+  --tw-bg-opacity: 1;
+  background-color: rgb(38 38 38 / var(--tw-bg-opacity, 1));
+}
+
+.dark\:bg-neutral-900:is(.dark *) {
+  --tw-bg-opacity: 1;
+  background-color: rgb(23 23 23 / var(--tw-bg-opacity, 1));
+}
+
 .dark\:text-blue-200:is(.dark *) {
   --tw-text-opacity: 1;
   color: rgb(191 219 254 / var(--tw-text-opacity, 1));
@@ -3603,6 +3687,16 @@ body {
 .dark\:text-red-400:is(.dark *) {
   --tw-text-opacity: 1;
   color: rgb(248 113 113 / var(--tw-text-opacity, 1));
+}
+
+.dark\:text-neutral-100:is(.dark *) {
+  --tw-text-opacity: 1;
+  color: rgb(245 245 245 / var(--tw-text-opacity, 1));
+}
+
+.dark\:text-neutral-400:is(.dark *) {
+  --tw-text-opacity: 1;
+  color: rgb(163 163 163 / var(--tw-text-opacity, 1));
 }
 
 .dark\:hover\:border-gray-600:hover:is(.dark *) {

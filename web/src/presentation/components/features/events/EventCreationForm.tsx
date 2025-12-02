@@ -137,8 +137,8 @@ export function EventCreationForm() {
       const eventId = await createEventMutation.mutateAsync(eventData);
       console.log('✅ Event created successfully! ID:', eventId);
 
-      // Redirect to event detail page
-      router.push(`/events/${eventId}`);
+      // Redirect to event management page
+      router.push(`/events/${eventId}/manage`);
     } catch (err) {
       // PHASE 6A.10: Enhanced error logging
       console.error('❌ Event creation failed - Detailed Analysis:');

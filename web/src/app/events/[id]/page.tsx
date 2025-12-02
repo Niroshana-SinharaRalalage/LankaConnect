@@ -11,6 +11,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
+import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, type AnonymousRegistrationRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -342,6 +343,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             </div>
+
+            {/* Media Gallery */}
+            {((event.images && event.images.length > 0) || (event.videos && event.videos.length > 0)) && (
+              <div className="mb-8">
+                <MediaGallery images={event.images} videos={event.videos} />
+              </div>
+            )}
 
             {/* Registration Section */}
             <Card className="border-2" style={{ borderColor: '#FF7900' }}>

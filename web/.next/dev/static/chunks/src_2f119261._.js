@@ -5264,10 +5264,7 @@ class EventsRepository {
    * Requires authentication and ownership
    * Maps to backend UpdateEventCommand
    */ async updateEvent(id, data) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, {
-            ...data,
-            eventId: id
-        });
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${id}`, data);
     }
     /**
    * Delete an event
@@ -5407,6 +5404,34 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/commit`, {
             data: request
         });
+    }
+    // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
+    /**
+   * Add a category-based sign-up list to event
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{id}/signups/categories
+   */ async addSignUpListWithCategories(eventId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+    }
+    /**
+   * Add an item to a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
+   */ async addSignUpItem(eventId, signupId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+    }
+    /**
+   * Remove an item from a category-based sign-up list
+   * Organizer-only operation
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */ async removeSignUpItem(eventId, signupId, itemId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+    }
+    /**
+   * User commits to bringing a specific item
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
+   */ async commitToSignUpItem(eventId, signupId, itemId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
     }
     // ==================== MEDIA OPERATIONS ====================
     /**
@@ -6648,8 +6673,13 @@ class AuthRepository {
     basePath = '/auth';
     /**
    * Login user
-   */ async login(credentials) {
-        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, credentials);
+   * @param credentials User email and password
+   * @param rememberMe Keep user logged in for 30 days (like Facebook/Gmail)
+   */ async login(credentials, rememberMe = false) {
+        const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/login`, {
+            ...credentials,
+            rememberMe
+        });
         return response;
     }
     /**

@@ -5764,6 +5764,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$hoo
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$hookform$2f$resolvers$2f$zod$2f$dist$2f$zod$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@hookform/resolvers/zod/dist/zod.mjs [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/navigation.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calendar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Calendar$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/calendar.js [app-client] (ecmascript) <export default as Calendar>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$map$2d$pin$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__MapPin$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/map-pin.js [app-client] (ecmascript) <export default as MapPin>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$users$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Users$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/users.js [app-client] (ecmascript) <export default as Users>");
@@ -5794,9 +5795,11 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
+;
 function EventEditForm({ event }) {
     _s();
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"])();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
     const { user } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuthStore"])();
     const [submitError, setSubmitError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [isSubmitting, setIsSubmitting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -6034,7 +6037,7 @@ function EventEditForm({ event }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 270,
+                                        lineNumber: 273,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6044,26 +6047,26 @@ function EventEditForm({ event }) {
                                         children: "Basic Information"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 271,
+                                        lineNumber: 274,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 269,
+                                lineNumber: 272,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Update the essential details about your event"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 273,
+                                lineNumber: 276,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 268,
+                        lineNumber: 271,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6077,7 +6080,7 @@ function EventEditForm({ event }) {
                                         children: "Event Title *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 280,
+                                        lineNumber: 283,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6088,7 +6091,7 @@ function EventEditForm({ event }) {
                                         ...register('title')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 283,
+                                        lineNumber: 286,
                                         columnNumber: 13
                                     }, this),
                                     errors.title && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6096,13 +6099,13 @@ function EventEditForm({ event }) {
                                         children: errors.title.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 291,
+                                        lineNumber: 294,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 279,
+                                lineNumber: 282,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6113,7 +6116,7 @@ function EventEditForm({ event }) {
                                         children: "Event Description *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 297,
+                                        lineNumber: 300,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -6124,7 +6127,7 @@ function EventEditForm({ event }) {
                                         ...register('description')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 300,
+                                        lineNumber: 303,
                                         columnNumber: 13
                                     }, this),
                                     errors.description && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6132,13 +6135,13 @@ function EventEditForm({ event }) {
                                         children: errors.description.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 310,
+                                        lineNumber: 313,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 296,
+                                lineNumber: 299,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6149,7 +6152,7 @@ function EventEditForm({ event }) {
                                         children: "Event Category *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 316,
+                                        lineNumber: 319,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6159,7 +6162,7 @@ function EventEditForm({ event }) {
                                                 className: "absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 320,
+                                                lineNumber: 323,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -6173,18 +6176,18 @@ function EventEditForm({ event }) {
                                                         children: option.label
                                                     }, option.value, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 329,
+                                                        lineNumber: 332,
                                                         columnNumber: 19
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 321,
+                                                lineNumber: 324,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 319,
+                                        lineNumber: 322,
                                         columnNumber: 13
                                     }, this),
                                     errors.category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6192,25 +6195,25 @@ function EventEditForm({ event }) {
                                         children: errors.category.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 336,
+                                        lineNumber: 339,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 315,
+                                lineNumber: 318,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 277,
+                        lineNumber: 280,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 267,
+                lineNumber: 270,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6227,7 +6230,7 @@ function EventEditForm({ event }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 346,
+                                        lineNumber: 349,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6237,26 +6240,26 @@ function EventEditForm({ event }) {
                                         children: "Date & Time"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 347,
+                                        lineNumber: 350,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 345,
+                                lineNumber: 348,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Update when your event will take place"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 349,
+                                lineNumber: 352,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 344,
+                        lineNumber: 347,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6272,7 +6275,7 @@ function EventEditForm({ event }) {
                                             children: "Start Date & Time *"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 357,
+                                            lineNumber: 360,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6282,7 +6285,7 @@ function EventEditForm({ event }) {
                                             ...register('startDate')
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 360,
+                                            lineNumber: 363,
                                             columnNumber: 15
                                         }, this),
                                         errors.startDate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6290,13 +6293,13 @@ function EventEditForm({ event }) {
                                             children: errors.startDate.message
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 367,
+                                            lineNumber: 370,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                    lineNumber: 356,
+                                    lineNumber: 359,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6307,7 +6310,7 @@ function EventEditForm({ event }) {
                                             children: "End Date & Time *"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 373,
+                                            lineNumber: 376,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6317,7 +6320,7 @@ function EventEditForm({ event }) {
                                             ...register('endDate')
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 376,
+                                            lineNumber: 379,
                                             columnNumber: 15
                                         }, this),
                                         errors.endDate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6325,30 +6328,30 @@ function EventEditForm({ event }) {
                                             children: errors.endDate.message
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                            lineNumber: 383,
+                                            lineNumber: 386,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                    lineNumber: 372,
+                                    lineNumber: 375,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                            lineNumber: 354,
+                            lineNumber: 357,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 353,
+                        lineNumber: 356,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 343,
+                lineNumber: 346,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6365,7 +6368,7 @@ function EventEditForm({ event }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 394,
+                                        lineNumber: 397,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6375,26 +6378,26 @@ function EventEditForm({ event }) {
                                         children: "Location"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 395,
+                                        lineNumber: 398,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 393,
+                                lineNumber: 396,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Update where the event will take place (Optional but recommended)"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 397,
+                                lineNumber: 400,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 392,
+                        lineNumber: 395,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6408,7 +6411,7 @@ function EventEditForm({ event }) {
                                         children: "Street Address"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 404,
+                                        lineNumber: 407,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6419,7 +6422,7 @@ function EventEditForm({ event }) {
                                         ...register('locationAddress')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 407,
+                                        lineNumber: 410,
                                         columnNumber: 13
                                     }, this),
                                     errors.locationAddress && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6427,13 +6430,13 @@ function EventEditForm({ event }) {
                                         children: errors.locationAddress.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 415,
+                                        lineNumber: 418,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 403,
+                                lineNumber: 406,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6447,7 +6450,7 @@ function EventEditForm({ event }) {
                                                 children: "City"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 422,
+                                                lineNumber: 425,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6458,7 +6461,7 @@ function EventEditForm({ event }) {
                                                 ...register('locationCity')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 425,
+                                                lineNumber: 428,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationCity && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6466,13 +6469,13 @@ function EventEditForm({ event }) {
                                                 children: errors.locationCity.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 433,
+                                                lineNumber: 436,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 421,
+                                        lineNumber: 424,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6483,7 +6486,7 @@ function EventEditForm({ event }) {
                                                 children: "State"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 439,
+                                                lineNumber: 442,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6494,7 +6497,7 @@ function EventEditForm({ event }) {
                                                 ...register('locationState')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 442,
+                                                lineNumber: 445,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationState && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6502,19 +6505,19 @@ function EventEditForm({ event }) {
                                                 children: errors.locationState.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 450,
+                                                lineNumber: 453,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 438,
+                                        lineNumber: 441,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 419,
+                                lineNumber: 422,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6528,7 +6531,7 @@ function EventEditForm({ event }) {
                                                 children: "ZIP Code"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 458,
+                                                lineNumber: 461,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6539,7 +6542,7 @@ function EventEditForm({ event }) {
                                                 ...register('locationZipCode')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 461,
+                                                lineNumber: 464,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationZipCode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6547,13 +6550,13 @@ function EventEditForm({ event }) {
                                                 children: errors.locationZipCode.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 469,
+                                                lineNumber: 472,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 457,
+                                        lineNumber: 460,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6564,7 +6567,7 @@ function EventEditForm({ event }) {
                                                 children: "Country"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 475,
+                                                lineNumber: 478,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6575,7 +6578,7 @@ function EventEditForm({ event }) {
                                                 ...register('locationCountry')
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 478,
+                                                lineNumber: 481,
                                                 columnNumber: 15
                                             }, this),
                                             errors.locationCountry && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6583,31 +6586,31 @@ function EventEditForm({ event }) {
                                                 children: errors.locationCountry.message
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 486,
+                                                lineNumber: 489,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 474,
+                                        lineNumber: 477,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 455,
+                                lineNumber: 458,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 401,
+                        lineNumber: 404,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 391,
+                lineNumber: 394,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6624,7 +6627,7 @@ function EventEditForm({ event }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 497,
+                                        lineNumber: 500,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardTitle"], {
@@ -6634,26 +6637,26 @@ function EventEditForm({ event }) {
                                         children: "Capacity & Pricing"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 498,
+                                        lineNumber: 501,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 496,
+                                lineNumber: 499,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "Update attendance limits and ticket pricing"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 500,
+                                lineNumber: 503,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 495,
+                        lineNumber: 498,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6667,7 +6670,7 @@ function EventEditForm({ event }) {
                                         children: "Maximum Capacity *"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 507,
+                                        lineNumber: 510,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6682,7 +6685,7 @@ function EventEditForm({ event }) {
                                         })
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 510,
+                                        lineNumber: 513,
                                         columnNumber: 13
                                     }, this),
                                     errors.capacity && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6690,13 +6693,13 @@ function EventEditForm({ event }) {
                                         children: errors.capacity.message
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 520,
+                                        lineNumber: 523,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 506,
+                                lineNumber: 509,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6709,7 +6712,7 @@ function EventEditForm({ event }) {
                                         ...register('isFree')
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 526,
+                                        lineNumber: 529,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -6718,13 +6721,13 @@ function EventEditForm({ event }) {
                                         children: "This is a free event (no ticket purchase required)"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 532,
+                                        lineNumber: 535,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 525,
+                                lineNumber: 528,
                                 columnNumber: 11
                             }, this),
                             !isFree && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6740,7 +6743,7 @@ function EventEditForm({ event }) {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 541,
+                                                lineNumber: 544,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
@@ -6748,13 +6751,13 @@ function EventEditForm({ event }) {
                                                 children: "Ticket Pricing"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 542,
+                                                lineNumber: 545,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 540,
+                                        lineNumber: 543,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6768,7 +6771,7 @@ function EventEditForm({ event }) {
                                                         children: "Ticket Price *"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 548,
+                                                        lineNumber: 551,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -6784,7 +6787,7 @@ function EventEditForm({ event }) {
                                                         })
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 551,
+                                                        lineNumber: 554,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.ticketPriceAmount && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6792,13 +6795,13 @@ function EventEditForm({ event }) {
                                                         children: errors.ticketPriceAmount.message
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 562,
+                                                        lineNumber: 565,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 547,
+                                                lineNumber: 550,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6809,7 +6812,7 @@ function EventEditForm({ event }) {
                                                         children: "Currency *"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 568,
+                                                        lineNumber: 571,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -6824,7 +6827,7 @@ function EventEditForm({ event }) {
                                                                 children: "USD ($)"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                                lineNumber: 578,
+                                                                lineNumber: 581,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -6832,13 +6835,13 @@ function EventEditForm({ event }) {
                                                                 children: "LKR (Rs)"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                                lineNumber: 579,
+                                                                lineNumber: 582,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 571,
+                                                        lineNumber: 574,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.ticketPriceCurrency && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6846,37 +6849,37 @@ function EventEditForm({ event }) {
                                                         children: errors.ticketPriceCurrency.message
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                        lineNumber: 582,
+                                                        lineNumber: 585,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                                lineNumber: 567,
+                                                lineNumber: 570,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 545,
+                                        lineNumber: 548,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 539,
+                                lineNumber: 542,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 504,
+                        lineNumber: 507,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 494,
+                lineNumber: 497,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -6897,17 +6900,17 @@ function EventEditForm({ event }) {
                                         clipRule: "evenodd"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 597,
+                                        lineNumber: 600,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                    lineNumber: 596,
+                                    lineNumber: 599,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 595,
+                                lineNumber: 598,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6918,7 +6921,7 @@ function EventEditForm({ event }) {
                                         children: "📸 Manage Images & Videos"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 601,
+                                        lineNumber: 604,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6926,29 +6929,29 @@ function EventEditForm({ event }) {
                                         children: "You can add or remove event images and videos from the event detail page."
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                        lineNumber: 604,
+                                        lineNumber: 607,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                                lineNumber: 600,
+                                lineNumber: 603,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 594,
+                        lineNumber: 597,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                    lineNumber: 593,
+                    lineNumber: 596,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 592,
+                lineNumber: 595,
                 columnNumber: 7
             }, this),
             submitError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6958,12 +6961,12 @@ function EventEditForm({ event }) {
                     children: submitError
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                    lineNumber: 615,
+                    lineNumber: 618,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 614,
+                lineNumber: 617,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6977,7 +6980,7 @@ function EventEditForm({ event }) {
                         children: "Cancel"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 621,
+                        lineNumber: 624,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -6990,25 +6993,26 @@ function EventEditForm({ event }) {
                         children: isSubmitting ? 'Updating...' : 'Update Event'
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                        lineNumber: 629,
+                        lineNumber: 632,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-                lineNumber: 620,
+                lineNumber: 623,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/events/EventEditForm.tsx",
-        lineNumber: 265,
+        lineNumber: 268,
         columnNumber: 5
     }, this);
 }
-_s(EventEditForm, "zqTnQl9RtoeN0fGGUGX826VbLek=", false, function() {
+_s(EventEditForm, "HAYi2bA+begco63kU06zHKyLfS4=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuthStore"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$hook$2d$form$2f$dist$2f$index$2e$esm$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useForm"]
     ];

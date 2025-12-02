@@ -10,6 +10,7 @@ import type {
   CreateEventRequest,
   UpdateEventRequest,
   RsvpRequest,
+  AnonymousRegistrationRequest,
   UpdateRsvpRequest,
   CancelEventRequest,
   PostponeEventRequest,
@@ -248,6 +249,15 @@ export class EventsRepository {
   async updateRsvp(eventId: string, userId: string, newQuantity: number): Promise<void> {
     const request: UpdateRsvpRequest = { userId, newQuantity };
     await apiClient.put<void>(`${this.basePath}/${eventId}/rsvp`, request);
+  }
+
+  /**
+   * Register anonymous attendee for an event
+   * No authentication required - for users without accounts
+   * Maps to backend RegisterAnonymousAttendeeCommand
+   */
+  async registerAnonymous(eventId: string, request: AnonymousRegistrationRequest): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/register-anonymous`, request);
   }
 
   /**

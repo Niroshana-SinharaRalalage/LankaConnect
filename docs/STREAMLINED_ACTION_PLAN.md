@@ -7,7 +7,86 @@
 
 ---
 
-## ✅ CURRENT STATUS - SIGN-UP CORS FIX (COMPLETE) (2025-12-01)
+## ✅ CURRENT STATUS - ANONYMOUS EVENT REGISTRATION (BACKEND COMPLETE) (2025-12-01)
+**Date**: 2025-12-01 (Session 20)
+**Session**: Anonymous Event Registration - Backend Implementation
+**Status**: ✅ BACKEND COMPLETE - All layers implemented with zero errors
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors, 0 warnings, 17/17 tests passing
+**Deployment**: ⏳ Migration ready for Azure staging deployment
+**Frontend**: ⏳ PENDING - Dual-mode registration UI needs implementation
+
+### SESSION 20: ANONYMOUS EVENT REGISTRATION - BACKEND (2025-12-01)
+**Goal**: Enable anonymous users to register for events by providing contact details (name, age, address, email, phone)
+
+**User Requirements**:
+1. Anonymous users can register for events without authentication
+2. Authenticated users should have details auto-filled from profile
+3. Remove "Manage Sign-ups" button from event detail page
+4. Support both anonymous and authenticated registration flows
+
+**Implementation Complete**:
+
+**Domain Layer** (Clean Architecture + DDD):
+- ✅ `AttendeeInfo` value object with validation (Email, PhoneNumber, Name, Age, Address)
+- ✅ `Registration.CreateAnonymous()` factory method for anonymous registrations
+- ✅ `Event.RegisterAnonymous()` domain method with business rule validation
+- ✅ `AnonymousRegistrationConfirmedEvent` domain event
+- ✅ XOR constraint: Either UserId OR AttendeeInfo exists (database-level)
+
+**Application Layer** (CQRS):
+- ✅ `RegisterAnonymousAttendeeCommand` with 7 properties
+- ✅ `RegisterAnonymousAttendeeCommandHandler` following existing patterns
+- ✅ AttendeeInfo value object creation and validation
+- ✅ Unit of Work pattern for transaction management
+
+**API Layer** (RESTful):
+- ✅ `POST /api/events/{id}/register-anonymous` endpoint with `[AllowAnonymous]`
+- ✅ `AnonymousRegistrationRequest` DTO matching domain requirements
+- ✅ Proper error handling with ProblemDetails responses
+
+**Infrastructure Layer** (From Previous Session):
+- ✅ JSONB storage for AttendeeInfo in PostgreSQL
+- ✅ EF Core configuration with nullable UserId
+- ✅ Migration: `20251201_AddAnonymousEventRegistration.cs`
+- ✅ Database constraints: XOR check constraint enforced
+
+**Test Coverage**:
+- ✅ 17 AttendeeInfo value object tests (all passing)
+- ✅ Email validation tests
+- ✅ PhoneNumber validation tests
+- ✅ Complete value object creation tests
+
+**Files Modified/Created**:
+- Domain: `Event.cs`, `AnonymousRegistrationConfirmedEvent.cs`
+- Application: `RegisterAnonymousAttendeeCommand.cs`, `RegisterAnonymousAttendeeCommandHandler.cs`
+- API: `EventsController.cs` (new endpoint + DTO)
+- Tests: `AttendeeInfoTests.cs`
+
+**Build Results**:
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+Time Elapsed 00:00:32.81
+
+Tests: 17 passed, 17 total
+Duration: 162ms
+```
+
+**Commit**: `43d5a4d` - feat(events): Add anonymous event registration with AttendeeInfo value object
+
+**Next Steps**:
+1. ⏳ Update event detail page UI for dual-mode registration
+2. ⏳ Remove "Manage Sign-ups" button from event detail page
+3. ⏳ Add authenticated user auto-fill from profile
+4. ⏳ Test both anonymous and authenticated flows end-to-end
+5. ⏳ Deploy to Azure staging via `deploy-staging.yml`
+
+**See**: [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) Session 20 for complete implementation details
+
+---
+
+## ✅ PREVIOUS STATUS - SIGN-UP CORS FIX (COMPLETE) (2025-12-01)
 **Date**: 2025-12-01 (Session 19)
 **Session**: Sign-Up CORS Fix
 **Status**: ✅ COMPLETE - Root cause identified and systematic fix applied

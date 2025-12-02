@@ -348,6 +348,19 @@ export interface RsvpRequest {
 }
 
 /**
+ * Anonymous registration request
+ * Matches backend AnonymousRegistrationRequest for unauthenticated event registration
+ */
+export interface AnonymousRegistrationRequest {
+  name: string;
+  age: number;
+  address: string;
+  email: string;
+  phoneNumber: string;
+  quantity?: number; // Default: 1
+}
+
+/**
  * Update RSVP request
  */
 export interface UpdateRsvpRequest {

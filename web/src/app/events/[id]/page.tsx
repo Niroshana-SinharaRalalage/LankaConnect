@@ -10,8 +10,9 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, type AnonymousRegistrationRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState } from 'react';
@@ -24,7 +25,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuthStore();
-  const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -48,48 +48,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     [EventCategory.Entertainment]: 'Entertainment',
   };
 
-  // Handle RSVP/Registration
-  const handleRsvp = async () => {
-    if (!user?.userId) {
-      router.push('/login?redirect=' + encodeURIComponent(`/events/${id}`));
-      return;
-    }
-
+  // Handle Registration (both anonymous and authenticated)
+  const handleRegistration = async (data: AnonymousRegistrationRequest | { userId: string; quantity: number }) => {
     if (!event) return;
 
     try {
       setIsProcessing(true);
       setError(null);
 
-      // For paid events, redirect to Stripe Checkout
-      if (!event.isFree && event.ticketPriceAmount) {
-        const baseUrl = window.location.origin;
-        const successUrl = `${baseUrl}/events/${id}?payment=success`;
-        const cancelUrl = `${baseUrl}/events/${id}?payment=canceled`;
-
-        // Create checkout session for event registration
-        // Note: This assumes backend has event registration checkout endpoint
-        // For now, using RSVP directly - extend backend for payment flow if needed
-
-        // For now, handle as free RSVP
-        // TODO: Integrate with Stripe checkout session for paid events
-        await rsvpMutation.mutateAsync({
-          eventId: id,
-          userId: user.userId,
-          quantity,
-        });
+      // Check if this is anonymous or authenticated registration
+      if ('userId' in data) {
+        // Authenticated user registration
+        // For paid events, redirect to Stripe Checkout
+        if (!event.isFree && event.ticketPriceAmount) {
+          // TODO: Integrate with Stripe checkout session for paid events
+          // For now, handle as free RSVP
+          await rsvpMutation.mutateAsync({
+            eventId: id,
+            userId: data.userId,
+            quantity: data.quantity,
+          });
+        } else {
+          // Free event - direct RSVP
+          await rsvpMutation.mutateAsync({
+            eventId: id,
+            userId: data.userId,
+            quantity: data.quantity,
+          });
+        }
       } else {
-        // Free event - direct RSVP
-        await rsvpMutation.mutateAsync({
-          eventId: id,
-          userId: user.userId,
-          quantity,
-        });
+        // Anonymous registration
+        await eventsRepository.registerAnonymous(id, data);
+
+        // Show success message
+        alert('Registration successful! We\'ve sent a confirmation email to ' + data.email);
+
+        // Reload to show updated registration count
+        window.location.reload();
       }
 
       setIsProcessing(false);
     } catch (err) {
-      console.error('RSVP failed:', err);
+      console.error('Registration failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
       setIsProcessing(false);
     }
@@ -229,16 +229,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {isPublishing ? 'Publishing...' : 'Publish Event'}
                 </Button>
               )}
-
-              {/* Manage Signups button */}
-              <Button
-                onClick={() => router.push(`/events/${id}/manage-signups`)}
-                variant="outline"
-                className="flex items-center gap-2"
-                style={{ borderColor: '#FF7900', color: '#FF7900' }}
-              >
-                Manage Sign-ups
-              </Button>
             </div>
           )}
         </div>
@@ -364,95 +354,50 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
+                {!isFull ? (
+                  <EventRegistrationForm
+                    eventId={id}
+                    spotsLeft={spotsLeft}
+                    isFree={event.isFree}
+                    ticketPrice={event.ticketPriceAmount ?? undefined}
+                    isProcessing={isProcessing}
+                    onSubmit={handleRegistration}
+                    error={error}
+                  />
+                ) : (
+                  <>
+                    {/* Waitlist Section */}
+                    <div className="space-y-4">
+                      <Button
+                        onClick={handleJoinWaitlist}
+                        disabled={isJoiningWaitlist}
+                        className="w-full text-lg py-6"
+                        variant="outline"
+                        style={{ borderColor: '#FF7900', color: '#FF7900' }}
+                      >
+                        {isJoiningWaitlist ? (
+                          <>
+                            <Clock className="h-5 w-5 mr-2 animate-spin" />
+                            Joining...
+                          </>
+                        ) : (
+                          'Join Waitlist'
+                        )}
+                      </Button>
 
-                {!isFull && (
-                  <div className="space-y-4">
-                    {/* Quantity Selector */}
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Number of Attendees
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max={Math.min(10, spotsLeft)}
-                        value={quantity}
-                        onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        disabled={isProcessing}
-                      />
+                      {!user?.userId && (
+                        <p className="text-sm text-center text-neutral-500">
+                          You'll be redirected to login before joining the waitlist
+                        </p>
+                      )}
                     </div>
 
-                    {/* Total Price */}
-                    {!event.isFree && event.ticketPriceAmount && (
-                      <div className="p-4 bg-neutral-50 rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <span className="text-base font-medium">Total</span>
-                          <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-                            ${(event.ticketPriceAmount * quantity).toFixed(2)}
-                          </span>
-                        </div>
+                    {error && (
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">{error}</p>
                       </div>
                     )}
-
-                    {/* RSVP Button */}
-                    <Button
-                      onClick={handleRsvp}
-                      disabled={isProcessing || rsvpMutation.isPending}
-                      className="w-full text-lg py-6"
-                      style={{ background: '#FF7900' }}
-                    >
-                      {isProcessing || rsvpMutation.isPending ? (
-                        <>
-                          <Clock className="h-5 w-5 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : event.isFree ? (
-                        'Register for Free'
-                      ) : (
-                        'Continue to Payment'
-                      )}
-                    </Button>
-
-                    {!user?.userId && (
-                      <p className="text-sm text-center text-neutral-500">
-                        You'll be redirected to login before registration
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Waitlist Section */}
-                {isFull && (
-                  <div className="space-y-4">
-                    <Button
-                      onClick={handleJoinWaitlist}
-                      disabled={isJoiningWaitlist}
-                      className="w-full text-lg py-6"
-                      variant="outline"
-                      style={{ borderColor: '#FF7900', color: '#FF7900' }}
-                    >
-                      {isJoiningWaitlist ? (
-                        <>
-                          <Clock className="h-5 w-5 mr-2 animate-spin" />
-                          Joining...
-                        </>
-                      ) : (
-                        'Join Waitlist'
-                      )}
-                    </Button>
-
-                    {!user?.userId && (
-                      <p className="text-sm text-center text-neutral-500">
-                        You'll be redirected to login before joining the waitlist
-                      </p>
-                    )}
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>

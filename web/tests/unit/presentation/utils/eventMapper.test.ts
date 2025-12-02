@@ -51,6 +51,7 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
     ticketPriceAmount: 10.0,
     ticketPriceCurrency: Currency.USD,
     isFree: false,
+    hasDualPricing: false,
     images: [
       {
         id: 'img-1',

@@ -13,7 +13,7 @@ import { SignUpManagementSection } from '@/presentation/components/features/even
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, type AnonymousRegistrationRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState } from 'react';
@@ -50,7 +50,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   // Handle Registration (both anonymous and authenticated)
-  const handleRegistration = async (data: AnonymousRegistrationRequest | { userId: string; quantity: number }) => {
+  const handleRegistration = async (data: AnonymousRegistrationRequest | RsvpRequest) => {
     if (!event) return;
 
     try {
@@ -59,22 +59,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
       // Check if this is anonymous or authenticated registration
       if ('userId' in data) {
-        // Authenticated user registration
+        // Authenticated user registration (RsvpRequest)
         // For paid events, redirect to Stripe Checkout
         if (!event.isFree && event.ticketPriceAmount) {
           // TODO: Integrate with Stripe checkout session for paid events
           // For now, handle as free RSVP
+          // Session 21: Support both legacy quantity and new attendees format
           await rsvpMutation.mutateAsync({
             eventId: id,
             userId: data.userId,
-            quantity: data.quantity,
+            ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
+            email: data.email,
+            phoneNumber: data.phoneNumber,
+            address: data.address,
           });
         } else {
           // Free event - direct RSVP
           await rsvpMutation.mutateAsync({
             eventId: id,
             userId: data.userId,
-            quantity: data.quantity,
+            ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
+            email: data.email,
+            phoneNumber: data.phoneNumber,
+            address: data.address,
           });
         }
       } else {
@@ -368,6 +375,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     spotsLeft={spotsLeft}
                     isFree={event.isFree}
                     ticketPrice={event.ticketPriceAmount ?? undefined}
+                    hasDualPricing={event.hasDualPricing}
+                    adultPrice={event.adultPriceAmount ?? undefined}
+                    childPrice={event.childPriceAmount ?? undefined}
+                    childAgeLimit={event.childAgeLimit ?? undefined}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}

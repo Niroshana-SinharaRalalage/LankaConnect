@@ -42,13 +42,17 @@ export function EventCreationForm() {
     resolver: zodResolver(createEventSchema),
     defaultValues: {
       isFree: true,
+      enableDualPricing: false,
       capacity: 50,
       ticketPriceCurrency: Currency.USD,
+      adultPriceCurrency: Currency.USD,
+      childPriceCurrency: Currency.USD,
       category: EventCategory.Community, // Default to Community instead of empty
     },
   });
 
   const isFree = watch('isFree');
+  const enableDualPricing = watch('enableDualPricing');
 
   const onSubmit = handleSubmit(async (data) => {
     if (!user?.userId) {
@@ -118,8 +122,23 @@ export function EventCreationForm() {
           locationLatitude,
           locationLongitude,
         }),
-        ticketPriceAmount: data.isFree ? undefined : data.ticketPriceAmount!,
-        ticketPriceCurrency: data.isFree ? undefined : data.ticketPriceCurrency!,
+        // Session 21: Dual pricing support
+        ...(data.isFree
+          ? {}
+          : data.enableDualPricing
+          ? {
+              // Send dual pricing
+              adultPriceAmount: data.adultPriceAmount!,
+              adultPriceCurrency: data.adultPriceCurrency!,
+              childPriceAmount: data.childPriceAmount!,
+              childPriceCurrency: data.childPriceCurrency!,
+              childAgeLimit: data.childAgeLimit!,
+            }
+          : {
+              // Send single pricing (legacy format)
+              ticketPriceAmount: data.ticketPriceAmount!,
+              ticketPriceCurrency: data.ticketPriceCurrency!,
+            }),
       };
 
       // PHASE 6A.10: Comprehensive payload logging
@@ -460,47 +479,179 @@ export function EventCreationForm() {
                 <h4 className="text-sm font-semibold text-neutral-900">Ticket Pricing</h4>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Ticket Price */}
-                <div>
-                  <label htmlFor="ticketPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Ticket Price *
-                  </label>
-                  <Input
-                    id="ticketPriceAmount"
-                    type="number"
-                    min="0"
-                    max="10000"
-                    step="0.01"
-                    placeholder="e.g., 25.00"
-                    error={!!errors.ticketPriceAmount}
-                    {...register('ticketPriceAmount', { valueAsNumber: true })}
-                  />
-                  {errors.ticketPriceAmount && (
-                    <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
-                  )}
-                </div>
-
-                {/* Currency */}
-                <div>
-                  <label htmlFor="ticketPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Currency *
-                  </label>
-                  <select
-                    id="ticketPriceCurrency"
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
-                    }`}
-                    {...register('ticketPriceCurrency', { valueAsNumber: true })}
-                  >
-                    <option value={Currency.USD}>USD ($)</option>
-                    <option value={Currency.LKR}>LKR (Rs)</option>
-                  </select>
-                  {errors.ticketPriceCurrency && (
-                    <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
-                  )}
-                </div>
+              {/* Dual Pricing Toggle */}
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                <input
+                  id="enableDualPricing"
+                  type="checkbox"
+                  className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                  {...register('enableDualPricing')}
+                />
+                <label htmlFor="enableDualPricing" className="text-sm font-medium text-neutral-700">
+                  Enable Adult/Child Pricing (different prices for adults and children)
+                </label>
               </div>
+
+              {/* Single Pricing Fields (default) */}
+              {!enableDualPricing && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Ticket Price */}
+                  <div>
+                    <label htmlFor="ticketPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                      Ticket Price *
+                    </label>
+                    <Input
+                      id="ticketPriceAmount"
+                      type="number"
+                      min="0"
+                      max="10000"
+                      step="0.01"
+                      placeholder="e.g., 25.00"
+                      error={!!errors.ticketPriceAmount}
+                      {...register('ticketPriceAmount', { valueAsNumber: true })}
+                    />
+                    {errors.ticketPriceAmount && (
+                      <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
+                    )}
+                  </div>
+
+                  {/* Currency */}
+                  <div>
+                    <label htmlFor="ticketPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                      Currency *
+                    </label>
+                    <select
+                      id="ticketPriceCurrency"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                        errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                      }`}
+                      {...register('ticketPriceCurrency', { valueAsNumber: true })}
+                    >
+                      <option value={Currency.USD}>USD ($)</option>
+                      <option value={Currency.LKR}>LKR (Rs)</option>
+                    </select>
+                    {errors.ticketPriceCurrency && (
+                      <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dual Pricing Fields (adult/child) */}
+              {enableDualPricing && (
+                <div className="space-y-4">
+                  {/* Adult Pricing Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="adultPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Adult Ticket Price *
+                      </label>
+                      <Input
+                        id="adultPriceAmount"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        step="0.01"
+                        placeholder="e.g., 25.00"
+                        error={!!errors.adultPriceAmount}
+                        {...register('adultPriceAmount', { valueAsNumber: true })}
+                      />
+                      {errors.adultPriceAmount && (
+                        <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="adultPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Adult Currency *
+                      </label>
+                      <select
+                        id="adultPriceCurrency"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                          errors.adultPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                        }`}
+                        {...register('adultPriceCurrency', { valueAsNumber: true })}
+                      >
+                        <option value={Currency.USD}>USD ($)</option>
+                        <option value={Currency.LKR}>LKR (Rs)</option>
+                      </select>
+                      {errors.adultPriceCurrency && (
+                        <p className="mt-1 text-sm text-destructive">{errors.adultPriceCurrency.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Child Pricing Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="childPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Ticket Price *
+                      </label>
+                      <Input
+                        id="childPriceAmount"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        step="0.01"
+                        placeholder="e.g., 15.00"
+                        error={!!errors.childPriceAmount}
+                        {...register('childPriceAmount', { valueAsNumber: true })}
+                      />
+                      {errors.childPriceAmount && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="childPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Currency *
+                      </label>
+                      <select
+                        id="childPriceCurrency"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                          errors.childPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                        }`}
+                        {...register('childPriceCurrency', { valueAsNumber: true })}
+                      >
+                        <option value={Currency.USD}>USD ($)</option>
+                        <option value={Currency.LKR}>LKR (Rs)</option>
+                      </select>
+                      {errors.childPriceCurrency && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childPriceCurrency.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="childAgeLimit" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Age Limit *
+                      </label>
+                      <Input
+                        id="childAgeLimit"
+                        type="number"
+                        min="1"
+                        max="18"
+                        placeholder="12"
+                        error={!!errors.childAgeLimit}
+                        {...register('childAgeLimit', { valueAsNumber: true })}
+                      />
+                      {errors.childAgeLimit && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childAgeLimit.message}</p>
+                      )}
+                      <p className="mt-1 text-xs text-neutral-500">Age under which child pricing applies (1-18)</p>
+                    </div>
+                  </div>
+
+                  {/* Helpful note */}
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-xs text-blue-700">
+                      Example: If child age limit is 12, attendees age 11 and under will be charged the child price, while attendees age 12 and over will be charged the adult price.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

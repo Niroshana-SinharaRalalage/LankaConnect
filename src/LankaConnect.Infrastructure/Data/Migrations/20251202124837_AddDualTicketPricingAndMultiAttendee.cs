@@ -57,7 +57,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 name: "ck_registrations_valid_format",
                 schema: "events",
                 table: "registrations",
-                sql: "(\n                    (user_id IS NOT NULL AND attendee_info IS NULL) OR\n                    (user_id IS NULL AND attendee_info IS NOT NULL) OR\n                    (attendees IS NOT NULL AND contact IS NOT NULL)\n                )");
+                sql: "(\n                    (\"UserId\" IS NOT NULL AND attendee_info IS NULL) OR\n                    (\"UserId\" IS NULL AND attendee_info IS NOT NULL) OR\n                    (attendees IS NOT NULL AND contact IS NOT NULL)\n                )");
         }
 
         /// <inheritdoc />

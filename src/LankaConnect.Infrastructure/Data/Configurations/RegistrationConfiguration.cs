@@ -14,14 +14,15 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         {
             // Session 21: Updated constraint to support both legacy and new multi-attendee formats
             // Valid scenarios:
-            // 1. Legacy authenticated: user_id NOT NULL, attendee_info NULL
-            // 2. Legacy anonymous: user_id NULL, attendee_info NOT NULL
-            // 3. New multi-attendee: attendees NOT NULL, contact NOT NULL (user_id optional)
+            // 1. Legacy authenticated: UserId NOT NULL, attendee_info NULL
+            // 2. Legacy anonymous: UserId NULL, attendee_info NOT NULL
+            // 3. New multi-attendee: attendees NOT NULL, contact NOT NULL (UserId optional)
+            // Note: UserId uses PascalCase (no explicit column mapping), JSON columns use snake_case
             t.HasCheckConstraint(
                 "ck_registrations_valid_format",
                 @"(
-                    (user_id IS NOT NULL AND attendee_info IS NULL) OR
-                    (user_id IS NULL AND attendee_info IS NOT NULL) OR
+                    (""UserId"" IS NOT NULL AND attendee_info IS NULL) OR
+                    (""UserId"" IS NULL AND attendee_info IS NOT NULL) OR
                     (attendees IS NOT NULL AND contact IS NOT NULL)
                 )"
             );

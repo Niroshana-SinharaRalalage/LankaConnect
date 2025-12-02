@@ -139,14 +139,60 @@
 - ✅ Dual-format detection in application handlers
 - ✅ Database constraints support legacy + new formats
 
-**Next Steps** (Frontend Implementation):
-1. Update API DTOs for dual pricing (CreateEventRequest)
-2. Update API DTOs for multi-attendee format (RegisterEventRequest)
-3. Update EventRegistrationForm with dynamic attendee fields
-4. Update event creation form with dual pricing inputs
-5. Implement profile pre-population for authenticated users
-6. Apply database migration to staging environment
-7. End-to-end testing
+**Frontend Implementation (100% Complete)**:
+
+1. **TypeScript DTOs & Validation** (Commit b051fa0)
+   - ✅ Updated EventDto with dual pricing fields (adultPriceAmount, childPriceAmount, childAgeLimit, hasDualPricing)
+   - ✅ Updated CreateEventRequest with conditional pricing validation
+   - ✅ Added AttendeeDto type (name, age)
+   - ✅ Updated RsvpRequest with attendees array
+   - ✅ Added AnonymousRegistrationRequest type
+   - ✅ Zod validation for all new fields
+   - ✅ Backward compatibility with legacy formats
+
+2. **EventCreationForm Component** ([web/src/app/events/create/page.tsx](../web/src/app/events/create/page.tsx)) (Commit aa3d959)
+   - ✅ Added "Enable Adult/Child Pricing" toggle
+   - ✅ Conditional rendering: Single pricing vs Dual pricing fields
+   - ✅ Adult price, child price, and age limit inputs
+   - ✅ Currency selectors for each price
+   - ✅ Conditional submit handler (single vs dual format)
+   - ✅ Form validation with Zod schema
+   - ✅ UI note about age limit behavior
+
+3. **EventRegistrationForm Component** ([web/src/presentation/components/features/events/EventRegistrationForm.tsx](../web/src/presentation/components/features/events/EventRegistrationForm.tsx)) (Commit aa3d959)
+   - ✅ Complete rewrite for multi-attendee support
+   - ✅ Dynamic attendee array state management
+   - ✅ Individual name/age inputs per attendee
+   - ✅ Dynamic form generation based on quantity
+   - ✅ Profile pre-population for first attendee (name only)
+   - ✅ Real-time price calculation with dual pricing support
+   - ✅ Price breakdown table (Adult/Child classification)
+   - ✅ Contact information (email, phone, address) shared across attendees
+   - ✅ Validation for all attendee fields
+   - ✅ Support for both anonymous and authenticated users
+
+4. **Event Detail Page** ([web/src/app/events/[id]/page.tsx](../web/src/app/events/[id]/page.tsx)) (Commit aa3d959)
+   - ✅ Updated handleRegistration type signature (RsvpRequest | AnonymousRegistrationRequest)
+   - ✅ Dual-format detection in handler
+   - ✅ Passed dual pricing props to EventRegistrationForm
+   - ✅ Support for both legacy and new registration formats
+
+5. **Test Files** (Commit aa3d959)
+   - ✅ Updated EventsList.test.tsx with hasDualPricing field
+   - ✅ Updated eventMapper.test.ts with hasDualPricing field
+   - ✅ All TypeScript compilation errors fixed
+
+**Build Status**:
+- ✅ Dev server running cleanly on port 3000
+- ✅ Zero Turbopack compilation errors
+- ✅ Homepage compiled successfully
+- ✅ API proxy connected to staging Azure APIs
+
+**Next Steps**:
+1. End-to-end testing of dual pricing flow
+2. End-to-end testing of multi-attendee registration
+3. Apply database migration to staging environment (if not already done)
+4. Test profile pre-population with real user data
 
 **Related Documentation**:
 - [PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md](./PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md) - Complete session summary

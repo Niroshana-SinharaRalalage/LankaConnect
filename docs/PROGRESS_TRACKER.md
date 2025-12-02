@@ -1,9 +1,167 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-01 (Current Session) - Session 19: Sign-Up CORS Fix ✅*
+*Last Updated: 2025-12-01 (Current Session) - Session 21: Event Media Upload System Complete ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 19: Sign-Up CORS Fix (Complete) ✅
+## 🎯 Current Session Status - Session 21: Event Media Upload System Complete ✅
+
+### Session 21: Event Media Upload System (Phase 6A.12) - 2025-12-01
+
+**Status**: ✅ COMPLETE - Backend 100% functional, blob cleanup fixed
+
+**Goal**: Complete the event media upload system (images & videos) by fixing critical TODO comments in blob cleanup handlers
+
+**Summary**: Successfully completed Phase 6A.12 by fixing 2 TODO comments in event handlers that were preventing blob cleanup. The codebase analysis revealed that 95% of the feature was already implemented with excellent Clean Architecture and DDD practices. Only the blob URL construction in cleanup handlers needed fixing.
+
+**Implementation Details**:
+
+**What Was Already Complete (95%)**:
+- ✅ Domain Layer: Event aggregate with media management methods (AddImage, RemoveImage, ReplaceImage, ReorderImages, AddVideo, RemoveVideo)
+- ✅ Entities: EventImage and EventVideo entities with all properties
+- ✅ Domain Events: 6 events for image/video lifecycle
+- ✅ Database: EventImages and EventVideos tables with migrations applied
+- ✅ Application Layer: 6 commands with handlers (Add, Delete, Replace, Reorder for images; Add, Delete for videos)
+- ✅ API Endpoints: All 6 endpoints in EventsController
+- ✅ Azure Integration: AzureBlobStorageService and ImageService
+- ✅ Frontend: ImageUploader component (317 lines, production-ready)
+
+**What Was Fixed in This Session**:
+
+**Event Handler Fixes**:
+1. **ImageRemovedEventHandler** ([src/LankaConnect.Application/Events/EventHandlers/ImageRemovedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/ImageRemovedEventHandler.cs))
+   - ✅ Injected `IAzureBlobStorageService` in constructor
+   - ✅ Replaced placeholder URL: `$"https://placeholder/{blobName}"` → `_blobStorageService.GetBlobUrl(blobName)`
+   - ✅ Removed TODO comment (line 39)
+
+2. **VideoRemovedEventHandler** ([src/LankaConnect.Application/Events/EventHandlers/VideoRemovedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/VideoRemovedEventHandler.cs))
+   - ✅ Injected `IAzureBlobStorageService` in constructor
+   - ✅ Fixed video URL construction
+   - ✅ Fixed thumbnail URL construction
+   - ✅ Removed TODO comments (lines 38-39)
+
+**Technical Highlights**:
+- Clean Architecture: Clear separation across all layers
+- Domain-Driven Design: Rich domain model with invariants (max 10 images, max 3 videos)
+- CQRS Pattern: Command/query separation
+- Fail-Silent Pattern: Event handlers log errors but don't throw
+- Domain Events: Async blob cleanup triggered by entity removal
+
+**Testing & Quality**:
+- ✅ Build Status: 0 errors, 0 warnings
+- ✅ Unit Tests: 238/238 passing (100% success rate)
+- ✅ Event Handler Tests: All passing
+- ✅ Integration Tests: All passing
+- ✅ Test Duration: 490 ms
+
+**Modified Files** (2 files):
+- [ImageRemovedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/ImageRemovedEventHandler.cs) - Fixed blob URL construction
+- [VideoRemovedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/VideoRemovedEventHandler.cs) - Fixed video + thumbnail URL construction
+
+**Documentation Created** (4 files):
+- [EVENT_MEDIA_UPLOAD_STATUS_REPORT.md](./EVENT_MEDIA_UPLOAD_STATUS_REPORT.md) - Comprehensive status report (444 lines)
+- [PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md](./PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md) - Phase summary (526 lines)
+- [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) - Updated with Phase 6A.12 entry
+- PROGRESS_TRACKER.md - This update
+
+**Phase Assignment**: Phase 6A.12 (registered in master index)
+
+**API Endpoints Available**:
+1. `POST /api/events/{id}/images` - Upload image
+2. `DELETE /api/events/{eventId}/images/{imageId}` - Delete image
+3. `PUT /api/events/{eventId}/images/{imageId}` - Replace image
+4. `PUT /api/events/{id}/images/reorder` - Reorder images
+5. `POST /api/events/{id}/videos` - Upload video + thumbnail
+6. `DELETE /api/events/{eventId}/videos/{videoId}` - Delete video
+
+**Build Status**: ✅ 0 errors, 0 warnings, 238/238 tests passing
+
+**Next Steps** (Future UI Enhancements):
+1. Integrate ImageUploader component into event creation form
+2. Integrate ImageUploader component into event edit form
+3. Create VideoUploader component (similar to ImageUploader)
+4. Add media gallery to event detail page (read-only view)
+5. Implement drag-and-drop image reordering UI
+
+**Deployment**: Ready for staging deployment - all backend functionality complete
+
+---
+
+### Session 20: Anonymous Event Registration Backend (2025-12-01)
+
+**Status**: ✅ BACKEND COMPLETE - Frontend UI implementation pending
+
+**Goal**: Enable anonymous users to register for events by providing name, age, address, email, and phone without authentication
+
+**Summary**: Implemented complete backend infrastructure for anonymous event registration following TDD best practices. Created AttendeeInfo value object with comprehensive tests, updated Registration entity to support both authenticated and anonymous users with XOR constraint, added domain methods, application commands, EF Core migration, and API endpoint.
+
+**Implementation Details**:
+
+**Domain Layer** (Clean Architecture + DDD):
+- ✅ Created `AttendeeInfo` value object with Email, PhoneNumber, Name, Age, Address
+- ✅ Implemented 17 comprehensive TDD tests (Red-Green-Refactor cycle)
+- ✅ Updated `Registration` entity: nullable UserId + AttendeeInfo property
+- ✅ Added factory methods: `Create()` for authenticated, `CreateAnonymous()` for anonymous
+- ✅ Implemented XOR validation: ensures either UserId OR AttendeeInfo exists
+- ✅ Added `RegisterAnonymous()` method to Event aggregate
+- ✅ Created `AnonymousRegistrationConfirmedEvent` domain event
+
+**Application Layer**:
+- ✅ Created `RegisterAnonymousAttendeeCommand` record
+- ✅ Implemented `RegisterAnonymousAttendeeCommandHandler` with full validation
+- ✅ Updated `EventCancelledEventHandler` to skip anonymous registrations
+- ✅ Updated `EventPostponedEventHandler` to skip anonymous registrations
+
+**Infrastructure Layer**:
+- ✅ Updated `RegistrationConfiguration` for EF Core
+  - Configured JSONB storage for AttendeeInfo
+  - Nested Email and PhoneNumber value objects
+  - Made UserId nullable
+  - Added XOR database CHECK constraint
+  - Removed unique constraint on (EventId, UserId)
+- ✅ Created EF Core migration: `AddAnonymousRegistrationSupport`
+  - Alters UserId to nullable
+  - Adds attendee_info JSONB column
+  - Adds CHECK constraint: `(user_id IS NOT NULL AND attendee_info IS NULL) OR (user_id IS NULL AND attendee_info IS NOT NULL)`
+
+**API Layer**:
+- ✅ Added `POST /api/events/{id}/register-anonymous` endpoint
+- ✅ Applied `[AllowAnonymous]` attribute for unauthenticated access
+- ✅ Created `AnonymousRegistrationRequest` DTO (Name, Age, Address, Email, PhoneNumber, Quantity)
+
+**Testing & Quality**:
+- ✅ All 17 AttendeeInfo tests passing (100% success rate)
+- ✅ Fixed EventWaitingListTests for nullable UserId
+- ✅ Zero compilation errors across entire solution
+- ✅ Build successful: 0 warnings, 0 errors
+- ✅ Proper TDD methodology followed throughout
+
+**Modified Files**:
+- [AttendeeInfo.cs](../src/LankaConnect.Domain/Events/ValueObjects/AttendeeInfo.cs) - New value object
+- [AttendeeInfoTests.cs](../tests/LankaConnect.Infrastructure.Tests/Domain/Events/ValueObjects/AttendeeInfoTests.cs) - 17 TDD tests
+- [Registration.cs](../src/LankaConnect.Domain/Events/Registration.cs) - Nullable UserId, AttendeeInfo property
+- [Event.cs](../src/LankaConnect.Domain/Events/Event.cs) - RegisterAnonymous method
+- [RegistrationConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs) - EF Core JSONB config
+- [20251201232956_AddAnonymousRegistrationSupport.cs](../src/LankaConnect.Infrastructure/Data/Migrations/) - Migration
+- [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) - New endpoint
+- [RegisterAnonymousAttendeeCommand.cs](../src/LankaConnect.Application/Events/Commands/RegisterAnonymousAttendee/) - New command
+- [RegisterAnonymousAttendeeCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/RegisterAnonymousAttendee/) - New handler
+
+**Build Status**: ✅ 0 errors, 0 warnings, 17/17 tests passing
+
+**Git Commit**:
+```
+feat: Add anonymous event registration support with TDD
+Commit: 43d5a4d
+17 files changed, 3461 insertions(+), 23 deletions(-)
+```
+
+**Next Steps (Frontend)**:
+1. Update event detail page registration UI (dual-mode form)
+2. Remove 'Manage Sign-ups' button from event detail
+3. Test anonymous and authenticated registration flows
+4. Deploy to staging (migration will run automatically)
+
+---
 
 ### Session 19: Sign-Up CORS Fix (2025-12-01)
 

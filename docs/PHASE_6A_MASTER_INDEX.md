@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-11-12
+**Last Updated**: 2025-12-01
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -22,6 +22,7 @@
 | 6A.9  | Azure Blob Image Upload | ✅ Complete | [PHASE_6A9_AZURE_BLOB_IMAGE_UPLOAD_SUMMARY.md](./PHASE_6A9_AZURE_BLOB_IMAGE_UPLOAD_SUMMARY.md) | 2025-11-11 |
 | 6A.10 | Subscription Expiry Notifications | ⏳ Planned | TBD | Not started |
 | 6A.11 | Subscription Management UI | ⏳ Planned | TBD | Not started |
+| 6A.12 | Event Media Upload System | ✅ Complete | [PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md](./PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md) | 2025-12-01 |
 
 ---
 
@@ -127,7 +128,7 @@
 
 **Phase 1 MVP (Before Thanksgiving)**:
 - ✅ Complete 6-role infrastructure (backend + frontend)
-- ✅ 9/12 Phase 6A features implemented
+- ✅ 10/13 Phase 6A features implemented
 - ⏳ 2 features blocked (6A.4 on Stripe keys, 6A.10-6A.11 deferred)
 - ✅ BusinessOwner roles visible but disabled (Phase 2 placeholder)
 

@@ -14,13 +14,16 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class VideoRemovedEventHandler : INotificationHandler<DomainEventNotification<VideoRemovedFromEventDomainEvent>>
 {
     private readonly IImageService _imageService; // Reusing for video blob deletion
+    private readonly IAzureBlobStorageService _blobStorageService;
     private readonly ILogger<VideoRemovedEventHandler> _logger;
 
     public VideoRemovedEventHandler(
         IImageService imageService,
+        IAzureBlobStorageService blobStorageService,
         ILogger<VideoRemovedEventHandler> logger)
     {
         _imageService = imageService;
+        _blobStorageService = blobStorageService;
         _logger = logger;
     }
 
@@ -34,9 +37,9 @@ public class VideoRemovedEventHandler : INotificationHandler<DomainEventNotifica
                 "Processing VideoRemovedFromEventDomainEvent: EventId={EventId}, VideoId={VideoId}, VideoBlobName={VideoBlobName}, ThumbnailBlobName={ThumbnailBlobName}",
                 domainEvent.EventId, domainEvent.VideoId, domainEvent.VideoBlobName, domainEvent.ThumbnailBlobName);
 
-            // Construct blob URLs from blob names (assumes standard Azure Blob Storage URL pattern)
-            var videoUrl = $"https://placeholder/{domainEvent.VideoBlobName}"; // TODO: Get proper URL from configuration
-            var thumbnailUrl = $"https://placeholder/{domainEvent.ThumbnailBlobName}"; // TODO: Get proper URL from configuration
+            // Construct blob URLs from blob names using Azure Blob Storage service
+            var videoUrl = _blobStorageService.GetBlobUrl(domainEvent.VideoBlobName);
+            var thumbnailUrl = _blobStorageService.GetBlobUrl(domainEvent.ThumbnailBlobName);
 
             // Delete video blob from Azure Blob Storage
             var deleteVideoResult = await _imageService.DeleteImageAsync(videoUrl, cancellationToken);

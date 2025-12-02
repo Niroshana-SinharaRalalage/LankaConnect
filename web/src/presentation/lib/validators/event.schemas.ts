@@ -81,6 +81,7 @@ export const createEventSchema = z.object({
   // Pricing (Required)
   isFree: z.boolean(),
 
+  // Legacy single pricing (backward compatibility)
   ticketPriceAmount: z
     .number()
     .min(0, 'Price cannot be negative')
@@ -90,6 +91,41 @@ export const createEventSchema = z.object({
 
   ticketPriceCurrency: z
     .nativeEnum(Currency)
+    .optional()
+    .nullable(),
+
+  // Session 21: Dual pricing (adult/child)
+  enableDualPricing: z.boolean().optional().default(false),
+
+  adultPriceAmount: z
+    .number()
+    .min(0, 'Adult price cannot be negative')
+    .max(10000, 'Adult price cannot exceed $10,000')
+    .optional()
+    .nullable(),
+
+  adultPriceCurrency: z
+    .nativeEnum(Currency)
+    .optional()
+    .nullable(),
+
+  childPriceAmount: z
+    .number()
+    .min(0, 'Child price cannot be negative')
+    .max(10000, 'Child price cannot exceed $10,000')
+    .optional()
+    .nullable(),
+
+  childPriceCurrency: z
+    .nativeEnum(Currency)
+    .optional()
+    .nullable(),
+
+  childAgeLimit: z
+    .number()
+    .int('Age limit must be a whole number')
+    .min(1, 'Age limit must be at least 1')
+    .max(18, 'Age limit cannot exceed 18')
     .optional()
     .nullable(),
 }).refine(
@@ -105,8 +141,8 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // If not free, price and currency are required
-    if (!data.isFree) {
+    // If not free and not using dual pricing, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&
@@ -117,6 +153,67 @@ export const createEventSchema = z.object({
   {
     message: 'Price and currency are required for paid events',
     path: ['ticketPriceAmount'],
+  }
+).refine(
+  (data) => {
+    // If using dual pricing, adult price and currency are required
+    if (!data.isFree && data.enableDualPricing) {
+      return data.adultPriceAmount !== null &&
+             data.adultPriceAmount !== undefined &&
+             data.adultPriceAmount > 0 &&
+             data.adultPriceCurrency !== null;
+    }
+    return true;
+  },
+  {
+    message: 'Adult price and currency are required for dual pricing',
+    path: ['adultPriceAmount'],
+  }
+).refine(
+  (data) => {
+    // If using dual pricing, child price and age limit are required
+    if (!data.isFree && data.enableDualPricing) {
+      return data.childPriceAmount !== null &&
+             data.childPriceAmount !== undefined &&
+             data.childPriceAmount >= 0 &&
+             data.childPriceCurrency !== null &&
+             data.childAgeLimit !== null &&
+             data.childAgeLimit !== undefined &&
+             data.childAgeLimit >= 1 &&
+             data.childAgeLimit <= 18;
+    }
+    return true;
+  },
+  {
+    message: 'Child price, currency, and age limit (1-18) are required for dual pricing',
+    path: ['childPriceAmount'],
+  }
+).refine(
+  (data) => {
+    // If using dual pricing, child price cannot exceed adult price
+    if (!data.isFree && data.enableDualPricing &&
+        data.adultPriceAmount !== null && data.adultPriceAmount !== undefined &&
+        data.childPriceAmount !== null && data.childPriceAmount !== undefined) {
+      return data.childPriceAmount <= data.adultPriceAmount;
+    }
+    return true;
+  },
+  {
+    message: 'Child price cannot exceed adult price',
+    path: ['childPriceAmount'],
+  }
+).refine(
+  (data) => {
+    // If using dual pricing, both prices must use the same currency
+    if (!data.isFree && data.enableDualPricing &&
+        data.adultPriceCurrency !== null && data.childPriceCurrency !== null) {
+      return data.adultPriceCurrency === data.childPriceCurrency;
+    }
+    return true;
+  },
+  {
+    message: 'Adult and child prices must use the same currency',
+    path: ['childPriceCurrency'],
   }
 );
 

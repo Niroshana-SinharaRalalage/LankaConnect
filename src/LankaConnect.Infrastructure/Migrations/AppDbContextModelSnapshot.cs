@@ -1472,7 +1472,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
                     b.ToTable("registrations", "events", t =>
                         {
-                            t.HasCheckConstraint("ck_registrations_valid_format", "(\n                    (user_id IS NOT NULL AND attendee_info IS NULL) OR\n                    (user_id IS NULL AND attendee_info IS NOT NULL) OR\n                    (attendees IS NOT NULL AND contact IS NOT NULL)\n                )");
+                            t.HasCheckConstraint("ck_registrations_valid_format", "(\n                    (\"UserId\" IS NOT NULL AND attendee_info IS NULL) OR\n                    (\"UserId\" IS NULL AND attendee_info IS NOT NULL) OR\n                    (attendees IS NOT NULL AND contact IS NOT NULL)\n                )");
                         });
                 });
 

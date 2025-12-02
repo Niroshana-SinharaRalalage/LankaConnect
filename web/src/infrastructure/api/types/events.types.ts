@@ -89,6 +89,7 @@ export interface EventVideoDto {
 /**
  * Main Event DTO
  * Matches backend EventDto from LankaConnect.Application.Events.Common
+ * Session 21: Added dual ticket pricing support
  */
 export interface EventDto {
   id: string;
@@ -114,9 +115,18 @@ export interface EventDto {
   longitude?: number | null;
 
   // Ticket pricing (nullable - free events)
+  // Legacy single pricing (backward compatibility)
   ticketPriceAmount?: number | null;
   ticketPriceCurrency?: Currency | null;
   isFree: boolean;
+
+  // Session 21: Dual ticket pricing (adult/child)
+  adultPriceAmount?: number | null;
+  adultPriceCurrency?: Currency | null;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null; // Age limit for child pricing (e.g., 12 = under 12 years old)
+  hasDualPricing: boolean; // True if event uses adult/child pricing
 
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
@@ -286,6 +296,7 @@ export interface GetNearbyEventsRequest {
 /**
  * Create event request
  * Matches backend CreateEventCommand
+ * Session 21: Added dual ticket pricing support
  */
 export interface CreateEventRequest {
   title: string;
@@ -305,9 +316,16 @@ export interface CreateEventRequest {
   locationLatitude?: number;
   locationLongitude?: number;
 
-  // Ticket Price (optional)
+  // Ticket Price (optional - legacy single pricing for backward compatibility)
   ticketPriceAmount?: number;
   ticketPriceCurrency?: Currency;
+
+  // Session 21: Dual ticket pricing (optional)
+  adultPriceAmount?: number;
+  adultPriceCurrency?: Currency;
+  childPriceAmount?: number;
+  childPriceCurrency?: Currency;
+  childAgeLimit?: number; // Age limit for child pricing (1-18)
 }
 
 /**
@@ -340,24 +358,53 @@ export interface UpdateEventRequest {
 
 /**
  * RSVP to event request
- * Matches backend RsvpRequest (eventId comes from URL path parameter)
+ * Matches backend RsvpToEventCommand for authenticated user registration
+ * Session 21: Added multi-attendee support with individual names and ages
  */
 export interface RsvpRequest {
   userId: string;
+
+  // Legacy format (backward compatibility)
   quantity?: number; // Default: 1
+
+  // New format (Session 21 - multi-attendee)
+  attendees?: AttendeeDto[];
+
+  // Contact information (new format only)
+  email?: string;
+  phoneNumber?: string;
+  address?: string;
 }
 
 /**
  * Anonymous registration request
  * Matches backend AnonymousRegistrationRequest for unauthenticated event registration
+ * Session 21: Added multi-attendee support with individual names and ages
  */
 export interface AnonymousRegistrationRequest {
-  name: string;
-  age: number;
-  address: string;
+  // Legacy format (Session 20 - backward compatibility)
+  name?: string;
+  age?: number;
+
+  // New format (Session 21 - multi-attendee)
+  attendees?: AttendeeDto[];
+
+  // Contact information (shared for all attendees)
   email: string;
   phoneNumber: string;
+  address?: string;
+
+  // Legacy quantity field (backward compatibility)
   quantity?: number; // Default: 1
+}
+
+/**
+ * Session 21: Individual attendee information
+ * Used for multi-attendee registration
+ */
+export interface AttendeeDto {
+  name: string;
+  age: number;
 }
 
 /**

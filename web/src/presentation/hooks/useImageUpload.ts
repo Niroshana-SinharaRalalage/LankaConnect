@@ -266,6 +266,72 @@ export function useDeleteEventImage() {
 }
 
 /**
+ * useReorderEventImages Hook
+ *
+ * Mutation hook for reordering event images via drag-and-drop
+ *
+ * Features:
+ * - Optimistic reordering with instant visual feedback
+ * - Automatic cache invalidation
+ * - Error rollback to previous order
+ *
+ * @example
+ * ```tsx
+ * const reorderImages = useReorderEventImages();
+ *
+ * await reorderImages.mutateAsync({
+ *   eventId: '123',
+ *   newOrders: { 'img-1': 2, 'img-2': 1 }
+ * });
+ * ```
+ */
+export function useReorderEventImages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, newOrders }: { eventId: string; newOrders: Record<string, number> }) =>
+      eventsRepository.reorderEventImages(eventId, newOrders),
+    onMutate: async ({ eventId, newOrders }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: eventKeys.detail(eventId) });
+
+      // Snapshot for rollback
+      const previousEvent = queryClient.getQueryData(eventKeys.detail(eventId));
+
+      // Optimistically reorder images
+      queryClient.setQueryData(eventKeys.detail(eventId), (old: any) => {
+        if (!old) return old;
+
+        const reorderedImages = (old.images || []).map((img: EventImageDto) => {
+          const newOrder = newOrders[img.id];
+          return newOrder !== undefined ? { ...img, displayOrder: newOrder } : img;
+        });
+
+        // Sort by new display order
+        reorderedImages.sort((a: EventImageDto, b: EventImageDto) => a.displayOrder - b.displayOrder);
+
+        return {
+          ...old,
+          images: reorderedImages,
+        };
+      });
+
+      return { previousEvent };
+    },
+    onError: (error, { eventId }, context) => {
+      // Rollback on error
+      if (context?.previousEvent) {
+        queryClient.setQueryData(eventKeys.detail(eventId), context.previousEvent);
+      }
+    },
+    onSuccess: (_data, { eventId }) => {
+      // Invalidate event detail to ensure consistency
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+    },
+  });
+}
+
+/**
  * useImageUpload Hook (Convenience wrapper)
  *
  * Combines upload and delete mutations with validation utilities
@@ -314,6 +380,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
   });
 
   const deleteMutation = useDeleteEventImage();
+  const reorderMutation = useReorderEventImages();
 
   const uploadImage = useCallback(
     async (file: File, eventId: string) => {
@@ -362,6 +429,14 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     [deleteMutation]
   );
 
+  const reorderImages = useCallback(
+    async (eventId: string, newOrders: Record<string, number>) => {
+      setError(null);
+      await reorderMutation.mutateAsync({ eventId, newOrders });
+    },
+    [reorderMutation]
+  );
+
   const reset = useCallback(() => {
     setError(null);
     setUploadProgress(0);
@@ -371,9 +446,11 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     uploadImage,
     uploadImages,
     deleteImage,
+    reorderImages,
     validateImage: validateImageFile,
     validateImages: validateImageFiles,
     isUploading: uploadMutation.isPending || deleteMutation.isPending,
+    isReordering: reorderMutation.isPending,
     uploadProgress,
     error,
     reset,
@@ -386,6 +463,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
 export default {
   useUploadEventImage,
   useDeleteEventImage,
+  useReorderEventImages,
   useImageUpload,
   validateImageFile,
   validateImageFiles,

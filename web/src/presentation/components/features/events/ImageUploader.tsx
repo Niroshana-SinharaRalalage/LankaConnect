@@ -21,7 +21,24 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
-import { Upload, X, Loader2, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Loader2, AlertCircle, Image as ImageIcon, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { useImageUpload } from '@/presentation/hooks/useImageUpload';
 import { Button } from '@/presentation/components/ui/Button';
@@ -67,6 +84,95 @@ export interface ImageUploaderProps {
  * />
  * ```
  */
+/**
+ * SortableImageItem Component
+ * Individual draggable image item with drag handle and delete button
+ */
+interface SortableImageItemProps {
+  image: {
+    id: string;
+    imageUrl: string;
+    displayOrder: number;
+  };
+  onDelete: (imageId: string) => void;
+  disabled: boolean;
+  isUploading: boolean;
+}
+
+const SortableImageItem: React.FC<SortableImageItemProps> = ({
+  image,
+  onDelete,
+  disabled,
+  isUploading,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'relative aspect-square group rounded-lg overflow-hidden border-2 transition-colors',
+        isDragging
+          ? 'border-blue-500 shadow-lg z-50'
+          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+      )}
+    >
+      {/* Image Preview */}
+      <Image
+        src={image.imageUrl}
+        alt={`Event image ${image.displayOrder}`}
+        fill
+        className="object-cover"
+        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+      />
+
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded cursor-move hover:bg-black/80 transition-colors"
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+
+      {/* Delete Button Overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => onDelete(image.id)}
+          disabled={disabled || isUploading}
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label={`Delete image ${image.displayOrder}`}
+        >
+          <X className="w-4 h-4 mr-1" />
+          Delete
+        </Button>
+      </div>
+
+      {/* Display Order Badge */}
+      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded">
+        #{image.displayOrder}
+      </div>
+    </div>
+  );
+};
+
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   eventId,
   existingImages = [],
@@ -77,12 +183,20 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   className,
 }) => {
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
+  const [localImages, setLocalImages] = useState(existingImages);
+
+  // Sync localImages with existingImages when they change
+  React.useEffect(() => {
+    setLocalImages(existingImages);
+  }, [existingImages]);
 
   const {
     uploadImage,
     deleteImage,
+    reorderImages,
     validateImages,
     isUploading,
+    isReordering,
     error,
     reset,
   } = useImageUpload({
@@ -94,6 +208,18 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       console.error('Image upload error:', errorMsg);
     },
   });
+
+  // Setup drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Prevent accidental drags
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Check if max images reached
   const imagesRemaining = maxImages - existingImages.length;
@@ -146,6 +272,44 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     disabled: !canUploadMore || isUploading,
     multiple: true,
   });
+
+  // Handle drag end
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const oldIndex = localImages.findIndex(img => img.id === active.id);
+      const newIndex = localImages.findIndex(img => img.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return;
+      }
+
+      // Reorder locally for instant feedback
+      const newOrder = arrayMove(localImages, oldIndex, newIndex);
+      setLocalImages(newOrder);
+
+      // Build newOrders map with 1-indexed display orders
+      const newOrders: Record<string, number> = {};
+      newOrder.forEach((img, index) => {
+        newOrders[img.id] = index + 1;
+      });
+
+      // Send to backend
+      try {
+        await reorderImages(eventId, newOrders);
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        // Rollback is handled by the mutation hook
+        setLocalImages(existingImages);
+      }
+    },
+    [localImages, existingImages, eventId, reorderImages]
+  );
 
   // Handle delete image
   const handleDeleteImage = async (imageId: string) => {
@@ -242,62 +406,62 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         </div>
       )}
 
-      {/* Image Gallery Grid */}
-      {existingImages.length > 0 && (
+      {/* Image Gallery Grid with Drag-and-Drop */}
+      {localImages.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Event Images ({existingImages.length}/{maxImages})
-          </h3>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {existingImages
-              .sort((a, b) => a.displayOrder - b.displayOrder)
-              .map((image) => (
-                <div
-                  key={image.id}
-                  className="relative aspect-square group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-                >
-                  {/* Image Preview */}
-                  <Image
-                    src={image.imageUrl}
-                    alt={`Event image ${image.displayOrder}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                  />
-
-                  {/* Delete Button Overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteImage(image.id)}
-                      disabled={disabled || isUploading}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label={`Delete image ${image.displayOrder}`}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-
-                  {/* Display Order Badge */}
-                  <div className="absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded">
-                    #{image.displayOrder}
-                  </div>
-                </div>
-              ))}
-
-            {/* Loading Placeholders */}
-            {Array.from(uploadingFiles).map((fileId) => (
-              <div
-                key={fileId}
-                className="relative aspect-square rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
-              >
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Event Images ({localImages.length}/{maxImages})
+            </h3>
+            {isReordering && (
+              <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Saving order...
               </div>
-            ))}
+            )}
           </div>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localImages.map(img => img.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {localImages
+                  .sort((a, b) => a.displayOrder - b.displayOrder)
+                  .map((image) => (
+                    <SortableImageItem
+                      key={image.id}
+                      image={image}
+                      onDelete={handleDeleteImage}
+                      disabled={disabled}
+                      isUploading={isUploading}
+                    />
+                  ))}
+
+                {/* Loading Placeholders */}
+                {Array.from(uploadingFiles).map((fileId) => (
+                  <div
+                    key={fileId}
+                    className="relative aspect-square rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
+                  >
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          {/* Drag Instructions */}
+          {localImages.length > 1 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+              💡 Drag the grip icon to reorder images
+            </p>
+          )}
         </div>
       )}
 

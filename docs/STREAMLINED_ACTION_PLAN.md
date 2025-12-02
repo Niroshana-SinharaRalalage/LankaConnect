@@ -7,7 +7,102 @@
 
 ---
 
-## ✅ CURRENT STATUS - ANONYMOUS EVENT REGISTRATION (BACKEND COMPLETE) (2025-12-01)
+## ✅ CURRENT STATUS - DUAL TICKET PRICING & MULTI-ATTENDEE REGISTRATION (BACKEND COMPLETE) (2025-12-02)
+**Date**: 2025-12-02 (Session 21)
+**Session**: Dual Ticket Pricing & Multi-Attendee Registration - Backend Complete
+**Status**: ✅ BACKEND COMPLETE - 70% overall (Backend 100%, Frontend 0%)
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors, 0 warnings, 150/150 tests passing
+**Deployment**: ⏳ Migration ready for Azure staging deployment
+**Frontend**: ⏳ PENDING - API DTOs, forms, and testing needed
+
+### SESSION 21: DUAL TICKET PRICING & MULTI-ATTENDEE REGISTRATION - BACKEND (2025-12-02)
+**Goal**: Implement dual ticket pricing (Adult/Child) and multi-attendee registration with individual names/ages per registration
+
+**User Requirements**:
+1. **Dual Ticket Pricing**: Events support adult and child ticket prices with configurable age limits
+2. **Multiple Attendees**: Users can register N people with individual names and ages (shared contact info)
+3. **Profile Pre-population**: Authenticated users have profile data pre-filled, with additional attendee fields as needed
+
+**Implementation Complete**:
+
+**Domain Layer** (Clean Architecture + DDD + TDD):
+- ✅ `TicketPricing` value object with adult/child pricing (21/21 tests passing)
+- ✅ `AttendeeDetails` value object for individual attendee info (13/13 tests passing)
+- ✅ `RegistrationContact` value object for shared contact info (20/20 tests passing)
+- ✅ `Event.SetDualPricing()` method with EventPricingUpdatedEvent
+- ✅ `Event.CalculatePriceForAttendees()` - Age-based price calculation
+- ✅ `Event.RegisterWithAttendees()` - Supports anonymous + authenticated users
+- ✅ `Registration.CreateWithAttendees()` factory method
+- ✅ Updated Event/Registration entities with backward compatibility
+
+**Application Layer** (CQRS):
+- ✅ Updated `RegisterAnonymousAttendeeCommand` with dual-format support
+- ✅ Updated `RegisterAnonymousAttendeeCommandHandler` with format detection
+- ✅ Updated `RsvpToEventCommand` with multi-attendee support
+- ✅ Updated `RsvpToEventCommandHandler` with dual handlers
+- ✅ Backward compatibility maintained via nullable properties
+
+**Infrastructure Layer**:
+- ✅ JSONB storage for Pricing (adult/child prices, age limit)
+- ✅ JSONB array for Attendees collection
+- ✅ JSONB object for Contact information
+- ✅ Separate columns for TotalPrice (amount + currency)
+- ✅ Migration: `20251202124837_AddDualTicketPricingAndMultiAttendee`
+- ✅ Updated check constraint to support 3 valid formats
+
+**Test Coverage**:
+- ✅ 150/150 value object tests passing (21 + 13 + 20)
+- ✅ 6 errors fixed during TDD process
+- ✅ Complete domain validation coverage
+
+**Files Created** (8 files):
+- Value Objects: `TicketPricing.cs`, `AttendeeDetails.cs`, `RegistrationContact.cs`
+- Domain Event: `EventPricingUpdatedEvent.cs`
+- Tests: 3 test files with 150 total tests
+- Migration: `20251202124837_AddDualTicketPricingAndMultiAttendee.cs`
+
+**Files Modified** (10 files):
+- Domain: `Event.cs`, `Registration.cs`
+- Infrastructure: `EventConfiguration.cs`, `RegistrationConfiguration.cs`
+- Application: 4 command/handler files
+- API: `EventsController.cs`
+- Documentation: `ADR_DUAL_TICKET_PRICING_MULTI_ATTENDEE.md`
+
+**Architecture Decision**:
+- ✅ Consulted system architect subagent before implementation
+- ✅ Selected Option C: Enhanced Value Objects with JSONB Storage
+- ✅ PostgreSQL JSONB for flexible schema evolution
+- ✅ Backward compatibility via nullable columns
+
+**Build Results**:
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Tests: 150 passed, 150 total
+```
+
+**Commits**:
+- `4669852` - feat(domain+infra): Add dual ticket pricing and multi-attendee registration
+- `59ff788` - feat(application): Add multi-attendee registration support
+
+**Next Steps**:
+1. ⏳ Update API DTOs for dual pricing (CreateEventRequest)
+2. ⏳ Update API DTOs for multi-attendee format (RegisterEventRequest)
+3. ⏳ Update EventRegistrationForm with dynamic attendee fields
+4. ⏳ Update event creation form with dual pricing inputs
+5. ⏳ Implement profile pre-population for authenticated users
+6. ⏳ Apply database migration to staging environment
+7. ⏳ End-to-end testing
+
+**See**:
+- [PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md](./PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md) - Complete session summary
+- [ADR_DUAL_TICKET_PRICING_MULTI_ATTENDEE.md](./ADR_DUAL_TICKET_PRICING_MULTI_ATTENDEE.md) - Architecture decision record
+
+---
+
+## ✅ PREVIOUS STATUS - ANONYMOUS EVENT REGISTRATION (BACKEND COMPLETE) (2025-12-01)
 **Date**: 2025-12-01 (Session 20)
 **Session**: Anonymous Event Registration - Backend Implementation
 **Status**: ✅ BACKEND COMPLETE - All layers implemented with zero errors

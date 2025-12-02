@@ -97,7 +97,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 name: "ck_registrations_user_xor_attendee",
                 schema: "events",
                 table: "registrations",
-                sql: "(user_id IS NOT NULL AND attendee_info IS NULL) OR (user_id IS NULL AND attendee_info IS NOT NULL)");
+                sql: "(\"UserId\" IS NOT NULL AND attendee_info IS NULL) OR (\"UserId\" IS NULL AND attendee_info IS NOT NULL)");
         }
     }
 }

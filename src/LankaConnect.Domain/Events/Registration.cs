@@ -1,6 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
@@ -8,8 +9,17 @@ public class Registration : BaseEntity
 {
     public Guid EventId { get; private set; }
     public Guid? UserId { get; private set; }  // Nullable for anonymous registrations
+
+    // Legacy fields (backward compatibility)
     public AttendeeInfo? AttendeeInfo { get; private set; }  // For anonymous registrations
     public int Quantity { get; private set; }
+
+    // Session 21: Multi-attendee registration with detailed attendee info
+    private readonly List<AttendeeDetails> _attendees = new();
+    public IReadOnlyList<AttendeeDetails> Attendees => _attendees.AsReadOnly();
+    public RegistrationContact? Contact { get; private set; }  // Shared contact info for all attendees
+    public Money? TotalPrice { get; private set; }  // Calculated total based on attendee ages
+
     public RegistrationStatus Status { get; private set; }
 
     // EF Core constructor
@@ -51,7 +61,7 @@ public class Registration : BaseEntity
         return Result<Registration>.Success(registration);
     }
 
-    // Factory method for anonymous users
+    // Factory method for anonymous users (legacy - single attendee)
     public static Result<Registration> CreateAnonymous(Guid eventId, AttendeeInfo attendeeInfo, int quantity)
     {
         if (eventId == Guid.Empty)
@@ -67,11 +77,77 @@ public class Registration : BaseEntity
         return Result<Registration>.Success(registration);
     }
 
+    // Session 21: Factory method for multi-attendee registration with contact info
+    public static Result<Registration> CreateWithAttendees(
+        Guid eventId,
+        Guid? userId,
+        IEnumerable<AttendeeDetails> attendees,
+        RegistrationContact contact,
+        Money totalPrice)
+    {
+        if (eventId == Guid.Empty)
+            return Result<Registration>.Failure("Event ID is required");
+
+        if (attendees == null || !attendees.Any())
+            return Result<Registration>.Failure("At least one attendee is required");
+
+        var attendeeList = attendees.ToList();
+
+        // Validate max attendees (business rule from ADR)
+        if (attendeeList.Count > 10)
+            return Result<Registration>.Failure("Maximum 10 attendees per registration");
+
+        if (contact == null)
+            return Result<Registration>.Failure("Contact information is required");
+
+        if (totalPrice == null)
+            return Result<Registration>.Failure("Total price is required");
+
+        var registration = new Registration
+        {
+            EventId = eventId,
+            UserId = userId,
+            AttendeeInfo = null,  // New format doesn't use legacy AttendeeInfo
+            Quantity = attendeeList.Count,  // Maintain backward compatibility
+            Contact = contact,
+            TotalPrice = totalPrice,
+            Status = RegistrationStatus.Confirmed
+        };
+
+        registration._attendees.AddRange(attendeeList);
+        return Result<Registration>.Success(registration);
+    }
+
     // Validation method to ensure XOR constraint (either UserId OR AttendeeInfo, not both)
+    // Session 21: Updated to support new multi-attendee format
     public bool IsValid()
     {
-        return (UserId.HasValue && AttendeeInfo == null) ||
-               (!UserId.HasValue && AttendeeInfo != null);
+        // Legacy format validation
+        if (AttendeeInfo != null)
+            return !UserId.HasValue;  // If legacy AttendeeInfo exists, UserId should be null
+
+        // New format validation
+        if (_attendees.Any())
+            return Contact != null && TotalPrice != null;  // Multi-attendee must have contact and price
+
+        // Authenticated user without attendee details (legacy format)
+        return UserId.HasValue;
+    }
+
+    /// <summary>
+    /// Session 21: Checks if registration uses new multi-attendee format
+    /// </summary>
+    public bool HasDetailedAttendees() => _attendees.Any();
+
+    /// <summary>
+    /// Session 21: Gets the number of attendees (works with both legacy and new format)
+    /// </summary>
+    public int GetAttendeeCount()
+    {
+        if (_attendees.Any())
+            return _attendees.Count;
+
+        return Quantity;  // Fallback to legacy quantity field
     }
 
     public void Cancel()

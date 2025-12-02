@@ -39,9 +39,10 @@ public class Event : BaseEntity
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
 
+    // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
         .Where(r => r.Status == RegistrationStatus.Confirmed)
-        .Sum(r => r.Quantity);
+        .Sum(r => r.GetAttendeeCount());
 
     // EF Core constructor
     private Event() 

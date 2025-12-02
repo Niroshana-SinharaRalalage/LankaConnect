@@ -18,6 +18,14 @@ public class RegistrationContact : ValueObject
     public string PhoneNumber { get; }
     public string? Address { get; }
 
+    // EF Core constructor
+    private RegistrationContact()
+    {
+        // Required for EF Core
+        Email = null!;
+        PhoneNumber = null!;
+    }
+
     private RegistrationContact(string email, string phoneNumber, string? address)
     {
         Email = email;

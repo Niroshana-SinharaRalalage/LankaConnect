@@ -65,7 +65,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(EventCategory.Community);
 
-        // Configure TicketPrice as owned Money value object (Epic 2 Phase 2)
+        // Configure TicketPrice as owned Money value object (Epic 2 Phase 2 - legacy single pricing)
         builder.OwnsOne(e => e.TicketPrice, money =>
         {
             money.Property(m => m.Amount)
@@ -76,6 +76,28 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
                 .HasColumnName("ticket_price_currency")
                 .HasConversion<string>()
                 .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
+        });
+
+        // Session 21: Configure Pricing as JSONB for dual ticket pricing (adult/child)
+        builder.OwnsOne(e => e.Pricing, pricing =>
+        {
+            pricing.ToJson("pricing");  // Store as JSONB column
+
+            // Configure nested Money value objects within JSON
+            pricing.OwnsOne(p => p.AdultPrice, money =>
+            {
+                money.Property(m => m.Amount).HasColumnName("adult_amount");
+                money.Property(m => m.Currency).HasColumnName("adult_currency");
+            });
+
+            pricing.OwnsOne(p => p.ChildPrice, money =>
+            {
+                money.Property(m => m.Amount).HasColumnName("child_amount");
+                money.Property(m => m.Currency).HasColumnName("child_currency");
+            });
+
+            // Configure ChildAgeLimit property
+            pricing.Property(p => p.ChildAgeLimit).HasColumnName("child_age_limit");
         });
 
         // Configure audit fields

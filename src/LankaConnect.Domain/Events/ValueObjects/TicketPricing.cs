@@ -18,6 +18,13 @@ public class TicketPricing : ValueObject
     /// </summary>
     public bool HasChildPricing => ChildPrice != null && ChildAgeLimit != null;
 
+    // EF Core constructor
+    private TicketPricing()
+    {
+        // Required for EF Core
+        AdultPrice = null!;
+    }
+
     private TicketPricing(Money adultPrice, Money? childPrice, int? childAgeLimit)
     {
         AdultPrice = adultPrice;

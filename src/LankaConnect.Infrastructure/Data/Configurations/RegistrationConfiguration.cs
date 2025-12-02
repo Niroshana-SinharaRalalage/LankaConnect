@@ -12,10 +12,18 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
     {
         builder.ToTable("registrations", t =>
         {
-            // Add XOR constraint: either UserId OR AttendeeInfo must be present, but not both
+            // Session 21: Updated constraint to support both legacy and new multi-attendee formats
+            // Valid scenarios:
+            // 1. Legacy authenticated: user_id NOT NULL, attendee_info NULL
+            // 2. Legacy anonymous: user_id NULL, attendee_info NOT NULL
+            // 3. New multi-attendee: attendees NOT NULL, contact NOT NULL (user_id optional)
             t.HasCheckConstraint(
-                "ck_registrations_user_xor_attendee",
-                "(user_id IS NOT NULL AND attendee_info IS NULL) OR (user_id IS NULL AND attendee_info IS NOT NULL)"
+                "ck_registrations_valid_format",
+                @"(
+                    (user_id IS NOT NULL AND attendee_info IS NULL) OR
+                    (user_id IS NULL AND attendee_info IS NOT NULL) OR
+                    (attendees IS NOT NULL AND contact IS NOT NULL)
+                )"
             );
         });
 
@@ -49,6 +57,41 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 phoneBuilder.Property(p => p.Value)
                     .HasColumnName("phone_number");
             });
+        });
+
+        // Session 21: Configure Attendees as JSONB array for multi-attendee registration
+        builder.OwnsMany(r => r.Attendees, attendeesBuilder =>
+        {
+            attendeesBuilder.ToJson("attendees");
+
+            // Configure properties explicitly to help EF Core binding
+            attendeesBuilder.Property(a => a.Name).HasColumnName("name");
+            attendeesBuilder.Property(a => a.Age).HasColumnName("age");
+        });
+
+        // Session 21: Configure Contact as JSONB for shared contact information
+        builder.OwnsOne(r => r.Contact, contactBuilder =>
+        {
+            contactBuilder.ToJson("contact");
+
+            // Configure properties explicitly to help EF Core binding
+            contactBuilder.Property(c => c.Email).HasColumnName("email");
+            contactBuilder.Property(c => c.PhoneNumber).HasColumnName("phone_number");
+            contactBuilder.Property(c => c.Address).HasColumnName("address");
+        });
+
+        // Session 21: Configure TotalPrice as Money value object (separate columns)
+        // The Money object itself is nullable, so we don't need IsRequired(false) on the properties
+        builder.OwnsOne(r => r.TotalPrice, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("total_price_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("total_price_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
         });
 
         // Configure properties

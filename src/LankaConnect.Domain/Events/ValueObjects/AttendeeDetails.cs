@@ -12,6 +12,13 @@ public class AttendeeDetails : ValueObject
     public string Name { get; }
     public int Age { get; }
 
+    // EF Core constructor
+    private AttendeeDetails()
+    {
+        // Required for EF Core
+        Name = null!;
+    }
+
     private AttendeeDetails(string name, int age)
     {
         Name = name;

@@ -6,8 +6,14 @@ namespace LankaConnect.Domain.Shared.ValueObjects;
 
 public class Money : ValueObject
 {
-    public decimal Amount { get; }
-    public Currency Currency { get; }
+    public decimal Amount { get; private set; }
+    public Currency Currency { get; private set; }
+
+    // EF Core parameterless constructor
+    private Money()
+    {
+        // Required for EF Core JSON deserialization
+    }
 
     public Money(decimal amount, Currency currency)
     {

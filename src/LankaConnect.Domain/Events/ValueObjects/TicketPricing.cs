@@ -9,9 +9,9 @@ namespace LankaConnect.Domain.Events.ValueObjects;
 /// </summary>
 public class TicketPricing : ValueObject
 {
-    public Money AdultPrice { get; }
-    public Money? ChildPrice { get; }
-    public int? ChildAgeLimit { get; }
+    public Money AdultPrice { get; private set; }
+    public Money? ChildPrice { get; private set; }
+    public int? ChildAgeLimit { get; private set; }
 
     /// <summary>
     /// Indicates whether this pricing configuration includes separate child pricing

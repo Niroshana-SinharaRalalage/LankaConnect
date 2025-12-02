@@ -77,7 +77,7 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
               Photos ({totalImages})
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {images
+              {[...images]
                 .sort((a, b) => a.displayOrder - b.displayOrder)
                 .map((image, index) => (
                   <button
@@ -107,7 +107,7 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
               Videos ({totalVideos})
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {videos
+              {[...videos]
                 .sort((a, b) => a.displayOrder - b.displayOrder)
                 .map((video, index) => (
                   <button
@@ -128,11 +128,6 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
                     <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                       {video.displayOrder}
                     </div>
-                    {video.durationSeconds && (
-                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {Math.floor(video.durationSeconds / 60)}:{String(video.durationSeconds % 60).padStart(2, '0')}
-                      </div>
-                    )}
                   </button>
                 ))}
             </div>
@@ -203,4 +198,7 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
             </div>
           </div>
         </DialogContent>
-      </Dialo
+      </Dialog>
+    </>
+  );
+}

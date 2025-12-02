@@ -423,29 +423,6 @@ export class EventsRepository {
     );
   }
 
-  // ==================== MEDIA OPERATIONS ====================
-
-  /**
-   * Upload image to event gallery
-   * Uses multipart/form-data for file upload
-   */
-  async uploadEventImage(eventId: string, file: File): Promise<EventImageDto> {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    return await apiClient.postMultipart<EventImageDto>(
-      `${this.basePath}/${eventId}/images`,
-      formData
-    );
-  }
-
-  /**
-   * Delete image from event gallery
-   */
-  async deleteEventImage(eventId: string, imageId: string): Promise<void> {
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/images/${imageId}`);
-  }
-
   // ==================== UTILITY OPERATIONS ====================
 
   /**

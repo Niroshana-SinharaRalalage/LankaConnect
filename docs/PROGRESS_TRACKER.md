@@ -1,9 +1,83 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-01 (Current Session) - Session 20: Anonymous Event Registration Frontend Complete ✅*
+*Last Updated: 2025-12-02 (Current Session) - Session 19 Part 2: Sign-Up CORS Azure Revision Fix ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 20: Anonymous Event Registration Frontend Complete ✅
+## 🎯 Current Session Status - Session 19 Part 2: Sign-Up CORS Azure Revision Fix ✅
+
+### Session 19 (Part 2): Azure Container Apps Revision Fix - 2025-12-02
+
+**Status**: ✅ COMPLETE - CORS issue fully resolved by deactivating old revision
+
+**Problem**: After deploying CORS fix (commit 505d637) to Azure staging, users still experienced CORS errors when creating sign-up lists from localhost:3000.
+
+**Root Cause Analysis**:
+- ✅ Deployment was successful and created new revision `lankaconnect-api-staging--0000166` (2025-12-02T03:25:40)
+- ✅ CORS fix was included in deployed code (verified via git log and file inspection)
+- ✅ ASPNETCORE_ENVIRONMENT was correctly set to "Staging"
+- ❌ **Old revision `lankaconnect-api-staging--0000165` (2025-12-01T20:35:10) was still active**
+- ❌ Both revisions had "Active=True" status, causing traffic split confusion
+- ❌ Browser requests were intermittently hitting the old revision without CORS fix
+
+**Solution Applied**:
+```bash
+# Deactivated old revision to force 100% traffic to new revision with CORS fix
+az containerapp revision deactivate \
+  --name lankaconnect-api-staging \
+  --resource-group lankaconnect-staging \
+  --revision lankaconnect-api-staging--0000165
+```
+
+**Verification**:
+- ✅ Old revision successfully deactivated ("Deactivate succeeded")
+- ✅ Only revision 0000166 now active with 100% traffic weight
+- ✅ Traffic configuration confirmed: "LatestRevision=True, Weight=100"
+- ✅ New revision running: replica `lankaconnect-api-staging--0000166-ff84ddfbc-dhrc2`
+
+**Key Learnings**:
+1. Azure Container Apps can have multiple active revisions simultaneously
+2. Single revision mode (LatestRevision=True) should automatically deactivate old revisions, but sometimes requires manual intervention
+3. Always verify active revision count after deployment
+4. Use `az containerapp revision list` to check for multiple active revisions
+5. Use `az containerapp revision deactivate` to force traffic migration
+
+**Commands Used**:
+```bash
+# Check active revisions
+az containerapp revision list \
+  --name lankaconnect-api-staging \
+  --resource-group lankaconnect-staging \
+  --query "[].{name:name, createdTime:properties.createdTime, active:properties.active, trafficWeight:properties.trafficWeight}" \
+  --output table
+
+# Check traffic configuration
+az containerapp ingress traffic show \
+  --name lankaconnect-api-staging \
+  --resource-group lankaconnect-staging \
+  --output table
+
+# Deactivate old revision
+az containerapp revision deactivate \
+  --name lankaconnect-api-staging \
+  --resource-group lankaconnect-staging \
+  --revision lankaconnect-api-staging--0000165
+```
+
+**Documentation Updated**:
+- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Added Session 19 Part 2 resolution
+
+**Related Sessions**:
+- Session 19 Part 1: Identified and fixed duplicate CORS registration (commit 505d637)
+- Session 19 Part 2: Resolved Azure revision issue preventing CORS fix from taking effect
+
+**Next Steps**:
+1. User should test sign-up creation from localhost:3000 to confirm CORS fix is working
+2. Monitor for any remaining CORS issues
+3. Consider automating old revision cleanup in deploy-staging.yml workflow
+
+---
+
+## 🎯 Previous Session - Session 20: Anonymous Event Registration Frontend Complete ✅
 
 ### Session 20 (Part 2): Anonymous Event Registration Frontend - 2025-12-01
 

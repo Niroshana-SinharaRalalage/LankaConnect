@@ -1,9 +1,80 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-02 (Current Session) - Session 21: Dual Ticket Pricing & Multi-Attendee Registration ✅ COMPLETE*
+*Last Updated: 2025-12-02 (Current Session) - Session 23: Event Creation UX Fix & Dual Pricing Backend Handover ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 21: Dual Ticket Pricing & Multi-Attendee Registration ✅ COMPLETE
+## 🎯 Current Session Status - Session 23: Event Creation UX Fix & Dual Pricing Backend Handover ✅ COMPLETE
+
+### Session 23: Event Creation UX Fix & Dual Pricing Backend Handover - COMPLETE - 2025-12-02
+
+**Status**: ✅ **COMPLETE** (Redirect Fix + Handover Documentation)
+
+**Commits**:
+- `38ccf5d` - fix(events): redirect to management page after event creation
+- Previous: `401b4ee` - fix(forms): Fix TypeScript error in EventEditForm
+
+**Goal**: Fix event creation redirect to management page and create comprehensive handover documentation for dual pricing backend implementation
+
+**Summary**: Successfully completed redirect fix and discovered critical gap where Session 21 frontend sends dual pricing data but backend API cannot accept it (events created with dual pricing are silently created as FREE events). Created comprehensive handover document with exact code changes needed for 6 backend files.
+
+**Implementation Details**:
+
+**Issue Reported**:
+- Event creation was redirecting to `/events/{id}` (Event Registration page)
+- Should redirect to `/events/{id}/manage` (Event Management page)
+- Organizers had to manually navigate to upload media and manage signups
+
+**Fixes Applied** (Verified):
+1. ✅ EventCreationForm.tsx:160 - Redirect to `/events/${eventId}/manage`
+2. ✅ EventEditForm.tsx:92,123 - Added `enableDualPricing` defaults to fix TypeScript error
+3. ✅ event.schemas.ts:98 - Fixed `enableDualPricing` type (removed `.optional()`)
+4. ✅ useEvents.ts:374 - Updated RSVP hook signature for Session 21 compatibility
+
+**Critical Discovery**:
+- **Frontend**: Sends `adultPriceAmount`, `childPriceAmount`, `childAgeLimit` in CreateEventRequest
+- **Backend**: CreateEventCommand only accepts legacy `ticketPriceAmount`, `ticketPriceCurrency`
+- **Result**: Dual pricing data is SILENTLY IGNORED, events created as FREE
+- **Root Cause**: Session 21 implemented domain layer but NOT API layer
+
+**Handover Documentation Created**:
+- [DUAL_PRICING_IMPLEMENTATION_SPEC.md](./DUAL_PRICING_IMPLEMENTATION_SPEC.md) - Comprehensive implementation guide
+- 8 detailed tasks with exact code changes
+- Validation rules and migration scripts
+- Testing checklist
+- Time estimate: ~6 hours total
+
+**Backend Files Needing Updates**:
+1. CreateEventCommand.cs - Add 5 dual pricing fields
+2. CreateEventCommandHandler.cs - Build TicketPricing value object
+3. EventDto.cs - Add 5 dual pricing fields + hasDualPricing flag
+4. EventMappingProfile.cs - Map Pricing → DTO
+5. UpdateEventCommand.cs - Add 5 dual pricing fields
+6. UpdateEventCommandHandler.cs - Update TicketPricing object
+
+**Domain Layer Status** (✅ Already Complete):
+- ✅ TicketPricing value object with dual pricing support
+- ✅ Event.SetDualPricing() method
+- ✅ Event.CalculatePriceForAttendees() method
+- ✅ All 150/150 tests passing
+
+**Next Steps**:
+1. Hand off DUAL_PRICING_IMPLEMENTATION_SPEC.md to original session
+2. Backend team to implement 8 tasks (~6 hours)
+3. Test end-to-end dual pricing flow after backend complete
+4. Verify events are created as PAID with correct pricing structure
+
+**UX Improvement**:
+- Organizers now land on management page immediately after event creation
+- Direct access to media upload, edit details, manage signups
+- Eliminates extra navigation step
+
+**Related Documentation**:
+- [DUAL_PRICING_IMPLEMENTATION_SPEC.md](./DUAL_PRICING_IMPLEMENTATION_SPEC.md) - Backend implementation handover
+- [PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md](./PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md) - Session 21 summary
+
+---
+
+## 🎯 Previous Session - Session 21: Dual Ticket Pricing & Multi-Attendee Registration ✅
 
 ### Session 21: Dual Ticket Pricing & Multi-Attendee Registration - COMPLETE - 2025-12-02
 

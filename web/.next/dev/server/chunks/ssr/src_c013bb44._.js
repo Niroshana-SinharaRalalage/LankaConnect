@@ -4496,7 +4496,7 @@ const Footer = ()=>{
         setSubscribeStatus('loading');
         try {
             // Call .NET backend API
-            const apiUrl = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+            const apiUrl = ("TURBOPACK compile-time value", "/api/proxy") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
             const response = await fetch(`${apiUrl}/newsletter/subscribe`, {
                 method: 'POST',
                 headers: {
@@ -5125,11 +5125,12 @@ class EventsRepository {
     }
     // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
     /**
-   * Add a category-based sign-up list to event
+   * Create sign-up list WITH items in a single API call
    * Organizer-only operation
-   * Maps to backend POST /api/events/{id}/signups/categories
-   */ async addSignUpListWithCategories(eventId, request) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+   * Maps to backend POST /api/events/{id}/signups
+   * Returns the created sign-up list ID
+   */ async createSignUpList(eventId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups`, request);
     }
     /**
    * Add an item to a category-based sign-up list
@@ -5158,7 +5159,7 @@ class EventsRepository {
    */ async getEventIcs(eventId) {
         // Note: This endpoint returns a file, not JSON
         // Using fetch directly instead of apiClient
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/ics`);
         if (!response.ok) {
             throw new Error('Failed to download ICS file');
@@ -5185,7 +5186,7 @@ class EventsRepository {
         const formData = new FormData();
         formData.append('image', file);
         // Using fetch directly for multipart/form-data
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images`, {
             method: 'POST',
             body: formData,
@@ -5219,7 +5220,7 @@ class EventsRepository {
    */ async replaceEventImage(eventId, imageId, file) {
         const formData = new FormData();
         formData.append('image', file);
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images/${imageId}`, {
             method: 'PUT',
             body: formData,
@@ -5256,7 +5257,7 @@ class EventsRepository {
         const formData = new FormData();
         formData.append('video', videoFile);
         formData.append('thumbnail', thumbnailFile);
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
             method: 'POST',
             body: formData,
@@ -5592,14 +5593,14 @@ const __TURBOPACK__default__export__ = {
     ()=>useAddSignUpItem,
     "useAddSignUpList",
     ()=>useAddSignUpList,
-    "useAddSignUpListWithCategories",
-    ()=>useAddSignUpListWithCategories,
     "useCancelCommitment",
     ()=>useCancelCommitment,
     "useCommitToSignUp",
     ()=>useCommitToSignUp,
     "useCommitToSignUpItem",
     ()=>useCommitToSignUpItem,
+    "useCreateSignUpList",
+    ()=>useCreateSignUpList,
     "useEventSignUps",
     ()=>useEventSignUps,
     "useRemoveSignUpItem",
@@ -5780,10 +5781,10 @@ function useCancelCommitment() {
         }
     });
 }
-function useAddSignUpListWithCategories() {
+function useCreateSignUpList() {
     const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQueryClient"])();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMutation"])({
-        mutationFn: ({ eventId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["eventsRepository"].addSignUpListWithCategories(eventId, data),
+        mutationFn: ({ eventId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["eventsRepository"].createSignUpList(eventId, data),
         onSuccess: (_data, variables)=>{
             queryClient.invalidateQueries({
                 queryKey: signUpKeys.list(variables.eventId)

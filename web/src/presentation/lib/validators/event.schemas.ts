@@ -95,7 +95,7 @@ export const createEventSchema = z.object({
     .nullable(),
 
   // Session 21: Dual pricing (adult/child)
-  enableDualPricing: z.boolean().optional().default(false),
+  enableDualPricing: z.boolean(),
 
   adultPriceAmount: z
     .number()

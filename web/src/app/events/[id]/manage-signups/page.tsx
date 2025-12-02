@@ -9,8 +9,7 @@ import { useEventById } from '@/presentation/hooks/useEvents';
 import {
   useEventSignUps,
   useRemoveSignUpList,
-  useAddSignUpListWithCategories,
-  useAddSignUpItem,
+  useCreateSignUpList,
   useRemoveSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -45,8 +44,7 @@ export default function ManageSignUpsPage() {
 
   // Mutations
   const removeSignUpListMutation = useRemoveSignUpList();
-  const addSignUpListWithCategoriesMutation = useAddSignUpListWithCategories();
-  const addSignUpItemMutation = useAddSignUpItem();
+  const createSignUpListMutation = useCreateSignUpList();
   const removeSignUpItemMutation = useRemoveSignUpItem();
 
   // Form state
@@ -179,7 +177,7 @@ export default function ManageSignUpsPage() {
     setSuggestedItems(suggestedItems.filter((_, i) => i !== index));
   };
 
-  // Handle create sign-up lists (one per selected category)
+  // Handle create sign-up list WITH items in single API call
   const handleCreateSignUpList = async () => {
     if (!category.trim()) {
       setSubmitError('Category is required');
@@ -196,80 +194,48 @@ export default function ManageSignUpsPage() {
       return;
     }
 
+    // Validate at least one item exists
+    const allItems = [...mandatoryItems, ...preferredItems, ...suggestedItems];
+    if (allItems.length === 0) {
+      setSubmitError('Please add at least one item to the sign-up list');
+      return;
+    }
+
     try {
       setSubmitError(null);
 
-      // Create Mandatory sign-up list if selected
-      if (hasMandatoryItems && mandatoryItems.length > 0) {
-        const mandatorySignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
-          eventId,
-          category: `${category.trim()} - Mandatory Items`,
-          description: description.trim(),
-          hasMandatoryItems: true,
-          hasPreferredItems: false,
-          hasSuggestedItems: false,
-        });
+      // Convert items to API format
+      const items = [
+        ...mandatoryItems.map(item => ({
+          itemDescription: item.description,
+          quantity: item.quantity,
+          itemCategory: SignUpItemCategory.Mandatory,
+          notes: item.notes || null,
+        })),
+        ...preferredItems.map(item => ({
+          itemDescription: item.description,
+          quantity: item.quantity,
+          itemCategory: SignUpItemCategory.Preferred,
+          notes: item.notes || null,
+        })),
+        ...suggestedItems.map(item => ({
+          itemDescription: item.description,
+          quantity: item.quantity,
+          itemCategory: SignUpItemCategory.Suggested,
+          notes: item.notes || null,
+        })),
+      ];
 
-        // Add all mandatory items
-        for (const item of mandatoryItems) {
-          await addSignUpItemMutation.mutateAsync({
-            eventId,
-            signupId: mandatorySignUpId as unknown as string,
-            itemDescription: item.description,
-            quantity: item.quantity,
-            itemCategory: SignUpItemCategory.Mandatory,
-            notes: item.notes || undefined,
-          });
-        }
-      }
-
-      // Create Preferred sign-up list if selected
-      if (hasPreferredItems && preferredItems.length > 0) {
-        const preferredSignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
-          eventId,
-          category: `${category.trim()} - Preferred Items`,
-          description: description.trim(),
-          hasMandatoryItems: false,
-          hasPreferredItems: true,
-          hasSuggestedItems: false,
-        });
-
-        // Add all preferred items
-        for (const item of preferredItems) {
-          await addSignUpItemMutation.mutateAsync({
-            eventId,
-            signupId: preferredSignUpId as unknown as string,
-            itemDescription: item.description,
-            quantity: item.quantity,
-            itemCategory: SignUpItemCategory.Preferred,
-            notes: item.notes || undefined,
-          });
-        }
-      }
-
-      // Create Suggested sign-up list if selected
-      if (hasSuggestedItems && suggestedItems.length > 0) {
-        const suggestedSignUpId = await addSignUpListWithCategoriesMutation.mutateAsync({
-          eventId,
-          category: `${category.trim()} - Suggested Items`,
-          description: description.trim(),
-          hasMandatoryItems: false,
-          hasPreferredItems: false,
-          hasSuggestedItems: true,
-        });
-
-        // Add all suggested items
-        for (const item of suggestedItems) {
-          await addSignUpItemMutation.mutateAsync({
-            eventId,
-            signupId: suggestedSignUpId as unknown as string,
-            itemDescription: item.description,
-            quantity: item.quantity,
-            itemCategory: SignUpItemCategory.Suggested,
-            notes: item.notes || undefined,
-          });
-        }
-      }
+      // Create sign-up list WITH all items in single transactional API call
+      await createSignUpListMutation.mutateAsync({
+        eventId,
+        category: category.trim(),
+        description: description.trim(),
+        hasMandatoryItems,
+        hasPreferredItems,
+        hasSuggestedItems,
+        items,
+      });
 
       // Reset form
       setCategory('');
@@ -282,8 +248,8 @@ export default function ManageSignUpsPage() {
       setSuggestedItems([]);
       setShowForm(false);
     } catch (err) {
-      console.error('Failed to create sign-up lists:', err);
-      setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up lists');
+      console.error('Failed to create sign-up list:', err);
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
     }
   };
 
@@ -896,10 +862,10 @@ export default function ManageSignUpsPage() {
                 </Button>
                 <Button
                   onClick={handleCreateSignUpList}
-                  disabled={addSignUpListWithCategoriesMutation.isPending}
+                  disabled={createSignUpListMutation.isPending}
                   style={{ background: '#FF7900' }}
                 >
-                  {addSignUpListWithCategoriesMutation.isPending ? 'Creating...' : 'Create Sign-Up List'}
+                  {createSignUpListMutation.isPending ? 'Creating...' : 'Create Sign-Up List'}
                 </Button>
               </div>
             </CardContent>

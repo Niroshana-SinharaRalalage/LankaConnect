@@ -42,12 +42,9 @@ using LankaConnect.Application.Events.Queries.GetEventIcs;
 using LankaConnect.Application.Events.Commands.AddPassToEvent;
 using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventPasses;
-using LankaConnect.Application.Events.Commands.AddSignUpListToEvent;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
-using LankaConnect.Application.Events.Commands.CommitToSignUp;
-using LankaConnect.Application.Events.Commands.CancelSignUpCommitment;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
-using LankaConnect.Application.Events.Commands.AddSignUpListWithCategories;
+using LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
 using LankaConnect.Application.Events.Commands.AddSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
@@ -1040,24 +1037,35 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
-    /// Add a new sign-up list to an event (Event Organizer/Admin only)
+    /// Create a new sign-up list with items (Event Organizer/Admin only)
+    /// Matches requirement: Create list WITH items in single API call
     /// </summary>
     [HttpPost("{id:guid}/signups")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AddSignUpListToEvent(Guid id, [FromBody] AddSignUpListRequest request)
+    public async Task<IActionResult> CreateSignUpList(Guid id, [FromBody] CreateSignUpListRequest request)
     {
-        Logger.LogInformation("Adding sign-up list '{Category}' to event {EventId}", request.Category, id);
+        Logger.LogInformation("Creating sign-up list '{Category}' with {ItemCount} items for event {EventId}",
+            request.Category, request.Items.Count, id);
 
-        var command = new AddSignUpListToEventCommand(
+        // Map API DTOs to Application layer DTOs
+        var items = request.Items.Select(item => new LankaConnect.Application.Events.Commands.CreateSignUpListWithItems.SignUpItemDto(
+            item.ItemDescription,
+            item.Quantity,
+            item.ItemCategory,
+            item.Notes)).ToList();
+
+        var command = new CreateSignUpListWithItemsCommand(
             id,
             request.Category,
             request.Description,
-            request.SignUpType,
-            request.PredefinedItems);
+            request.HasMandatoryItems,
+            request.HasPreferredItems,
+            request.HasSuggestedItems,
+            items);
 
         var result = await Mediator.Send(command);
 
@@ -1083,79 +1091,7 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
-    /// <summary>
-    /// User commits to bringing an item for a sign-up list
-    /// </summary>
-    [HttpPost("{eventId:guid}/signups/{signupId:guid}/commit")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CommitToSignUp(Guid eventId, Guid signupId, [FromBody] CommitToSignUpRequest request)
-    {
-        Logger.LogInformation("User {UserId} committing to sign-up {SignUpId} for event {EventId}",
-            request.UserId, signupId, eventId);
-
-        var command = new CommitToSignUpCommand(
-            eventId,
-            signupId,
-            request.UserId,
-            request.ItemDescription,
-            request.Quantity);
-
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// User cancels their commitment to a sign-up list
-    /// </summary>
-    [HttpDelete("{eventId:guid}/signups/{signupId:guid}/commit")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CancelSignUpCommitment(Guid eventId, Guid signupId, [FromBody] CancelCommitmentRequest request)
-    {
-        Logger.LogInformation("User {UserId} cancelling commitment to sign-up {SignUpId} for event {EventId}",
-            request.UserId, signupId, eventId);
-
-        var command = new CancelSignUpCommitmentCommand(eventId, signupId, request.UserId);
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
-
-    #region Category-Based Sign-Up Lists (New)
-
-    /// <summary>
-    /// Add a new category-based sign-up list to an event (Event Organizer/Admin only)
-    /// </summary>
-    [HttpPost("{id:guid}/signups/categories")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AddSignUpListWithCategories(Guid id, [FromBody] AddSignUpListWithCategoriesRequest request)
-    {
-        Logger.LogInformation("Adding category-based sign-up list '{Category}' to event {EventId}", request.Category, id);
-
-        var command = new AddSignUpListWithCategoriesCommand(
-            id,
-            request.Category,
-            request.Description,
-            request.HasMandatoryItems,
-            request.HasPreferredItems,
-            request.HasSuggestedItems);
-
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
+    #region Category-Based Sign-Up Item Management
 
     /// <summary>
     /// Add an item to a category-based sign-up list (Event Organizer/Admin only)
@@ -1265,18 +1201,20 @@ public record AddSignUpListRequest(
     SignUpType SignUpType,
     List<string>? PredefinedItems = null); // Sign-up list management
 
-public record CommitToSignUpRequest(
-    Guid UserId,
-    string ItemDescription,
-    int Quantity); // User commitment to sign-up
-
 // Category-Based Sign-Up Requests
-public record AddSignUpListWithCategoriesRequest(
+public record CreateSignUpListRequest(
     string Category,
     string Description,
     bool HasMandatoryItems,
     bool HasPreferredItems,
-    bool HasSuggestedItems);
+    bool HasSuggestedItems,
+    List<SignUpItemRequestDto> Items);
+
+public record SignUpItemRequestDto(
+    string ItemDescription,
+    int Quantity,
+    SignUpItemCategory ItemCategory,
+    string? Notes = null);
 
 public record AddSignUpItemRequest(
     string ItemDescription,
@@ -1288,6 +1226,3 @@ public record CommitToSignUpItemRequest(
     Guid UserId,
     int Quantity,
     string? Notes = null);
-
-public record CancelCommitmentRequest(
-    Guid UserId); // Cancel user commitment

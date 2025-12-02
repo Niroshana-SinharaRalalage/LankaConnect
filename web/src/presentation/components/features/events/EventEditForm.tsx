@@ -89,7 +89,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
       isFree: event.isFree ?? true, // Ensure it's always a boolean
-      enableDualPricing: false, // Default to single pricing mode
+      enableDualPricing: event.hasDualPricing ?? false, // Map backend field to form field
       ticketPriceAmount: event.ticketPriceAmount || undefined,
       ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
       locationAddress: event.address || undefined,

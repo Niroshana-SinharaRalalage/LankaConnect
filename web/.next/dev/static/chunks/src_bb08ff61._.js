@@ -4685,7 +4685,7 @@ const Footer = ()=>{
         setSubscribeStatus('loading');
         try {
             // Call .NET backend API
-            const apiUrl = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+            const apiUrl = ("TURBOPACK compile-time value", "/api/proxy") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
             const response = await fetch(`${apiUrl}/newsletter/subscribe`, {
                 method: 'POST',
                 headers: {
@@ -5520,11 +5520,12 @@ class EventsRepository {
     }
     // ==================== CATEGORY-BASED SIGN-UP MANAGEMENT ====================
     /**
-   * Add a category-based sign-up list to event
+   * Create sign-up list WITH items in a single API call
    * Organizer-only operation
-   * Maps to backend POST /api/events/{id}/signups/categories
-   */ async addSignUpListWithCategories(eventId, request) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/categories`, request);
+   * Maps to backend POST /api/events/{id}/signups
+   * Returns the created sign-up list ID
+   */ async createSignUpList(eventId, request) {
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups`, request);
     }
     /**
    * Add an item to a category-based sign-up list
@@ -5553,7 +5554,7 @@ class EventsRepository {
    */ async getEventIcs(eventId) {
         // Note: This endpoint returns a file, not JSON
         // Using fetch directly instead of apiClient
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/ics`);
         if (!response.ok) {
             throw new Error('Failed to download ICS file');
@@ -5579,20 +5580,8 @@ class EventsRepository {
    */ async uploadEventImage(eventId, file) {
         const formData = new FormData();
         formData.append('image', file);
-        // Using fetch directly for multipart/form-data
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
-        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(()=>({
-                    message: 'Upload failed'
-                }));
-            throw new Error(error.message || `Upload failed with status ${response.status}`);
-        }
-        return await response.json();
+        // Use apiClient.postMultipart for proper authentication and error handling
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/images`, formData);
     }
     /**
    * Delete an image from an event
@@ -5614,7 +5603,7 @@ class EventsRepository {
    */ async replaceEventImage(eventId, imageId, file) {
         const formData = new FormData();
         formData.append('image', file);
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images/${imageId}`, {
             method: 'PUT',
             body: formData,
@@ -5651,19 +5640,8 @@ class EventsRepository {
         const formData = new FormData();
         formData.append('video', videoFile);
         formData.append('thumbnail', thumbnailFile);
-        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
-        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(()=>({
-                    message: 'Video upload failed'
-                }));
-            throw new Error(error.message || `Video upload failed with status ${response.status}`);
-        }
-        return await response.json();
+        // Use apiClient.postMultipart for proper authentication and error handling
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/videos`, formData);
     }
     /**
    * Delete a video from an event
@@ -6098,14 +6076,14 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     ()=>useAddSignUpItem,
     "useAddSignUpList",
     ()=>useAddSignUpList,
-    "useAddSignUpListWithCategories",
-    ()=>useAddSignUpListWithCategories,
     "useCancelCommitment",
     ()=>useCancelCommitment,
     "useCommitToSignUp",
     ()=>useCommitToSignUp,
     "useCommitToSignUpItem",
     ()=>useCommitToSignUpItem,
+    "useCreateSignUpList",
+    ()=>useCreateSignUpList,
     "useEventSignUps",
     ()=>useEventSignUps,
     "useRemoveSignUpItem",
@@ -6365,15 +6343,15 @@ _s4(useCancelCommitment, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
     ];
 });
-function useAddSignUpListWithCategories() {
+function useCreateSignUpList() {
     _s5();
     const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
         mutationFn: {
-            "useAddSignUpListWithCategories.useMutation": ({ eventId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].addSignUpListWithCategories(eventId, data)
-        }["useAddSignUpListWithCategories.useMutation"],
+            "useCreateSignUpList.useMutation": ({ eventId, ...data })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].createSignUpList(eventId, data)
+        }["useCreateSignUpList.useMutation"],
         onSuccess: {
-            "useAddSignUpListWithCategories.useMutation": (_data, variables)=>{
+            "useCreateSignUpList.useMutation": (_data, variables)=>{
                 queryClient.invalidateQueries({
                     queryKey: signUpKeys.list(variables.eventId)
                 });
@@ -6381,10 +6359,10 @@ function useAddSignUpListWithCategories() {
                     queryKey: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(variables.eventId)
                 });
             }
-        }["useAddSignUpListWithCategories.useMutation"]
+        }["useCreateSignUpList.useMutation"]
     });
 }
-_s5(useAddSignUpListWithCategories, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+_s5(useCreateSignUpList, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
@@ -6497,7 +6475,7 @@ const __TURBOPACK__default__export__ = {
     useRemoveSignUpList,
     useCommitToSignUp,
     useCancelCommitment,
-    useAddSignUpListWithCategories,
+    useCreateSignUpList,
     useAddSignUpItem,
     useRemoveSignUpItem,
     useCommitToSignUpItem
@@ -7597,6 +7575,8 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     ()=>useDeleteEventImage,
     "useImageUpload",
     ()=>useImageUpload,
+    "useReorderEventImages",
+    ()=>useReorderEventImages,
     "useUploadEventImage",
     ()=>useUploadEventImage
 ]);
@@ -7605,7 +7585,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/infrastructure/api/repositories/events.repository.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/hooks/useEvents.ts [app-client] (ecmascript)");
-var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature();
 ;
 ;
 ;
@@ -7828,8 +7808,75 @@ _s1(useDeleteEventImage, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
     ];
 });
-function useImageUpload(options) {
+function useReorderEventImages() {
     _s2();
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: {
+            "useReorderEventImages.useMutation": ({ eventId, newOrders })=>__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].reorderEventImages(eventId, newOrders)
+        }["useReorderEventImages.useMutation"],
+        onMutate: {
+            "useReorderEventImages.useMutation": async ({ eventId, newOrders })=>{
+                // Cancel outgoing queries
+                await queryClient.cancelQueries({
+                    queryKey: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(eventId)
+                });
+                // Snapshot for rollback
+                const previousEvent = queryClient.getQueryData(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(eventId));
+                // Optimistically reorder images
+                queryClient.setQueryData(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(eventId), {
+                    "useReorderEventImages.useMutation": (old)=>{
+                        if (!old) return old;
+                        const reorderedImages = (old.images || []).map({
+                            "useReorderEventImages.useMutation.reorderedImages": (img)=>{
+                                const newOrder = newOrders[img.id];
+                                return newOrder !== undefined ? {
+                                    ...img,
+                                    displayOrder: newOrder
+                                } : img;
+                            }
+                        }["useReorderEventImages.useMutation.reorderedImages"]);
+                        // Sort by new display order
+                        reorderedImages.sort({
+                            "useReorderEventImages.useMutation": (a, b)=>a.displayOrder - b.displayOrder
+                        }["useReorderEventImages.useMutation"]);
+                        return {
+                            ...old,
+                            images: reorderedImages
+                        };
+                    }
+                }["useReorderEventImages.useMutation"]);
+                return {
+                    previousEvent
+                };
+            }
+        }["useReorderEventImages.useMutation"],
+        onError: {
+            "useReorderEventImages.useMutation": (error, { eventId }, context)=>{
+                // Rollback on error
+                if (context?.previousEvent) {
+                    queryClient.setQueryData(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(eventId), context.previousEvent);
+                }
+            }
+        }["useReorderEventImages.useMutation"],
+        onSuccess: {
+            "useReorderEventImages.useMutation": (_data, { eventId })=>{
+                // Invalidate event detail to ensure consistency
+                queryClient.invalidateQueries({
+                    queryKey: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEvents$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventKeys"].detail(eventId)
+                });
+            }
+        }["useReorderEventImages.useMutation"]
+    });
+}
+_s2(useReorderEventImages, "YK0wzM21ECnncaq5SECwU+/SVdQ=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQueryClient"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMutation"]
+    ];
+});
+function useImageUpload(options) {
+    _s3();
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [uploadProgress, setUploadProgress] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
     const uploadMutation = useUploadEventImage({
@@ -7849,6 +7896,7 @@ function useImageUpload(options) {
         }["useImageUpload.useUploadEventImage[uploadMutation]"]
     });
     const deleteMutation = useDeleteEventImage();
+    const reorderMutation = useReorderEventImages();
     const uploadImage = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "useImageUpload.useCallback[uploadImage]": async (file, eventId)=>{
             setError(null);
@@ -7902,6 +7950,17 @@ function useImageUpload(options) {
     }["useImageUpload.useCallback[deleteImage]"], [
         deleteMutation
     ]);
+    const reorderImages = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useImageUpload.useCallback[reorderImages]": async (eventId, newOrders)=>{
+            setError(null);
+            await reorderMutation.mutateAsync({
+                eventId,
+                newOrders
+            });
+        }
+    }["useImageUpload.useCallback[reorderImages]"], [
+        reorderMutation
+    ]);
     const reset = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "useImageUpload.useCallback[reset]": ()=>{
             setError(null);
@@ -7912,23 +7971,27 @@ function useImageUpload(options) {
         uploadImage,
         uploadImages,
         deleteImage,
+        reorderImages,
         validateImage: validateImageFile,
         validateImages: validateImageFiles,
         isUploading: uploadMutation.isPending || deleteMutation.isPending,
+        isReordering: reorderMutation.isPending,
         uploadProgress,
         error,
         reset
     };
 }
-_s2(useImageUpload, "X+t4VUoVCYs8+bj0wr0RbnqdIV8=", false, function() {
+_s3(useImageUpload, "5yIkRPhrjrhc3Z+zy2vJ3kL9+ww=", false, function() {
     return [
         useUploadEventImage,
-        useDeleteEventImage
+        useDeleteEventImage,
+        useReorderEventImages
     ];
 });
 const __TURBOPACK__default__export__ = {
     useUploadEventImage,
     useDeleteEventImage,
+    useReorderEventImages,
     useImageUpload,
     validateImageFile,
     validateImageFiles,
@@ -7972,11 +8035,15 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$loader$2d$circle$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Loader2$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/loader-circle.js [app-client] (ecmascript) <export default as Loader2>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$alert$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__AlertCircle$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/circle-alert.js [app-client] (ecmascript) <export default as AlertCircle>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Image$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/image.js [app-client] (ecmascript) <export default as Image>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$grip$2d$vertical$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__GripVertical$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/grip-vertical.js [app-client] (ecmascript) <export default as GripVertical>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@dnd-kit/core/dist/core.esm.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@dnd-kit/sortable/dist/sortable.esm.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$utilities$2f$dist$2f$utilities$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@dnd-kit/utilities/dist/utilities.esm.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useImageUpload$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/hooks/useImageUpload.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/components/ui/Button.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/presentation/lib/utils.ts [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
@@ -7985,10 +8052,118 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesChange, onUploadComplete, disabled = false, className })=>{
+;
+;
+;
+const SortableImageItem = ({ image, onDelete, disabled, isUploading })=>{
     _s();
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSortable"])({
+        id: image.id
+    });
+    const style = {
+        transform: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$utilities$2f$dist$2f$utilities$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CSS"].Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1
+    };
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        ref: setNodeRef,
+        style: style,
+        className: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["cn"])('relative aspect-square group rounded-lg overflow-hidden border-2 transition-colors', isDragging ? 'border-blue-500 shadow-lg z-50' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'),
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                src: image.imageUrl,
+                alt: `Event image ${image.displayOrder}`,
+                fill: true,
+                className: "object-cover",
+                sizes: "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+            }, void 0, false, {
+                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                lineNumber: 135,
+                columnNumber: 7
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                ...attributes,
+                ...listeners,
+                className: "absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded cursor-move hover:bg-black/80 transition-colors",
+                "aria-label": "Drag to reorder",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$grip$2d$vertical$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__GripVertical$3e$__["GripVertical"], {
+                    className: "w-4 h-4"
+                }, void 0, false, {
+                    fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                    lineNumber: 150,
+                    columnNumber: 9
+                }, ("TURBOPACK compile-time value", void 0))
+            }, void 0, false, {
+                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                lineNumber: 144,
+                columnNumber: 7
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                    variant: "destructive",
+                    size: "sm",
+                    onClick: ()=>onDelete(image.id),
+                    disabled: disabled || isUploading,
+                    className: "opacity-0 group-hover:opacity-100 transition-opacity",
+                    "aria-label": `Delete image ${image.displayOrder}`,
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
+                            className: "w-4 h-4 mr-1"
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                            lineNumber: 163,
+                            columnNumber: 11
+                        }, ("TURBOPACK compile-time value", void 0)),
+                        "Delete"
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                    lineNumber: 155,
+                    columnNumber: 9
+                }, ("TURBOPACK compile-time value", void 0))
+            }, void 0, false, {
+                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                lineNumber: 154,
+                columnNumber: 7
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded",
+                children: [
+                    "#",
+                    image.displayOrder
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                lineNumber: 169,
+                columnNumber: 7
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+        lineNumber: 124,
+        columnNumber: 5
+    }, ("TURBOPACK compile-time value", void 0));
+};
+_s(SortableImageItem, "iTIyvp0X9kMGpdHRsWsr2+tGbVI=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSortable"]
+    ];
+});
+_c = SortableImageItem;
+const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesChange, onUploadComplete, disabled = false, className })=>{
+    _s1();
     const [uploadingFiles, setUploadingFiles] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Set());
-    const { uploadImage, deleteImage, validateImages, isUploading, error, reset } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useImageUpload$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useImageUpload"])({
+    const [localImages, setLocalImages] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(existingImages);
+    // Sync localImages with existingImages when they change
+    __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useEffect({
+        "ImageUploader.useEffect": ()=>{
+            setLocalImages(existingImages);
+        }
+    }["ImageUploader.useEffect"], [
+        existingImages
+    ]);
+    const { uploadImage, deleteImage, reorderImages, validateImages, isUploading, isReordering, error, reset } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useImageUpload$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useImageUpload"])({
         onSuccess: {
             "ImageUploader.useImageUpload": (imageUrl)=>{
                 onImagesChange?.([
@@ -8006,6 +8181,14 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
             }
         }["ImageUploader.useImageUpload"]
     });
+    // Setup drag-and-drop sensors
+    const sensors = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSensors"])((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSensor"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PointerSensor"], {
+        activationConstraint: {
+            distance: 8
+        }
+    }), (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSensor"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["KeyboardSensor"], {
+        coordinateGetter: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["sortableKeyboardCoordinates"]
+    }));
     // Check if max images reached
     const imagesRemaining = maxImages - existingImages.length;
     const canUploadMore = imagesRemaining > 0 && !disabled;
@@ -8070,6 +8253,47 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
         disabled: !canUploadMore || isUploading,
         multiple: true
     });
+    // Handle drag end
+    const handleDragEnd = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "ImageUploader.useCallback[handleDragEnd]": async (event)=>{
+            const { active, over } = event;
+            if (!over || active.id === over.id) {
+                return;
+            }
+            const oldIndex = localImages.findIndex({
+                "ImageUploader.useCallback[handleDragEnd].oldIndex": (img)=>img.id === active.id
+            }["ImageUploader.useCallback[handleDragEnd].oldIndex"]);
+            const newIndex = localImages.findIndex({
+                "ImageUploader.useCallback[handleDragEnd].newIndex": (img)=>img.id === over.id
+            }["ImageUploader.useCallback[handleDragEnd].newIndex"]);
+            if (oldIndex === -1 || newIndex === -1) {
+                return;
+            }
+            // Reorder locally for instant feedback
+            const newOrder = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["arrayMove"])(localImages, oldIndex, newIndex);
+            setLocalImages(newOrder);
+            // Build newOrders map with 1-indexed display orders
+            const newOrders = {};
+            newOrder.forEach({
+                "ImageUploader.useCallback[handleDragEnd]": (img, index)=>{
+                    newOrders[img.id] = index + 1;
+                }
+            }["ImageUploader.useCallback[handleDragEnd]"]);
+            // Send to backend
+            try {
+                await reorderImages(eventId, newOrders);
+            } catch (err) {
+                console.error('Reorder failed:', err);
+                // Rollback is handled by the mutation hook
+                setLocalImages(existingImages);
+            }
+        }
+    }["ImageUploader.useCallback[handleDragEnd]"], [
+        localImages,
+        existingImages,
+        eventId,
+        reorderImages
+    ]);
     // Handle delete image
     const handleDeleteImage = async (imageId)=>{
         if (disabled || isUploading) return;
@@ -8095,7 +8319,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         "aria-label": "Upload images"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 181,
+                        lineNumber: 345,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8106,7 +8330,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                     className: "w-12 h-12 text-blue-500 animate-spin"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 186,
+                                    lineNumber: 350,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8114,7 +8338,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                     children: "Uploading images..."
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 187,
+                                    lineNumber: 351,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
@@ -8124,7 +8348,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                     className: "w-12 h-12 text-gray-400"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 193,
+                                    lineNumber: 357,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8135,7 +8359,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                             children: isDragActive ? 'Drop images here' : 'Drag & drop images here, or click to select'
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 195,
+                                            lineNumber: 359,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8143,7 +8367,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                             children: "Supports JPG, PNG, GIF, WebP (max 10MB each)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 200,
+                                            lineNumber: 364,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8158,26 +8382,26 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 203,
+                                            lineNumber: 367,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 194,
+                                    lineNumber: 358,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true)
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 183,
+                        lineNumber: 347,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                lineNumber: 170,
+                lineNumber: 334,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8187,7 +8411,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         className: "w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 217,
+                        lineNumber: 381,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8198,7 +8422,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                 children: "Upload Error"
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                lineNumber: 219,
+                                lineNumber: 383,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8206,13 +8430,13 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                                 children: error
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                lineNumber: 222,
+                                lineNumber: 386,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 218,
+                        lineNumber: 382,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -8223,13 +8447,13 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         children: "Dismiss"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 224,
+                        lineNumber: 388,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                lineNumber: 216,
+                lineNumber: 380,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
             !canUploadMore && !disabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8239,7 +8463,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         className: "w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 238,
+                        lineNumber: 402,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8251,118 +8475,119 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 239,
+                        lineNumber: 403,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                lineNumber: 237,
+                lineNumber: 401,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
-            existingImages.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            localImages.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                        className: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-3",
-                        children: [
-                            "Event Images (",
-                            existingImages.length,
-                            "/",
-                            maxImages,
-                            ")"
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 248,
-                        columnNumber: 11
-                    }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4",
+                        className: "flex items-center justify-between mb-3",
                         children: [
-                            existingImages.sort((a, b)=>a.displayOrder - b.displayOrder).map((image)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "relative aspect-square group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                            src: image.imageUrl,
-                                            alt: `Event image ${image.displayOrder}`,
-                                            fill: true,
-                                            className: "object-cover",
-                                            sizes: "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 261,
-                                            columnNumber: 19
-                                        }, ("TURBOPACK compile-time value", void 0)),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center",
-                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
-                                                variant: "destructive",
-                                                size: "sm",
-                                                onClick: ()=>handleDeleteImage(image.id),
-                                                disabled: disabled || isUploading,
-                                                className: "opacity-0 group-hover:opacity-100 transition-opacity",
-                                                "aria-label": `Delete image ${image.displayOrder}`,
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
-                                                        className: "w-4 h-4 mr-1"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                                        lineNumber: 279,
-                                                        columnNumber: 23
-                                                    }, ("TURBOPACK compile-time value", void 0)),
-                                                    "Delete"
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                                lineNumber: 271,
-                                                columnNumber: 21
-                                            }, ("TURBOPACK compile-time value", void 0))
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 270,
-                                            columnNumber: 19
-                                        }, ("TURBOPACK compile-time value", void 0)),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded",
-                                            children: [
-                                                "#",
-                                                image.displayOrder
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                            lineNumber: 285,
-                                            columnNumber: 19
-                                        }, ("TURBOPACK compile-time value", void 0))
-                                    ]
-                                }, image.id, true, {
-                                    fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 256,
-                                    columnNumber: 17
-                                }, ("TURBOPACK compile-time value", void 0))),
-                            Array.from(uploadingFiles).map((fileId)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "relative aspect-square rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$loader$2d$circle$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Loader2$3e$__["Loader2"], {
-                                        className: "w-8 h-8 text-blue-500 animate-spin"
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                className: "text-sm font-medium text-gray-700 dark:text-gray-300",
+                                children: [
+                                    "Event Images (",
+                                    localImages.length,
+                                    "/",
+                                    maxImages,
+                                    ")"
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                lineNumber: 413,
+                                columnNumber: 13
+                            }, ("TURBOPACK compile-time value", void 0)),
+                            isReordering && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$loader$2d$circle$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Loader2$3e$__["Loader2"], {
+                                        className: "w-3 h-3 animate-spin"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                        lineNumber: 297,
+                                        lineNumber: 418,
                                         columnNumber: 17
-                                    }, ("TURBOPACK compile-time value", void 0))
-                                }, fileId, false, {
-                                    fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                                    lineNumber: 293,
-                                    columnNumber: 15
-                                }, ("TURBOPACK compile-time value", void 0)))
+                                    }, ("TURBOPACK compile-time value", void 0)),
+                                    "Saving order..."
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                lineNumber: 417,
+                                columnNumber: 15
+                            }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 252,
+                        lineNumber: 412,
                         columnNumber: 11
+                    }, ("TURBOPACK compile-time value", void 0)),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DndContext"], {
+                        sensors: sensors,
+                        collisionDetection: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["closestCenter"],
+                        onDragEnd: handleDragEnd,
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SortableContext"], {
+                            items: localImages.map((img)=>img.id),
+                            strategy: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$sortable$2f$dist$2f$sortable$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["rectSortingStrategy"],
+                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4",
+                                children: [
+                                    localImages.sort((a, b)=>a.displayOrder - b.displayOrder).map((image)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SortableImageItem, {
+                                            image: image,
+                                            onDelete: handleDeleteImage,
+                                            disabled: disabled,
+                                            isUploading: isUploading
+                                        }, image.id, false, {
+                                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                            lineNumber: 437,
+                                            columnNumber: 21
+                                        }, ("TURBOPACK compile-time value", void 0))),
+                                    Array.from(uploadingFiles).map((fileId)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "relative aspect-square rounded-lg overflow-hidden border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$loader$2d$circle$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Loader2$3e$__["Loader2"], {
+                                                className: "w-8 h-8 text-blue-500 animate-spin"
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                                lineNumber: 452,
+                                                columnNumber: 21
+                                            }, ("TURBOPACK compile-time value", void 0))
+                                        }, fileId, false, {
+                                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                            lineNumber: 448,
+                                            columnNumber: 19
+                                        }, ("TURBOPACK compile-time value", void 0)))
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                                lineNumber: 433,
+                                columnNumber: 15
+                            }, ("TURBOPACK compile-time value", void 0))
+                        }, void 0, false, {
+                            fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                            lineNumber: 429,
+                            columnNumber: 13
+                        }, ("TURBOPACK compile-time value", void 0))
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                        lineNumber: 424,
+                        columnNumber: 11
+                    }, ("TURBOPACK compile-time value", void 0)),
+                    localImages.length > 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-xs text-gray-500 dark:text-gray-400 mt-3 text-center",
+                        children: "💡 Drag the grip icon to reorder images"
+                    }, void 0, false, {
+                        fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
+                        lineNumber: 461,
+                        columnNumber: 13
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                lineNumber: 247,
+                lineNumber: 411,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
             existingImages.length === 0 && !isUploading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8372,7 +8597,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         className: "w-16 h-16 mx-auto mb-3 opacity-50"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 307,
+                        lineNumber: 471,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8380,7 +8605,7 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         children: "No images uploaded yet"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 308,
+                        lineNumber: 472,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8388,32 +8613,34 @@ const ImageUploader = ({ eventId, existingImages = [], maxImages = 10, onImagesC
                         children: "Upload your first event image above"
                     }, void 0, false, {
                         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                        lineNumber: 309,
+                        lineNumber: 473,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-                lineNumber: 306,
+                lineNumber: 470,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0))
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/events/ImageUploader.tsx",
-        lineNumber: 167,
+        lineNumber: 331,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s(ImageUploader, "B1knGbGHL6u6jADu1vwKbVYJTNA=", false, function() {
+_s1(ImageUploader, "ln+7oNEabKKK/tZe4gZY5tIzBl8=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useImageUpload$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useImageUpload"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$dnd$2d$kit$2f$core$2f$dist$2f$core$2e$esm$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSensors"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$dropzone$2f$dist$2f$es$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useDropzone"]
     ];
 });
-_c = ImageUploader;
+_c1 = ImageUploader;
 const __TURBOPACK__default__export__ = ImageUploader;
-var _c;
-__turbopack_context__.k.register(_c, "ImageUploader");
+var _c, _c1;
+__turbopack_context__.k.register(_c, "SortableImageItem");
+__turbopack_context__.k.register(_c1, "ImageUploader");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

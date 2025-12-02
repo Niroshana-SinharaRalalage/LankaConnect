@@ -69,7 +69,7 @@ public class SignUpList : BaseEntity
     }
 
     /// <summary>
-    /// Creates a category-based sign-up list (New model)
+    /// Creates a category-based sign-up list (New model - without items)
     /// </summary>
     public static Result<SignUpList> CreateWithCategories(
         string category,
@@ -94,6 +94,58 @@ public class SignUpList : BaseEntity
             hasMandatoryItems,
             hasPreferredItems,
             hasSuggestedItems);
+
+        return Result<SignUpList>.Success(signUpList);
+    }
+
+    /// <summary>
+    /// Creates a category-based sign-up list WITH items in a single operation
+    /// Matches requirement: POST /api/events/{eventId}/signups with items array
+    /// </summary>
+    public static Result<SignUpList> CreateWithCategoriesAndItems(
+        string category,
+        string description,
+        bool hasMandatoryItems,
+        bool hasPreferredItems,
+        bool hasSuggestedItems,
+        IEnumerable<(string description, int quantity, SignUpItemCategory category, string? notes)> items)
+    {
+        // Validate basic list properties
+        if (string.IsNullOrWhiteSpace(category))
+            return Result<SignUpList>.Failure("Category cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(description))
+            return Result<SignUpList>.Failure("Description cannot be empty");
+
+        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems)
+            return Result<SignUpList>.Failure("At least one item category must be selected");
+
+        // Validate items array
+        var itemsList = items.ToList();
+        if (!itemsList.Any())
+            return Result<SignUpList>.Failure("At least one item must be provided");
+
+        // Create the sign-up list
+        var signUpList = new SignUpList(
+            category.Trim(),
+            description.Trim(),
+            SignUpType.Predefined,
+            hasMandatoryItems,
+            hasPreferredItems,
+            hasSuggestedItems);
+
+        // Add all items
+        foreach (var item in itemsList)
+        {
+            var itemResult = signUpList.AddItem(
+                item.description,
+                item.quantity,
+                item.category,
+                item.notes);
+
+            if (itemResult.IsFailure)
+                return Result<SignUpList>.Failure(itemResult.Error);
+        }
 
         return Result<SignUpList>.Success(signUpList);
     }

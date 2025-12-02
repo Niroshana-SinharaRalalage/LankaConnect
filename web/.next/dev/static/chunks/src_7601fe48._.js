@@ -450,7 +450,7 @@ class ApiClient {
     authToken = null;
     onUnauthorized = null;
     constructor(config){
-        const baseURL = config?.baseURL || ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const baseURL = config?.baseURL || ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
         this.axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$axios$2f$lib$2f$axios$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].create({
             baseURL,
             timeout: config?.timeout || 30000,

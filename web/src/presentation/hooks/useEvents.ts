@@ -371,7 +371,7 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number }) =>
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string }) =>
       eventsRepository.rsvpToEvent(data.eventId, data.userId, data.quantity),
     onMutate: async ({ eventId }) => {
       // Cancel queries

@@ -456,14 +456,26 @@ export interface CancelCommitmentRequest {
 }
 
 /**
- * Add category-based sign-up list request
+ * Create sign-up list with items request
+ * Matches backend CreateSignUpListRequest - creates list WITH items in single API call
  */
-export interface AddSignUpListWithCategoriesRequest {
+export interface CreateSignUpListRequest {
   category: string;
   description: string;
   hasMandatoryItems: boolean;
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  items: SignUpItemRequestDto[];
+}
+
+/**
+ * Sign-up item within CreateSignUpListRequest
+ */
+export interface SignUpItemRequestDto {
+  itemDescription: string;
+  quantity: number;
+  itemCategory: SignUpItemCategory;
+  notes?: string | null;
 }
 
 /**

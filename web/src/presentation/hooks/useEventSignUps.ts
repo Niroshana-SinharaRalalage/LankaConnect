@@ -22,7 +22,7 @@ import type {
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
-  AddSignUpListWithCategoriesRequest,
+  CreateSignUpListRequest,
   AddSignUpItemRequest,
   CommitToSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
@@ -327,38 +327,44 @@ export function useCancelCommitment() {
 // ==================== CATEGORY-BASED SIGN-UP HOOKS ====================
 
 /**
- * useAddSignUpListWithCategories Hook
+ * useCreateSignUpList Hook
  *
- * Mutation hook for adding a category-based sign-up list (organizer only)
+ * Mutation hook for creating a sign-up list WITH items in a single API call (organizer only)
  *
  * Features:
+ * - Creates list and all items in single transactional operation
+ * - Returns the newly created sign-up list ID
  * - Automatic cache invalidation after success
  * - Proper error handling
  * - Invalidates sign-up lists and event detail
  *
  * @example
  * ```tsx
- * const addCategoryList = useAddSignUpListWithCategories();
+ * const createList = useCreateSignUpList();
  *
- * await addCategoryList.mutateAsync({
+ * const signUpListId = await createList.mutateAsync({
  *   eventId: 'event-123',
  *   category: 'Potluck Items',
  *   description: 'Bring food for the community potluck',
  *   hasMandatoryItems: true,
  *   hasPreferredItems: true,
- *   hasSuggestedItems: false
+ *   hasSuggestedItems: false,
+ *   items: [
+ *     { itemDescription: 'Main Dish', quantity: 2, itemCategory: 0, notes: 'Serves 10' },
+ *     { itemDescription: 'Salad', quantity: 3, itemCategory: 1 }
+ *   ]
  * });
  * ```
  */
-export function useAddSignUpListWithCategories() {
+export function useCreateSignUpList() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       eventId,
       ...data
-    }: { eventId: string } & AddSignUpListWithCategoriesRequest) =>
-      eventsRepository.addSignUpListWithCategories(eventId, data),
+    }: { eventId: string } & CreateSignUpListRequest) =>
+      eventsRepository.createSignUpList(eventId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
@@ -532,7 +538,7 @@ export default {
   useRemoveSignUpList,
   useCommitToSignUp,
   useCancelCommitment,
-  useAddSignUpListWithCategories,
+  useCreateSignUpList,
   useAddSignUpItem,
   useRemoveSignUpItem,
   useCommitToSignUpItem,

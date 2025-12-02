@@ -10,7 +10,8 @@ import {
   Calendar,
   MapPin,
   DollarSign,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Video as VideoIcon
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -20,6 +21,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
+import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -407,6 +409,27 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                   eventId={id}
                   existingImages={event.images ? [...event.images] : []}
                   maxImages={10}
+                  onUploadComplete={async () => {
+                    await refetch();
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Video Upload */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <VideoIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
+                  <CardTitle style={{ color: '#8B1538' }}>Event Videos</CardTitle>
+                </div>
+                <CardDescription>Upload videos to showcase your event</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <VideoUploader
+                  eventId={id}
+                  existingVideos={event.videos ? [...event.videos] : []}
+                  maxVideos={3}
                   onUploadComplete={async () => {
                     await refetch();
                   }}

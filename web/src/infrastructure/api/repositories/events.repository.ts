@@ -16,6 +16,7 @@ import type {
   PostponeEventRequest,
   CreateEventResponse,
   EventImageDto,
+  EventVideoDto,
   SignUpListDto,
   AddSignUpListRequest,
   CommitToSignUpRequest,
@@ -528,6 +529,46 @@ export class EventsRepository {
    */
   async reorderEventImages(eventId: string, newOrders: Record<string, number>): Promise<void> {
     await apiClient.put(`${this.basePath}/${eventId}/images/reorder`, { newOrders });
+  }
+
+  /**
+   * Upload a video to an event
+   * Maps to backend POST /api/events/{id}/videos
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoFile - Video file to upload
+   * @param thumbnailFile - Thumbnail image file
+   * @returns EventVideoDto with video metadata
+   */
+  async uploadEventVideo(eventId: string, videoFile: File, thumbnailFile: File): Promise<EventVideoDto> {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    formData.append('thumbnail', thumbnailFile);
+
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Video upload failed' }));
+      throw new Error(error.message || `Video upload failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete a video from an event
+   * Maps to backend DELETE /api/events/{eventId}/videos/{videoId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoId - Video ID (GUID)
+   */
+  async deleteEventVideo(eventId: string, videoId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/videos/${videoId}`);
   }
 }
 

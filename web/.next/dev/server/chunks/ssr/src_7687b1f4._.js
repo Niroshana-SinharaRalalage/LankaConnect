@@ -5315,20 +5315,6 @@ class EventsRepository {
    */ async commitToSignUpItem(eventId, signupId, itemId, request) {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
     }
-    // ==================== MEDIA OPERATIONS ====================
-    /**
-   * Upload image to event gallery
-   * Uses multipart/form-data for file upload
-   */ async uploadEventImage(eventId, file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/images`, formData);
-    }
-    /**
-   * Delete image from event gallery
-   */ async deleteEventImage(eventId, imageId) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/images/${imageId}`);
-    }
     // ==================== UTILITY OPERATIONS ====================
     /**
    * Export event as ICS calendar file
@@ -5421,6 +5407,41 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/images/reorder`, {
             newOrders
         });
+    }
+    /**
+   * Upload a video to an event
+   * Maps to backend POST /api/events/{id}/videos
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoFile - Video file to upload
+   * @param thumbnailFile - Thumbnail image file
+   * @returns EventVideoDto with video metadata
+   */ async uploadEventVideo(eventId, videoFile, thumbnailFile) {
+        const formData = new FormData();
+        formData.append('video', videoFile);
+        formData.append('thumbnail', thumbnailFile);
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(()=>({
+                    message: 'Video upload failed'
+                }));
+            throw new Error(error.message || `Video upload failed with status ${response.status}`);
+        }
+        return await response.json();
+    }
+    /**
+   * Delete a video from an event
+   * Maps to backend DELETE /api/events/{eventId}/videos/{videoId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoId - Video ID (GUID)
+   */ async deleteEventVideo(eventId, videoId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/videos/${videoId}`);
     }
 }
 const eventsRepository = new EventsRepository();
@@ -8445,7 +8466,9 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4",
-                                children: images.sort((a, b)=>a.displayOrder - b.displayOrder).map((image, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                children: [
+                                    ...images
+                                ].sort((a, b)=>a.displayOrder - b.displayOrder).map((image, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                         onClick: ()=>openImageLightbox(index),
                                         className: "relative aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 hover:opacity-90 transition-opacity group",
                                         children: [
@@ -8506,7 +8529,9 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4",
-                                children: videos.sort((a, b)=>a.displayOrder - b.displayOrder).map((video, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                children: [
+                                    ...videos
+                                ].sort((a, b)=>a.displayOrder - b.displayOrder).map((video, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                         onClick: ()=>openVideoLightbox(index),
                                         className: "relative aspect-video rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 hover:opacity-90 transition-opacity group",
                                         children: [
@@ -8548,18 +8573,6 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                                 fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
                                                 lineNumber: 128,
                                                 columnNumber: 21
-                                            }, this),
-                                            video.durationSeconds && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded",
-                                                children: [
-                                                    Math.floor(video.durationSeconds / 60),
-                                                    ":",
-                                                    String(video.durationSeconds % 60).padStart(2, '0')
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                                lineNumber: 132,
-                                                columnNumber: 23
                                             }, this)
                                         ]
                                     }, video.id, true, {
@@ -8600,12 +8613,12 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                     className: "h-6 w-6 text-white"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                    lineNumber: 153,
+                                    lineNumber: 148,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                lineNumber: 148,
+                                lineNumber: 143,
                                 columnNumber: 13
                             }, this),
                             (mediaType === 'image' && totalImages > 1 || mediaType === 'video' && totalVideos > 1) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -8618,12 +8631,12 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                             className: "h-6 w-6 text-white"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                            lineNumber: 165,
+                                            lineNumber: 160,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                        lineNumber: 160,
+                                        lineNumber: 155,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8634,12 +8647,12 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                             className: "h-6 w-6 text-white"
                                         }, void 0, false, {
                                             fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                            lineNumber: 172,
+                                            lineNumber: 167,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                        lineNumber: 167,
+                                        lineNumber: 162,
                                         columnNumber: 17
                                     }, this)
                                 ]
@@ -8653,7 +8666,7 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                         className: "max-w-full max-h-full object-contain"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                        lineNumber: 180,
+                                        lineNumber: 175,
                                         columnNumber: 17
                                     }, this),
                                     mediaType === 'video' && videos[currentIndex] && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("video", {
@@ -8665,13 +8678,13 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                         children: "Your browser does not support the video tag."
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                        lineNumber: 188,
+                                        lineNumber: 183,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                lineNumber: 178,
+                                lineNumber: 173,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8683,23 +8696,23 @@ function MediaGallery({ images = [], videos = [], className = '' }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                                lineNumber: 201,
+                                lineNumber: 196,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                        lineNumber: 146,
+                        lineNumber: 141,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                    lineNumber: 145,
+                    lineNumber: 140,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/MediaGallery.tsx",
-                lineNumber: 144,
+                lineNumber: 139,
                 columnNumber: 7
             }, this)
         ]

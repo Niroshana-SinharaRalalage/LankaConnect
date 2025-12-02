@@ -5151,20 +5151,6 @@ class EventsRepository {
    */ async commitToSignUpItem(eventId, signupId, itemId, request) {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`, request);
     }
-    // ==================== MEDIA OPERATIONS ====================
-    /**
-   * Upload image to event gallery
-   * Uses multipart/form-data for file upload
-   */ async uploadEventImage(eventId, file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/images`, formData);
-    }
-    /**
-   * Delete image from event gallery
-   */ async deleteEventImage(eventId, imageId) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/images/${imageId}`);
-    }
     // ==================== UTILITY OPERATIONS ====================
     /**
    * Export event as ICS calendar file
@@ -5257,6 +5243,41 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/images/reorder`, {
             newOrders
         });
+    }
+    /**
+   * Upload a video to an event
+   * Maps to backend POST /api/events/{id}/videos
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoFile - Video file to upload
+   * @param thumbnailFile - Thumbnail image file
+   * @returns EventVideoDto with video metadata
+   */ async uploadEventVideo(eventId, videoFile, thumbnailFile) {
+        const formData = new FormData();
+        formData.append('video', videoFile);
+        formData.append('thumbnail', thumbnailFile);
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
+        const response = await fetch(`${baseURL}${this.basePath}/${eventId}/videos`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(()=>({
+                    message: 'Video upload failed'
+                }));
+            throw new Error(error.message || `Video upload failed with status ${response.status}`);
+        }
+        return await response.json();
+    }
+    /**
+   * Delete a video from an event
+   * Maps to backend DELETE /api/events/{eventId}/videos/{videoId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param videoId - Video ID (GUID)
+   */ async deleteEventVideo(eventId, videoId) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/videos/${videoId}`);
     }
 }
 const eventsRepository = new EventsRepository();

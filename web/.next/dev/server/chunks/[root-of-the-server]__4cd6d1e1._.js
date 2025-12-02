@@ -83,16 +83,20 @@ async function GET(request, { params }) {
     return forwardRequest(request, resolvedParams.path, 'GET');
 }
 async function POST(request, { params }) {
-    return forwardRequest(request, params.path, 'POST');
+    const resolvedParams = await params;
+    return forwardRequest(request, resolvedParams.path, 'POST');
 }
 async function PUT(request, { params }) {
-    return forwardRequest(request, params.path, 'PUT');
+    const resolvedParams = await params;
+    return forwardRequest(request, resolvedParams.path, 'PUT');
 }
 async function DELETE(request, { params }) {
-    return forwardRequest(request, params.path, 'DELETE');
+    const resolvedParams = await params;
+    return forwardRequest(request, resolvedParams.path, 'DELETE');
 }
 async function PATCH(request, { params }) {
-    return forwardRequest(request, params.path, 'PATCH');
+    const resolvedParams = await params;
+    return forwardRequest(request, resolvedParams.path, 'PATCH');
 }
 async function forwardRequest(request, pathSegments, method) {
     try {

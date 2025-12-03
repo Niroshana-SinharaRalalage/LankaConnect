@@ -36,11 +36,20 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Add DbContext with enhanced connection pooling and detailed logging
+        // Configure NpgsqlDataSource with dynamic JSON support (required for List<string> and other dynamic types)
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+
+        // Enable dynamic JSON serialization for List<string>, List<T>, etc. (Npgsql 8.0+ requirement)
+        // This is required for properties like Event.PhotoUrls which are List<string>
+        // See: https://www.npgsql.org/doc/types/json.html
+        dataSourceBuilder.EnableDynamicJson();
+
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<AppDbContext>(options =>
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-            
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            options.UseNpgsql(dataSource, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly("LankaConnect.Infrastructure");
 
@@ -56,27 +65,27 @@ public static class DependencyInjection
                 // Command timeout configuration (30 seconds)
                 npgsqlOptions.CommandTimeout(30);
             });
-            
+
             // Enhanced logging configuration based on environment
             var isDevelopment = configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
             var enableDetailedErrors = configuration.GetValue<bool>("DatabaseSettings:EnableDetailedErrors", isDevelopment);
             var enableSensitiveLogging = configuration.GetValue<bool>("DatabaseSettings:EnableSensitiveDataLogging", isDevelopment);
-            
+
             if (enableDetailedErrors)
             {
                 options.EnableDetailedErrors();
             }
-            
+
             if (enableSensitiveLogging)
             {
                 options.EnableSensitiveDataLogging();
             }
-            
+
             // Query performance tracking
             options.LogTo(
                 message => System.Diagnostics.Debug.WriteLine(message),
                 Microsoft.Extensions.Logging.LogLevel.Information);
-            
+
         }, ServiceLifetime.Scoped); // Explicitly set lifetime for connection pooling
 
         // Add Memory Cache (required by email template service)

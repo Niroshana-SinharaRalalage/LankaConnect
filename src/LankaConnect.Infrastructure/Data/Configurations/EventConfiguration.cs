@@ -65,26 +65,29 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(EventCategory.Community);
 
-        // Configure TicketPrice as owned Money value object (Epic 2 Phase 2 - legacy single pricing)
+        // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
+        // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice
         builder.OwnsOne(e => e.TicketPrice, money =>
         {
-            money.Property(m => m.Amount)
-                .HasColumnName("ticket_price_amount")
-                .HasPrecision(18, 2); // Standard precision for currency
-
-            money.Property(m => m.Currency)
-                .HasColumnName("ticket_price_currency")
-                .HasConversion<string>()
-                .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
+            money.ToJson("ticket_price");  // Store as JSONB column
         });
 
-        // Session 21: Configure Pricing as JSONB for dual ticket pricing (adult/child)
-        // TEMPORARILY DISABLED TO FIX EVENTIMAGES MIGRATION ISSUE
-        // builder.OwnsOne(e => e.Pricing, pricing =>
-        // {
-        //     pricing.ToJson("pricing");  // Store entire Pricing as JSONB column
-        //     // Note: ToJson() automatically serializes all properties including GroupTiers collection
-        // });
+        // Session 21 + Phase 6D: Configure Pricing as JSONB for dual/group pricing
+        // ToJson() automatically serializes Type, AdultPrice, ChildPrice, ChildAgeLimit, and GroupTiers
+        builder.OwnsOne(e => e.Pricing, pricing =>
+        {
+            pricing.ToJson("pricing");  // Store entire Pricing as JSONB column
+
+            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
+            pricing.OwnsOne(p => p.AdultPrice);
+            pricing.OwnsOne(p => p.ChildPrice);
+
+            // Configure GroupTiers collection
+            pricing.OwnsMany(p => p.GroupTiers, tier =>
+            {
+                tier.OwnsOne(t => t.PricePerPerson);
+            });
+        });
 
         // Configure audit fields
         builder.Property(e => e.CreatedAt)

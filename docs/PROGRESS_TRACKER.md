@@ -1,9 +1,45 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-03 (Current Session) - Session 23: Dual Pricing + Payment Integration ✅ PHASE 1-3 + 2B COMPLETE*
+*Last Updated: 2025-12-03 (Current Session) - Session 24: Sign-Up List 500 Error Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 23: Dual Pricing + Payment Integration ✅ ALL PHASES COMPLETE
+## 🎯 Current Session Status - Session 24: Sign-Up List 500 Error Fix ✅ COMPLETE
+
+### Session 24: Sign-Up List Creation 500 Error Fix - COMPLETE - 2025-12-03
+
+**Status**: ✅ **COMPLETE** (Deployment + Verification)
+
+**Issue**: Frontend POST to `/api/events/{id}/signups` returning 500 Internal Server Error
+
+**Root Cause**: 6 commits containing `CreateSignUpListWithItemsCommand` and handler were never pushed to `origin/develop`, so staging environment lacked the backend endpoint that frontend was calling.
+
+**Commits Pushed**:
+- `8e4f517` - feat(application): Add group tiered pricing to application layer - Phase 6D.3
+- `89149b7` - feat(infrastructure): Add JSONB support for TicketPrice and Pricing - Phase 6D.2
+- `9cecb61` - feat(domain): Add group tiered pricing support to Event entity - Phase 6D.1
+- `220701f` - feat(events): Add Phase 6D.1 group pricing domain foundation
+- `60e5390` - docs: Update PROGRESS_TRACKER with Phase 4 completion
+- `97fc87f` - feat(events): Complete Phase 4 - Frontend payment redirect flow for Stripe checkout
+
+**Resolution**:
+1. ✅ Pushed 6 unpushed commits to origin/develop
+2. ✅ GitHub Actions deployment completed successfully (Run ID: 19905802992)
+3. ✅ Staging API verified healthy (HTTP 200)
+4. ✅ Sign-up list creation endpoint now available on staging
+
+**Technical Details**:
+- Backend: `CreateSignUpListWithItemsCommand` + `CreateSignUpListWithItemsCommandHandler`
+- API: `POST /api/events/{eventId}/signups` (EventsController.cs:1040-1073)
+- Frontend: `useCreateSignUpList()` hook calling `eventsRepository.createSignUpList()`
+- Domain: `SignUpList.CreateWithCategoriesAndItems()` factory method
+
+**Deployment**: Azure Container Apps staging environment updated with latest code
+
+---
+
+## 📊 Previous Sessions
+
+### Session 23: Dual Pricing + Payment Integration ✅ ALL PHASES COMPLETE
 
 ### Session 23: Dual Pricing + Payment Integration - ALL PHASES COMPLETE - 2025-12-03
 

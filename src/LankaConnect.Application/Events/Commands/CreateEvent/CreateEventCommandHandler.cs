@@ -87,12 +87,45 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             location = locationResult.Value;
         }
 
-        // Session 21: Handle pricing - dual pricing takes precedence over legacy single pricing
+        // Phase 6D: Handle pricing - group pricing takes precedence over dual and legacy single pricing
         Money? ticketPrice = null;
         TicketPricing? pricing = null;
+        bool isGroupPricing = false;
 
-        // Check if dual pricing fields are provided
-        if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
+        // Phase 6D: Check if group pricing tiers are provided (highest priority)
+        if (request.GroupPricingTiers != null && request.GroupPricingTiers.Count > 0)
+        {
+            // Build GroupPricingTier objects from request
+            var tiers = new List<GroupPricingTier>();
+            var currency = request.GroupPricingTiers[0].Currency; // Use currency from first tier
+
+            foreach (var tierRequest in request.GroupPricingTiers)
+            {
+                var priceResult = Money.Create(tierRequest.PricePerPerson, tierRequest.Currency);
+                if (priceResult.IsFailure)
+                    return Result<Guid>.Failure(priceResult.Error);
+
+                var tierResult = GroupPricingTier.Create(
+                    tierRequest.MinAttendees,
+                    tierRequest.MaxAttendees,
+                    priceResult.Value
+                );
+
+                if (tierResult.IsFailure)
+                    return Result<Guid>.Failure(tierResult.Error);
+
+                tiers.Add(tierResult.Value);
+            }
+
+            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency);
+            if (groupPricingResult.IsFailure)
+                return Result<Guid>.Failure(groupPricingResult.Error);
+
+            pricing = groupPricingResult.Value;
+            isGroupPricing = true;
+        }
+        // Session 21: Check if dual pricing fields are provided
+        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
         {
             // Build dual pricing using TicketPricing value object
             var adultPriceResult = Money.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency.Value);
@@ -150,10 +183,21 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         if (eventResult.IsFailure)
             return Result<Guid>.Failure(eventResult.Error);
 
-        // Session 21: Set dual pricing if provided
+        // Phase 6D + Session 21: Set pricing if provided
         if (pricing != null)
         {
-            var setPricingResult = eventResult.Value.SetDualPricing(pricing);
+            Result setPricingResult;
+            if (isGroupPricing)
+            {
+                // Phase 6D: Use SetGroupPricing for group tiered pricing
+                setPricingResult = eventResult.Value.SetGroupPricing(pricing);
+            }
+            else
+            {
+                // Session 21: Use SetDualPricing for dual or single pricing
+                setPricingResult = eventResult.Value.SetDualPricing(pricing);
+            }
+
             if (setPricingResult.IsFailure)
                 return Result<Guid>.Failure(setPricingResult.Error);
         }

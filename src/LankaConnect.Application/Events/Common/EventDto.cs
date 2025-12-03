@@ -45,6 +45,25 @@ public record EventDto
     /// </summary>
     public bool HasDualPricing { get; init; }
 
+    // Phase 6D: Group Tiered Pricing - nullable
+    /// <summary>
+    /// Phase 6D: Pricing type (Single, AgeDual, GroupTiered)
+    /// Null for free events or legacy events without Pricing configured
+    /// </summary>
+    public string? PricingType { get; init; }
+
+    /// <summary>
+    /// Phase 6D: Group pricing tiers for quantity-based discounts
+    /// Only populated when PricingType is "GroupTiered"
+    /// </summary>
+    public IReadOnlyList<GroupPricingTierDto> GroupPricingTiers { get; init; } = Array.Empty<GroupPricingTierDto>();
+
+    /// <summary>
+    /// Phase 6D: Indicates whether this event uses group-based tiered pricing
+    /// True if PricingType is GroupTiered and tiers are configured
+    /// </summary>
+    public bool HasGroupPricing { get; init; }
+
     // Media galleries (Epic 2 Phase 2)
     public IReadOnlyList<EventImageDto> Images { get; init; } = Array.Empty<EventImageDto>();
     public IReadOnlyList<EventVideoDto> Videos { get; init; } = Array.Empty<EventVideoDto>();

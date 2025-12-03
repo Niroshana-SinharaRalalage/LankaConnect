@@ -28,5 +28,17 @@ public record CreateEventCommand(
     Currency? AdultPriceCurrency = null,
     decimal? ChildPriceAmount = null,
     Currency? ChildPriceCurrency = null,
-    int? ChildAgeLimit = null
+    int? ChildAgeLimit = null,
+    // Phase 6D: Group Tiered Pricing - optional
+    List<GroupPricingTierRequest>? GroupPricingTiers = null
 ) : ICommand<Guid>;
+
+/// <summary>
+/// Phase 6D: Request model for a single group pricing tier
+/// </summary>
+public record GroupPricingTierRequest(
+    int MinAttendees,
+    int? MaxAttendees,
+    decimal PricePerPerson,
+    Currency Currency
+);

@@ -31,6 +31,10 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ChildPriceCurrency, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.ChildPrice != null ? src.Pricing.ChildPrice.Currency : (Domain.Shared.Enums.Currency?)null))
             .ForMember(dest => dest.ChildAgeLimit, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.ChildAgeLimit : (int?)null))
             .ForMember(dest => dest.HasDualPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasChildPricing))
+            // Phase 6D: Group tiered pricing mapping
+            .ForMember(dest => dest.PricingType, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.Type.ToString() : (string?)null))
+            .ForMember(dest => dest.GroupPricingTiers, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers ? src.Pricing.GroupTiers : new List<Domain.Events.ValueObjects.GroupPricingTier>()))
+            .ForMember(dest => dest.HasGroupPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers))
             // Media galleries (Epic 2 Phase 2)
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
             .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos));

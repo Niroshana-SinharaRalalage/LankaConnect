@@ -203,17 +203,27 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
-  Don't forget to follow these best practices:
-    1. Don't forget to follow UI/UX best practices.
-    2. Don't forget to follow proper incremental TDD process (Zero Tolerance for Compilation Errors).
-    3. Don't forget to consult architect when needed.
-    4. Before make any code changes, make sure you are not duplicating the code by reviewing whether there are similar implemenation or some reusable componants are available.
-    5. For more details refer: c:\Work\LankaConnect\CLAUDE.md
-    6. Make sure the commit the changes and Update the status in both c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md whenever possible acording to
-  c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
-    7. For database migrations we should always use EF core migrations.
-    8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
+Please follow these best practices
 
+1. Follow established UI/UX best practices at all times — clarity and usability matter.
+
+2. Use an incremental TDD process: write tests first, keep a zero-tolerance policy for compilation errors, and iterate in small, testable steps.
+
+3. Consult the architect whenever you’re unsure about design, scope, or system-level impact.
+
+4. Before making code changes, search the codebase for similar implementations and prefer reusable components over duplication.
+
+5. For detailed guidelines, see: C:\Work\LankaConnect\CLAUDE.md.
+
+6. Commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+
+7. Use EF Core migrations for all database schema changes. If migration issues occur, fix them before running migrations.
+
+8. Do not use local databases or Docker for staging. We have a staging database and staging is deployed to Azure using deploy-staging.yml. The UI may run locally, but it should point to the staging APIs.
+
+9. Be accurate and honest in status reports. Diagnose issues methodically — test the API endpoint, then check Azure container logs to determine whether the problem is a database/EF migration issue or something else.
+
+10. Think harder and smarter as a Senior Software Engineer: handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches.
   -------------------------------------------------
 
   1. ✅ Landing Page (/)
@@ -227,8 +237,12 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   9. ✅ 404 Page (/_not-found)
 
   ------------------------------------------------Blocked:
-❌ Stripe Payment - Needs API keys
+❌ Stripe Payment - Needs API keys -- This is done
 ❌ Image Upload - Needs event creation forms (not yet implemented)
+
+=========================================================================
+
+=========================================================================
 
 Phase 6A UI Status Summary - READY FOR TESTING ✅
 Based on the documentation, here's the complete UI status for all Phase 6A features:
@@ -517,3 +531,212 @@ Location: docs/PHASE_6A_MASTER_INDEX.md
 ---
 
 ## Phase 6B: Bus
+
+-================Events Testing===============================
+
+Navigate to Events: Visit http://localhost:3000/events
+Click any event card - should navigate to detail page
+Test RSVP (free event):
+Select quantity
+Click "Register for Free"
+Watch registration count update
+
+Test Waitlist (full event):
+Find/create event at capacity
+Click "Join Waitlist"
+Verify success alert
+
+Test Sign-Up Management:
+Scroll to "Sign-Up Lists" section
+Click "I can bring something"
+Fill out item and quantity
+Verify commitment appears
+
+Test Auth Flow:
+Log out
+Try to RSVP
+Should redirect to login with return URL
+
+
+==========================Stripe Testing ========================
+
+What You Can Test Now
+1. UI Testing (http://localhost:3000)
+Steps:
+Open http://localhost:3000
+Login as Event Organizer
+Go to Dashboard
+Look for FreeTrialCountdown card
+If trial expiring in <7 days, click "Subscribe Now - $10/month"
+Modal should open
+Expected:
+✅ Modal displays with billing toggle (Monthly/Annual)
+✅ Prices: $20/month or $200/year
+✅ Features list visible
+✅ "Subscribe Now" button enabled
+2. Full Payment Flow Test
+Steps:
+In the modal, click "Subscribe Now - $20.00/monthly"
+Should redirect to Stripe Checkout page
+Enter test card details:
+Card: 4242 4242 4242 4242
+Expiry: 12/34
+CVC: 123
+ZIP: 12345
+Click "Subscribe"
+Should redirect back to http://localhost:3000/dashboard?checkout=success
+Subscription status should update to "Active"
+
+=========================================================================
+
+New Features from Session 12 (Organizer Features)
+1. Event Creation Form (/events/create)
+Access: Requires authentication (redirects to login if not authenticated) Test Steps:
+Navigate to /events/create (or click "Create Event" button from events page)
+Fill out the form sections:
+Basic Information: Title (5-200 chars), Description (20-5000 chars), Category dropdown
+Date & Time: Start date/time (must be future), End date/time (must be after start)
+Location (optional): Street address, City, State, ZIP code (format: 12345 or 12345-6789), Country
+Capacity & Pricing: Maximum capacity (1-10,000), Free event checkbox, Ticket price + currency (if not free)
+Click "Create Event" button
+Verify redirect to event detail page after successful creation
+Validation to Test:
+Title too short/long
+Description too short/long
+Start date in the past
+End date before start date
+Paid event without price/currency
+ZIP code format validation
+Expected Result: Event created and visible in event list and organizer dashboard
+2. Organizer Dashboard (/events/my-events)
+Access: Requires authentication (redirects to login if not authenticated) Test Steps:
+Navigate to /events/my-events
+Verify 4 stat cards display correctly:
+Total Events (count)
+Upcoming Events (events with future start dates)
+Total Registrations (sum of all registrations)
+Total Revenue (calculated from paid events × registrations)
+Test status filtering:
+Click "All Events" to see everything
+Click individual status buttons (Draft, Published, Active, Postponed, Cancelled, Completed, Archived, Under Review)
+Verify count badges update correctly
+Test event management actions:
+Click "View" button → redirects to event detail page
+Click "Edit" button → redirects to event edit page
+Click "Delete" button → shows confirmation buttons
+Click "Confirm Delete" → event removed from list
+Click "Cancel" → cancels deletion
+Expected Results:
+Stats update in real-time as events change
+Filtering works correctly
+Delete requires confirmation
+Only shows events created by logged-in organizer
+3. Sign-Up List Management (/events/[id]/manage-signups)
+Access: Organizer-only (checks if user is event organizer) Test Steps:
+Navigate to an event you created: /events/[your-event-id]/manage-signups
+Verify 2 stat cards:
+Total Sign-Up Lists (count)
+Total Commitments (sum across all lists)
+Create Sign-Up List:
+Select list type (Open or Predefined)
+Enter category name (e.g., "Food", "Decorations")
+If Predefined: Add items with descriptions and quantities
+Click "Add Item" to add more predefined items
+Click "Remove" to delete items
+Click "Create Sign-Up List"
+View Commitments:
+Expand sign-up lists to see committed items
+Verify user details (name, quantity, commitment date)
+Download CSV:
+Click "Download All Sign-Ups (CSV)" button
+Verify CSV file downloads with format: Category, Item Description, User ID, Quantity, Committed At
+Expected Results:
+Only event organizer can access this page
+Sign-up lists created successfully
+Commitments display correctly with user details
+CSV export contains all commitment data
+📋 Existing Features (All Users)
+4. Events List Page (/events)
+Test Steps:
+Navigate to /events
+View all published events
+Test search and filtering (if implemented)
+Click on an event card to view details
+5. Event Detail Page (/events/[id])
+Test Steps:
+Navigate to any event detail page
+View event information (title, description, date, location, capacity, pricing)
+Test RSVP functionality (if user is attendee):
+Click "RSVP" button
+Verify registration confirmation
+Check "Current Registrations" count updates
+Test Waitlist (if event is full):
+Join waitlist
+Verify waitlist count updates
+Test Sign-Up Commitments (attendee view):
+View available sign-up lists
+Commit to items
+Verify commitment appears in list
+🔄 Complete Testing Workflows
+Workflow 1: As an Organizer (Full Lifecycle)
+Create Event (/events/create)
+Fill out all event details
+Set capacity and pricing
+Click "Create Event"
+Manage Event (/events/my-events)
+View event in dashboard
+Check stats update
+Edit event details if needed
+Manage Sign-Ups (/events/[id]/manage-signups)
+Create multiple sign-up lists (Food, Decorations, etc.)
+Add predefined items
+Monitor commitments as users join
+Download Data
+Export CSV with all commitments
+Review attendee data
+Workflow 2: As an Attendee
+Discover Events (/events)
+Browse event list
+Search/filter events
+View Details (/events/[id])
+Read event information
+Check availability
+Register (Event Detail Page)
+Click "RSVP" button
+Confirm registration
+Commit to Sign-Ups (Event Detail Page)
+View available sign-up lists
+Commit to bringing items
+Verify commitments saved
+Workflow 3: Edge Cases & Validation
+Unauthenticated Access:
+Try accessing /events/create without login → redirects to login
+Try accessing /events/my-events without login → redirects to login
+Organizer-Only Access:
+Try accessing /events/[someone-else's-event]/manage-signups → should show error or redirect
+Form Validation:
+Submit event creation form with invalid data
+Verify error messages display correctly
+Event Capacity:
+Create event with capacity of 5
+Register 5 users
+Verify 6th user sees "Event Full" and waitlist option
+Pricing:
+Create free event → verify no price shown
+Create paid event → verify ticket price displays
+Verify revenue calculation in organizer dashboard
+🎨 UI/UX Features to Test
+Brand Colors: Verify Saffron Orange (#FF7900) and Burgundy (#8B1538) used throughout
+Responsive Design: Test on mobile, tablet, desktop breakpoints
+Loading States: Check skeleton loaders while data fetches
+Error States: Verify error messages display correctly
+Empty States: Check "No events yet" messages with call-to-action buttons
+✅ Current Build Status
+TypeScript Errors: 0 (Zero Tolerance maintained)
+New Code: 1,731 lines across 3 options
+Commits: 6 total (3 features + 3 documentation)
+Routes Created:
+/events/create ✅
+/events/my-events ✅
+/events/[id]/manage-signups ✅
+All features are ready for testing! Start with the organizer workflows to test the Session 12 features, then verify existing attendee features still work correctly.

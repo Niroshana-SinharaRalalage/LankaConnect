@@ -57,6 +57,13 @@ public class EventVideoConfiguration : IEntityTypeConfiguration<EventVideo>
         builder.Property(ev => ev.UploadedAt)
             .IsRequired();
 
+        // Audit fields from BaseEntity
+        builder.Property(ev => ev.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("NOW()");
+
+        builder.Property(ev => ev.UpdatedAt);
+
         // Indexes
         builder.HasIndex(ev => new { ev.EventId, ev.DisplayOrder })
             .IsUnique()

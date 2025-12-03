@@ -1,0 +1,15 @@
+{
+  "category": "Food & Drinks",
+  "description": "Test sign-up list for potluck",
+  "hasMandatoryItems": true,
+  "hasPreferredItems": false,
+  "hasSuggestedItems": false,
+  "items": [
+    {
+      "itemDescription": "Main Dish",
+      "quantity": 2,
+      "itemCategory": 0,
+      "notes": "Test item"
+    }
+  ]
+}

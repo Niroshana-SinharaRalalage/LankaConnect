@@ -226,7 +226,9 @@ Don't forget to follow these best practices:
     6. Make sure the commit the changes and Update the status in both c:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and c:\Work\LankaConnect\docs\PROGRESS_TRACKER.md whenever possible acording to
   c:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
     7. For database migrations we should always use EF core migrations.
-    8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
+    8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs.
+    9. Stop giving false status, do the due diligence correctly when analysing something systematically like test the API endpoint and then check the Azure container logs to see whether it is a database or EF migration issue.
+    10. THINKHARDER and SMARTER as a Senior Software Engineer and systematically handle the issues.
 
   -------------------------------------------------
 
@@ -239,6 +241,33 @@ Don't forget to follow these best practices:
   7. ✅ Dashboard (/dashboard)
   8. ✅ Profile (/profile)
   9. ✅ 404 Page (/_not-found)
+
+----------------------------------------
+
+1. Admin Manager (Super Admin)
+Email: admin@lankaconnect.com
+Password: Admin@2025!
+Role: AdminManager
+Name: Admin Manager
+Status: Email verified
+2. Regular Admin
+Email: admin1@lankaconnect.com
+Password: Admin@2025!
+Role: Admin
+Name: John Admin
+Status: Email verified
+3. Event Organizer
+Email: organizer@lankaconnect.com
+Password: Organizer@2025!
+Role: EventOrganizer
+Name: Sarah Organizer
+Status: Email verified
+4. General User
+Email: user@lankaconnect.com
+Password: User@2025!
+Role: GeneralUser
+Name: Mike User
+Status: Email verified
 
   ------------------------------------
   1. Why only 19, other US metro areas displayed? There are more metro area in the USA , is there any reason to display only a few?
@@ -288,3 +317,55 @@ Remote Address
 172.193.80.217:443
 Referrer Policy
 strict-origin-when-cross-origin
+
+--------------------------------
+
+Phase 1: Backend Dual Pricing - All changes
+
+Phase 1 git commit (Dual Pricing Backend)
+
+Phase 2: Analyze existing Stripe payment patterns
+
+Phase 2: Add PaymentStatus enum to domain
+
+Phase 2: Update Registration entity with payment fields
+
+Phase 2: Update Event.RegisterWithAttendees to pass isPaidEvent
+
+Phase 2: Add CreateEventCheckoutSessionAsync to IStripePaymentService
+
+Phase 2: Create EF Core migration for payment fields
+
+Phase 2: Update RsvpToEvent command and handler for payment
+
+Phase 2: Build and verify 0 errors
+
+Phase 2 git commit (Payment Integration - Application Layer)
+
+Phase 2B: Implement Stripe checkout in infrastructure (DEFERRED)
+
+Phase 2B: Add checkout.session.completed webhook handler (DEFERRED)
+
+Phase 2B: Write payment integration tests (DEFERRED)
+
+Phase 3: Update event display components for dual pricing
+
+Phase 3: Update registration form price calculation
+
+Phase 4: Add Stripe redirect flow to frontend
+
+Phase 4: Create payment success/cancel pages
+
+Phase 5: Create data migration script for existing events
+
+Phase 5: Apply migration to staging database
+
+Phase 6: End-to-end testing (free/single/dual pricing)
+
+Phase 6: Test Stripe payment flow end-to-end
+
+Future: Anonymous user payment support (if needed
+
+Update PROGRESS_TRACKER.md with Session 23 progress
+
+ c:\Work\LankaConnect\src\LankaConnect.Infrastructure\Data\Configurations\EventConfiguration.cs

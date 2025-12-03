@@ -39,6 +39,13 @@ public class EventImageConfiguration : IEntityTypeConfiguration<EventImage>
         builder.Property(ei => ei.UploadedAt)
             .IsRequired();
 
+        // Audit fields from BaseEntity
+        builder.Property(ei => ei.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("NOW()");
+
+        builder.Property(ei => ei.UpdatedAt);
+
         // Indexes
         builder.HasIndex(ei => new { ei.EventId, ei.DisplayOrder })
             .IsUnique()

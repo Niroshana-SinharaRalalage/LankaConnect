@@ -3,8 +3,129 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - TOKEN EXPIRATION BUGFIX COMPLETE ✅
-**Date**: 2025-11-16 (Current Session - Session 4 Continued)
+## 🎯 CURRENT SESSION STATUS - PHASE 6D GROUP TIERED PRICING COMPLETE ✅
+**Date**: 2025-12-03 (Current Session - Session 24A)
+**Session**: PHASE 6D - Group Tiered Pricing for Events
+**Progress**: **✅ COMPLETE** - Backend + Frontend + Documentation
+**MILESTONE**: **✅ EVENTS NOW SUPPORT QUANTITY-BASED DISCOUNT PRICING TIERS**
+
+### Phase 6D Group Tiered Pricing Summary:
+**Feature**: Quantity-based discount pricing for events (e.g., 1-2 attendees: $50/person, 3-5: $40/person, 6+: $35/person)
+
+**Implementation Phases**:
+1. ✅ **Phase 6D.1**: Domain layer - GroupPricingTier value object with validation
+2. ✅ **Phase 6D.2**: Infrastructure - EF Core JSONB configuration, PostgreSQL migration
+3. ✅ **Phase 6D.3**: Application layer - DTOs, commands, handlers, AutoMapper
+4. ✅ **Phase 6D.4**: Frontend types & validation - TypeScript interfaces, Zod schemas
+5. ✅ **Phase 6D.5**: UI components - GroupPricingTierBuilder, form integration
+
+**Business Rules Implemented**:
+- At least 1 tier required when group pricing enabled
+- All tiers must use same currency
+- First tier must start at 1 attendee
+- No gaps or overlaps between tiers (continuous ranges)
+- Only one pricing mode at a time (single/dual/group - mutually exclusive)
+- Unlimited tier support (e.g., "6+" attendees)
+
+**Technical Stack**:
+- **Domain**: Value objects (GroupPricingTier, Money), Result pattern for validation
+- **Infrastructure**: EF Core JSONB owned entities, PostgreSQL jsonb_build_object() migration
+- **Application**: CQRS commands, AutoMapper profiles for DTOs
+- **Frontend**: TypeScript interfaces, Zod refinements, React components
+
+### Build & Test Results:
+- ✅ **Backend Tests**: 95/95 passing (all event tests)
+- ✅ **Backend Build**: 0 errors, 0 warnings
+- ✅ **Frontend Build**: 0 errors (TypeScript compilation successful)
+
+### Files Created/Modified:
+**Domain Layer (Phase 6D.1)**:
+- `src/LankaConnect.Domain/Events/ValueObjects/GroupPricingTier.cs` (NEW)
+- `src/LankaConnect.Domain/Events/ValueObjects/TicketPricing.cs` (MODIFIED)
+- `src/LankaConnect.Domain/Events/Aggregates/Event.cs` (MODIFIED)
+
+**Infrastructure Layer (Phase 6D.2)**:
+- `src/LankaConnect.Infrastructure/Data/Configurations/EventConfiguration.cs` (MODIFIED)
+- `src/LankaConnect.Infrastructure/Migrations/[timestamp]_AddGroupPricingTiers.cs` (NEW)
+
+**Application Layer (Phase 6D.3)**:
+- `src/LankaConnect.Application/Events/Common/GroupPricingTierDto.cs` (NEW)
+- `src/LankaConnect.Application/Events/Common/EventDto.cs` (MODIFIED)
+- `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommand.cs` (MODIFIED)
+- `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs` (MODIFIED)
+- `src/LankaConnect.Application/Common/Mappings/GroupPricingTierMappingProfile.cs` (NEW)
+- `src/LankaConnect.Application/Common/Mappings/EventMappingProfile.cs` (MODIFIED)
+
+**Frontend Types (Phase 6D.4)**:
+- `web/src/infrastructure/api/types/events.types.ts` (MODIFIED - added PricingType, GroupPricingTierDto)
+- `web/src/presentation/lib/validators/event.schemas.ts` (MODIFIED - added 5 validation refinements)
+
+**Frontend UI (Phase 6D.5)**:
+- `web/src/presentation/components/features/events/GroupPricingTierBuilder.tsx` (NEW - 366 lines)
+- `web/src/presentation/components/features/events/EventCreationForm.tsx` (MODIFIED)
+- `web/src/presentation/components/features/events/EventRegistrationForm.tsx` (MODIFIED)
+
+**Documentation (Phase 6D.6)**:
+- `docs/PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md` (NEW - comprehensive implementation guide)
+- `docs/PROGRESS_TRACKER.md` (UPDATED - Session 24A)
+- `docs/STREAMLINED_ACTION_PLAN.md` (UPDATED - Phase 6D status)
+
+### Commits:
+- ✅ `9cecb61` - "feat(domain): Add GroupPricingTier value object for Phase 6D"
+- ✅ `220701f` - "feat(infrastructure): Add EF Core configuration and migration for group pricing tiers"
+- ✅ `89149b7` - "feat(application): Add GroupPricingTier mapping and DTOs"
+- ✅ `8e4f517` - "feat(application): Integrate group pricing into CreateEventCommand"
+- ✅ `f856124` - "feat(events): Add TypeScript types and Zod validation for Phase 6D group pricing"
+- ✅ `8c6ad7e` - "feat(events): Add GroupPricingTierBuilder UI component and form integration"
+
+### API Contracts:
+**Create Event with Group Pricing**:
+```json
+POST /api/events
+{
+  "title": "Community Workshop",
+  "capacity": 100,
+  "isFree": false,
+  "groupPricingTiers": [
+    { "minAttendees": 1, "maxAttendees": 2, "pricePerPerson": 50.00, "currency": 1 },
+    { "minAttendees": 3, "maxAttendees": 5, "pricePerPerson": 40.00, "currency": 1 },
+    { "minAttendees": 6, "maxAttendees": null, "pricePerPerson": 35.00, "currency": 1 }
+  ]
+}
+```
+
+**Event DTO Response**:
+```json
+{
+  "id": "...",
+  "pricingType": 2,
+  "hasGroupPricing": true,
+  "groupPricingTiers": [
+    { "minAttendees": 1, "maxAttendees": 2, "pricePerPerson": 50.00, "currency": 1, "tierRange": "1-2" },
+    { "minAttendees": 3, "maxAttendees": 5, "pricePerPerson": 40.00, "currency": 1, "tierRange": "3-5" },
+    { "minAttendees": 6, "maxAttendees": null, "pricePerPerson": 35.00, "currency": 1, "tierRange": "6+" }
+  ]
+}
+```
+
+### Documentation:
+- **Summary**: [PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md](./PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md)
+- **Master Index**: [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md)
+
+### Known Limitations:
+- Group pricing and dual pricing are mutually exclusive
+- No UI for editing existing event pricing (Phase 6E - future enhancement)
+- Maximum 10,000 attendees per tier
+
+### Future Enhancements:
+- **Phase 6E**: Edit Event Pricing UI (update existing event pricing models)
+- Integration with payment processing for multi-tier events
+- Analytics dashboard for pricing tier effectiveness
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - TOKEN EXPIRATION BUGFIX COMPLETE ✅
+**Date**: 2025-11-16 (Session 4 Continued)
 **Session**: BUGFIX - Automatic Logout on Token Expiration (401 Unauthorized)
 **Progress**: **✅ COMPLETE** - Token expiration now triggers automatic logout and redirect to login
 **MILESTONE**: **✅ USERS NO LONGER STUCK ON DASHBOARD WITH EXPIRED TOKENS**

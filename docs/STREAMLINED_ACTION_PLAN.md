@@ -7,7 +7,87 @@
 
 ---
 
-## ✅ CURRENT STATUS - DUAL PRICING & PAYMENT INTEGRATION (2025-12-03)
+## ✅ CURRENT STATUS - PHASE 6D: GROUP TIERED PRICING (2025-12-03)
+**Date**: 2025-12-03 (Session 24)
+**Session**: Phase 6D - Group Tiered Pricing (All Phases Complete)
+**Status**: ✅ COMPLETE - Backend + Frontend + Documentation
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors (95 tests passing), Frontend: 0 errors
+**Deployment**: ⏳ Ready for staging - 6 commits pushed to develop
+**Documentation**: [PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md](./PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md)
+
+### SESSION 24A: PHASE 6D - GROUP TIERED PRICING (2025-12-03)
+**Goal**: Implement quantity-based group pricing tiers for events (e.g., 1-2 people @ $25, 3-5 @ $20, 6+ @ $15)
+
+**User Requirements**:
+1. **Domain Foundation** (6D.1): Create GroupPricingTier value object with validation
+2. **Infrastructure** (6D.2): Store pricing tiers as JSONB in PostgreSQL
+3. **Application Layer** (6D.3): API contracts and command handlers
+4. **Frontend Types** (6D.4): TypeScript interfaces and Zod validation
+5. **UI Components** (6D.5): Tier builder and pricing display
+
+**Implementation Complete**:
+
+**Phase 6D.1: Domain Foundation** (95 tests passing):
+- ✅ Created `GroupPricingTier` value object (152 lines, 27 tests)
+- ✅ Enhanced `TicketPricing` with `CreateGroupTiered()` factory (50 tests)
+- ✅ Updated `Event` aggregate with `SetGroupPricing()` and price calculation (18 tests)
+- ✅ Business rules: Continuous tiers, no gaps/overlaps, first tier starts at 1, only last tier unlimited
+
+**Phase 6D.2: Infrastructure & Migration**:
+- ✅ Resolved EF Core shared-type conflict (TicketPrice vs Pricing.AdultPrice)
+- ✅ Converted TicketPrice to JSONB format for consistency
+- ✅ Re-enabled Pricing JSONB with nested type configuration
+- ✅ Safe 3-step migration with data preservation (`jsonb_build_object()`)
+- ✅ Migration: `20251203162215_AddPricingJsonbColumn.cs`
+
+**Phase 6D.3: Application Layer**:
+- ✅ Created `GroupPricingTierDto` with TierRange display formatting ("1-2", "3-5", "6+")
+- ✅ Updated `CreateEventCommand` with `GroupPricingTierRequest` list
+- ✅ Enhanced `CreateEventCommandHandler` with pricing priority: Group > Dual > Single
+- ✅ Added `GroupPricingTierMappingProfile` for AutoMapper
+- ✅ Updated `EventDto` with `PricingType`, `GroupPricingTiers`, `HasGroupPricing` fields
+
+**Phase 6D.4: Frontend Types & Validation**:
+- ✅ Added `PricingType` enum, `GroupPricingTierDto`, `GroupPricingTierRequest` interfaces
+- ✅ Created `groupPricingTierSchema` with Zod validation
+- ✅ Updated `createEventSchema` with 5 refinements (gaps/overlaps/currency/first tier/exclusivity)
+- ✅ Build: 0 TypeScript errors
+
+**Phase 6D.5: UI Components**:
+- ✅ Created `GroupPricingTierBuilder.tsx` (366 lines): Dynamic tier add/remove/edit with validation
+- ✅ Updated `EventCreationForm.tsx`: Integrated tier builder with mutual exclusion toggles
+- ✅ Updated `EventRegistrationForm.tsx`: Group pricing calculation and breakdown display
+- ✅ Features: Real-time validation, visual tier ranges, empty state with guidelines
+- ✅ Build: 0 compilation errors
+
+**Commits**:
+- `8c6ad7e` - feat(frontend): Add group tiered pricing UI components (Phase 6D.5)
+- `f856124` - feat(frontend): Add TypeScript types and Zod validation for group tiered pricing (Phase 6D.4)
+- `8e4f517` - feat(application): Add group tiered pricing to application layer (Phase 6D.3)
+- `89149b7` - feat(infrastructure): Add JSONB support for TicketPrice and Pricing (Phase 6D.2)
+- `220701f` + `9cecb61` - feat(domain): Add group tiered pricing support to Event entity (Phase 6D.1)
+
+**Build Results**:
+```
+Backend:
+✓ 95/95 unit tests passing (GroupPricingTier: 27, TicketPricing: 50, Event: 18)
+✓ 0 Warning(s)
+✓ 0 Error(s)
+
+Frontend:
+✓ Compiled successfully in 13.5s
+✓ TypeScript: 0 errors
+✓ Zod validation: 5 refinements active
+```
+
+**Next Steps**:
+- ⏳ **Phase 6E**: Edit Event Pricing (future enhancement)
+- ⏳ **Testing**: Manual testing of group pricing in staging environment
+- ⏳ **Deployment**: Run EF Core migration on Azure staging database
+
+---
+
+## ✅ PREVIOUS STATUS - DUAL PRICING & PAYMENT INTEGRATION (2025-12-03)
 **Date**: 2025-12-03 (Session 23)
 **Session**: Dual Pricing + Stripe Payment Integration (Backend Complete)
 **Status**: ✅ ALL BACKEND PHASES COMPLETE - API + Contracts + Stripe Infrastructure + Frontend Display

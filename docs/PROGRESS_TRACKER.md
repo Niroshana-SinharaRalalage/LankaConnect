@@ -1,11 +1,89 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-03 (Current Session) - Session 24: Sign-Up List 500 Error Fix ✅ COMPLETE*
+*Last Updated: 2025-12-03 (Current Session) - Session 24: Phase 6D Group Tiered Pricing ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 24: Sign-Up List 500 Error Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 24: Phase 6D Group Tiered Pricing ✅ COMPLETE
 
-### Session 24: Sign-Up List Creation 500 Error Fix - COMPLETE - 2025-12-03
+### Session 24A: Phase 6D - Group Tiered Pricing - COMPLETE - 2025-12-03
+
+**Status**: ✅ **COMPLETE** (Backend + Frontend + Documentation)
+
+**Summary**: Implemented comprehensive group tiered pricing feature allowing event organizers to define quantity-based price tiers (e.g., 1-2 people @ $25, 3-5 @ $20, 6+ @ $15 per person). Feature complements existing single and dual pricing modes with full validation, UI components, and API integration.
+
+**Documentation**: [PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md](./PHASE_6D_GROUP_TIERED_PRICING_SUMMARY.md)
+
+**Commits**:
+- `8c6ad7e` - feat(frontend): Add group tiered pricing UI components (Phase 6D.5)
+- `f856124` - feat(frontend): Add TypeScript types and Zod validation for group tiered pricing (Phase 6D.4)
+- `8e4f517` - feat(application): Add group tiered pricing to application layer (Phase 6D.3)
+- `89149b7` - feat(infrastructure): Add JSONB support for TicketPrice and Pricing (Phase 6D.2)
+- `220701f` + `9cecb61` - feat(domain): Add group tiered pricing support to Event entity (Phase 6D.1)
+
+**Implementation Details**:
+
+**Phase 6D.1: Domain Foundation**
+- Created `GroupPricingTier` value object with validation (27 tests)
+- Enhanced `TicketPricing` with `CreateGroupTiered()` factory (50 tests)
+- Updated `Event` aggregate with `SetGroupPricing()` and price calculation (18 tests)
+- **Tests**: 95/95 passing ✅
+
+**Phase 6D.2: Infrastructure & Migration**
+- Resolved EF Core shared-type conflict (TicketPrice vs Pricing.AdultPrice)
+- Converted TicketPrice to JSONB format for consistency
+- Re-enabled Pricing JSONB with nested type configuration (Money, GroupTiers)
+- Created safe 3-step migration with data preservation using `jsonb_build_object()`
+- **Migration**: `20251203162215_AddPricingJsonbColumn.cs`
+
+**Phase 6D.3: Application Layer**
+- Created `GroupPricingTierDto` with TierRange display formatting
+- Updated `CreateEventCommand` with `GroupPricingTierRequest` list
+- Enhanced `CreateEventCommandHandler` with pricing priority: Group > Dual > Single
+- Added `GroupPricingTierMappingProfile` for AutoMapper
+- Updated `EventDto` with `PricingType`, `GroupPricingTiers`, `HasGroupPricing`
+
+**Phase 6D.4: Frontend Types & Validation**
+- Added `PricingType` enum, `GroupPricingTierDto`, `GroupPricingTierRequest` TypeScript interfaces
+- Created `groupPricingTierSchema` with Zod validation
+- Updated `createEventSchema` with 5 refinements (gaps/overlaps/currency/first tier/exclusivity)
+- **Build**: 0 errors, 0 warnings ✅
+
+**Phase 6D.5: UI Components**
+- Created `GroupPricingTierBuilder.tsx` (366 lines): Dynamic tier add/remove/edit with validation
+- Updated `EventCreationForm.tsx`: Integrated tier builder with mutual exclusion toggles
+- Updated `EventRegistrationForm.tsx`: Group pricing calculation and breakdown display
+- **Features**: Real-time validation, visual tier ranges ("1-2", "3-5", "6+"), empty state with guidelines
+- **Build**: 0 errors, 0 warnings ✅
+
+**Business Rules**:
+- First tier must start at 1 attendee
+- Tiers must be continuous (no gaps)
+- Only last tier can be unlimited (e.g., "6+")
+- All tiers must use same currency
+- Only one pricing mode enabled at a time (single/dual/group)
+
+**API Contract**:
+```json
+POST /api/events
+{
+  "groupPricingTiers": [
+    { "minAttendees": 1, "maxAttendees": 2, "pricePerPerson": 50.00, "currency": 1 },
+    { "minAttendees": 3, "maxAttendees": 5, "pricePerPerson": 40.00, "currency": 1 },
+    { "minAttendees": 6, "maxAttendees": null, "pricePerPerson": 30.00, "currency": 1 }
+  ]
+}
+```
+
+**Testing**:
+- Backend: 95/95 unit tests passing
+- Frontend: TypeScript compilation successful
+- Manual testing required for UI interactions
+
+**Next Phase**: Phase 6E - Edit Event Pricing (future)
+
+---
+
+### Session 24B: Sign-Up List Creation 500 Error Fix - COMPLETE - 2025-12-03
 
 **Status**: ✅ **COMPLETE** (Deployment + Verification)
 

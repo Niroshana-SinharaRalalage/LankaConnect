@@ -82,7 +82,7 @@ async function forwardRequest(
     if (method !== 'GET' && method !== 'DELETE') {
       if (isMultipart) {
         // Stream multipart body as-is (don't read as text - corrupts binary data)
-        body = request.body;
+        body = request.body ?? undefined;
       } else {
         // For JSON, read as text
         try {

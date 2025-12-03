@@ -80,10 +80,23 @@ Frontend:
 ✓ Zod validation: 5 refinements active
 ```
 
-**Next Steps**:
-- ⏳ **Phase 6E**: Edit Event Pricing (future enhancement)
-- ⏳ **Testing**: Manual testing of group pricing in staging environment
-- ⏳ **Deployment**: Run EF Core migration on Azure staging database
+**Next Steps** (From Original Comprehensive Plan):
+- ⏳ **Phase 5: Data Migration** (2-3 days)
+  - Analyze existing events in staging database (Free/Single/Dual pricing)
+  - Run EF Core migration to add `Type` field to existing `Pricing` JSONB
+  - Verify data integrity: Single Price events → Type='Single', Dual Price → Type='AgeDual'
+  - Test existing events still work after migration
+- ⏳ **Phase 6: E2E Testing** (3-5 days)
+  - Test Scenario 1: Free event creation & registration
+  - Test Scenario 2: Single Price event with Stripe payment
+  - Test Scenario 3: Dual Price (Adult/Child) event
+  - Test Scenario 4: Group Tiered event with 3 tiers
+  - Test Scenario 5: Edit event pricing type
+  - Test Scenario 6: Payment cancellation flow
+  - Test Scenario 7: Migration verification on old events
+  - Performance testing (< 2s event creation, < 1s list page)
+  - Create E2E test execution report with evidence
+- ⏳ **Phase 6E**: Edit Event Pricing (future enhancement - deferred)
 
 ---
 

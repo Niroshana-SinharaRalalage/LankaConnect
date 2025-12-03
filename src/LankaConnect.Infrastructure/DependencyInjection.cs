@@ -25,6 +25,7 @@ using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
+using LankaConnect.Infrastructure.Payments.Services;
 using LankaConnect.Domain.Payments;
 using Stripe;
 
@@ -248,6 +249,9 @@ public static class DependencyInjection
         // Register Stripe repositories
         services.AddScoped<IStripeCustomerRepository, StripeCustomerRepository>();
         services.AddScoped<IStripeWebhookEventRepository, StripeWebhookEventRepository>();
+
+        // Session 23 (Phase 2B): Register Stripe payment service for event tickets
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
 
         return services;
     }

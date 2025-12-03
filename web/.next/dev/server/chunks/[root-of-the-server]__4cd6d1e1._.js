@@ -102,13 +102,23 @@ async function forwardRequest(request, pathSegments, method) {
     try {
         const path = pathSegments.join('/');
         const targetUrl = `${BACKEND_URL}/${path}`;
+        // Get Content-Type to detect multipart/form-data
+        const contentType = request.headers.get('content-type');
+        const isMultipart = contentType?.includes('multipart/form-data');
         // Get request body if present
+        // CRITICAL: For multipart/form-data, stream body as-is to preserve binary data and boundary
         let body;
         if (method !== 'GET' && method !== 'DELETE') {
-            try {
-                body = await request.text();
-            } catch  {
-                body = undefined;
+            if (isMultipart) {
+                // Stream multipart body as-is (don't read as text - corrupts binary data)
+                body = request.body ?? undefined;
+            } else {
+                // For JSON, read as text
+                try {
+                    body = await request.text();
+                } catch  {
+                    body = undefined;
+                }
             }
         }
         // Forward cookies from request
@@ -116,7 +126,8 @@ async function forwardRequest(request, pathSegments, method) {
         const cookieHeader = cookies.map((c)=>`${c.name}=${c.value}`).join('; ');
         // Build headers for backend request
         const headers = {
-            'Content-Type': request.headers.get('content-type') || 'application/json',
+            // CRITICAL: Preserve exact Content-Type for multipart (includes boundary parameter)
+            'Content-Type': contentType || 'application/json',
             'Accept': request.headers.get('accept') || 'application/json'
         };
         // Forward Authorization header if present
@@ -128,14 +139,25 @@ async function forwardRequest(request, pathSegments, method) {
         if (cookieHeader) {
             headers['Cookie'] = cookieHeader;
         }
-        console.log(`[Proxy] ${method} ${targetUrl}`);
-        // Make request to backend
-        const response = await fetch(targetUrl, {
+        console.log(`[Proxy] ${method} ${targetUrl}`, {
+            contentType,
+            isMultipart,
+            hasBody: !!body
+        });
+        // Build fetch options
+        const fetchOptions = {
             method,
             headers,
             body,
             credentials: 'include'
-        });
+        };
+        // Only add duplex for multipart/form-data streaming
+        if (isMultipart && body) {
+            // @ts-ignore - duplex is required for streaming request bodies but not in TS types yet
+            fetchOptions.duplex = 'half';
+        }
+        // Make request to backend
+        const response = await fetch(targetUrl, fetchOptions);
         // Get response body
         const responseText = await response.text();
         let responseBody;

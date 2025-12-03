@@ -6,12 +6,16 @@ using Stripe.Checkout;
 using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Common;
+using LankaConnect.Application.Common.Interfaces;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
 /// Payments controller for Stripe integration
 /// Phase 6A.4: Stripe Payment Integration - MVP
+/// Session 23 (Phase 2B): Extended for event ticket payment webhooks
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -22,6 +26,8 @@ public class PaymentsController : ControllerBase
     private readonly IStripeCustomerRepository _customerRepository;
     private readonly IStripeWebhookEventRepository _webhookEventRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IEventRepository _eventRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
 
@@ -30,6 +36,8 @@ public class PaymentsController : ControllerBase
         IStripeCustomerRepository customerRepository,
         IStripeWebhookEventRepository webhookEventRepository,
         IUserRepository userRepository,
+        IEventRepository eventRepository,
+        IUnitOfWork unitOfWork,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
     {
@@ -37,6 +45,8 @@ public class PaymentsController : ControllerBase
         _customerRepository = customerRepository;
         _webhookEventRepository = webhookEventRepository;
         _userRepository = userRepository;
+        _eventRepository = eventRepository;
+        _unitOfWork = unitOfWork;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
     }
@@ -237,10 +247,22 @@ public class PaymentsController : ControllerBase
             // Record event
             await _webhookEventRepository.RecordEventAsync(stripeEvent.Id, stripeEvent.Type);
 
-            // Process event based on type
-            // For MVP, we'll just log the events and mark them as processed
-            // Full implementation will be in Phase 2
-            _logger.LogInformation("Webhook event {EventId} type {EventType} received", stripeEvent.Id, stripeEvent.Type);
+            // Session 23 (Phase 2B): Process event based on type
+            switch (stripeEvent.Type)
+            {
+                case "checkout.session.completed":
+                    await HandleCheckoutSessionCompletedAsync(stripeEvent);
+                    break;
+
+                // Future: Add more event types as needed
+                // case "payment_intent.payment_failed":
+                //     await HandlePaymentFailedAsync(stripeEvent);
+                //     break;
+
+                default:
+                    _logger.LogInformation("Unhandled webhook event type {EventType}, skipping", stripeEvent.Type);
+                    break;
+            }
 
             // Mark as processed
             await _webhookEventRepository.MarkEventAsProcessedAsync(stripeEvent.Id);
@@ -256,6 +278,97 @@ public class PaymentsController : ControllerBase
         {
             _logger.LogError(ex, "Error processing webhook");
             return StatusCode(500);
+        }
+    }
+
+    /// <summary>
+    /// Session 23 (Phase 2B): Handles checkout.session.completed webhook for event ticket payments
+    /// </summary>
+    private async Task HandleCheckoutSessionCompletedAsync(Stripe.Event stripeEvent)
+    {
+        try
+        {
+            var session = stripeEvent.Data.Object as Session;
+            if (session == null)
+            {
+                _logger.LogWarning("Checkout session data is null for event {EventId}", stripeEvent.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "Processing checkout.session.completed for session {SessionId}, payment status {PaymentStatus}",
+                session.Id,
+                session.PaymentStatus);
+
+            // Only process successful payments
+            if (session.PaymentStatus != "paid")
+            {
+                _logger.LogWarning("Checkout session {SessionId} not paid (status: {Status}), skipping", session.Id, session.PaymentStatus);
+                return;
+            }
+
+            // Extract metadata
+            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
+                !Guid.TryParse(registrationIdStr, out var registrationId))
+            {
+                _logger.LogWarning("Checkout session {SessionId} missing registration_id in metadata", session.Id);
+                return;
+            }
+
+            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
+                !Guid.TryParse(eventIdStr, out var eventId))
+            {
+                _logger.LogWarning("Checkout session {SessionId} missing event_id in metadata", session.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "Completing payment for Event {EventId}, Registration {RegistrationId}",
+                eventId,
+                registrationId);
+
+            // Get event with registrations
+            var @event = await _eventRepository.GetByIdAsync(eventId);
+            if (@event == null)
+            {
+                _logger.LogError("Event {EventId} not found for checkout session {SessionId}", eventId, session.Id);
+                return;
+            }
+
+            // Find the registration
+            var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
+            if (registration == null)
+            {
+                _logger.LogError("Registration {RegistrationId} not found in Event {EventId}", registrationId, eventId);
+                return;
+            }
+
+            // Complete payment on registration domain entity
+            var paymentIntentId = session.PaymentIntentId ?? session.Id;
+            var completeResult = registration.CompletePayment(paymentIntentId);
+
+            if (completeResult.IsFailure)
+            {
+                _logger.LogError(
+                    "Failed to complete payment for Registration {RegistrationId}: {Error}",
+                    registrationId,
+                    completeResult.Error);
+                return;
+            }
+
+            // Save changes
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "Successfully completed payment for Event {EventId}, Registration {RegistrationId}",
+                eventId,
+                registrationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling checkout.session.completed webhook");
+            // Don't throw - we've already logged the error and marked the event as processed
+            // This prevents Stripe from retrying the webhook indefinitely
         }
     }
 

@@ -121,15 +121,22 @@ async function forwardRequest(
       hasBody: !!body,
     });
 
-    // Make request to backend
-    const response = await fetch(targetUrl, {
+    // Build fetch options
+    const fetchOptions: RequestInit = {
       method,
       headers,
       body,
       credentials: 'include', // Important: include cookies
+    };
+
+    // Only add duplex for multipart/form-data streaming
+    if (isMultipart && body) {
       // @ts-ignore - duplex is required for streaming request bodies but not in TS types yet
-      duplex: 'half', // Required for streaming multipart/form-data
-    });
+      fetchOptions.duplex = 'half';
+    }
+
+    // Make request to backend
+    const response = await fetch(targetUrl, fetchOptions);
 
     // Get response body
     const responseText = await response.text();

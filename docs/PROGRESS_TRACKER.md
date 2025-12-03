@@ -1,9 +1,80 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-02 (Current Session) - Session 24: Image Upload 500 Error Fix ✅ COMPLETE*
+*Last Updated: 2025-12-03 (Current Session) - Session 23: Dual Pricing + Payment Integration ✅ PHASE 1-3 COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 24: Image Upload 500 Error Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 23: Dual Pricing + Payment Integration ✅ PHASE 1-3 COMPLETE
+
+### Session 23: Dual Pricing + Payment Integration - PHASE 1-3 COMPLETE - 2025-12-03
+
+**Status**: ✅ **PHASE 1-3 COMPLETE** (Backend API + Payment Contracts + Frontend Display)
+
+**Commits**:
+- `9b0eeb7` - feat(events): Add dual pricing backend support (Session 21 API layer)
+- `f8355cb` - feat(events): Add event payment integration - Application layer (Session 23)
+- `43aa127` - feat(frontend): Add dual pricing display to event list and details (Session 23)
+
+**Goal**: Complete end-to-end dual pricing (adult/child) + Stripe payment integration for event tickets
+
+**Summary**: Completed 3 of 6 phases implementing dual pricing and payment integration. Phase 1 extended backend API to accept dual pricing fields from frontend (5 fields: adult/child amounts, currencies, age limit). Phase 2 added complete payment integration domain layer with PaymentStatus enum, 3 payment fields on Registration entity (StripeCheckoutSessionId, StripePaymentIntentId, PaymentStatus), payment lifecycle methods (SetStripeCheckoutSession, CompletePayment, FailPayment, RefundPayment), and Stripe Checkout contract in application layer. Phase 3 updated frontend display components (EventsList and Event Details) to show dual pricing breakdown. EventRegistrationForm already had full price calculation from Session 21. Infrastructure layer (Phase 2B) intentionally deferred - contracts ready for implementation.
+
+**Phase 1: Backend Dual Pricing API (✅ COMPLETE)**:
+- Updated CreateEventCommand + CreateEventCommandHandler (5 dual pricing fields)
+- Updated UpdateEventCommand + UpdateEventCommandHandler (same fields)
+- Updated EventDto with 6 dual pricing fields + HasDualPricing flag
+- Updated EventMappingProfile for AutoMapper configuration
+- Build: ✅ 0 errors, 0 warnings
+
+**Phase 2: Payment Integration - Application Layer (✅ COMPLETE)**:
+
+*Domain Layer* (4 files):
+- Created PaymentStatus enum (Pending, Completed, Failed, Refunded, NotRequired)
+- Updated Registration entity with 3 payment fields + 4 payment methods
+- Updated Event.RegisterWithAttendees to pass isPaidEvent flag
+- Payment methods: SetStripeCheckoutSession(), CompletePayment(), FailPayment(), RefundPayment()
+
+*Application Layer* (3 files):
+- Extended IStripePaymentService with CreateEventCheckoutSessionAsync()
+- Created CreateEventCheckoutSessionRequest class
+- Updated RsvpToEventCommand to return checkout session URL (string?)
+- Updated RsvpToEventCommandHandler with full Stripe Checkout integration:
+  * Free events: Status=Confirmed, PaymentStatus=NotRequired, return null
+  * Paid events: Status=Pending, PaymentStatus=Pending, return Stripe URL
+  * Create Stripe session with event/registration metadata
+
+*Database Migration*:
+- Created AddEventPaymentIntegration migration (3 columns on registrations table)
+- PaymentStatus (integer), StripeCheckoutSessionId (text), StripePaymentIntentId (text)
+
+**Phase 3: Frontend Dual Pricing Display (✅ COMPLETE)**:
+- Updated EventsList component: Shows "Adult: $50 | Child: $25" for dual pricing
+- Updated Event Details page: Separate lines with age limit "Child (under 12): $25.00"
+- EventCreationForm: Already had full dual pricing UI (Session 21)
+- EventRegistrationForm: Already had price calculation + breakdown display (Session 21)
+- Build: ✅ Next.js build successful (no errors)
+
+**Payment Flow Architecture**:
+1. User registers for paid event → Registration created with Status=Pending, PaymentStatus=Pending
+2. RsvpToEventCommandHandler creates Stripe Checkout session → StripeCheckoutSessionId stored
+3. Frontend receives checkout URL → Redirects user to Stripe
+4. User completes payment → Stripe webhook fires checkout.session.completed
+5. Webhook handler calls Registration.CompletePayment() → Status=Confirmed, PaymentStatus=Completed
+
+**Deferred Work** (Phase 2B - Infrastructure):
+- Implement StripePaymentService.CreateEventCheckoutSessionAsync() using Stripe.NET SDK
+- Add checkout.session.completed webhook handler to complete payments
+- Write payment integration tests
+
+**Next Steps**:
+- Phase 4: Payment redirect flow (frontend Stripe Checkout integration)
+- Phase 5: Data migration for existing events (legacy → new pricing format)
+- Phase 6: End-to-end testing (free/single/dual pricing + payment flow)
+
+**Related to**: Session 21 dual pricing foundation, Session 23 payment integration
+
+---
+
+## 🎯 Previous Session - Session 24: Image Upload 500 Error Fix ✅ COMPLETE
 
 ### Session 24: Image Upload 500 Error Fix - COMPLETE - 2025-12-02
 

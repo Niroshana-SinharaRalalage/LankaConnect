@@ -7,7 +7,105 @@
 
 ---
 
-## ✅ CURRENT STATUS - IMAGE UPLOAD 500 ERROR FIX (2025-12-02)
+## ✅ CURRENT STATUS - DUAL PRICING & PAYMENT INTEGRATION (2025-12-03)
+**Date**: 2025-12-03 (Session 23)
+**Session**: Dual Pricing Frontend Display + Stripe Payment Integration
+**Status**: ✅ PHASE 1-3 COMPLETE - Backend API, Payment Contracts, Frontend Display
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors, Frontend: 0 errors
+**Deployment**: ✅ Ready for staging - 3 commits pushed to develop
+**Next**: Phase 4 (Payment redirect flow), Phase 5 (Data migration), Phase 6 (E2E testing)
+
+### SESSION 23: DUAL PRICING & PAYMENT INTEGRATION - PHASES 1-3 (2025-12-03)
+**Goal**: Complete dual pricing display and payment integration for event registrations
+
+**User Requirements**:
+1. **Backend API** (Phase 1): Expose dual pricing fields in EventDto for frontend consumption
+2. **Payment Integration** (Phase 2): Stripe Checkout integration for paid event registrations
+3. **Frontend Display** (Phase 3): Update event list and detail pages to show dual pricing
+
+**Implementation Complete**:
+
+**Phase 1: Backend Dual Pricing API** (Session 21 foundation):
+- ✅ Updated `EventDto` with 9 pricing fields: `isFree`, `hasDualPricing`, `ticketPriceAmount`, `ticketPriceCurrency`, `adultPriceAmount`, `adultPriceCurrency`, `childPriceAmount`, `childPriceCurrency`, `childAgeLimit`
+- ✅ Updated `EventMappings.cs` AutoMapper profiles to map from domain `TicketPricing` value object
+- ✅ Updated `EventsController` GET endpoints to return enriched pricing data
+- ✅ Supports 3 pricing modes: Free (`Pricing = null`), Single (`ChildPrice = null`), Dual (`ChildPrice != null`)
+
+**Phase 2: Payment Integration - Application Layer** (Contract-first approach):
+- ✅ Updated `RsvpToEventCommand` with payment URLs: `SuccessUrl`, `CancelUrl`
+- ✅ Updated `RsvpToEventCommandHandler` to create Stripe Checkout sessions for paid events
+- ✅ Created `CreateEventCheckoutSessionRequest` DTO with event/registration metadata
+- ✅ Updated `IStripePaymentService` interface with `CreateEventCheckoutSessionAsync()` method
+- ✅ Returns checkout session URL for frontend redirect (paid events) or null (free events)
+- ✅ Sets `StripeCheckoutSessionId` on Registration entity for webhook correlation
+- ✅ Maintains backward compatibility with legacy quantity-based RSVP (no payment support)
+
+**Phase 3: Frontend Dual Pricing Display**:
+- ✅ Updated `EventsList.tsx` price badge (lines 200-209):
+  - Shows dual pricing: "Adult: $X | Child: $Y"
+  - Falls back to single pricing: "$X"
+  - Conditional rendering based on `event.hasDualPricing`
+- ✅ Updated Event Details page `page.tsx` (lines 335-369):
+  - Three-way conditional: Free → Dual → Single
+  - Shows child age limit: "Child (under X): $Y"
+  - Displays currency (USD/LKR)
+  - Consistent UI styling with color scheme (#8B1538, #FF7900)
+
+**Architecture Decisions**:
+1. **Phase 2B Deferred**: Stripe.NET SDK implementation intentionally deferred
+   - Contracts and interfaces complete in application layer
+   - Allows frontend work to proceed without blocking
+   - Infrastructure can be implemented incrementally
+
+2. **Three Pricing Modes**: Clear separation in code
+   - Free events: `Pricing = null`, `IsFree = true`
+   - Single pricing: `Pricing.ChildPrice = null` (everyone pays adult price)
+   - Dual pricing: `Pricing.ChildPrice != null` (age-based differentiation)
+
+3. **Payment Flow** (documented architecture):
+   - Registration created: `Status=Pending`, `PaymentStatus=Pending`
+   - Checkout session created, `StripeCheckoutSessionId` stored
+   - Frontend redirects user to Stripe
+   - Webhook fires `checkout.session.completed`
+   - Backend calls `Registration.CompletePayment()` → `Status=Confirmed`, `PaymentStatus=Completed`
+
+**Build Results**:
+```
+Backend Build:
+✓ Build succeeded
+✓ 0 Warning(s)
+✓ 0 Error(s)
+✓ Time Elapsed: 00:01:55.06
+
+Frontend Build:
+✓ Compiled successfully in 25.7s
+✓ TypeScript: 0 errors
+✓ Generated static pages (15/15)
+```
+
+**Commits**:
+- `9b0eeb7` - feat(events): Add dual pricing backend support (Session 21 API layer)
+- `f8355cb` - feat(events): Add event payment integration - Application layer (Session 23)
+- `43aa127` - feat(frontend): Add dual pricing display to event list and details (Session 23)
+
+**Files Modified** (8 files):
+- Backend: `EventDto.cs`, `EventMappings.cs`, `IStripePaymentService.cs`, `RsvpToEventCommand.cs`, `RsvpToEventCommandHandler.cs`
+- Frontend: `EventsList.tsx`, `events/[id]/page.tsx`
+- Documentation: `PROGRESS_TRACKER.md`
+
+**Next Steps**:
+1. ⏳ **Phase 4**: Payment Redirect Flow - Stripe Checkout integration in EventRegistrationForm
+2. ⏳ **Phase 5**: Data Migration - Migrate existing events to new pricing format
+3. ⏳ **Phase 6**: End-to-End Testing - Test free/single/dual pricing + payment flow
+4. ⏳ **Phase 2B** (Deferred): Implement `StripePaymentService.CreateEventCheckoutSessionAsync()` using Stripe.NET SDK
+5. ⏳ **Phase 2B** (Deferred): Add `checkout.session.completed` webhook handler
+6. ⏳ **Phase 2B** (Deferred): Write payment integration tests
+
+**See**: [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) Session 23 for complete implementation details
+
+---
+
+## ✅ PREVIOUS STATUS - IMAGE UPLOAD 500 ERROR FIX (2025-12-02)
 **Date**: 2025-12-02 (Session 24)
 **Session**: Image Upload 500 Error - Critical Production Fix
 **Status**: ✅ COMPLETE - Both backend config and frontend proxy fixed

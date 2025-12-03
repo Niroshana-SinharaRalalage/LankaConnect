@@ -27,10 +27,23 @@ public record EventDto
     public decimal? Latitude { get; init; }
     public decimal? Longitude { get; init; }
 
-    // Ticket pricing (nullable - free events)
+    // Legacy Ticket pricing (nullable - free events, backward compatibility)
     public decimal? TicketPriceAmount { get; init; }
     public Currency? TicketPriceCurrency { get; init; }
     public bool IsFree { get; init; }
+
+    // Session 21: Dual Pricing (Adult/Child) - nullable
+    public decimal? AdultPriceAmount { get; init; }
+    public Currency? AdultPriceCurrency { get; init; }
+    public decimal? ChildPriceAmount { get; init; }
+    public Currency? ChildPriceCurrency { get; init; }
+    public int? ChildAgeLimit { get; init; }
+
+    /// <summary>
+    /// Indicates whether this event uses age-based dual pricing (adult/child)
+    /// True if ChildPrice is set, False for single pricing or free events
+    /// </summary>
+    public bool HasDualPricing { get; init; }
 
     // Media galleries (Epic 2 Phase 2)
     public IReadOnlyList<EventImageDto> Images { get; init; } = Array.Empty<EventImageDto>();

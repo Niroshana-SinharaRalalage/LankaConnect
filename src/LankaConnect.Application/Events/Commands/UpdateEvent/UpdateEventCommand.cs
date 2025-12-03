@@ -20,7 +20,13 @@ public record UpdateEventCommand(
     string? LocationCountry = null,
     decimal? LocationLatitude = null,
     decimal? LocationLongitude = null,
-    // Ticket Price (optional - null values will make event free)
+    // Legacy Ticket Price (optional - backward compatibility)
     decimal? TicketPriceAmount = null,
-    Currency? TicketPriceCurrency = null
+    Currency? TicketPriceCurrency = null,
+    // Session 21: Dual Pricing (Adult/Child) - optional
+    decimal? AdultPriceAmount = null,
+    Currency? AdultPriceCurrency = null,
+    decimal? ChildPriceAmount = null,
+    Currency? ChildPriceCurrency = null,
+    int? ChildAgeLimit = null
 ) : ICommand;

@@ -89,15 +89,48 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             location = locationResult.Value;
         }
 
-        // Create Money (ticket price) if provided
+        // Session 21: Handle pricing - dual pricing takes precedence over legacy single pricing
         Money? ticketPrice = null;
-        if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency.HasValue)
+        TicketPricing? pricing = null;
+
+        // Check if dual pricing fields are provided
+        if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
+        {
+            // Build dual pricing using TicketPricing value object
+            var adultPriceResult = Money.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency.Value);
+            if (adultPriceResult.IsFailure)
+                return Result.Failure(adultPriceResult.Error);
+
+            Money? childPrice = null;
+            if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency.HasValue)
+            {
+                var childPriceResult = Money.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency.Value);
+                if (childPriceResult.IsFailure)
+                    return Result.Failure(childPriceResult.Error);
+
+                childPrice = childPriceResult.Value;
+            }
+
+            var pricingResult = TicketPricing.Create(adultPriceResult.Value, childPrice, request.ChildAgeLimit);
+            if (pricingResult.IsFailure)
+                return Result.Failure(pricingResult.Error);
+
+            pricing = pricingResult.Value;
+        }
+        // Fallback to legacy single pricing format if dual pricing not provided
+        else if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency.HasValue)
         {
             var moneyResult = Money.Create(request.TicketPriceAmount.Value, request.TicketPriceCurrency.Value);
             if (moneyResult.IsFailure)
                 return Result.Failure(moneyResult.Error);
 
-            ticketPrice = moneyResult.Value;
+            // Convert legacy format to new TicketPricing format (single pricing = childPrice null)
+            var pricingResult = TicketPricing.Create(moneyResult.Value, null, null);
+            if (pricingResult.IsFailure)
+                return Result.Failure(pricingResult.Error);
+
+            pricing = pricingResult.Value;
+            ticketPrice = moneyResult.Value; // Keep for backward compatibility
         }
 
         // Update event (using reflection to set private setters - not ideal but works for now)
@@ -138,7 +171,15 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return removeLocationResult;
         }
 
-        // Update ticket price
+        // Session 21: Update dual pricing if provided
+        if (pricing != null)
+        {
+            var setPricingResult = @event.SetDualPricing(pricing);
+            if (setPricingResult.IsFailure)
+                return setPricingResult;
+        }
+
+        // Legacy: Update ticket price for backward compatibility
         var ticketPriceProperty = typeof(Event).GetProperty(nameof(Event.TicketPrice));
         ticketPriceProperty?.SetValue(@event, ticketPrice);
 

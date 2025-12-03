@@ -58,6 +58,16 @@ export enum Currency {
   AUD = 6,
 }
 
+/**
+ * Pricing type enum matching backend LankaConnect.Domain.Events.Enums.PricingType
+ * Phase 6D: Tiered Group Pricing
+ */
+export enum PricingType {
+  Single = 0,      // Flat rate per attendee
+  AgeDual = 1,     // Age-based (Adult/Child)
+  GroupTiered = 2, // Quantity-based with tiers
+}
+
 // ==================== Event DTOs ====================
 
 /**
@@ -84,6 +94,19 @@ export interface EventVideoDto {
   fileSizeBytes: number;
   displayOrder: number;
   uploadedAt: string;
+}
+
+/**
+ * Group pricing tier DTO
+ * Matches backend GroupPricingTierDto
+ * Phase 6D: Tiered Group Pricing
+ */
+export interface GroupPricingTierDto {
+  minAttendees: number;
+  maxAttendees?: number | null; // Null for unlimited tier (e.g., "6+")
+  pricePerPerson: number;
+  currency: Currency;
+  tierRange: string; // Display format: "1-2", "3-5", "6+"
 }
 
 /**
@@ -127,6 +150,11 @@ export interface EventDto {
   childPriceCurrency?: Currency | null;
   childAgeLimit?: number | null; // Age limit for child pricing (e.g., 12 = under 12 years old)
   hasDualPricing: boolean; // True if event uses adult/child pricing
+
+  // Phase 6D: Group tiered pricing
+  pricingType?: PricingType | null; // Pricing model type (Single, AgeDual, GroupTiered)
+  groupPricingTiers: readonly GroupPricingTierDto[]; // Quantity-based pricing tiers
+  hasGroupPricing: boolean; // True if event uses group tiered pricing
 
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
@@ -326,6 +354,21 @@ export interface CreateEventRequest {
   childPriceAmount?: number;
   childPriceCurrency?: Currency;
   childAgeLimit?: number; // Age limit for child pricing (1-18)
+
+  // Phase 6D: Group tiered pricing (optional)
+  groupPricingTiers?: GroupPricingTierRequest[];
+}
+
+/**
+ * Group pricing tier request
+ * Matches backend GroupPricingTierRequest
+ * Phase 6D: Tiered Group Pricing
+ */
+export interface GroupPricingTierRequest {
+  minAttendees: number;
+  maxAttendees?: number | null; // Null for unlimited tier (e.g., "6+")
+  pricePerPerson: number;
+  currency: Currency;
 }
 
 /**

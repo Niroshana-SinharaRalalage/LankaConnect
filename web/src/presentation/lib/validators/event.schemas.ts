@@ -1,10 +1,51 @@
 import { z } from 'zod';
-import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
  * Zod schemas for event form validation matching backend CreateEventRequest requirements
  */
+
+/**
+ * Group pricing tier validation schema
+ * Phase 6D: Tiered Group Pricing
+ */
+export const groupPricingTierSchema = z.object({
+  minAttendees: z
+    .number()
+    .int('Minimum attendees must be a whole number')
+    .min(1, 'Minimum attendees must be at least 1')
+    .max(10000, 'Minimum attendees cannot exceed 10,000'),
+
+  maxAttendees: z
+    .number()
+    .int('Maximum attendees must be a whole number')
+    .min(1, 'Maximum attendees must be at least 1')
+    .max(10000, 'Maximum attendees cannot exceed 10,000')
+    .optional()
+    .nullable(),
+
+  pricePerPerson: z
+    .number()
+    .min(0, 'Price per person cannot be negative')
+    .max(10000, 'Price per person cannot exceed $10,000'),
+
+  currency: z.nativeEnum(Currency),
+}).refine(
+  (data) => {
+    // If maxAttendees is provided, it must be >= minAttendees
+    if (data.maxAttendees !== null && data.maxAttendees !== undefined) {
+      return data.maxAttendees >= data.minAttendees;
+    }
+    return true;
+  },
+  {
+    message: 'Maximum attendees must be greater than or equal to minimum attendees',
+    path: ['maxAttendees'],
+  }
+);
+
+export type GroupPricingTierFormData = z.infer<typeof groupPricingTierSchema>;
 
 /**
  * Create Event Form Schema
@@ -128,6 +169,14 @@ export const createEventSchema = z.object({
     .max(18, 'Age limit cannot exceed 18')
     .optional()
     .nullable(),
+
+  // Phase 6D: Group tiered pricing
+  enableGroupPricing: z.boolean(),
+
+  groupPricingTiers: z
+    .array(groupPricingTierSchema)
+    .optional()
+    .nullable(),
 }).refine(
   (data) => {
     // Validate that end date is after start date
@@ -214,6 +263,90 @@ export const createEventSchema = z.object({
   {
     message: 'Adult and child prices must use the same currency',
     path: ['childPriceCurrency'],
+  }
+).refine(
+  (data) => {
+    // Phase 6D: If using group pricing, at least one tier is required
+    if (!data.isFree && data.enableGroupPricing) {
+      return data.groupPricingTiers !== null &&
+             data.groupPricingTiers !== undefined &&
+             data.groupPricingTiers.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one pricing tier is required for group pricing',
+    path: ['groupPricingTiers'],
+  }
+).refine(
+  (data) => {
+    // Phase 6D: All tiers in group pricing must use the same currency
+    if (!data.isFree && data.enableGroupPricing &&
+        data.groupPricingTiers && data.groupPricingTiers.length > 1) {
+      const firstCurrency = data.groupPricingTiers[0].currency;
+      return data.groupPricingTiers.every(tier => tier.currency === firstCurrency);
+    }
+    return true;
+  },
+  {
+    message: 'All pricing tiers must use the same currency',
+    path: ['groupPricingTiers'],
+  }
+).refine(
+  (data) => {
+    // Phase 6D: First tier must start at 1 attendee
+    if (!data.isFree && data.enableGroupPricing &&
+        data.groupPricingTiers && data.groupPricingTiers.length > 0) {
+      const sortedTiers = [...data.groupPricingTiers].sort((a, b) => a.minAttendees - b.minAttendees);
+      return sortedTiers[0].minAttendees === 1;
+    }
+    return true;
+  },
+  {
+    message: 'First pricing tier must start at 1 attendee',
+    path: ['groupPricingTiers'],
+  }
+).refine(
+  (data) => {
+    // Phase 6D: Tiers must not overlap and have no gaps
+    if (!data.isFree && data.enableGroupPricing &&
+        data.groupPricingTiers && data.groupPricingTiers.length > 1) {
+      const sortedTiers = [...data.groupPricingTiers].sort((a, b) => a.minAttendees - b.minAttendees);
+
+      for (let i = 0; i < sortedTiers.length - 1; i++) {
+        const currentTier = sortedTiers[i];
+        const nextTier = sortedTiers[i + 1];
+
+        // Current tier must have maxAttendees (unless it's the last tier)
+        if (currentTier.maxAttendees === null || currentTier.maxAttendees === undefined) {
+          return false; // Only last tier can be unlimited
+        }
+
+        // Check for gaps: next tier must start at current tier's max + 1
+        if (nextTier.minAttendees !== currentTier.maxAttendees + 1) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return true;
+  },
+  {
+    message: 'Pricing tiers must not have gaps or overlaps. Each tier must start where the previous ends.',
+    path: ['groupPricingTiers'],
+  }
+).refine(
+  (data) => {
+    // Phase 6D: Only one pricing mode can be enabled at a time
+    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing].filter(Boolean).length;
+    if (!data.isFree && modesEnabled > 1) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
+    path: ['enableGroupPricing'],
   }
 );
 

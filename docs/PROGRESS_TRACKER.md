@@ -7,17 +7,18 @@
 
 ### Session 23: Dual Pricing + Payment Integration - ALL PHASES COMPLETE - 2025-12-03
 
-**Status**: ✅ **ALL BACKEND PHASES COMPLETE** (API + Contracts + Infrastructure + Frontend Display)
+**Status**: ✅ **ALL PHASES COMPLETE** (Backend + Frontend + Payment Flow)
 
 **Commits**:
 - `9b0eeb7` - feat(events): Add dual pricing backend support (Session 21 API layer)
 - `f8355cb` - feat(events): Add event payment integration - Application layer (Session 23)
 - `43aa127` - feat(frontend): Add dual pricing display to event list and details (Session 23)
 - `0c02ac8` - feat(payments): Implement Phase 2B - Stripe checkout and webhook handler (Session 23)
+- `97fc87f` - feat(events): Complete Phase 4 - Frontend payment redirect flow for Stripe checkout (Session 23)
 
 **Goal**: Complete end-to-end dual pricing (adult/child) + Stripe payment integration for event tickets
 
-**Summary**: Completed 4 backend phases implementing dual pricing and Stripe payment integration. Phase 1 extended backend API with dual pricing fields. Phase 2A added payment contracts and domain layer (PaymentStatus, Registration payment methods). Phase 2B implemented Stripe.NET infrastructure (StripePaymentService + webhook handler). Phase 3 updated frontend display. Event ticket payments now fully functional end-to-end from registration through Stripe Checkout to payment confirmation via webhooks. Remaining work: Phase 4 (frontend checkout redirect), Phase 5 (data migration), Phase 6 (E2E testing).
+**Summary**: Completed 5 phases implementing end-to-end dual pricing and Stripe payment integration. Phase 1 extended backend API with dual pricing fields. Phase 2A added payment contracts and domain layer. Phase 2B implemented Stripe.NET infrastructure. Phase 3 updated frontend display. Phase 4 implemented frontend payment redirect flow. Event ticket payments now fully functional end-to-end from registration through Stripe Checkout to payment confirmation via webhooks. Remaining work: Phase 5 (data migration), Phase 6 (E2E testing).
 
 **Phase 1: Backend Dual Pricing API (✅ COMPLETE)**:
 - Updated CreateEventCommand + CreateEventCommandHandler (5 dual pricing fields)
@@ -95,8 +96,50 @@
 *Build Results*:
 - ✅ Backend: 0 warnings, 0 errors (Time: 00:00:52.24)
 
+**Phase 4: Frontend Payment Redirect Flow (✅ COMPLETE)**:
+
+*Modified Files*:
+- web/src/app/events/[id]/page.tsx
+  - Updated handleRegistration() to build payment redirect URLs
+  - Detects paid events and redirects to Stripe checkout URL
+  - Passes successUrl and cancelUrl to RSVP endpoint
+
+- web/src/infrastructure/api/repositories/events.repository.ts
+  - Updated rsvpToEvent() to return checkout URL (string | null)
+
+- web/src/infrastructure/api/types/events.types.ts
+  - Added successUrl and cancelUrl to RsvpRequest interface
+
+- web/src/presentation/hooks/useEvents.ts
+  - Updated useRsvpToEvent() documentation for payment flow
+
+*New Files*:
+- web/src/app/events/payment/success/page.tsx
+  - Payment success callback page
+  - Shows event details, confirmation, and next steps
+  - Wrapped in Suspense for Next.js useSearchParams()
+
+- web/src/app/events/payment/cancel/page.tsx
+  - Payment cancel callback page
+  - Shows cancellation message with retry option
+  - Wrapped in Suspense for Next.js useSearchParams()
+
+*Payment Flow*:
+1. User submits registration for paid event
+2. Frontend builds successUrl/cancelUrl: `/events/payment/success?eventId=X`
+3. Frontend calls RSVP endpoint with redirect URLs
+4. Backend creates Stripe checkout session (Phase 2B)
+5. Backend returns checkout URL
+6. Frontend redirects user to Stripe hosted checkout
+7. User completes payment → Stripe redirects to success URL
+8. Webhook (Phase 2B) completes registration
+9. Success page shows confirmation
+
+*Build Results*:
+- ✅ Frontend: Next.js build successful, 0 TypeScript errors
+- ✅ Both callback pages properly rendered (Static routes)
+
 **Next Steps**:
-- Phase 4: Payment redirect flow (frontend Stripe Checkout integration)
 - Phase 5: Data migration for existing events (legacy → new pricing format)
 - Phase 6: End-to-end testing (free/single/dual pricing + payment flow)
 

@@ -105,6 +105,18 @@
       "namedRegex": "^/events/create(?:/)?$"
     },
     {
+      "page": "/events/payment/cancel",
+      "regex": "^/events/payment/cancel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/events/payment/cancel(?:/)?$"
+    },
+    {
+      "page": "/events/payment/success",
+      "regex": "^/events/payment/success(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/events/payment/success(?:/)?$"
+    },
+    {
       "page": "/forgot-password",
       "regex": "^/forgot\\-password(?:/)?$",
       "routeKeys": {},

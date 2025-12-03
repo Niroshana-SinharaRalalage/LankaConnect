@@ -348,11 +348,13 @@ export function useDeleteEvent() {
  * useRsvpToEvent Hook
  *
  * Mutation hook for RSVPing to an event
+ * Session 23: Returns Stripe checkout URL for paid events, null for free events
  *
  * Features:
  * - Optimistic RSVP count update
  * - Automatic event detail refetch
  * - Rollback on error
+ * - Returns checkout URL for payment redirect
  *
  * @param options - Additional React Query mutation options
  *
@@ -360,18 +362,24 @@ export function useDeleteEvent() {
  * ```tsx
  * const rsvpToEvent = useRsvpToEvent();
  *
- * await rsvpToEvent.mutateAsync({
+ * const checkoutUrl = await rsvpToEvent.mutateAsync({
  *   eventId: 'event-123',
  *   userId: 'user-456',
- *   quantity: 1
+ *   quantity: 1,
+ *   successUrl: 'https://app.com/events/payment/success',
+ *   cancelUrl: 'https://app.com/events/payment/cancel'
  * });
+ *
+ * if (checkoutUrl) {
+ *   window.location.href = checkoutUrl; // Redirect to Stripe
+ * }
  * ```
  */
 export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string }) =>
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string }) =>
       eventsRepository.rsvpToEvent(data.eventId, data.userId, data.quantity),
     onMutate: async ({ eventId }) => {
       // Cancel queries

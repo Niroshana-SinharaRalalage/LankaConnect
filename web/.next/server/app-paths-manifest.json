@@ -17,6 +17,8 @@
   "/events/[id]/page": "app/events/[id]/page.js",
   "/events/create/page": "app/events/create/page.js",
   "/events/page": "app/events/page.js",
+  "/events/payment/cancel/page": "app/events/payment/cancel/page.js",
+  "/events/payment/success/page": "app/events/payment/success/page.js",
   "/page": "app/page.js",
   "/templates/page": "app/templates/page.js",
   "/test-events/page": "app/test-events/page.js",

@@ -228,11 +228,12 @@ export class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * Session 23: Returns Stripe checkout URL for paid events, null for free events
    * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */
-  async rsvpToEvent(eventId: string, userId: string, quantity: number = 1): Promise<void> {
+  async rsvpToEvent(eventId: string, userId: string, quantity: number = 1): Promise<string | null> {
     const request = { userId, quantity };
-    await apiClient.post<void>(`${this.basePath}/${eventId}/rsvp`, request);
+    return await apiClient.post<string | null>(`${this.basePath}/${eventId}/rsvp`, request);
   }
 
   /**

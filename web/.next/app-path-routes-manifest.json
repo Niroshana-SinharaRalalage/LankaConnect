@@ -17,6 +17,8 @@
   "/events/[id]/page": "/events/[id]",
   "/events/create/page": "/events/create",
   "/events/page": "/events",
+  "/events/payment/cancel/page": "/events/payment/cancel",
+  "/events/payment/success/page": "/events/payment/success",
   "/page": "/",
   "/templates/page": "/templates",
   "/test-events/page": "/test-events",

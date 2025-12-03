@@ -360,6 +360,7 @@ export interface UpdateEventRequest {
  * RSVP to event request
  * Matches backend RsvpToEventCommand for authenticated user registration
  * Session 21: Added multi-attendee support with individual names and ages
+ * Session 23: Added payment redirect URLs for paid events
  */
 export interface RsvpRequest {
   userId: string;
@@ -374,6 +375,10 @@ export interface RsvpRequest {
   email?: string;
   phoneNumber?: string;
   address?: string;
+
+  // Session 23: Payment redirect URLs (required for paid events)
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 /**

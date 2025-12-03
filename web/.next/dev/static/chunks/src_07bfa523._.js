@@ -6453,13 +6453,14 @@ class EventsRepository {
    * RSVP to an event
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
+   * Session 23: Returns Stripe checkout URL for paid events, null for free events
    * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
    */ async rsvpToEvent(eventId, userId, quantity = 1) {
         const request = {
             userId,
             quantity
         };
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/rsvp`, request);
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/rsvp`, request);
     }
     /**
    * Cancel RSVP

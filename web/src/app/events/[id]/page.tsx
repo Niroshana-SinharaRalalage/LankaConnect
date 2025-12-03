@@ -60,30 +60,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       // Check if this is anonymous or authenticated registration
       if ('userId' in data) {
         // Authenticated user registration (RsvpRequest)
-        // For paid events, redirect to Stripe Checkout
-        if (!event.isFree && event.ticketPriceAmount) {
-          // TODO: Integrate with Stripe checkout session for paid events
-          // For now, handle as free RSVP
-          // Session 21: Support both legacy quantity and new attendees format
-          await rsvpMutation.mutateAsync({
-            eventId: id,
-            userId: data.userId,
-            ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
-            email: data.email,
-            phoneNumber: data.phoneNumber,
-            address: data.address,
-          });
-        } else {
-          // Free event - direct RSVP
-          await rsvpMutation.mutateAsync({
-            eventId: id,
-            userId: data.userId,
-            ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
-            email: data.email,
-            phoneNumber: data.phoneNumber,
-            address: data.address,
-          });
+        // Session 23: Build redirect URLs for payment flow
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const successUrl = `${baseUrl}/events/payment/success?eventId=${id}`;
+        const cancelUrl = `${baseUrl}/events/payment/cancel?eventId=${id}`;
+
+        // Session 23: RSVP with payment support
+        // Backend returns checkout URL for paid events, null for free events
+        const checkoutUrl = await rsvpMutation.mutateAsync({
+          eventId: id,
+          userId: data.userId,
+          ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
+          email: data.email,
+          phoneNumber: data.phoneNumber,
+          address: data.address,
+          successUrl,
+          cancelUrl,
+        });
+
+        // If checkout URL is returned, redirect to Stripe for payment
+        if (checkoutUrl) {
+          // Paid event - redirect to Stripe Checkout
+          window.location.href = checkoutUrl;
+          return; // Don't set isProcessing false - user is being redirected
         }
+
+        // Free event - show success message and reload
+        alert('Registration successful!');
+        window.location.reload();
       } else {
         // Anonymous registration
         await eventsRepository.registerAnonymous(id, data);

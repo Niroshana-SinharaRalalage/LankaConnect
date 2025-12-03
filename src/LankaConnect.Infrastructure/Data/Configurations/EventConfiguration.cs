@@ -79,26 +79,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         });
 
         // Session 21: Configure Pricing as JSONB for dual ticket pricing (adult/child)
-        builder.OwnsOne(e => e.Pricing, pricing =>
-        {
-            pricing.ToJson("pricing");  // Store as JSONB column
-
-            // Configure nested Money value objects within JSON
-            pricing.OwnsOne(p => p.AdultPrice, money =>
-            {
-                money.Property(m => m.Amount).HasColumnName("adult_amount");
-                money.Property(m => m.Currency).HasColumnName("adult_currency");
-            });
-
-            pricing.OwnsOne(p => p.ChildPrice, money =>
-            {
-                money.Property(m => m.Amount).HasColumnName("child_amount");
-                money.Property(m => m.Currency).HasColumnName("child_currency");
-            });
-
-            // Configure ChildAgeLimit property
-            pricing.Property(p => p.ChildAgeLimit).HasColumnName("child_age_limit");
-        });
+        // TEMPORARILY DISABLED TO FIX EVENTIMAGES MIGRATION ISSUE
+        // builder.OwnsOne(e => e.Pricing, pricing =>
+        // {
+        //     pricing.ToJson("pricing");  // Store entire Pricing as JSONB column
+        //     // Note: ToJson() automatically serializes all properties including GroupTiers collection
+        // });
 
         // Configure audit fields
         builder.Property(e => e.CreatedAt)

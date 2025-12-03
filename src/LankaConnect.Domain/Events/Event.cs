@@ -523,11 +523,15 @@ public class Event : BaseEntity
 
     /// <summary>
     /// Checks if event is free (no ticket price or zero ticket price)
-    /// Supports both legacy single pricing and new dual pricing
+    /// Supports legacy single pricing, dual pricing, and group tiered pricing
     /// </summary>
     public bool IsFree()
     {
-        // New dual pricing system
+        // Phase 6D: Group tiered pricing - never free if tiers are configured
+        if (Pricing != null && Pricing.Type == PricingType.GroupTiered)
+            return !Pricing.HasGroupTiers;
+
+        // New dual pricing system (Single or AgeDual)
         if (Pricing != null)
             return Pricing.AdultPrice.IsZero;
 
@@ -559,8 +563,34 @@ public class Event : BaseEntity
     }
 
     /// <summary>
-    /// Calculates total price for a list of attendees based on their ages
+    /// Phase 6D: Sets group-based tiered pricing for the event
+    /// </summary>
+    /// <param name="pricing">Ticket pricing configuration with group tiers</param>
+    public Result SetGroupPricing(TicketPricing? pricing)
+    {
+        if (pricing == null)
+            return Result.Failure("Pricing cannot be null");
+
+        if (pricing.Type != PricingType.GroupTiered)
+            return Result.Failure("Only GroupTiered pricing type is allowed for SetGroupPricing");
+
+        Pricing = pricing;
+
+        // Set TicketPrice to null for group pricing (not applicable)
+        TicketPrice = null;
+
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Calculates total price for a list of attendees
     /// Session 21: Multi-attendee registration with age-based pricing
+    /// Phase 6D: Updated to support GroupTiered pricing based on attendee count
     /// </summary>
     /// <param name="attendees">List of attendees with ages</param>
     /// <returns>Total price for all attendees</returns>
@@ -579,7 +609,20 @@ public class Event : BaseEntity
         // Calculate based on pricing configuration
         if (Pricing != null)
         {
-            // Dual pricing: Calculate for each attendee based on age
+            // Phase 6D: Group tiered pricing - calculate based on total attendee count
+            if (Pricing.Type == PricingType.GroupTiered)
+            {
+                var attendeeCount = attendees.Count();
+                var groupPriceResult = Pricing.CalculateGroupPrice(attendeeCount);
+
+                if (groupPriceResult.IsFailure)
+                    return Result<Money>.Failure(groupPriceResult.Error);
+
+                return Result<Money>.Success(groupPriceResult.Value);
+            }
+
+            // Dual pricing (AgeDual): Calculate for each attendee based on age
+            // Single pricing: Also uses CalculateForAttendee (returns AdultPrice for all)
             Money? totalPrice = null;
 
             foreach (var attendee in attendees)

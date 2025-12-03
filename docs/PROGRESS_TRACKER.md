@@ -1,76 +1,96 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-02 (Current Session) - Session 23: Event Creation UX Fix & Dual Pricing Backend Handover ✅ COMPLETE*
+*Last Updated: 2025-12-02 (Current Session) - Session 24: Image Upload 500 Error Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 23: Event Creation UX Fix & Dual Pricing Backend Handover ✅ COMPLETE
+## 🎯 Current Session Status - Session 24: Image Upload 500 Error Fix ✅ COMPLETE
 
-### Session 23: Event Creation UX Fix & Dual Pricing Backend Handover - COMPLETE - 2025-12-02
+### Session 24: Image Upload 500 Error Fix - COMPLETE - 2025-12-02
 
-**Status**: ✅ **COMPLETE** (Redirect Fix + Handover Documentation)
+**Status**: ✅ **COMPLETE** (Backend Config + Proxy Fix)
 
 **Commits**:
-- `38ccf5d` - fix(events): redirect to management page after event creation
-- Previous: `401b4ee` - fix(forms): Fix TypeScript error in EventEditForm
+- `29093a8` - fix(config): Fix Azure Storage configuration key mismatch for Production
+- `4acd51f` - fix(proxy): Fix multipart/form-data handling for file uploads
+- Previous: `0b831f9` - fix(upload): Fix Content-Type header for multipart file uploads
 
-**Goal**: Fix event creation redirect to management page and create comprehensive handover documentation for dual pricing backend implementation
+**Goal**: Fix critical 500 Internal Server Error preventing event image/video uploads to Azure Blob Storage
 
-**Summary**: Successfully completed redirect fix and discovered critical gap where Session 21 frontend sends dual pricing data but backend API cannot accept it (events created with dual pricing are silently created as FREE events). Created comprehensive handover document with exact code changes needed for 6 backend files.
+**Summary**: Successfully diagnosed and fixed TWO critical issues blocking image uploads: (1) Production config used wrong key `AzureBlobStorage` instead of `AzureStorage`, causing service initialization to fail with 500 error, (2) Next.js proxy was reading multipart bodies as text instead of streaming, corrupting binary data. System-architect agent performed comprehensive root cause analysis across frontend, proxy, backend API, and blob storage layers. Both fixes deployed with 0 compilation errors. Awaiting staging deployment to verify end-to-end upload flow.
 
 **Implementation Details**:
 
 **Issue Reported**:
-- Event creation was redirecting to `/events/{id}` (Event Registration page)
-- Should redirect to `/events/{id}/manage` (Event Management page)
-- Organizers had to manually navigate to upload media and manage signups
+- POST to `/api/proxy/events/{id}/images` returns 500 Internal Server Error
+- Upload error message: "Request failed with status code 500"
+- Browser Network tab shows Content-Type as `application/json` instead of `multipart/form-data`
+- Frontend drag-and-drop UI works, but backend rejects requests
 
-**Fixes Applied** (Verified):
-1. ✅ EventCreationForm.tsx:160 - Redirect to `/events/${eventId}/manage`
-2. ✅ EventEditForm.tsx:92,123 - Added `enableDualPricing` defaults to fix TypeScript error
-3. ✅ event.schemas.ts:98 - Fixed `enableDualPricing` type (removed `.optional()`)
-4. ✅ useEvents.ts:374 - Updated RSVP hook signature for Session 21 compatibility
+**Root Cause Analysis** (system-architect agent):
+1. **Backend Configuration Error** (PRIMARY CAUSE - 99% certainty)
+   - File: `src/LankaConnect.API/appsettings.Production.json`
+   - Used wrong key: `AzureBlobStorage:ConnectionString`
+   - Backend expects: `AzureStorage:ConnectionString`
+   - Result: Service constructor throws exception → DI fails → 500 error
 
-**Critical Discovery**:
-- **Frontend**: Sends `adultPriceAmount`, `childPriceAmount`, `childAgeLimit` in CreateEventRequest
-- **Backend**: CreateEventCommand only accepts legacy `ticketPriceAmount`, `ticketPriceCurrency`
-- **Result**: Dual pricing data is SILENTLY IGNORED, events created as FREE
-- **Root Cause**: Session 21 implemented domain layer but NOT API layer
+2. **Proxy Multipart Handling** (SECONDARY - Defensive fix)
+   - File: `web/src/app/api/proxy/[...path]/route.ts`
+   - Reading multipart body as text (line 79: `await request.text()`)
+   - Corrupts binary image data
+   - Loses multipart boundary parameter in Content-Type header
 
-**Handover Documentation Created**:
-- [DUAL_PRICING_IMPLEMENTATION_SPEC.md](./DUAL_PRICING_IMPLEMENTATION_SPEC.md) - Comprehensive implementation guide
-- 8 detailed tasks with exact code changes
-- Validation rules and migration scripts
-- Testing checklist
-- Time estimate: ~6 hours total
+**Fixes Applied**:
 
-**Backend Files Needing Updates**:
-1. CreateEventCommand.cs - Add 5 dual pricing fields
-2. CreateEventCommandHandler.cs - Build TicketPricing value object
-3. EventDto.cs - Add 5 dual pricing fields + hasDualPricing flag
-4. EventMappingProfile.cs - Map Pricing → DTO
-5. UpdateEventCommand.cs - Add 5 dual pricing fields
-6. UpdateEventCommandHandler.cs - Update TicketPricing object
+**Backend Configuration Fix**:
+- ✅ File: `src/LankaConnect.API/appsettings.Production.json`
+- ✅ Changed `AzureBlobStorage` → `AzureStorage` (matches backend code)
+- ✅ Changed `ContainerName` → `DefaultContainer` (matches AzureBlobStorageService.cs)
+- ✅ Set container to `event-media` (consistent with staging)
 
-**Domain Layer Status** (✅ Already Complete):
-- ✅ TicketPricing value object with dual pricing support
-- ✅ Event.SetDualPricing() method
-- ✅ Event.CalculatePriceForAttendees() method
-- ✅ All 150/150 tests passing
+**Frontend Proxy Fix**:
+- ✅ File: `web/src/app/api/proxy/[...path]/route.ts`
+- ✅ Added Content-Type detection for multipart/form-data
+- ✅ Stream request body as-is for multipart (don't read as text)
+- ✅ Preserve exact Content-Type header with boundary parameter
+- ✅ Added `duplex: 'half'` for streaming support
+- ✅ Enhanced logging for debugging multipart requests
+
+**Documentation Created** (3 comprehensive files):
+- ✅ `docs/IMAGE_UPLOAD_FIX_SUMMARY.md` - Quick deployment guide
+- ✅ `docs/architecture/IMAGE_UPLOAD_500_ERROR_ANALYSIS.md` - Complete root cause analysis
+- ✅ `docs/architecture/IMAGE_UPLOAD_FLOW_DIAGRAM.md` - Request/response flow diagrams
+
+**Build Status**:
+```
+Frontend Build:
+✓ Compiled successfully in 28.4s
+✓ TypeScript: 0 errors, 0 warnings
+✓ Generating static pages (15/15)
+
+Backend:
+✓ Configuration file syntax valid
+✓ JSON schema correct
+```
+
+**Testing Checklist** (Post-Deployment):
+1. ⏳ Verify Azure environment variable `AZURE_STORAGE_CONNECTION_STRING` is set
+2. ⏳ Check backend logs: "Azure Blob Storage Service initialized with default container: event-media"
+3. ⏳ Test image upload: POST `/api/proxy/events/{id}/images` → 200 OK
+4. ⏳ Verify images stored in Azure Blob Storage container
+5. ⏳ Verify images display correctly in event gallery
+6. ⏳ Test drag-and-drop reordering functionality
+7. ⏳ Test image deletion functionality
 
 **Next Steps**:
-1. Hand off DUAL_PRICING_IMPLEMENTATION_SPEC.md to original session
-2. Backend team to implement 8 tasks (~6 hours)
-3. Test end-to-end dual pricing flow after backend complete
-4. Verify events are created as PAID with correct pricing structure
-
-**UX Improvement**:
-- Organizers now land on management page immediately after event creation
-- Direct access to media upload, edit details, manage signups
-- Eliminates extra navigation step
+1. Await Azure Container Apps deployment (GitHub Actions: deploy-staging.yml)
+2. Monitor Application Insights for service initialization logs
+3. Test image upload end-to-end in staging environment
+4. Verify no 500 errors in Application Insights exceptions
 
 **Related Documentation**:
-- [DUAL_PRICING_IMPLEMENTATION_SPEC.md](./DUAL_PRICING_IMPLEMENTATION_SPEC.md) - Backend implementation handover
-- [PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md](./PHASE_21_DUAL_PRICING_MULTI_ATTENDEE_SUMMARY.md) - Session 21 summary
+- [IMAGE_UPLOAD_FIX_SUMMARY.md](./IMAGE_UPLOAD_FIX_SUMMARY.md) - Deployment guide and testing checklist
+- [IMAGE_UPLOAD_500_ERROR_ANALYSIS.md](./architecture/IMAGE_UPLOAD_500_ERROR_ANALYSIS.md) - Complete technical analysis
+- [IMAGE_UPLOAD_FLOW_DIAGRAM.md](./architecture/IMAGE_UPLOAD_FLOW_DIAGRAM.md) - Architecture diagrams
 
 ---
 

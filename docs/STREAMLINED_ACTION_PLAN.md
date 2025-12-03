@@ -7,13 +7,86 @@
 
 ---
 
-## ✅ CURRENT STATUS - DUAL TICKET PRICING & MULTI-ATTENDEE REGISTRATION (BACKEND COMPLETE) (2025-12-02)
-**Date**: 2025-12-02 (Session 21)
-**Session**: Dual Ticket Pricing & Multi-Attendee Registration - Backend Complete
-**Status**: ✅ BACKEND COMPLETE - 70% overall (Backend 100%, Frontend 0%)
-**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors, 0 warnings, 150/150 tests passing
-**Deployment**: ⏳ Migration ready for Azure staging deployment
-**Frontend**: ⏳ PENDING - API DTOs, forms, and testing needed
+## ✅ CURRENT STATUS - IMAGE UPLOAD 500 ERROR FIX (2025-12-02)
+**Date**: 2025-12-02 (Session 24)
+**Session**: Image Upload 500 Error - Critical Production Fix
+**Status**: ✅ COMPLETE - Both backend config and frontend proxy fixed
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors, 0 warnings
+**Deployment**: ✅ Pushed to develop - awaiting Azure staging deployment
+**Priority**: P0 - Critical (Blocks event media upload feature)
+
+### SESSION 24: IMAGE UPLOAD 500 ERROR FIX (2025-12-02)
+**Goal**: Fix critical 500 Internal Server Error preventing event image/video uploads
+
+**User Issue**:
+- POST to `/api/proxy/events/{id}/images` returns 500 Internal Server Error
+- Error appeared after fixing 401 authentication issue
+- Frontend drag-and-drop upload UI works, but backend rejects multipart data
+
+**Root Cause Analysis** (system-architect agent):
+1. **Backend Configuration Error** (PRIMARY - 99%)
+   - `appsettings.Production.json` used wrong key: `AzureBlobStorage:ConnectionString`
+   - Backend expects: `AzureStorage:ConnectionString`
+   - Result: Service initialization fails → 500 error
+
+2. **Proxy Multipart Handling** (SECONDARY - Defensive fix)
+   - Proxy read multipart body as text (corrupts binary data)
+   - Multipart boundary parameter lost in Content-Type header
+   - Missing duplex streaming for request bodies
+
+**Implementation Complete**:
+
+**Backend Configuration Fix**:
+- ✅ Fixed `src/LankaConnect.API/appsettings.Production.json`
+- ✅ Changed `AzureBlobStorage` → `AzureStorage` (matches backend code)
+- ✅ Changed `ContainerName` → `DefaultContainer` (matches service)
+- ✅ Container name: `event-media` (consistent with staging)
+
+**Frontend Proxy Fix**:
+- ✅ Fixed `web/src/app/api/proxy/[...path]/route.ts`
+- ✅ Detect multipart/form-data via Content-Type header
+- ✅ Stream request body as-is (don't read as text)
+- ✅ Preserve exact Content-Type with boundary parameter
+- ✅ Enable duplex: 'half' for streaming
+- ✅ Enhanced logging for debugging
+
+**Documentation Created** (3 files):
+- ✅ `docs/IMAGE_UPLOAD_FIX_SUMMARY.md` - Quick deployment guide
+- ✅ `docs/architecture/IMAGE_UPLOAD_500_ERROR_ANALYSIS.md` - Root cause analysis
+- ✅ `docs/architecture/IMAGE_UPLOAD_FLOW_DIAGRAM.md` - Complete flow diagrams
+
+**Build Results**:
+```
+Frontend Build:
+✓ Compiled successfully in 28.4s
+✓ TypeScript: 0 errors
+✓ Generating static pages (15/15)
+```
+
+**Commits**:
+- `29093a8` - fix(config): Fix Azure Storage configuration key mismatch for Production
+- `4acd51f` - fix(proxy): Fix multipart/form-data handling for file uploads
+- Documentation files committed with config fix
+
+**Testing Checklist** (Post-Deployment):
+1. ⏳ Verify Azure environment variable `AZURE_STORAGE_CONNECTION_STRING` is set
+2. ⏳ Test image upload: POST `/api/proxy/events/{id}/images` → 200 OK
+3. ⏳ Verify images stored in Azure Blob Storage `event-media` container
+4. ⏳ Verify images display correctly in event gallery
+5. ⏳ Test drag-and-drop reordering
+6. ⏳ Test image deletion
+
+**Next Steps**:
+1. Await Azure staging deployment
+2. Verify backend logs show: "Azure Blob Storage Service initialized"
+3. Test image upload end-to-end
+4. Monitor Application Insights for errors
+
+**See**:
+- [IMAGE_UPLOAD_FIX_SUMMARY.md](./IMAGE_UPLOAD_FIX_SUMMARY.md) - Deployment guide
+- [IMAGE_UPLOAD_500_ERROR_ANALYSIS.md](./architecture/IMAGE_UPLOAD_500_ERROR_ANALYSIS.md) - Technical analysis
+
+---
 
 ### SESSION 21: DUAL TICKET PRICING & MULTI-ATTENDEE REGISTRATION - BACKEND (2025-12-02)
 **Goal**: Implement dual ticket pricing (Adult/Child) and multi-attendee registration with individual names/ages per registration

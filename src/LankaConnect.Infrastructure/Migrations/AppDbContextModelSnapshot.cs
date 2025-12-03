@@ -1441,6 +1441,9 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Quantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1452,6 +1455,12 @@ namespace LankaConnect.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("Confirmed");
+
+                    b.Property<string>("StripeCheckoutSessionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

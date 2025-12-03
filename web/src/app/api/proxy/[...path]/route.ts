@@ -72,13 +72,24 @@ async function forwardRequest(
     const path = pathSegments.join('/');
     const targetUrl = `${BACKEND_URL}/${path}`;
 
+    // Get Content-Type to detect multipart/form-data
+    const contentType = request.headers.get('content-type');
+    const isMultipart = contentType?.includes('multipart/form-data');
+
     // Get request body if present
-    let body: string | undefined;
+    // CRITICAL: For multipart/form-data, stream body as-is to preserve binary data and boundary
+    let body: BodyInit | undefined;
     if (method !== 'GET' && method !== 'DELETE') {
-      try {
-        body = await request.text();
-      } catch {
-        body = undefined;
+      if (isMultipart) {
+        // Stream multipart body as-is (don't read as text - corrupts binary data)
+        body = request.body;
+      } else {
+        // For JSON, read as text
+        try {
+          body = await request.text();
+        } catch {
+          body = undefined;
+        }
       }
     }
 
@@ -88,7 +99,8 @@ async function forwardRequest(
 
     // Build headers for backend request
     const headers: HeadersInit = {
-      'Content-Type': request.headers.get('content-type') || 'application/json',
+      // CRITICAL: Preserve exact Content-Type for multipart (includes boundary parameter)
+      'Content-Type': contentType || 'application/json',
       'Accept': request.headers.get('accept') || 'application/json',
     };
 
@@ -103,7 +115,11 @@ async function forwardRequest(
       headers['Cookie'] = cookieHeader;
     }
 
-    console.log(`[Proxy] ${method} ${targetUrl}`);
+    console.log(`[Proxy] ${method} ${targetUrl}`, {
+      contentType,
+      isMultipart,
+      hasBody: !!body,
+    });
 
     // Make request to backend
     const response = await fetch(targetUrl, {
@@ -111,6 +127,8 @@ async function forwardRequest(
       headers,
       body,
       credentials: 'include', // Important: include cookies
+      // @ts-ignore - duplex is required for streaming request bodies but not in TS types yet
+      duplex: 'half', // Required for streaming multipart/form-data
     });
 
     // Get response body

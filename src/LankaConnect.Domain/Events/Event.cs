@@ -235,13 +235,17 @@ public class Event : BaseEntity
 
         var totalPrice = priceResult.Value;
 
+        // Session 23: Determine if this is a paid event (has pricing and not free)
+        bool isPaidEvent = !IsFree();
+
         // Create registration with all attendees
         var registrationResult = Registration.CreateWithAttendees(
             Id,
             userId,
             attendeeList,
             contact,
-            totalPrice);
+            totalPrice,
+            isPaidEvent);
 
         if (registrationResult.IsFailure)
             return Result.Failure(registrationResult.Errors);

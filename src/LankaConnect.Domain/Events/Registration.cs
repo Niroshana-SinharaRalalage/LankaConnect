@@ -22,6 +22,11 @@ public class Registration : BaseEntity
 
     public RegistrationStatus Status { get; private set; }
 
+    // Session 23: Payment integration for paid events
+    public PaymentStatus PaymentStatus { get; private set; }
+    public string? StripeCheckoutSessionId { get; private set; }
+    public string? StripePaymentIntentId { get; private set; }
+
     // EF Core constructor
     private Registration() { }
 
@@ -33,6 +38,7 @@ public class Registration : BaseEntity
         AttendeeInfo = null;
         Quantity = quantity;
         Status = RegistrationStatus.Confirmed;
+        PaymentStatus = PaymentStatus.NotRequired; // Legacy format defaults to free
     }
 
     // Anonymous user registration
@@ -43,6 +49,7 @@ public class Registration : BaseEntity
         AttendeeInfo = attendeeInfo;
         Quantity = quantity;
         Status = RegistrationStatus.Confirmed;
+        PaymentStatus = PaymentStatus.NotRequired; // Legacy format defaults to free
     }
 
     // Factory method for authenticated users
@@ -78,12 +85,14 @@ public class Registration : BaseEntity
     }
 
     // Session 21: Factory method for multi-attendee registration with contact info
+    // Session 23: Updated to support payment status for paid events
     public static Result<Registration> CreateWithAttendees(
         Guid eventId,
         Guid? userId,
         IEnumerable<AttendeeDetails> attendees,
         RegistrationContact contact,
-        Money totalPrice)
+        Money totalPrice,
+        bool isPaidEvent = false)
     {
         if (eventId == Guid.Empty)
             return Result<Registration>.Failure("Event ID is required");
@@ -111,7 +120,9 @@ public class Registration : BaseEntity
             Quantity = attendeeList.Count,  // Maintain backward compatibility
             Contact = contact,
             TotalPrice = totalPrice,
-            Status = RegistrationStatus.Confirmed
+            // Session 23: If paid event, start as Pending until payment completes
+            Status = isPaidEvent ? RegistrationStatus.Pending : RegistrationStatus.Confirmed,
+            PaymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired
         };
 
         registration._attendees.AddRange(attendeeList);
@@ -195,6 +206,69 @@ public class Registration : BaseEntity
             return Result.Failure($"Invalid transition from {Status} to {newStatus}");
 
         Status = newStatus;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    // Session 23: Payment integration methods
+    /// <summary>
+    /// Sets the Stripe Checkout Session ID when payment session is created
+    /// </summary>
+    public Result SetStripeCheckoutSession(string sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return Result.Failure("Session ID cannot be empty");
+
+        if (PaymentStatus != PaymentStatus.Pending)
+            return Result.Failure($"Cannot set checkout session for payment with status {PaymentStatus}");
+
+        StripeCheckoutSessionId = sessionId;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Completes payment when Stripe webhook confirms successful payment
+    /// </summary>
+    public Result CompletePayment(string paymentIntentId)
+    {
+        if (string.IsNullOrWhiteSpace(paymentIntentId))
+            return Result.Failure("Payment intent ID cannot be empty");
+
+        if (PaymentStatus != PaymentStatus.Pending)
+            return Result.Failure($"Cannot complete payment with status {PaymentStatus}. Only Pending payments can be completed.");
+
+        StripePaymentIntentId = paymentIntentId;
+        PaymentStatus = PaymentStatus.Completed;
+        Status = RegistrationStatus.Confirmed;  // Confirm registration when payment succeeds
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks payment as failed when Stripe reports payment failure
+    /// </summary>
+    public Result FailPayment()
+    {
+        if (PaymentStatus != PaymentStatus.Pending)
+            return Result.Failure($"Cannot fail payment with status {PaymentStatus}");
+
+        PaymentStatus = PaymentStatus.Failed;
+        Status = RegistrationStatus.Cancelled;  // Cancel registration if payment fails
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks payment as refunded when refund is processed
+    /// </summary>
+    public Result RefundPayment()
+    {
+        if (PaymentStatus != PaymentStatus.Completed)
+            return Result.Failure($"Cannot refund payment with status {PaymentStatus}. Only Completed payments can be refunded.");
+
+        PaymentStatus = PaymentStatus.Refunded;
+        Status = RegistrationStatus.Refunded;
         MarkAsUpdated();
         return Result.Success();
     }

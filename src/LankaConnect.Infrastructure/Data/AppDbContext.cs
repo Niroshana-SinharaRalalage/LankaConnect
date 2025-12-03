@@ -113,6 +113,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<SignUpCommitment>().ToTable("sign_up_commitments", "events");
         modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
         modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
+        modelBuilder.Entity<EventImage>().ToTable("EventImages", "events"); // Epic 2 Phase 2
+        modelBuilder.Entity<EventVideo>().ToTable("EventVideos", "events"); // Epic 2 Phase 2
         
         // Community schema  
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");

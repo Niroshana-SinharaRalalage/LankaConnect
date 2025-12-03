@@ -6,11 +6,12 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Clock } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest } from '@/infrastructure/api/types/events.types';
+import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Registration Form Component
  * Session 21: Multi-attendee registration with individual names and ages
+ * Phase 6D: Group tiered pricing support
  * Supports both anonymous and authenticated registration flows
  * - Anonymous users: Fill in contact details + individual attendee names/ages
  * - Authenticated users: Pre-populate first attendee from profile, details auto-filled
@@ -25,6 +26,9 @@ interface EventRegistrationFormProps {
   adultPrice?: number;
   childPrice?: number;
   childAgeLimit?: number;
+  // Phase 6D: Group tiered pricing support
+  hasGroupPricing?: boolean;
+  groupPricingTiers?: readonly GroupPricingTierDto[];
   isProcessing: boolean;
   onSubmit: (data: AnonymousRegistrationRequest | RsvpRequest) => Promise<void>;
   error?: string | null;
@@ -39,6 +43,8 @@ export function EventRegistrationForm({
   adultPrice,
   childPrice,
   childAgeLimit,
+  hasGroupPricing,
+  groupPricingTiers,
   isProcessing,
   onSubmit,
   error,
@@ -128,10 +134,45 @@ export function EventRegistrationForm({
     setTouched(prev => ({ ...prev, attendees: updatedTouched }));
   };
 
-  // Session 21: Calculate total price with dual pricing support
-  const calculateTotalPrice = (): number => {
-    if (isFree || !ticketPrice) return 0;
+  // Phase 6D: Find applicable group pricing tier based on total attendee count
+  const findApplicableTier = (): GroupPricingTierDto | null => {
+    if (!hasGroupPricing || !groupPricingTiers || groupPricingTiers.length === 0) {
+      return null;
+    }
 
+    const totalAttendees = quantity;
+    const sortedTiers = [...groupPricingTiers].sort((a, b) => a.minAttendees - b.minAttendees);
+
+    for (const tier of sortedTiers) {
+      if (totalAttendees >= tier.minAttendees) {
+        // If tier has no max (unlimited), it applies
+        if (!tier.maxAttendees) {
+          return tier;
+        }
+        // If tier has max and attendees are within range, it applies
+        if (totalAttendees <= tier.maxAttendees) {
+          return tier;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // Session 21 + Phase 6D: Calculate total price with group/dual/single pricing support
+  const calculateTotalPrice = (): number => {
+    if (isFree) return 0;
+
+    // Phase 6D: Group tiered pricing (highest priority)
+    if (hasGroupPricing && groupPricingTiers && groupPricingTiers.length > 0) {
+      const applicableTier = findApplicableTier();
+      if (applicableTier) {
+        return applicableTier.pricePerPerson * quantity;
+      }
+      return 0; // No applicable tier found
+    }
+
+    // Session 21: Dual pricing (age-based)
     if (hasDualPricing && adultPrice && childPrice && childAgeLimit) {
       // Calculate based on attendee ages
       return attendees.reduce((total, attendee) => {
@@ -142,7 +183,11 @@ export function EventRegistrationForm({
     }
 
     // Legacy single pricing
-    return (ticketPrice || 0) * quantity;
+    if (ticketPrice) {
+      return ticketPrice * quantity;
+    }
+
+    return 0;
   };
 
   // Validation
@@ -214,6 +259,7 @@ export function EventRegistrationForm({
   };
 
   const totalPrice = calculateTotalPrice();
+  const applicableTier = hasGroupPricing ? findApplicableTier() : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -404,9 +450,31 @@ export function EventRegistrationForm({
         </div>
       )}
 
-      {/* Total Price with Dual Pricing Breakdown */}
+      {/* Total Price with Group/Dual/Single Pricing Breakdown */}
       {!isFree && totalPrice > 0 && (
         <div className="p-4 bg-neutral-50 rounded-lg border-t-2 border-orange-500">
+          {/* Phase 6D: Group Tiered Pricing Breakdown */}
+          {hasGroupPricing && applicableTier && (
+            <div className="mb-3 space-y-2 text-sm">
+              <h5 className="font-medium text-neutral-700">Group Pricing Applied:</h5>
+              <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-orange-200">
+                <div>
+                  <span className="font-medium text-orange-600">{applicableTier.tierRange}</span>
+                  <span className="text-neutral-600 ml-2">attendees</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-neutral-700">
+                    ${applicableTier.pricePerPerson.toFixed(2)} per person
+                  </div>
+                  <div className="text-xs text-neutral-500">
+                    {quantity} × ${applicableTier.pricePerPerson.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Session 21: Dual Pricing Breakdown */}
           {hasDualPricing && adultPrice && childPrice && childAgeLimit && (
             <div className="mb-3 space-y-2 text-sm">
               <h5 className="font-medium text-neutral-700">Price Breakdown:</h5>
@@ -424,6 +492,7 @@ export function EventRegistrationForm({
               })}
             </div>
           )}
+
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>

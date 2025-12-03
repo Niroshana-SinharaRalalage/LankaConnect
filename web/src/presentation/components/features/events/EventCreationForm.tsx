@@ -13,6 +13,7 @@ import { useCreateEvent } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
+import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 
 /**
  * Event Creation Form Component
@@ -43,6 +44,8 @@ export function EventCreationForm() {
     defaultValues: {
       isFree: true,
       enableDualPricing: false,
+      enableGroupPricing: false,
+      groupPricingTiers: [],
       capacity: 50,
       ticketPriceCurrency: Currency.USD,
       adultPriceCurrency: Currency.USD,
@@ -53,6 +56,8 @@ export function EventCreationForm() {
 
   const isFree = watch('isFree');
   const enableDualPricing = watch('enableDualPricing');
+  const enableGroupPricing = watch('enableGroupPricing');
+  const groupPricingTiers = watch('groupPricingTiers') || [];
 
   const onSubmit = handleSubmit(async (data) => {
     if (!user?.userId) {
@@ -122,9 +127,21 @@ export function EventCreationForm() {
           locationLatitude,
           locationLongitude,
         }),
+        // Phase 6D: Group tiered pricing (highest priority)
         // Session 21: Dual pricing support
+        // Legacy: Single pricing
         ...(data.isFree
           ? {}
+          : data.enableGroupPricing
+          ? {
+              // Send group tiered pricing
+              groupPricingTiers: data.groupPricingTiers?.map((tier) => ({
+                minAttendees: tier.minAttendees,
+                maxAttendees: tier.maxAttendees,
+                pricePerPerson: tier.pricePerPerson,
+                currency: tier.currency,
+              })),
+            }
           : data.enableDualPricing
           ? {
               // Send dual pricing
@@ -479,21 +496,47 @@ export function EventCreationForm() {
                 <h4 className="text-sm font-semibold text-neutral-900">Ticket Pricing</h4>
               </div>
 
-              {/* Dual Pricing Toggle */}
-              <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
-                <input
-                  id="enableDualPricing"
-                  type="checkbox"
-                  className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
-                  {...register('enableDualPricing')}
-                />
-                <label htmlFor="enableDualPricing" className="text-sm font-medium text-neutral-700">
-                  Enable Adult/Child Pricing (different prices for adults and children)
-                </label>
+              {/* Pricing Mode Selection */}
+              <div className="space-y-3">
+                {/* Dual Pricing Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableDualPricing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableDualPricing')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('enableGroupPricing', false);
+                      }
+                    }}
+                  />
+                  <label htmlFor="enableDualPricing" className="text-sm font-medium text-neutral-700">
+                    Enable Adult/Child Pricing (different prices for adults and children)
+                  </label>
+                </div>
+
+                {/* Group Pricing Toggle - Phase 6D */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableGroupPricing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableGroupPricing')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setValue('enableDualPricing', false);
+                      }
+                    }}
+                  />
+                  <label htmlFor="enableGroupPricing" className="text-sm font-medium text-neutral-700">
+                    Enable Group Tiered Pricing (quantity-based discounts for groups)
+                  </label>
+                </div>
               </div>
 
               {/* Single Pricing Fields (default) */}
-              {!enableDualPricing && (
+              {!enableDualPricing && !enableGroupPricing && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Ticket Price */}
                   <div>
@@ -537,8 +580,20 @@ export function EventCreationForm() {
                 </div>
               )}
 
+              {/* Group Pricing Tier Builder - Phase 6D */}
+              {enableGroupPricing && (
+                <div className="space-y-4">
+                  <GroupPricingTierBuilder
+                    tiers={groupPricingTiers}
+                    onChange={(tiers) => setValue('groupPricingTiers', tiers)}
+                    defaultCurrency={watch('ticketPriceCurrency') || Currency.USD}
+                    errors={errors.groupPricingTiers?.message}
+                  />
+                </div>
+              )}
+
               {/* Dual Pricing Fields (adult/child) */}
-              {enableDualPricing && (
+              {enableDualPricing && !enableGroupPricing && (
                 <div className="space-y-4">
                   {/* Adult Pricing Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

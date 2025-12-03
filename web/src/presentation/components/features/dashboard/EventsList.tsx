@@ -197,10 +197,14 @@ export function EventsList({
                 </span>
               )}
 
-              {/* Price */}
-              {!event.isFree && event.ticketPriceAmount && (
+              {/* Price - Session 23: Dual pricing support */}
+              {!event.isFree && (
                 <span className="px-2 py-1 bg-[#FFE8CC] text-[#8B1538] rounded text-xs font-medium">
-                  ${event.ticketPriceAmount}
+                  {event.hasDualPricing ? (
+                    `Adult: $${event.adultPriceAmount} | Child: $${event.childPriceAmount}`
+                  ) : (
+                    `$${event.ticketPriceAmount}`
+                  )}
                 </span>
               )}
             </div>

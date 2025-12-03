@@ -332,20 +332,38 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              {/* Pricing */}
+              {/* Pricing - Session 23: Dual pricing support */}
               <div className="flex items-start gap-3">
                 <div className="p-3 rounded-lg" style={{ background: '#FFF4ED' }}>
                   <DollarSign className="h-6 w-6" style={{ color: '#FF7900' }} />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-neutral-500">Pricing</p>
-                  <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
-                    {event.isFree ? 'Free Event' : `$${event.ticketPriceAmount?.toFixed(2)} per person`}
-                  </p>
-                  {!event.isFree && (
-                    <p className="text-sm text-neutral-600">
-                      {event.ticketPriceCurrency === 1 ? 'USD' : 'LKR'}
+                  {event.isFree ? (
+                    <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                      Free Event
                     </p>
+                  ) : event.hasDualPricing ? (
+                    <>
+                      <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                        Adult: ${event.adultPriceAmount?.toFixed(2)}
+                      </p>
+                      <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                        Child (under {event.childAgeLimit}): ${event.childPriceAmount?.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-neutral-600">
+                        {event.adultPriceCurrency === 1 ? 'USD' : 'LKR'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                        ${event.ticketPriceAmount?.toFixed(2)} per person
+                      </p>
+                      <p className="text-sm text-neutral-600">
+                        {event.ticketPriceCurrency === 1 ? 'USD' : 'LKR'}
+                      </p>
+                    </>
                   )}
                 </div>
               </div>

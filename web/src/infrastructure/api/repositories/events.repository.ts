@@ -539,9 +539,13 @@ export class EventsRepository {
     formData.append('thumbnail', thumbnailFile);
 
     // Use apiClient.postMultipart for proper authentication and error handling
+    // Video files can be large (up to 100MB), so use 5-minute timeout
     return await apiClient.postMultipart<EventVideoDto>(
       `${this.basePath}/${eventId}/videos`,
-      formData
+      formData,
+      {
+        timeout: 300000, // 5 minutes for large video uploads
+      }
     );
   }
 

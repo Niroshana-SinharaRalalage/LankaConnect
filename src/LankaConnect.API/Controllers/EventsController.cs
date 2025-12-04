@@ -275,13 +275,13 @@ public class EventsController : BaseController<EventsController>
         if (result.IsSuccess)
         {
             Logger.LogInformation("✅ Event created successfully: EventId={EventId}", result.Value);
+            return HandleResultWithCreated(result, nameof(GetEventById), new { id = result.Value });
         }
         else
         {
             Logger.LogError("❌ Event creation failed: {Errors}", string.Join(", ", result.Errors));
+            return HandleResult(result);
         }
-
-        return HandleResultWithCreated(result, nameof(GetEventById), new { id = result.Value });
     }
 
     /// <summary>

@@ -15,9 +15,10 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
-import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X } from 'lucide-react';
-import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X, Edit } from 'lucide-react';
+import { SignUpItemCategory, SignUpListDto } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
+import { EditSignUpListModal } from './EditSignUpListModal';
 
 /**
  * Manage Sign-Up Lists Page
@@ -59,6 +60,10 @@ export default function ManageSignUpsPage() {
   const [description, setDescription] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Edit modal state - Phase 6A.13: Edit Sign-Up List feature
+  const [editingSignUpList, setEditingSignUpList] = useState<SignUpListDto | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Category checkboxes - organizer selects which categories to enable
   const [hasMandatoryItems, setHasMandatoryItems] = useState(false);
@@ -267,6 +272,18 @@ export default function ManageSignUpsPage() {
       console.error('[ManageSignUps] Failed to create sign-up list:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
     }
+  };
+
+  // Handle edit sign-up list - Phase 6A.13
+  const handleEditSignUpList = (list: SignUpListDto) => {
+    setEditingSignUpList(list);
+    setShowEditModal(true);
+  };
+
+  // Handle close edit modal - Phase 6A.13
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingSignUpList(null);
   };
 
   // Handle delete sign-up list
@@ -929,15 +946,26 @@ export default function ManageSignUpsPage() {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteConfirmId(list.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditSignUpList(list)}
+                          className="text-orange-600 hover:text-orange-700"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteConfirmId(list.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardHeader>
@@ -1001,6 +1029,16 @@ export default function ManageSignUpsPage() {
           </Card>
         )}
       </div>
+
+      {/* Edit Sign-Up List Modal - Phase 6A.13 */}
+      {editingSignUpList && (
+        <EditSignUpListModal
+          eventId={eventId}
+          signUpList={editingSignUpList}
+          isOpen={showEditModal}
+          onClose={handleCloseEditModal}
+        />
+      )}
 
       <Footer />
     </div>

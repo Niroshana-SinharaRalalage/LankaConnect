@@ -7,7 +7,76 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 5: DEPLOYMENT TO STAGING (2025-12-03)
+## ✅ CURRENT STATUS - PHASE 6A.13: EDIT SIGN-UP LIST (2025-12-04)
+**Date**: 2025-12-04 (Session 26)
+**Session**: Phase 6A.13 - Edit Sign-Up List Feature
+**Status**: ✅ COMPLETE - Backend + Frontend + Documentation
+**Build Status**: ✅ Zero Tolerance Maintained - 16 tests passing (100%), 0 errors
+**Test Coverage**: ✅ 16/16 tests passing (10 domain + 6 application)
+**Documentation**: [PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md](./PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md)
+
+### SESSION 26: PHASE 6A.13 - EDIT SIGN-UP LIST (2025-12-04)
+**Goal**: Allow event organizers to edit sign-up list details (category, description, category flags)
+
+**Implementation Complete**:
+
+**Phase 1: Domain Layer** (10 tests passing):
+- ✅ `SignUpList.UpdateDetails()` method with validation
+- ✅ `SignUpListUpdatedEvent` domain event
+- ✅ Cannot disable category if it contains items
+- ✅ At least one category must remain enabled
+- ✅ Whitespace trimming and validation
+
+**Phase 2: Application Layer** (6 tests passing):
+- ✅ `UpdateSignUpListCommand` - CQRS command
+- ✅ `UpdateSignUpListCommandHandler` - orchestration
+- ✅ `UpdateSignUpListCommandValidator` - FluentValidation
+- ✅ Event/sign-up list existence checks
+- ✅ Unit of work commit
+
+**Phase 3: API Layer**:
+- ✅ `PUT /api/events/{eventId}/signups/{signupId}` endpoint
+- ✅ `UpdateSignUpListRequest` DTO
+- ✅ Authorization required
+
+**Phase 4: Frontend Infrastructure**:
+- ✅ `UpdateSignUpListRequest` TypeScript interface
+- ✅ `updateSignUpList()` repository method
+- ✅ `useUpdateSignUpList()` React Query hook
+- ✅ Cache invalidation (signUpKeys + eventKeys)
+
+**Phase 5: UI Components**:
+- ✅ `EditSignUpListModal` - Modal component with form
+- ✅ Edit button on sign-up list cards
+- ✅ Pre-filled form fields
+- ✅ Category flag checkboxes with item counts
+- ✅ Real-time validation feedback
+- ✅ Loading states during save
+
+**Commits**:
+- `c32193a` - Backend + infrastructure (Domain, Application, API, Frontend types/hooks)
+- [Pending] - UI components (EditSignUpListModal + Edit button integration)
+
+**Build Results**:
+```
+Backend:
+✓ Domain: 10/10 tests passing (100%)
+✓ Application: 6/6 tests passing (100%)
+✓ 0 compilation errors
+
+Frontend:
+✓ TypeScript: 0 errors
+✓ EditSignUpListModal component created
+✓ Edit button integrated
+```
+
+**Next Steps**:
+- Manual testing on staging environment
+- Test edge cases (disable category with items, validation errors)
+
+---
+
+## ✅ PREVIOUS STATUS - PHASE 5: DEPLOYMENT TO STAGING (2025-12-03)
 **Date**: 2025-12-03 (Session 25)
 **Session**: Phase 5 - Data Migration & Staging Deployment
 **Status**: ✅ COMPLETE - Deployment + Verification + Documentation

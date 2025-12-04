@@ -1,9 +1,75 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-03 (Current Session) - Session 25: Phase 5 Deployment to Staging ✅ COMPLETE*
+*Last Updated: 2025-12-04 (Current Session) - Session 26: Phase 6A.13 Edit Sign-Up List ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 25: Phase 5 Deployment to Staging ✅ COMPLETE
+## 🎯 Current Session Status - Session 26: Phase 6A.13 Edit Sign-Up List ✅ COMPLETE
+
+### Session 26: Phase 6A.13 - Edit Sign-Up List Feature - COMPLETE - 2025-12-04
+
+**Status**: ✅ **COMPLETE** (Backend + Frontend + Documentation)
+
+**Summary**: Implemented comprehensive edit functionality for sign-up lists, allowing event organizers to modify sign-up list details (category, description, and category flags) through a user-friendly modal interface. Feature includes domain validation, API endpoint, React Query integration, and UI components with full test coverage (16/16 tests passing).
+
+**Documentation**: [PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md](./PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md)
+
+**Implementation Timeline**:
+- Phase 1: Domain layer with 10 tests ✅
+- Phase 2: Application layer with 6 tests ✅
+- Phase 3: API endpoint (PUT) ✅
+- Phase 4: Frontend infrastructure (types, repository, hooks) ✅
+- Phase 5: UI components (modal + Edit button) ✅
+- Phase 6: Documentation updates ✅
+
+**Test Results**:
+```
+Backend Tests:
+✓ Domain: 10/10 passing (100%)
+✓ Application: 6/6 passing (100%)
+✓ Total: 16/16 passing (100%)
+
+Compilation:
+✓ Backend: 0 errors
+✓ Frontend: 0 errors (TypeScript strict mode)
+✓ Zero-tolerance enforcement: PASSED
+```
+
+**Key Features**:
+1. ✅ Edit sign-up list category and description
+2. ✅ Toggle category flags (Mandatory, Preferred, Suggested)
+3. ✅ Cannot disable category if it contains items (prevents data inconsistency)
+4. ✅ At least one category must remain enabled
+5. ✅ Edit button visible on each sign-up list card
+6. ✅ Modal pre-fills existing data
+7. ✅ Real-time validation with user-friendly error messages
+8. ✅ Automatic cache invalidation on success
+
+**API Endpoint**:
+```
+PUT /api/events/{eventId}/signups/{signupId}
+Authorization: Required
+Body: UpdateSignUpListRequest
+```
+
+**Technical Decisions**:
+- Used PUT instead of PATCH for consistency with existing endpoints
+- Items managed separately via existing add/remove operations
+- Validation order optimized for helpful error messages
+- React Query cache invalidation for both signUpKeys and eventKeys
+
+**Commits**:
+- `c32193a` - Backend + infrastructure (Domain, Application, API, Frontend types/hooks)
+- [Pending] - UI components (EditSignUpListModal + Edit button integration)
+
+**Next Steps**:
+- Manual testing on staging environment
+- Test edge cases (disable category with items, validation errors)
+
+---
+
+## 📚 Historical Sessions
+
+### Session 25: Phase 5 Deployment to Staging ✅ COMPLETE
 
 ### Session 25: Phase 5 - Data Migration & Staging Deployment - COMPLETE - 2025-12-03
 

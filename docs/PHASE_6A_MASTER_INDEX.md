@@ -23,6 +23,7 @@
 | 6A.10 | Subscription Expiry Notifications | ⏳ Planned | TBD | Not started |
 | 6A.11 | Subscription Management UI | ⏳ Planned | TBD | Not started |
 | 6A.12 | Event Media Upload System | ✅ Complete | [PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md](./PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md) | 2025-12-01 |
+| 6A.13 | Edit Sign-Up List | ✅ Complete | [PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md](./PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md) | 2025-12-04 |
 
 ---
 

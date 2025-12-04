@@ -1160,7 +1160,10 @@ public class EventsController : BaseController<EventsController>
             itemId,
             request.UserId,
             request.Quantity,
-            request.Notes);
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
 
         var result = await Mediator.Send(command);
 
@@ -1222,7 +1225,14 @@ public record AddSignUpItemRequest(
     SignUpItemCategory ItemCategory,
     string? Notes = null);
 
+/// <summary>
+/// Request to commit to bringing an item
+/// Phase 2: Added optional contact information
+/// </summary>
 public record CommitToSignUpItemRequest(
     Guid UserId,
     int Quantity,
-    string? Notes = null);
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null);

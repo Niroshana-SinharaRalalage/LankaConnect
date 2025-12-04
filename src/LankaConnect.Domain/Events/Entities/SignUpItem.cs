@@ -76,8 +76,15 @@ public class SignUpItem : BaseEntity
 
     /// <summary>
     /// User commits to bringing a certain quantity of this item
+    /// Phase 2: Now includes optional contact information
     /// </summary>
-    public Result AddCommitment(Guid userId, int commitQuantity, string? commitNotes = null)
+    public Result AddCommitment(
+        Guid userId,
+        int commitQuantity,
+        string? commitNotes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
     {
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
@@ -98,7 +105,10 @@ public class SignUpItem : BaseEntity
             userId,
             ItemDescription,
             commitQuantity,
-            commitNotes);
+            commitNotes,
+            contactName,
+            contactEmail,
+            contactPhone);
 
         if (commitmentResult.IsFailure)
             return Result.Failure(commitmentResult.Error);

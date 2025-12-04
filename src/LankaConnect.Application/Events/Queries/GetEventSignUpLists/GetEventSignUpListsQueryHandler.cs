@@ -37,7 +37,10 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                 ItemDescription = c.ItemDescription,
                 Quantity = c.Quantity,
                 CommittedAt = c.CommittedAt,
-                Notes = c.Notes
+                Notes = c.Notes,
+                ContactName = c.ContactName,
+                ContactEmail = c.ContactEmail,
+                ContactPhone = c.ContactPhone
             }).ToList(),
             CommitmentCount = signUpList.GetCommitmentCount(),
 
@@ -61,7 +64,10 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     ItemDescription = c.ItemDescription,
                     Quantity = c.Quantity,
                     CommittedAt = c.CommittedAt,
-                    Notes = c.Notes
+                    Notes = c.Notes,
+                    ContactName = c.ContactName,
+                    ContactEmail = c.ContactEmail,
+                    ContactPhone = c.ContactPhone
                 }).ToList()
             }).ToList()
         }).ToList();

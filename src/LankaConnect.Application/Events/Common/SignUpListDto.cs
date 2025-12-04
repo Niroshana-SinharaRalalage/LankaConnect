@@ -43,4 +43,9 @@ public class SignUpCommitmentDto
     public int Quantity { get; set; }
     public DateTime CommittedAt { get; set; }
     public string? Notes { get; set; }
+
+    // Phase 2: Contact information for SignUpGenius-style feature
+    public string? ContactName { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactPhone { get; set; }
 }

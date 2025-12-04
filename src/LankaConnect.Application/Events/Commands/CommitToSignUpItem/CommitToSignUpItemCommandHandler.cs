@@ -34,11 +34,14 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
         if (signUpItem == null)
             return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
 
-        // Add commitment to the item
+        // Add commitment to the item (Phase 2: with contact info)
         var commitResult = signUpItem.AddCommitment(
             request.UserId,
             request.Quantity,
-            request.Notes);
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
 
         if (commitResult.IsFailure)
             return Result.Failure(commitResult.Error);

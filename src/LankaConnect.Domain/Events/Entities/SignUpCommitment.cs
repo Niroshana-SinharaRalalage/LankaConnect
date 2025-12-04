@@ -16,6 +16,12 @@ public class SignUpCommitment : BaseEntity
     public DateTime CommittedAt { get; private set; }
     public string? Notes { get; private set; }
 
+    // Contact information (Phase 2: SignUpGenius-style feature)
+    // Nullable - defaults to NULL, can be populated from User entity or overridden by user
+    public string? ContactName { get; private set; }
+    public string? ContactEmail { get; private set; }
+    public string? ContactPhone { get; private set; }
+
     // EF Core constructor
     private SignUpCommitment()
     {
@@ -27,13 +33,19 @@ public class SignUpCommitment : BaseEntity
         Guid userId,
         string itemDescription,
         int quantity,
-        string? notes = null)
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
     {
         SignUpItemId = signUpItemId;
         UserId = userId;
         ItemDescription = itemDescription;
         Quantity = quantity;
         Notes = notes;
+        ContactName = contactName;
+        ContactEmail = contactEmail;
+        ContactPhone = contactPhone;
         CommittedAt = DateTime.UtcNow;
     }
 
@@ -57,13 +69,17 @@ public class SignUpCommitment : BaseEntity
 
     /// <summary>
     /// Creates a commitment for a specific SignUpItem (new category-based model)
+    /// Phase 2: Now includes optional contact information
     /// </summary>
     public static Result<SignUpCommitment> CreateForItem(
         Guid signUpItemId,
         Guid userId,
         string itemDescription,
         int quantity,
-        string? notes = null)
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
     {
         if (signUpItemId == Guid.Empty)
             return Result<SignUpCommitment>.Failure("Sign-up item ID is required");
@@ -77,14 +93,34 @@ public class SignUpCommitment : BaseEntity
         if (quantity <= 0)
             return Result<SignUpCommitment>.Failure("Quantity must be greater than 0");
 
+        // Validate email format if provided
+        if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
+            return Result<SignUpCommitment>.Failure("Invalid email format");
+
         var commitment = new SignUpCommitment(
             signUpItemId,
             userId,
             itemDescription.Trim(),
             quantity,
-            notes?.Trim());
+            notes?.Trim(),
+            contactName?.Trim(),
+            contactEmail?.Trim(),
+            contactPhone?.Trim());
 
         return Result<SignUpCommitment>.Success(commitment);
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>

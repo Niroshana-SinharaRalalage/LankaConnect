@@ -373,10 +373,10 @@ export default function EditSignUpListPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Category */}
+            {/* Sign-up list name */}
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-neutral-700 mb-2">
-                Category *
+                Sign-up list name *
               </label>
               <Input
                 id="category"
@@ -402,68 +402,566 @@ export default function EditSignUpListPage() {
               />
             </div>
 
-            {/* Category Flags */}
+            {/* Category-Based Items */}
             <div className="space-y-4">
               <label className="block text-sm font-medium text-neutral-700 mb-3">
                 Select Item Categories * (at least one required)
               </label>
 
-              {/* Mandatory Items */}
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                <input
-                  type="checkbox"
-                  checked={hasMandatoryItems}
-                  onChange={(e) => setHasMandatoryItems(e.target.checked)}
-                  className="w-4 h-4 text-red-600"
-                />
-                <div>
-                  <p className="font-medium text-neutral-900">Mandatory Items</p>
-                  <p className="text-sm text-neutral-500">Required items that must be brought</p>
-                  {mandatoryItems.length > 0 && (
-                    <p className="text-xs text-neutral-400 mt-1">
-                      {mandatoryItems.length} item(s) in this category
-                    </p>
-                  )}
-                </div>
-              </label>
+              {/* Mandatory Items Checkbox + Section */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                  <input
+                    type="checkbox"
+                    checked={hasMandatoryItems}
+                    onChange={(e) => setHasMandatoryItems(e.target.checked)}
+                    className="w-4 h-4 text-red-600"
+                  />
+                  <div>
+                    <p className="font-medium text-neutral-900">Mandatory Items</p>
+                    <p className="text-sm text-neutral-500">Required items that must be brought</p>
+                    {mandatoryItems.length > 0 && (
+                      <p className="text-xs text-neutral-400 mt-1">
+                        {mandatoryItems.length} item(s) in this category
+                      </p>
+                    )}
+                  </div>
+                </label>
 
-              {/* Preferred Items */}
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                <input
-                  type="checkbox"
-                  checked={hasPreferredItems}
-                  onChange={(e) => setHasPreferredItems(e.target.checked)}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <div>
-                  <p className="font-medium text-neutral-900">Preferred Items</p>
-                  <p className="text-sm text-neutral-500">Highly desired items that would be helpful</p>
-                  {preferredItems.length > 0 && (
-                    <p className="text-xs text-neutral-400 mt-1">
-                      {preferredItems.length} item(s) in this category
-                    </p>
-                  )}
-                </div>
-              </label>
+                {hasMandatoryItems && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                        Mandatory Items
+                      </span>
+                    </h4>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Left: Add Item Form */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Item Description *
+                          </label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Rice (5 cups)"
+                            value={newMandatoryDesc}
+                            onChange={(e) => setNewMandatoryDesc(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Quantity *
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={newMandatoryQty}
+                            onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Any additional details..."
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                            value={newMandatoryNotes}
+                            onChange={(e) => setNewMandatoryNotes(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleAddMandatoryItem}
+                          disabled={addSignUpItemMutation.isPending}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Item
+                        </Button>
+                      </div>
 
-              {/* Suggested Items */}
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                <input
-                  type="checkbox"
-                  checked={hasSuggestedItems}
-                  onChange={(e) => setHasSuggestedItems(e.target.checked)}
-                  className="w-4 h-4 text-green-600"
-                />
-                <div>
-                  <p className="font-medium text-neutral-900">Suggested Items</p>
-                  <p className="text-sm text-neutral-500">Optional items that would be nice to have</p>
-                  {suggestedItems.length > 0 && (
-                    <p className="text-xs text-neutral-400 mt-1">
-                      {suggestedItems.length} item(s) in this category
-                    </p>
-                  )}
-                </div>
-              </label>
+                      {/* Right: Items Table */}
+                      <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        {mandatoryItems.length === 0 ? (
+                          <div className="p-4 text-center text-neutral-500 text-sm">
+                            No items added yet
+                          </div>
+                        ) : (
+                          <table className="w-full">
+                            <thead className="bg-neutral-100 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Rmn</th>
+                                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {mandatoryItems.map((item) => (
+                                <tr key={item.id} className="border-t">
+                                  {editingItemId === item.id ? (
+                                    <>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          value={editingItemDesc}
+                                          onChange={(e) => setEditingItemDesc(e.target.value)}
+                                          placeholder="Item description"
+                                          className="text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          value={editingItemQty}
+                                          onChange={(e) => setEditingItemQty(parseInt(e.target.value) || 1)}
+                                          className="w-16 text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">-</td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleSaveEditedItem}
+                                          >
+                                            <Check className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleCancelEditingItem}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td className="px-3 py-2 text-sm">
+                                        <div>
+                                          <p className="font-medium">{item.itemDescription}</p>
+                                          {item.notes && (
+                                            <p className="text-xs text-neutral-500">{item.notes}</p>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">
+                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {item.remainingQuantity}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleStartEditingItem(item)}
+                                            title="Edit item"
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDeleteItem(item.id)}
+                                            disabled={item.committedQuantity > 0}
+                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Preferred Items Checkbox + Section */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                  <input
+                    type="checkbox"
+                    checked={hasPreferredItems}
+                    onChange={(e) => setHasPreferredItems(e.target.checked)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div>
+                    <p className="font-medium text-neutral-900">Preferred Items</p>
+                    <p className="text-sm text-neutral-500">Highly desired items that would be helpful</p>
+                    {preferredItems.length > 0 && (
+                      <p className="text-xs text-neutral-400 mt-1">
+                        {preferredItems.length} item(s) in this category
+                      </p>
+                    )}
+                  </div>
+                </label>
+
+                {hasPreferredItems && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        Preferred Items
+                      </span>
+                    </h4>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Left: Add Item Form */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Item Description *
+                          </label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Side dish"
+                            value={newPreferredDesc}
+                            onChange={(e) => setNewPreferredDesc(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Quantity *
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={newPreferredQty}
+                            onChange={(e) => setNewPreferredQty(parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Any additional details..."
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                            value={newPreferredNotes}
+                            onChange={(e) => setNewPreferredNotes(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleAddPreferredItem}
+                          disabled={addSignUpItemMutation.isPending}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Item
+                        </Button>
+                      </div>
+
+                      {/* Right: Items Table */}
+                      <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        {preferredItems.length === 0 ? (
+                          <div className="p-4 text-center text-neutral-500 text-sm">
+                            No items added yet
+                          </div>
+                        ) : (
+                          <table className="w-full">
+                            <thead className="bg-neutral-100 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Rmn</th>
+                                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {preferredItems.map((item) => (
+                                <tr key={item.id} className="border-t">
+                                  {editingItemId === item.id ? (
+                                    <>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          value={editingItemDesc}
+                                          onChange={(e) => setEditingItemDesc(e.target.value)}
+                                          placeholder="Item description"
+                                          className="text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          value={editingItemQty}
+                                          onChange={(e) => setEditingItemQty(parseInt(e.target.value) || 1)}
+                                          className="w-16 text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">-</td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleSaveEditedItem}
+                                          >
+                                            <Check className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleCancelEditingItem}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td className="px-3 py-2 text-sm">
+                                        <div>
+                                          <p className="font-medium">{item.itemDescription}</p>
+                                          {item.notes && (
+                                            <p className="text-xs text-neutral-500">{item.notes}</p>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">
+                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {item.remainingQuantity}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleStartEditingItem(item)}
+                                            title="Edit item"
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDeleteItem(item.id)}
+                                            disabled={item.committedQuantity > 0}
+                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Suggested Items Checkbox + Section */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
+                  <input
+                    type="checkbox"
+                    checked={hasSuggestedItems}
+                    onChange={(e) => setHasSuggestedItems(e.target.checked)}
+                    className="w-4 h-4 text-green-600"
+                  />
+                  <div>
+                    <p className="font-medium text-neutral-900">Suggested Items</p>
+                    <p className="text-sm text-neutral-500">Optional items that would be nice to have</p>
+                    {suggestedItems.length > 0 && (
+                      <p className="text-xs text-neutral-400 mt-1">
+                        {suggestedItems.length} item(s) in this category
+                      </p>
+                    )}
+                  </div>
+                </label>
+
+                {hasSuggestedItems && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Suggested Items
+                      </span>
+                    </h4>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Left: Add Item Form */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Item Description *
+                          </label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Dessert"
+                            value={newSuggestedDesc}
+                            onChange={(e) => setNewSuggestedDesc(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Quantity *
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={newSuggestedQty}
+                            onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Any additional details..."
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                            value={newSuggestedNotes}
+                            onChange={(e) => setNewSuggestedNotes(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleAddSuggestedItem}
+                          disabled={addSignUpItemMutation.isPending}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Item
+                        </Button>
+                      </div>
+
+                      {/* Right: Items Table */}
+                      <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        {suggestedItems.length === 0 ? (
+                          <div className="p-4 text-center text-neutral-500 text-sm">
+                            No items added yet
+                          </div>
+                        ) : (
+                          <table className="w-full">
+                            <thead className="bg-neutral-100 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Rmn</th>
+                                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {suggestedItems.map((item) => (
+                                <tr key={item.id} className="border-t">
+                                  {editingItemId === item.id ? (
+                                    <>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          value={editingItemDesc}
+                                          onChange={(e) => setEditingItemDesc(e.target.value)}
+                                          placeholder="Item description"
+                                          className="text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          value={editingItemQty}
+                                          onChange={(e) => setEditingItemQty(parseInt(e.target.value) || 1)}
+                                          className="w-16 text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">-</td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleSaveEditedItem}
+                                          >
+                                            <Check className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleCancelEditingItem}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td className="px-3 py-2 text-sm">
+                                        <div>
+                                          <p className="font-medium">{item.itemDescription}</p>
+                                          {item.notes && (
+                                            <p className="text-xs text-neutral-500">{item.notes}</p>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">
+                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {item.remainingQuantity}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex gap-1 justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleStartEditingItem(item)}
+                                            title="Edit item"
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDeleteItem(item.id)}
+                                            disabled={item.committedQuantity > 0}
+                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Error Message */}

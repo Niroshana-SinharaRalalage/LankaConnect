@@ -55,8 +55,10 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
     {
+        // Include RefreshTokens for proper tracking when adding/removing tokens
+        // Remove AsNoTracking() to allow EF Core to track changes to RefreshTokens collection
         return await _dbSet
-            .AsNoTracking()
+            .Include(u => u.RefreshTokens)
             .FirstOrDefaultAsync(u => u.Email.Value == email.Value, cancellationToken);
     }
 

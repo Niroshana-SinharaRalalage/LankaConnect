@@ -77,7 +77,7 @@ public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventComm
         if (!thumbnailUploadResult.IsSuccess)
         {
             // Rollback: Delete video blob if thumbnail upload fails
-            await _blobStorageService.DeleteFileAsync(videoBlobName, cancellationToken);
+            await _blobStorageService.DeleteFileAsync(videoBlobName, null, cancellationToken);
             return Result<EventVideo>.Failure(thumbnailUploadResult.Errors);
         }
 
@@ -94,7 +94,7 @@ public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventComm
         if (!addVideoResult.IsSuccess)
         {
             // Rollback: Delete both uploaded blobs if domain operation fails
-            await _blobStorageService.DeleteFileAsync(videoBlobName, cancellationToken);
+            await _blobStorageService.DeleteFileAsync(videoBlobName, null, cancellationToken);
             await _imageService.DeleteImageAsync(thumbnailUploadResult.Value.Url, cancellationToken);
             return Result<EventVideo>.Failure(addVideoResult.Errors);
         }

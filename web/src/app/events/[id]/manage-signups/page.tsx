@@ -42,6 +42,12 @@ export default function ManageSignUpsPage() {
   // Fetch sign-up lists
   const { data: signUpLists, isLoading: signUpsLoading } = useEventSignUps(eventId);
 
+  // DEBUG: Log sign-up lists data
+  useEffect(() => {
+    console.log('[ManageSignUps] Sign-up lists data:', signUpLists);
+    console.log('[ManageSignUps] Loading state:', signUpsLoading);
+  }, [signUpLists, signUpsLoading]);
+
   // Mutations
   const removeSignUpListMutation = useRemoveSignUpList();
   const createSignUpListMutation = useCreateSignUpList();
@@ -179,6 +185,8 @@ export default function ManageSignUpsPage() {
 
   // Handle create sign-up list WITH items in single API call
   const handleCreateSignUpList = async () => {
+    console.log('[ManageSignUps] handleCreateSignUpList called');
+
     if (!category.trim()) {
       setSubmitError('Category is required');
       return;
@@ -226,8 +234,7 @@ export default function ManageSignUpsPage() {
         })),
       ];
 
-      // Create sign-up list WITH all items in single transactional API call
-      await createSignUpListMutation.mutateAsync({
+      const payload = {
         eventId,
         category: category.trim(),
         description: description.trim(),
@@ -235,7 +242,14 @@ export default function ManageSignUpsPage() {
         hasPreferredItems,
         hasSuggestedItems,
         items,
-      });
+      };
+
+      console.log('[ManageSignUps] Creating sign-up list with payload:', payload);
+
+      // Create sign-up list WITH all items in single transactional API call
+      const result = await createSignUpListMutation.mutateAsync(payload);
+
+      console.log('[ManageSignUps] Sign-up list created successfully:', result);
 
       // Reset form
       setCategory('');
@@ -247,8 +261,10 @@ export default function ManageSignUpsPage() {
       setPreferredItems([]);
       setSuggestedItems([]);
       setShowForm(false);
+
+      console.log('[ManageSignUps] Form reset complete');
     } catch (err) {
-      console.error('Failed to create sign-up list:', err);
+      console.error('[ManageSignUps] Failed to create sign-up list:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
     }
   };
@@ -275,7 +291,7 @@ export default function ManageSignUpsPage() {
     let csvContent = 'Category,Item Description,User ID,Quantity,Committed At\n';
 
     signUpLists.forEach((list) => {
-      list.commitments.forEach((commitment) => {
+      (list.commitments || []).forEach((commitment) => {
         csvContent += `"${list.category}","${commitment.itemDescription}","${commitment.userId}",${commitment.quantity},"${commitment.committedAt}"\n`;
       });
     });
@@ -930,11 +946,11 @@ export default function ManageSignUpsPage() {
                     {/* Commitments */}
                     <div>
                       <h4 className="text-sm font-semibold text-neutral-700 mb-3">
-                        Commitments ({list.commitmentCount})
+                        Commitments ({list.commitmentCount || 0})
                       </h4>
-                      {list.commitments.length > 0 ? (
+                      {(list.commitments?.length ?? 0) > 0 ? (
                         <div className="space-y-2">
-                          {list.commitments.map((commitment) => (
+                          {(list.commitments || []).map((commitment) => (
                             <div
                               key={commitment.id}
                               className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"

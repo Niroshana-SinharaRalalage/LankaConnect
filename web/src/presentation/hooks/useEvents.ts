@@ -468,6 +468,73 @@ export function useInvalidateEvents() {
 }
 
 /**
+ * useUserRsvps Hook
+ *
+ * Fetches all RSVPs for the current authenticated user
+ * Epic 1: Backend returns EventDto[] instead of RsvpDto[] for better UX
+ *
+ * Features:
+ * - Automatic caching with 5-minute stale time
+ * - Refetch on window focus
+ * - Only enabled when user is authenticated
+ *
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: userRsvps } = useUserRsvps();
+ * ```
+ */
+export function useUserRsvps(
+  options?: Omit<UseQueryOptions<EventDto[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['user-rsvps'],
+    queryFn: () => eventsRepository.getUserRsvps(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
+ * useUserRsvpForEvent Hook
+ *
+ * Checks if the current user has an RSVP for a specific event
+ * Uses client-side filtering of all user RSVPs
+ *
+ * Features:
+ * - Leverages cached user RSVPs for performance
+ * - Returns event if user is registered, undefined otherwise
+ * - Only enabled when eventId is provided
+ *
+ * @param eventId - Event ID to check RSVP for
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: userRsvp, isLoading } = useUserRsvpForEvent(eventId);
+ * const isRegistered = !!userRsvp;
+ * ```
+ */
+export function useUserRsvpForEvent(
+  eventId: string | undefined,
+  options?: Omit<UseQueryOptions<EventDto | undefined, ApiError>, 'queryKey' | 'queryFn' | 'select'>
+) {
+  return useQuery({
+    queryKey: ['user-rsvps'],
+    queryFn: () => eventsRepository.getUserRsvps(),
+    select: (events) => events.find(event => event.id === eventId),
+    enabled: !!eventId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -481,4 +548,6 @@ export default {
   useRsvpToEvent,
   usePrefetchEvent,
   useInvalidateEvents,
+  useUserRsvps,
+  useUserRsvpForEvent,
 };

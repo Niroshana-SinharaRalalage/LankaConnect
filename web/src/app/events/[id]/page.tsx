@@ -8,7 +8,7 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventById, useRsvpToEvent } from '@/presentation/hooks/useEvents';
+import { useEventById, useRsvpToEvent, useUserRsvpForEvent } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -33,6 +33,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
+
+  // Check if user is already registered for this event
+  const { data: userRsvp, isLoading: isLoadingRsvp } = useUserRsvpForEvent(
+    user?.userId ? id : undefined
+  );
+  const isUserRegistered = !!userRsvp;
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -383,15 +389,65 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             {/* Registration Section */}
             <Card className="border-2" style={{ borderColor: '#FF7900' }}>
               <CardHeader>
-                <CardTitle>Register for this Event</CardTitle>
+                <CardTitle>
+                  {isUserRegistered ? 'Your Registration' : 'Register for this Event'}
+                </CardTitle>
                 <CardDescription>
-                  {isFull
+                  {isUserRegistered
+                    ? 'You are already registered for this event!'
+                    : isFull
                     ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
                     : 'Reserve your spot now!'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!isFull ? (
+                {isUserRegistered ? (
+                  // Show registration status when user is already registered
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="h-5 w-5 text-green-600 dark:text-green-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <h3 className="text-lg font-semibold text-green-900 dark:text-green-100">
+                          Registration Confirmed
+                        </h3>
+                      </div>
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        You have successfully registered for this event. We look forward to seeing you there!
+                      </p>
+                    </div>
+
+                    {/* Future: Add Edit/Cancel buttons here when those features are implemented */}
+                    {/* <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {}}
+                      >
+                        Edit Registration
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        style={{ borderColor: '#EF4444', color: '#EF4444' }}
+                        onClick={() => {}}
+                      >
+                        Cancel Registration
+                      </Button>
+                    </div> */}
+                  </div>
+                ) : !isFull ? (
                   <EventRegistrationForm
                     eventId={id}
                     spotsLeft={spotsLeft}

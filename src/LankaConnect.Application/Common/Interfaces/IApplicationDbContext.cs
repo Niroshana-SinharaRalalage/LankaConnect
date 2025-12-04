@@ -29,6 +29,7 @@ public interface IApplicationDbContext
     // Events Domain
     DbSet<MetroArea> MetroAreas { get; }
     DbSet<EventTemplate> EventTemplates { get; } // Phase 6A.8
+    DbSet<Registration> Registrations { get; }
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }

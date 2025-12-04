@@ -16,9 +16,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X, Edit } from 'lucide-react';
-import { SignUpItemCategory, SignUpListDto } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
-import { EditSignUpListModal } from './EditSignUpListModal';
 
 /**
  * Manage Sign-Up Lists Page
@@ -61,9 +60,6 @@ export default function ManageSignUpsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Edit modal state - Phase 6A.13: Edit Sign-Up List feature
-  const [editingSignUpList, setEditingSignUpList] = useState<SignUpListDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   // Category checkboxes - organizer selects which categories to enable
   const [hasMandatoryItems, setHasMandatoryItems] = useState(false);
@@ -272,18 +268,6 @@ export default function ManageSignUpsPage() {
       console.error('[ManageSignUps] Failed to create sign-up list:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
     }
-  };
-
-  // Handle edit sign-up list - Phase 6A.13
-  const handleEditSignUpList = (list: SignUpListDto) => {
-    setEditingSignUpList(list);
-    setShowEditModal(true);
-  };
-
-  // Handle close edit modal - Phase 6A.13
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
-    setEditingSignUpList(null);
   };
 
   // Handle delete sign-up list
@@ -950,7 +934,7 @@ export default function ManageSignUpsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditSignUpList(list)}
+                          onClick={() => router.push(`/events/${eventId}/manage-signups/${list.id}`)}
                           className="text-orange-600 hover:text-orange-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />
@@ -1029,16 +1013,6 @@ export default function ManageSignUpsPage() {
           </Card>
         )}
       </div>
-
-      {/* Edit Sign-Up List Modal - Phase 6A.13 */}
-      {editingSignUpList && (
-        <EditSignUpListModal
-          eventId={eventId}
-          signUpList={editingSignUpList}
-          isOpen={showEditModal}
-          onClose={handleCloseEditModal}
-        />
-      )}
 
       <Footer />
     </div>

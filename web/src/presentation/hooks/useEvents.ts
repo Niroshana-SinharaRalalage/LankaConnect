@@ -28,6 +28,7 @@ import type {
   CreateEventRequest,
   UpdateEventRequest,
   RsvpRequest,
+  RegistrationDetailsDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -520,12 +521,51 @@ export function useUserRsvps(
  */
 export function useUserRsvpForEvent(
   eventId: string | undefined,
-  options?: Omit<UseQueryOptions<EventDto | undefined, ApiError>, 'queryKey' | 'queryFn' | 'select'>
+  options?: Omit<UseQueryOptions<EventDto[], ApiError, EventDto | undefined>, 'queryKey' | 'queryFn' | 'select'>
 ) {
-  return useQuery({
+  return useQuery<EventDto[], ApiError, EventDto | undefined>({
     queryKey: ['user-rsvps'],
     queryFn: () => eventsRepository.getUserRsvps(),
     select: (events) => events.find(event => event.id === eventId),
+    enabled: !!eventId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
+ * useUserRegistrationDetails Hook
+ *
+ * Fetches full registration details for a specific event including attendee names and ages
+ * Fix 1: Enhanced registration status detection
+ *
+ * Features:
+ * - Returns full registration with attendee details (names, ages)
+ * - Includes contact information and payment status
+ * - Returns null if user is not registered
+ * - Automatic caching with 5-minute stale time
+ * - Only enabled when eventId is provided
+ *
+ * @param eventId - Event ID to get registration details for
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: registration, isLoading } = useUserRegistrationDetails(eventId);
+ * if (registration) {
+ *   console.log('Attendees:', registration.attendees);
+ * }
+ * ```
+ */
+export function useUserRegistrationDetails(
+  eventId: string | undefined,
+  options?: Omit<UseQueryOptions<RegistrationDetailsDto | null, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['user-registration', eventId],
+    queryFn: () => eventsRepository.getUserRegistrationForEvent(eventId!),
     enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
@@ -550,4 +590,5 @@ export default {
   useInvalidateEvents,
   useUserRsvps,
   useUserRsvpForEvent,
+  useUserRegistrationDetails,
 };

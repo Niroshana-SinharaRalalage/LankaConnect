@@ -345,4 +345,70 @@ public class SignUpList : BaseEntity
     /// Checks if using legacy predefined items model
     /// </summary>
     public bool IsLegacyPredefined() => _predefinedItems.Any();
+
+    /// <summary>
+    /// Updates sign-up list details (category, description, and category flags)
+    /// Phase 6A.13: Edit Sign-Up List feature
+    /// </summary>
+    public Result UpdateDetails(
+        string category,
+        string description,
+        bool hasMandatoryItems,
+        bool hasPreferredItems,
+        bool hasSuggestedItems)
+    {
+        // Validate inputs
+        if (string.IsNullOrWhiteSpace(category))
+            return Result.Failure("Category cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(description))
+            return Result.Failure("Description cannot be empty");
+
+        // Check if trying to disable categories that contain items (BEFORE checking if at least one is selected)
+        if (!hasMandatoryItems && HasMandatoryItems)
+        {
+            var mandatoryItems = GetItemsByCategory(SignUpItemCategory.Mandatory);
+            if (mandatoryItems.Any())
+                return Result.Failure("Cannot disable Mandatory category because it contains items");
+        }
+
+        if (!hasPreferredItems && HasPreferredItems)
+        {
+            var preferredItems = GetItemsByCategory(SignUpItemCategory.Preferred);
+            if (preferredItems.Any())
+                return Result.Failure("Cannot disable Preferred category because it contains items");
+        }
+
+        if (!hasSuggestedItems && HasSuggestedItems)
+        {
+            var suggestedItems = GetItemsByCategory(SignUpItemCategory.Suggested);
+            if (suggestedItems.Any())
+                return Result.Failure("Cannot disable Suggested category because it contains items");
+        }
+
+        // After checking for items in categories, validate at least one category is selected
+        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems)
+            return Result.Failure("At least one item category must be selected");
+
+        // Update properties
+        Category = category.Trim();
+        Description = description.Trim();
+        HasMandatoryItems = hasMandatoryItems;
+        HasPreferredItems = hasPreferredItems;
+        HasSuggestedItems = hasSuggestedItems;
+
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new SignUpListUpdatedEvent(
+            Id,
+            Category,
+            Description,
+            HasMandatoryItems,
+            HasPreferredItems,
+            HasSuggestedItems,
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
 }

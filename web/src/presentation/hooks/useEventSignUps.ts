@@ -23,6 +23,7 @@ import type {
   CommitToSignUpRequest,
   CancelCommitmentRequest,
   CreateSignUpListRequest,
+  UpdateSignUpListRequest,
   AddSignUpItemRequest,
   CommitToSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
@@ -368,6 +369,26 @@ export function useCreateSignUpList() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Update sign-up list details (category, description, and category flags)
+ * Phase 6A.13: Edit Sign-Up List feature
+ */
+export function useUpdateSignUpList(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      signupId,
+      ...data
+    }: { signupId: string } & UpdateSignUpListRequest) =>
+      eventsRepository.updateSignUpList(eventId, signupId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(eventId) });
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
     },
   });
 }

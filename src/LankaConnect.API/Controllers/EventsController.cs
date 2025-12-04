@@ -45,6 +45,7 @@ using LankaConnect.Application.Events.Queries.GetEventPasses;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
 using LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
+using LankaConnect.Application.Events.Commands.UpdateSignUpList;
 using LankaConnect.Application.Events.Commands.AddSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
@@ -1073,6 +1074,35 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Update sign-up list details (category, description, and category flags) (Event Organizer/Admin only)
+    /// Phase 6A.13: Edit Sign-Up List feature
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSignUpList(Guid eventId, Guid signupId, [FromBody] UpdateSignUpListRequest request)
+    {
+        Logger.LogInformation("Updating sign-up list {SignUpId} for event {EventId} with category '{Category}'",
+            signupId, eventId, request.Category);
+
+        var command = new UpdateSignUpListCommand(
+            eventId,
+            signupId,
+            request.Category,
+            request.Description,
+            request.HasMandatoryItems,
+            request.HasPreferredItems,
+            request.HasSuggestedItems);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Remove a sign-up list from an event (Event Organizer/Admin only)
     /// </summary>
     [HttpDelete("{eventId:guid}/signups/{signupId:guid}")]
@@ -1212,6 +1242,13 @@ public record CreateSignUpListRequest(
     bool HasPreferredItems,
     bool HasSuggestedItems,
     List<SignUpItemRequestDto> Items);
+
+public record UpdateSignUpListRequest(
+    string Category,
+    string Description,
+    bool HasMandatoryItems,
+    bool HasPreferredItems,
+    bool HasSuggestedItems);
 
 public record SignUpItemRequestDto(
     string ItemDescription,

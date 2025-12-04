@@ -22,6 +22,7 @@ import type {
   CommitToSignUpRequest,
   CancelCommitmentRequest,
   CreateSignUpListRequest,
+  UpdateSignUpListRequest,
   AddSignUpItemRequest,
   CommitToSignUpItemRequest,
 } from '../types/events.types';
@@ -382,6 +383,18 @@ export class EventsRepository {
     request: CreateSignUpListRequest
   ): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/signups`, request);
+  }
+
+  /**
+   * Update sign-up list details (category, description, and category flags)
+   * Phase 6A.13: Edit Sign-Up List feature
+   */
+  async updateSignUpList(
+    eventId: string,
+    signupId: string,
+    request: UpdateSignUpListRequest
+  ): Promise<void> {
+    await apiClient.put<void>(`${this.basePath}/${eventId}/signups/${signupId}`, request);
   }
 
   /**

@@ -368,4 +368,235 @@ public class SignUpManagementTests
     }
 
     #endregion
+
+    #region UpdateDetails Tests (TDD - Phase 6A.13)
+
+    [Fact]
+    public void UpdateDetails_WithValidData_ShouldSucceed()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Original description",
+            true,
+            false,
+            false).Value;
+
+        // Act
+        var result = signUpList.UpdateDetails(
+            "Food and Drinks",
+            "Updated description with more details",
+            true,
+            true,
+            false);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        signUpList.Category.Should().Be("Food and Drinks");
+        signUpList.Description.Should().Be("Updated description with more details");
+        signUpList.HasMandatoryItems.Should().BeTrue();
+        signUpList.HasPreferredItems.Should().BeTrue();
+        signUpList.HasSuggestedItems.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdateDetails_WithEmptyCategory_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+
+        // Act
+        var result = signUpList.UpdateDetails("", "Description", true, false, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("Category cannot be empty");
+    }
+
+    [Fact]
+    public void UpdateDetails_WithEmptyDescription_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+
+        // Act
+        var result = signUpList.UpdateDetails("Food", "", true, false, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("Description cannot be empty");
+    }
+
+    [Fact]
+    public void UpdateDetails_WithNoCategoryFlags_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+
+        // Act
+        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("At least one item category must be selected");
+    }
+
+    [Fact]
+    public void UpdateDetails_DisablingCategoryWithItems_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            true,
+            false).Value;
+
+        // Add items to Mandatory category
+        signUpList.AddItem("Rice", 10, SignUpItemCategory.Mandatory);
+        signUpList.AddItem("Curry", 5, SignUpItemCategory.Mandatory);
+
+        // Act - Try to disable Mandatory category that has items
+        var result = signUpList.UpdateDetails("Food", "Description", false, true, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("Cannot disable Mandatory category because it contains items");
+    }
+
+    [Fact]
+    public void UpdateDetails_DisablingPreferredCategoryWithItems_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            false,
+            true,
+            false).Value;
+
+        signUpList.AddItem("Dessert", 3, SignUpItemCategory.Preferred);
+
+        // Act
+        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("Cannot disable Preferred category because it contains items");
+    }
+
+    [Fact]
+    public void UpdateDetails_DisablingSuggestedCategoryWithItems_ShouldFail()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            false,
+            false,
+            true).Value;
+
+        signUpList.AddItem("Drinks", 10, SignUpItemCategory.Suggested);
+
+        // Act
+        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain("Cannot disable Suggested category because it contains items");
+    }
+
+    [Fact]
+    public void UpdateDetails_EnablingNewCategory_ShouldSucceed()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+
+        signUpList.AddItem("Rice", 10, SignUpItemCategory.Mandatory);
+
+        // Act - Enable Preferred category (no items in it yet)
+        var result = signUpList.UpdateDetails(
+            "Food",
+            "Description",
+            true,
+            true,
+            true);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        signUpList.HasMandatoryItems.Should().BeTrue();
+        signUpList.HasPreferredItems.Should().BeTrue();
+        signUpList.HasSuggestedItems.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateDetails_WithWhitespaceInCategoryAndDescription_ShouldTrim()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+
+        // Act
+        var result = signUpList.UpdateDetails(
+            "  Food and Drinks  ",
+            "  Updated description  ",
+            true,
+            false,
+            false);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        signUpList.Category.Should().Be("Food and Drinks");
+        signUpList.Description.Should().Be("Updated description");
+    }
+
+    [Fact]
+    public void UpdateDetails_ShouldRaiseSignUpListUpdatedEvent()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Description",
+            true,
+            false,
+            false).Value;
+        signUpList.ClearDomainEvents();
+
+        // Act
+        signUpList.UpdateDetails("New Category", "New Description", true, true, false);
+
+        // Assert
+        var domainEvents = signUpList.DomainEvents;
+        domainEvents.Should().HaveCount(1);
+        domainEvents.First().Should().BeOfType<SignUpListUpdatedEvent>();
+
+        var updateEvent = (SignUpListUpdatedEvent)domainEvents.First();
+        updateEvent.SignUpListId.Should().Be(signUpList.Id);
+    }
+
+    #endregion
 }

@@ -523,6 +523,19 @@ export interface CreateSignUpListRequest {
 }
 
 /**
+ * Update sign-up list request
+ * Phase 6A.13: Edit Sign-Up List feature
+ * Matches backend UpdateSignUpListRequest
+ */
+export interface UpdateSignUpListRequest {
+  category: string;
+  description: string;
+  hasMandatoryItems: boolean;
+  hasPreferredItems: boolean;
+  hasSuggestedItems: boolean;
+}
+
+/**
  * Sign-up item within CreateSignUpListRequest
  */
 export interface SignUpItemRequestDto {

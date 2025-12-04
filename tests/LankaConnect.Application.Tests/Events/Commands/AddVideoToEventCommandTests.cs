@@ -16,7 +16,8 @@ namespace LankaConnect.Application.Tests.Events.Commands;
 public class AddVideoToEventCommandTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
-    private readonly Mock<IImageService> _mockImageService; // Reusing for video upload
+    private readonly Mock<IImageService> _mockImageService; // For thumbnail uploads
+    private readonly Mock<IAzureBlobStorageService> _mockBlobStorageService; // For video uploads
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly AddVideoToEventCommandHandler _handler;
 
@@ -24,10 +25,12 @@ public class AddVideoToEventCommandTests
     {
         _mockEventRepository = new Mock<IEventRepository>();
         _mockImageService = new Mock<IImageService>();
+        _mockBlobStorageService = new Mock<IAzureBlobStorageService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _handler = new AddVideoToEventCommandHandler(
             _mockEventRepository.Object,
             _mockImageService.Object,
+            _mockBlobStorageService.Object,
             _mockUnitOfWork.Object);
     }
 
@@ -70,21 +73,15 @@ public class AddVideoToEventCommandTests
             .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
-        // Mock video upload
-        _mockImageService
-            .Setup(x => x.ValidateImage(command.VideoData, command.VideoFileName))
-            .Returns(Result.Success());
-
-        _mockImageService
-            .Setup(x => x.UploadImageAsync(command.VideoData, command.VideoFileName, command.EventId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<ImageUploadResult>.Success(new ImageUploadResult
-            {
-                Url = "https://blob.azure.com/video.mp4",
-                BlobName = "video.mp4",
-                SizeBytes = 1024000,
-                ContentType = "video/mp4",
-                UploadedAt = DateTime.UtcNow
-            }));
+        // Mock video upload (direct to blob storage)
+        _mockBlobStorageService
+            .Setup(x => x.UploadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("video.mp4", "https://blob.azure.com/video.mp4"));
 
         // Mock thumbnail upload
         _mockImageService
@@ -116,7 +113,8 @@ public class AddVideoToEventCommandTests
         result.Value.Duration.Should().Be(TimeSpan.FromMinutes(5));
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockImageService.Verify(x => x.UploadImageAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2)); // Video + Thumbnail
+        _mockBlobStorageService.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once); // Video upload
+        _mockImageService.Verify(x => x.UploadImageAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once); // Thumbnail only
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -125,28 +123,24 @@ public class AddVideoToEventCommandTests
     #region Validation Failures
 
     [Fact]
-    public async Task Handle_WithInvalidVideo_ShouldReturnFailure()
+    public async Task Handle_WithEmptyVideo_ShouldReturnFailure()
     {
         // Arrange
         var command = new AddVideoToEventCommand
         {
             EventId = Guid.NewGuid(),
-            VideoData = new byte[] { 1, 2 },
-            VideoFileName = "invalid.mp4",
+            VideoData = Array.Empty<byte>(), // Empty video data
+            VideoFileName = "video.mp4",
             ThumbnailData = new byte[] { 3, 4 },
             ThumbnailFileName = "thumb.jpg"
         };
-
-        _mockImageService
-            .Setup(x => x.ValidateImage(command.VideoData, command.VideoFileName))
-            .Returns(Result.Failure("Invalid video format"));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Invalid video format");
+        result.Error.Should().Contain("Video file cannot be empty");
         _mockEventRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -163,8 +157,9 @@ public class AddVideoToEventCommandTests
             ThumbnailFileName = "thumb.jpg"
         };
 
+        // Mock thumbnail validation
         _mockImageService
-            .Setup(x => x.ValidateImage(It.IsAny<byte[]>(), It.IsAny<string>()))
+            .Setup(x => x.ValidateImage(command.ThumbnailData, command.ThumbnailFileName))
             .Returns(Result.Success());
 
         _mockEventRepository
@@ -205,22 +200,29 @@ public class AddVideoToEventCommandTests
             Format = "mp4"
         };
 
+        // Mock thumbnail validation
         _mockImageService
-            .Setup(x => x.ValidateImage(It.IsAny<byte[]>(), It.IsAny<string>()))
+            .Setup(x => x.ValidateImage(command.ThumbnailData, command.ThumbnailFileName))
             .Returns(Result.Success());
 
         _mockEventRepository
             .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
+        // Mock video upload
+        _mockBlobStorageService
+            .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("video4.mp4", "https://blob.azure.com/video4.mp4"));
+
+        // Mock thumbnail upload
         _mockImageService
-            .Setup(x => x.UploadImageAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.UploadImageAsync(command.ThumbnailData, command.ThumbnailFileName, command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<ImageUploadResult>.Success(new ImageUploadResult
             {
-                Url = "https://blob.azure.com/video4.mp4",
-                BlobName = "video4.mp4",
-                SizeBytes = 1024000,
-                ContentType = "video/mp4",
+                Url = "https://blob.azure.com/thumb4.jpg",
+                BlobName = "thumb4.jpg",
+                SizeBytes = 50000,
+                ContentType = "image/jpeg",
                 UploadedAt = DateTime.UtcNow
             }));
 
@@ -262,24 +264,23 @@ public class AddVideoToEventCommandTests
             Format = "mp4"
         };
 
+        // Mock thumbnail validation
         _mockImageService
-            .Setup(x => x.ValidateImage(It.IsAny<byte[]>(), It.IsAny<string>()))
+            .Setup(x => x.ValidateImage(command.ThumbnailData, command.ThumbnailFileName))
             .Returns(Result.Success());
 
         _mockEventRepository
             .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
+        // Mock video upload
+        _mockBlobStorageService
+            .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("video.mp4", "https://blob.azure.com/video.mp4"));
+
+        // Mock thumbnail upload
         _mockImageService
-            .SetupSequence(x => x.UploadImageAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<ImageUploadResult>.Success(new ImageUploadResult
-            {
-                Url = "https://blob.azure.com/video.mp4",
-                BlobName = "video.mp4",
-                SizeBytes = 1024000,
-                ContentType = "video/mp4",
-                UploadedAt = DateTime.UtcNow
-            }))
+            .Setup(x => x.UploadImageAsync(command.ThumbnailData, command.ThumbnailFileName, command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<ImageUploadResult>.Success(new ImageUploadResult
             {
                 Url = "https://blob.azure.com/thumb.jpg",
@@ -288,6 +289,11 @@ public class AddVideoToEventCommandTests
                 ContentType = "image/jpeg",
                 UploadedAt = DateTime.UtcNow
             }));
+
+        // Mock deletions for rollback
+        _mockBlobStorageService
+            .Setup(x => x.DeleteFileAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _mockImageService
             .Setup(x => x.DeleteImageAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -298,9 +304,9 @@ public class AddVideoToEventCommandTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        // Verify both uploaded blobs are deleted (rollback)
-        _mockImageService.Verify(x => x.DeleteImageAsync("https://blob.azure.com/video.mp4", It.IsAny<CancellationToken>()), Times.Once);
-        _mockImageService.Verify(x => x.DeleteImageAsync("https://blob.azure.com/thumb.jpg", It.IsAny<CancellationToken>()), Times.Once);
+        // Verify both uploaded files are deleted (rollback)
+        _mockBlobStorageService.Verify(x => x.DeleteFileAsync("video.mp4", It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once); // Video
+        _mockImageService.Verify(x => x.DeleteImageAsync("https://blob.azure.com/thumb.jpg", It.IsAny<CancellationToken>()), Times.Once); // Thumbnail
     }
 
     #endregion

@@ -131,6 +131,7 @@ export function SignUpManagementSection({
   };
 
   // Handle commit to specific item (category-based) via modal
+  // Phase 2: Now includes contact information
   const handleCommitToItem = async (data: CommitmentFormData) => {
     if (!userId) {
       throw new Error('Please log in to commit to items');
@@ -143,6 +144,9 @@ export function SignUpManagementSection({
       userId,
       quantity: data.quantity,
       notes: data.notes,
+      contactName: data.contactName,
+      contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone,
     });
   };
 

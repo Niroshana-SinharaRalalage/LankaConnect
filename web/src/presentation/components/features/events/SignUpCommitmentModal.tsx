@@ -41,6 +41,9 @@ export interface CommitmentFormData {
   itemId: string;
   quantity: number;
   notes?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }
 
 export function SignUpCommitmentModal({
@@ -135,6 +138,9 @@ export function SignUpCommitmentModal({
       itemId: item.id,
       quantity,
       notes: notes.trim() || undefined,
+      contactName: name.trim() || undefined,
+      contactEmail: email.trim() || undefined,
+      contactPhone: phone.trim() || undefined,
     };
 
     try {

@@ -222,6 +222,7 @@ export enum SignUpItemCategory {
 /**
  * Sign-up commitment DTO
  * Represents a user's commitment to bring an item to an event
+ * Phase 2: Added contact information fields
  */
 export interface SignUpCommitmentDto {
   id: string;
@@ -231,6 +232,11 @@ export interface SignUpCommitmentDto {
   quantity: number;
   committedAt: string; // ISO 8601 date-time
   notes?: string | null;
+
+  // Phase 2: Contact information
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
 }
 
 /**
@@ -538,11 +544,15 @@ export interface AddSignUpItemRequest {
 
 /**
  * Commit to sign-up item request
+ * Phase 2: Added optional contact information
  */
 export interface CommitToSignUpItemRequest {
   userId: string;
   quantity: number;
   notes?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
 }
 
 // ==================== Response DTOs ====================

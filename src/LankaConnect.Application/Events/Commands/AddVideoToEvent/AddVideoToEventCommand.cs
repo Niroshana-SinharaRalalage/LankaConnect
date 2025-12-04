@@ -23,27 +23,32 @@ public record AddVideoToEventCommand : IRequest<Result<EventVideo>>
 public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventCommand, Result<EventVideo>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IImageService _imageService; // Reusing for video/thumbnail uploads
+    private readonly IImageService _imageService; // For thumbnail uploads
+    private readonly IAzureBlobStorageService _blobStorageService; // Direct access for video uploads
     private readonly IUnitOfWork _unitOfWork;
 
     public AddVideoToEventCommandHandler(
         IEventRepository eventRepository,
         IImageService imageService,
+        IAzureBlobStorageService blobStorageService,
         IUnitOfWork unitOfWork)
     {
         _eventRepository = eventRepository;
         _imageService = imageService;
+        _blobStorageService = blobStorageService;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<EventVideo>> Handle(AddVideoToEventCommand request, CancellationToken cancellationToken)
     {
-        // 1. Validate video
-        var videoValidation = _imageService.ValidateImage(request.VideoData, request.VideoFileName);
-        if (!videoValidation.IsSuccess)
-            return Result<EventVideo>.Failure(videoValidation.Errors);
+        // 1. Validate video (basic checks - frontend already validated format/size)
+        if (request.VideoData == null || request.VideoData.Length == 0)
+            return Result<EventVideo>.Failure("Video file cannot be empty");
 
-        // 2. Validate thumbnail
+        if (request.VideoData.Length > 100 * 1024 * 1024) // 100MB
+            return Result<EventVideo>.Failure("Video file size exceeds maximum allowed size of 100 MB");
+
+        // 2. Validate thumbnail (use ImageService for image validation)
         var thumbnailValidation = _imageService.ValidateImage(request.ThumbnailData, request.ThumbnailFileName);
         if (!thumbnailValidation.IsSuccess)
             return Result<EventVideo>.Failure(thumbnailValidation.Errors);
@@ -53,17 +58,16 @@ public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventComm
         if (@event == null)
             return Result<EventVideo>.Failure($"Event with ID {request.EventId} not found");
 
-        // 4. Upload video to Azure Blob Storage
-        var videoUploadResult = await _imageService.UploadImageAsync(
-            request.VideoData,
+        // 4. Upload video directly to Azure Blob Storage (bypass ImageService validation)
+        var videoContentType = GetVideoContentType(request.VideoFileName);
+        using var videoStream = new MemoryStream(request.VideoData);
+        var (videoBlobName, videoUrl) = await _blobStorageService.UploadFileAsync(
             request.VideoFileName,
-            request.EventId,
-            cancellationToken);
+            videoStream,
+            videoContentType,
+            cancellationToken: cancellationToken);
 
-        if (!videoUploadResult.IsSuccess)
-            return Result<EventVideo>.Failure(videoUploadResult.Errors);
-
-        // 5. Upload thumbnail to Azure Blob Storage
+        // 5. Upload thumbnail using ImageService
         var thumbnailUploadResult = await _imageService.UploadImageAsync(
             request.ThumbnailData,
             request.ThumbnailFileName,
@@ -73,24 +77,24 @@ public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventComm
         if (!thumbnailUploadResult.IsSuccess)
         {
             // Rollback: Delete video blob if thumbnail upload fails
-            await _imageService.DeleteImageAsync(videoUploadResult.Value.Url, cancellationToken);
+            await _blobStorageService.DeleteFileAsync(videoBlobName, cancellationToken);
             return Result<EventVideo>.Failure(thumbnailUploadResult.Errors);
         }
 
         // 6. Add video metadata to Event aggregate
         var addVideoResult = @event.AddVideo(
-            videoUploadResult.Value.Url,
-            videoUploadResult.Value.BlobName,
+            videoUrl,
+            videoBlobName,
             thumbnailUploadResult.Value.Url,
             thumbnailUploadResult.Value.BlobName,
             request.Duration,
             request.Format,
-            videoUploadResult.Value.SizeBytes);
+            request.VideoData.Length);
 
         if (!addVideoResult.IsSuccess)
         {
             // Rollback: Delete both uploaded blobs if domain operation fails
-            await _imageService.DeleteImageAsync(videoUploadResult.Value.Url, cancellationToken);
+            await _blobStorageService.DeleteFileAsync(videoBlobName, cancellationToken);
             await _imageService.DeleteImageAsync(thumbnailUploadResult.Value.Url, cancellationToken);
             return Result<EventVideo>.Failure(addVideoResult.Errors);
         }
@@ -99,5 +103,18 @@ public class AddVideoToEventCommandHandler : IRequestHandler<AddVideoToEventComm
         await _unitOfWork.CommitAsync(cancellationToken);
 
         return Result<EventVideo>.Success(addVideoResult.Value);
+    }
+
+    private static string GetVideoContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".ogg" => "video/ogg",
+            ".mov" => "video/quicktime",
+            _ => "application/octet-stream"
+        };
     }
 }

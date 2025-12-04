@@ -68,6 +68,18 @@ export enum PricingType {
   GroupTiered = 2, // Quantity-based with tiers
 }
 
+/**
+ * Payment status enum matching backend LankaConnect.Domain.Events.Enums.PaymentStatus
+ * Session 23: Stripe payment integration
+ */
+export enum PaymentStatus {
+  Pending = 0,
+  Completed = 1,
+  Failed = 2,
+  Refunded = 3,
+  NotRequired = 4,
+}
+
 // ==================== Event DTOs ====================
 
 /**
@@ -459,6 +471,34 @@ export interface AnonymousRegistrationRequest {
 export interface AttendeeDto {
   name: string;
   age: number;
+}
+
+/**
+ * Registration details DTO with attendee information
+ * Fix 1: Enhanced registration status detection
+ * Matches backend RegistrationDetailsDto
+ */
+export interface RegistrationDetailsDto {
+  id: string;
+  eventId: string;
+  userId?: string | null;
+  quantity: number;
+  status: RegistrationStatus;
+  createdAt: string;
+  updatedAt?: string | null;
+
+  // Session 21: Multi-attendee details
+  attendees: AttendeeDto[];
+
+  // Contact information
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactAddress?: string | null;
+
+  // Payment information
+  paymentStatus: PaymentStatus;
+  totalPriceAmount?: number | null;
+  totalPriceCurrency?: string | null;
 }
 
 /**

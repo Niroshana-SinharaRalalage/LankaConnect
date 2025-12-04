@@ -8,7 +8,7 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventById, useRsvpToEvent, useUserRsvpForEvent } from '@/presentation/hooks/useEvents';
+import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -39,6 +39,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     user?.userId ? id : undefined
   );
   const isUserRegistered = !!userRsvp;
+
+  // Fix 1: Fetch full registration details with attendee information
+  const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
+    user?.userId ? id : undefined
+  );
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -405,7 +410,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   // Show registration status when user is already registered
                   <div className="space-y-4">
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-3">
                         <svg
                           className="h-5 w-5 text-green-600 dark:text-green-400"
                           fill="none"
@@ -420,20 +425,54 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           />
                         </svg>
                         <h3 className="text-lg font-semibold text-green-900 dark:text-green-100">
-                          Registration Confirmed
+                          You're Registered!
                         </h3>
                       </div>
-                      <p className="text-sm text-green-800 dark:text-green-200">
+                      <p className="text-sm text-green-800 dark:text-green-200 mb-3">
                         You have successfully registered for this event. We look forward to seeing you there!
                       </p>
+
+                      {/* Registration Summary with Attendee Details */}
+                      <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
+                        <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
+                          Registration Details:
+                        </h4>
+                        {isLoadingRegistration ? (
+                          <p className="text-sm text-green-800 dark:text-green-200">Loading registration details...</p>
+                        ) : registrationDetails && registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                              Attendees ({registrationDetails.attendees.length}):
+                            </p>
+                            <ul className="space-y-1">
+                              {registrationDetails.attendees.map((attendee, index) => (
+                                <li key={index} className="text-sm text-green-800 dark:text-green-200 pl-3">
+                                  • {attendee.name} (Age: {attendee.age})
+                                </li>
+                              ))}
+                            </ul>
+                            {registrationDetails.contactEmail && (
+                              <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                                Contact: {registrationDetails.contactEmail}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-green-800 dark:text-green-200">
+                            <p>Number of attendees: {registrationDetails?.quantity || userRsvp.currentRegistrations || 1}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Future: Add Edit/Cancel buttons here when those features are implemented */}
-                    {/* <div className="flex gap-3">
+                    {/* Edit and Cancel buttons */}
+                    <div className="flex gap-3">
                       <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => {}}
+                        onClick={() => {
+                          alert('Edit registration feature coming soon! You will be able to update attendee names and ages.');
+                        }}
                       >
                         Edit Registration
                       </Button>
@@ -441,11 +480,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         variant="outline"
                         className="flex-1"
                         style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                        onClick={() => {}}
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to cancel your registration for this event?')) {
+                            try {
+                              await eventsRepository.cancelRsvp(id);
+                              alert('Registration cancelled successfully.');
+                              window.location.reload();
+                            } catch (error) {
+                              console.error('Failed to cancel registration:', error);
+                              alert('Failed to cancel registration. Please try again.');
+                            }
+                          }
+                        }}
                       >
                         Cancel Registration
                       </Button>
-                    </div> */}
+                    </div>
                   </div>
                 ) : !isFull ? (
                   <EventRegistrationForm

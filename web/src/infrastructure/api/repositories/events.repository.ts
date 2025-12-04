@@ -25,6 +25,7 @@ import type {
   UpdateSignUpListRequest,
   AddSignUpItemRequest,
   CommitToSignUpItemRequest,
+  RegistrationDetailsDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -270,6 +271,24 @@ export class EventsRepository {
    */
   async getUserRsvps(): Promise<EventDto[]> {
     return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
+  }
+
+  /**
+   * Get user's registration details for a specific event
+   * Fix 1: Enhanced registration status detection
+   * Returns full registration with attendee names and ages
+   * Maps to backend GetUserRegistrationForEventQuery
+   */
+  async getUserRegistrationForEvent(eventId: string): Promise<RegistrationDetailsDto | null> {
+    try {
+      return await apiClient.get<RegistrationDetailsDto>(`${this.basePath}/${eventId}/my-registration`);
+    } catch (error: any) {
+      // Return null if no registration found (404)
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

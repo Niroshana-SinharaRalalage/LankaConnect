@@ -20,6 +20,7 @@ using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
 using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
 using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
+using LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
@@ -532,6 +533,33 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Get user's registration details for a specific event
+    /// Returns full registration with attendee names and ages
+    /// Fix 1: Registration Status Detection Enhancement
+    /// </summary>
+    [HttpGet("{eventId}/my-registration")]
+    [Authorize]
+    [ProducesResponseType(typeof(RegistrationDetailsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyRegistrationForEvent(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Getting registration details for user {UserId} for event {EventId}", userId, eventId);
+
+        var query = new GetUserRegistrationForEventQuery(eventId, userId);
+        var result = await Mediator.Send(query);
+
+        if (result == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Get upcoming events for user (Authenticated users)
     /// </summary>
     [HttpGet("upcoming")]
@@ -740,6 +768,7 @@ public class EventsController : BaseController<EventsController>
     [HttpPost("{id:guid}/videos")]
     [Authorize]
     [Consumes("multipart/form-data")]
+    [RequestSizeLimit(100 * 1024 * 1024)] // 100MB limit for video uploads
     [ProducesResponseType(typeof(EventVideo), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

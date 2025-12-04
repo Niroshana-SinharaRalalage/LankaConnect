@@ -29,7 +29,7 @@ import {
   useRemoveSignUpList,
   useCommitToSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory, SignUpItemDto } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -39,6 +39,7 @@ import {
   CardTitle,
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
+import { SignUpCommitmentModal, CommitmentFormData } from './SignUpCommitmentModal';
 
 /**
  * Props for SignUpManagementSection
@@ -62,10 +63,10 @@ export function SignUpManagementSection({
   const [itemDescription, setItemDescription] = useState('');
   const [quantity, setQuantity] = useState(1);
 
-  // Category-based sign-up state
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [commitQuantity, setCommitQuantity] = useState(1);
-  const [commitNotes, setCommitNotes] = useState('');
+  // Category-based sign-up modal state
+  const [commitModalOpen, setCommitModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SignUpItemDto | null>(null);
+  const [selectedSignUpListId, setSelectedSignUpListId] = useState<string>('');
 
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
@@ -129,36 +130,31 @@ export function SignUpManagementSection({
     }
   };
 
-  // Handle commit to specific item (category-based)
-  const handleCommitToItem = async (signUpId: string, itemId: string) => {
+  // Handle commit to specific item (category-based) via modal
+  const handleCommitToItem = async (data: CommitmentFormData) => {
+    if (!userId) {
+      throw new Error('Please log in to commit to items');
+    }
+
+    await commitToSignUpItem.mutateAsync({
+      eventId,
+      signupId: data.signUpListId,
+      itemId: data.itemId,
+      userId,
+      quantity: data.quantity,
+      notes: data.notes,
+    });
+  };
+
+  // Open commitment modal
+  const openCommitmentModal = (signUpListId: string, item: SignUpItemDto) => {
     if (!userId) {
       alert('Please log in to commit to items');
       return;
     }
-
-    if (commitQuantity < 1) {
-      alert('Please enter a valid quantity');
-      return;
-    }
-
-    try {
-      await commitToSignUpItem.mutateAsync({
-        eventId,
-        signupId: signUpId,
-        itemId,
-        userId,
-        quantity: commitQuantity,
-        notes: commitNotes.trim() || undefined,
-      });
-
-      // Reset form
-      setSelectedItemId(null);
-      setCommitQuantity(1);
-      setCommitNotes('');
-    } catch (err) {
-      console.error('Failed to commit to item:', err);
-      alert('Failed to commit. Please try again.');
-    }
+    setSelectedSignUpListId(signUpListId);
+    setSelectedItem(item);
+    setCommitModalOpen(true);
   };
 
   // Get category badge color
@@ -343,69 +339,17 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {/* Commit button */}
+                                {/* Commit button - Opens modal */}
                                 {!userItemCommitment && userId && remainingQty > 0 && (
                                   <div className="mt-3">
-                                    {selectedItemId === item.id ? (
-                                      <div className="space-y-2">
-                                        <div>
-                                          <label className="block text-sm font-medium mb-1">
-                                            Quantity (max: {remainingQty})
-                                          </label>
-                                          <input
-                                            type="number"
-                                            min="1"
-                                            max={remainingQty}
-                                            value={commitQuantity}
-                                            onChange={(e) => setCommitQuantity(Math.min(parseInt(e.target.value) || 1, remainingQty))}
-                                            className="w-full px-3 py-2 border rounded-md"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="block text-sm font-medium mb-1">
-                                            Notes (optional)
-                                          </label>
-                                          <textarea
-                                            value={commitNotes}
-                                            onChange={(e) => setCommitNotes(e.target.value)}
-                                            placeholder="Any additional details..."
-                                            rows={2}
-                                            className="w-full px-3 py-2 border rounded-md"
-                                          />
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            onClick={() => handleCommitToItem(signUpList.id, item.id)}
-                                            disabled={commitToSignUpItem.isPending}
-                                            size="sm"
-                                          >
-                                            {commitToSignUpItem.isPending ? 'Committing...' : 'Confirm Commitment'}
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setSelectedItemId(null);
-                                              setCommitQuantity(1);
-                                              setCommitNotes('');
-                                            }}
-                                          >
-                                            Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <Button
-                                        onClick={() => {
-                                          setSelectedItemId(item.id);
-                                          setCommitQuantity(Math.min(1, remainingQty));
-                                        }}
-                                        size="sm"
-                                        variant="outline"
-                                      >
-                                        I can bring this
-                                      </Button>
-                                    )}
+                                    <Button
+                                      onClick={() => openCommitmentModal(signUpList.id, item)}
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full sm:w-auto"
+                                    >
+                                      I can bring this
+                                    </Button>
                                   </div>
                                 )}
 
@@ -557,6 +501,17 @@ export function SignUpManagementSection({
           </Card>
         );
       })}
+
+      {/* Sign-Up Commitment Modal */}
+      <SignUpCommitmentModal
+        open={commitModalOpen}
+        onOpenChange={setCommitModalOpen}
+        item={selectedItem}
+        signUpListId={selectedSignUpListId}
+        eventId={eventId}
+        onCommit={handleCommitToItem}
+        isSubmitting={commitToSignUpItem.isPending}
+      />
     </div>
   );
 }

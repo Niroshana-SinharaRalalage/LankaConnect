@@ -254,16 +254,20 @@ public class EventsController : BaseController<EventsController>
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventCommand command)
     {
         // PHASE 6A.10: Comprehensive diagnostic logging
-        var userId = User.TryGetUserId();
+        var userId = User.GetUserId(); // Get authenticated user ID
         var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+
+        // CRITICAL FIX: Override OrganizerId with authenticated user ID for security
+        // The client should NOT be able to set OrganizerId - it must come from the JWT token
+        var secureCommand = command with { OrganizerId = userId };
 
         Logger.LogInformation("🎯 CreateEvent - Request Details:");
         Logger.LogInformation("   User ID: {UserId}", userId);
         Logger.LogInformation("   User Role: {UserRole}", userRole);
         Logger.LogInformation("   Is Authenticated: {IsAuthenticated}", isAuthenticated);
-        Logger.LogInformation("   Event Title: {Title}", command.Title);
-        Logger.LogInformation("   Organizer ID: {OrganizerId}", command.OrganizerId);
+        Logger.LogInformation("   Event Title: {Title}", secureCommand.Title);
+        Logger.LogInformation("   Organizer ID (from JWT): {OrganizerId}", secureCommand.OrganizerId);
         Logger.LogInformation("   Authorization Policy: CanCreateEvents");
 
         // Log all user claims for debugging
@@ -271,7 +275,7 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("   User Claims: {Claims}", string.Join(", ", claims));
 
         Logger.LogInformation("⏳ Sending command to MediatR handler...");
-        var result = await Mediator.Send(command);
+        var result = await Mediator.Send(secureCommand);
 
         if (result.IsSuccess)
         {

@@ -30,6 +30,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -478,34 +479,64 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       >
                         Edit Registration
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                        onClick={async () => {
-                          if (confirm('Are you sure you want to cancel your registration for this event?')) {
-                            try {
-                              console.log('[CancelRsvp] Attempting to cancel registration for event:', id);
-                              await eventsRepository.cancelRsvp(id);
-                              console.log('[CancelRsvp] Successfully cancelled registration');
-                              alert('Registration cancelled successfully.');
-                              window.location.reload();
-                            } catch (error: any) {
-                              console.error('[CancelRsvp] Failed to cancel registration:', error);
-                              console.error('[CancelRsvp] Error details:', {
-                                message: error?.message,
-                                response: error?.response,
-                                status: error?.response?.status,
-                                data: error?.response?.data
-                              });
-                              const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
-                              alert(`Failed to cancel registration: ${errorMessage}\n\nPlease try again or contact support.`);
-                            }
-                          }
-                        }}
-                      >
-                        Cancel Registration
-                      </Button>
+
+                      {!showCancelConfirm ? (
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          style={{ borderColor: '#EF4444', color: '#EF4444' }}
+                          onClick={() => {
+                            console.log('[CancelRsvp] User clicked Cancel Registration button');
+                            setShowCancelConfirm(true);
+                          }}
+                        >
+                          Cancel Registration
+                        </Button>
+                      ) : (
+                        <div className="flex flex-1 gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              console.log('[CancelRsvp] User cancelled the cancellation');
+                              setShowCancelConfirm(false);
+                            }}
+                          >
+                            Keep Registration
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            style={{
+                              borderColor: '#EF4444',
+                              color: '#FFFFFF',
+                              backgroundColor: '#EF4444'
+                            }}
+                            onClick={async () => {
+                              try {
+                                console.log('[CancelRsvp] User confirmed cancellation, attempting to cancel registration for event:', id);
+                                await eventsRepository.cancelRsvp(id);
+                                console.log('[CancelRsvp] Successfully cancelled registration');
+                                alert('Registration cancelled successfully.');
+                                window.location.reload();
+                              } catch (error: any) {
+                                console.error('[CancelRsvp] Failed to cancel registration:', error);
+                                console.error('[CancelRsvp] Error details:', {
+                                  message: error?.message,
+                                  response: error?.response,
+                                  status: error?.response?.status,
+                                  data: error?.response?.data
+                                });
+                                const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+                                alert(`Failed to cancel registration: ${errorMessage}\n\nPlease try again or contact support.`);
+                                setShowCancelConfirm(false);
+                              }
+                            }}
+                          >
+                            Confirm Cancel
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : !isFull ? (

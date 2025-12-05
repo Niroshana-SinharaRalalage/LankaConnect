@@ -2,7 +2,7 @@
   "version": 1,
   "config": {
     "env": {
-      "NEXT_PUBLIC_API_URL": "/api/proxy"
+      "NEXT_PUBLIC_API_URL": "http://localhost:5000/api"
     },
     "webpack": null,
     "typescript": {

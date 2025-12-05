@@ -31,6 +31,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -468,6 +470,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </div>
                     </div>
 
+                    {/* Cancel Error Message */}
+                    {cancelError && (
+                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-red-900 mb-1">
+                              Failed to Cancel Registration
+                            </h4>
+                            <p className="text-sm text-red-700">
+                              {cancelError}
+                            </p>
+                            <p className="text-xs text-red-600 mt-2">
+                              Please try again or contact support if the problem persists.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Edit and Cancel buttons */}
                     <div className="flex gap-3">
                       <Button
@@ -500,6 +522,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             onClick={() => {
                               console.log('[CancelRsvp] User cancelled the cancellation');
                               setShowCancelConfirm(false);
+                              setCancelError(null);
+                              setIsCancelling(false);
                             }}
                           >
                             Keep Registration
@@ -507,17 +531,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           <Button
                             variant="outline"
                             className="flex-1"
+                            disabled={isCancelling}
                             style={{
                               borderColor: '#EF4444',
                               color: '#FFFFFF',
-                              backgroundColor: '#EF4444'
+                              backgroundColor: '#EF4444',
+                              opacity: isCancelling ? 0.6 : 1
                             }}
                             onClick={async () => {
                               try {
                                 console.log('[CancelRsvp] User confirmed cancellation, attempting to cancel registration for event:', id);
+                                setIsCancelling(true);
+                                setCancelError(null);
                                 await eventsRepository.cancelRsvp(id);
-                                console.log('[CancelRsvp] Successfully cancelled registration');
-                                alert('Registration cancelled successfully.');
+                                console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
                                 window.location.reload();
                               } catch (error: any) {
                                 console.error('[CancelRsvp] Failed to cancel registration:', error);
@@ -525,15 +552,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   message: error?.message,
                                   response: error?.response,
                                   status: error?.response?.status,
-                                  data: error?.response?.data
+                                  data: error?.response?.data,
+                                  detail: error?.response?.data?.detail
                                 });
-                                const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
-                                alert(`Failed to cancel registration: ${errorMessage}\n\nPlease try again or contact support.`);
-                                setShowCancelConfirm(false);
+                                const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || error?.message || 'Unknown error';
+                                setCancelError(errorMessage);
+                                setIsCancelling(false);
+                                // Don't reset showCancelConfirm so user can see the error and try again
                               }
                             }}
                           >
-                            Confirm Cancel
+                            {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
                           </Button>
                         </div>
                       )}

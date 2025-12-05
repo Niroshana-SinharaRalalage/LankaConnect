@@ -571,9 +571,9 @@ export function useUserRegistrationDetails(
       try {
         const result = await eventsRepository.getUserRegistrationForEvent(eventId!);
         console.log('[useUserRegistrationDetails] Success:', result);
-        console.log('[useUserRegistrationDetails] Attendees:', result?.value?.attendees);
-        console.log('[useUserRegistrationDetails] Attendees count:', result?.value?.attendees?.length);
-        console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result?.value, null, 2));
+        console.log('[useUserRegistrationDetails] Attendees:', result?.attendees);
+        console.log('[useUserRegistrationDetails] Attendees count:', result?.attendees?.length);
+        console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result, null, 2));
         return result;
       } catch (error) {
         console.error('[useUserRegistrationDetails] Error:', error);

@@ -404,7 +404,7 @@ class TokenRefreshService {
             const { setAuth, user } = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuthStore"].getState();
             console.log('🔍 [TOKEN REFRESH] Auth store state:', {
                 hasUser: !!user,
-                userId: user?.id
+                userId: user?.userId
             });
             if (user) {
                 console.log('🔍 [TOKEN REFRESH] Updating auth store with new token');

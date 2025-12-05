@@ -6156,9 +6156,9 @@ var SignUpType = /*#__PURE__*/ function(SignUpType) {
     return SignUpType;
 }({});
 var SignUpItemCategory = /*#__PURE__*/ function(SignUpItemCategory) {
-    SignUpItemCategory[SignUpItemCategory["Mandatory"] = 0] = "Mandatory";
-    SignUpItemCategory[SignUpItemCategory["Preferred"] = 1] = "Preferred";
-    SignUpItemCategory[SignUpItemCategory["Suggested"] = 2] = "Suggested";
+    SignUpItemCategory["Mandatory"] = "Mandatory";
+    SignUpItemCategory["Preferred"] = "Preferred";
+    SignUpItemCategory["Suggested"] = "Suggested";
     return SignUpItemCategory;
 }({});
 }),

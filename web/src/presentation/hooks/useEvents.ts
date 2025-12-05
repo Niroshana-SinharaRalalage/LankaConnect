@@ -561,15 +561,29 @@ export function useUserRsvpForEvent(
  */
 export function useUserRegistrationDetails(
   eventId: string | undefined,
+  isUserRegistered: boolean = false,
   options?: Omit<UseQueryOptions<RegistrationDetailsDto | null, ApiError>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: ['user-registration', eventId],
-    queryFn: () => eventsRepository.getUserRegistrationForEvent(eventId!),
-    enabled: !!eventId,
+    queryFn: async () => {
+      console.log('[useUserRegistrationDetails] Fetching registration details for event:', eventId);
+      try {
+        const result = await eventsRepository.getUserRegistrationForEvent(eventId!);
+        console.log('[useUserRegistrationDetails] Success:', result);
+        console.log('[useUserRegistrationDetails] Attendees:', result?.value?.attendees);
+        console.log('[useUserRegistrationDetails] Attendees count:', result?.value?.attendees?.length);
+        console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result?.value, null, 2));
+        return result;
+      } catch (error) {
+        console.error('[useUserRegistrationDetails] Error:', error);
+        throw error;
+      }
+    },
+    enabled: !!eventId && isUserRegistered, // Only fetch if user is registered
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: 1,
+    retry: false, // Don't retry on 401/404
     ...options,
   });
 }

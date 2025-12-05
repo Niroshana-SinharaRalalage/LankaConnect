@@ -6023,6 +6023,8 @@ const __TURBOPACK__default__export__ = {
     ()=>EventCategory,
     "EventStatus",
     ()=>EventStatus,
+    "PricingType",
+    ()=>PricingType,
     "RegistrationStatus",
     ()=>RegistrationStatus,
     "SignUpItemCategory",
@@ -6070,6 +6072,12 @@ var Currency = /*#__PURE__*/ function(Currency) {
     Currency[Currency["CAD"] = 5] = "CAD";
     Currency[Currency["AUD"] = 6] = "AUD";
     return Currency;
+}({});
+var PricingType = /*#__PURE__*/ function(PricingType) {
+    PricingType[PricingType["Single"] = 0] = "Single";
+    PricingType[PricingType["AgeDual"] = 1] = "AgeDual";
+    PricingType[PricingType["GroupTiered"] = 2] = "GroupTiered";
+    return PricingType;
 }({});
 var SignUpType = /*#__PURE__*/ function(SignUpType) {
     SignUpType[SignUpType["Open"] = 0] = "Open";
@@ -6128,10 +6136,10 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
     const [selectedSignUpId, setSelectedSignUpId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [itemDescription, setItemDescription] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [quantity, setQuantity] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(1);
-    // Category-based sign-up state
-    const [selectedItemId, setSelectedItemId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
-    const [commitQuantity, setCommitQuantity] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(1);
-    const [commitNotes, setCommitNotes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
+    // Category-based sign-up modal state
+    const [commitModalOpen, setCommitModalOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [selectedItem, setSelectedItem] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [selectedSignUpListId, setSelectedSignUpListId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     // Fetch sign-up lists
     const { data: signUpLists, isLoading, error } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$hooks$2f$useEventSignUps$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEventSignUps"])(eventId);
     // Mutations
@@ -6185,33 +6193,29 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
             alert('Failed to cancel commitment. Please try again.');
         }
     };
-    // Handle commit to specific item (category-based)
-    const handleCommitToItem = async (signUpId, itemId)=>{
+    // Handle commit to specific item (category-based) via modal
+    const handleCommitToItem = async (data)=>{
+        if (!userId) {
+            throw new Error('Please log in to commit to items');
+        }
+        await commitToSignUpItem.mutateAsync({
+            eventId,
+            signupId: data.signUpListId,
+            itemId: data.itemId,
+            userId,
+            quantity: data.quantity,
+            notes: data.notes
+        });
+    };
+    // Open commitment modal
+    const openCommitmentModal = (signUpListId, item)=>{
         if (!userId) {
             alert('Please log in to commit to items');
             return;
         }
-        if (commitQuantity < 1) {
-            alert('Please enter a valid quantity');
-            return;
-        }
-        try {
-            await commitToSignUpItem.mutateAsync({
-                eventId,
-                signupId: signUpId,
-                itemId,
-                userId,
-                quantity: commitQuantity,
-                notes: commitNotes.trim() || undefined
-            });
-            // Reset form
-            setSelectedItemId(null);
-            setCommitQuantity(1);
-            setCommitNotes('');
-        } catch (err) {
-            console.error('Failed to commit to item:', err);
-            alert('Failed to commit. Please try again.');
-        }
+        setSelectedSignUpListId(signUpListId);
+        setSelectedItem(item);
+        setCommitModalOpen(true);
     };
     // Get category badge color
     const getCategoryColor = (category)=>{
@@ -6248,12 +6252,12 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                 children: "Loading sign-up lists..."
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                lineNumber: 196,
+                lineNumber: 192,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-            lineNumber: 195,
+            lineNumber: 191,
             columnNumber: 7
         }, this);
     }
@@ -6266,12 +6270,12 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                 children: "Failed to load sign-up lists. Please try again."
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                lineNumber: 205,
+                lineNumber: 201,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-            lineNumber: 204,
+            lineNumber: 200,
             columnNumber: 7
         }, this);
     }
@@ -6286,7 +6290,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                             children: "Sign-Up Lists"
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                            lineNumber: 218,
+                            lineNumber: 214,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
@@ -6296,23 +6300,23 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                            lineNumber: 219,
+                            lineNumber: 215,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                    lineNumber: 217,
+                    lineNumber: 213,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                lineNumber: 216,
+                lineNumber: 212,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-            lineNumber: 215,
+            lineNumber: 211,
             columnNumber: 7
         }, this);
     }
@@ -6324,7 +6328,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                 children: "Sign-Up Lists"
             }, void 0, false, {
                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                lineNumber: 231,
+                lineNumber: 227,
                 columnNumber: 7
             }, this),
             signUpLists.map((signUpList)=>{
@@ -6340,14 +6344,14 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                     children: signUpList.category
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                    lineNumber: 243,
+                                    lineNumber: 239,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                                     children: signUpList.description
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                    lineNumber: 244,
+                                    lineNumber: 240,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6360,7 +6364,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                 children: "Has Mandatory Items"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 249,
+                                                lineNumber: 245,
                                                 columnNumber: 23
                                             }, this),
                                             signUpList.hasPreferredItems && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6368,7 +6372,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                 children: "Has Preferred Items"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 254,
+                                                lineNumber: 250,
                                                 columnNumber: 23
                                             }, this),
                                             signUpList.hasSuggestedItems && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6376,13 +6380,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                 children: "Has Suggested Items"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 259,
+                                                lineNumber: 255,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 247,
+                                        lineNumber: 243,
                                         columnNumber: 19
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         children: [
@@ -6391,18 +6395,18 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 265,
+                                        lineNumber: 261,
                                         columnNumber: 19
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                    lineNumber: 245,
+                                    lineNumber: 241,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                            lineNumber: 242,
+                            lineNumber: 238,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -6426,7 +6430,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: getCategoryLabel(category)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 283,
+                                                        lineNumber: 279,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6440,13 +6444,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 286,
+                                                        lineNumber: 282,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 282,
+                                                lineNumber: 278,
                                                 columnNumber: 25
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6469,7 +6473,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                 children: item.itemDescription
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                lineNumber: 301,
+                                                                                lineNumber: 297,
                                                                                 columnNumber: 37
                                                                             }, this),
                                                                             item.notes && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6477,13 +6481,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                 children: item.notes
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                lineNumber: 303,
+                                                                                lineNumber: 299,
                                                                                 columnNumber: 39
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                        lineNumber: 300,
+                                                                        lineNumber: 296,
                                                                         columnNumber: 35
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6499,7 +6503,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                 ]
                                                                             }, void 0, true, {
                                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                lineNumber: 307,
+                                                                                lineNumber: 303,
                                                                                 columnNumber: 37
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6510,19 +6514,19 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                 ]
                                                                             }, void 0, true, {
                                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                lineNumber: 310,
+                                                                                lineNumber: 306,
                                                                                 columnNumber: 37
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                        lineNumber: 306,
+                                                                        lineNumber: 302,
                                                                         columnNumber: 35
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 299,
+                                                                lineNumber: 295,
                                                                 columnNumber: 33
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6534,12 +6538,12 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                     }
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                    lineNumber: 318,
+                                                                    lineNumber: 314,
                                                                     columnNumber: 35
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 317,
+                                                                lineNumber: 313,
                                                                 columnNumber: 33
                                                             }, this),
                                                             item.commitments.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6550,7 +6554,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                         children: "Commitments:"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                        lineNumber: 329,
+                                                                        lineNumber: 325,
                                                                         columnNumber: 37
                                                                     }, this),
                                                                     item.commitments.map((commitment)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6566,7 +6570,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                             ]
                                                                                         }, void 0, true, {
                                                                                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                            lineNumber: 333,
+                                                                                            lineNumber: 329,
                                                                                             columnNumber: 43
                                                                                         }, this),
                                                                                         commitment.userId === userId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6574,13 +6578,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                             children: "(You)"
                                                                                         }, void 0, false, {
                                                                                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                            lineNumber: 335,
+                                                                                            lineNumber: 331,
                                                                                             columnNumber: 45
                                                                                         }, this)
                                                                                     ]
                                                                                 }, void 0, true, {
                                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 332,
+                                                                                    lineNumber: 328,
                                                                                     columnNumber: 41
                                                                                 }, this),
                                                                                 commitment.notes && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6591,139 +6595,37 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                                     ]
                                                                                 }, void 0, true, {
                                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 339,
+                                                                                    lineNumber: 335,
                                                                                     columnNumber: 43
                                                                                 }, this)
                                                                             ]
                                                                         }, commitment.id, true, {
                                                                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                            lineNumber: 331,
+                                                                            lineNumber: 327,
                                                                             columnNumber: 39
                                                                         }, this))
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 328,
+                                                                lineNumber: 324,
                                                                 columnNumber: 35
                                                             }, this),
                                                             !userItemCommitment && userId && remainingQty > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                                 className: "mt-3",
-                                                                children: selectedItemId === item.id ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                    className: "space-y-2",
-                                                                    children: [
-                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                            children: [
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                                                    className: "block text-sm font-medium mb-1",
-                                                                                    children: [
-                                                                                        "Quantity (max: ",
-                                                                                        remainingQty,
-                                                                                        ")"
-                                                                                    ]
-                                                                                }, void 0, true, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 352,
-                                                                                    columnNumber: 43
-                                                                                }, this),
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                                                    type: "number",
-                                                                                    min: "1",
-                                                                                    max: remainingQty,
-                                                                                    value: commitQuantity,
-                                                                                    onChange: (e)=>setCommitQuantity(Math.min(parseInt(e.target.value) || 1, remainingQty)),
-                                                                                    className: "w-full px-3 py-2 border rounded-md"
-                                                                                }, void 0, false, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 355,
-                                                                                    columnNumber: 43
-                                                                                }, this)
-                                                                            ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                            lineNumber: 351,
-                                                                            columnNumber: 41
-                                                                        }, this),
-                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                            children: [
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                                                    className: "block text-sm font-medium mb-1",
-                                                                                    children: "Notes (optional)"
-                                                                                }, void 0, false, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 365,
-                                                                                    columnNumber: 43
-                                                                                }, this),
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
-                                                                                    value: commitNotes,
-                                                                                    onChange: (e)=>setCommitNotes(e.target.value),
-                                                                                    placeholder: "Any additional details...",
-                                                                                    rows: 2,
-                                                                                    className: "w-full px-3 py-2 border rounded-md"
-                                                                                }, void 0, false, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 368,
-                                                                                    columnNumber: 43
-                                                                                }, this)
-                                                                            ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                            lineNumber: 364,
-                                                                            columnNumber: 41
-                                                                        }, this),
-                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                                            className: "flex gap-2",
-                                                                            children: [
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
-                                                                                    onClick: ()=>handleCommitToItem(signUpList.id, item.id),
-                                                                                    disabled: commitToSignUpItem.isPending,
-                                                                                    size: "sm",
-                                                                                    children: commitToSignUpItem.isPending ? 'Committing...' : 'Confirm Commitment'
-                                                                                }, void 0, false, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 377,
-                                                                                    columnNumber: 43
-                                                                                }, this),
-                                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
-                                                                                    variant: "outline",
-                                                                                    size: "sm",
-                                                                                    onClick: ()=>{
-                                                                                        setSelectedItemId(null);
-                                                                                        setCommitQuantity(1);
-                                                                                        setCommitNotes('');
-                                                                                    },
-                                                                                    children: "Cancel"
-                                                                                }, void 0, false, {
-                                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                                    lineNumber: 384,
-                                                                                    columnNumber: 43
-                                                                                }, this)
-                                                                            ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                            lineNumber: 376,
-                                                                            columnNumber: 41
-                                                                        }, this)
-                                                                    ]
-                                                                }, void 0, true, {
-                                                                    fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                    lineNumber: 350,
-                                                                    columnNumber: 39
-                                                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
-                                                                    onClick: ()=>{
-                                                                        setSelectedItemId(item.id);
-                                                                        setCommitQuantity(Math.min(1, remainingQty));
-                                                                    },
+                                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                                                    onClick: ()=>openCommitmentModal(signUpList.id, item),
                                                                     size: "sm",
                                                                     variant: "outline",
+                                                                    className: "w-full sm:w-auto",
                                                                     children: "I can bring this"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                    lineNumber: 398,
-                                                                    columnNumber: 39
+                                                                    lineNumber: 345,
+                                                                    columnNumber: 37
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 348,
+                                                                lineNumber: 344,
                                                                 columnNumber: 35
                                                             }, this),
                                                             !userId && remainingQty > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6731,7 +6633,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                 children: "Please log in to commit to this item"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 413,
+                                                                lineNumber: 357,
                                                                 columnNumber: 35
                                                             }, this),
                                                             userItemCommitment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6745,12 +6647,12 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                    lineNumber: 420,
+                                                                    lineNumber: 364,
                                                                     columnNumber: 37
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 419,
+                                                                lineNumber: 363,
                                                                 columnNumber: 35
                                                             }, this),
                                                             remainingQty === 0 && !userItemCommitment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6760,36 +6662,36 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                     children: "✓ Fully committed - Thank you everyone!"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                    lineNumber: 428,
+                                                                    lineNumber: 372,
                                                                     columnNumber: 37
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 427,
+                                                                lineNumber: 371,
                                                                 columnNumber: 35
                                                             }, this)
                                                         ]
                                                     }, item.id, true, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 298,
+                                                        lineNumber: 294,
                                                         columnNumber: 31
                                                     }, this);
                                                 })
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 291,
+                                                lineNumber: 287,
                                                 columnNumber: 25
                                             }, this)
                                         ]
                                     }, category, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 281,
+                                        lineNumber: 277,
                                         columnNumber: 23
                                     }, this);
                                 })
                             }, void 0, false, {
                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                lineNumber: 273,
+                                lineNumber: 269,
                                 columnNumber: 17
                             }, this) : /* LEGACY OPEN/PREDEFINED SIGN-UPS */ /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                                 children: [
@@ -6801,7 +6703,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                 children: "Suggested Items:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 447,
+                                                lineNumber: 391,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -6810,18 +6712,18 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: item
                                                     }, index, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 450,
+                                                        lineNumber: 394,
                                                         columnNumber: 27
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 448,
+                                                lineNumber: 392,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 446,
+                                        lineNumber: 390,
                                         columnNumber: 21
                                     }, this),
                                     signUpList.commitments.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6835,7 +6737,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 459,
+                                                lineNumber: 403,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6850,7 +6752,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                         children: commitment.itemDescription
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                        lineNumber: 469,
+                                                                        lineNumber: 413,
                                                                         columnNumber: 31
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6861,13 +6763,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                        lineNumber: 470,
+                                                                        lineNumber: 414,
                                                                         columnNumber: 31
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 468,
+                                                                lineNumber: 412,
                                                                 columnNumber: 29
                                                             }, this),
                                                             commitment.userId === userId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -6878,38 +6780,38 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                                 children: cancelCommitment.isPending ? 'Canceling...' : 'Cancel'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                                lineNumber: 475,
+                                                                lineNumber: 419,
                                                                 columnNumber: 31
                                                             }, this)
                                                         ]
                                                     }, commitment.id, true, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 464,
+                                                        lineNumber: 408,
                                                         columnNumber: 27
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 462,
+                                                lineNumber: 406,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 458,
+                                        lineNumber: 402,
                                         columnNumber: 21
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-sm text-muted-foreground",
                                         children: "No commitments yet. Be the first!"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 489,
+                                        lineNumber: 433,
                                         columnNumber: 21
                                     }, this)
                                 ]
                             }, void 0, true)
                         }, void 0, false, {
                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                            lineNumber: 270,
+                            lineNumber: 266,
                             columnNumber: 13
                         }, this),
                         !isCategoryBased && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardFooter"], {
@@ -6926,7 +6828,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: "Item Description *"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 503,
+                                                        lineNumber: 447,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -6937,13 +6839,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         className: "w-full px-3 py-2 border rounded-md"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 506,
+                                                        lineNumber: 450,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 502,
+                                                lineNumber: 446,
                                                 columnNumber: 25
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6953,7 +6855,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: "Quantity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 515,
+                                                        lineNumber: 459,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -6964,13 +6866,13 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         className: "w-full px-3 py-2 border rounded-md"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 516,
+                                                        lineNumber: 460,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 514,
+                                                lineNumber: 458,
                                                 columnNumber: 25
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6982,7 +6884,7 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: commitToSignUp.isPending ? 'Committing...' : 'Confirm'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 525,
+                                                        lineNumber: 469,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -6995,31 +6897,31 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                                         children: "Cancel"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                        lineNumber: 531,
+                                                        lineNumber: 475,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                                lineNumber: 524,
+                                                lineNumber: 468,
                                                 columnNumber: 25
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 501,
+                                        lineNumber: 445,
                                         columnNumber: 23
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$components$2f$ui$2f$Button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                         onClick: ()=>setSelectedSignUpId(signUpList.id),
                                         children: "I can bring something"
                                     }, void 0, false, {
                                         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                        lineNumber: 544,
+                                        lineNumber: 488,
                                         columnNumber: 23
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                    lineNumber: 499,
+                                    lineNumber: 443,
                                     columnNumber: 19
                                 }, this),
                                 !userId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7027,26 +6929,26 @@ function SignUpManagementSection({ eventId, userId, isOrganizer = false }) {
                                     children: "Please log in to commit to items"
                                 }, void 0, false, {
                                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                                    lineNumber: 551,
+                                    lineNumber: 495,
                                     columnNumber: 19
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                            lineNumber: 497,
+                            lineNumber: 441,
                             columnNumber: 15
                         }, this)
                     ]
                 }, signUpList.id, true, {
                     fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-                    lineNumber: 241,
+                    lineNumber: 237,
                     columnNumber: 11
                 }, this);
             })
         ]
     }, void 0, true, {
         fileName: "[project]/src/presentation/components/features/events/SignUpManagementSection.tsx",
-        lineNumber: 230,
+        lineNumber: 226,
         columnNumber: 5
     }, this);
 }

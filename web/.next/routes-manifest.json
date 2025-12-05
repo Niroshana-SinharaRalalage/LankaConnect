@@ -59,6 +59,15 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage\\-signups(?:/)?$"
+    },
+    {
+      "page": "/events/[id]/manage-signups/[signupId]",
+      "regex": "^/events/([^/]+?)/manage\\-signups/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPsignupId": "nxtPsignupId"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage\\-signups/(?<nxtPsignupId>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [

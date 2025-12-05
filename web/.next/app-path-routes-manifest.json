@@ -12,6 +12,7 @@
   "/api/proxy/[...path]/route": "/api/proxy/[...path]",
   "/component-demo/page": "/component-demo",
   "/events/[id]/edit/page": "/events/[id]/edit",
+  "/events/[id]/manage-signups/[signupId]/page": "/events/[id]/manage-signups/[signupId]",
   "/events/[id]/manage-signups/page": "/events/[id]/manage-signups",
   "/events/[id]/manage/page": "/events/[id]/manage",
   "/events/[id]/page": "/events/[id]",

@@ -33,6 +33,9 @@
     "[project]/src/app/events/[id]/edit/page": [
       "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
     ],
+    "[project]/src/app/events/[id]/manage-signups/[signupId]/page": [
+      "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
+    ],
     "[project]/src/app/events/[id]/manage-signups/page": [
       "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
     ],

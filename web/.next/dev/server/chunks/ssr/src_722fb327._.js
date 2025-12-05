@@ -3499,7 +3499,7 @@ const Footer = ()=>{
         setSubscribeStatus('loading');
         try {
             // Call .NET backend API
-            const apiUrl = ("TURBOPACK compile-time value", "/api/proxy") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+            const apiUrl = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
             const response = await fetch(`${apiUrl}/newsletter/subscribe`, {
                 method: 'POST',
                 headers: {
@@ -4129,6 +4129,10 @@ function getFreeTrialDaysRemaining(freeTrialEndsAt) {
     ()=>EventCategory,
     "EventStatus",
     ()=>EventStatus,
+    "PaymentStatus",
+    ()=>PaymentStatus,
+    "PricingType",
+    ()=>PricingType,
     "RegistrationStatus",
     ()=>RegistrationStatus,
     "SignUpItemCategory",
@@ -4176,6 +4180,20 @@ var Currency = /*#__PURE__*/ function(Currency) {
     Currency[Currency["CAD"] = 5] = "CAD";
     Currency[Currency["AUD"] = 6] = "AUD";
     return Currency;
+}({});
+var PricingType = /*#__PURE__*/ function(PricingType) {
+    PricingType[PricingType["Single"] = 0] = "Single";
+    PricingType[PricingType["AgeDual"] = 1] = "AgeDual";
+    PricingType[PricingType["GroupTiered"] = 2] = "GroupTiered";
+    return PricingType;
+}({});
+var PaymentStatus = /*#__PURE__*/ function(PaymentStatus) {
+    PaymentStatus[PaymentStatus["Pending"] = 0] = "Pending";
+    PaymentStatus[PaymentStatus["Completed"] = 1] = "Completed";
+    PaymentStatus[PaymentStatus["Failed"] = 2] = "Failed";
+    PaymentStatus[PaymentStatus["Refunded"] = 3] = "Refunded";
+    PaymentStatus[PaymentStatus["NotRequired"] = 4] = "NotRequired";
+    return PaymentStatus;
 }({});
 var SignUpType = /*#__PURE__*/ function(SignUpType) {
     SignUpType[SignUpType["Open"] = 0] = "Open";
@@ -6261,6 +6279,22 @@ class EventsRepository {
         return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].get(`${this.basePath}/my-rsvps`);
     }
     /**
+   * Get user's registration details for a specific event
+   * Fix 1: Enhanced registration status detection
+   * Returns full registration with attendee names and ages
+   * Maps to backend GetUserRegistrationForEventQuery
+   */ async getUserRegistrationForEvent(eventId) {
+        try {
+            return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].get(`${this.basePath}/${eventId}/my-registration`);
+        } catch (error) {
+            // Return null if no registration found (404)
+            if (error?.response?.status === 404) {
+                return null;
+            }
+            throw error;
+        }
+    }
+    /**
    * Get upcoming events for user
    * Returns events happening in the future
    */ async getUpcomingEvents() {
@@ -6337,6 +6371,12 @@ class EventsRepository {
         return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups`, request);
     }
     /**
+   * Update sign-up list details (category, description, and category flags)
+   * Phase 6A.13: Edit Sign-Up List feature
+   */ async updateSignUpList(eventId, signupId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/signups/${signupId}`, request);
+    }
+    /**
    * Add an item to a category-based sign-up list
    * Organizer-only operation
    * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items
@@ -6363,7 +6403,7 @@ class EventsRepository {
    */ async getEventIcs(eventId) {
         // Note: This endpoint returns a file, not JSON
         // Using fetch directly instead of apiClient
-        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/ics`);
         if (!response.ok) {
             throw new Error('Failed to download ICS file');
@@ -6412,7 +6452,7 @@ class EventsRepository {
    */ async replaceEventImage(eventId, imageId, file) {
         const formData = new FormData();
         formData.append('image', file);
-        const baseURL = ("TURBOPACK compile-time value", "/api/proxy") || 'http://localhost:5000/api';
+        const baseURL = ("TURBOPACK compile-time value", "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api") || 'http://localhost:5000/api';
         const response = await fetch(`${baseURL}${this.basePath}/${eventId}/images/${imageId}`, {
             method: 'PUT',
             body: formData,
@@ -6450,7 +6490,10 @@ class EventsRepository {
         formData.append('video', videoFile);
         formData.append('thumbnail', thumbnailFile);
         // Use apiClient.postMultipart for proper authentication and error handling
-        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/videos`, formData);
+        // Video files can be large (up to 100MB), so use 5-minute timeout
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].postMultipart(`${this.basePath}/${eventId}/videos`, formData, {
+            timeout: 300000
+        });
     }
     /**
    * Delete a video from an event

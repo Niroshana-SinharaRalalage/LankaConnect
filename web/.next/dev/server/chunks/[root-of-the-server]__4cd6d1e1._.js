@@ -149,7 +149,11 @@ async function forwardRequest(request, pathSegments, method) {
             method,
             headers,
             body,
-            credentials: 'include'
+            credentials: 'include',
+            // CRITICAL: Large file uploads (videos up to 100MB) need longer timeout
+            // Backend has 5-minute timeout for video uploads, proxy needs at least as long
+            // Add buffer for network overhead: 10 minutes total
+            signal: AbortSignal.timeout(600000)
         };
         // Only add duplex for multipart/form-data streaming
         if (isMultipart && body) {

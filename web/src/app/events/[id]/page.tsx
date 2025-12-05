@@ -41,8 +41,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isUserRegistered = !!userRsvp;
 
   // Fix 1: Fetch full registration details with attendee information
+  // Only fetch when user is registered to avoid unnecessary 404/401 errors
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    user?.userId ? id : undefined
+    user?.userId ? id : undefined,
+    isUserRegistered // Only enabled when user is actually registered
   );
 
   // RSVP mutation

@@ -21,6 +21,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useEventSignUps,
   useCommitToSignUp,
@@ -40,6 +41,7 @@ import {
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData } from './SignUpCommitmentModal';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 
 /**
  * Props for SignUpManagementSection
@@ -58,6 +60,7 @@ export function SignUpManagementSection({
   userId,
   isOrganizer = false,
 }: SignUpManagementSectionProps) {
+  const router = useRouter();
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [selectedSignUpId, setSelectedSignUpId] = useState<string | null>(null);
   const [itemDescription, setItemDescription] = useState('');
@@ -68,6 +71,9 @@ export function SignUpManagementSection({
   const [selectedItem, setSelectedItem] = useState<SignUpItemDto | null>(null);
   const [selectedSignUpListId, setSelectedSignUpListId] = useState<string>('');
 
+  // Organizer delete confirmation state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
 
@@ -75,6 +81,7 @@ export function SignUpManagementSection({
   const commitToSignUp = useCommitToSignUp();
   const cancelCommitment = useCancelCommitment();
   const commitToSignUpItem = useCommitToSignUpItem();
+  const removeSignUpListMutation = useRemoveSignUpList();
 
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
@@ -161,6 +168,17 @@ export function SignUpManagementSection({
     setCommitModalOpen(true);
   };
 
+  // Handle delete sign-up list (organizer only)
+  const handleDeleteSignUpList = async (signupId: string) => {
+    try {
+      await removeSignUpListMutation.mutateAsync({ eventId, signupId });
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error('Failed to delete sign-up list:', err);
+      alert('Failed to delete sign-up list. Please try again.');
+    }
+  };
+
   // Get category badge color
   const getCategoryColor = (category: SignUpItemCategory) => {
     switch (category) {
@@ -215,11 +233,24 @@ export function SignUpManagementSection({
       <div className="py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Sign-Up Lists</CardTitle>
-            <CardDescription>
-              No sign-up lists for this event yet.
-              {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Sign-Up Lists</CardTitle>
+                <CardDescription>
+                  No sign-up lists for this event yet.
+                  {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
+                </CardDescription>
+              </div>
+              {isOrganizer && (
+                <Button
+                  onClick={() => router.push(`/events/${eventId}/manage-signups`)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Sign-Up List
+                </Button>
+              )}
+            </div>
           </CardHeader>
         </Card>
       </div>
@@ -228,7 +259,18 @@ export function SignUpManagementSection({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Sign-Up Lists</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Sign-Up Lists</h2>
+        {isOrganizer && (
+          <Button
+            onClick={() => router.push(`/events/${eventId}/manage-signups`)}
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Sign-Up List
+          </Button>
+        )}
+      </div>
 
       {signUpLists.map((signUpList) => {
         // Check if current user has committed to this list
@@ -240,29 +282,77 @@ export function SignUpManagementSection({
         return (
           <Card key={signUpList.id}>
             <CardHeader>
-              <CardTitle>{signUpList.category}</CardTitle>
-              <CardDescription>{signUpList.description}</CardDescription>
-              <div className="text-sm text-muted-foreground">
-                {isCategoryBased ? (
-                  <div className="flex gap-2 flex-wrap mt-2">
-                    {signUpList.hasMandatoryItems && (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-                        Has Mandatory Items
-                      </span>
-                    )}
-                    {signUpList.hasPreferredItems && (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        Has Preferred Items
-                      </span>
-                    )}
-                    {signUpList.hasSuggestedItems && (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                        Has Suggested Items
-                      </span>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle>{signUpList.category}</CardTitle>
+                  <CardDescription>{signUpList.description}</CardDescription>
+                  <div className="text-sm text-muted-foreground">
+                    {isCategoryBased ? (
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {signUpList.hasMandatoryItems && (
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                            Has Mandatory Items
+                          </span>
+                        )}
+                        {signUpList.hasPreferredItems && (
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            Has Preferred Items
+                          </span>
+                        )}
+                        {signUpList.hasSuggestedItems && (
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                            Has Suggested Items
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span>Type: {signUpList.signUpType === SignUpType.Predefined ? 'Predefined Items' : 'Open'}</span>
                     )}
                   </div>
-                ) : (
-                  <span>Type: {signUpList.signUpType === SignUpType.Predefined ? 'Predefined Items' : 'Open'}</span>
+                </div>
+                {isOrganizer && (
+                  <div className="flex gap-2 ml-4">
+                    {deleteConfirmId === signUpList.id ? (
+                      <>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteSignUpList(signUpList.id)}
+                          disabled={removeSignUpListMutation.isPending}
+                        >
+                          Confirm Delete
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteConfirmId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/events/${eventId}/manage-signups/${signUpList.id}`)}
+                          className="text-orange-600 hover:text-orange-700"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteConfirmId(signUpList.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             </CardHeader>

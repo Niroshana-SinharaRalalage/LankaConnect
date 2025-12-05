@@ -220,16 +220,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
               </Button>
             )}
 
-            {/* Manage Sign-up Lists Button */}
-            <Button
-              onClick={() => router.push(`/events/${id}/manage-signups`)}
-              className="flex items-center gap-2 text-white"
-              style={{ background: '#8B1538', color: 'white' }}
-            >
-              <Users className="h-4 w-4" />
-              Manage Sign-up Lists
-            </Button>
-
             {/* Edit Event Button */}
             <Button
               onClick={() => router.push(`/events/${id}/edit`)}

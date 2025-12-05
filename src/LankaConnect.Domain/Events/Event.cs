@@ -270,7 +270,11 @@ public class Event : BaseEntity
 
     public Result CancelRegistration(Guid userId)
     {
-        var registration = _registrations.FirstOrDefault(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);
+        // Find any active registration (not already cancelled or refunded)
+        var registration = _registrations.FirstOrDefault(r =>
+            r.UserId == userId &&
+            r.Status != RegistrationStatus.Cancelled &&
+            r.Status != RegistrationStatus.Refunded);
 
         if (registration == null)
             return Result.Failure("User is not registered for this event");

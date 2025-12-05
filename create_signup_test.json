@@ -1,0 +1,27 @@
+{
+  "category": "API Test Sign-Up List",
+  "description": "Testing sign-up list creation via API after EF Core fix",
+  "hasMandatoryItems": true,
+  "hasPreferredItems": true,
+  "hasSuggestedItems": true,
+  "items": [
+    {
+      "itemDescription": "Rice (2 cups) - Mandatory",
+      "quantity": 2,
+      "itemCategory": 0,
+      "notes": "Please bring basmati rice"
+    },
+    {
+      "itemDescription": "Water bottles - Preferred",
+      "quantity": 10,
+      "itemCategory": 1,
+      "notes": "1 liter bottles preferred"
+    },
+    {
+      "itemDescription": "Paper plates - Suggested",
+      "quantity": 50,
+      "itemCategory": 2,
+      "notes": "Disposable plates"
+    }
+  ]
+}

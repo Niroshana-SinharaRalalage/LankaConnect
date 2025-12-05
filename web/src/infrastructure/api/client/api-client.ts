@@ -119,40 +119,67 @@ export class ApiClient {
       async (error) => {
         const originalRequest = error.config;
 
+        console.log('🔍 [AUTH INTERCEPTOR] Response error received:', {
+          status: error.response?.status,
+          url: originalRequest?.url,
+          method: originalRequest?.method,
+          hasResponse: !!error.response,
+          alreadyRetried: !!originalRequest._retry,
+          errorMessage: error.message,
+        });
+
         // Check if this is a 401 error and we haven't already retried
         if (error.response?.status === 401 && !originalRequest._retry) {
+          console.log('🔍 [AUTH INTERCEPTOR] 401 Unauthorized detected');
+
           // Skip refresh for auth endpoints (login, register, refresh)
           const isAuthEndpoint = originalRequest.url?.includes('/Auth/login') ||
                                   originalRequest.url?.includes('/Auth/register') ||
                                   originalRequest.url?.includes('/Auth/refresh');
 
+          console.log('🔍 [AUTH INTERCEPTOR] Is auth endpoint?', isAuthEndpoint);
+
           if (!isAuthEndpoint) {
-            console.log('🔓 401 Unauthorized - attempting token refresh...');
+            console.log('🔓 [AUTH INTERCEPTOR] Attempting token refresh...');
 
             // Mark that we've tried to refresh for this request
             originalRequest._retry = true;
 
             try {
               // Attempt to refresh the token
+              console.log('🔍 [AUTH INTERCEPTOR] Calling tokenRefreshService.refreshAccessToken()');
               const newToken = await tokenRefreshService.refreshAccessToken();
+
+              console.log('🔍 [AUTH INTERCEPTOR] Token refresh result:', newToken ? 'SUCCESS' : 'FAILED (null)');
 
               if (newToken) {
                 // Update the Authorization header with the new token
                 originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
 
-                console.log('🔄 Retrying request with new token...');
+                console.log('🔄 [AUTH INTERCEPTOR] Retrying request with new token...');
 
                 // Retry the original request
                 return this.axiosInstance(originalRequest);
+              } else {
+                console.error('❌ [AUTH INTERCEPTOR] Token refresh returned null - triggering logout');
+                if (this.onUnauthorized) {
+                  console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback');
+                  this.onUnauthorized();
+                }
+                return Promise.reject(new Error('Token refresh returned null'));
               }
             } catch (refreshError) {
-              console.error('❌ Token refresh failed - clearing auth and redirecting to login');
+              console.error('❌ [AUTH INTERCEPTOR] Token refresh threw error:', refreshError);
+              console.error('❌ [AUTH INTERCEPTOR] Clearing auth and redirecting to login');
               // Token refresh failed - trigger logout callback to clear auth state
               if (this.onUnauthorized) {
+                console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback after refresh error');
                 this.onUnauthorized();
               }
               return Promise.reject(refreshError);
             }
+          } else {
+            console.log('🔍 [AUTH INTERCEPTOR] Skipping token refresh for auth endpoint');
           }
         }
 

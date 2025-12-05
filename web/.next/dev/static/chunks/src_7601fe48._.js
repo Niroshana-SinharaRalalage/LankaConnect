@@ -272,10 +272,15 @@ const useAuthStore = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
         },
         // Clear authentication (logout)
         clearAuth: ()=>{
+            console.log('🔍 [AUTH STORE] clearAuth() called');
+            console.trace('🔍 [AUTH STORE] Stack trace:');
             // Clear localStorage
+            console.log('🔍 [AUTH STORE] Clearing localStorage');
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$storage$2f$localStorage$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LocalStorageService"].clearAuth();
             // Clear auth token from API client
+            console.log('🔍 [AUTH STORE] Clearing API client auth token');
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].clearAuthToken();
+            console.log('🔍 [AUTH STORE] Setting state to unauthenticated');
             set({
                 user: null,
                 accessToken: null,
@@ -283,6 +288,7 @@ const useAuthStore = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
                 isAuthenticated: false,
                 isLoading: false
             });
+            console.log('🔍 [AUTH STORE] clearAuth() completed');
         },
         // Set loading state
         setLoading: (loading)=>{
@@ -367,45 +373,70 @@ class TokenRefreshService {
    * Attempt to refresh the access token
    * Returns new access token if successful, null otherwise
    */ async refreshAccessToken() {
+        console.log('🔍 [TOKEN REFRESH] refreshAccessToken() called');
         // If refresh is already in progress, queue this request
         if (this.isRefreshing) {
+            console.log('🔍 [TOKEN REFRESH] Refresh already in progress, queueing this request');
             return new Promise((resolve)=>{
                 this.subscribeTokenRefresh((token)=>{
+                    console.log('🔍 [TOKEN REFRESH] Queued request received token:', token ? 'YES' : 'NO');
                     resolve(token);
                 });
             });
         }
+        console.log('🔍 [TOKEN REFRESH] Starting new refresh operation');
         this.isRefreshing = true;
         try {
-            console.log('🔄 Attempting to refresh access token...');
+            console.log('🔄 [TOKEN REFRESH] Calling POST /Auth/refresh...');
             // Call the refresh endpoint
             // Note: Refresh token is in HttpOnly cookie, backend reads it automatically
             const response = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].post('/Auth/refresh', {});
+            console.log('🔍 [TOKEN REFRESH] Response received:', {
+                hasAccessToken: !!response?.accessToken,
+                tokenExpiresAt: response?.tokenExpiresAt
+            });
             const { accessToken, tokenExpiresAt } = response;
-            console.log('✅ Token refreshed successfully', {
-                expiresAt: tokenExpiresAt
+            console.log('✅ [TOKEN REFRESH] Token refreshed successfully', {
+                expiresAt: tokenExpiresAt,
+                tokenLength: accessToken?.length
             });
             // Update auth store with new token
             const { setAuth, user } = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuthStore"].getState();
+            console.log('🔍 [TOKEN REFRESH] Auth store state:', {
+                hasUser: !!user,
+                userId: user?.id
+            });
             if (user) {
+                console.log('🔍 [TOKEN REFRESH] Updating auth store with new token');
                 setAuth(user, {
                     accessToken,
                     refreshToken: '',
                     expiresIn: 1800
                 });
+            } else {
+                console.warn('⚠️ [TOKEN REFRESH] No user in auth store, cannot update token');
             }
             // Notify all queued requests
+            console.log('🔍 [TOKEN REFRESH] Notifying queued requests, count:', this.refreshSubscribers.length);
             this.onTokenRefreshed(accessToken);
             this.isRefreshing = false;
+            console.log('🔍 [TOKEN REFRESH] Refresh complete, returning new token');
             return accessToken;
         } catch (error) {
-            console.error('❌ Token refresh failed:', error);
+            console.error('❌ [TOKEN REFRESH] Token refresh failed with error:', {
+                message: error?.message,
+                status: error?.statusCode || error?.response?.status,
+                response: error?.response?.data
+            });
             // Clear auth and notify subscribers
             this.isRefreshing = false;
+            console.log('🔍 [TOKEN REFRESH] Notifying queued requests with empty token');
             this.onTokenRefreshed('');
             // Clear auth state - user needs to login again
+            console.log('🔍 [TOKEN REFRESH] Clearing auth state via clearAuth()');
             const { clearAuth } = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$presentation$2f$store$2f$useAuthStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuthStore"].getState();
             clearAuth();
+            console.log('🔍 [TOKEN REFRESH] Returning null');
             return null;
         }
     }
@@ -518,32 +549,55 @@ class ApiClient {
             return response;
         }, async (error)=>{
             const originalRequest = error.config;
+            console.log('🔍 [AUTH INTERCEPTOR] Response error received:', {
+                status: error.response?.status,
+                url: originalRequest?.url,
+                method: originalRequest?.method,
+                hasResponse: !!error.response,
+                alreadyRetried: !!originalRequest._retry,
+                errorMessage: error.message
+            });
             // Check if this is a 401 error and we haven't already retried
             if (error.response?.status === 401 && !originalRequest._retry) {
+                console.log('🔍 [AUTH INTERCEPTOR] 401 Unauthorized detected');
                 // Skip refresh for auth endpoints (login, register, refresh)
                 const isAuthEndpoint = originalRequest.url?.includes('/Auth/login') || originalRequest.url?.includes('/Auth/register') || originalRequest.url?.includes('/Auth/refresh');
+                console.log('🔍 [AUTH INTERCEPTOR] Is auth endpoint?', isAuthEndpoint);
                 if (!isAuthEndpoint) {
-                    console.log('🔓 401 Unauthorized - attempting token refresh...');
+                    console.log('🔓 [AUTH INTERCEPTOR] Attempting token refresh...');
                     // Mark that we've tried to refresh for this request
                     originalRequest._retry = true;
                     try {
                         // Attempt to refresh the token
+                        console.log('🔍 [AUTH INTERCEPTOR] Calling tokenRefreshService.refreshAccessToken()');
                         const newToken = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$services$2f$tokenRefreshService$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["tokenRefreshService"].refreshAccessToken();
+                        console.log('🔍 [AUTH INTERCEPTOR] Token refresh result:', newToken ? 'SUCCESS' : 'FAILED (null)');
                         if (newToken) {
                             // Update the Authorization header with the new token
                             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-                            console.log('🔄 Retrying request with new token...');
+                            console.log('🔄 [AUTH INTERCEPTOR] Retrying request with new token...');
                             // Retry the original request
                             return this.axiosInstance(originalRequest);
+                        } else {
+                            console.error('❌ [AUTH INTERCEPTOR] Token refresh returned null - triggering logout');
+                            if (this.onUnauthorized) {
+                                console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback');
+                                this.onUnauthorized();
+                            }
+                            return Promise.reject(new Error('Token refresh returned null'));
                         }
                     } catch (refreshError) {
-                        console.error('❌ Token refresh failed - clearing auth and redirecting to login');
+                        console.error('❌ [AUTH INTERCEPTOR] Token refresh threw error:', refreshError);
+                        console.error('❌ [AUTH INTERCEPTOR] Clearing auth and redirecting to login');
                         // Token refresh failed - trigger logout callback to clear auth state
                         if (this.onUnauthorized) {
+                            console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback after refresh error');
                             this.onUnauthorized();
                         }
                         return Promise.reject(refreshError);
                     }
+                } else {
+                    console.log('🔍 [AUTH INTERCEPTOR] Skipping token refresh for auth endpoint');
                 }
             }
             // PHASE 6A.10: Comprehensive error logging
@@ -919,17 +973,25 @@ function AuthProvider({ children }) {
             // Set up 401 error handler
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiClient"].setUnauthorizedCallback({
                 "AuthProvider.useEffect": ()=>{
+                    console.log('🔍 [AUTH PROVIDER] onUnauthorized callback triggered');
+                    console.log('🔍 [AUTH PROVIDER] isHandling401:', isHandling401);
                     // Prevent multiple simultaneous logout/redirect calls
-                    if (isHandling401) return;
+                    if (isHandling401) {
+                        console.log('🔍 [AUTH PROVIDER] Already handling 401, skipping');
+                        return;
+                    }
                     isHandling401 = true;
+                    console.log('🔍 [AUTH PROVIDER] Calling clearAuth()');
                     // Clear authentication state
                     clearAuth();
+                    console.log('🔍 [AUTH PROVIDER] Redirecting to /login');
                     // Redirect to login page
                     router.push('/login');
                     // Reset flag after redirect
                     setTimeout({
                         "AuthProvider.useEffect": ()=>{
                             isHandling401 = false;
+                            console.log('🔍 [AUTH PROVIDER] Reset isHandling401 flag');
                         }
                     }["AuthProvider.useEffect"], 1000);
                 }

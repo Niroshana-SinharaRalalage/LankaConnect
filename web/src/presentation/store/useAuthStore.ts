@@ -55,12 +55,18 @@ export const useAuthStore = create<AuthState>()(
 
         // Clear authentication (logout)
         clearAuth: () => {
+          console.log('🔍 [AUTH STORE] clearAuth() called');
+          console.trace('🔍 [AUTH STORE] Stack trace:');
+
           // Clear localStorage
+          console.log('🔍 [AUTH STORE] Clearing localStorage');
           LocalStorageService.clearAuth();
 
           // Clear auth token from API client
+          console.log('🔍 [AUTH STORE] Clearing API client auth token');
           apiClient.clearAuthToken();
 
+          console.log('🔍 [AUTH STORE] Setting state to unauthenticated');
           set({
             user: null,
             accessToken: null,
@@ -68,6 +74,8 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
           });
+
+          console.log('🔍 [AUTH STORE] clearAuth() completed');
         },
 
         // Set loading state

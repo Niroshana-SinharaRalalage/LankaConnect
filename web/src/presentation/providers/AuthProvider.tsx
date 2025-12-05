@@ -32,19 +32,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up 401 error handler
     apiClient.setUnauthorizedCallback(() => {
+      console.log('🔍 [AUTH PROVIDER] onUnauthorized callback triggered');
+      console.log('🔍 [AUTH PROVIDER] isHandling401:', isHandling401);
+
       // Prevent multiple simultaneous logout/redirect calls
-      if (isHandling401) return;
+      if (isHandling401) {
+        console.log('🔍 [AUTH PROVIDER] Already handling 401, skipping');
+        return;
+      }
       isHandling401 = true;
 
+      console.log('🔍 [AUTH PROVIDER] Calling clearAuth()');
       // Clear authentication state
       clearAuth();
 
+      console.log('🔍 [AUTH PROVIDER] Redirecting to /login');
       // Redirect to login page
       router.push('/login');
 
       // Reset flag after redirect
       setTimeout(() => {
         isHandling401 = false;
+        console.log('🔍 [AUTH PROVIDER] Reset isHandling401 flag');
       }, 1000);
     });
   }, [router, clearAuth]);

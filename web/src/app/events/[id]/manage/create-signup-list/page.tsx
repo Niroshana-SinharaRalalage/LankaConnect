@@ -384,7 +384,7 @@ export default function ManageSignUpsPage() {
           </Button>
 
           <h1 className="text-3xl font-bold text-white mb-2">
-            Manage Sign-Up Lists
+            Create Sign-Up List
           </h1>
           <p className="text-lg text-white/90">
             {event.title}
@@ -394,68 +394,9 @@ export default function ManageSignUpsPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-neutral-500">Total Sign-Up Lists</p>
-                  <p className="text-3xl font-bold text-neutral-900 mt-1">
-                    {signUpLists?.length || 0}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: '#FFF4ED' }}>
-                  <ListPlus className="h-6 w-6" style={{ color: '#FF7900' }} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-neutral-500">Total Commitments</p>
-                  <p className="text-3xl font-bold text-neutral-900 mt-1">{totalCommitments}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: '#FFF4ED' }}>
-                  <Users className="h-6 w-6" style={{ color: '#FF7900' }} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold" style={{ color: '#8B1538' }}>
-            Sign-Up Lists
-          </h2>
-          <div className="flex gap-3">
-            {signUpLists && signUpLists.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleDownloadCSV}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download CSV
-              </Button>
-            )}
-            <Button
-              onClick={() => setShowForm(!showForm)}
-              style={{ background: '#FF7900' }}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              {showForm ? 'Cancel' : 'Create Sign-Up List'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Create Sign-Up List Form */}
-        {showForm && (
+        {/* Create Sign-Up List Form - Always shown */}
+        {(
           <Card className="mb-6">
             <CardHeader>
               <CardTitle style={{ color: '#8B1538' }}>Create New Sign-Up List</CardTitle>
@@ -885,130 +826,6 @@ export default function ManageSignUpsPage() {
                   {createSignUpListMutation.isPending ? 'Creating...' : 'Create Sign-Up List'}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Sign-Up Lists */}
-        {signUpsLoading ? (
-          <div className="grid grid-cols-1 gap-6">
-            {[...Array(2)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-6 bg-neutral-200 rounded w-1/3 mb-4"></div>
-                  <div className="h-4 bg-neutral-200 rounded w-2/3"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : signUpLists && signUpLists.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {signUpLists.map((list) => (
-              <Card key={list.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle style={{ color: '#8B1538' }}>{list.category}</CardTitle>
-                      <CardDescription className="mt-2">{list.description}</CardDescription>
-                    </div>
-                    {deleteConfirmId === list.id ? (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteSignUpList(list.id)}
-                          disabled={removeSignUpListMutation.isPending}
-                        >
-                          Confirm Delete
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteConfirmId(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/events/${eventId}/signup-lists/${list.id}`)}
-                          className="text-orange-600 hover:text-orange-700"
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteConfirmId(list.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Commitments */}
-                    <div>
-                      <h4 className="text-sm font-semibold text-neutral-700 mb-3">
-                        Commitments ({list.commitmentCount || 0})
-                      </h4>
-                      {(list.commitments?.length ?? 0) > 0 ? (
-                        <div className="space-y-2">
-                          {(list.commitments || []).map((commitment) => (
-                            <div
-                              key={commitment.id}
-                              className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
-                            >
-                              <div className="flex-1">
-                                <p className="font-medium text-neutral-900">
-                                  {commitment.itemDescription}
-                                </p>
-                                <p className="text-sm text-neutral-500">
-                                  Quantity: {commitment.quantity} • User: {commitment.userId.substring(0, 8)}...
-                                </p>
-                              </div>
-                              <p className="text-sm text-neutral-400">
-                                {new Date(commitment.committedAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-neutral-500 text-sm italic">
-                          No commitments yet
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <ListPlus className="h-16 w-16 mx-auto mb-4 text-neutral-400" />
-              <h3 className="text-xl font-semibold text-neutral-900 mb-2">
-                No Sign-Up Lists Yet
-              </h3>
-              <p className="text-neutral-500 mb-6">
-                Create your first sign-up list to let attendees commit to bringing items
-              </p>
-              <Button
-                onClick={() => setShowForm(true)}
-                style={{ background: '#FF7900' }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Sign-Up List
-              </Button>
             </CardContent>
           </Card>
         )}

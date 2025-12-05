@@ -11,7 +11,8 @@ import {
   MapPin,
   DollarSign,
   Image as ImageIcon,
-  Video as VideoIcon
+  Video as VideoIcon,
+  Download
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -19,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById } from '@/presentation/hooks/useEvents';
+import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
@@ -47,6 +49,9 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError, refetch } = useEventById(id);
+
+  // Fetch sign-up lists for CSV download
+  const { data: signUpLists } = useEventSignUps(id);
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {
@@ -90,6 +95,36 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       setError(err instanceof Error ? err.message : 'Failed to publish event. Please try again.');
       setIsPublishing(false);
     }
+  };
+
+  // Handle Download CSV
+  const handleDownloadCSV = () => {
+    if (!signUpLists || signUpLists.length === 0) {
+      alert('No sign-up lists to download');
+      return;
+    }
+
+    // Build CSV content
+    let csvContent = 'Category,Item Description,User ID,Quantity,Committed At\n';
+
+    signUpLists.forEach((list) => {
+      (list.commitments || []).forEach((commitment) => {
+        csvContent += `"${list.category}","${commitment.itemDescription}","${commitment.userId}",${commitment.quantity},"${commitment.committedAt}"\n`;
+      });
+    });
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `event-${id}-signups.csv`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
 
@@ -387,14 +422,26 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                     <CardTitle style={{ color: '#8B1538' }}>Sign-Up Lists</CardTitle>
                     <CardDescription>Manage items that attendees can volunteer to bring</CardDescription>
                   </div>
-                  <Button
-                    onClick={() => router.push(`/events/${id}/manage/create-signup-list`)}
-                    className="flex items-center gap-2 text-white"
-                    style={{ background: '#FF7900', color: 'white' }}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Create Sign-Up List
-                  </Button>
+                  <div className="flex gap-3">
+                    {signUpLists && signUpLists.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleDownloadCSV}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download CSV
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => router.push(`/events/${id}/manage/create-signup-list`)}
+                      className="flex items-center gap-2 text-white"
+                      style={{ background: '#FF7900', color: 'white' }}
+                    >
+                      <Upload className="h-4 w-4" />
+                      Create Sign-Up List
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

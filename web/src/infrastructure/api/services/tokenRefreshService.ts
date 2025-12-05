@@ -83,7 +83,7 @@ class TokenRefreshService {
 
       // Update auth store with new token
       const { setAuth, user } = useAuthStore.getState();
-      console.log('🔍 [TOKEN REFRESH] Auth store state:', { hasUser: !!user, userId: user?.id });
+      console.log('🔍 [TOKEN REFRESH] Auth store state:', { hasUser: !!user, userId: user?.userId });
 
       if (user) {
         console.log('🔍 [TOKEN REFRESH] Updating auth store with new token');

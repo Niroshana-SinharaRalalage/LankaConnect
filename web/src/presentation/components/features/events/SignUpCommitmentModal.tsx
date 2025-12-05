@@ -24,7 +24,7 @@ import {
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import type { SignUpItemDto } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, type SignUpItemDto } from '@/infrastructure/api/types/events.types';
 
 interface SignUpCommitmentModalProps {
   open: boolean;
@@ -155,11 +155,11 @@ export function SignUpCommitmentModal({
   // Get category badge color
   const getCategoryColor = () => {
     switch (item.itemCategory) {
-      case 0: // Mandatory
+      case SignUpItemCategory.Mandatory:
         return 'bg-red-100 text-red-800 border-red-300';
-      case 1: // Preferred
+      case SignUpItemCategory.Preferred:
         return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 2: // Suggested
+      case SignUpItemCategory.Suggested:
         return 'bg-green-100 text-green-800 border-green-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
@@ -168,11 +168,11 @@ export function SignUpCommitmentModal({
 
   const getCategoryLabel = () => {
     switch (item.itemCategory) {
-      case 0:
+      case SignUpItemCategory.Mandatory:
         return 'Mandatory';
-      case 1:
+      case SignUpItemCategory.Preferred:
         return 'Preferred';
-      case 2:
+      case SignUpItemCategory.Suggested:
         return 'Suggested';
       default:
         return '';

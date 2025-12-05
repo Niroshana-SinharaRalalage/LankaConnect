@@ -224,11 +224,14 @@ export enum SignUpType {
 /**
  * Sign-up item category enum matching backend SignUpItemCategory
  * For category-based sign-up lists
+ *
+ * IMPORTANT: Uses string values to match ASP.NET Core's JsonStringEnumConverter
+ * The API serializes enums as strings: "Mandatory", "Preferred", "Suggested"
  */
 export enum SignUpItemCategory {
-  Mandatory = 0,
-  Preferred = 1,
-  Suggested = 2,
+  Mandatory = "Mandatory",
+  Preferred = "Preferred",
+  Suggested = "Suggested",
 }
 
 /**

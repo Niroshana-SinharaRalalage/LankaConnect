@@ -69,6 +69,11 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
             .OnDelete(DeleteBehavior.Cascade);
 
         // Configure relationship to SignUpItems (new category-based model)
+        // CRITICAL: Use backing field "_items" for EF Core change tracking
+        builder.Metadata
+            .FindNavigation(nameof(SignUpList.Items))!
+            .SetField("_items");
+
         builder.HasMany(s => s.Items)
             .WithOne()
             .HasForeignKey(i => i.SignUpListId)

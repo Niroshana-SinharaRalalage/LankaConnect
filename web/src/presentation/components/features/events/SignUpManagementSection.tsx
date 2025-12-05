@@ -311,7 +311,7 @@ export function SignUpManagementSection({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/events/${eventId}/manage-signups/${signUpList.id}`)}
+                          onClick={() => router.push(`/events/${eventId}/signup-lists/${signUpList.id}`)}
                           className="text-orange-600 hover:text-orange-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />

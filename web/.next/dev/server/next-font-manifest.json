@@ -15,6 +15,9 @@
     "[project]/src/app/events/[id]/manage-signups/page": [
       "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
     ],
+    "[project]/src/app/events/[id]/manage/create-signup-list/page": [
+      "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
+    ],
     "[project]/src/app/events/[id]/manage/page": [
       "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2"
     ],

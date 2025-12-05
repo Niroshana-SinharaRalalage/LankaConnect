@@ -388,12 +388,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                     <CardDescription>Manage items that attendees can volunteer to bring</CardDescription>
                   </div>
                   <Button
-                    onClick={() => router.push(`/events/${id}/manage-signups`)}
+                    onClick={() => router.push(`/events/${id}/manage/create-signup-list`)}
                     className="flex items-center gap-2 text-white"
                     style={{ background: '#FF7900', color: 'white' }}
                   >
                     <Upload className="h-4 w-4" />
-                    Manage Sign-Up Lists
+                    Create Sign-Up List
                   </Button>
                 </div>
               </CardHeader>

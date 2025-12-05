@@ -599,6 +599,17 @@ export interface AddSignUpItemRequest {
 }
 
 /**
+ * Update sign-up item request
+ * Phase 6A.14: Edit Sign-Up Item feature
+ * Matches backend UpdateSignUpItemRequest
+ */
+export interface UpdateSignUpItemRequest {
+  itemDescription: string;
+  quantity: number;
+  notes?: string | null;
+}
+
+/**
  * Commit to sign-up item request
  * Phase 2: Added optional contact information
  */

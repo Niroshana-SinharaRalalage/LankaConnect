@@ -7,6 +7,7 @@
   "/events/[id]/manage/create-signup-list/page": "app/events/[id]/manage/create-signup-list/page.js",
   "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
   "/events/[id]/page": "app/events/[id]/page.js",
+  "/events/[id]/signup-lists/[signupId]/page": "app/events/[id]/signup-lists/[signupId]/page.js",
   "/events/create/page": "app/events/create/page.js",
   "/events/page": "app/events/page.js",
   "/page": "app/page.js"

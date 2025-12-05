@@ -25,6 +25,7 @@ import type {
   CreateSignUpListRequest,
   UpdateSignUpListRequest,
   AddSignUpItemRequest,
+  UpdateSignUpItemRequest,
   CommitToSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
 
@@ -437,6 +438,52 @@ export function useAddSignUpItem() {
 }
 
 /**
+ * useUpdateSignUpItem Hook
+ * Phase 6A.14: Edit Sign-Up Item feature
+ *
+ * Mutation hook for updating an item in a category-based sign-up list (organizer only)
+ *
+ * Features:
+ * - Updates item description, quantity, and notes
+ * - Automatic cache invalidation
+ * - Optimistic updates (optional)
+ *
+ * @example
+ * ```tsx
+ * const updateItem = useUpdateSignUpItem();
+ *
+ * await updateItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789',
+ *   itemDescription: 'Updated Rice (10 cups)',
+ *   quantity: 5,
+ *   notes: 'Updated notes'
+ * });
+ * ```
+ */
+export function useUpdateSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    } & UpdateSignUpItemRequest) =>
+      eventsRepository.updateSignUpItem(eventId, signupId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
  * useRemoveSignUpItem Hook
  *
  * Mutation hook for removing an item from a category-based sign-up list (organizer only)
@@ -560,7 +607,9 @@ export default {
   useCommitToSignUp,
   useCancelCommitment,
   useCreateSignUpList,
+  useUpdateSignUpList,
   useAddSignUpItem,
+  useUpdateSignUpItem,
   useRemoveSignUpItem,
   useCommitToSignUpItem,
 };

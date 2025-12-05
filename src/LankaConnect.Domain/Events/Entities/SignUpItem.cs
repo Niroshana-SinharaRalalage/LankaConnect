@@ -184,4 +184,44 @@ public class SignUpItem : BaseEntity
     /// Gets total number of commitments (users who committed)
     /// </summary>
     public int GetCommitmentCount() => _commitments.Count;
+
+    /// <summary>
+    /// Updates item details (description, quantity, and notes) in a single operation
+    /// Phase 6A.14: Edit Sign-Up Item feature
+    /// </summary>
+    public Result UpdateDetails(string newDescription, int newQuantity, string? newNotes)
+    {
+        // Validate description
+        if (string.IsNullOrWhiteSpace(newDescription))
+            return Result.Failure("Item description is required");
+
+        if (newDescription.Length > 500)
+            return Result.Failure("Item description must not exceed 500 characters");
+
+        // Validate quantity
+        if (newQuantity <= 0)
+            return Result.Failure("Quantity must be greater than 0");
+
+        if (newQuantity > 1000)
+            return Result.Failure("Quantity cannot exceed 1000");
+
+        // Check if trying to reduce quantity below committed amount
+        var committedQuantity = Quantity - RemainingQuantity;
+        if (newQuantity < committedQuantity)
+            return Result.Failure($"Cannot reduce quantity below committed amount ({committedQuantity})");
+
+        // Validate notes if provided
+        if (!string.IsNullOrWhiteSpace(newNotes) && newNotes.Length > 500)
+            return Result.Failure("Notes must not exceed 500 characters");
+
+        // Update properties
+        ItemDescription = newDescription.Trim();
+        RemainingQuantity = newQuantity - committedQuantity;
+        Quantity = newQuantity;
+        Notes = newNotes?.Trim();
+
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
 }

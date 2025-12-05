@@ -10,6 +10,7 @@ import {
   useEventSignUps,
   useUpdateSignUpList,
   useAddSignUpItem,
+  useUpdateSignUpItem,
   useRemoveSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -48,6 +49,7 @@ export default function EditSignUpListPage() {
   // Mutations
   const updateSignUpListMutation = useUpdateSignUpList(eventId);
   const addSignUpItemMutation = useAddSignUpItem();
+  const updateSignUpItemMutation = useUpdateSignUpItem();
   const removeSignUpItemMutation = useRemoveSignUpItem();
 
   // Form state for list details
@@ -265,12 +267,29 @@ export default function EditSignUpListPage() {
     setEditingItemNotes('');
   };
 
-  // TODO: Handle save edited item (needs backend API endpoint)
+  /**
+   * Handle save edited item
+   * Phase 6A.14: Edit Sign-Up Item feature
+   */
   const handleSaveEditedItem = async () => {
-    // This will need a new API endpoint: PUT /api/events/{eventId}/signups/{signupId}/items/{itemId}
-    console.log('Save edited item - needs API endpoint implementation');
-    alert('Item editing will be implemented in next iteration with backend API support');
-    handleCancelEditingItem();
+    if (!editingItemId) return;
+
+    try {
+      await updateSignUpItemMutation.mutateAsync({
+        eventId,
+        signupId,
+        itemId: editingItemId,
+        itemDescription: editingItemDesc.trim(),
+        quantity: editingItemQty,
+        notes: editingItemNotes.trim() || null,
+      });
+
+      // Success - clear editing state
+      handleCancelEditingItem();
+    } catch (error) {
+      console.error('Failed to update item:', error);
+      alert('Failed to update item. Please try again.');
+    }
   };
 
   // Loading states

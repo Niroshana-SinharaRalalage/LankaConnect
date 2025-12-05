@@ -24,6 +24,7 @@ import type {
   CreateSignUpListRequest,
   UpdateSignUpListRequest,
   AddSignUpItemRequest,
+  UpdateSignUpItemRequest,
   CommitToSignUpItemRequest,
   RegistrationDetailsDto,
 } from '../types/events.types';
@@ -427,6 +428,21 @@ export class EventsRepository {
     request: AddSignUpItemRequest
   ): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
+  }
+
+  /**
+   * Update an item in a category-based sign-up list
+   * Phase 6A.14: Edit Sign-Up Item feature
+   * Organizer-only operation
+   * Maps to backend PUT /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */
+  async updateSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string,
+    request: UpdateSignUpItemRequest
+  ): Promise<void> {
+    await apiClient.put<void>(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`, request);
   }
 
   /**

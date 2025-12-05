@@ -48,6 +48,7 @@ using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
 using LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
 using LankaConnect.Application.Events.Commands.UpdateSignUpList;
 using LankaConnect.Application.Events.Commands.AddSignUpItem;
+using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.API.Extensions;
@@ -1184,6 +1185,34 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Update an item in a category-based sign-up list (Event Organizer/Admin only)
+    /// Phase 6A.14: Edit Sign-Up Item feature
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}/items/{itemId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSignUpItem(Guid eventId, Guid signupId, Guid itemId, [FromBody] UpdateSignUpItemRequest request)
+    {
+        Logger.LogInformation("Updating item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            itemId, signupId, eventId);
+
+        var command = new UpdateSignUpItemCommand(
+            eventId,
+            signupId,
+            itemId,
+            request.ItemDescription,
+            request.Quantity,
+            request.Notes);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Remove an item from a category-based sign-up list (Event Organizer/Admin only)
     /// </summary>
     [HttpDelete("{eventId:guid}/signups/{signupId:guid}/items/{itemId:guid}")]
@@ -1293,6 +1322,15 @@ public record AddSignUpItemRequest(
     string ItemDescription,
     int Quantity,
     SignUpItemCategory ItemCategory,
+    string? Notes = null);
+
+/// <summary>
+/// Request to update a sign-up item
+/// Phase 6A.14: Edit Sign-Up Item feature
+/// </summary>
+public record UpdateSignUpItemRequest(
+    string ItemDescription,
+    int Quantity,
     string? Notes = null);
 
 /// <summary>

@@ -817,6 +817,35 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Sets the specified image as the primary/main thumbnail for the event
+    /// Automatically unmarks any previously primary image
+    /// Phase 6A.13: Primary image selection feature
+    /// </summary>
+    public Result SetPrimaryImage(Guid imageId)
+    {
+        // Invariant: Image must belong to this event
+        var image = _images.FirstOrDefault(i => i.Id == imageId);
+        if (image == null)
+            return Result.Failure($"Image with ID {imageId} not found in this event");
+
+        // Business rule: Only one image can be primary
+        // Unmark all images as not primary
+        foreach (var img in _images)
+        {
+            img.UnmarkAsPrimary();
+        }
+
+        // Mark the selected image as primary
+        image.SetAsPrimary();
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new PrimaryImageSetDomainEvent(Id, imageId));
+
+        return Result.Success();
+    }
+
     #endregion
 
     #region Video Management

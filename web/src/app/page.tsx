@@ -152,7 +152,11 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {featuredEvents.slice(0, 2).map((event) => (
-                      <div key={event.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
+                      <div
+                        key={event.id}
+                        className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100"
+                        onClick={() => window.location.href = `/events/${event.id}`}
+                      >
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
                           {event.images && event.images.length > 0 ? (
                             <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
@@ -169,7 +173,11 @@ export default function Home() {
                   </div>
                   <div className="space-y-4 mt-8">
                     {featuredEvents.slice(2, 4).map((event) => (
-                      <div key={event.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100">
+                      <div
+                        key={event.id}
+                        className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100"
+                        onClick={() => window.location.href = `/events/${event.id}`}
+                      >
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
                           {event.images && event.images.length > 0 ? (
                             <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />

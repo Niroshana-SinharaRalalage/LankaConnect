@@ -29,6 +29,7 @@ using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
 using LankaConnect.Application.Events.Commands.ReorderEventImages;
+using LankaConnect.Application.Events.Commands.SetPrimaryImage;
 using LankaConnect.Application.Events.Commands.ReplaceEventImage;
 using LankaConnect.Application.Events.Commands.AddVideoToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventVideo;
@@ -756,6 +757,31 @@ public class EventsController : BaseController<EventsController>
         {
             EventId = id,
             NewOrders = request.NewOrders
+        };
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Set an image as the primary/main thumbnail for the event
+    /// Phase 6A.13: Primary image selection feature
+    /// </summary>
+    [HttpPost("{id:guid}/images/{imageId:guid}/set-primary")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPrimaryImage(Guid id, Guid imageId)
+    {
+        Logger.LogInformation("Setting image {ImageId} as primary for event {EventId}", imageId, id);
+
+        var command = new SetPrimaryImageCommand
+        {
+            EventId = id,
+            ImageId = imageId
         };
 
         var result = await Mediator.Send(command);

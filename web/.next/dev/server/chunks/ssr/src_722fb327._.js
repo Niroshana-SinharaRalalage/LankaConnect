@@ -6384,6 +6384,14 @@ class EventsRepository {
         return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/signups/${signupId}/items`, request);
     }
     /**
+   * Update an item in a category-based sign-up list
+   * Phase 6A.14: Edit Sign-Up Item feature
+   * Organizer-only operation
+   * Maps to backend PUT /api/events/{eventId}/signups/{signupId}/items/{itemId}
+   */ async updateSignUpItem(eventId, signupId, itemId, request) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].put(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`, request);
+    }
+    /**
    * Remove an item from a category-based sign-up list
    * Organizer-only operation
    * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/items/{itemId}

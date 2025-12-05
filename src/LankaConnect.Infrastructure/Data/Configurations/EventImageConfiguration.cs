@@ -36,6 +36,11 @@ public class EventImageConfiguration : IEntityTypeConfiguration<EventImage>
         builder.Property(ei => ei.DisplayOrder)
             .IsRequired();
 
+        // Phase 6A.13: Primary image flag
+        builder.Property(ei => ei.IsPrimary)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(ei => ei.UploadedAt)
             .IsRequired();
 

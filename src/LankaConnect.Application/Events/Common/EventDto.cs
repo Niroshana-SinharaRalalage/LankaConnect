@@ -71,12 +71,14 @@ public record EventDto
 
 /// <summary>
 /// DTO for event image in gallery
+/// Phase 6A.13: Added IsPrimary for main image selection
 /// </summary>
 public record EventImageDto
 {
     public Guid Id { get; init; }
     public string ImageUrl { get; init; } = string.Empty;
     public int DisplayOrder { get; init; }
+    public bool IsPrimary { get; init; } // Phase 6A.13: Primary image flag
     public DateTime UploadedAt { get; init; }
 }
 

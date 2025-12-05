@@ -89,22 +89,39 @@ public IReadOnlyList<SignUpItem> Items => _items.AsReadOnly();  // ← Readonly 
 
 ## ✅ The Fix
 
-### Code Change
+### First Attempt (FAILED - Commit 6b56d83)
 
 **File**: `src/LankaConnect.Infrastructure/Data/Configurations/SignUpListConfiguration.cs`
 
 ```csharp
-// AFTER (FIXED):
-// Configure relationship to SignUpItems (new category-based model)
-// CRITICAL: Use backing field "_items" for EF Core change tracking
+// FIRST ATTEMPT (WRONG API):
 builder.Metadata
     .FindNavigation(nameof(SignUpList.Items))!
-    .SetField("_items");  // ← Tell EF Core to use backing field
+    .SetField("_items");  // ← Wrong: SetField doesn't exist on Metadata
 
 builder.HasMany(s => s.Items)
     .WithOne()
     .HasForeignKey(i => i.SignUpListId)
     .OnDelete(DeleteBehavior.Cascade);
+```
+
+**Result**: Compilation error - `SetField` doesn't exist on IMutableForeignKey
+
+### Second Attempt (CORRECT - Commit 3f84c59)
+
+**File**: `src/LankaConnect.Infrastructure/Data/Configurations/SignUpListConfiguration.cs`
+
+```csharp
+// CORRECT FIX (lines 72-79):
+// Configure relationship to SignUpItems (new category-based model)
+builder.HasMany(s => s.Items)
+    .WithOne()
+    .HasForeignKey(i => i.SignUpListId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+// CRITICAL: Use backing field "_items" for EF Core change tracking
+builder.Navigation(s => s.Items)
+    .UsePropertyAccessMode(PropertyAccessMode.Field);
 ```
 
 ### How It Works Now
@@ -162,19 +179,26 @@ Build succeeded.
 
 ## 🚀 Deployment
 
-### Commit
+### Commits
 ```bash
+# First attempt (failed - compilation error)
 commit 6b56d83
 fix(signups): Fix EF Core backing field configuration for Items collection
+
+# Second attempt (correct fix)
+commit 3f84c59
+fix(signups): Improve EF Core navigation property access mode configuration
 
 ROOT CAUSE: EF Core was not properly tracking changes to SignUpList.Items collection.
 ```
 
 ### Deployment Steps
-1. ✅ Code pushed to `develop` branch
-2. ⏳ GitHub Actions will automatically deploy to staging
-3. ⏳ User should test on staging environment
-4. ⏳ If verified, merge to `master` for production
+1. ✅ Code pushed to `develop` branch (commit 3f84c59)
+2. ✅ GitHub Actions deployed to staging (run 19952963399)
+3. ✅ All 29 tests passed
+4. ✅ Build succeeded with 0 errors
+5. ⏳ User needs to test on staging environment
+6. ⏳ If verified, merge to `master` for production
 
 ### Testing Instructions for User
 

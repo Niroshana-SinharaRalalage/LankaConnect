@@ -146,8 +146,11 @@ export class ApiClient {
                 return this.axiosInstance(originalRequest);
               }
             } catch (refreshError) {
-              console.error('❌ Token refresh failed, redirecting to login');
-              // Token refresh failed - user will be redirected to login by tokenRefreshService
+              console.error('❌ Token refresh failed - clearing auth and redirecting to login');
+              // Token refresh failed - trigger logout callback to clear auth state
+              if (this.onUnauthorized) {
+                this.onUnauthorized();
+              }
               return Promise.reject(refreshError);
             }
           }
@@ -196,12 +199,11 @@ export class ApiClient {
       // Handle specific status codes
       switch (status) {
         case 400:
-          return new ValidationError(message, data?.errors || data?.validationErrors);
+          return new ValidationError(message, data?.errors || data?.validationErrors, axiosError.response);
         case 401:
-          // Token expired or invalid - trigger logout callback
-          if (this.onUnauthorized) {
-            this.onUnauthorized();
-          }
+          // Token expired or invalid
+          // Note: onUnauthorized callback is already triggered in the response interceptor
+          // after token refresh fails, so we don't call it again here to avoid double redirects
           return new UnauthorizedError(message);
         case 403:
           return new ForbiddenError(message);
@@ -213,7 +215,7 @@ export class ApiClient {
         case 504:
           return new ServerError(message, status);
         default:
-          return new ApiError(message, status);
+          return new ApiError(message, status, undefined, axiosError.response);
       }
     }
 

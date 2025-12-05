@@ -114,6 +114,16 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(ev => ev.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Configure SignUpLists relationship (Phase 6A: Sign-up lists for volunteers/items)
+        builder.HasMany(e => e.SignUpLists)
+            .WithOne()
+            .HasForeignKey("EventId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CRITICAL: Use backing field "_signUpLists" for EF Core change tracking
+        builder.Navigation(e => e.SignUpLists)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Configure WaitingList relationship (Epic 2: Waiting List)
         builder.OwnsMany(e => e.WaitingList, waitingList =>
         {

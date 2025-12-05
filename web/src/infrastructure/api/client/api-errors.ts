@@ -4,12 +4,14 @@
 export class ApiError extends Error {
   public readonly statusCode?: number;
   public readonly validationErrors?: Record<string, string[]>;
+  public readonly response?: any; // Preserve original axios response for debugging
 
-  constructor(message: string, statusCode?: number, validationErrors?: Record<string, string[]>) {
+  constructor(message: string, statusCode?: number, validationErrors?: Record<string, string[]>, response?: any) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
     this.validationErrors = validationErrors;
+    this.response = response;
     Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
@@ -29,8 +31,8 @@ export class NetworkError extends ApiError {
  * Validation Error (400)
  */
 export class ValidationError extends ApiError {
-  constructor(message: string = 'Validation failed', validationErrors?: Record<string, string[]>) {
-    super(message, 400, validationErrors);
+  constructor(message: string = 'Validation failed', validationErrors?: Record<string, string[]>, response?: any) {
+    super(message, 400, validationErrors, response);
     this.name = 'ValidationError';
     Object.setPrototypeOf(this, ValidationError.prototype);
   }

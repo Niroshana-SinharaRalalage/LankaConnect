@@ -485,12 +485,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         onClick={async () => {
                           if (confirm('Are you sure you want to cancel your registration for this event?')) {
                             try {
+                              console.log('[CancelRsvp] Attempting to cancel registration for event:', id);
                               await eventsRepository.cancelRsvp(id);
+                              console.log('[CancelRsvp] Successfully cancelled registration');
                               alert('Registration cancelled successfully.');
                               window.location.reload();
-                            } catch (error) {
-                              console.error('Failed to cancel registration:', error);
-                              alert('Failed to cancel registration. Please try again.');
+                            } catch (error: any) {
+                              console.error('[CancelRsvp] Failed to cancel registration:', error);
+                              console.error('[CancelRsvp] Error details:', {
+                                message: error?.message,
+                                response: error?.response,
+                                status: error?.response?.status,
+                                data: error?.response?.data
+                              });
+                              const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+                              alert(`Failed to cancel registration: ${errorMessage}\n\nPlease try again or contact support.`);
                             }
                           }
                         }}

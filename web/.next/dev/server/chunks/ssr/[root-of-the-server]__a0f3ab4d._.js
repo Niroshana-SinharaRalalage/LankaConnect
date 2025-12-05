@@ -167,11 +167,13 @@ module.exports = mod;
 class ApiError extends Error {
     statusCode;
     validationErrors;
-    constructor(message, statusCode, validationErrors){
+    response;
+    constructor(message, statusCode, validationErrors, response){
         super(message);
         this.name = 'ApiError';
         this.statusCode = statusCode;
         this.validationErrors = validationErrors;
+        this.response = response;
         Object.setPrototypeOf(this, ApiError.prototype);
     }
 }
@@ -183,8 +185,8 @@ class NetworkError extends ApiError {
     }
 }
 class ValidationError extends ApiError {
-    constructor(message = 'Validation failed', validationErrors){
-        super(message, 400, validationErrors);
+    constructor(message = 'Validation failed', validationErrors, response){
+        super(message, 400, validationErrors, response);
         this.name = 'ValidationError';
         Object.setPrototypeOf(this, ValidationError.prototype);
     }
@@ -627,8 +629,11 @@ class ApiClient {
                             return this.axiosInstance(originalRequest);
                         }
                     } catch (refreshError) {
-                        console.error('❌ Token refresh failed, redirecting to login');
-                        // Token refresh failed - user will be redirected to login by tokenRefreshService
+                        console.error('❌ Token refresh failed - clearing auth and redirecting to login');
+                        // Token refresh failed - trigger logout callback to clear auth state
+                        if (this.onUnauthorized) {
+                            this.onUnauthorized();
+                        }
                         return Promise.reject(refreshError);
                     }
                 }
@@ -669,12 +674,11 @@ class ApiClient {
             // Handle specific status codes
             switch(status){
                 case 400:
-                    return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ValidationError"](message, data?.errors || data?.validationErrors);
+                    return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ValidationError"](message, data?.errors || data?.validationErrors, axiosError.response);
                 case 401:
-                    // Token expired or invalid - trigger logout callback
-                    if (this.onUnauthorized) {
-                        this.onUnauthorized();
-                    }
+                    // Token expired or invalid
+                    // Note: onUnauthorized callback is already triggered in the response interceptor
+                    // after token refresh fails, so we don't call it again here to avoid double redirects
                     return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UnauthorizedError"](message);
                 case 403:
                     return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ForbiddenError"](message);
@@ -686,7 +690,7 @@ class ApiClient {
                 case 504:
                     return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ServerError"](message, status);
                 default:
-                    return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ApiError"](message, status);
+                    return new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$errors$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ApiError"](message, status, undefined, axiosError.response);
             }
         }
         // Unknown error

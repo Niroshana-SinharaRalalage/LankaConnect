@@ -6,8 +6,8 @@ STAGING_URL="https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azureco
 TEST_NAME="Scenario 4: Group Tiered Pricing (Phase 6D)"
 TIMESTAMP=$(date +%s)
 
-# Auth token from login endpoint (expires at 2025-12-05T00:04:57Z)
-AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI1ZTc4MmI0ZC0yOWVkLTRlMWQtOTAzOS02YzhmNjk4YWVlYTkiLCJlbWFpbCI6Im5pcm9zaGhoMkBnbWFpbC5jb20iLCJ1bmlxdWVfbmFtZSI6Ik5pcm9zaGFuYSBTaW5oYXJhIFJhbGFsYWdlIiwicm9sZSI6IkV2ZW50T3JnYW5pemVyIiwiZmlyc3ROYW1lIjoiTmlyb3NoYW5hIiwibGFzdE5hbWUiOiJTaW5oYXJhIFJhbGFsYWdlIiwiaXNBY3RpdmUiOiJ0cnVlIiwianRpIjoiNTk3ODk1YzEtOTI0My00ZmE2LTgxYTEtMjJhNjQ3M2M5YzFlIiwiaWF0IjoxNzY0ODkxMjk3LCJuYmYiOjE3NjQ4OTEyOTcsImV4cCI6MTc2NDg5MzA5NywiaXNzIjoiaHR0cHM6Ly9sYW5rYWNvbm5lY3QtYXBpLXN0YWdpbmcuYXp1cmV3ZWJzaXRlcy5uZXQiLCJhdWQiOiJodHRwczovL2xhbmthY29ubmVjdC1zdGFnaW5nLmF6dXJld2Vic2l0ZXMubmV0In0.PbbaqS8Sdh3YBPce2LNNX8aX1loC1RMVR4X4Do5QKCA"
+# Auth token from login endpoint (expires at 2025-12-05T03:03:22Z)
+AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI1ZTc4MmI0ZC0yOWVkLTRlMWQtOTAzOS02YzhmNjk4YWVlYTkiLCJlbWFpbCI6Im5pcm9zaGhoMkBnbWFpbC5jb20iLCJ1bmlxdWVfbmFtZSI6Ik5pcm9zaGFuYSBTaW5oYXJhIFJhbGFsYWdlIiwicm9sZSI6IkV2ZW50T3JnYW5pemVyIiwiZmlyc3ROYW1lIjoiTmlyb3NoYW5hIiwibGFzdE5hbWUiOiJTaW5oYXJhIFJhbGFsYWdlIiwiaXNBY3RpdmUiOiJ0cnVlIiwianRpIjoiZmFmOTk0Y2YtZjQ1Mi00YjdmLWExZGYtMGRmOWFjZTE0OTU0IiwiaWF0IjoxNzY0OTAyMDAyLCJuYmYiOjE3NjQ5MDIwMDIsImV4cCI6MTc2NDkwMzgwMiwiaXNzIjoiaHR0cHM6Ly9sYW5rYWNvbm5lY3QtYXBpLXN0YWdpbmcuYXp1cmV3ZWJzaXRlcy5uZXQiLCJhdWQiOiJodHRwczovL2xhbmthY29ubmVjdC1zdGFnaW5nLmF6dXJld2Vic2l0ZXMubmV0In0.cMZsBhVlGiQWxXZgFgr3s-vSUegOBGYjjF1vXAfhVrs"
 
 echo "========================================="
 echo "$TEST_NAME"
@@ -70,7 +70,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$STAGING_URL/api/events" \
         \"country\": \"Sri Lanka\"
       }
     },
-    \"category\": \"Professional\"
+    \"category\": \"Business\"
   }")
 
 HTTP_CODE=$(echo "$RESPONSE" | tail -n1)

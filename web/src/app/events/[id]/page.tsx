@@ -627,7 +627,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <SignUpManagementSection
             eventId={id}
             userId={user?.userId}
-            isOrganizer={event.organizerId === user?.userId}
+            isOrganizer={false}
           />
         </div>
       </div>

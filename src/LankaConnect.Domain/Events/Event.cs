@@ -270,14 +270,27 @@ public class Event : BaseEntity
 
     public Result CancelRegistration(Guid userId)
     {
+        // Debug logging
+        Console.WriteLine($"[CancelRegistration] EventId: {Id}, UserId: {userId}");
+        Console.WriteLine($"[CancelRegistration] Total registrations count: {_registrations.Count}");
+        foreach (var reg in _registrations)
+        {
+            Console.WriteLine($"[CancelRegistration] Registration: UserId={reg.UserId}, Status={reg.Status}, Match={reg.UserId == userId}");
+        }
+
         // Find any active registration (not already cancelled or refunded)
         var registration = _registrations.FirstOrDefault(r =>
             r.UserId == userId &&
             r.Status != RegistrationStatus.Cancelled &&
             r.Status != RegistrationStatus.Refunded);
 
+        Console.WriteLine($"[CancelRegistration] Found registration: {registration != null}");
+
         if (registration == null)
+        {
+            Console.WriteLine($"[CancelRegistration] FAILURE: User is not registered for this event");
             return Result.Failure("User is not registered for this event");
+        }
 
         registration.Cancel();
         MarkAsUpdated();

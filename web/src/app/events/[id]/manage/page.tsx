@@ -380,7 +380,27 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
             </Card>
 
             {/* Sign-up Management */}
-            <SignUpManagementSection eventId={id} isOrganizer={true} />
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle style={{ color: '#8B1538' }}>Sign-Up Lists</CardTitle>
+                    <CardDescription>Manage items that attendees can volunteer to bring</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => router.push(`/events/${id}/manage-signups`)}
+                    className="flex items-center gap-2 text-white"
+                    style={{ background: '#FF7900', color: 'white' }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Manage Sign-Up Lists
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <SignUpManagementSection eventId={id} isOrganizer={true} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column - Media */}

@@ -6130,9 +6130,9 @@ function useUserRegistrationDetails(eventId, isUserRegistered = false, options) 
                 try {
                     const result = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$repositories$2f$events$2e$repository$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["eventsRepository"].getUserRegistrationForEvent(eventId);
                     console.log('[useUserRegistrationDetails] Success:', result);
-                    console.log('[useUserRegistrationDetails] Attendees:', result?.value?.attendees);
-                    console.log('[useUserRegistrationDetails] Attendees count:', result?.value?.attendees?.length);
-                    console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result?.value, null, 2));
+                    console.log('[useUserRegistrationDetails] Attendees:', result?.attendees);
+                    console.log('[useUserRegistrationDetails] Attendees count:', result?.attendees?.length);
+                    console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result, null, 2));
                     return result;
                 } catch (error) {
                     console.error('[useUserRegistrationDetails] Error:', error);

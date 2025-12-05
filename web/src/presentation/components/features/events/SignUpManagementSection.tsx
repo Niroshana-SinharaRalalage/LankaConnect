@@ -233,24 +233,11 @@ export function SignUpManagementSection({
       <div className="py-8">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Sign-Up Lists</CardTitle>
-                <CardDescription>
-                  No sign-up lists for this event yet.
-                  {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
-                </CardDescription>
-              </div>
-              {isOrganizer && (
-                <Button
-                  onClick={() => router.push(`/events/${eventId}/manage-signups`)}
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Sign-Up List
-                </Button>
-              )}
-            </div>
+            <CardTitle>Sign-Up Lists</CardTitle>
+            <CardDescription>
+              No sign-up lists for this event yet.
+              {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
+            </CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -259,18 +246,7 @@ export function SignUpManagementSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Sign-Up Lists</h2>
-        {isOrganizer && (
-          <Button
-            onClick={() => router.push(`/events/${eventId}/manage-signups`)}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Sign-Up List
-          </Button>
-        )}
-      </div>
+      <h2 className="text-2xl font-bold">Sign-Up Lists</h2>
 
       {signUpLists.map((signUpList) => {
         // Check if current user has committed to this list

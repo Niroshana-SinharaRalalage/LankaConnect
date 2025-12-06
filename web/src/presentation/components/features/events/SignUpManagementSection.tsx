@@ -157,12 +157,8 @@ export function SignUpManagementSection({
     });
   };
 
-  // Open commitment modal
+  // Open commitment modal - Phase 6A.15: Now available for all users (anonymous and authenticated)
   const openCommitmentModal = (signUpListId: string, item: SignUpItemDto) => {
-    if (!userId) {
-      alert('Please log in to commit to items');
-      return;
-    }
     setSelectedSignUpListId(signUpListId);
     setSelectedItem(item);
     setCommitModalOpen(true);
@@ -246,7 +242,9 @@ export function SignUpManagementSection({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Sign-Up Lists</h2>
+      <h2 className="text-2xl font-bold">
+        Sign-Up Lists (This event has {signUpLists.length} sign-up {signUpLists.length === 1 ? 'list' : 'lists'})
+      </h2>
 
       {signUpLists.map((signUpList) => {
         // Check if current user has committed to this list
@@ -262,29 +260,6 @@ export function SignUpManagementSection({
                 <div className="flex-1">
                   <CardTitle>{signUpList.category}</CardTitle>
                   <CardDescription>{signUpList.description}</CardDescription>
-                  <div className="text-sm text-muted-foreground">
-                    {isCategoryBased ? (
-                      <div className="flex gap-2 flex-wrap mt-2">
-                        {signUpList.hasMandatoryItems && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-                            Has Mandatory Items
-                          </span>
-                        )}
-                        {signUpList.hasPreferredItems && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            Has Preferred Items
-                          </span>
-                        )}
-                        {signUpList.hasSuggestedItems && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Has Suggested Items
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span>Type: {signUpList.signUpType === SignUpType.Predefined ? 'Predefined Items' : 'Open'}</span>
-                    )}
-                  </div>
                 </div>
                 {isOrganizer && (
                   <div className="flex gap-2 ml-4">
@@ -369,18 +344,10 @@ export function SignUpManagementSection({
                                       <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
                                     )}
                                   </div>
-                                  <div className="text-right ml-4">
-                                    <p className={`text-sm font-medium ${remainingQty === 0 ? 'text-green-600' : 'text-blue-600'}`}>
-                                      {item.committedQuantity} of {item.quantity} committed
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {remainingQty} remaining
-                                    </p>
-                                  </div>
                                 </div>
 
                                 {/* Progress bar */}
-                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                                   <div
                                     className={`h-2 rounded-full ${
                                       percentCommitted === 100 ? 'bg-green-500' : 'bg-blue-500'
@@ -389,28 +356,35 @@ export function SignUpManagementSection({
                                   />
                                 </div>
 
-                                {/* Commitments */}
+                                {/* Participants - Show names and quantities */}
                                 {item.commitments.length > 0 && (
-                                  <div className="space-y-1 mt-2">
-                                    <p className="text-xs font-medium text-muted-foreground">Commitments:</p>
-                                    {item.commitments.map((commitment) => (
-                                      <div key={commitment.id} className="text-sm bg-muted p-2 rounded">
-                                        <div className="flex justify-between items-center">
-                                          <span>Quantity: {commitment.quantity}</span>
-                                          {commitment.userId === userId && (
-                                            <span className="text-xs text-blue-600 font-medium">(You)</span>
-                                          )}
-                                        </div>
-                                        {commitment.notes && (
-                                          <p className="text-xs text-muted-foreground mt-1">Note: {commitment.notes}</p>
-                                        )}
-                                      </div>
-                                    ))}
+                                  <div className="mt-3">
+                                    <table className="min-w-full text-sm">
+                                      <thead>
+                                        <tr className="border-b">
+                                          <th className="text-left py-1 px-2 font-medium text-muted-foreground">Name</th>
+                                          <th className="text-left py-1 px-2 font-medium text-muted-foreground">Quantity</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {item.commitments.map((commitment) => (
+                                          <tr key={commitment.id} className="border-b">
+                                            <td className="py-1 px-2">
+                                              {commitment.contactName || 'Anonymous'}
+                                              {commitment.userId === userId && (
+                                                <span className="text-xs text-blue-600 font-medium ml-1">(You)</span>
+                                              )}
+                                            </td>
+                                            <td className="py-1 px-2">{commitment.quantity}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
                                   </div>
                                 )}
 
-                                {/* Commit button - Opens modal */}
-                                {!userItemCommitment && userId && remainingQty > 0 && (
+                                {/* Sign Up button - Available for all users */}
+                                {!userItemCommitment && remainingQty > 0 && (
                                   <div className="mt-3">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item)}
@@ -418,15 +392,9 @@ export function SignUpManagementSection({
                                       variant="outline"
                                       className="w-full sm:w-auto"
                                     >
-                                      I can bring this
+                                      Sign Up
                                     </Button>
                                   </div>
-                                )}
-
-                                {!userId && remainingQty > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Please log in to commit to this item
-                                  </p>
                                 )}
 
                                 {userItemCommitment && (

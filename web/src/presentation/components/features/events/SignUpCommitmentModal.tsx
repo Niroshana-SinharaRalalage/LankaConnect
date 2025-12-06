@@ -14,6 +14,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { SignUpItemCategory, type SignUpItemDto } from '@/infrastructure/api/types/events.types';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 interface SignUpCommitmentModalProps {
   open: boolean;
@@ -64,6 +66,7 @@ export function SignUpCommitmentModal({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isValidatingEmail, setIsValidatingEmail] = useState(false);
 
   // Auto-fill user details when modal opens
   useEffect(() => {
@@ -126,12 +129,35 @@ export function SignUpCommitmentModal({
   };
 
   // Handle form submission
+  // Phase 6A.15: Enhanced with email validation to ensure user is registered for event
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
+
+    // Phase 6A.15: Check if email is registered for the event before allowing commitment
+    setIsValidatingEmail(true);
+    try {
+      const isRegistered = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
+
+      if (!isRegistered) {
+        setErrors({
+          email: 'This email is not registered for the event. You must register for the event first.'
+        });
+        setIsValidatingEmail(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to validate email registration:', error);
+      setErrors({
+        submit: 'Failed to validate your registration. Please try again.'
+      });
+      setIsValidatingEmail(false);
+      return;
+    }
+    setIsValidatingEmail(false);
 
     const commitmentData: CommitmentFormData = {
       signUpListId,
@@ -256,7 +282,19 @@ export function SignUpCommitmentModal({
                 } focus:outline-none focus:ring-2`}
                 placeholder="your.email@example.com"
               />
-              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+              {errors.email && (
+                <div className="mt-1 text-xs text-red-600">
+                  <p>{errors.email}</p>
+                  {errors.email.includes('not registered for the event') && (
+                    <Link
+                      href={`/events/${eventId}`}
+                      className="underline hover:text-red-700 mt-1 inline-block"
+                    >
+                      Click here to register for the event
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Phone Field */}
@@ -338,12 +376,12 @@ export function SignUpCommitmentModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isValidatingEmail}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Confirming...' : 'Confirm Commitment'}
+            <Button type="submit" disabled={isSubmitting || isValidatingEmail}>
+              {isValidatingEmail ? 'Validating email...' : isSubmitting ? 'Confirming...' : 'Confirm Commitment'}
             </Button>
           </DialogFooter>
         </form>

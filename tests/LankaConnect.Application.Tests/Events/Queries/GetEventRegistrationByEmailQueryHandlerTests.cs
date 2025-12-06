@@ -6,7 +6,9 @@ using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.TestUtilities;
 using Microsoft.EntityFrameworkCore;
+using MockQueryable.Moq;
 using Moq;
 
 namespace LankaConnect.Application.Tests.Events.Queries;
@@ -19,12 +21,10 @@ public class GetEventRegistrationByEmailQueryHandlerTests
 {
     private readonly Mock<IApplicationDbContext> _mockContext;
     private readonly GetEventRegistrationByEmailQueryHandler _handler;
-    private readonly Mock<DbSet<Registration>> _mockDbSet;
 
     public GetEventRegistrationByEmailQueryHandlerTests()
     {
         _mockContext = new Mock<IApplicationDbContext>();
-        _mockDbSet = new Mock<DbSet<Registration>>();
         _handler = new GetEventRegistrationByEmailQueryHandler(_mockContext.Object);
     }
 
@@ -36,17 +36,10 @@ public class GetEventRegistrationByEmailQueryHandlerTests
         var email = "test@example.com";
         var query = new GetEventRegistrationByEmailQuery(eventId, email);
 
-        var registrations = new List<Registration>
-        {
-            CreateRegistration(eventId, email)
-        }.AsQueryable();
+        var registration = CreateRegistration(eventId, email);
+        var registrations = new List<Registration> { registration }.AsQueryable().BuildMockDbSet();
 
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Provider).Returns(registrations.Provider);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Expression).Returns(registrations.Expression);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.ElementType).Returns(registrations.ElementType);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.GetEnumerator()).Returns(registrations.GetEnumerator());
-
-        _mockContext.Setup(c => c.Registrations).Returns(_mockDbSet.Object);
+        _mockContext.Setup(x => x.Registrations).Returns(registrations.Object);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -64,17 +57,10 @@ public class GetEventRegistrationByEmailQueryHandlerTests
         var email = "nonexistent@example.com";
         var query = new GetEventRegistrationByEmailQuery(eventId, email);
 
-        var registrations = new List<Registration>
-        {
-            CreateRegistration(eventId, "other@example.com")
-        }.AsQueryable();
+        var registration = CreateRegistration(eventId, "other@example.com");
+        var registrations = new List<Registration> { registration }.AsQueryable().BuildMockDbSet();
 
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Provider).Returns(registrations.Provider);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Expression).Returns(registrations.Expression);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.ElementType).Returns(registrations.ElementType);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.GetEnumerator()).Returns(registrations.GetEnumerator());
-
-        _mockContext.Setup(c => c.Registrations).Returns(_mockDbSet.Object);
+        _mockContext.Setup(x => x.Registrations).Returns(registrations.Object);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -92,14 +78,10 @@ public class GetEventRegistrationByEmailQueryHandlerTests
         var email = "test@example.com";
         var query = new GetEventRegistrationByEmailQuery(eventId, email);
 
-        var registrations = new List<Registration>().AsQueryable();
+        // Empty list of registrations
+        var registrations = new List<Registration>().AsQueryable().BuildMockDbSet();
 
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Provider).Returns(registrations.Provider);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Expression).Returns(registrations.Expression);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.ElementType).Returns(registrations.ElementType);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.GetEnumerator()).Returns(registrations.GetEnumerator());
-
-        _mockContext.Setup(c => c.Registrations).Returns(_mockDbSet.Object);
+        _mockContext.Setup(x => x.Registrations).Returns(registrations.Object);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -118,17 +100,10 @@ public class GetEventRegistrationByEmailQueryHandlerTests
         var email = "test@example.com";
         var query = new GetEventRegistrationByEmailQuery(eventId, email);
 
-        var registrations = new List<Registration>
-        {
-            CreateRegistration(differentEventId, email)
-        }.AsQueryable();
+        var registration = CreateRegistration(differentEventId, email);
+        var registrations = new List<Registration> { registration }.AsQueryable().BuildMockDbSet();
 
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Provider).Returns(registrations.Provider);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.Expression).Returns(registrations.Expression);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.ElementType).Returns(registrations.ElementType);
-        _mockDbSet.As<IQueryable<Registration>>().Setup(m => m.GetEnumerator()).Returns(registrations.GetEnumerator());
-
-        _mockContext.Setup(c => c.Registrations).Returns(_mockDbSet.Object);
+        _mockContext.Setup(x => x.Registrations).Returns(registrations.Object);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);

@@ -293,6 +293,16 @@ export class EventsRepository {
   }
 
   /**
+   * Check if an email has registered for an event
+   * Phase 6A.15: Enhanced sign-up list UX with email validation
+   * Maps to backend GetEventRegistrationByEmailQuery
+   * Returns true if the email is registered, false otherwise
+   */
+  async checkEventRegistrationByEmail(eventId: string, email: string): Promise<boolean> {
+    return await apiClient.post<boolean>(`${this.basePath}/${eventId}/check-registration`, { email });
+  }
+
+  /**
    * Get upcoming events for user
    * Returns events happening in the future
    */

@@ -1,9 +1,55 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-05 (Current Session) - Session 28: Phase 6 Day 2 Complete E2E API Testing ✅ COMPLETE*
+*Last Updated: 2025-12-06 (Current Session) - Session 29: Phase 6A.15 Enhanced Sign-Up List UX ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 28: Phase 6 Day 2 Complete E2E API Testing ✅ COMPLETE
+## 🎯 Current Session Status - Session 29: Phase 6A.15 Enhanced Sign-Up List UX ✅ COMPLETE
+
+### Session 29: Phase 6A.15 - Enhanced Sign-Up List UX with Email Validation - COMPLETE - 2025-12-06
+
+**Status**: ✅ **COMPLETE** (Backend + Frontend + Build Verified)
+
+**Summary**: Implemented email validation for sign-up list commitments to ensure users are registered for the event before allowing them to commit to bringing items. Enhanced UI with improved list presentation including participant counts, simplified commitment display, and participants table.
+
+**Implementation Complete**:
+
+**Backend** (4 tests passing):
+- ✅ `GetEventRegistrationByEmailQuery` - CQRS query
+- ✅ `GetEventRegistrationByEmailQueryHandler` - checks Registration entity for email
+- ✅ `GetEventRegistrationByEmailQueryValidator` - FluentValidation for email format
+- ✅ `POST /api/events/{eventId}/check-registration` endpoint (AllowAnonymous)
+- ✅ All 4 unit tests passing
+
+**Frontend Infrastructure**:
+- ✅ `checkEventRegistrationByEmail()` repository method
+- ✅ Email validation before commitment submission
+- ✅ Error message with link to event registration page
+
+**UI Enhancements** ([SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx)):
+- ✅ Header shows count: "Sign-Up Lists (This event has X sign-up lists)"
+- ✅ Removed category label text (kept color badges only)
+- ✅ Simplified commitment display - removed verbose quantity text
+- ✅ Changed button text from "I can bring this" to "Sign Up"
+- ✅ Sign Up button available for all users (anonymous + authenticated)
+- ✅ Added participants table with Name and Quantity columns
+
+**Email Validation** ([SignUpCommitmentModal.tsx](../web/src/presentation/components/features/events/SignUpCommitmentModal.tsx)):
+- ✅ Validates email is registered before allowing commitment
+- ✅ Shows error: "This email is not registered for the event. You must register for the event first."
+- ✅ Provides clickable link to event registration page
+- ✅ Button states: "Validating email..." → "Confirming..." → "Confirm Commitment"
+
+**Build Status**: ✅ Frontend builds successfully (0 errors for Phase 6A.15 files)
+
+**Next Steps**:
+- Manual testing of all sign-up scenarios (logged-in, registered, non-registered)
+- Deploy to staging for UAT
+
+---
+
+## 📚 Historical Sessions
+
+### Session 28: Phase 6 Day 2 Complete E2E API Testing ✅ COMPLETE
 
 ### Session 28: Phase 6 Day 2 - Complete E2E API Testing - COMPLETE - 2025-12-05
 

@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.CancelRsvp;
@@ -8,15 +9,18 @@ namespace LankaConnect.Application.Events.Commands.CancelRsvp;
 public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
     public CancelRsvpCommandHandler(
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -26,7 +30,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         _logger.LogInformation("[CancelRsvp] Starting cancellation for EventId={EventId}, UserId={UserId}",
             request.EventId, request.UserId);
 
-        // Retrieve event
+        // Verify event exists
         var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
         if (@event == null)
         {
@@ -34,25 +38,39 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             return Result.Failure("Event not found");
         }
 
-        _logger.LogInformation("[CancelRsvp] Event found. Total registrations in collection: {Count}",
-            @event.Registrations.Count);
+        // Find active registration using GetByEventAndUserAsync (read-only query)
+        var registrationReadOnly = await _registrationRepository.GetByEventAndUserAsync(request.EventId, request.UserId, cancellationToken);
 
-        // Log each registration for debugging
-        foreach (var reg in @event.Registrations)
+        _logger.LogInformation("[CancelRsvp] Registration query result: Found={Found}, Status={Status}",
+            registrationReadOnly != null, registrationReadOnly?.Status.ToString() ?? "N/A");
+
+        if (registrationReadOnly == null)
         {
-            _logger.LogInformation("[CancelRsvp] Registration found: RegId={RegId}, UserId={UserId}, Status={Status}",
-                reg.Id, reg.UserId, reg.Status);
+            _logger.LogWarning("[CancelRsvp] No registration found for EventId={EventId}, UserId={UserId}",
+                request.EventId, request.UserId);
+            return Result.Failure("User is not registered for this event");
         }
 
-        // Use domain method to cancel user registration
-        var cancelResult = @event.CancelRegistration(request.UserId);
-        if (cancelResult.IsFailure)
+        // Check if already cancelled
+        if (registrationReadOnly.Status == RegistrationStatus.Cancelled || registrationReadOnly.Status == RegistrationStatus.Refunded)
         {
-            _logger.LogError("[CancelRsvp] Cancellation failed: {Error}", cancelResult.Error);
-            return cancelResult;
+            _logger.LogWarning("[CancelRsvp] Registration already cancelled/refunded: Status={Status}", registrationReadOnly.Status);
+            return Result.Failure("Registration has already been cancelled");
         }
 
-        // Save changes (EF Core tracks changes automatically)
+        // Get the registration WITH tracking so EF Core can save changes
+        var registration = await _registrationRepository.GetByIdAsync(registrationReadOnly.Id, cancellationToken);
+
+        if (registration == null)
+        {
+            _logger.LogError("[CancelRsvp] Failed to retrieve registration with tracking: RegId={RegId}", registrationReadOnly.Id);
+            return Result.Failure("Failed to cancel registration");
+        }
+
+        // Cancel the registration
+        registration.Cancel();
+
+        // Save changes
         await _unitOfWork.CommitAsync(cancellationToken);
 
         _logger.LogInformation("[CancelRsvp] Cancellation successful for EventId={EventId}, UserId={UserId}",

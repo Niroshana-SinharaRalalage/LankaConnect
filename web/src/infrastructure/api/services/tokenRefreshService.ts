@@ -11,6 +11,7 @@
 
 import { apiClient } from '../client/api-client';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { tokenStorageService } from './tokenStorageService';
 
 class TokenRefreshService {
   private isRefreshing = false;
@@ -61,13 +62,26 @@ class TokenRefreshService {
 
     try {
       console.log('🔄 [TOKEN REFRESH] Calling POST /Auth/refresh...');
+      console.log('🔍 [TOKEN REFRESH] Storage mode:', tokenStorageService.getStorageMode());
+
+      // Get refresh token from storage (localStorage in dev, cookie in prod)
+      const refreshToken = tokenStorageService.getRefreshToken();
 
       // Call the refresh endpoint
-      // Note: Refresh token is in HttpOnly cookie, backend reads it automatically
+      // Development: Send refresh token in request body (from localStorage)
+      // Production: Refresh token is in HttpOnly cookie, backend reads it automatically
+      const requestBody = refreshToken ? { refreshToken } : {};
+
+      console.log('🔍 [TOKEN REFRESH] Request body:', {
+        hasRefreshToken: !!refreshToken,
+        tokenLength: refreshToken?.length,
+        storageMode: tokenStorageService.getStorageMode(),
+      });
+
       const response = await apiClient.post<{
         accessToken: string;
         tokenExpiresAt: string;
-      }>('/Auth/refresh', {});
+      }>('/Auth/refresh', requestBody);
 
       console.log('🔍 [TOKEN REFRESH] Response received:', {
         hasAccessToken: !!response?.accessToken,
@@ -115,12 +129,10 @@ class TokenRefreshService {
       console.log('🔍 [TOKEN REFRESH] Notifying queued requests with empty token');
       this.onTokenRefreshed('');
 
-      // Clear auth state - user needs to login again
-      console.log('🔍 [TOKEN REFRESH] Clearing auth state via clearAuth()');
-      const { clearAuth } = useAuthStore.getState();
-      clearAuth();
-
-      console.log('🔍 [TOKEN REFRESH] Returning null');
+      // Don't clear auth here - let the API interceptor handle it based on environment
+      // The interceptor will check if we're in a cross-origin scenario (localhost -> staging)
+      // and only trigger logout if we're in production
+      console.log('🔍 [TOKEN REFRESH] Returning null - interceptor will handle logout decision');
       return null;
     }
   }

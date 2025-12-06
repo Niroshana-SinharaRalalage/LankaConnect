@@ -40,9 +40,11 @@ export function LoginForm() {
       const response = await authRepository.login(data, rememberMe);
 
       // Set auth state
+      // Phase 6A.10: In development (localStorage mode), backend sends refreshToken in response body
+      // In production (cookie mode), refreshToken is in HttpOnly cookie
       const tokens: AuthTokens = {
         accessToken: response.accessToken,
-        refreshToken: '', // RefreshToken is in HttpOnly cookie
+        refreshToken: response.refreshToken || '', // Use refreshToken from response if present
         expiresIn: 3600,
       };
       setAuth(response.user, tokens);

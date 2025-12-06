@@ -3,6 +3,8 @@
  * Type-safe wrapper for localStorage with error handling
  */
 
+import { tokenStorageService } from '../api/services/tokenStorageService';
+
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'lankaconnect_access_token',
   REFRESH_TOKEN: 'lankaconnect_refresh_token',
@@ -103,11 +105,14 @@ export class LocalStorageService {
   }
 
   static getRefreshToken(): string | null {
-    return this.getItem<string>(STORAGE_KEYS.REFRESH_TOKEN);
+    // Delegate to TokenStorageService for environment-aware storage
+    return tokenStorageService.getRefreshToken();
   }
 
   static setRefreshToken(token: string): boolean {
-    return this.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+    // Delegate to TokenStorageService for environment-aware storage
+    tokenStorageService.setRefreshToken(token);
+    return true; // TokenStorageService doesn't return boolean, assume success
   }
 
   static getUser<T>(): T | null {
@@ -120,7 +125,8 @@ export class LocalStorageService {
 
   static clearAuth(): void {
     this.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    this.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    // Delegate to TokenStorageService for environment-aware clearing
+    tokenStorageService.clearRefreshToken();
     this.removeItem(STORAGE_KEYS.USER);
   }
 }

@@ -40,6 +40,7 @@ export interface UserDto {
 export interface LoginResponse {
   user: UserDto;
   accessToken: string;
+  refreshToken?: string; // Optional: Sent in response body for localStorage mode (development)
   tokenExpiresAt: string;
 }
 

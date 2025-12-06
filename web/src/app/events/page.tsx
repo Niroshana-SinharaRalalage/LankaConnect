@@ -364,7 +364,7 @@ function EventCard({
       <div className="relative h-48 bg-gradient-to-br from-orange-500 to-rose-500">
         {event.images && event.images.length > 0 ? (
           <img
-            src={event.images[0].imageUrl}
+            src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
             alt={event.title}
             className="w-full h-full object-cover"
           />

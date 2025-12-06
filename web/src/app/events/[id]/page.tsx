@@ -269,7 +269,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {event.images && event.images.length > 0 && (
             <div className="relative h-96 bg-gradient-to-br from-orange-500 to-rose-500">
               <img
-                src={event.images[0].imageUrl}
+                src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
                 alt={event.title}
                 className="w-full h-full object-cover"
               />

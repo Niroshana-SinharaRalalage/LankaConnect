@@ -21,6 +21,7 @@ using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
 using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
+using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
@@ -1288,6 +1289,24 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Check if an email has registered for an event (for sign-up validation)
+    /// Phase 6A.15: Enhanced sign-up list UX with email validation
+    /// </summary>
+    [HttpPost("{eventId:guid}/check-registration")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CheckEventRegistrationByEmail(Guid eventId, [FromBody] CheckRegistrationRequest request)
+    {
+        Logger.LogInformation("Checking if email {Email} is registered for event {EventId}", request.Email, eventId);
+
+        var query = new GetEventRegistrationByEmailQuery(eventId, request.Email);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
     #endregion
 
     #endregion
@@ -1330,6 +1349,8 @@ public record CreateSignUpListRequest(
     bool HasPreferredItems,
     bool HasSuggestedItems,
     List<SignUpItemRequestDto> Items);
+
+public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 
 public record UpdateSignUpListRequest(
     string Category,

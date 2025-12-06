@@ -159,7 +159,7 @@ export default function Home() {
                       >
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
                           {event.images && event.images.length > 0 ? (
-                            <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                            <img src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
                           ) : (
                             '🎉'
                           )}
@@ -180,7 +180,7 @@ export default function Home() {
                       >
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
                           {event.images && event.images.length > 0 ? (
-                            <img src={event.images[0].imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                            <img src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
                           ) : (
                             '🎭'
                           )}

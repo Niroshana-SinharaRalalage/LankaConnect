@@ -21,7 +21,7 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
-import { Upload, X, Loader2, AlertCircle, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { Upload, X, Loader2, AlertCircle, Image as ImageIcon, GripVertical, Star } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -53,6 +53,7 @@ export interface ImageUploaderProps {
     id: string;
     imageUrl: string;
     displayOrder: number;
+    isPrimary: boolean;
   }>;
 
   /** Maximum number of images allowed */
@@ -93,17 +94,22 @@ interface SortableImageItemProps {
     id: string;
     imageUrl: string;
     displayOrder: number;
+    isPrimary: boolean;
   };
   onDelete: (imageId: string) => void;
+  onSetPrimary: (imageId: string) => void;
   disabled: boolean;
   isUploading: boolean;
+  isSettingPrimary: boolean;
 }
 
 const SortableImageItem: React.FC<SortableImageItemProps> = ({
   image,
   onDelete,
+  onSetPrimary,
   disabled,
   isUploading,
+  isSettingPrimary,
 }) => {
   const {
     attributes,
@@ -128,6 +134,8 @@ const SortableImageItem: React.FC<SortableImageItemProps> = ({
         'relative aspect-square group rounded-lg overflow-hidden border-2 transition-colors',
         isDragging
           ? 'border-blue-500 shadow-lg z-50'
+          : image.isPrimary
+          ? 'border-yellow-400 dark:border-yellow-500 shadow-md'
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
       )}
     >
@@ -150,8 +158,36 @@ const SortableImageItem: React.FC<SortableImageItemProps> = ({
         <GripVertical className="w-4 h-4" />
       </div>
 
-      {/* Delete Button Overlay */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+      {/* Primary Star Badge */}
+      {image.isPrimary && (
+        <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-medium px-2 py-1 rounded flex items-center gap-1 shadow-md">
+          <Star className="w-3 h-3 fill-white" />
+          Main
+        </div>
+      )}
+
+      {/* Display Order Badge (only if not primary) */}
+      {!image.isPrimary && (
+        <div className="absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded">
+          #{image.displayOrder}
+        </div>
+      )}
+
+      {/* Action Buttons Overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex flex-col items-center justify-center gap-2">
+        {!image.isPrimary && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => onSetPrimary(image.id)}
+            disabled={disabled || isUploading || isSettingPrimary}
+            className="opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-500 hover:bg-yellow-600 text-white"
+            aria-label="Set as main image"
+          >
+            <Star className="w-4 h-4 mr-1" />
+            Set as Main
+          </Button>
+        )}
         <Button
           variant="destructive"
           size="sm"
@@ -163,11 +199,6 @@ const SortableImageItem: React.FC<SortableImageItemProps> = ({
           <X className="w-4 h-4 mr-1" />
           Delete
         </Button>
-      </div>
-
-      {/* Display Order Badge */}
-      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded">
-        #{image.displayOrder}
       </div>
     </div>
   );
@@ -194,9 +225,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     uploadImage,
     deleteImage,
     reorderImages,
+    setPrimaryImage,
     validateImages,
     isUploading,
     isReordering,
+    isSettingPrimary,
     error,
     reset,
   } = useImageUpload({
@@ -327,6 +360,17 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     }
   };
 
+  // Handle set primary image
+  const handleSetPrimaryImage = async (imageId: string) => {
+    if (disabled || isUploading || isSettingPrimary) return;
+
+    try {
+      await setPrimaryImage(eventId, imageId);
+    } catch (err) {
+      console.error('Set primary failed:', err);
+    }
+  };
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* Upload Dropzone */}
@@ -438,8 +482,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                       key={image.id}
                       image={image}
                       onDelete={handleDeleteImage}
+                      onSetPrimary={handleSetPrimaryImage}
                       disabled={disabled}
                       isUploading={isUploading}
+                      isSettingPrimary={isSettingPrimary}
                     />
                   ))}
 

@@ -90,6 +90,7 @@ export interface EventImageDto {
   id: string;
   imageUrl: string;
   displayOrder: number;
+  isPrimary: boolean; // Phase 6A.13: Primary image flag
   uploadedAt: string;
 }
 

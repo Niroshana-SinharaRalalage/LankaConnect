@@ -163,6 +163,7 @@ export function useUploadEventImage(options?: UseImageUploadOptions) {
           id: 'temp-' + Date.now(),
           imageUrl: previewUrl,
           displayOrder: (old.images?.length || 0) + 1,
+          isPrimary: false, // New images are not primary by default
           uploadedAt: new Date().toISOString(),
         };
 
@@ -332,6 +333,70 @@ export function useReorderEventImages() {
 }
 
 /**
+ * useSetPrimaryImage Hook
+ * Phase 6A.13: Primary Image Selection
+ *
+ * Mutation hook for setting an image as primary (main thumbnail)
+ *
+ * Features:
+ * - Optimistic update with instant visual feedback
+ * - Automatic cache invalidation
+ * - Error rollback
+ *
+ * @example
+ * ```tsx
+ * const setPrimaryImage = useSetPrimaryImage();
+ *
+ * await setPrimaryImage.mutateAsync({
+ *   eventId: '123',
+ *   imageId: 'img-456'
+ * });
+ * ```
+ */
+export function useSetPrimaryImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, imageId }: { eventId: string; imageId: string }) =>
+      eventsRepository.setPrimaryImage(eventId, imageId),
+    onMutate: async ({ eventId, imageId }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: eventKeys.detail(eventId) });
+
+      // Snapshot for rollback
+      const previousEvent = queryClient.getQueryData(eventKeys.detail(eventId));
+
+      // Optimistically update primary flag
+      queryClient.setQueryData(eventKeys.detail(eventId), (old: any) => {
+        if (!old) return old;
+
+        const updatedImages = (old.images || []).map((img: EventImageDto) => ({
+          ...img,
+          isPrimary: img.id === imageId, // Only the selected image is primary
+        }));
+
+        return {
+          ...old,
+          images: updatedImages,
+        };
+      });
+
+      return { previousEvent };
+    },
+    onError: (error, { eventId }, context) => {
+      // Rollback on error
+      if (context?.previousEvent) {
+        queryClient.setQueryData(eventKeys.detail(eventId), context.previousEvent);
+      }
+    },
+    onSuccess: (_data, { eventId }) => {
+      // Invalidate event detail to ensure consistency
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+    },
+  });
+}
+
+/**
  * useImageUpload Hook (Convenience wrapper)
  *
  * Combines upload and delete mutations with validation utilities
@@ -381,6 +446,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
 
   const deleteMutation = useDeleteEventImage();
   const reorderMutation = useReorderEventImages();
+  const setPrimaryMutation = useSetPrimaryImage();
 
   const uploadImage = useCallback(
     async (file: File, eventId: string) => {
@@ -437,6 +503,14 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     [reorderMutation]
   );
 
+  const setPrimaryImage = useCallback(
+    async (eventId: string, imageId: string) => {
+      setError(null);
+      await setPrimaryMutation.mutateAsync({ eventId, imageId });
+    },
+    [setPrimaryMutation]
+  );
+
   const reset = useCallback(() => {
     setError(null);
     setUploadProgress(0);
@@ -447,10 +521,12 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     uploadImages,
     deleteImage,
     reorderImages,
+    setPrimaryImage,
     validateImage: validateImageFile,
     validateImages: validateImageFiles,
     isUploading: uploadMutation.isPending || deleteMutation.isPending,
     isReordering: reorderMutation.isPending,
+    isSettingPrimary: setPrimaryMutation.isPending,
     uploadProgress,
     error,
     reset,
@@ -464,6 +540,7 @@ export default {
   useUploadEventImage,
   useDeleteEventImage,
   useReorderEventImages,
+  useSetPrimaryImage,
   useImageUpload,
   validateImageFile,
   validateImageFiles,

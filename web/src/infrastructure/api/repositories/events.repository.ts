@@ -573,6 +573,18 @@ export class EventsRepository {
   }
 
   /**
+   * Set an image as primary (main thumbnail)
+   * Maps to backend POST /api/events/{id}/images/{imageId}/set-primary
+   * Phase 6A.13: Primary Image Selection
+   *
+   * @param eventId - Event ID (GUID)
+   * @param imageId - Image ID (GUID) to set as primary
+   */
+  async setPrimaryImage(eventId: string, imageId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/images/${imageId}/set-primary`, {});
+  }
+
+  /**
    * Upload a video to an event
    * Maps to backend POST /api/events/{id}/videos
    *

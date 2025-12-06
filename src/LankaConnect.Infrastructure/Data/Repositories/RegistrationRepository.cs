@@ -23,7 +23,9 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
     {
         return await _dbSet
             .AsNoTracking()
-            .Where(r => r.UserId == userId)
+            .Where(r => r.UserId == userId &&
+                       r.Status != RegistrationStatus.Cancelled &&
+                       r.Status != RegistrationStatus.Refunded)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
     }

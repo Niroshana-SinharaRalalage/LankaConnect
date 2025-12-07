@@ -39,6 +39,7 @@ interface SignUpCommitmentModalProps {
 }
 
 export interface CommitmentFormData {
+  userId: string;
   signUpListId: string;
   itemId: string;
   quantity: number;
@@ -159,7 +160,13 @@ export function SignUpCommitmentModal({
     }
     setIsValidatingEmail(false);
 
+    if (!user?.userId) {
+      setErrors({ submit: 'User ID not available. Please log in again.' });
+      return;
+    }
+
     const commitmentData: CommitmentFormData = {
+      userId: user.userId,
       signUpListId,
       itemId: item.id,
       quantity,

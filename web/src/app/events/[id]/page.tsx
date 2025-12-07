@@ -448,7 +448,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </h4>
                         {isLoadingRegistration ? (
                           <p className="text-sm text-green-800 dark:text-green-200">Loading registration details...</p>
-                        ) : registrationDetails && registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
+                        ) : registrationDetails ? (
                           <div className="space-y-4">
                             {/* Contact Information Section */}
                             {(registrationDetails.contactEmail || registrationDetails.contactPhone || registrationDetails.contactAddress) && (
@@ -476,32 +476,38 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               </div>
                             )}
 
-                            {/* Attendees Section */}
-                            <div>
-                              <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
-                                Attendees ({registrationDetails.attendees.length}):
-                              </p>
-                              <div className="space-y-2">
-                                {registrationDetails.attendees.map((attendee, index) => (
-                                  <div key={index} className="bg-green-100 dark:bg-green-900/30 rounded p-2.5 text-xs">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-medium text-green-900 dark:text-green-100">
-                                          {index + 1}. {attendee.name}
-                                        </p>
-                                        <p className="text-green-700 dark:text-green-300 mt-0.5">
-                                          Age: {attendee.age}
-                                        </p>
+                            {/* Attendees Section - Show if we have attendees array with items */}
+                            {registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
+                              <div>
+                                <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
+                                  Attendees ({registrationDetails.attendees.length}):
+                                </p>
+                                <div className="space-y-2">
+                                  {registrationDetails.attendees.map((attendee, index) => (
+                                    <div key={index} className="bg-green-100 dark:bg-green-900/30 rounded p-2.5 text-xs">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <p className="font-medium text-green-900 dark:text-green-100">
+                                            {index + 1}. {attendee.name}
+                                          </p>
+                                          <p className="text-green-700 dark:text-green-300 mt-0.5">
+                                            Age: {attendee.age}
+                                          </p>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="text-sm text-green-800 dark:text-green-200">
+                                <p>Number of attendees: {registrationDetails.quantity || userRsvp?.currentRegistrations || 1}</p>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="text-sm text-green-800 dark:text-green-200">
-                            <p>Number of attendees: {registrationDetails?.quantity || userRsvp.currentRegistrations || 1}</p>
+                            <p>Number of attendees: {userRsvp?.currentRegistrations || 1}</p>
                           </div>
                         )}
                       </div>

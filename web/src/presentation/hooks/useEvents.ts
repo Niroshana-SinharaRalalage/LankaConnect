@@ -582,13 +582,19 @@ export function useUserRegistrationDetails(
       console.log('[useUserRegistrationDetails] Fetching registration details for event:', eventId);
       try {
         const result = await eventsRepository.getUserRegistrationForEvent(eventId!);
-        console.log('[useUserRegistrationDetails] Success:', result);
-        console.log('[useUserRegistrationDetails] Attendees:', result?.attendees);
+        console.log('[useUserRegistrationDetails] ✅ Success - Raw result:', result);
+        console.log('[useUserRegistrationDetails] Contact Email:', result?.contactEmail);
+        console.log('[useUserRegistrationDetails] Contact Phone:', result?.contactPhone);
+        console.log('[useUserRegistrationDetails] Contact Address:', result?.contactAddress);
+        console.log('[useUserRegistrationDetails] Attendees array exists:', !!result?.attendees);
         console.log('[useUserRegistrationDetails] Attendees count:', result?.attendees?.length);
-        console.log('[useUserRegistrationDetails] Full value:', JSON.stringify(result, null, 2));
+        if (result?.attendees?.length) {
+          console.log('[useUserRegistrationDetails] First attendee:', result.attendees[0]);
+        }
+        console.log('[useUserRegistrationDetails] Full JSON:', JSON.stringify(result, null, 2));
         return result;
       } catch (error) {
-        console.error('[useUserRegistrationDetails] Error:', error);
+        console.error('[useUserRegistrationDetails] ❌ Error:', error);
         throw error;
       }
     },

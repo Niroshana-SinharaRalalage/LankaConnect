@@ -161,21 +161,53 @@ export class ApiClient {
                 // Retry the original request
                 return this.axiosInstance(originalRequest);
               } else {
-                console.error('❌ [AUTH INTERCEPTOR] Token refresh returned null - triggering logout');
-                if (this.onUnauthorized) {
+                console.error('❌ [AUTH INTERCEPTOR] Token refresh returned null');
+
+                // For cross-origin scenarios (localhost -> staging), the refresh token cookie
+                // may not be sent, causing a 400 Bad Request. In this case, we should just
+                // reject the request without triggering logout, letting the user continue
+                // working with their current (possibly expired) session until they explicitly
+                // re-login.
+                //
+                // Only trigger logout for actual auth failures (not cookie issues)
+                const isCrossOrigin = typeof window !== 'undefined' &&
+                                     window.location.hostname === 'localhost';
+
+                console.log('🔍 [AUTH INTERCEPTOR] Cross-origin detection:', {
+                  isCrossOrigin,
+                  hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+                  willTriggerLogout: !isCrossOrigin
+                });
+
+                if (!isCrossOrigin && this.onUnauthorized) {
                   console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback');
                   this.onUnauthorized();
+                } else if (isCrossOrigin) {
+                  console.log('✅ [AUTH INTERCEPTOR] Skipping logout for localhost cross-origin scenario');
                 }
-                return Promise.reject(new Error('Token refresh returned null'));
+
+                return Promise.reject(new Error('Token refresh failed - please try logging in again'));
               }
             } catch (refreshError) {
               console.error('❌ [AUTH INTERCEPTOR] Token refresh threw error:', refreshError);
-              console.error('❌ [AUTH INTERCEPTOR] Clearing auth and redirecting to login');
-              // Token refresh failed - trigger logout callback to clear auth state
-              if (this.onUnauthorized) {
+
+              // For cross-origin scenarios, don't trigger logout on refresh failure
+              const isCrossOrigin = typeof window !== 'undefined' &&
+                                   window.location.hostname === 'localhost';
+
+              console.log('🔍 [AUTH INTERCEPTOR] Cross-origin detection (catch):', {
+                isCrossOrigin,
+                hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+                willTriggerLogout: !isCrossOrigin
+              });
+
+              if (!isCrossOrigin && this.onUnauthorized) {
                 console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback after refresh error');
                 this.onUnauthorized();
+              } else if (isCrossOrigin) {
+                console.log('✅ [AUTH INTERCEPTOR] Skipping logout for localhost cross-origin scenario (catch block)');
               }
+
               return Promise.reject(refreshError);
             }
           } else {
@@ -221,7 +253,8 @@ export class ApiClient {
       const { status, data } = axiosError.response;
 
       // Extract error message
-      const message = data?.message || data?.error || axiosError.message || 'An error occurred';
+      // Note: Backend returns errors in ProblemDetails format with message in .detail field
+      const message = data?.detail || data?.message || data?.error || axiosError.message || 'An error occurred';
 
       // Handle specific status codes
       switch (status) {

@@ -122,7 +122,9 @@ public class AuthController : ControllerBase
             var cookieDays = request.RememberMe ? 30 : 7;
             SetRefreshTokenCookie(result.Value.RefreshToken, cookieDays);
 
-            return Ok(new
+            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
+            // In production, refresh token is in HttpOnly cookie (sent by browser automatically)
+            var response = new
             {
                 user = new
                 {
@@ -136,7 +138,23 @@ public class AuthController : ControllerBase
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt
-            });
+            };
+
+            // Development: Include refresh token in response body for localStorage storage
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("[Phase 6A.10] Including refreshToken in response body for development mode");
+                return Ok(new
+                {
+                    user = response.user,
+                    response.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    response.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -177,6 +195,19 @@ public class AuthController : ControllerBase
             // Set new refresh token as HttpOnly cookie
             SetRefreshTokenCookie(result.Value.RefreshToken);
 
+            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("[Phase 6A.10] Including refreshToken in refresh response for development mode");
+                return Ok(new
+                {
+                    result.Value.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    result.Value.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
             return Ok(new
             {
                 result.Value.AccessToken,
@@ -303,7 +334,8 @@ public class AuthController : ControllerBase
             // Set refresh token as HttpOnly cookie for security
             SetRefreshTokenCookie(result.Value.RefreshToken);
 
-            return Ok(new
+            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
+            var entraResponse = new
             {
                 user = new
                 {
@@ -315,7 +347,22 @@ public class AuthController : ControllerBase
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt
-            });
+            };
+
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("[Phase 6A.10] Including refreshToken in Entra response for development mode");
+                return Ok(new
+                {
+                    entraResponse.user,
+                    entraResponse.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    entraResponse.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
+            return Ok(entraResponse);
         }
         catch (Exception ex)
         {

@@ -353,7 +353,7 @@ export function useReorderEventImages() {
  * });
  * ```
  */
-export function useSetPrimaryImage() {
+export function useSetPrimaryImage(options?: UseImageUploadOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -388,10 +388,21 @@ export function useSetPrimaryImage() {
       if (context?.previousEvent) {
         queryClient.setQueryData(eventKeys.detail(eventId), context.previousEvent);
       }
+
+      // Call error callback to display error to user
+      if (options?.onError) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to set image as primary';
+        options.onError(errorMessage);
+      }
     },
     onSuccess: (_data, { eventId }) => {
       // Invalidate event detail to ensure consistency
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+
+      // Call success callback
+      if (options?.onSuccess) {
+        options.onSuccess('');
+      }
     },
   });
 }
@@ -446,7 +457,16 @@ export function useImageUpload(options?: UseImageUploadOptions) {
 
   const deleteMutation = useDeleteEventImage();
   const reorderMutation = useReorderEventImages();
-  const setPrimaryMutation = useSetPrimaryImage();
+  const setPrimaryMutation = useSetPrimaryImage({
+    onError: (errorMsg) => {
+      setError(errorMsg);
+      options?.onError?.(errorMsg);
+    },
+    onSuccess: () => {
+      setError(null);
+      options?.onSuccess?.('');
+    },
+  });
 
   const uploadImage = useCallback(
     async (file: File, eventId: string) => {

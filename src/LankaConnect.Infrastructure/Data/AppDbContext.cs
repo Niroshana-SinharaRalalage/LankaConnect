@@ -47,6 +47,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Notification Entity Set (Phase 6A.6)
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    // Sign-up Management Entity Sets (Phase 6A.16)
+    public DbSet<SignUpList> SignUpLists => Set<SignUpList>(); // Phase 6A.16: Required for cascade deletion
+    public DbSet<SignUpItem> SignUpItems => Set<SignUpItem>(); // Phase 6A.16: Required for cascade deletion
+    public DbSet<SignUpCommitment> SignUpCommitments => Set<SignUpCommitment>(); // Phase 6A.16: Cascade deletion
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

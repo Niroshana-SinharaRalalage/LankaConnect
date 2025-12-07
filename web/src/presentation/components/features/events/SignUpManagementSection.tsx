@@ -383,16 +383,16 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {/* Sign Up button - Available for all users */}
-                                {!userItemCommitment && remainingQty > 0 && (
+                                {/* Sign Up/Update button - Always available when there's remaining quantity */}
+                                {remainingQty > 0 && (
                                   <div className="mt-3">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item)}
                                       size="sm"
-                                      variant="outline"
+                                      variant={userItemCommitment ? "default" : "outline"}
                                       className="w-full sm:w-auto"
                                     >
-                                      Sign Up
+                                      {userItemCommitment ? 'Update Commitment' : 'Sign Up'}
                                     </Button>
                                   </div>
                                 )}

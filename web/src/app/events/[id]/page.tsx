@@ -105,9 +105,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           return; // Don't set isProcessing false - user is being redirected
         }
 
-        // Free event - show success message and reload
+        // Free event - show success message and reload after a short delay
         alert('Registration successful!');
-        window.location.reload();
+        // Give React Query time to invalidate cache and refetch
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       } else {
         // Anonymous registration
         await eventsRepository.registerAnonymous(id, data);
@@ -115,8 +118,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         // Show success message
         alert('Registration successful! We\'ve sent a confirmation email to ' + data.email);
 
-        // Reload to show updated registration count
-        window.location.reload();
+        // Reload to show updated registration count after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }
 
       setIsProcessing(false);

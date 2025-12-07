@@ -443,28 +443,61 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                       {/* Registration Summary with Attendee Details */}
                       <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
-                        <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
+                        <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-3">
                           Registration Details:
                         </h4>
                         {isLoadingRegistration ? (
                           <p className="text-sm text-green-800 dark:text-green-200">Loading registration details...</p>
                         ) : registrationDetails && registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                              Attendees ({registrationDetails.attendees.length}):
-                            </p>
-                            <ul className="space-y-1">
-                              {registrationDetails.attendees.map((attendee, index) => (
-                                <li key={index} className="text-sm text-green-800 dark:text-green-200 pl-3">
-                                  • {attendee.name} (Age: {attendee.age})
-                                </li>
-                              ))}
-                            </ul>
-                            {registrationDetails.contactEmail && (
-                              <p className="text-xs text-green-700 dark:text-green-300 mt-2">
-                                Contact: {registrationDetails.contactEmail}
-                              </p>
+                          <div className="space-y-4">
+                            {/* Contact Information Section */}
+                            {(registrationDetails.contactEmail || registrationDetails.contactPhone || registrationDetails.contactAddress) && (
+                              <div className="bg-green-100 dark:bg-green-900/30 rounded p-3">
+                                <p className="text-xs font-semibold text-green-900 dark:text-green-200 mb-2">
+                                  CONTACT INFORMATION
+                                </p>
+                                <div className="space-y-1 text-xs text-green-800 dark:text-green-300">
+                                  {registrationDetails.contactEmail && (
+                                    <p>
+                                      <span className="font-medium">Email:</span> {registrationDetails.contactEmail}
+                                    </p>
+                                  )}
+                                  {registrationDetails.contactPhone && (
+                                    <p>
+                                      <span className="font-medium">Phone:</span> {registrationDetails.contactPhone}
+                                    </p>
+                                  )}
+                                  {registrationDetails.contactAddress && (
+                                    <p>
+                                      <span className="font-medium">Address:</span> {registrationDetails.contactAddress}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             )}
+
+                            {/* Attendees Section */}
+                            <div>
+                              <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
+                                Attendees ({registrationDetails.attendees.length}):
+                              </p>
+                              <div className="space-y-2">
+                                {registrationDetails.attendees.map((attendee, index) => (
+                                  <div key={index} className="bg-green-100 dark:bg-green-900/30 rounded p-2.5 text-xs">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <p className="font-medium text-green-900 dark:text-green-100">
+                                          {index + 1}. {attendee.name}
+                                        </p>
+                                        <p className="text-green-700 dark:text-green-300 mt-0.5">
+                                          Age: {attendee.age}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         ) : (
                           <div className="text-sm text-green-800 dark:text-green-200">

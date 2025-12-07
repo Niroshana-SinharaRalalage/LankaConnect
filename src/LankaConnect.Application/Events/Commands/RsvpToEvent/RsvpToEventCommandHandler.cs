@@ -24,21 +24,32 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
     public async Task<Result<string?>> Handle(RsvpToEventCommand request, CancellationToken cancellationToken)
     {
-        // Retrieve event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-        if (@event == null)
-            return Result<string?>.Failure("Event not found");
+        try
+        {
+            // Retrieve event
+            var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+            if (@event == null)
+                return Result<string?>.Failure("Event not found");
 
-        // Session 21: Determine if using new multi-attendee format or legacy format
-        if (request.Attendees != null && request.Attendees.Any())
-        {
-            // NEW FORMAT: Multiple attendees with names and ages
-            return await HandleMultiAttendeeRsvp(@event, request, cancellationToken);
+            // Session 21: Determine if using new multi-attendee format or legacy format
+            if (request.Attendees != null && request.Attendees.Any())
+            {
+                // NEW FORMAT: Multiple attendees with names and ages
+                return await HandleMultiAttendeeRsvp(@event, request, cancellationToken);
+            }
+            else
+            {
+                // LEGACY FORMAT: Simple quantity-based RSVP
+                return await HandleLegacyRsvp(@event, request, cancellationToken);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // LEGACY FORMAT: Simple quantity-based RSVP
-            return await HandleLegacyRsvp(@event, request, cancellationToken);
+            // Phase 6A.10: Catch unhandled exceptions and return proper error response
+            // This prevents empty HTTP 500 responses and provides meaningful error details
+            var errorMessage = $"Registration failed: {ex.GetType().Name}: {ex.Message}";
+            Console.WriteLine($"🔴 [RsvpToEventCommandHandler] EXCEPTION: {errorMessage}", ex);
+            return Result<string?>.Failure(errorMessage);
         }
     }
 

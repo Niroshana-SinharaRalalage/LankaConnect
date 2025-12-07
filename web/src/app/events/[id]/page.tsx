@@ -85,10 +85,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         // Session 23: RSVP with payment support
         // Backend returns checkout URL for paid events, null for free events
+        // Phase 6A.11 FIX: Always send both quantity AND attendees (backend expects both)
         const checkoutUrl = await rsvpMutation.mutateAsync({
           eventId: id,
           userId: data.userId,
-          ...(data.attendees ? { attendees: data.attendees } : { quantity: (data as any).quantity || 1 }),
+          quantity: data.attendees?.length || (data as any).quantity || 1,
+          attendees: data.attendees,
           email: data.email,
           phoneNumber: data.phoneNumber,
           address: data.address,

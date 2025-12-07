@@ -153,6 +153,44 @@ public class SetPrimaryImageCommandTests
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task Handle_WhenImageIsAlreadyPrimary_ShouldReturnSuccessWithoutChanges()
+    {
+        // Arrange
+        var @event = CreateTestEvent();
+        var image1 = @event.AddImage("https://blob.azure.com/image1.jpg", "image1.jpg").Value;
+        var image2 = @event.AddImage("https://blob.azure.com/image2.jpg", "image2.jpg").Value;
+
+        // Set image1 as primary first
+        @event.SetPrimaryImage(image1.Id);
+        image1.IsPrimary.Should().BeTrue();
+
+        var command = new SetPrimaryImageCommand
+        {
+            EventId = @event.Id,
+            ImageId = image1.Id // Set the same image as primary again
+        };
+
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(@event);
+
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0); // No changes needed
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        image1.IsPrimary.Should().BeTrue("image1 should remain primary");
+        image2.IsPrimary.Should().BeFalse("image2 should remain non-primary");
+
+        _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
+        // CommitAsync may or may not be called depending on whether there are changes to save
+    }
+
     #endregion
 
     #region Failure Cases

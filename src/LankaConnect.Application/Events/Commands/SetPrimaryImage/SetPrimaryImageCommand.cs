@@ -30,19 +30,30 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
 
     public async Task<Result> Handle(SetPrimaryImageCommand request, CancellationToken cancellationToken)
     {
-        // 1. Get event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-        if (@event == null)
-            return Result.Failure($"Event with ID {request.EventId} not found");
+        try
+        {
+            // 1. Get event
+            var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+            if (@event == null)
+                return Result.Failure($"Event with ID {request.EventId} not found");
 
-        // 2. Set primary image (domain logic handles unmarking previous primary)
-        var result = @event.SetPrimaryImage(request.ImageId);
-        if (!result.IsSuccess)
-            return result;
+            // 2. Set primary image (domain logic handles unmarking previous primary)
+            var result = @event.SetPrimaryImage(request.ImageId);
+            if (!result.IsSuccess)
+                return result;
 
-        // 3. Save changes
-        await _unitOfWork.CommitAsync(cancellationToken);
+            // 3. Save changes
+            await _unitOfWork.CommitAsync(cancellationToken);
 
-        return Result.Success();
+            return Result.Success();
+        }
+        catch (Exception ex) when (ex.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure("Failed to set image as primary: data integrity issue detected. Please try again.");
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure($"An unexpected error occurred: {ex.Message}");
+        }
     }
 }

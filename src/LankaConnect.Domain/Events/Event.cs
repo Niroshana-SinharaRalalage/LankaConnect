@@ -829,11 +829,16 @@ public class Event : BaseEntity
         if (image == null)
             return Result.Failure($"Image with ID {imageId} not found in this event");
 
+        // Check if image is already primary
+        if (image.IsPrimary)
+            return Result.Success(); // Already primary, no action needed
+
         // Business rule: Only one image can be primary
-        // Unmark all images as not primary
-        foreach (var img in _images)
+        // Find and unmark the currently primary image (if any)
+        var currentPrimary = _images.FirstOrDefault(i => i.IsPrimary);
+        if (currentPrimary != null)
         {
-            img.UnmarkAsPrimary();
+            currentPrimary.UnmarkAsPrimary();
         }
 
         // Mark the selected image as primary

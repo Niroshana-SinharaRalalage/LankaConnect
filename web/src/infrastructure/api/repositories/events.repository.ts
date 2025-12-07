@@ -232,10 +232,11 @@ export class EventsRepository {
    * Creates a registration for the user
    * Maps to backend RsvpToEventCommand
    * Session 23: Returns Stripe checkout URL for paid events, null for free events
-   * NOTE: Backend RsvpRequest only needs userId and quantity (eventId is in URL path)
+   * Phase 6A.11: Updated to support multi-attendee registrations with detailed attendee information
+   * - Legacy format: { userId, quantity } - simple quantity-based RSVP
+   * - New format: { userId, attendees: [{name, age}, ...], email, phoneNumber, address, successUrl, cancelUrl }
    */
-  async rsvpToEvent(eventId: string, userId: string, quantity: number = 1): Promise<string | null> {
-    const request = { userId, quantity };
+  async rsvpToEvent(eventId: string, request: RsvpRequest): Promise<string | null> {
     return await apiClient.post<string | null>(`${this.basePath}/${eventId}/rsvp`, request);
   }
 

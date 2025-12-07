@@ -380,8 +380,20 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string }) =>
-      eventsRepository.rsvpToEvent(data.eventId, data.userId, data.quantity),
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string }) => {
+      // Phase 6A.11: Construct full RsvpRequest with all fields (legacy and new format support)
+      const rsvpRequest = {
+        userId: data.userId,
+        quantity: data.quantity ?? 1,
+        attendees: data.attendees,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+        successUrl: data.successUrl,
+        cancelUrl: data.cancelUrl,
+      };
+      return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);
+    },
     onMutate: async ({ eventId }) => {
       // Cancel queries
       await queryClient.cancelQueries({ queryKey: eventKeys.detail(eventId) });
@@ -530,7 +542,7 @@ export function useUserRsvpForEvent(
     enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: 1,
+    retry: false, // Don't retry - let auth interceptor handle token refresh
     ...options,
   });
 }

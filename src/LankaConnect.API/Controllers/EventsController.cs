@@ -413,6 +413,9 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// RSVP to an event (Authenticated users)
+    /// Phase 6A.11: Updated to support multi-attendee registrations with detailed attendee information
+    /// - Legacy format: { userId, quantity } - simple quantity-based RSVP
+    /// - New format: { userId, attendees: [{name, age}, ...], email, phoneNumber, address, successUrl, cancelUrl } - multi-attendee with details
     /// </summary>
     [HttpPost("{id:guid}/rsvp")]
     [Authorize]
@@ -421,10 +424,30 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RsvpToEvent(Guid id, [FromBody] RsvpRequest request)
     {
-        Logger.LogInformation("User {UserId} RSVPing to event {EventId} with quantity {Quantity}",
-            request.UserId, id, request.Quantity);
+        // Phase 6A.11: Determine format and log appropriately
+        if (request.Attendees?.Any() == true)
+        {
+            Logger.LogInformation("User {UserId} RSVPing to event {EventId} with {AttendeeCount} multi-attendee registrations (new format)",
+                request.UserId, id, request.Attendees.Count);
+        }
+        else
+        {
+            Logger.LogInformation("User {UserId} RSVPing to event {EventId} with quantity {Quantity} (legacy format)",
+                request.UserId, id, request.Quantity);
+        }
 
-        var command = new RsvpToEventCommand(id, request.UserId, request.Quantity);
+        // Phase 6A.11: Map all DTO fields to command (including multi-attendee fields)
+        var command = new RsvpToEventCommand(
+            id,
+            request.UserId,
+            request.Quantity,
+            request.Attendees,
+            request.Email,
+            request.PhoneNumber,
+            request.Address,
+            request.SuccessUrl,
+            request.CancelUrl
+        );
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -1315,7 +1338,28 @@ public class EventsController : BaseController<EventsController>
 // Request DTOs
 public record CancelEventRequest(string Reason);
 public record PostponeEventRequest(string Reason);
-public record RsvpRequest(Guid UserId, int Quantity = 1);
+// Phase 6A.11: Updated to support multi-attendee registrations with detailed attendee information
+public record RsvpRequest(
+    Guid UserId,
+    // Legacy format (backward compatibility)
+    int Quantity = 1,
+    // New format (Session 21 - multi-attendee)
+    List<AttendeeDto>? Attendees = null,
+    // Contact information (new format only)
+    string? Email = null,
+    string? PhoneNumber = null,
+    string? Address = null,
+    // Session 23: Payment integration - URLs for Stripe Checkout redirect
+    string? SuccessUrl = null,
+    string? CancelUrl = null
+);
+
+// Phase 6A.11: DTO for individual attendee within multi-attendee registration
+public record AttendeeDto(
+    string Name,
+    int Age
+);
+
 public record AnonymousRegistrationRequest(
     string Name,
     int Age,

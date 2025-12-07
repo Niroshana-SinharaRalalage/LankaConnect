@@ -56,11 +56,14 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             return Result.Failure("User is not registered for this event");
         }
 
-        // Check if already cancelled
+        // Check if already cancelled - make operation idempotent (REST best practice)
+        // Attempting to cancel an already-cancelled registration should succeed, not error
         if (registrationReadOnly.Status == RegistrationStatus.Cancelled || registrationReadOnly.Status == RegistrationStatus.Refunded)
         {
-            _logger.LogWarning("[CancelRsvp] Registration already cancelled/refunded: Status={Status}", registrationReadOnly.Status);
-            return Result.Failure("Registration has already been cancelled");
+            _logger.LogInformation("[CancelRsvp] Registration already cancelled/refunded (idempotent operation): Status={Status}", registrationReadOnly.Status);
+            // Return success - cancelling an already-cancelled registration is a no-op
+            // This follows REST API idempotency best practices: DELETE operations should be idempotent
+            return Result.Success();
         }
 
         // Get the registration WITH tracking so EF Core can save changes

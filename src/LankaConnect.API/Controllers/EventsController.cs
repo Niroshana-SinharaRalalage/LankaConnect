@@ -1344,7 +1344,7 @@ public record RsvpRequest(
     // Legacy format (backward compatibility)
     int Quantity = 1,
     // New format (Session 21 - multi-attendee)
-    List<AttendeeDto>? Attendees = null,
+    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AttendeeDto>? Attendees = null,
     // Contact information (new format only)
     string? Email = null,
     string? PhoneNumber = null,
@@ -1354,11 +1354,7 @@ public record RsvpRequest(
     string? CancelUrl = null
 );
 
-// Phase 6A.11: DTO for individual attendee within multi-attendee registration
-public record AttendeeDto(
-    string Name,
-    int Age
-);
+// Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
 
 public record AnonymousRegistrationRequest(
     string Name,

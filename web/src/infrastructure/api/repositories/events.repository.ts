@@ -479,9 +479,11 @@ export class EventsRepository {
     itemId: string,
     request: CommitToSignUpItemRequest
   ): Promise<void> {
+    // Increase timeout for commitment operations as email validation adds latency
     await apiClient.post<void>(
       `${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`,
-      request
+      request,
+      { timeout: 60000 } // 60 seconds timeout for commitment operations
     );
   }
 

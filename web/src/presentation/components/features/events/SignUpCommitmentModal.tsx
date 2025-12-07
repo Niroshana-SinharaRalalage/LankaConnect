@@ -25,7 +25,7 @@ import {
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { SignUpItemCategory, type SignUpItemDto } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 interface SignUpCommitmentModalProps {
@@ -34,6 +34,7 @@ interface SignUpCommitmentModalProps {
   item: SignUpItemDto | null;
   signUpListId: string;
   eventId: string;
+  existingCommitment?: SignUpCommitmentDto | null; // Existing commitment data (for updates)
   onCommit: (data: CommitmentFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -55,6 +56,7 @@ export function SignUpCommitmentModal({
   item,
   signUpListId,
   eventId,
+  existingCommitment,
   onCommit,
   isSubmitting = false,
 }: SignUpCommitmentModalProps) {
@@ -69,15 +71,26 @@ export function SignUpCommitmentModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
 
-  // Auto-fill user details when modal opens
+  // Auto-fill user details and existing commitment data when modal opens
   useEffect(() => {
     if (open && user) {
-      setName(user.fullName || '');
-      setEmail(user.email || '');
-      // Phone is not in UserDto yet - will be added in Phase 2
-      setPhone('');
+      // If updating existing commitment, pre-fill with that data
+      if (existingCommitment) {
+        setName(existingCommitment.contactName || user.fullName || '');
+        setEmail(existingCommitment.contactEmail || user.email || '');
+        setPhone(existingCommitment.contactPhone || '');
+        setQuantity(existingCommitment.quantity);
+        setNotes(existingCommitment.notes || '');
+      } else {
+        // New commitment - use user defaults
+        setName(user.fullName || '');
+        setEmail(user.email || '');
+        setPhone('');
+        setQuantity(1);
+        setNotes('');
+      }
     }
-  }, [open, user]);
+  }, [open, user, existingCommitment]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -91,12 +104,7 @@ export function SignUpCommitmentModal({
     }
   }, [open]);
 
-  // Set initial quantity when item changes
-  useEffect(() => {
-    if (item && open) {
-      setQuantity(Math.min(1, item.remainingQuantity));
-    }
-  }, [item, open]);
+  // Remove the old quantity initialization effect - now handled in the user/commitment effect above
 
   if (!item) return null;
 
@@ -217,9 +225,11 @@ export function SignUpCommitmentModal({
       <DialogContent className="max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Commit to Bring Item</DialogTitle>
+            <DialogTitle>{existingCommitment ? 'Update Commitment' : 'Commit to Bring Item'}</DialogTitle>
             <DialogDescription>
-              Fill in your details to commit to bringing this item
+              {existingCommitment
+                ? 'Update your commitment details'
+                : 'Fill in your details to commit to bringing this item'}
             </DialogDescription>
           </DialogHeader>
 
@@ -388,7 +398,11 @@ export function SignUpCommitmentModal({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || isValidatingEmail}>
-              {isValidatingEmail ? 'Validating email...' : isSubmitting ? 'Confirming...' : 'Confirm Commitment'}
+              {isValidatingEmail
+                ? 'Validating email...'
+                : isSubmitting
+                  ? existingCommitment ? 'Updating...' : 'Confirming...'
+                  : existingCommitment ? 'Update Commitment' : 'Confirm Commitment'}
             </Button>
           </DialogFooter>
         </form>

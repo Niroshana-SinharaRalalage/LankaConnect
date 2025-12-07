@@ -30,7 +30,7 @@ import {
   useRemoveSignUpList,
   useCommitToSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType, SignUpItemCategory, SignUpItemDto } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -70,6 +70,7 @@ export function SignUpManagementSection({
   const [commitModalOpen, setCommitModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SignUpItemDto | null>(null);
   const [selectedSignUpListId, setSelectedSignUpListId] = useState<string>('');
+  const [selectedExistingCommitment, setSelectedExistingCommitment] = useState<SignUpCommitmentDto | null>(null);
 
   // Organizer delete confirmation state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -154,9 +155,11 @@ export function SignUpManagementSection({
   };
 
   // Open commitment modal - Phase 6A.15: Now available for all users (anonymous and authenticated)
-  const openCommitmentModal = (signUpListId: string, item: SignUpItemDto) => {
+  // Pass existing commitment if available (for pre-filling the form)
+  const openCommitmentModal = (signUpListId: string, item: SignUpItemDto, existingCommitment?: SignUpCommitmentDto) => {
     setSelectedSignUpListId(signUpListId);
     setSelectedItem(item);
+    setSelectedExistingCommitment(existingCommitment || null);
     setCommitModalOpen(true);
   };
 
@@ -383,7 +386,7 @@ export function SignUpManagementSection({
                                 {remainingQty > 0 && (
                                   <div className="mt-3">
                                     <Button
-                                      onClick={() => openCommitmentModal(signUpList.id, item)}
+                                      onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
                                       size="sm"
                                       variant={userItemCommitment ? "default" : "outline"}
                                       className="w-full sm:w-auto"
@@ -543,6 +546,7 @@ export function SignUpManagementSection({
         item={selectedItem}
         signUpListId={selectedSignUpListId}
         eventId={eventId}
+        existingCommitment={selectedExistingCommitment}
         onCommit={handleCommitToItem}
         isSubmitting={commitToSignUpItem.isPending}
       />

@@ -190,11 +190,11 @@ export function EventRegistrationForm({
     return 0;
   };
 
-  // Validation
+  // Validation - BOTH authenticated and anonymous users need contact info
   const errors = {
-    address: touched.address && !user && !address.trim() ? 'Address is required' : '',
-    email: touched.email && !user && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
-    phoneNumber: touched.phoneNumber && !user && (!phoneNumber.trim() || !/^\+?[\d\s\-()]+$/.test(phoneNumber)) ? 'Valid phone number is required' : '',
+    address: touched.address && !address.trim() ? 'Address is required' : '',
+    email: touched.email && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
+    phoneNumber: touched.phoneNumber && (!phoneNumber.trim() || !/^\+?[\d\s\-()]+$/.test(phoneNumber)) ? 'Valid phone number is required' : '',
     attendees: attendees.map((attendee, index) => {
       if (!touched.attendees[index]) return { name: '', age: '' };
       return {
@@ -204,14 +204,14 @@ export function EventRegistrationForm({
     }),
   };
 
-  const isFormValid = !user
-    ? address.trim() &&
-      email.trim() &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-      phoneNumber.trim() &&
-      /^\+?[\d\s\-()]+$/.test(phoneNumber) &&
-      attendees.every(a => a.name.trim() && a.age && a.age >= 1 && a.age <= 120)
-    : attendees.every(a => a.name.trim() && a.age && a.age >= 1 && a.age <= 120);
+  // BOTH authenticated and anonymous users must provide all fields
+  const isFormValid =
+    address.trim() &&
+    email.trim() &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    phoneNumber.trim() &&
+    /^\+?[\d\s\-()]+$/.test(phoneNumber) &&
+    attendees.every(a => a.name.trim() && a.age && a.age >= 1 && a.age <= 120);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,8 +246,10 @@ export function EventRegistrationForm({
       await onSubmit(anonymousData);
     } else {
       // Authenticated registration with multi-attendee
+      // Phase 6A.11: Include quantity field for authenticated users
       const rsvpData: RsvpRequest = {
         userId: user.userId,
+        quantity: attendeesData.length, // Include quantity based on number of attendees
         attendees: attendeesData,
         email: email.trim() || undefined,
         phoneNumber: phoneNumber.trim() || undefined,
@@ -425,27 +427,76 @@ export function EventRegistrationForm({
         </div>
       )}
 
-      {/* Authenticated User Contact Info Display */}
+      {/* Authenticated User Contact Info - EDITABLE for registration */}
       {user && profile && (
         <div className="border-t pt-4">
-          <h4 className="text-sm font-semibold mb-3 text-neutral-700">Contact Details</h4>
-          <div className="bg-neutral-50 p-4 rounded-lg space-y-2 text-sm">
-            <div>
-              <span className="font-medium">Email:</span> {profile.email}
-            </div>
-            {profile.phoneNumber && (
-              <div>
-                <span className="font-medium">Phone:</span> {profile.phoneNumber}
-              </div>
-            )}
-            {address && (
-              <div>
-                <span className="font-medium">Address:</span> {address}
-              </div>
+          <h4 className="text-sm font-semibold mb-3 text-neutral-700">Contact Information</h4>
+          <p className="text-xs text-neutral-500 mb-4">
+            Please verify and update your contact details for this event registration.
+          </p>
+
+          {/* Email - Pre-filled but editable */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-neutral-700">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched({ ...touched, email: true })}
+              error={!!errors.email}
+              disabled={isProcessing}
+              placeholder="your.email@example.com"
+              className="w-full"
+            />
+            {errors.email && (
+              <p className="text-xs text-red-600 mt-1">{errors.email}</p>
             )}
           </div>
-          <p className="text-xs text-neutral-500 mt-2">
-            Contact details from your profile
+
+          {/* Phone Number - Pre-filled but editable */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-neutral-700">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              onBlur={() => setTouched({ ...touched, phoneNumber: true })}
+              error={!!errors.phoneNumber}
+              disabled={isProcessing}
+              placeholder="+1-123-456-7890"
+              className="w-full"
+            />
+            {errors.phoneNumber && (
+              <p className="text-xs text-red-600 mt-1">{errors.phoneNumber}</p>
+            )}
+          </div>
+
+          {/* Address - Pre-filled but editable */}
+          <div>
+            <label className="block text-sm font-medium mb-2 text-neutral-700">
+              Address <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              onBlur={() => setTouched({ ...touched, address: true })}
+              error={!!errors.address}
+              disabled={isProcessing}
+              placeholder="Enter your address"
+              className="w-full"
+            />
+            {errors.address && (
+              <p className="text-xs text-red-600 mt-1">{errors.address}</p>
+            )}
+          </div>
+
+          <p className="text-xs text-neutral-500 mt-3">
+            Pre-filled from your profile. Please verify and update if needed.
           </p>
         </div>
       )}

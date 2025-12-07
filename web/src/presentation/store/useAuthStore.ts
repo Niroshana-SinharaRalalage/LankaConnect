@@ -11,6 +11,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isHydrated: boolean; // Track if Zustand has finished rehydrating from localStorage
 
   // Actions
   setAuth: (user: UserDto, tokens: AuthTokens) => void;
@@ -33,6 +34,7 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
+        isHydrated: false, // Will be set to true after rehydration completes
 
         // Set authentication (after login/register)
         setAuth: (user, tokens) => {
@@ -50,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: tokens.refreshToken,
             isAuthenticated: true,
             isLoading: false,
+            isHydrated: true, // Mark as hydrated for fresh logins (token already set in API client)
           });
         },
 
@@ -105,7 +108,13 @@ export const useAuthStore = create<AuthState>()(
         onRehydrateStorage: () => (state) => {
           // Restore auth token to API client on app load
           if (state?.accessToken) {
+            console.log('🔄 [AUTH STORE] Rehydrating: Setting auth token in API client');
             apiClient.setAuthToken(state.accessToken);
+          }
+          // Mark hydration as complete
+          if (state) {
+            console.log('✅ [AUTH STORE] Rehydration complete, marking isHydrated=true');
+            state.isHydrated = true;
           }
         },
       }

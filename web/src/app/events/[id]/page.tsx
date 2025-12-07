@@ -25,7 +25,7 @@ import { useState } from 'react';
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isHydrated } = useAuthStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -38,15 +38,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
   // Check if user is already registered for this event
+  // Only enable after hydration to prevent race condition with token restoration
   const { data: userRsvp, isLoading: isLoadingRsvp } = useUserRsvpForEvent(
-    user?.userId ? id : undefined
+    (user?.userId && isHydrated) ? id : undefined
   );
   const isUserRegistered = !!userRsvp;
 
   // Fix 1: Fetch full registration details with attendee information
   // Only fetch when user is registered to avoid unnecessary 404/401 errors
+  // Only enable after hydration to prevent race condition with token restoration
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    user?.userId ? id : undefined,
+    (user?.userId && isHydrated) ? id : undefined,
     isUserRegistered // Only enabled when user is actually registered
   );
 

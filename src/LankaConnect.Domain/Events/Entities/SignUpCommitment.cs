@@ -136,4 +136,51 @@ public class SignUpCommitment : BaseEntity
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Updates the contact name
+    /// Phase 6A.17: New method to support updating commitment contact info
+    /// </summary>
+    public Result UpdateContactName(string? newContactName)
+    {
+        ContactName = newContactName?.Trim();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the contact email
+    /// Phase 6A.17: New method to support updating commitment contact info
+    /// </summary>
+    public Result UpdateContactEmail(string? newContactEmail)
+    {
+        if (!string.IsNullOrWhiteSpace(newContactEmail) && !IsValidEmail(newContactEmail))
+            return Result.Failure("Invalid email format");
+
+        ContactEmail = newContactEmail?.Trim();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the contact phone
+    /// Phase 6A.17: New method to support updating commitment contact info
+    /// </summary>
+    public Result UpdateContactPhone(string? newContactPhone)
+    {
+        ContactPhone = newContactPhone?.Trim();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the notes
+    /// Phase 6A.17: New method to support updating commitment notes
+    /// </summary>
+    public Result UpdateNotes(string? newNotes)
+    {
+        Notes = newNotes?.Trim();
+        MarkAsUpdated();
+        return Result.Success();
+    }
 }

@@ -121,6 +121,78 @@ public class SignUpItem : BaseEntity
     }
 
     /// <summary>
+    /// Updates an existing commitment for a user
+    /// Phase 6A.17: New method to support updating commitment quantity and contact info
+    /// </summary>
+    public Result UpdateCommitment(
+        Guid userId,
+        int newQuantity,
+        string? commitNotes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (newQuantity <= 0)
+            return Result.Failure("Quantity must be greater than 0");
+
+        // Find existing commitment
+        var existingCommitment = _commitments.FirstOrDefault(c => c.UserId == userId);
+        if (existingCommitment == null)
+            return Result.Failure("User has no commitment to this item");
+
+        // Calculate the difference in quantity
+        var oldQuantity = existingCommitment.Quantity;
+        var quantityDifference = newQuantity - oldQuantity;
+
+        // Check if the new quantity exceeds available slots (account for quantity change)
+        if (quantityDifference > 0 && quantityDifference > RemainingQuantity)
+            return Result.Failure($"Cannot increase commitment to {newQuantity}. Only {RemainingQuantity + oldQuantity} total available.");
+
+        // Update the commitment's quantity
+        var updateResult = existingCommitment.UpdateQuantity(newQuantity);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        // Update contact information if provided
+        if (!string.IsNullOrWhiteSpace(contactName))
+        {
+            var nameResult = existingCommitment.UpdateContactName(contactName);
+            if (nameResult.IsFailure)
+                return nameResult;
+        }
+
+        if (!string.IsNullOrWhiteSpace(contactEmail))
+        {
+            var emailResult = existingCommitment.UpdateContactEmail(contactEmail);
+            if (emailResult.IsFailure)
+                return emailResult;
+        }
+
+        if (!string.IsNullOrWhiteSpace(contactPhone))
+        {
+            var phoneResult = existingCommitment.UpdateContactPhone(contactPhone);
+            if (phoneResult.IsFailure)
+                return phoneResult;
+        }
+
+        if (!string.IsNullOrWhiteSpace(commitNotes))
+        {
+            var notesResult = existingCommitment.UpdateNotes(commitNotes);
+            if (notesResult.IsFailure)
+                return notesResult;
+        }
+
+        // Adjust remaining quantity
+        RemainingQuantity -= quantityDifference;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
     /// User cancels their commitment to this item
     /// </summary>
     public Result CancelCommitment(Guid userId)

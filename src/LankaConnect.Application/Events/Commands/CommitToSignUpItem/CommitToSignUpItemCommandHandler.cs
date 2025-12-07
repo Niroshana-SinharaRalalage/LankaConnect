@@ -34,14 +34,33 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
         if (signUpItem == null)
             return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
 
-        // Add commitment to the item (Phase 2: with contact info)
-        var commitResult = signUpItem.AddCommitment(
-            request.UserId,
-            request.Quantity,
-            request.Notes,
-            request.ContactName,
-            request.ContactEmail,
-            request.ContactPhone);
+        // Phase 6A.17: Support both creating new commitments and updating existing ones
+        // Check if user already has a commitment to this item
+        var existingCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == request.UserId);
+
+        Result commitResult;
+        if (existingCommitment != null)
+        {
+            // User already committed - update the existing commitment
+            commitResult = signUpItem.UpdateCommitment(
+                request.UserId,
+                request.Quantity,
+                request.Notes,
+                request.ContactName,
+                request.ContactEmail,
+                request.ContactPhone);
+        }
+        else
+        {
+            // New commitment - add it (Phase 2: with contact info)
+            commitResult = signUpItem.AddCommitment(
+                request.UserId,
+                request.Quantity,
+                request.Notes,
+                request.ContactName,
+                request.ContactEmail,
+                request.ContactPhone);
+        }
 
         if (commitResult.IsFailure)
             return Result.Failure(commitResult.Error);

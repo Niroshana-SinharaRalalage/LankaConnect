@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // IMPORTANT: Use explicit staging URL, NOT NEXT_PUBLIC_API_URL (which points to /api/proxy)
+// Always use the staging backend URL (local development should still use Azure staging for API calls)
 const BACKEND_URL = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
 
 export async function GET(
@@ -97,6 +98,22 @@ async function forwardRequest(
     const cookies = request.cookies.getAll();
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
+    // PHASE 6A.10: Detailed cookie forwarding logging for token refresh debugging
+    const isAuthRefresh = path === 'Auth/refresh';
+    const hasRefreshToken = cookies.some(c => c.name === 'refreshToken');
+
+    if (isAuthRefresh) {
+      console.log('🔍 [PROXY] Token Refresh Request Detected', {
+        path,
+        method,
+        allCookies: cookies.map(c => ({ name: c.name, valueLength: c.value.length })),
+        hasRefreshToken,
+        refreshTokenValue: hasRefreshToken ? cookies.find(c => c.name === 'refreshToken')?.value.substring(0, 30) + '...' : 'NOT FOUND',
+        cookieHeaderLength: cookieHeader.length,
+        totalCookies: cookies.length,
+      });
+    }
+
     // Build headers for backend request
     const headers: HeadersInit = {
       // CRITICAL: Preserve exact Content-Type for multipart (includes boundary parameter)
@@ -115,10 +132,22 @@ async function forwardRequest(
       headers['Cookie'] = cookieHeader;
     }
 
+    // PHASE 6A.10: Log headers being sent to backend for token refresh
+    if (isAuthRefresh) {
+      console.log('🔍 [PROXY] Headers being sent to backend:', {
+        'Content-Type': headers['Content-Type'],
+        'Authorization': authHeader ? `Bearer ${authHeader.toString().substring(7, 30)}...` : 'Not present',
+        'Cookie': cookieHeader ? `${cookieHeader.substring(0, 100)}...` : 'Not present',
+        cookieHeaderFull: cookieHeader,
+      });
+    }
+
     console.log(`[Proxy] ${method} ${targetUrl}`, {
       contentType,
       isMultipart,
       hasBody: !!body,
+      isAuthRefresh,
+      hasRefreshToken,
     });
 
     // Build fetch options
@@ -142,17 +171,64 @@ async function forwardRequest(
     // Make request to backend
     const response = await fetch(targetUrl, fetchOptions);
 
-    // Get response body
-    const responseText = await response.text();
-    let responseBody: any;
-    try {
-      responseBody = JSON.parse(responseText);
-    } catch {
-      responseBody = responseText;
+    // PHASE 6A.10: Log backend response for token refresh
+    if (isAuthRefresh) {
+      console.log('🔍 [PROXY] Backend Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Content-Type': response.headers.get('content-type'),
+          'Set-Cookie': response.headers.get('set-cookie'),
+        },
+        setCookieHeaders: response.headers.getSetCookie?.() || [],
+      });
     }
 
-    // Create Next.js response
-    const nextResponse = new NextResponse(JSON.stringify(responseBody), {
+    // Get response body - handle empty responses (e.g., successful free event registration returns null)
+    const responseText = await response.text();
+    let responseBody: any;
+
+    // Special handling for RSVP endpoint
+    const isRsvpEndpoint = path.includes('events') && path.endsWith('rsvp');
+
+    // Handle empty/null responses
+    if (!responseText || responseText === 'null' || responseText.trim() === '') {
+      console.log('[Proxy] Empty response body received (normal for free event registration)');
+      responseBody = null;
+    } else {
+      try {
+        responseBody = JSON.parse(responseText);
+      } catch {
+        responseBody = responseText;
+      }
+    }
+
+    // Log RSVP responses for debugging
+    if (isRsvpEndpoint) {
+      console.log('[Proxy] RSVP Response:', {
+        status: response.status,
+        responseBody,
+        responseText: responseText?.substring(0, 100),
+        isNull: responseBody === null,
+        isEmpty: !responseText || responseText.trim() === '',
+      });
+    }
+
+    // PHASE 6A.10: Log response body for token refresh
+    if (isAuthRefresh) {
+      console.log('🔍 [PROXY] Backend Response Body:', {
+        status: response.status,
+        bodyType: typeof responseBody,
+        hasAccessToken: responseBody?.accessToken ? 'YES' : 'NO',
+        hasError: responseBody?.error ? 'YES' : 'NO',
+        errorMessage: responseBody?.error || responseBody?.message || 'None',
+        body: responseBody,
+      });
+    }
+
+    // Create Next.js response - handle null body appropriately
+    const responseContent = responseBody === null ? '' : JSON.stringify(responseBody);
+    const nextResponse = new NextResponse(responseContent, {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',

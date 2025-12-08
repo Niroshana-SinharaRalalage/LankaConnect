@@ -122,7 +122,9 @@ public class SignUpItem : BaseEntity
 
     /// <summary>
     /// Updates an existing commitment for a user
-    /// Phase 6A.17: New method to support updating commitment quantity and contact info
+    /// Phase 6A.17: Supports updating commitment quantity and contact info
+    /// Phase 6A.18: Support for flexible updates (increase, decrease, or cancel)
+    /// Special case: newQuantity = 0 signals cancellation of entire commitment
     /// </summary>
     public Result UpdateCommitment(
         Guid userId,
@@ -135,21 +137,33 @@ public class SignUpItem : BaseEntity
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
-        if (newQuantity <= 0)
-            return Result.Failure("Quantity must be greater than 0");
-
         // Find existing commitment
         var existingCommitment = _commitments.FirstOrDefault(c => c.UserId == userId);
         if (existingCommitment == null)
             return Result.Failure("User has no commitment to this item");
+
+        // Special case: quantity = 0 means cancel the commitment entirely
+        if (newQuantity == 0)
+        {
+            RemainingQuantity += existingCommitment.Quantity;
+            _commitments.Remove(existingCommitment);
+            MarkAsUpdated();
+            return Result.Success();
+        }
+
+        // Validate new quantity is positive
+        if (newQuantity <= 0)
+            return Result.Failure("Quantity must be greater than 0 (or 0 to cancel)");
 
         // Calculate the difference in quantity
         var oldQuantity = existingCommitment.Quantity;
         var quantityDifference = newQuantity - oldQuantity;
 
         // Check if the new quantity exceeds available slots (account for quantity change)
+        // If decreasing, always allow
+        // If increasing, check remaining availability
         if (quantityDifference > 0 && quantityDifference > RemainingQuantity)
-            return Result.Failure($"Cannot increase commitment to {newQuantity}. Only {RemainingQuantity + oldQuantity} total available.");
+            return Result.Failure($"Cannot change commitment to {newQuantity}. Only {RemainingQuantity + oldQuantity} total available.");
 
         // Update the commitment's quantity
         var updateResult = existingCommitment.UpdateQuantity(newQuantity);
@@ -185,7 +199,7 @@ public class SignUpItem : BaseEntity
                 return notesResult;
         }
 
-        // Adjust remaining quantity
+        // Adjust remaining quantity (handles both increases and decreases)
         RemainingQuantity -= quantityDifference;
         MarkAsUpdated();
 

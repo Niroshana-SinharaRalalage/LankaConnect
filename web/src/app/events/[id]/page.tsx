@@ -44,13 +44,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   );
   const isUserRegistered = !!userRsvp;
 
-  // Fix 1: Fetch full registration details with attendee information
-  // Only fetch when user is registered to avoid unnecessary 404/401 errors
-  // Only enable after hydration to prevent race condition with token restoration
-  const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    (user?.userId && isHydrated) ? id : undefined,
-    isUserRegistered // Only enabled when user is actually registered
-  );
+  // For now, show what we have from userRsvp - the detailed registration endpoint has auth issues
+  // TODO: Fix auth token issue in /my-registration endpoint and re-enable detailed fetch
+  const registrationDetails = null;
+  const isLoadingRegistration = false;
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -125,9 +122,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       }
 
       setIsProcessing(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Registration failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
+
+      // Check if it's an authentication error
+      if (err?.response?.status === 401 || err?.message?.includes('Token refresh failed')) {
+        setError('Your session has expired. Please log out and log back in to continue.');
+        // Optionally redirect to login after a delay
+        setTimeout(() => {
+          router.push('/login?redirect=' + encodeURIComponent(`/events/${id}`));
+        }, 3000);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
+      }
+
       setIsProcessing(false);
     }
   };

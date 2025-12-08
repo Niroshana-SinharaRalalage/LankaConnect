@@ -226,15 +226,26 @@ async function forwardRequest(
       });
     }
 
-    // Create Next.js response - handle null body appropriately
-    // Return 'null' as JSON string for null responses (not empty string)
-    const responseContent = responseBody === null ? 'null' : JSON.stringify(responseBody);
-    const nextResponse = new NextResponse(responseContent, {
-      status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Create Next.js response - handle different response types
+    let nextResponse: NextResponse;
+
+    // Special handling for 204 No Content - MUST NOT have a body per HTTP spec
+    if (response.status === 204) {
+      nextResponse = new NextResponse(null, {
+        status: 204,
+        statusText: 'No Content',
+      });
+    } else {
+      // For other responses, return JSON
+      // Return 'null' as JSON string for null responses (not empty string)
+      const responseContent = responseBody === null ? 'null' : JSON.stringify(responseBody);
+      nextResponse = new NextResponse(responseContent, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    }
 
     // Forward Set-Cookie headers from backend
     const setCookieHeaders = response.headers.getSetCookie?.() || [];

@@ -75,6 +75,13 @@ export function SignUpManagementSection({
   // Organizer delete confirmation state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // Tab state for multiple sign-up lists
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  // Cancel sign-up state
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
 
@@ -152,6 +159,44 @@ export function SignUpManagementSection({
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone,
     });
+  };
+
+  // Handle cancel sign-up item commitment (Phase 6A.20)
+  const handleCancelSignUp = async (signUpListId: string, itemId: string) => {
+    if (!userId) {
+      alert('Please log in to cancel sign-ups');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to cancel your sign-up for this item?')) {
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      setCancelConfirmId(itemId);
+
+      // Call API with quantity = 0 to signal cancellation
+      await commitToSignUpItem.mutateAsync({
+        eventId,
+        signupId: signUpListId,
+        itemId: itemId,
+        userId: userId,
+        quantity: 0, // Signal full cancellation
+        notes: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: '',
+      });
+
+      setCancelConfirmId(null);
+    } catch (error) {
+      console.error('Failed to cancel sign-up:', error);
+      alert('Failed to cancel sign-up. Please try again.');
+      setCancelConfirmId(null);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   // Open commitment modal - Phase 6A.15: Now available for all users (anonymous and authenticated)
@@ -239,13 +284,47 @@ export function SignUpManagementSection({
     );
   }
 
+  // Initialize active tab on first load
+  React.useEffect(() => {
+    if (activeTabId === null && signUpLists && signUpLists.length > 0) {
+      setActiveTabId(signUpLists[0].id);
+    }
+  }, [signUpLists]);
+
+  // Determine which lists to show
+  const listsToShow = activeTabId
+    ? signUpLists.filter(list => list.id === activeTabId)
+    : signUpLists;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">
         Sign-Up Lists (This event has {signUpLists.length} sign-up {signUpLists.length === 1 ? 'list' : 'lists'})
       </h2>
 
-      {signUpLists.map((signUpList) => {
+      {/* Tab navigation - Only show if multiple lists */}
+      {signUpLists.length > 1 && (
+        <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
+          {signUpLists.map((list) => (
+            <button
+              key={list.id}
+              onClick={() => setActiveTabId(list.id)}
+              className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${
+                activeTabId === list.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {list.category}
+              <span className="ml-1 text-xs text-gray-500">
+                ({list.items?.length || list.commitments.length})
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {listsToShow.map((signUpList) => {
         // Check if current user has committed to this list
         const userCommitment = signUpList.commitments.find((c) => c.userId === userId);
 
@@ -389,15 +468,25 @@ export function SignUpManagementSection({
 
                                 {/* Sign Up/Update button - Show if remaining qty OR user has commitment */}
                                 {(remainingQty > 0 || userItemCommitment) && (
-                                  <div className="mt-3">
+                                  <div className="mt-3 flex gap-2">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
                                       size="sm"
                                       variant={userItemCommitment ? "default" : "outline"}
-                                      className="w-full sm:w-auto"
                                     >
                                       {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
                                     </Button>
+                                    {/* Cancel button - Show only if user has commitment */}
+                                    {userItemCommitment && (
+                                      <Button
+                                        onClick={() => handleCancelSignUp(signUpList.id, item.id)}
+                                        size="sm"
+                                        variant="destructive"
+                                        disabled={isCancelling && cancelConfirmId === item.id}
+                                      >
+                                        {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
+                                      </Button>
+                                    )}
                                   </div>
                                 )}
 

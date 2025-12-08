@@ -579,7 +579,7 @@ export function useUserRegistrationDetails(
   return useQuery({
     queryKey: ['user-registration', eventId],
     queryFn: async () => {
-      console.log('[useUserRegistrationDetails] Fetching registration details for event:', eventId);
+      console.log('[useUserRegistrationDetails] 📍 Starting fetch for event:', eventId);
       try {
         const result = await eventsRepository.getUserRegistrationForEvent(eventId!);
         console.log('[useUserRegistrationDetails] ✅ Success - Raw result:', result);
@@ -593,8 +593,19 @@ export function useUserRegistrationDetails(
         }
         console.log('[useUserRegistrationDetails] Full JSON:', JSON.stringify(result, null, 2));
         return result;
-      } catch (error) {
-        console.error('[useUserRegistrationDetails] ❌ Error:', error);
+      } catch (error: any) {
+        console.error('[useUserRegistrationDetails] ❌ Error:', {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+          hasResponse: !!error?.response,
+          errorObject: error,
+        });
+        // Return null on 401/404 instead of throwing
+        if (error?.response?.status === 401 || error?.response?.status === 404) {
+          console.warn('[useUserRegistrationDetails] ⚠️ No registration found or unauthorized (expected for some users)');
+          return null;
+        }
         throw error;
       }
     },

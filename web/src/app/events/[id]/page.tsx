@@ -44,10 +44,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   );
   const isUserRegistered = !!userRsvp;
 
-  // For now, show what we have from userRsvp - the detailed registration endpoint has auth issues
-  // TODO: Fix auth token issue in /my-registration endpoint and re-enable detailed fetch
-  const registrationDetails = null;
-  const isLoadingRegistration = false;
+  // Fetch full registration details with attendee information
+  // Only fetch when user is registered and auth is ready (after hydration)
+  const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
+    (user?.userId && isHydrated) ? id : undefined,
+    isUserRegistered // Only enabled when user is actually registered
+  );
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();

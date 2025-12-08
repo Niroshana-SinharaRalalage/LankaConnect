@@ -140,10 +140,10 @@ public class AuthController : ControllerBase
                 result.Value.TokenExpiresAt
             };
 
-            // Development: Include refresh token in response body for localStorage storage
-            if (_env.IsDevelopment())
+            // Development/Staging: Include refresh token in response body for localStorage storage
+            if (_env.IsDevelopment() || _env.IsStaging())
             {
-                _logger.LogInformation("[Phase 6A.10] Including refreshToken in response body for development mode");
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in response body for {_env.EnvironmentName} mode");
                 return Ok(new
                 {
                     user = response.user,
@@ -195,10 +195,10 @@ public class AuthController : ControllerBase
             // Set new refresh token as HttpOnly cookie
             SetRefreshTokenCookie(result.Value.RefreshToken);
 
-            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
-            if (_env.IsDevelopment())
+            // Phase 6A.10: In development/staging, include refresh token in response body for localStorage mode
+            if (_env.IsDevelopment() || _env.IsStaging())
             {
-                _logger.LogInformation("[Phase 6A.10] Including refreshToken in refresh response for development mode");
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in refresh response for {_env.EnvironmentName} mode");
                 return Ok(new
                 {
                     result.Value.AccessToken,
@@ -349,9 +349,9 @@ public class AuthController : ControllerBase
                 result.Value.TokenExpiresAt
             };
 
-            if (_env.IsDevelopment())
+            if (_env.IsDevelopment() || _env.IsStaging())
             {
-                _logger.LogInformation("[Phase 6A.10] Including refreshToken in Entra response for development mode");
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in Entra response for {_env.EnvironmentName} mode");
                 return Ok(new
                 {
                     entraResponse.user,

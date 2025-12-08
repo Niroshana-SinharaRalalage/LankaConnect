@@ -1,9 +1,66 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-06 (Current Session) - Session 29: Phase 6A.15 Enhanced Sign-Up List UX ✅ COMPLETE*
+*Last Updated: 2025-12-08 (Current Session) - Session 30: Set-Primary Image Button Complete Error Handling ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 29: Phase 6A.15 Enhanced Sign-Up List UX ✅ COMPLETE
+## 🎯 Current Session Status - Session 30: Set-Primary Image Button Complete Error Handling ✅ COMPLETE
+
+### Session 30: Set-Primary Image Button - Complete End-to-End Error Handling Fix - COMPLETE - 2025-12-08
+
+**Status**: ✅ **COMPLETE** (All fixes deployed to staging - Run 270 successful)
+
+**Issue**: "Set as Main" button returned 400 error with generic "ValidationError(s)" message that wasn't properly displayed to users. Multi-layer issue spanning frontend, backend, and database.
+
+**Root Cause Discovery** (Following user's systematic approach):
+1. ✅ Verified API endpoint exists and is reachable (401 without auth, correct)
+2. ✅ Identified error message extraction issue: API client didn't check `.detail` field (ProblemDetails format)
+3. ✅ Found missing error callback: useSetPrimaryImage hook wasn't displaying errors to UI
+4. ✅ Discovered database issue: Multiple images marked as primary for same event (unique constraint violation)
+5. ✅ Identified root cause: EF migrations never ran in deployment, constraint not enforced
+6. ✅ Found deployment issue: dotnet-ef SDK version mismatch
+
+**Multi-Layer Fix Implemented**:
+1. **API Client** (Commit 3257a5e): Extract `.detail` from ProblemDetails response format
+2. **Frontend Hook** (Commit 722727d): Added error callback propagation to display errors in UI
+3. **Backend Handler** (Commit 5be06f2): Detect unique constraint violations and return user-friendly message
+4. **Database Migration** (Commit 67e599d): Fix existing data corruption and enforce consistency
+5. **Deployment Workflow** (Commit 260fbac): Install dotnet-ef 8.0.0 and run migrations before deployment
+
+**Files Modified**:
+- [web/src/infrastructure/api/client/api-client.ts](../web/src/infrastructure/api/client/api-client.ts) - Error message extraction
+- [web/src/presentation/hooks/useImageUpload.ts](../web/src/presentation/hooks/useImageUpload.ts) - Error callback propagation
+- [src/LankaConnect.Application/Events/Commands/SetPrimaryImage/SetPrimaryImageCommand.cs](../src/LankaConnect.Application/Events/Commands/SetPrimaryImage/SetPrimaryImageCommand.cs) - Constraint violation handling
+- [src/LankaConnect.Infrastructure/Data/Migrations/20251208044133_FixEventImagePrimaryDataConsistency.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251208044133_FixEventImagePrimaryDataConsistency.cs) - Data consistency fix
+- [.github/workflows/deploy-staging.yml](../.github/workflows/deploy-staging.yml) - Migration step in deployment
+
+**Build Status**: ✅ All tests passing (91 unit tests)
+
+**Deployment Status**:
+- ✅ Run 265 (api-client fix): SUCCESS
+- ✅ Run 267 (backend error handling): SUCCESS
+- ❌ Run 268 (initial migration): FAILED - SDK version mismatch
+- ❌ Run 269 (deployment fix v1): FAILED - dotnet-ef not found
+- ✅ Run 270 (final fix with explicit tool install): SUCCESS
+
+**Verification Results**:
+- ✅ EF migrations executed successfully in Run 270
+- ✅ Database connection to staging verified
+- ✅ Health check passed
+- ✅ Entra endpoint responding correctly
+- ✅ Container App deployed and running
+
+**Next Steps**:
+- [ ] Manual testing: Click "Set as Main" in staging UI
+- [ ] Verify error messages display correctly
+- [ ] Monitor production readiness before final deployment
+
+**Documentation**: See [PHASE_6A_13_SET_PRIMARY_IMAGE_FIX_SUMMARY.md](./PHASE_6A_13_SET_PRIMARY_IMAGE_FIX_SUMMARY.md) for complete technical details.
+
+---
+
+## 📚 Previous Session Summary
+
+### Session 29: Phase 6A.15 Enhanced Sign-Up List UX ✅ COMPLETE
 
 ### Session 29: Phase 6A.15 - Enhanced Sign-Up List UX with Email Validation - COMPLETE - 2025-12-06
 

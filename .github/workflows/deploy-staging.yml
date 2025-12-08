@@ -106,15 +106,17 @@ jobs:
             --name DATABASE-CONNECTION-STRING \
             --query value -o tsv)
 
-          # Run pending migrations on staging database
+          # Run pending migrations on staging database from the API project
           echo "Applying pending migrations to staging database..."
-          dotnet tool install -g dotnet-ef
-          cd src/LankaConnect.Infrastructure
+          cd src/LankaConnect.API
+
+          # Use dotnet ef from project context (respects .NET 8 SDK)
+          # No need to install globally - dotnet ef is available via the SDK
           dotnet ef database update \
             --connection "$DB_CONNECTION" \
-            --project LankaConnect.Infrastructure.csproj \
-            --startup-project ../LankaConnect.API/LankaConnect.API.csproj \
+            --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
             --verbose
+
           echo "✅ Migrations completed successfully"
 
       - name: Update Container App

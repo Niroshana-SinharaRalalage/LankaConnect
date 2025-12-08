@@ -98,6 +98,25 @@ jobs:
           az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name JWT-SECRET-KEY --query value -o tsv > /dev/null
           echo "Key Vault secrets validated ✅"
 
+      - name: Run EF Migrations
+        run: |
+          # Retrieve database connection string from Key Vault
+          DB_CONNECTION=$(az keyvault secret show \
+            --vault-name ${{ env.KEY_VAULT_NAME }} \
+            --name DATABASE-CONNECTION-STRING \
+            --query value -o tsv)
+
+          # Run pending migrations on staging database
+          echo "Applying pending migrations to staging database..."
+          dotnet tool install -g dotnet-ef
+          cd src/LankaConnect.Infrastructure
+          dotnet ef database update \
+            --connection "$DB_CONNECTION" \
+            --project LankaConnect.Infrastructure.csproj \
+            --startup-project ../LankaConnect.API/LankaConnect.API.csproj \
+            --verbose
+          echo "✅ Migrations completed successfully"
+
       - name: Update Container App
         run: |
           # Get Key Vault URI

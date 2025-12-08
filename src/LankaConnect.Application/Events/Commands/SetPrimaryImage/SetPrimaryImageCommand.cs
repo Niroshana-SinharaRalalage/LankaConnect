@@ -47,12 +47,17 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
 
             return Result.Success();
         }
-        catch (Exception ex) when (ex.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (ex.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase) ||
+                                       ex.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                                       ex.Message.Contains("IX_EventImages_EventId_IsPrimary_True", StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Failure("Failed to set image as primary: data integrity issue detected. Please try again.");
+            // Unique constraint violation on primary image index
+            // This means there's already another image marked as primary for this event
+            return Result.Failure("Failed to set image as primary: only one image per event can be marked as primary. Please ensure the previous primary image was unmarked.");
         }
         catch (Exception ex)
         {
+            // Log the full exception for debugging
             return Result.Failure($"An unexpected error occurred: {ex.Message}");
         }
     }

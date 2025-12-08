@@ -130,8 +130,9 @@ export function SignUpCommitmentModal({
       newErrors.email = 'Invalid email format';
     }
 
-    if (quantity < 1) {
-      newErrors.quantity = 'Quantity must be at least 1';
+    // Allow quantity = 0 for cancellation, otherwise must be at least 1
+    if (quantity < 0) {
+      newErrors.quantity = 'Quantity cannot be negative';
     }
 
     if (quantity > maxQuantity) {
@@ -259,11 +260,11 @@ export function SignUpCommitmentModal({
       <DialogContent className="max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{existingCommitment ? 'Update Commitment' : 'Commit to Bring Item'}</DialogTitle>
+            <DialogTitle>{existingCommitment ? 'Update Sign Up' : 'Sign Up to Bring Item'}</DialogTitle>
             <DialogDescription>
               {existingCommitment
-                ? 'Update your commitment details'
-                : 'Fill in your details to commit to bringing this item'}
+                ? 'Update your sign-up details (set quantity to 0 to cancel)'
+                : 'Fill in your details to sign up for bringing this item'}
             </DialogDescription>
           </DialogHeader>
 
@@ -384,17 +385,22 @@ export function SignUpCommitmentModal({
                 htmlFor="quantity"
                 className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
               >
-                Quantity * (max: {maxQuantity})
+                Quantity * {existingCommitment && <span className="text-xs text-neutral-500">(0 to cancel)</span>} (max: {maxQuantity})
               </label>
               <input
                 id="quantity"
                 type="number"
-                min="1"
+                min="0"
                 max={maxQuantity}
                 value={quantity}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value) || 1;
-                  setQuantity(Math.max(1, Math.min(val, maxQuantity)));
+                  const val = parseInt(e.target.value);
+                  // Allow 0 for cancellation, otherwise clamp to valid range
+                  if (isNaN(val)) {
+                    setQuantity(0);
+                  } else {
+                    setQuantity(Math.max(0, Math.min(val, maxQuantity)));
+                  }
                 }}
                 className={`w-full px-3 py-2 border rounded-md ${
                   errors.quantity
@@ -403,6 +409,11 @@ export function SignUpCommitmentModal({
                 } focus:outline-none focus:ring-2`}
               />
               {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity}</p>}
+              {existingCommitment && quantity === 0 && (
+                <p className="mt-1 text-xs text-orange-600 font-medium">
+                  ⚠️ Setting to 0 will cancel your entire commitment
+                </p>
+              )}
             </div>
 
             {/* Notes Field */}
@@ -464,8 +475,8 @@ export function SignUpCommitmentModal({
                 {isValidatingEmail
                   ? 'Validating email...'
                   : isSubmitting
-                    ? existingCommitment ? 'Updating...' : 'Confirming...'
-                    : existingCommitment ? 'Update Commitment' : 'Confirm Commitment'}
+                    ? existingCommitment ? 'Updating...' : 'Signing up...'
+                    : existingCommitment ? 'Update Sign Up' : 'Confirm Sign Up'}
               </Button>
             </div>
           </DialogFooter>

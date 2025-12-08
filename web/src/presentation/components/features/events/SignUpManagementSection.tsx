@@ -338,7 +338,12 @@ export function SignUpManagementSection({
                               <div key={item.id} className="border rounded-lg p-4 space-y-2">
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <p className="font-medium">{item.itemDescription}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{item.itemDescription}</p>
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
+                                        Required: {item.quantity}
+                                      </span>
+                                    </div>
                                     {item.notes && (
                                       <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
                                     )}
@@ -382,8 +387,8 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {/* Sign Up/Update button - Always available when there's remaining quantity */}
-                                {remainingQty > 0 && (
+                                {/* Sign Up/Update button - Show if remaining qty OR user has commitment */}
+                                {(remainingQty > 0 || userItemCommitment) && (
                                   <div className="mt-3">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
@@ -391,11 +396,12 @@ export function SignUpManagementSection({
                                       variant={userItemCommitment ? "default" : "outline"}
                                       className="w-full sm:w-auto"
                                     >
-                                      {userItemCommitment ? 'Update Commitment' : 'Sign Up'}
+                                      {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
                                     </Button>
                                   </div>
                                 )}
 
+                                {/* Your commitment info */}
                                 {userItemCommitment && (
                                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                                     <p className="text-sm font-medium text-blue-800">
@@ -404,10 +410,11 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {remainingQty === 0 && !userItemCommitment && (
+                                {/* All slots filled message */}
+                                {remainingQty === 0 && (
                                   <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
                                     <p className="text-sm font-medium text-green-800">
-                                      ✓ Fully committed - Thank you everyone!
+                                      ✓ All {item.quantity} slots filled - Thank you everyone!
                                     </p>
                                   </div>
                                 )}

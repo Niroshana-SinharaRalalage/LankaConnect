@@ -283,7 +283,19 @@ export class EventsRepository {
    */
   async getUserRegistrationForEvent(eventId: string): Promise<RegistrationDetailsDto | null> {
     try {
-      return await apiClient.get<RegistrationDetailsDto>(`${this.basePath}/${eventId}/my-registration`);
+      const response = await apiClient.get<any>(`${this.basePath}/${eventId}/my-registration`);
+
+      // Backend returns Result<T> wrapper, unwrap it
+      if (response && response.isSuccess && response.value) {
+        return response.value as RegistrationDetailsDto;
+      }
+
+      // If response is already the DTO (for backward compatibility)
+      if (response && response.id && response.eventId) {
+        return response as RegistrationDetailsDto;
+      }
+
+      return null;
     } catch (error: any) {
       // Return null if no registration found (404)
       if (error?.response?.status === 404) {

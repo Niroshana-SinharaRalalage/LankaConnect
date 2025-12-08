@@ -429,14 +429,20 @@ export function SignUpManagementSection({
                                   </div>
                                 </div>
 
-                                {/* Progress bar */}
-                                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                  <div
-                                    className={`h-2 rounded-full ${
-                                      percentCommitted === 100 ? 'bg-green-500' : 'bg-blue-500'
-                                    }`}
-                                    style={{ width: `${percentCommitted}%` }}
-                                  />
+                                {/* Progress bar with counts */}
+                                <div className="space-y-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full ${
+                                        percentCommitted === 100 ? 'bg-green-500' : 'bg-blue-500'
+                                      }`}
+                                      style={{ width: `${percentCommitted}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-xs text-muted-foreground flex justify-between">
+                                    <span>{item.committedQuantity} of {item.quantity} filled</span>
+                                    <span>{remainingQty} remaining</span>
+                                  </div>
                                 </div>
 
                                 {/* Participants - Show names and quantities */}

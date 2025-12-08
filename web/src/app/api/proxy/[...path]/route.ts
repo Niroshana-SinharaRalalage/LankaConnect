@@ -227,7 +227,8 @@ async function forwardRequest(
     }
 
     // Create Next.js response - handle null body appropriately
-    const responseContent = responseBody === null ? '' : JSON.stringify(responseBody);
+    // Return 'null' as JSON string for null responses (not empty string)
+    const responseContent = responseBody === null ? 'null' : JSON.stringify(responseBody);
     const nextResponse = new NextResponse(responseContent, {
       status: response.status,
       headers: {

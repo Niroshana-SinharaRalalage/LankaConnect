@@ -70,7 +70,6 @@ export function SignUpCommitmentModal({
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
 
   // Auto-fill user details and existing commitment data when modal opens
   useEffect(() => {
@@ -145,35 +144,6 @@ export function SignUpCommitmentModal({
 
   // Handle form submission
   // Phase 6A.15: Enhanced with email validation to ensure user is registered for event
-  // Handle canceling existing commitment
-  const handleCancelCommitment = async () => {
-    if (!existingCommitment || !user?.userId) return;
-
-    try {
-      setIsCancelling(true);
-      // Call API to cancel the commitment (set quantity to 0)
-      await eventsRepository.commitToSignUpItem(
-        eventId,
-        signUpListId,
-        item.id,
-        {
-          userId: user.userId,
-          quantity: 0, // 0 signals cancellation
-          contactName: name,
-          contactEmail: email,
-          contactPhone: phone,
-          notes: notes,
-        }
-      );
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Failed to cancel commitment:', error);
-      setErrors({ submit: error instanceof Error ? error.message : 'Failed to cancel commitment' });
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -257,7 +227,7 @@ export function SignUpCommitmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{existingCommitment ? 'Update Sign Up' : 'Sign Up to Bring Item'}</DialogTitle>
@@ -451,26 +421,13 @@ export function SignUpCommitmentModal({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={isSubmitting || isValidatingEmail || isCancelling}
-                className="flex-1"
+                disabled={isSubmitting || isValidatingEmail}
               >
                 Close
               </Button>
-              {existingCommitment && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleCancelCommitment}
-                  disabled={isSubmitting || isValidatingEmail || isCancelling}
-                  className="flex-1"
-                >
-                  {isCancelling ? 'Cancelling...' : 'Cancel Commitment'}
-                </Button>
-              )}
               <Button
                 type="submit"
-                disabled={isSubmitting || isValidatingEmail || isCancelling}
-                className="flex-1"
+                disabled={isSubmitting || isValidatingEmail}
               >
                 {isValidatingEmail
                   ? 'Validating email...'

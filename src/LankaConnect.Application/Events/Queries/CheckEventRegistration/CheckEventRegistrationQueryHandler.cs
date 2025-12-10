@@ -36,9 +36,10 @@ public class CheckEventRegistrationQueryHandler
         var emailToCheck = request.Email.Trim();
 
         // Step 1: Check if email belongs to a LankaConnect member (User account)
-        // Note: SQL Server comparison is case-insensitive by default with default collation
+        // Note: u.Email is a Value Object, must use .Value to access underlying string for EF Core translation
+        // SQL Server comparison is case-insensitive by default with default collation
         var user = await _context.Users
-            .Where(u => u.Email == emailToCheck)
+            .Where(u => u.Email.Value == emailToCheck)
             .Select(u => new { u.Id })
             .FirstOrDefaultAsync(cancellationToken);
 

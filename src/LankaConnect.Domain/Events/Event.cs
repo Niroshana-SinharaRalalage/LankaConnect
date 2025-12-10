@@ -913,6 +913,49 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Unmarks the currently primary image (if any) without setting a new primary
+    /// Used for two-phase primary image switching to avoid unique constraint violations
+    /// Phase 6A.13: Primary image selection feature - fix for EF Core update ordering
+    /// </summary>
+    public Result UnmarkCurrentPrimaryImage()
+    {
+        var currentPrimary = _images.FirstOrDefault(i => i.IsPrimary);
+        if (currentPrimary != null)
+        {
+            currentPrimary.UnmarkAsPrimary();
+            MarkAsUpdated();
+        }
+        // Success even if no primary exists - it's a valid state
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks the specified image as primary (assumes no other image is currently primary)
+    /// Used for two-phase primary image switching to avoid unique constraint violations
+    /// Phase 6A.13: Primary image selection feature - fix for EF Core update ordering
+    /// </summary>
+    public Result MarkImageAsPrimary(Guid imageId)
+    {
+        // Invariant: Image must belong to this event
+        var image = _images.FirstOrDefault(i => i.Id == imageId);
+        if (image == null)
+            return Result.Failure($"Image with ID {imageId} not found in this event");
+
+        // Check if image is already primary
+        if (image.IsPrimary)
+            return Result.Success(); // Already primary, no action needed
+
+        // Mark the selected image as primary
+        image.SetAsPrimary();
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new PrimaryImageSetDomainEvent(Id, imageId));
+
+        return Result.Success();
+    }
+
     #endregion
 
     #region Video Management

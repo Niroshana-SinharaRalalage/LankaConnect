@@ -37,19 +37,26 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
             if (@event == null)
                 return Result.Failure($"Event with ID {request.EventId} not found");
 
-            // 2. Set primary image (domain logic handles unmarking previous primary)
-            var result = @event.SetPrimaryImage(request.ImageId);
-            if (!result.IsSuccess)
-                return result;
+            // 2. Set primary image using two-phase approach to avoid unique constraint violation
+            // Phase 1: Unmark current primary (if any)
+            var unmarkResult = @event.UnmarkCurrentPrimaryImage();
+            if (!unmarkResult.IsSuccess)
+                return unmarkResult;
 
-            // 3. Save changes
+            // Save the unmark operation first to ensure database has no primary
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            // Phase 2: Mark new primary
+            var markResult = @event.MarkImageAsPrimary(request.ImageId);
+            if (!markResult.IsSuccess)
+                return markResult;
+
+            // Save the mark operation
             await _unitOfWork.CommitAsync(cancellationToken);
 
             return Result.Success();
         }
-        catch (Exception ex) when (ex.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase) ||
-                                       ex.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
-                                       ex.Message.Contains("IX_EventImages_EventId_IsPrimary_True", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (IsUniqueConstraintViolation(ex))
         {
             // Unique constraint violation on primary image index
             // This means there's already another image marked as primary for this event
@@ -60,5 +67,25 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
             // Log the full exception for debugging
             return Result.Failure($"An unexpected error occurred: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Checks if the exception (or any inner exception) indicates a unique constraint violation
+    /// </summary>
+    private static bool IsUniqueConstraintViolation(Exception ex)
+    {
+        var current = ex;
+        while (current != null)
+        {
+            if (current.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("IX_EventImages_EventId_IsPrimary_True", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("23505", StringComparison.OrdinalIgnoreCase)) // PostgreSQL unique violation error code
+            {
+                return true;
+            }
+            current = current.InnerException;
+        }
+        return false;
     }
 }

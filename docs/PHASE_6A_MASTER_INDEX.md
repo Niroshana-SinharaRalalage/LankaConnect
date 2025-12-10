@@ -1,12 +1,12 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-12-01
+**Last Updated**: 2025-12-10
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
 ---
 
-## Phase 6A: MVP Foundation (12 Features)
+## Phase 6A: MVP Foundation (Extended Features)
 
 | Phase | Feature | Status | Document | Implemented |
 |-------|---------|--------|----------|-------------|
@@ -24,6 +24,8 @@
 | 6A.11 | Subscription Management UI | ⏳ Planned | TBD | Not started |
 | 6A.12 | Event Media Upload System | ✅ Complete | [PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md](./PHASE_6A12_EVENT_MEDIA_UPLOAD_SUMMARY.md) | 2025-12-01 |
 | 6A.13 | Edit Sign-Up List | ✅ Complete | [PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md](./PHASE_6A_13_EDIT_SIGNUP_LIST_SUMMARY.md) | 2025-12-04 |
+| 6A.14-22 | Multi-Attendee & Sign-Up Fixes | ✅ Complete | See PROGRESS_TRACKER.md Sessions 29-31 | 2025-12-06 to 2025-12-09 |
+| 6A.23 | Anonymous Sign-Up Workflow | ✅ Complete | PROGRESS_TRACKER.md Session 32 | 2025-12-10 |
 
 ---
 

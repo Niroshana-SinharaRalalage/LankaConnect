@@ -1,9 +1,71 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-09 (Current Session) - Session 31: HMR Process Issue Diagnosis & Resolution ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 32: Phase 6A.23 Anonymous Sign-Up Workflow ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 31: HMR Process Issue Diagnosis & Resolution ✅ COMPLETE
+## 🎯 Current Session Status - Session 32: Phase 6A.23 Anonymous Sign-Up Workflow ✅ COMPLETE
+
+### Session 32: Phase 6A.23 - Anonymous Sign-Up Workflow - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (Backend + Frontend deployed to staging)
+
+**Original Requirement (Phase 6A.15)**: Sign-up for items should NOT require login. Email validation happens on form submit, not before modal opens.
+
+**UX Flow Implemented**:
+```
+User clicks "Sign Up"
+  │
+  ├─ Not logged in?
+  │   │
+  │   ├─ Check email against Users table
+  │   │
+  │   ├─ Has User account?
+  │   │   └─ YES → "You're a member! Please log in" + login link
+  │   │   └─ NO  → Check event registration
+  │   │       │
+  │   │       ├─ Registered for event?
+  │   │       │   └─ YES → Allow anonymous commitment
+  │   │       │   └─ NO  → "Please register for event first" + link
+  │   │
+  └─ Logged in?
+      └─ Check event registration
+          └─ Registered? → Allow commitment
+          └─ Not registered? → "Register for event first"
+```
+
+**Backend Implementation**:
+1. ✅ `CheckEventRegistrationQuery` + Handler - Checks Users table AND Registrations table
+2. ✅ `CommitToSignUpItemAnonymousCommand` + Handler - `[AllowAnonymous]` endpoint
+3. ✅ Deterministic GUID generation from email for anonymous user tracking
+
+**Frontend Implementation**:
+1. ✅ Updated `SignUpCommitmentModal` with three-state email validation
+2. ✅ Added `onCommitAnonymous` handler to `SignUpManagementSection`
+3. ✅ Updated types and repository with new endpoint
+
+**Files Created**:
+- `src/LankaConnect.Application/Events/Queries/CheckEventRegistration/CheckEventRegistrationQuery.cs`
+- `src/LankaConnect.Application/Events/Queries/CheckEventRegistration/CheckEventRegistrationQueryHandler.cs`
+- `src/LankaConnect.Application/Events/Commands/CommitToSignUpItemAnonymous/CommitToSignUpItemAnonymousCommand.cs`
+- `src/LankaConnect.Application/Events/Commands/CommitToSignUpItemAnonymous/CommitToSignUpItemAnonymousCommandHandler.cs`
+
+**Files Modified**:
+- `src/LankaConnect.API/Controllers/EventsController.cs` - New anonymous endpoint
+- `web/src/infrastructure/api/types/events.types.ts` - New interfaces
+- `web/src/infrastructure/api/repositories/events.repository.ts` - New methods
+- `web/src/presentation/components/features/events/SignUpCommitmentModal.tsx` - Email validation UX
+- `web/src/presentation/components/features/events/SignUpManagementSection.tsx` - Anonymous handler
+
+**Build Status**:
+- ✅ Backend: Build succeeded, 0 errors
+- ✅ Frontend: Compiled successfully
+- ✅ Deployed to staging (workflow run 20085665830)
+
+**Commit**: `aeb3fa4` - feat(signup): Phase 6A.23 - Implement anonymous sign-up workflow
+
+---
+
+## 📚 Previous Sessions
 
 ### Session 31: Developer Workflow - HMR Failure Diagnosis - COMPLETE - 2025-12-09
 

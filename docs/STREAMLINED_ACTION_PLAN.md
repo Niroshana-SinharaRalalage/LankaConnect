@@ -7,7 +7,35 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 34: PROXY QUERY PARAMETER FIX (2025-12-10)
+## ✅ CURRENT STATUS - SESSION 36: PHASE 6A.14 EDIT REGISTRATION DETAILS (2025-12-10)
+**Date**: 2025-12-10 (Session 36)
+**Session**: Phase 6A.14 - Edit Registration Details (Full-stack TDD Implementation)
+**Status**: ✅ COMPLETE - Full-stack implementation deployed to staging
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Commit**: `d4ee03f` - feat(registration): Phase 6A.14 - Implement edit registration details
+
+### SESSION 36: PHASE 6A.14 - EDIT REGISTRATION DETAILS (2025-12-10)
+**Goal**: Allow users to update registration details (attendees, contact info) after initial RSVP
+
+**Implementation (TDD)**:
+- **Domain**: `Registration.UpdateDetails()`, `Event.UpdateRegistrationDetails()`, `RegistrationDetailsUpdatedEvent`
+- **Application**: `UpdateRegistrationDetailsCommand` + Handler + FluentValidation validator
+- **API**: `PUT /api/events/{eventId}/my-registration` endpoint
+- **Frontend**: `EditRegistrationModal.tsx` + `useUpdateRegistrationDetails` hook
+
+**Business Rules**:
+- Paid registrations: Cannot change attendee count
+- Free events: Can add/remove attendees (within capacity)
+- Max 10 attendees per registration
+- Cannot edit cancelled/refunded registrations
+
+**Test Results**: 17 domain tests + 13 handler tests + 69 registration tests (100% pass)
+
+**Deployment**: ✅ Staging (workflow run 20114003638)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 34: PROXY QUERY PARAMETER FIX (2025-12-10)
 **Date**: 2025-12-10 (Session 34)
 **Session**: Proxy Query Parameter Fix - Event Filtration Bug
 **Status**: ✅ COMPLETE - Critical bug fix deployed

@@ -1,9 +1,72 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-10 (Current Session) - Session 35: Event Images Display Fix ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 36: Phase 6A.14 Edit Registration Details ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 35: Event Images Display Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 36: Phase 6A.14 Edit Registration Details ✅ COMPLETE
+
+### Session 36: Phase 6A.14 - Edit Registration Details - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (Full-stack implementation with TDD)
+
+**Requirement**: Allow users to update their event registration details (attendee names, ages, contact information) after initial RSVP.
+
+**Implementation (TDD Approach)**:
+
+**Domain Layer**:
+- `Registration.UpdateDetails()` - Updates attendees and contact info with validation
+- `Event.UpdateRegistrationDetails()` - Aggregate root method to find and update user's registration
+- `RegistrationDetailsUpdatedEvent` - Domain event raised on successful update
+- **Tests**: 17 domain layer tests covering valid updates, invalid status, payment restrictions, validation
+
+**Application Layer**:
+- `UpdateRegistrationDetailsCommand` - CQRS command with attendee list and contact info
+- `UpdateRegistrationDetailsCommandHandler` - Orchestrates update through aggregate root
+- `UpdateRegistrationDetailsCommandValidator` - FluentValidation rules
+- **Tests**: 13 command handler tests (event not found, no registration, success cases, etc.)
+
+**API Layer**:
+- `PUT /api/events/{eventId}/my-registration` - New endpoint in EventsController
+- `UpdateRegistrationRequest` and `UpdateRegistrationAttendeeDto` DTOs
+
+**Frontend**:
+- `EditRegistrationModal.tsx` - Modal dialog for editing registration
+- `useUpdateRegistrationDetails()` - React Query mutation hook
+- Wired up in `events/[id]/page.tsx` - replaces placeholder "Edit Registration" button
+
+**Business Rules Enforced**:
+- Paid registrations cannot change attendee count (locked to original)
+- Free events can add/remove attendees (within event capacity)
+- Maximum 10 attendees per registration
+- Cannot edit cancelled or refunded registrations
+- Contact info (email, phone) always required
+
+**Files Changed**:
+- `src/LankaConnect.Domain/Events/Registration.cs` (UpdateDetails method)
+- `src/LankaConnect.Domain/Events/Event.cs` (UpdateRegistrationDetails method)
+- `src/LankaConnect.Domain/Events/DomainEvents/RegistrationDetailsUpdatedEvent.cs` (NEW)
+- `src/LankaConnect.Application/Events/Commands/UpdateRegistrationDetails/` (NEW - 3 files)
+- `src/LankaConnect.API/Controllers/EventsController.cs` (PUT endpoint)
+- `tests/LankaConnect.Application.Tests/Events/Domain/RegistrationUpdateDetailsTests.cs` (NEW)
+- `tests/LankaConnect.Application.Tests/Events/Commands/UpdateRegistrationDetailsCommandHandlerTests.cs` (NEW)
+- `web/src/infrastructure/api/types/events.types.ts` (UpdateRegistrationRequest types)
+- `web/src/infrastructure/api/repositories/events.repository.ts` (updateRegistrationDetails method)
+- `web/src/presentation/hooks/useEvents.ts` (useUpdateRegistrationDetails hook)
+- `web/src/presentation/components/features/events/EditRegistrationModal.tsx` (NEW)
+- `web/src/app/events/[id]/page.tsx` (Modal integration)
+
+**Test Results**:
+- ✅ 17 domain layer tests passed
+- ✅ 13 command handler tests passed
+- ✅ 69 total registration tests passed (no regression)
+- ✅ Frontend build successful (0 errors)
+- ✅ Backend build successful (0 errors)
+
+**Commit**: `d4ee03f` - feat(registration): Phase 6A.14 - Implement edit registration details
+
+**Deployment**: Pushed to develop → GitHub Actions deploying to Azure staging
+
+---
 
 ### Session 35: Event Images Display Fix - COMPLETE - 2025-12-10
 

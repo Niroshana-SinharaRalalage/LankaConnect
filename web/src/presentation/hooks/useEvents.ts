@@ -394,7 +394,7 @@ export function useRsvpToEvent() {
       };
       return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);
     },
-    onMutate: async ({ eventId }) => {
+    onMutate: async ({ eventId, quantity, attendees }) => {
       // Cancel queries
       await queryClient.cancelQueries({ queryKey: eventKeys.detail(eventId) });
 
@@ -402,12 +402,15 @@ export function useRsvpToEvent() {
       const previousEvent = queryClient.getQueryData(eventKeys.detail(eventId));
 
       // Optimistically update RSVP count
+      // Session 30: Fixed to use actual attendee count for multi-attendee registrations
+      const attendeeCount = attendees?.length || quantity || 1;
+
       queryClient.setQueryData(eventKeys.detail(eventId), (old: EventDto | undefined) => {
         if (!old) return old;
 
         return {
           ...old,
-          currentRegistrations: old.currentRegistrations + 1,
+          currentRegistrations: old.currentRegistrations + attendeeCount,
         };
       });
 

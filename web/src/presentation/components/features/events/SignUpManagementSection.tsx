@@ -91,6 +91,13 @@ export function SignUpManagementSection({
   const commitToSignUpItem = useCommitToSignUpItem();
   const removeSignUpListMutation = useRemoveSignUpList();
 
+  // Initialize active tab on first load (moved here to fix hooks order)
+  React.useEffect(() => {
+    if (activeTabId === null && signUpLists && signUpLists.length > 0) {
+      setActiveTabId(signUpLists[0].id);
+    }
+  }, [signUpLists]);
+
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
     if (!userId) {
@@ -202,6 +209,13 @@ export function SignUpManagementSection({
   // Open commitment modal - Phase 6A.15: Now available for all users (anonymous and authenticated)
   // Pass existing commitment if available (for pre-filling the form)
   const openCommitmentModal = (signUpListId: string, item: SignUpItemDto, existingCommitment?: SignUpCommitmentDto) => {
+    // Session 30: Check if user is logged in before opening modal
+    if (!userId) {
+      // Redirect to login with return URL
+      router.push(`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`);
+      return;
+    }
+
     setSelectedSignUpListId(signUpListId);
     setSelectedItem(item);
     setSelectedExistingCommitment(existingCommitment || null);
@@ -283,13 +297,6 @@ export function SignUpManagementSection({
       </div>
     );
   }
-
-  // Initialize active tab on first load
-  React.useEffect(() => {
-    if (activeTabId === null && signUpLists && signUpLists.length > 0) {
-      setActiveTabId(signUpLists[0].id);
-    }
-  }, [signUpLists]);
 
   // Determine which lists to show
   const listsToShow = activeTabId

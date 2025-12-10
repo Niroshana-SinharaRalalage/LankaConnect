@@ -410,7 +410,21 @@ export function SignUpCommitmentModal({
             {/* Submit Error */}
             {errors.submit && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-800">{errors.submit}</p>
+                <p className="text-sm text-red-800">
+                  {errors.submit}
+                  {/* Session 30: Provide login link when user session is missing */}
+                  {errors.submit.includes('User ID not available') && (
+                    <>
+                      {' '}
+                      <Link
+                        href={`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`}
+                        className="font-medium text-red-900 underline hover:text-red-700"
+                      >
+                        Click here to log in
+                      </Link>
+                    </>
+                  )}
+                </p>
               </div>
             )}
           </div>

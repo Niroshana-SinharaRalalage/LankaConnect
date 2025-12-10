@@ -13,7 +13,7 @@ import { SignUpManagementSection } from '@/presentation/components/features/even
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState } from 'react';
@@ -42,14 +42,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: userRsvp, isLoading: isLoadingRsvp } = useUserRsvpForEvent(
     (user?.userId && isHydrated) ? id : undefined
   );
-  const isUserRegistered = !!userRsvp;
 
   // Fetch full registration details with attendee information
-  // Only fetch when user is registered and auth is ready (after hydration)
+  // Only fetch when auth is ready (after hydration)
+  // Fix: Always fetch if userRsvp exists so we can check the status
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
     (user?.userId && isHydrated) ? id : undefined,
-    isUserRegistered // Only enabled when user is actually registered
+    !!userRsvp // Fetch details whenever userRsvp exists (even if cancelled)
   );
+
+  // Fix: Check registration status - user is only "registered" if status is NOT "Cancelled"
+  const isUserRegistered = !!userRsvp && registrationDetails?.status !== RegistrationStatus.Cancelled;
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -104,8 +107,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           return; // Don't set isProcessing false - user is being redirected
         }
 
-        // Free event - show success message and reload after a short delay
-        alert('Registration successful!');
+        // Free event - reload after a short delay
+        // Session 30: Removed alert popup for better UX
         // Give React Query time to invalidate cache and refetch
         setTimeout(() => {
           window.location.reload();
@@ -114,9 +117,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         // Anonymous registration
         await eventsRepository.registerAnonymous(id, data);
 
-        // Show success message
-        alert('Registration successful! We\'ve sent a confirmation email to ' + data.email);
-
+        // Session 30: Removed alert popup for better UX
         // Reload to show updated registration count after a short delay
         setTimeout(() => {
           window.location.reload();
@@ -154,8 +155,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setError(null);
       await eventsRepository.addToWaitingList(id);
       setIsJoiningWaitlist(false);
-      // Show success message or update UI
-      alert('Successfully joined waitlist! You will be notified when a spot becomes available.');
+      // Session 30: Removed alert popup for better UX
+      // The UI will update automatically after page reload
     } catch (err) {
       console.error('Failed to join waitlist:', err);
       setError(err instanceof Error ? err.message : 'Failed to join waitlist. Please try again.');
@@ -419,18 +420,77 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <Card className="border-2" style={{ borderColor: '#FF7900' }}>
               <CardHeader>
                 <CardTitle>
-                  {isUserRegistered ? 'Your Registration' : 'Register for this Event'}
+                  {isUserRegistered
+                    ? 'Your Registration'
+                    : registrationDetails?.status === RegistrationStatus.Cancelled
+                    ? 'Registration Cancelled'
+                    : 'Register for this Event'}
                 </CardTitle>
                 <CardDescription>
                   {isUserRegistered
                     ? 'You are already registered for this event!'
+                    : registrationDetails?.status === RegistrationStatus.Cancelled
+                    ? 'Your registration for this event has been cancelled. You can register again if you wish.'
                     : isFull
                     ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
                     : 'Reserve your spot now!'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isUserRegistered ? (
+                {registrationDetails?.status === RegistrationStatus.Cancelled ? (
+                  // Show cancelled status with option to re-register
+                  <div className="space-y-6">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg
+                          className="h-5 w-5 text-gray-600 dark:text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          Registration Cancelled
+                        </h3>
+                      </div>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                        Your registration for this event was cancelled{registrationDetails.updatedAt ? ` on ${new Date(registrationDetails.updatedAt).toLocaleDateString()}` : ''}.
+                      </p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        You can register again using the form below.
+                      </p>
+                    </div>
+
+                    {/* Show registration form for re-registration */}
+                    {!isFull ? (
+                      <EventRegistrationForm
+                        eventId={id}
+                        spotsLeft={spotsLeft}
+                        isFree={event.isFree}
+                        ticketPrice={event.ticketPriceAmount ?? undefined}
+                        hasDualPricing={event.hasDualPricing}
+                        adultPrice={event.adultPriceAmount ?? undefined}
+                        childPrice={event.childPriceAmount ?? undefined}
+                        childAgeLimit={event.childAgeLimit ?? undefined}
+                        isProcessing={isProcessing}
+                        onSubmit={handleRegistration}
+                        error={error}
+                      />
+                    ) : (
+                      <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-sm text-orange-800">
+                          This event is currently full. The waitlist feature is coming soon.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : isUserRegistered ? (
                   // Show registration status when user is already registered
                   <div className="space-y-4">
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">

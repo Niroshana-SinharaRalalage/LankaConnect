@@ -1,9 +1,60 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-09 (Current Session) - Session 30: Multi-Attendee Re-Registration & Sign-Up Auth UX Improvements ✅ COMPLETE*
+*Last Updated: 2025-12-09 (Current Session) - Session 31: HMR Process Issue Diagnosis & Resolution ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 30: Multi-Attendee Re-Registration & Sign-Up Auth UX Improvements ✅ COMPLETE
+## 🎯 Current Session Status - Session 31: HMR Process Issue Diagnosis & Resolution ✅ COMPLETE
+
+### Session 31: Developer Workflow - HMR Failure Diagnosis - COMPLETE - 2025-12-09
+
+**Status**: ✅ **COMPLETE** (Root cause identified, dev server restarted, build verified 0 errors)
+
+**Issue Reported**: UI showing stale code after hard refresh - registration cancellation UI not updating
+
+**Root Cause Identified**: Windows File Watcher degradation after 28+ hours of dev server runtime
+- Dev server started: Dec 8, 2025 at 2:17 PM
+- UI changes made: Dec 9, 2025 at 6:37 PM (28 hours later)
+- HMR failed to detect file changes due to Windows ReadDirectoryChangesW buffer overflow
+- UI served old code despite file modifications
+
+**Resolution**:
+1. ✅ Force killed stale dev server process (PID 58336)
+2. ✅ Cleaned Next.js build cache (.next directory)
+3. ✅ Restarted dev server - fresh code loaded on port 3000 in 2.3s
+4. ✅ Build verified: 0 errors, 0 warnings
+
+**Key Decisions** (Senior Engineering Discipline):
+- ❌ **REJECTED**: NPM script shortcuts (dev:clean, dev:restart) - creates technical debt
+- ✅ **APPROVED**: Developer discipline - restart dev server every 12 hours
+- ✅ **APPROVED**: Root cause documentation for team education
+- ✅ **OUTCOME**: Process/workflow improvement, not code changes
+
+**Documentation Created**:
+- [HMR_FAILURE_ROOT_CAUSE_ANALYSIS.md](./HMR_FAILURE_ROOT_CAUSE_ANALYSIS.md) - Full technical analysis
+- [HMR_FAILURE_EXECUTIVE_SUMMARY.md](./HMR_FAILURE_EXECUTIVE_SUMMARY.md) - Leadership summary
+- [ADR-004-HMR-Failure-Analysis-And-Prevention.md](./architecture/ADR-004-HMR-Failure-Analysis-And-Prevention.md) - Architectural decision record
+
+**Lesson Learned**: Long-running processes degrade. The fix is not code - it's developer workflow discipline. Restart dev server regularly to maintain HMR reliability.
+
+**Files Modified**:
+- `web/package.json` - Reverted NPM shortcuts to avoid technical debt (current session)
+- `web/src/app/events/[id]/page.tsx` - Registration status UI fix (previous session commit c58af05)
+
+**Build Status**:
+- ✅ Frontend build: 0 errors, 0 warnings
+- ✅ Dev server running fresh on port 3000
+- ✅ All changes verified
+
+**Next Steps**:
+- [ ] Create developer workflow best practices guide
+- [ ] Update team on 12-hour dev server restart policy
+- [ ] Monitor HMR reliability with new workflow
+
+---
+
+## 📚 Previous Sessions
+
+### Session 30: Multi-Attendee Re-Registration & Sign-Up Auth UX Improvements ✅ COMPLETE
 
 ### Session 30: Multi-Bug Fix Session - COMPLETE - 2025-12-09
 

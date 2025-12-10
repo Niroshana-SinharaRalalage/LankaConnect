@@ -80,7 +80,8 @@ public class SetPrimaryImageCommandTests
         image3.IsPrimary.Should().BeFalse("image3 should not be primary");
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Handler uses two-phase commit: first unmark, then mark - so CommitAsync is called twice
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -118,7 +119,8 @@ public class SetPrimaryImageCommandTests
         image1.IsPrimary.Should().BeFalse("image1 should no longer be primary");
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Handler uses two-phase commit: first unmark, then mark - so CommitAsync is called twice
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -150,7 +152,8 @@ public class SetPrimaryImageCommandTests
         singleImage.IsPrimary.Should().BeTrue();
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Handler uses two-phase commit: first unmark (no-op here), then mark - so CommitAsync is called twice
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -240,6 +243,10 @@ public class SetPrimaryImageCommandTests
             .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -249,7 +256,8 @@ public class SetPrimaryImageCommandTests
         result.Error.Should().Contain("not found in this event");
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Two-phase commit: first phase (unmark) completes before failure in mark phase
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -269,6 +277,10 @@ public class SetPrimaryImageCommandTests
             .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -278,7 +290,8 @@ public class SetPrimaryImageCommandTests
         result.Error.Should().Contain("not found in this event");
 
         _mockEventRepository.Verify(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Two-phase commit: first phase (unmark) completes before failure in mark phase
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

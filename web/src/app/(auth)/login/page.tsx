@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { LoginForm } from '@/presentation/components/features/auth/LoginForm';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 
@@ -79,6 +81,15 @@ export default function LoginPage() {
 
         {/* Right Panel - Login Form */}
         <div className="flex flex-col justify-center px-[50px] py-[60px]" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #fef9f5 100%)' }}>
+          {/* Back to Home Link */}
+          <Link
+            href="/"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-[#FF7900] transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Home
+          </Link>
+
           {/* Mobile Logo */}
           <div className="mb-6 md:hidden text-center">
             <OfficialLogo size="sm" linkTo="/" />

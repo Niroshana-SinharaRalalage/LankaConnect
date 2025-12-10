@@ -1,60 +1,69 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-08 (Current Session) - Session 30: Set-Primary Image Button Complete Error Handling ✅ COMPLETE*
+*Last Updated: 2025-12-09 (Current Session) - Session 30: Multi-Attendee Re-Registration & Sign-Up Auth UX Improvements ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 30: Set-Primary Image Button Complete Error Handling ✅ COMPLETE
+## 🎯 Current Session Status - Session 30: Multi-Attendee Re-Registration & Sign-Up Auth UX Improvements ✅ COMPLETE
 
-### Session 30: Set-Primary Image Button - Complete End-to-End Error Handling Fix - COMPLETE - 2025-12-08
+### Session 30: Multi-Bug Fix Session - COMPLETE - 2025-12-09
 
-**Status**: ✅ **COMPLETE** (All fixes deployed to staging - Run 270 successful)
+**Status**: ✅ **COMPLETE** (Frontend + Backend builds verified, 0 errors)
 
-**Issue**: "Set as Main" button returned 400 error with generic "ValidationError(s)" message that wasn't properly displayed to users. Multi-layer issue spanning frontend, backend, and database.
+**Issues Fixed**:
+1. ✅ Multi-attendee re-registration showing only 1 attendee after cancellation
+2. ✅ React hooks order violation crashing SignUpManagementSection
+3. ✅ Registration alert popups interrupting UX
+4. ✅ Sign-up authentication error with no login link
+5. ✅ Optimistic updates not counting all attendees
 
-**Root Cause Discovery** (Following user's systematic approach):
-1. ✅ Verified API endpoint exists and is reachable (401 without auth, correct)
-2. ✅ Identified error message extraction issue: API client didn't check `.detail` field (ProblemDetails format)
-3. ✅ Found missing error callback: useSetPrimaryImage hook wasn't displaying errors to UI
-4. ✅ Discovered database issue: Multiple images marked as primary for same event (unique constraint violation)
-5. ✅ Identified root cause: EF migrations never ran in deployment, constraint not enforced
-6. ✅ Found deployment issue: dotnet-ef SDK version mismatch
+**Summary**: Comprehensive multi-bug fix session addressing event registration, multi-attendee handling, React hooks violations, and authentication UX issues.
 
-**Multi-Layer Fix Implemented**:
-1. **API Client** (Commit 3257a5e): Extract `.detail` from ProblemDetails response format
-2. **Frontend Hook** (Commit 722727d): Added error callback propagation to display errors in UI
-3. **Backend Handler** (Commit 5be06f2): Detect unique constraint violations and return user-friendly message
-4. **Database Migration** (Commit 67e599d): Fix existing data corruption and enforce consistency
-5. **Deployment Workflow** (Commit 260fbac): Install dotnet-ef 8.0.0 and run migrations before deployment
+**Fixes Implemented**:
 
-**Files Modified**:
-- [web/src/infrastructure/api/client/api-client.ts](../web/src/infrastructure/api/client/api-client.ts) - Error message extraction
-- [web/src/presentation/hooks/useImageUpload.ts](../web/src/presentation/hooks/useImageUpload.ts) - Error callback propagation
-- [src/LankaConnect.Application/Events/Commands/SetPrimaryImage/SetPrimaryImageCommand.cs](../src/LankaConnect.Application/Events/Commands/SetPrimaryImage/SetPrimaryImageCommand.cs) - Constraint violation handling
-- [src/LankaConnect.Infrastructure/Data/Migrations/20251208044133_FixEventImagePrimaryDataConsistency.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251208044133_FixEventImagePrimaryDataConsistency.cs) - Data consistency fix
-- [.github/workflows/deploy-staging.yml](../.github/workflows/deploy-staging.yml) - Migration step in deployment
+1. **React Hooks Order Violation** (Critical):
+   - **Issue**: SignUpManagementSection component crashed with "Rendered more hooks than during the previous render"
+   - **Root Cause**: useEffect hook placed after conditional early returns (line 288)
+   - **Fix**: Moved useEffect to line 93, before any conditional returns
+   - **File**: [SignUpManagementSection.tsx:93](../web/src/presentation/components/features/events/SignUpManagementSection.tsx#L93)
 
-**Build Status**: ✅ All tests passing (91 unit tests)
+2. **Multi-Attendee Re-Registration** (Backend):
+   - **Issue**: Re-registering after cancellation showed only 1 attendee instead of all attendees
+   - **Root Cause**: Backend queries didn't filter by registration status, returning cancelled registrations
+   - **Fix**: Added filtering to exclude Cancelled and Refunded registrations
+   - **Files**:
+     - [GetUserRegistrationForEventQueryHandler.cs:26-29](../src/LankaConnect.Application/Events/Queries/GetUserRegistrationForEvent/GetUserRegistrationForEventQueryHandler.cs#L26-L29)
+     - [RegistrationRepository.cs:39-42](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs#L39-L42)
 
-**Deployment Status**:
-- ✅ Run 265 (api-client fix): SUCCESS
-- ✅ Run 267 (backend error handling): SUCCESS
-- ❌ Run 268 (initial migration): FAILED - SDK version mismatch
-- ❌ Run 269 (deployment fix v1): FAILED - dotnet-ef not found
-- ✅ Run 270 (final fix with explicit tool install): SUCCESS
+3. **Optimistic Update for Multi-Attendees** (Frontend):
+   - **Issue**: Registration count only increased by 1 regardless of number of attendees
+   - **Fix**: Use actual attendee count in optimistic updates
+   - **File**: [useEvents.ts:397-406](../web/src/presentation/hooks/useEvents.ts#L397-L406)
 
-**Verification Results**:
-- ✅ EF migrations executed successfully in Run 270
-- ✅ Database connection to staging verified
-- ✅ Health check passed
-- ✅ Entra endpoint responding correctly
-- ✅ Container App deployed and running
+4. **Registration Alert Popups Removed** (UX):
+   - **Issue**: Intrusive alert popups showing "Registration successful!"
+   - **Fix**: Removed alerts, let UI update smoothly
+   - **File**: [page.tsx](../web/src/app/events/[id]/page.tsx)
+
+5. **Sign-Up Authentication UX** (Phase 6A.14):
+   - **Issue**: Confusing "User ID not available. Please log in again." error with no login link
+   - **Fix**:
+     - Proactive auth check before opening modal (redirects to login)
+     - Fallback: Login link in error message if session expires
+   - **Files**:
+     - [SignUpManagementSection.tsx:213-216](../web/src/presentation/components/features/events/SignUpManagementSection.tsx#L213-L216)
+     - [SignUpCommitmentModal.tsx:416-425](../web/src/presentation/components/features/events/SignUpCommitmentModal.tsx#L416-L425)
+   - **Documentation**: [PHASE_6A_14_SIGNUP_AUTH_UX_IMPROVEMENT_SUMMARY.md](./PHASE_6A_14_SIGNUP_AUTH_UX_IMPROVEMENT_SUMMARY.md)
+
+**Build Status**:
+- ✅ Frontend build: 0 errors, 0 warnings
+- ✅ Backend build: 0 errors, 0 warnings
+- ✅ All changes compile successfully
 
 **Next Steps**:
-- [ ] Manual testing: Click "Set as Main" in staging UI
-- [ ] Verify error messages display correctly
-- [ ] Monitor production readiness before final deployment
-
-**Documentation**: See [PHASE_6A_13_SET_PRIMARY_IMAGE_FIX_SUMMARY.md](./PHASE_6A_13_SET_PRIMARY_IMAGE_FIX_SUMMARY.md) for complete technical details.
+- [ ] Test multi-attendee re-registration flow on staging
+- [ ] Test sign-up authentication redirect flow
+- [ ] Verify optimistic updates work correctly
+- [ ] Monitor for any regression issues
 
 ---
 

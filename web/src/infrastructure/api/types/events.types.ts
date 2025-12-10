@@ -623,6 +623,40 @@ export interface CommitToSignUpItemRequest {
   contactPhone?: string | null;
 }
 
+/**
+ * Anonymous commit to sign-up item request
+ * Phase 6A.23: Supports anonymous sign-up workflow
+ * Email is used to verify event registration and identify the anonymous user
+ */
+export interface CommitToSignUpItemAnonymousRequest {
+  contactEmail: string;
+  quantity: number;
+  notes?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+}
+
+/**
+ * Result of checking event registration by email
+ * Phase 6A.23: Enhanced to support proper UX flow for anonymous sign-up
+ */
+export interface EventRegistrationCheckResult {
+  /** Whether the email belongs to a LankaConnect member (User account exists) */
+  hasUserAccount: boolean;
+  /** The UserId if the email belongs to a member */
+  userId?: string | null;
+  /** Whether the email is registered for this specific event */
+  isRegisteredForEvent: boolean;
+  /** The registration ID if registered for the event */
+  registrationId?: string | null;
+  /** Can proceed with anonymous commitment (NOT a member AND registered for event) */
+  canCommitAnonymously: boolean;
+  /** Should prompt user to log in (IS a member) */
+  shouldPromptLogin: boolean;
+  /** Needs to register for event first (NOT a member AND NOT registered) */
+  needsEventRegistration: boolean;
+}
+
 // ==================== Response DTOs ====================
 
 /**

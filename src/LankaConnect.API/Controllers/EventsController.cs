@@ -53,6 +53,8 @@ using LankaConnect.Application.Events.Commands.AddSignUpItem;
 using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
+using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
+using LankaConnect.Application.Events.Queries.CheckEventRegistration;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -1315,17 +1317,52 @@ public class EventsController : BaseController<EventsController>
     /// <summary>
     /// Check if an email has registered for an event (for sign-up validation)
     /// Phase 6A.15: Enhanced sign-up list UX with email validation
+    /// Phase 6A.23: Updated to return detailed member/registration status for proper UX flow
     /// </summary>
     [HttpPost("{eventId:guid}/check-registration")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(EventRegistrationCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CheckEventRegistrationByEmail(Guid eventId, [FromBody] CheckRegistrationRequest request)
     {
         Logger.LogInformation("Checking if email {Email} is registered for event {EventId}", request.Email, eventId);
 
-        var query = new GetEventRegistrationByEmailQuery(eventId, request.Email);
+        var query = new CheckEventRegistrationQuery(eventId, request.Email);
         var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Anonymous user commits to bringing a specific item from a category-based sign-up list
+    /// Phase 6A.23: Supports anonymous sign-up workflow
+    /// Flow: Check member status → Check event registration → Allow/Deny commitment
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/items/{itemId:guid}/commit-anonymous")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CommitToSignUpItemAnonymous(
+        Guid eventId,
+        Guid signupId,
+        Guid itemId,
+        [FromBody] CommitToSignUpItemAnonymousRequest request)
+    {
+        Logger.LogInformation("Anonymous user with email {Email} committing to item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            request.ContactEmail, itemId, signupId, eventId);
+
+        var command = new CommitToSignUpItemAnonymousCommand(
+            eventId,
+            signupId,
+            itemId,
+            request.ContactEmail,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
 
         return HandleResult(result);
     }
@@ -1430,4 +1467,16 @@ public record CommitToSignUpItemRequest(
     string? Notes = null,
     string? ContactName = null,
     string? ContactEmail = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request for anonymous user to commit to bringing an item
+/// Phase 6A.23: Supports anonymous sign-up workflow
+/// Email is used to verify event registration and identify the anonymous user
+/// </summary>
+public record CommitToSignUpItemAnonymousRequest(
+    string ContactEmail,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
     string? ContactPhone = null);

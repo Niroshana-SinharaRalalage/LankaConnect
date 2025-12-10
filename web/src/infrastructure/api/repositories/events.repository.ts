@@ -26,6 +26,8 @@ import type {
   AddSignUpItemRequest,
   UpdateSignUpItemRequest,
   CommitToSignUpItemRequest,
+  CommitToSignUpItemAnonymousRequest,
+  EventRegistrationCheckResult,
   RegistrationDetailsDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
@@ -308,11 +310,29 @@ export class EventsRepository {
   /**
    * Check if an email has registered for an event
    * Phase 6A.15: Enhanced sign-up list UX with email validation
-   * Maps to backend GetEventRegistrationByEmailQuery
-   * Returns true if the email is registered, false otherwise
+   * Phase 6A.23: Updated to return detailed member/registration status
+   * Maps to backend CheckEventRegistrationQuery
    */
-  async checkEventRegistrationByEmail(eventId: string, email: string): Promise<boolean> {
-    return await apiClient.post<boolean>(`${this.basePath}/${eventId}/check-registration`, { email });
+  async checkEventRegistrationByEmail(eventId: string, email: string): Promise<EventRegistrationCheckResult> {
+    return await apiClient.post<EventRegistrationCheckResult>(`${this.basePath}/${eventId}/check-registration`, { email });
+  }
+
+  /**
+   * Anonymous user commits to a sign-up item
+   * Phase 6A.23: Supports anonymous sign-up workflow
+   * Email must be registered for the event (member or anonymous)
+   * If email belongs to a member, user will be prompted to log in instead
+   */
+  async commitToSignUpItemAnonymous(
+    eventId: string,
+    signupId: string,
+    itemId: string,
+    data: CommitToSignUpItemAnonymousRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit-anonymous`,
+      data
+    );
   }
 
   /**

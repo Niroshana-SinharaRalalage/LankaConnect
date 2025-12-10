@@ -40,7 +40,8 @@ import {
   CardTitle,
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { SignUpCommitmentModal, CommitmentFormData } from './SignUpCommitmentModal';
+import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 /**
@@ -168,6 +169,26 @@ export function SignUpManagementSection({
     });
   };
 
+  // Phase 6A.23: Handle anonymous commit to specific item
+  // Used when user is not logged in but is registered for event
+  const handleCommitToItemAnonymous = async (data: AnonymousCommitmentFormData) => {
+    await eventsRepository.commitToSignUpItemAnonymous(
+      eventId,
+      data.signUpListId,
+      data.itemId,
+      {
+        contactEmail: data.contactEmail,
+        quantity: data.quantity,
+        notes: data.notes,
+        contactName: data.contactName,
+        contactPhone: data.contactPhone,
+      }
+    );
+    // Invalidate cache to refresh sign-up lists
+    // Note: Since we're using direct repository call, we need to manually trigger a refetch
+    window.location.reload();
+  };
+
   // Handle cancel sign-up item commitment (Phase 6A.20)
   const handleCancelSignUp = async (signUpListId: string, itemId: string) => {
     if (!userId) {
@@ -206,16 +227,12 @@ export function SignUpManagementSection({
     }
   };
 
-  // Open commitment modal - Phase 6A.15: Now available for all users (anonymous and authenticated)
+  // Open commitment modal - Phase 6A.23: Available for ALL users (logged in or not)
+  // User enters email in modal, validation happens on submit (not on button click)
   // Pass existing commitment if available (for pre-filling the form)
   const openCommitmentModal = (signUpListId: string, item: SignUpItemDto, existingCommitment?: SignUpCommitmentDto) => {
-    // Session 30: Check if user is logged in before opening modal
-    if (!userId) {
-      // Redirect to login with return URL
-      router.push(`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`);
-      return;
-    }
-
+    // Phase 6A.23: NO login check here - modal opens for everyone
+    // Email validation happens when user submits the form
     setSelectedSignUpListId(signUpListId);
     setSelectedItem(item);
     setSelectedExistingCommitment(existingCommitment || null);
@@ -657,6 +674,7 @@ export function SignUpManagementSection({
         eventId={eventId}
         existingCommitment={selectedExistingCommitment}
         onCommit={handleCommitToItem}
+        onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
       />
     </div>

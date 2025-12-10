@@ -2,9 +2,15 @@
  * SignUpCommitmentModal Component
  *
  * Professional modal dialog for committing to sign-up list items
+ * Phase 6A.23: Updated to support anonymous sign-up workflow
+ *
  * Features:
- * - Auto-fills Name, Email, Phone from logged-in user
- * - Allows editing contact fields (user can override with different info)
+ * - Works for both logged-in and anonymous users
+ * - Auto-fills Name, Email, Phone from logged-in user (if available)
+ * - Validates email on submit:
+ *   1. If member account → prompts to log in
+ *   2. If anonymous + registered → allows commitment
+ *   3. If not registered → prompts to register first
  * - Quantity selector (respects remaining availability)
  * - Optional notes field
  * - Form validation
@@ -34,8 +40,9 @@ interface SignUpCommitmentModalProps {
   item: SignUpItemDto | null;
   signUpListId: string;
   eventId: string;
-  existingCommitment?: SignUpCommitmentDto | null; // Existing commitment data (for updates)
+  existingCommitment?: SignUpCommitmentDto | null;
   onCommit: (data: CommitmentFormData) => Promise<void>;
+  onCommitAnonymous?: (data: AnonymousCommitmentFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -50,6 +57,16 @@ export interface CommitmentFormData {
   contactPhone?: string;
 }
 
+export interface AnonymousCommitmentFormData {
+  signUpListId: string;
+  itemId: string;
+  quantity: number;
+  notes?: string;
+  contactName?: string;
+  contactEmail: string;
+  contactPhone?: string;
+}
+
 export function SignUpCommitmentModal({
   open,
   onOpenChange,
@@ -58,9 +75,11 @@ export function SignUpCommitmentModal({
   eventId,
   existingCommitment,
   onCommit,
+  onCommitAnonymous,
   isSubmitting = false,
 }: SignUpCommitmentModalProps) {
   const { user } = useAuthStore();
+  const isLoggedIn = !!user?.userId;
 
   // Form state
   const [name, setName] = useState('');
@@ -73,22 +92,30 @@ export function SignUpCommitmentModal({
 
   // Auto-fill user details and existing commitment data when modal opens
   useEffect(() => {
-    if (open && user) {
-      // If updating existing commitment, pre-fill with that data
+    if (open) {
       if (existingCommitment) {
-        setName(existingCommitment.contactName || user.fullName || '');
-        setEmail(existingCommitment.contactEmail || user.email || '');
+        // Updating existing commitment - pre-fill with that data
+        setName(existingCommitment.contactName || user?.fullName || '');
+        setEmail(existingCommitment.contactEmail || user?.email || '');
         setPhone(existingCommitment.contactPhone || '');
         setQuantity(existingCommitment.quantity);
         setNotes(existingCommitment.notes || '');
-      } else {
-        // New commitment - use user defaults
+      } else if (user) {
+        // New commitment with logged-in user - use their defaults
         setName(user.fullName || '');
         setEmail(user.email || '');
         setPhone('');
         setQuantity(1);
         setNotes('');
+      } else {
+        // New commitment, anonymous user - start empty
+        setName('');
+        setEmail('');
+        setPhone('');
+        setQuantity(1);
+        setNotes('');
       }
+      setErrors({});
     }
   }, [open, user, existingCommitment]);
 
@@ -104,13 +131,9 @@ export function SignUpCommitmentModal({
     }
   }, [open]);
 
-  // Remove the old quantity initialization effect - now handled in the user/commitment effect above
-
   if (!item) return null;
 
   const currentlyCommitted = existingCommitment?.quantity || 0;
-  // When updating: user can change their quantity to anything from 1 up to (currentlyCommitted + remainingQty)
-  // This allows increasing their commitment OR decreasing it
   const maxQuantity = existingCommitment
     ? currentlyCommitted + item.remainingQuantity
     : item.remainingQuantity;
@@ -129,7 +152,6 @@ export function SignUpCommitmentModal({
       newErrors.email = 'Invalid email format';
     }
 
-    // Allow quantity = 0 for cancellation, otherwise must be at least 1
     if (quantity < 0) {
       newErrors.quantity = 'Quantity cannot be negative';
     }
@@ -142,8 +164,10 @@ export function SignUpCommitmentModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  // Phase 6A.15: Enhanced with email validation to ensure user is registered for event
+  /**
+   * Handle form submission with proper UX flow
+   * Phase 6A.23: Supports both logged-in and anonymous users
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -151,50 +175,72 @@ export function SignUpCommitmentModal({
       return;
     }
 
-    // Phase 6A.15: Check if email is registered for the event before allowing commitment
     setIsValidatingEmail(true);
-    try {
-      const isRegistered = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
+    setErrors({});
 
-      if (!isRegistered) {
+    try {
+      // Step 1: Check email registration status
+      const registrationCheck = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
+
+      // Step 2: Handle based on result
+      if (registrationCheck.shouldPromptLogin) {
+        // Email belongs to a member - they should log in
+        setErrors({
+          email: "This email is associated with a LankaConnect account. Please log in to sign up for items."
+        });
+        setIsValidatingEmail(false);
+        return;
+      }
+
+      if (registrationCheck.needsEventRegistration) {
+        // Not registered for event
         setErrors({
           email: 'This email is not registered for the event. You must register for the event first.'
         });
         setIsValidatingEmail(false);
         return;
       }
-    } catch (error) {
-      console.error('Failed to validate email registration:', error);
-      setErrors({
-        submit: 'Failed to validate your registration. Please try again.'
-      });
+
+      // Step 3: User can proceed - determine which path
       setIsValidatingEmail(false);
-      return;
-    }
-    setIsValidatingEmail(false);
 
-    if (!user?.userId) {
-      setErrors({ submit: 'User ID not available. Please log in again.' });
-      return;
-    }
+      if (isLoggedIn && user?.userId) {
+        // Logged-in user - use authenticated endpoint
+        const commitmentData: CommitmentFormData = {
+          userId: user.userId,
+          signUpListId,
+          itemId: item.id,
+          quantity,
+          notes: notes.trim() || undefined,
+          contactName: name.trim() || undefined,
+          contactEmail: email.trim() || undefined,
+          contactPhone: phone.trim() || undefined,
+        };
 
-    const commitmentData: CommitmentFormData = {
-      userId: user.userId,
-      signUpListId,
-      itemId: item.id,
-      quantity,
-      notes: notes.trim() || undefined,
-      contactName: name.trim() || undefined,
-      contactEmail: email.trim() || undefined,
-      contactPhone: phone.trim() || undefined,
-    };
+        await onCommit(commitmentData);
+        onOpenChange(false);
+      } else if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
+        // Anonymous user registered for event - use anonymous endpoint
+        const anonymousData: AnonymousCommitmentFormData = {
+          signUpListId,
+          itemId: item.id,
+          quantity,
+          notes: notes.trim() || undefined,
+          contactName: name.trim() || undefined,
+          contactEmail: email.trim(),
+          contactPhone: phone.trim() || undefined,
+        };
 
-    try {
-      await onCommit(commitmentData);
-      onOpenChange(false);
+        await onCommitAnonymous(anonymousData);
+        onOpenChange(false);
+      } else {
+        // Fallback error - shouldn't happen if flow is correct
+        setErrors({ submit: 'Unable to process your sign-up. Please try again.' });
+      }
     } catch (error) {
-      console.error('Failed to commit:', error);
-      setErrors({ submit: error instanceof Error ? error.message : 'Failed to commit to item' });
+      console.error('Failed to process sign-up:', error);
+      setErrors({ submit: error instanceof Error ? error.message : 'Failed to sign up. Please try again.' });
+      setIsValidatingEmail(false);
     }
   };
 
@@ -319,6 +365,14 @@ export function SignUpCommitmentModal({
               {errors.email && (
                 <div className="mt-1 text-xs text-red-600">
                   <p>{errors.email}</p>
+                  {errors.email.includes('associated with a LankaConnect account') && (
+                    <Link
+                      href={`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`}
+                      className="underline hover:text-red-700 mt-1 inline-block font-medium"
+                    >
+                      Click here to log in
+                    </Link>
+                  )}
                   {errors.email.includes('not registered for the event') && (
                     <Link
                       href={`/events/${eventId}`}
@@ -365,7 +419,6 @@ export function SignUpCommitmentModal({
                 value={quantity}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
-                  // Allow 0 for cancellation, otherwise clamp to valid range
                   if (isNaN(val)) {
                     setQuantity(0);
                   } else {
@@ -381,7 +434,7 @@ export function SignUpCommitmentModal({
               {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity}</p>}
               {existingCommitment && quantity === 0 && (
                 <p className="mt-1 text-xs text-orange-600 font-medium">
-                  ⚠️ Setting to 0 will cancel your entire commitment
+                  Setting to 0 will cancel your entire commitment
                 </p>
               )}
             </div>
@@ -403,28 +456,14 @@ export function SignUpCommitmentModal({
                 placeholder="Any special details or preferences..."
               />
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Example: "I'll bring vegetarian option" or "Homemade recipe"
+                Example: &quot;I&apos;ll bring vegetarian option&quot; or &quot;Homemade recipe&quot;
               </p>
             </div>
 
             {/* Submit Error */}
             {errors.submit && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-800">
-                  {errors.submit}
-                  {/* Session 30: Provide login link when user session is missing */}
-                  {errors.submit.includes('User ID not available') && (
-                    <>
-                      {' '}
-                      <Link
-                        href={`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`}
-                        className="font-medium text-red-900 underline hover:text-red-700"
-                      >
-                        Click here to log in
-                      </Link>
-                    </>
-                  )}
-                </p>
+                <p className="text-sm text-red-800">{errors.submit}</p>
               </div>
             )}
           </div>
@@ -444,7 +483,7 @@ export function SignUpCommitmentModal({
                 disabled={isSubmitting || isValidatingEmail}
               >
                 {isValidatingEmail
-                  ? 'Validating email...'
+                  ? 'Validating...'
                   : isSubmitting
                     ? existingCommitment ? 'Updating...' : 'Signing up...'
                     : existingCommitment ? 'Update Sign Up' : 'Confirm Sign Up'}

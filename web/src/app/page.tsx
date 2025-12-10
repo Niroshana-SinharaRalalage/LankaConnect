@@ -96,7 +96,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300">
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
@@ -107,7 +107,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-4 mt-8">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300">
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
@@ -120,7 +120,7 @@ export default function Home() {
               ) : eventsError || !featuredEvents || featuredEvents.length === 0 ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-orange-600 via-rose-600 to-amber-500">
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-orange-600 via-rose-600 to-amber-500 ring-2 ring-white/40">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-6xl opacity-30">🎉</span>
                       </div>
@@ -130,7 +130,7 @@ export default function Home() {
                         <div className="text-white/90 text-sm">Check back soon</div>
                       </div>
                     </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500">
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 ring-2 ring-white/40">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-6xl opacity-30">📅</span>
                       </div>
@@ -142,7 +142,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="space-y-4 mt-8">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-500">
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-500 ring-2 ring-white/40">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-6xl opacity-30">🎭</span>
                       </div>
@@ -152,7 +152,7 @@ export default function Home() {
                         <div className="text-white/90 text-sm">Stay tuned</div>
                       </div>
                     </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500">
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 ring-2 ring-white/40">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-6xl opacity-30">🌟</span>
                       </div>
@@ -179,7 +179,7 @@ export default function Home() {
                       return (
                         <div
                           key={event.id}
-                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70"
                           onClick={() => window.location.href = `/events/${event.id}`}
                         >
                           {/* Background Image or Gradient Fallback */}
@@ -227,7 +227,7 @@ export default function Home() {
                       return (
                         <div
                           key={event.id}
-                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70"
                           onClick={() => window.location.href = `/events/${event.id}`}
                         >
                           {/* Background Image or Gradient Fallback */}

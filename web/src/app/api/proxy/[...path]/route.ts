@@ -194,6 +194,17 @@ async function forwardRequest(
     // Special handling for RSVP endpoint
     const isRsvpEndpoint = path.includes('events') && path.endsWith('rsvp');
 
+    // Phase 6A.13: Log set-primary requests for debugging
+    const isSetPrimaryEndpoint = path.includes('set-primary');
+    if (isSetPrimaryEndpoint) {
+      console.log('[Proxy] Set Primary Image Response:', {
+        path,
+        status: response.status,
+        statusText: response.statusText,
+        responseText: responseText?.substring(0, 500),
+      });
+    }
+
     // Handle empty/null responses
     if (!responseText || responseText === 'null' || responseText.trim() === '') {
       console.log('[Proxy] Empty response body received (normal for free event registration)');

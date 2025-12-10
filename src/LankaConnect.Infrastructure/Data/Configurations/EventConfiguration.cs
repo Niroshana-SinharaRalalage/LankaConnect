@@ -112,11 +112,22 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(ei => ei.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // CRITICAL: Use backing field "_images" for EF Core change tracking
+        // This ensures EF Core populates the private _images field when loading
+        // Required for SetPrimaryImage and other image management operations
+        builder.Navigation(e => e.Images)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Configure Videos relationship (Epic 2 Phase 2)
         builder.HasMany(e => e.Videos)
             .WithOne()
             .HasForeignKey(ev => ev.EventId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // CRITICAL: Use backing field "_videos" for EF Core change tracking
+        // This ensures EF Core populates the private _videos field when loading
+        builder.Navigation(e => e.Videos)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Configure SignUpLists relationship (Phase 6A: Sign-up lists for volunteers/items)
         builder.HasMany(e => e.SignUpLists)

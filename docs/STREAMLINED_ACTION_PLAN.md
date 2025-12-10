@@ -7,7 +7,28 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 36: PHASE 6A.14 EDIT REGISTRATION DETAILS (2025-12-10)
+## ✅ CURRENT STATUS - SESSION 35: AUTH PAGE BACK NAVIGATION (2025-12-10)
+**Date**: 2025-12-10 (Session 35)
+**Session**: Add Back to Home navigation to Login/Register pages
+**Status**: ✅ COMPLETE - UI enhancement
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Commit**: `ebef620` - feat(auth): Add "Back to Home" navigation to login and register pages
+
+### SESSION 35: AUTH PAGE BACK NAVIGATION (2025-12-10)
+**Goal**: Add visible "← Back to Home" link on Login and Register pages
+
+**Implementation**:
+- Added ArrowLeft icon + "Back to Home" link at top of form panel
+- Matches existing styling (gray text, orange hover)
+- Works on desktop and mobile
+
+**Files Changed**:
+- `web/src/app/(auth)/login/page.tsx`
+- `web/src/app/(auth)/register/page.tsx`
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 36: PHASE 6A.14 EDIT REGISTRATION DETAILS (2025-12-10)
 **Date**: 2025-12-10 (Session 36)
 **Session**: Phase 6A.14 - Edit Registration Details (Full-stack TDD Implementation)
 **Status**: ✅ COMPLETE - Full-stack implementation deployed to staging

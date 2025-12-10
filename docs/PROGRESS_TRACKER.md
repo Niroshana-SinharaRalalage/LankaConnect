@@ -1,9 +1,31 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-10 (Current Session) - Session 36: Phase 6A.14 Edit Registration Details ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 35: Auth Page Back Navigation ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 36: Phase 6A.14 Edit Registration Details ✅ COMPLETE
+## 🎯 Current Session Status - Session 35: Auth Page Back Navigation ✅ COMPLETE
+
+### Session 35: Auth Page Back Navigation - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (UI enhancement)
+
+**Requirement**: Add a way for users to navigate back to the landing page from the Login and Register pages.
+
+**Implementation**:
+- Added "← Back to Home" link at top of form panel on both pages
+- Uses ArrowLeft icon from lucide-react
+- Styled with hover effect (gray → orange)
+- Works on both desktop and mobile
+
+**Files Changed**:
+- `web/src/app/(auth)/login/page.tsx` - Added back link
+- `web/src/app/(auth)/register/page.tsx` - Added back link
+
+**Commit**: `ebef620` - feat(auth): Add "Back to Home" navigation to login and register pages
+
+---
+
+## Previous Sessions
 
 ### Session 36: Phase 6A.14 - Edit Registration Details - COMPLETE - 2025-12-10
 

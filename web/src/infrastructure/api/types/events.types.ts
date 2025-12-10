@@ -514,6 +514,25 @@ export interface UpdateRsvpRequest {
 }
 
 /**
+ * Phase 6A.14: Update registration details request
+ * Allows users to edit their registration after initial RSVP
+ */
+export interface UpdateRegistrationRequest {
+  attendees: UpdateRegistrationAttendeeDto[];
+  email: string;
+  phoneNumber: string;
+  address?: string;
+}
+
+/**
+ * Phase 6A.14: Attendee DTO for registration update
+ */
+export interface UpdateRegistrationAttendeeDto {
+  name: string;
+  age: number;
+}
+
+/**
  * Cancel event request
  */
 export interface CancelEventRequest {

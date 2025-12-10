@@ -342,6 +342,68 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.14: Updates registration details (attendees and contact information) for a user
+    /// Business Rules:
+    /// - User must have an active registration for this event
+    /// - If adding attendees, event must have capacity
+    /// - Delegates to Registration.UpdateDetails() for validation of payment/status rules
+    /// </summary>
+    /// <param name="userId">The user whose registration to update</param>
+    /// <param name="newAttendees">Updated list of attendees</param>
+    /// <param name="newContact">Updated contact information</param>
+    /// <returns>Result indicating success or failure</returns>
+    public Result UpdateRegistrationDetails(
+        Guid userId,
+        IEnumerable<AttendeeDetails> newAttendees,
+        RegistrationContact newContact)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        // Find the user's active registration (Confirmed or Pending)
+        var registration = _registrations.FirstOrDefault(r =>
+            r.UserId == userId &&
+            (r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Pending));
+
+        if (registration == null)
+            return Result.Failure("User does not have an active registration for this event");
+
+        var attendeeList = newAttendees?.ToList() ?? new List<AttendeeDetails>();
+
+        // Check capacity if adding more attendees
+        var currentCount = registration.GetAttendeeCount();
+        var newCount = attendeeList.Count;
+
+        if (newCount > currentCount)
+        {
+            var additionalNeeded = newCount - currentCount;
+            if (!HasCapacityFor(additionalNeeded))
+            {
+                return Result.Failure(
+                    $"Event does not have enough capacity for additional attendees. " +
+                    $"Available: {Capacity - CurrentRegistrations + currentCount}, Requested: {newCount}");
+            }
+        }
+
+        // Delegate to Registration for business rule validation and update
+        var updateResult = registration.UpdateDetails(attendeeList, newContact);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        MarkAsUpdated();
+
+        // Raise domain event
+        RaiseDomainEvent(new RegistrationDetailsUpdatedEvent(
+            Id,
+            registration.Id,
+            userId,
+            attendeeList.Count,
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
     public bool IsUserRegistered(Guid userId)
     {
         return _registrations.Any(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);

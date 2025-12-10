@@ -621,6 +621,56 @@ export function useUserRegistrationDetails(
 }
 
 /**
+ * useUpdateRegistrationDetails Hook
+ *
+ * Phase 6A.14: Mutation hook for updating registration details (attendees, contact info)
+ *
+ * Features:
+ * - Updates attendee names and ages
+ * - Updates contact information (email, phone, address)
+ * - Automatic cache invalidation after success
+ * - Proper error handling
+ *
+ * @example
+ * ```tsx
+ * const updateRegistration = useUpdateRegistrationDetails();
+ *
+ * await updateRegistration.mutateAsync({
+ *   eventId: 'event-123',
+ *   attendees: [{ name: 'John Doe', age: 30 }],
+ *   email: 'john@example.com',
+ *   phoneNumber: '555-1234'
+ * });
+ * ```
+ */
+export function useUpdateRegistrationDetails() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      eventId: string;
+      attendees: { name: string; age: number }[];
+      email: string;
+      phoneNumber: string;
+      address?: string;
+    }) => {
+      return eventsRepository.updateRegistrationDetails(data.eventId, {
+        attendees: data.attendees,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate registration details to refetch with updated data
+      queryClient.invalidateQueries({ queryKey: ['user-registration', variables.eventId] });
+      // Also invalidate event detail in case registration count changed
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -637,4 +687,5 @@ export default {
   useUserRsvps,
   useUserRsvpForEvent,
   useUserRegistrationDetails,
+  useUpdateRegistrationDetails,
 };

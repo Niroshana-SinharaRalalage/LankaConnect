@@ -12,6 +12,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
+using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
@@ -589,6 +590,47 @@ public class EventsController : BaseController<EventsController>
         }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.14: Update user's registration details (attendees and contact information)
+    /// Allows users to edit their registration after initial RSVP
+    /// Business Rules:
+    /// - User must have an active registration
+    /// - Cannot change attendee count on paid registrations (only names/ages)
+    /// - Maximum 10 attendees per registration
+    /// - Cannot update cancelled or refunded registrations
+    /// </summary>
+    [HttpPut("{eventId}/my-registration")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMyRegistration(Guid eventId, [FromBody] UpdateRegistrationRequest request)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} updating registration for event {EventId} with {AttendeeCount} attendees",
+            userId, eventId, request.Attendees?.Count ?? 0);
+
+        var command = new UpdateRegistrationDetailsCommand(
+            eventId,
+            userId,
+            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.Age)).ToList()
+                ?? new List<Application.Events.Commands.RsvpToEvent.AttendeeDto>(),
+            request.Email,
+            request.PhoneNumber,
+            request.Address);
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning("Failed to update registration for user {UserId} for event {EventId}: {Errors}",
+                userId, eventId, string.Join(", ", result.Errors));
+        }
+
+        return HandleResult(result);
     }
 
     /// <summary>
@@ -1401,6 +1443,18 @@ public record AnonymousRegistrationRequest(
     string PhoneNumber,
     int Quantity = 1);
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
+/// <summary>
+/// Phase 6A.14: Request to update registration details
+/// </summary>
+public record UpdateRegistrationRequest(
+    List<UpdateRegistrationAttendeeDto>? Attendees,
+    string Email,
+    string PhoneNumber,
+    string? Address = null);
+/// <summary>
+/// Phase 6A.14: Attendee DTO for registration update
+/// </summary>
+public record UpdateRegistrationAttendeeDto(string Name, int Age);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2

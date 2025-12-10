@@ -12,6 +12,7 @@ import type {
   RsvpRequest,
   AnonymousRegistrationRequest,
   UpdateRsvpRequest,
+  UpdateRegistrationRequest,
   CancelEventRequest,
   PostponeEventRequest,
   CreateEventResponse,
@@ -257,6 +258,18 @@ export class EventsRepository {
   async updateRsvp(eventId: string, userId: string, newQuantity: number): Promise<void> {
     const request: UpdateRsvpRequest = { userId, newQuantity };
     await apiClient.put<void>(`${this.basePath}/${eventId}/rsvp`, request);
+  }
+
+  /**
+   * Phase 6A.14: Update registration details (attendees and contact information)
+   * Allows users to edit their registration after initial RSVP
+   * Business Rules:
+   * - Cannot change attendee count on paid registrations
+   * - Maximum 10 attendees per registration
+   * - Cannot update cancelled or refunded registrations
+   */
+  async updateRegistrationDetails(eventId: string, request: UpdateRegistrationRequest): Promise<void> {
+    await apiClient.put<void>(`${this.basePath}/${eventId}/my-registration`, request);
   }
 
   /**

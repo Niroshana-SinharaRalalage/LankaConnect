@@ -8,10 +8,11 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails } from '@/presentation/hooks/useEvents';
+import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
+import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -33,6 +34,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isUpdatingRegistration, setIsUpdatingRegistration] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -56,6 +59,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
+
+  // Phase 6A.14: Update registration mutation
+  const updateRegistrationMutation = useUpdateRegistrationDetails();
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {
@@ -181,6 +187,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       console.error('Failed to publish event:', err);
       setError(err instanceof Error ? err.message : 'Failed to publish event. Please try again.');
       setIsPublishing(false);
+    }
+  };
+
+  // Phase 6A.14: Handle Edit Registration
+  const handleEditRegistration = async (data: EditRegistrationData) => {
+    try {
+      setIsUpdatingRegistration(true);
+      await updateRegistrationMutation.mutateAsync({
+        eventId: id,
+        attendees: data.attendees,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+      });
+      setIsUpdatingRegistration(false);
+      // Modal will close itself on success
+    } catch (err) {
+      setIsUpdatingRegistration(false);
+      throw err; // Re-throw to let the modal handle the error display
     }
   };
 
@@ -613,9 +638,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => {
-                          alert('Edit registration feature coming soon! You will be able to update attendee names and ages.');
-                        }}
+                        onClick={() => setShowEditModal(true)}
                       >
                         Edit Registration
                       </Button>
@@ -751,6 +774,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <Footer />
+
+      {/* Phase 6A.14: Edit Registration Modal */}
+      <EditRegistrationModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        registration={registrationDetails || null}
+        eventId={id}
+        isFreeEvent={event?.isFree ?? true}
+        spotsLeft={spotsLeft}
+        onSave={handleEditRegistration}
+        isSubmitting={isUpdatingRegistration}
+      />
     </div>
   );
 }

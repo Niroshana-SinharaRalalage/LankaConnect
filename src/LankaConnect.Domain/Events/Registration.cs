@@ -283,6 +283,70 @@ public class Registration : BaseEntity
         MarkAsUpdated();
     }
 
+    /// <summary>
+    /// Phase 6A.14: Updates registration details (attendees and contact information)
+    /// Business Rules:
+    /// - Cannot update cancelled or refunded registrations
+    /// - Cannot change attendee count on paid registrations (only names/ages allowed)
+    /// - Maximum 10 attendees per registration
+    /// - At least one attendee is required
+    /// - Contact information is required
+    /// </summary>
+    /// <param name="newAttendees">Updated list of attendees</param>
+    /// <param name="newContact">Updated contact information</param>
+    /// <returns>Result indicating success or failure with error message</returns>
+    public Result UpdateDetails(IEnumerable<AttendeeDetails> newAttendees, RegistrationContact newContact)
+    {
+        // Validation: Attendees list cannot be null or empty
+        if (newAttendees == null || !newAttendees.Any())
+            return Result.Failure("At least one attendee is required");
+
+        var attendeeList = newAttendees.ToList();
+
+        // Validation: Maximum 10 attendees
+        if (attendeeList.Count > 10)
+            return Result.Failure("Maximum 10 attendees per registration");
+
+        // Validation: Contact is required
+        if (newContact == null)
+            return Result.Failure("Contact information is required");
+
+        // Business Rule: Cannot update cancelled registrations
+        if (Status == RegistrationStatus.Cancelled)
+            return Result.Failure("Cannot update details for a cancelled registration");
+
+        // Business Rule: Cannot update refunded registrations
+        if (Status == RegistrationStatus.Refunded)
+            return Result.Failure("Cannot update details for a refunded registration");
+
+        // Business Rule: For paid registrations, cannot change attendee count
+        // (changing count would affect pricing which requires new payment)
+        if (PaymentStatus == PaymentStatus.Completed)
+        {
+            var currentCount = GetAttendeeCount();
+            if (attendeeList.Count != currentCount)
+            {
+                return Result.Failure(
+                    $"Cannot change attendee count on a paid registration. " +
+                    $"Current: {currentCount}, Requested: {attendeeList.Count}. " +
+                    $"Please cancel and create a new registration to change the number of attendees.");
+            }
+        }
+
+        // Clear existing attendees and add new ones
+        _attendees.Clear();
+        _attendees.AddRange(attendeeList);
+
+        // Update contact information
+        Contact = newContact;
+
+        // Update quantity to match attendee count (maintain backward compatibility)
+        Quantity = attendeeList.Count;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
     private static bool IsValidTransition(RegistrationStatus from, RegistrationStatus to)
     {
         return (from, to) switch

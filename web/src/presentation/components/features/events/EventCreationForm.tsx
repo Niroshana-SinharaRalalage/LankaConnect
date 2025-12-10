@@ -498,36 +498,38 @@ export function EventCreationForm() {
 
               {/* Pricing Mode Selection */}
               <div className="space-y-3">
-                {/* Dual Pricing Toggle */}
+                {/* Dual Pricing Toggle - Session 33: Fixed onChange override bug */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableDualPricing"
                     type="checkbox"
                     className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
-                    {...register('enableDualPricing')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('enableGroupPricing', false);
+                    {...register('enableDualPricing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableGroupPricing', false);
+                        }
                       }
-                    }}
+                    })}
                   />
                   <label htmlFor="enableDualPricing" className="text-sm font-medium text-neutral-700">
                     Enable Adult/Child Pricing (different prices for adults and children)
                   </label>
                 </div>
 
-                {/* Group Pricing Toggle - Phase 6D */}
+                {/* Group Pricing Toggle - Phase 6D - Session 33: Fixed onChange override bug */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableGroupPricing"
                     type="checkbox"
                     className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
-                    {...register('enableGroupPricing')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setValue('enableDualPricing', false);
+                    {...register('enableGroupPricing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableDualPricing', false);
+                        }
                       }
-                    }}
+                    })}
                   />
                   <label htmlFor="enableGroupPricing" className="text-sm font-medium text-neutral-700">
                     Enable Group Tiered Pricing (quantity-based discounts for groups)

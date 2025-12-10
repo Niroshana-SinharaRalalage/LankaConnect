@@ -1,9 +1,54 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-10 (Current Session) - Session 33: Phase 6A.15 Dashboard Cancel Registration Button ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 34: Proxy Query Parameter Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 33: Phase 6A.15 Dashboard Cancel Registration Button ✅ COMPLETE
+## 🎯 Current Session Status - Session 34: Proxy Query Parameter Fix ✅ COMPLETE
+
+### Session 34: Proxy Query Parameter Fix - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (Critical bug fix)
+
+**Issue**: Event filtration on `/events` page was not working. Selecting filters (Event Type, Event Date, Location) had no effect - all events were always displayed regardless of filter selection.
+
+**Root Cause Analysis**:
+- **Classification**: UI Layer Bug (Proxy)
+- **Location**: `web/src/app/api/proxy/[...path]/route.ts` line 74
+- **Problem**: The Next.js API proxy was building the target URL without preserving query string parameters
+- **Impact**: ALL GET requests with query parameters were broken (event filtering, search, pagination, etc.)
+
+**Request Flow (Before Fix)**:
+```
+Frontend: localhost:3000/api/proxy/events?category=0&startDateFrom=...
+    ↓
+Proxy builds: https://backend/api/events  ❌ (Query params LOST!)
+    ↓
+Backend returns: ALL events (no filters applied)
+```
+
+**The Fix**:
+```typescript
+// Before (BROKEN):
+const targetUrl = `${BACKEND_URL}/${path}`;
+
+// After (FIXED):
+const queryString = request.nextUrl.search; // Preserves "?param=value"
+const targetUrl = `${BACKEND_URL}/${path}${queryString}`;
+```
+
+**Verification**: User confirmed all three filters now work correctly:
+- ✅ Event Type filter (Religious shows only 2 religious events)
+- ✅ Event Date filter (Next Month excludes past events)
+- ✅ Location filter (Cincinnati prioritizes local events)
+
+**Files Changed**:
+- `web/src/app/api/proxy/[...path]/route.ts` (added query string forwarding)
+
+**Commit**: `bca83ac` - fix(proxy): Forward query parameters to backend API
+
+---
+
+## Previous Sessions
 
 ### Session 33: Phase 6A.15 - Dashboard Cancel Registration Button - COMPLETE - 2025-12-10
 

@@ -7,7 +7,38 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 32: PHASE 6A.23 ANONYMOUS SIGN-UP WORKFLOW (2025-12-10)
+## ✅ CURRENT STATUS - SESSION 34: PROXY QUERY PARAMETER FIX (2025-12-10)
+**Date**: 2025-12-10 (Session 34)
+**Session**: Proxy Query Parameter Fix - Event Filtration Bug
+**Status**: ✅ COMPLETE - Critical bug fix deployed
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Commit**: `bca83ac` - fix(proxy): Forward query parameters to backend API
+
+### SESSION 34: PROXY QUERY PARAMETER FIX (2025-12-10)
+**Goal**: Fix event filtration on `/events` page (filters had no effect)
+
+**Root Cause**: Next.js API proxy (`web/src/app/api/proxy/[...path]/route.ts`) was stripping query parameters when forwarding requests to Azure staging backend.
+
+**The Bug** (line 74):
+```typescript
+// BROKEN: Query string lost!
+const targetUrl = `${BACKEND_URL}/${path}`;
+```
+
+**The Fix**:
+```typescript
+const queryString = request.nextUrl.search; // Preserves "?param=value"
+const targetUrl = `${BACKEND_URL}/${path}${queryString}`;
+```
+
+**Impact**: All three filters now work correctly:
+- ✅ Event Type filter (category enum)
+- ✅ Event Date filter (startDateFrom/startDateTo)
+- ✅ Location filter (metroAreaIds)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 32: PHASE 6A.23 ANONYMOUS SIGN-UP WORKFLOW (2025-12-10)
 **Date**: 2025-12-10 (Session 32)
 **Session**: Phase 6A.23 - Anonymous Sign-Up Workflow Implementation
 **Status**: ✅ COMPLETE - Backend + Frontend deployed to staging

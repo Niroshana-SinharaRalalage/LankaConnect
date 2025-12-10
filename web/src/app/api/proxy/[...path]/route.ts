@@ -71,7 +71,10 @@ async function forwardRequest(
 ) {
   try {
     const path = pathSegments.join('/');
-    const targetUrl = `${BACKEND_URL}/${path}`;
+    // CRITICAL FIX: Preserve query string parameters for filtering, pagination, etc.
+    // Without this, GET requests with query params (e.g., /events?category=0) lose their filters
+    const queryString = request.nextUrl.search; // Returns "?param=value" or empty string
+    const targetUrl = `${BACKEND_URL}/${path}${queryString}`;
 
     // Get Content-Type to detect multipart/form-data
     const contentType = request.headers.get('content-type');

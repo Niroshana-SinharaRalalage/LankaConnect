@@ -44,11 +44,13 @@ public class CheckEventRegistrationQueryHandler
             .FirstOrDefaultAsync(cancellationToken);
 
         // Step 2: Check if email is registered for this event
+        // Note: RegistrationContact.Email is a plain string, but AttendeeInfo.Email is a Value Object
+        // Must use .Value for AttendeeInfo.Email to enable EF Core translation
         var registration = await _context.Registrations
             .Where(r => r.EventId == request.EventId)
             .Where(r =>
                 (r.Contact != null && r.Contact.Email == emailToCheck) ||
-                (r.AttendeeInfo != null && r.AttendeeInfo.Email == emailToCheck))
+                (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == emailToCheck))
             .Select(r => new { r.Id })
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { EventDto, EventStatus, EventCategory } from '@/infrastructure/api/types/events.types';
 
@@ -108,5 +108,85 @@ describe('EventsList', () => {
 
     expect(religiousBadge).toBeInTheDocument();
     expect(culturalBadge).toBeInTheDocument();
+  });
+
+  describe('Cancel Registration', () => {
+    it('should render cancel button for each event when onCancelClick prop is provided', () => {
+      const mockCancelClick = vi.fn();
+      render(<EventsList events={mockEvents} onCancelClick={mockCancelClick} />);
+
+      const cancelButtons = screen.getAllByRole('button', { name: /cancel registration/i });
+      expect(cancelButtons).toHaveLength(2);
+    });
+
+    it('should not render cancel button when onCancelClick prop is not provided', () => {
+      render(<EventsList events={mockEvents} />);
+
+      const cancelButtons = screen.queryAllByRole('button', { name: /cancel registration/i });
+      expect(cancelButtons).toHaveLength(0);
+    });
+
+    it('should call onCancelClick with correct eventId when cancel button is clicked', async () => {
+      const mockCancelClick = vi.fn().mockResolvedValue(undefined);
+      render(<EventsList events={mockEvents} onCancelClick={mockCancelClick} />);
+
+      const cancelButtons = screen.getAllByRole('button', { name: /cancel registration/i });
+      fireEvent.click(cancelButtons[0]);
+
+      await waitFor(() => {
+        expect(mockCancelClick).toHaveBeenCalledWith('1');
+        expect(mockCancelClick).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('should show loading state on cancel button while cancellation is in progress', async () => {
+      const mockCancelClick = vi.fn().mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 100))
+      );
+      render(<EventsList events={mockEvents} onCancelClick={mockCancelClick} />);
+
+      const cancelButtons = screen.getAllByRole('button', { name: /cancel registration/i });
+      fireEvent.click(cancelButtons[0]);
+
+      // Button should be disabled during cancellation
+      await waitFor(() => {
+        expect(cancelButtons[0]).toBeDisabled();
+      });
+    });
+
+    it('should not trigger onEventClick when cancel button is clicked', async () => {
+      const mockEventClick = vi.fn();
+      const mockCancelClick = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventsList
+          events={mockEvents}
+          onEventClick={mockEventClick}
+          onCancelClick={mockCancelClick}
+        />
+      );
+
+      const cancelButtons = screen.getAllByRole('button', { name: /cancel registration/i });
+      fireEvent.click(cancelButtons[0]);
+
+      await waitFor(() => {
+        expect(mockCancelClick).toHaveBeenCalledTimes(1);
+        expect(mockEventClick).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should disable only the clicked cancel button, not all buttons', async () => {
+      const mockCancelClick = vi.fn().mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 100))
+      );
+      render(<EventsList events={mockEvents} onCancelClick={mockCancelClick} />);
+
+      const cancelButtons = screen.getAllByRole('button', { name: /cancel registration/i });
+      fireEvent.click(cancelButtons[0]);
+
+      await waitFor(() => {
+        expect(cancelButtons[0]).toBeDisabled();
+        expect(cancelButtons[1]).not.toBeDisabled();
+      });
+    });
   });
 });

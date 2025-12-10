@@ -152,6 +152,20 @@ export default function DashboardPage() {
     router.push(`/events/${eventId}`);
   };
 
+  // Session 30: Cancel registration handler for dashboard
+  const handleCancelRegistration = async (eventId: string): Promise<void> => {
+    try {
+      await eventsRepository.cancelRsvp(eventId);
+      // Reload registered events after successful cancellation
+      const events = await eventsRepository.getUserRsvps();
+      setRegisteredEvents(events);
+    } catch (error) {
+      console.error('Error cancelling registration:', error);
+      // You could add a toast notification here if desired
+      throw error; // Re-throw so the component can show error state if needed
+    }
+  };
+
   const handleManageEventClick = (eventId: string) => {
     router.push(`/events/${eventId}/manage`);
   };
@@ -347,6 +361,7 @@ export default function DashboardPage() {
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet"
                             onEventClick={handleEventClick}
+                            onCancelClick={handleCancelRegistration}
                           />
                         ),
                       },
@@ -409,6 +424,7 @@ export default function DashboardPage() {
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet"
                             onEventClick={handleEventClick}
+                            onCancelClick={handleCancelRegistration}
                           />
                         ),
                       },
@@ -453,6 +469,7 @@ export default function DashboardPage() {
                             isLoading={loadingRegistered}
                             emptyMessage="You haven't registered for any events yet. Browse events to join!"
                             onEventClick={handleEventClick}
+                            onCancelClick={handleCancelRegistration}
                           />
                         ),
                       },

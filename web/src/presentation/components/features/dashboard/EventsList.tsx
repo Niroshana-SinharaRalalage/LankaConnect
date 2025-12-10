@@ -9,6 +9,7 @@ export interface EventsListProps {
   isLoading?: boolean;
   emptyMessage?: string;
   onEventClick?: (eventId: string) => void;
+  onCancelClick?: (eventId: string) => Promise<void>;
 }
 
 /**
@@ -21,7 +22,9 @@ export function EventsList({
   isLoading = false,
   emptyMessage = 'No events to display',
   onEventClick,
+  onCancelClick,
 }: EventsListProps) {
+  const [cancellingEventId, setCancellingEventId] = React.useState<string | null>(null);
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -100,6 +103,19 @@ export function EventsList({
         return 'Entertainment';
       default:
         return 'Other';
+    }
+  };
+
+  const handleCancelClick = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering onEventClick
+
+    if (!onCancelClick || cancellingEventId) return;
+
+    setCancellingEventId(eventId);
+    try {
+      await onCancelClick(eventId);
+    } finally {
+      setCancellingEventId(null);
     }
   };
 
@@ -208,6 +224,18 @@ export function EventsList({
                 </span>
               )}
             </div>
+
+            {/* Cancel Registration Button - Session 30 */}
+            {onCancelClick && (
+              <button
+                onClick={(e) => handleCancelClick(event.id, e)}
+                disabled={cancellingEventId === event.id}
+                className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                aria-label="Cancel registration"
+              >
+                {cancellingEventId === event.id ? 'Cancelling...' : 'Cancel Registration'}
+              </button>
+            )}
           </div>
         </div>
       ))}

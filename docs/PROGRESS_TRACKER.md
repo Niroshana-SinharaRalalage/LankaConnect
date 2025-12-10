@@ -1,9 +1,44 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-10 (Current Session) - Session 32: Phase 6A.23 Anonymous Sign-Up Workflow ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 33: Phase 6A.15 Dashboard Cancel Registration Button ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 32: Phase 6A.23 Anonymous Sign-Up Workflow ✅ COMPLETE
+## 🎯 Current Session Status - Session 33: Phase 6A.15 Dashboard Cancel Registration Button ✅ COMPLETE
+
+### Session 33: Phase 6A.15 - Dashboard Cancel Registration Button - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (Frontend only - uses existing backend API)
+
+**Requirement**: Add cancel registration button to Dashboard's "My Registered Events" section so users can cancel without navigating to event details page.
+
+**Implementation**:
+1. ✅ Added `onCancelClick` prop to EventsList component
+2. ✅ Added cancel button UI with loading state ("Cancelling..." during API call)
+3. ✅ Wired up `handleCancelRegistration` handler in dashboard page
+4. ✅ Auto-reloads registered events list after successful cancellation
+5. ✅ Only the clicked button is disabled during cancellation (not all buttons)
+6. ✅ Uses e.stopPropagation() to prevent triggering event card click
+
+**Testing**:
+- All 15 tests passing (9 existing + 6 new cancel registration tests)
+- Tests cover: button rendering, click handling, loading states, event propagation
+
+**Files Changed**:
+- `web/src/presentation/components/features/dashboard/EventsList.tsx` (added cancel button + handler)
+- `web/src/app/(dashboard)/dashboard/page.tsx` (wired up handler to all EventsList instances)
+- `web/tests/unit/presentation/components/features/dashboard/EventsList.test.tsx` (added 6 test cases)
+
+**Backend API**: Uses existing `DELETE /api/events/{id}/rsvp` endpoint via `eventsRepository.cancelRsvp()`
+
+**Documentation**: See [PHASE_6A_15_DASHBOARD_CANCEL_REGISTRATION_SUMMARY.md](./PHASE_6A_15_DASHBOARD_CANCEL_REGISTRATION_SUMMARY.md)
+
+**Commit**: 640857d
+
+---
+
+## Previous Sessions
+
+### Session 32: Phase 6A.23 Anonymous Sign-Up Workflow ✅ COMPLETE
 
 ### Session 32: Phase 6A.23 - Anonymous Sign-Up Workflow - COMPLETE - 2025-12-10
 

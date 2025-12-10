@@ -96,19 +96,23 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100 animate-pulse">
-                        <div className="w-12 h-12 rounded-xl bg-neutral-200 mb-4"></div>
-                        <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-white/20 rounded w-1/2"></div>
+                        </div>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-4 mt-8">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100 animate-pulse">
-                        <div className="w-12 h-12 rounded-xl bg-neutral-200 mb-4"></div>
-                        <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-white/20 rounded w-1/2"></div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -116,81 +120,147 @@ export default function Home() {
               ) : eventsError || !featuredEvents || featuredEvents.length === 0 ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
-                        🎉
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-orange-600 via-rose-600 to-amber-500">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-6xl opacity-30">🎉</span>
                       </div>
-                      <div className="text-neutral-900 font-semibold mb-1">No Events Yet</div>
-                      <div className="text-sm text-neutral-500">Check back soon</div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">No Events Yet</h3>
+                        <div className="text-white/90 text-sm">Check back soon</div>
+                      </div>
                     </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center text-2xl mb-4">
-                        📅
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-6xl opacity-30">📅</span>
                       </div>
-                      <div className="text-neutral-900 font-semibold mb-1">Coming Soon</div>
-                      <div className="text-sm text-neutral-500">New events weekly</div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Coming Soon</h3>
+                        <div className="text-white/90 text-sm">New events weekly</div>
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-4 mt-8">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
-                        🎭
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-500">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-6xl opacity-30">🎭</span>
                       </div>
-                      <div className="text-neutral-900 font-semibold mb-1">Cultural Events</div>
-                      <div className="text-sm text-neutral-500">Stay tuned</div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Cultural Events</h3>
+                        <div className="text-white/90 text-sm">Stay tuned</div>
+                      </div>
                     </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-neutral-100">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center text-2xl mb-4">
-                        🌟
+                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-6xl opacity-30">🌟</span>
                       </div>
-                      <div className="text-neutral-900 font-semibold mb-1">Join Community</div>
-                      <div className="text-sm text-neutral-500">Connect with us</div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Join Community</h3>
+                        <div className="text-white/90 text-sm">Connect with us</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
-                    {featuredEvents.slice(0, 2).map((event) => (
-                      <div
-                        key={event.id}
-                        className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100"
-                        onClick={() => window.location.href = `/events/${event.id}`}
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl mb-4">
-                          {event.images && event.images.length > 0 ? (
-                            <img src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                    {featuredEvents.slice(0, 2).map((event, index) => {
+                      const primaryImage = event.images?.find(img => img.isPrimary) || event.images?.[0];
+                      const hasImage = primaryImage?.imageUrl;
+                      const gradients = [
+                        'from-orange-600 via-rose-600 to-amber-500',
+                        'from-emerald-600 via-teal-600 to-cyan-500',
+                      ];
+                      const fallbackIcons = ['🎉', '📅'];
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          onClick={() => window.location.href = `/events/${event.id}`}
+                        >
+                          {/* Background Image or Gradient Fallback */}
+                          {hasImage ? (
+                            <img
+                              src={primaryImage.imageUrl}
+                              alt={event.title}
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
                           ) : (
-                            '🎉'
+                            <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index % 2]} flex items-center justify-center`}>
+                              <span className="text-6xl opacity-30">{fallbackIcons[index % 2]}</span>
+                            </div>
                           )}
+
+                          {/* Dark Gradient Overlay for Text Readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+
+                          {/* Content Overlay */}
+                          <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                            <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center gap-2 text-white/90 text-sm">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>
+                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-neutral-900 font-semibold mb-1 line-clamp-1">{event.title}</div>
-                        <div className="text-sm text-neutral-500">
-                          {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="space-y-4 mt-8">
-                    {featuredEvents.slice(2, 4).map((event) => (
-                      <div
-                        key={event.id}
-                        className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-neutral-100"
-                        onClick={() => window.location.href = `/events/${event.id}`}
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
-                          {event.images && event.images.length > 0 ? (
-                            <img src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl} alt={event.title} className="w-full h-full object-cover rounded-xl" />
+                    {featuredEvents.slice(2, 4).map((event, index) => {
+                      const primaryImage = event.images?.find(img => img.isPrimary) || event.images?.[0];
+                      const hasImage = primaryImage?.imageUrl;
+                      const gradients = [
+                        'from-rose-600 via-pink-600 to-purple-500',
+                        'from-indigo-600 via-blue-600 to-cyan-500',
+                      ];
+                      const fallbackIcons = ['🎭', '🌟'];
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden"
+                          onClick={() => window.location.href = `/events/${event.id}`}
+                        >
+                          {/* Background Image or Gradient Fallback */}
+                          {hasImage ? (
+                            <img
+                              src={primaryImage.imageUrl}
+                              alt={event.title}
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
                           ) : (
-                            '🎭'
+                            <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index % 2]} flex items-center justify-center`}>
+                              <span className="text-6xl opacity-30">{fallbackIcons[index % 2]}</span>
+                            </div>
                           )}
+
+                          {/* Dark Gradient Overlay for Text Readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+
+                          {/* Content Overlay */}
+                          <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                            <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center gap-2 text-white/90 text-sm">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>
+                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-neutral-900 font-semibold mb-1 line-clamp-1">{event.title}</div>
-                        <div className="text-sm text-neutral-500">
-                          {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

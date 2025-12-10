@@ -1,9 +1,50 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-10 (Current Session) - Session 34: Proxy Query Parameter Fix ✅ COMPLETE*
+*Last Updated: 2025-12-10 (Current Session) - Session 35: Event Images Display Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 34: Proxy Query Parameter Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 35: Event Images Display Fix ✅ COMPLETE
+
+### Session 35: Event Images Display Fix - COMPLETE - 2025-12-10
+
+**Status**: ✅ **COMPLETE** (Backend API fix + UI redesign)
+
+**Issue**: Event images were not showing on the events list page or homepage banner, despite images being correctly set in the database.
+
+**Root Cause Analysis**:
+- **Classification**: Backend API Issue (Repository Layer)
+- **Location**: `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+- **Problem**: Repository methods were missing `.Include(e => e.Images)` for EF Core eager loading
+- **Impact**: API returned events with empty `images: []` arrays
+
+**The Fix - Backend**:
+Added `.Include(e => e.Images)` to four repository methods:
+1. `GetEventsByStatusAsync` (line 56)
+2. `GetPublishedEventsAsync` (line 89)
+3. `GetEventsByCityAsync` (line 127)
+4. `GetNearestEventsAsync` (line 148)
+
+**The Fix - Frontend UI Redesign**:
+Redesigned homepage banner featured event cards with modern full-bleed image approach:
+- **Before**: Tiny 12x12 pixel thumbnail icons
+- **After**: Full-size background images with text overlay
+- Dark gradient overlay for text readability
+- Smooth zoom animation on hover
+- Gradient fallbacks for events without images
+
+**Files Changed**:
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` (4 .Include() additions)
+- `web/src/app/page.tsx` (featured event cards UI redesign)
+
+**Commit**: `fdce54c` - fix(repositories): Add .Include(e => e.Images) to event repository methods
+
+**Verification**:
+- ✅ API now returns images in events list (2 events with images confirmed)
+- ✅ Primary image flag (`isPrimary`) correctly included
+- ✅ UI build successful (0 errors)
+- ✅ Deployed to Azure staging via GitHub Actions
+
+---
 
 ### Session 34: Proxy Query Parameter Fix - COMPLETE - 2025-12-10
 

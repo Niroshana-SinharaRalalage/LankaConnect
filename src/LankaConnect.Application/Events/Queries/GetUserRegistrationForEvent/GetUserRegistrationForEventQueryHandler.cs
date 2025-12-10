@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
@@ -19,8 +20,13 @@ public class GetUserRegistrationForEventQueryHandler
         GetUserRegistrationForEventQuery request,
         CancellationToken cancellationToken)
     {
+        // Only return active registrations (exclude cancelled and refunded)
+        // This fixes the multi-attendee re-registration issue (Session 30)
         var registration = await _context.Registrations
-            .Where(r => r.EventId == request.EventId && r.UserId == request.UserId)
+            .Where(r => r.EventId == request.EventId &&
+                       r.UserId == request.UserId &&
+                       r.Status != RegistrationStatus.Cancelled &&
+                       r.Status != RegistrationStatus.Refunded)
             .Select(r => new RegistrationDetailsDto
             {
                 Id = r.Id,

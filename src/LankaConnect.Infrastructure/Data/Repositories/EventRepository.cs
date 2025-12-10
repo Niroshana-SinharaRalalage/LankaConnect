@@ -53,6 +53,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     public async Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(e => e.Images)
             .AsNoTracking()
             .Where(e => e.Status == status)
             .OrderByDescending(e => e.StartDate)
@@ -85,6 +86,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     public async Task<IReadOnlyList<Event>> GetPublishedEventsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbSet
+            .Include(e => e.Images)
             .AsNoTracking()
             .Where(e => e.Status == EventStatus.Published)
             .OrderByDescending(e => e.StartDate)
@@ -122,6 +124,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             return Array.Empty<Event>();
 
         var query = _dbSet
+            .Include(e => e.Images)
             .AsNoTracking()
             .Where(e => e.Location != null)
             .Where(e => EF.Functions.Like(e.Location!.Address.City.ToLower(), $"%{city.Trim().ToLower()}%"))
@@ -142,6 +145,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Fetch published future events with valid coordinates
         // Client-side distance calculation using Haversine formula
         var events = await _dbSet
+            .Include(e => e.Images)
             .AsNoTracking()
             .Where(e => e.Location != null && e.Location.Coordinates != null)
             .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)

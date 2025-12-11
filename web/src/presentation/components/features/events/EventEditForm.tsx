@@ -9,7 +9,7 @@ import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
-import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/validators/event.schemas';
+import { editEventSchema, type EditEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency, type EventDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -78,9 +78,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
-  } = useForm<CreateEventFormData>({
-    resolver: zodResolver(createEventSchema),
+  } = useForm<EditEventFormData>({
+    resolver: zodResolver(editEventSchema),
     defaultValues: {
       title: event.title,
       description: event.description,
@@ -88,8 +89,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
-      isFree: event.isFree ?? true, // Ensure it's always a boolean
-      enableDualPricing: event.hasDualPricing ?? false, // Map backend field to form field
+      isFree: event.isFree ?? true,
+      enableDualPricing: event.hasDualPricing ?? false,
+      adultPriceAmount: undefined,
+      adultPriceCurrency: Currency.USD,
+      childPriceAmount: undefined,
+      childPriceCurrency: Currency.USD,
+      childAgeLimit: undefined,
+      enableGroupPricing: false,
+      groupPricingTiers: undefined,
       ticketPriceAmount: event.ticketPriceAmount || undefined,
       ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
       locationAddress: event.address || undefined,
@@ -112,6 +120,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
       isFree: event.isFree,
     });
 
+    // Session 33: Properly load existing pricing data including dual pricing
     reset({
       title: event.title,
       description: event.description,
@@ -120,7 +129,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
       isFree: event.isFree,
-      enableDualPricing: false, // Default to single pricing mode
+      // Session 33: Load dual pricing data from event
+      enableDualPricing: event.hasDualPricing ?? false,
+      adultPriceAmount: event.adultPriceAmount || undefined,
+      adultPriceCurrency: event.adultPriceCurrency || Currency.USD,
+      childPriceAmount: event.childPriceAmount || undefined,
+      childPriceCurrency: event.childPriceCurrency || Currency.USD,
+      childAgeLimit: event.childAgeLimit || undefined,
+      enableGroupPricing: event.hasGroupPricing ?? false,
+      groupPricingTiers: event.groupPricingTiers ? [...event.groupPricingTiers] : undefined,
       ticketPriceAmount: event.ticketPriceAmount || undefined,
       ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
       locationAddress: event.address || undefined,
@@ -133,8 +150,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
   }, [event.id]); // Only reset when navigating to different event
 
   const isFree = watch('isFree');
+  const enableDualPricing = watch('enableDualPricing');
+  const enableGroupPricing = watch('enableGroupPricing');
 
-  const onSubmit = handleSubmit(async (data) => {
+  const onSubmit = handleSubmit(async (data: EditEventFormData) => {
     if (!user?.userId) {
       setSubmitError('You must be logged in to edit events');
       return;
@@ -544,7 +563,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
             </label>
           </div>
 
-          {/* Pricing Fields (shown only if not free) */}
+          {/* Pricing Fields (shown only if not free) - Session 33: Added pricing mode toggles */}
           {!isFree && (
             <div className="space-y-4 p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
               <div className="flex items-center gap-2 mb-2">
@@ -552,47 +571,216 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 <h4 className="text-sm font-semibold text-neutral-900">Ticket Pricing</h4>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Ticket Price */}
-                <div>
-                  <label htmlFor="ticketPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Ticket Price *
-                  </label>
-                  <Input
-                    id="ticketPriceAmount"
-                    type="number"
-                    min="0"
-                    max="10000"
-                    step="0.01"
-                    placeholder="e.g., 25.00"
-                    error={!!errors.ticketPriceAmount}
-                    {...register('ticketPriceAmount', { valueAsNumber: true })}
+              {/* Pricing Mode Selection - Session 33 */}
+              <div className="space-y-3">
+                {/* Dual Pricing Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableDualPricing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableDualPricing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableGroupPricing', false);
+                        }
+                      }
+                    })}
                   />
-                  {errors.ticketPriceAmount && (
-                    <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
-                  )}
+                  <label htmlFor="enableDualPricing" className="text-sm font-medium text-neutral-700">
+                    Enable Adult/Child Pricing (different prices for adults and children)
+                  </label>
                 </div>
 
-                {/* Currency */}
-                <div>
-                  <label htmlFor="ticketPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Currency *
+                {/* Group Pricing Toggle - Phase 6D */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableGroupPricing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableGroupPricing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableDualPricing', false);
+                        }
+                      }
+                    })}
+                  />
+                  <label htmlFor="enableGroupPricing" className="text-sm font-medium text-neutral-700">
+                    Enable Group Tiered Pricing (quantity-based discounts for groups)
                   </label>
-                  <select
-                    id="ticketPriceCurrency"
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
-                    }`}
-                    {...register('ticketPriceCurrency', { valueAsNumber: true })}
-                  >
-                    <option value={Currency.USD}>USD ($)</option>
-                    <option value={Currency.LKR}>LKR (Rs)</option>
-                  </select>
-                  {errors.ticketPriceCurrency && (
-                    <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
-                  )}
                 </div>
               </div>
+
+              {/* Single Pricing Fields (default) */}
+              {!enableDualPricing && !enableGroupPricing && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Ticket Price */}
+                  <div>
+                    <label htmlFor="ticketPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                      Ticket Price *
+                    </label>
+                    <Input
+                      id="ticketPriceAmount"
+                      type="number"
+                      min="0"
+                      max="10000"
+                      step="0.01"
+                      placeholder="e.g., 25.00"
+                      error={!!errors.ticketPriceAmount}
+                      {...register('ticketPriceAmount', { valueAsNumber: true })}
+                    />
+                    {errors.ticketPriceAmount && (
+                      <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
+                    )}
+                  </div>
+
+                  {/* Currency */}
+                  <div>
+                    <label htmlFor="ticketPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                      Currency *
+                    </label>
+                    <select
+                      id="ticketPriceCurrency"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                        errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                      }`}
+                      {...register('ticketPriceCurrency', { valueAsNumber: true })}
+                    >
+                      <option value={Currency.USD}>USD ($)</option>
+                      <option value={Currency.LKR}>LKR (Rs)</option>
+                    </select>
+                    {errors.ticketPriceCurrency && (
+                      <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dual Pricing Fields (adult/child) - Session 33 */}
+              {enableDualPricing && !enableGroupPricing && (
+                <div className="space-y-4">
+                  {/* Adult Pricing Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="adultPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Adult Ticket Price *
+                      </label>
+                      <Input
+                        id="adultPriceAmount"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        step="0.01"
+                        placeholder="e.g., 25.00"
+                        error={!!errors.adultPriceAmount}
+                        {...register('adultPriceAmount', { valueAsNumber: true })}
+                      />
+                      {errors.adultPriceAmount && (
+                        <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="adultPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Adult Currency *
+                      </label>
+                      <select
+                        id="adultPriceCurrency"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                          errors.adultPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                        }`}
+                        {...register('adultPriceCurrency', { valueAsNumber: true })}
+                      >
+                        <option value={Currency.USD}>USD ($)</option>
+                        <option value={Currency.LKR}>LKR (Rs)</option>
+                      </select>
+                      {errors.adultPriceCurrency && (
+                        <p className="mt-1 text-sm text-destructive">{errors.adultPriceCurrency.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Child Pricing Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="childPriceAmount" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Ticket Price *
+                      </label>
+                      <Input
+                        id="childPriceAmount"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        step="0.01"
+                        placeholder="e.g., 15.00"
+                        error={!!errors.childPriceAmount}
+                        {...register('childPriceAmount', { valueAsNumber: true })}
+                      />
+                      {errors.childPriceAmount && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="childPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Currency *
+                      </label>
+                      <select
+                        id="childPriceCurrency"
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                          errors.childPriceCurrency ? 'border-destructive' : 'border-neutral-300'
+                        }`}
+                        {...register('childPriceCurrency', { valueAsNumber: true })}
+                      >
+                        <option value={Currency.USD}>USD ($)</option>
+                        <option value={Currency.LKR}>LKR (Rs)</option>
+                      </select>
+                      {errors.childPriceCurrency && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childPriceCurrency.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="childAgeLimit" className="block text-sm font-medium text-neutral-700 mb-2">
+                        Child Age Limit *
+                      </label>
+                      <Input
+                        id="childAgeLimit"
+                        type="number"
+                        min="1"
+                        max="18"
+                        placeholder="12"
+                        error={!!errors.childAgeLimit}
+                        {...register('childAgeLimit', { valueAsNumber: true })}
+                      />
+                      {errors.childAgeLimit && (
+                        <p className="mt-1 text-sm text-destructive">{errors.childAgeLimit.message}</p>
+                      )}
+                      <p className="mt-1 text-xs text-neutral-500">Age under which child pricing applies (1-18)</p>
+                    </div>
+                  </div>
+
+                  {/* Helpful note */}
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-xs text-blue-700">
+                      Example: If child age limit is 12, attendees age 11 and under will be charged the child price, while attendees age 12 and over will be charged the adult price.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Group Pricing - Phase 6D (placeholder) */}
+              {enableGroupPricing && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    Group tiered pricing editing is coming soon. Currently, you can only set this when creating a new event.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -619,7 +807,21 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </CardContent>
       </Card>
 
-      {/* Error Message */}
+      {/* Validation Errors Display */}
+      {Object.keys(errors).length > 0 && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm font-semibold text-red-700 mb-2">Please fix the following errors:</p>
+          <ul className="text-sm text-red-600 space-y-1 list-disc list-inside">
+            {Object.entries(errors).map(([field, error]: any) => (
+              <li key={field}>
+                <strong>{field}:</strong> {error.message || 'Invalid value'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* API Error Message */}
       {submitError && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-600">{submitError}</p>
@@ -631,7 +833,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(`/events/${event.id}`)}
+          onClick={() => router.push(`/events/${event.id}/manage`)}
           disabled={isSubmitting}
         >
           Cancel

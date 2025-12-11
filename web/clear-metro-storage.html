@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Metro Area Selection</title>
+</head>
+<body>
+    <h1>Clear Metro Area Selection</h1>
+    <button onclick="clearStorage()">Clear LocalStorage</button>
+    <pre id="output"></pre>
+    
+    <script>
+        function clearStorage() {
+            const before = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            
+            localStorage.removeItem('lankaconnect_selected_metro');
+            localStorage.removeItem('lankaconnect_user_location');
+            
+            const after = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            
+            document.getElementById('output').textContent = 
+                'BEFORE:\n' + JSON.stringify(before, null, 2) + 
+                '\n\nAFTER:\n' + JSON.stringify(after, null, 2) +
+                '\n\nRefresh the main page now!';
+        }
+        
+        // Show current values on load
+        window.onload = () => {
+            const current = {
+                metro: localStorage.getItem('lankaconnect_selected_metro'),
+                location: localStorage.getItem('lankaconnect_user_location')
+            };
+            document.getElementById('output').textContent = 
+                'CURRENT LOCALSTORAGE:\n' + JSON.stringify(current, null, 2);
+        };
+    </script>
+</body>
+</html>

@@ -111,7 +111,7 @@ public sealed class UploadBusinessImageCommandTests
 
         _mockBusinessRepository
             .Setup(x => x.GetByIdAsync(businessId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Domain.Business.Business?)null);
+            .ReturnsAsync((LankaConnect.Domain.Business.Business?)null);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -165,7 +165,7 @@ public sealed class UploadBusinessImageCommandTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain("Image upload failed");
 
-        _mockBusinessRepository.Verify(x => x.Update(It.IsAny<Domain.Business.Business>()), Times.Never);
+        _mockBusinessRepository.Verify(x => x.Update(It.IsAny<LankaConnect.Domain.Business.Business>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -297,7 +297,7 @@ public sealed class UploadBusinessImageCommandTests
         _mockImageService.Verify(x => x.DeleteImageAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.AtLeast(1));
     }
 
-    private static Domain.Business.Business CreateTestBusiness(Guid businessId)
+    private static LankaConnect.Domain.Business.Business CreateTestBusiness(Guid businessId)
     {
         var businessProfileResult = BusinessProfile.Create("Test Business", "Test Description", null, null, new List<string> { "food" }, new List<string> { "restaurant" });
         if (!businessProfileResult.IsSuccess) throw new InvalidOperationException($"BusinessProfile create failed: {string.Join(", ", businessProfileResult.Errors)}");
@@ -320,7 +320,7 @@ public sealed class UploadBusinessImageCommandTests
         });
         if (!businessHoursResult.IsSuccess) throw new InvalidOperationException($"BusinessHours create failed: {string.Join(", ", businessHoursResult.Errors)}");
 
-        return Domain.Business.Business.Create(
+        return LankaConnect.Domain.Business.Business.Create(
             businessProfileResult.Value,
             businessLocationResult.Value,
             contactInfoResult.Value,

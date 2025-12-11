@@ -62,7 +62,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             firstName,
-            lastName);
+            lastName,
+            FederatedProvider.Microsoft, // Epic 1 Phase 2
+            email.Value);
 
         // Assert
         userResult.IsSuccess.Should().BeTrue();
@@ -87,7 +89,8 @@ public class UserEntraIntegrationTests
             externalProviderId,
             null,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft);
 
         // Assert
         userResult.IsFailure.Should().BeTrue();
@@ -106,7 +109,8 @@ public class UserEntraIntegrationTests
             null,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft);
 
         // Assert
         userResult.IsFailure.Should().BeTrue();
@@ -125,7 +129,8 @@ public class UserEntraIntegrationTests
             "   ",
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft);
 
         // Assert
         userResult.IsFailure.Should().BeTrue();
@@ -144,7 +149,8 @@ public class UserEntraIntegrationTests
             "some-id",
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft);
 
         // Assert
         userResult.IsFailure.Should().BeTrue();
@@ -164,7 +170,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
 
         // Assert
         userResult.IsSuccess.Should().BeTrue();
@@ -184,7 +192,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
 
         // Assert
         userResult.IsSuccess.Should().BeTrue();
@@ -206,7 +216,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
         var user = userResult.Value;
 
         // Act
@@ -244,7 +256,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
         var user = userResult.Value;
 
         // Act
@@ -281,7 +295,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
         var user = userResult.Value;
 
         // Act
@@ -302,7 +318,9 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
         var user = userResult.Value;
 
         // Act
@@ -329,13 +347,19 @@ public class UserEntraIntegrationTests
             externalProviderId,
             email,
             "John",
-            "Doe");
+            "Doe",
+            FederatedProvider.Microsoft,
+            email.Value);
 
         // Assert
         userResult.IsSuccess.Should().BeTrue();
         var user = userResult.Value;
-        user.DomainEvents.Should().ContainSingle();
-        user.DomainEvents.First().GetType().Name.Should().Be("UserCreatedFromExternalProviderEvent");
+
+        // Epic 1 Phase 2: CreateFromExternalProvider now automatically links the external provider,
+        // which raises both UserCreatedFromExternalProviderEvent and ExternalProviderLinkedEvent
+        user.DomainEvents.Should().HaveCount(2);
+        user.DomainEvents.Should().ContainSingle(e => e.GetType().Name == "UserCreatedFromExternalProviderEvent");
+        user.DomainEvents.Should().ContainSingle(e => e.GetType().Name == "ExternalProviderLinkedEvent");
     }
 
     #endregion

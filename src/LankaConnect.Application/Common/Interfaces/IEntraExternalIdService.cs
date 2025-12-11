@@ -98,4 +98,11 @@ public class EntraUserInfo
     /// Whether the email is verified by Entra
     /// </summary>
     public bool EmailVerified { get; set; } = true; // Entra pre-verifies emails
+
+    /// <summary>
+    /// Identity provider claim value (idp claim) - identifies which federated provider was used
+    /// Examples: "facebook.com", "google.com", "appleid.apple.com", "login.microsoftonline.com"
+    /// Epic 1 Phase 2: Used to determine FederatedProvider for multi-provider social login
+    /// </summary>
+    public string? IdentityProvider { get; set; }
 }

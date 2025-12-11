@@ -89,7 +89,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Role)
             .HasConversion<int>()
             .IsRequired()
-            .HasDefaultValue(UserRole.User);
+            .HasDefaultValue(UserRole.GeneralUser);
 
         builder.Property(u => u.IsEmailVerified)
             .IsRequired()
@@ -139,6 +139,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .IsUnique(); // Prevent duplicate interests per user
         });
 
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.CulturalInterests)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Auto-include CulturalInterests when loading User
         builder.Navigation(u => u.CulturalInterests).AutoInclude();
 
@@ -176,6 +180,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasConversion<int>()
                 .IsRequired();
         });
+
+        // Configure property access mode for backing field support with nested owned entities
+        builder.Navigation(u => u.Languages)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Auto-include Languages when loading User
         builder.Navigation(u => u.Languages).AutoInclude();
@@ -216,6 +224,100 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             rt.HasIndex(t => t.ExpiresAt)
                 .HasDatabaseName("ix_user_refresh_tokens_expires_at");
         });
+
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.RefreshTokens)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Auto-include RefreshTokens when loading User
+        builder.Navigation(u => u.RefreshTokens).AutoInclude();
+
+        // Configure ExternalLogins collection (Epic 1 Phase 2 - Social Login)
+        builder.OwnsMany(u => u.ExternalLogins, el =>
+        {
+            el.WithOwner().HasForeignKey("UserId");
+            el.ToTable("external_logins", "identity");
+
+            el.Property(login => login.Provider)
+                .HasColumnName("provider")
+                .HasConversion<int>()
+                .IsRequired();
+
+            el.Property(login => login.ExternalProviderId)
+                .HasColumnName("external_provider_id")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            el.Property(login => login.ProviderEmail)
+                .HasColumnName("provider_email")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            el.Property(login => login.LinkedAt)
+                .HasColumnName("linked_at")
+                .IsRequired();
+
+            // Composite unique index: Prevent same provider+externalId from being linked twice
+            el.HasIndex(login => new { login.Provider, login.ExternalProviderId })
+                .IsUnique()
+                .HasDatabaseName("ix_external_logins_provider_external_id");
+
+            // Index for userId lookups
+            el.HasIndex("UserId")
+                .HasDatabaseName("ix_external_logins_user_id");
+        });
+
+        // Configure property access mode for backing field support
+        builder.Navigation(u => u.ExternalLogins)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Auto-include ExternalLogins when loading User
+        builder.Navigation(u => u.ExternalLogins).AutoInclude();
+
+        // Configure PreferredMetroAreas many-to-many relationship (Phase 5B + 6A.9 Fix)
+        // ADR-009: Domain stores List<Guid> for business logic, EF Core needs entity references for persistence
+        // Solution: Shadow navigation property "_preferredMetroAreaEntities" synced with "_preferredMetroAreaIds"
+        builder.HasMany<Domain.Events.MetroArea>("_preferredMetroAreaEntities")
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "user_preferred_metro_areas",
+                j => j
+                    .HasOne<Domain.Events.MetroArea>()
+                    .WithMany()
+                    .HasForeignKey("metro_area_id")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("fk_user_preferred_metro_areas_metro_area_id"),
+                j => j
+                    .HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey("user_id")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("fk_user_preferred_metro_areas_user_id"),
+                j =>
+                {
+                    j.ToTable("user_preferred_metro_areas", "identity");
+
+                    // Composite primary key
+                    j.HasKey("user_id", "metro_area_id");
+
+                    // Indexes for query performance
+                    j.HasIndex("user_id")
+                        .HasDatabaseName("ix_user_preferred_metro_areas_user_id");
+
+                    j.HasIndex("metro_area_id")
+                        .HasDatabaseName("ix_user_preferred_metro_areas_metro_area_id");
+
+                    // Audit column
+                    j.Property<DateTime>("created_at")
+                        .HasDefaultValueSql("NOW()")
+                        .IsRequired();
+                });
+
+        // CRITICAL: Configure field access for shadow navigation property per ADR-009
+        // This tells EF Core to use the private "_preferredMetroAreaEntities" field for change tracking
+        builder.Navigation("_preferredMetroAreaEntities")
+            .HasField("_preferredMetroAreaEntities")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Configure audit fields
         builder.Property(u => u.CreatedAt)

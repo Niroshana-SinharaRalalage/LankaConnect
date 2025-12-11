@@ -1,4 +1,9 @@
+using Hangfire;
+using LankaConnect.API.Infrastructure;
+using LankaConnect.API.Filters;
 using LankaConnect.Application;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -32,7 +37,30 @@ try
     builder.Host.UseSerilog();
 
     // Add services to the container
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            // Enable case-insensitive property name binding for JSON deserialization
+            // This allows frontend to send camelCase (email, firstName, lastName)
+            // while backend expects PascalCase (Email, FirstName, LastName)
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+            // Enable string-to-enum conversion for both regular and nullable enums
+            // This allows frontend to send enum values as strings (e.g., "EventOrganizer")
+            // which the deserializer will properly convert to UserRole enum values
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
+
+    // Configure FormOptions for large file uploads (videos up to 100MB)
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100MB
+        options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB
+        options.MultipartHeadersLengthLimit = 100 * 1024 * 1024; // 100MB
+    });
+
+    // Add HttpContextAccessor for CurrentUserService and other services
+    builder.Services.AddHttpContextAccessor();
 
     // Add Application Layer
     builder.Services.AddApplication();
@@ -48,9 +76,9 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new OpenApiInfo 
-        { 
-            Title = "LankaConnect API", 
+        c.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "LankaConnect API",
             Version = "v1",
             Description = "Sri Lankan American Community Platform API",
             Contact = new OpenApiContact
@@ -59,7 +87,13 @@ try
                 Email = "support@lankaconnect.com"
             }
         });
-        
+
+        // Add document filter for tag definitions (ensures all endpoints visible in Swagger UI)
+        c.DocumentFilter<TagDescriptionsDocumentFilter>();
+
+        // Add operation filter for file upload endpoints (handles IFormFile parameters)
+        c.OperationFilter<FileUploadOperationFilter>();
+
         // Add JWT Authentication to Swagger
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
@@ -69,7 +103,7 @@ try
             Type = SecuritySchemeType.ApiKey,
             Scheme = "Bearer"
         });
-        
+
         c.AddSecurityRequirement(new OpenApiSecurityRequirement()
         {
             {
@@ -87,7 +121,7 @@ try
                 new List<string>()
             }
         });
-        
+
         // Include XML comments if available
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -107,7 +141,18 @@ try
                   .AllowAnyHeader()
                   .AllowCredentials();
         });
-        
+
+        options.AddPolicy("Staging", policy =>
+        {
+            policy.WithOrigins(
+                      "http://localhost:3000",
+                      "https://localhost:3001",
+                      "https://lankaconnect-staging.azurestaticapps.net")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+
         options.AddPolicy("Production", policy =>
         {
             policy.WithOrigins("https://lankaconnect.com", "https://www.lankaconnect.com")
@@ -157,6 +202,16 @@ try
             logger.LogInformation("Applying database migrations...");
             await context.Database.MigrateAsync();
             logger.LogInformation("Database migrations applied successfully");
+
+            // Seed initial data (Development and Staging only)
+            if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+            {
+                var dbInitializer = new DbInitializer(
+                    context,
+                    services.GetRequiredService<ILogger<DbInitializer>>(),
+                    services.GetRequiredService<IPasswordHashingService>());
+                await dbInitializer.SeedAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -167,6 +222,74 @@ try
     }
 
     // Configure the HTTP request pipeline
+
+    // CRITICAL FIX Phase 6A.12: Use ONLY built-in CORS middleware (removed custom middleware that was conflicting)
+    // Apply CORS BEFORE other middleware to handle preflight requests correctly
+    // CORS must come before UseHttpsRedirection, UseAuthentication, etc.
+    if (app.Environment.IsDevelopment())
+        app.UseCors("Development");
+    else if (app.Environment.IsStaging())
+        app.UseCors("Staging");
+    else
+        app.UseCors("Production");
+
+    // CRITICAL FIX Phase 6A.14: Ensure CORS headers are preserved even on error responses
+    // This middleware runs AFTER UseCors but captures the Origin header so we can re-apply CORS headers if an error occurs
+    app.Use(async (context, next) =>
+    {
+        // Capture the origin BEFORE calling next middleware
+        var origin = context.Request.Headers.Origin.ToString();
+        var allowedOrigins = app.Environment.IsDevelopment()
+            ? new[] { "http://localhost:3000", "https://localhost:3001" }
+            : app.Environment.IsStaging()
+                ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
+                : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+
+        try
+        {
+            await next();
+
+            // PHASE 6A.14: Also ensure CORS headers on successful responses
+            // In case they were lost somewhere in the pipeline
+            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin))
+            {
+                if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // PHASE 6A.14: Always add CORS headers BEFORE starting response
+            // This ensures headers are present even if exception occurs early in pipeline
+            if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin))
+            {
+                // Check if we can still modify headers
+                if (!context.Response.HasStarted)
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+
+                    // Also add Vary header to prevent caching issues
+                    context.Response.Headers["Vary"] = "Origin";
+                }
+            }
+
+            // Log the exception for debugging
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Unhandled exception in request pipeline for {Method} {Path}. Origin: {Origin}. CORS headers added: {CorsAdded}",
+                context.Request.Method,
+                context.Request.Path,
+                origin,
+                !context.Response.HasStarted);
+
+            // Re-throw the exception so error handling middleware can process it
+            throw;
+        }
+    });
+
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
         app.UseSwagger();
@@ -176,14 +299,11 @@ try
             c.RoutePrefix = string.Empty; // Make Swagger available at root
             c.DisplayRequestDuration();
         });
-
-        app.UseCors(app.Environment.IsDevelopment() ? "Development" : "Production");
     }
     else
     {
         app.UseExceptionHandler("/Error");
         app.UseHsts();
-        app.UseCors("Production");
     }
 
     app.UseHttpsRedirection();
@@ -255,6 +375,45 @@ try
             await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
         }
     });
+
+    // Add Hangfire Dashboard (Epic 2 Phase 5)
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuthorizationFilter() },
+        DisplayStorageConnectionString = false,
+        DashboardTitle = "LankaConnect Background Jobs"
+    });
+
+    // Register Recurring Jobs (Epic 2 Phase 5)
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        logger.LogInformation("Registering Hangfire recurring jobs...");
+
+        // Event Reminder Job - Runs hourly to send reminders for events starting in 24 hours
+        recurringJobManager.AddOrUpdate<EventReminderJob>(
+            "event-reminder-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Event Status Update Job - Runs hourly to update event statuses (Published->Active, Active->Completed)
+        recurringJobManager.AddOrUpdate<EventStatusUpdateJob>(
+            "event-status-update-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        logger.LogInformation("Hangfire recurring jobs registered successfully");
+    }
 
     Log.Information("LankaConnect API started successfully");
     app.Run();

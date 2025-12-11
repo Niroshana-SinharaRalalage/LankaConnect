@@ -10,7 +10,10 @@ using LankaConnect.Application.Auth.Commands.LoginWithEntra;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Communications.Commands.ResetPassword;
 using LankaConnect.Application.Communications.Commands.VerifyEmail;
+using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.API.Filters;
+using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Common;
 
 namespace LankaConnect.API.Controllers;
 
@@ -25,11 +28,22 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IMediator mediator, ILogger<AuthController> logger)
+    public AuthController(
+        IMediator mediator,
+        ILogger<AuthController> logger,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        IWebHostEnvironment env)
     {
         _mediator = mediator;
         _logger = logger;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
+        _env = env;
     }
 
     /// <summary>
@@ -100,23 +114,47 @@ public class AuthController : ControllerBase
                 return BadRequest(new { error = result.Error });
             }
 
-            _logger.LogInformation("User logged in successfully: {Email}", request.Email);
-            
+            _logger.LogInformation("User logged in successfully: {Email} (RememberMe: {RememberMe})",
+                request.Email, request.RememberMe);
+
             // Set refresh token as HttpOnly cookie for security
-            SetRefreshTokenCookie(result.Value.RefreshToken);
-            
-            return Ok(new
+            // Cookie expiration matches refresh token expiration (7 or 30 days)
+            var cookieDays = request.RememberMe ? 30 : 7;
+            SetRefreshTokenCookie(result.Value.RefreshToken, cookieDays);
+
+            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
+            // In production, refresh token is in HttpOnly cookie (sent by browser automatically)
+            var response = new
             {
                 user = new
                 {
                     result.Value.UserId,
                     result.Value.Email,
                     result.Value.FullName,
-                    result.Value.Role
+                    result.Value.Role,
+                    result.Value.PendingUpgradeRole, // Phase 6A.7: Include pending upgrade role for UI display
+                    result.Value.UpgradeRequestedAt,  // Phase 6A.7: Include when upgrade was requested
+                    result.Value.ProfilePhotoUrl      // Include profile photo URL for header display
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt
-            });
+            };
+
+            // Development/Staging: Include refresh token in response body for localStorage storage
+            if (_env.IsDevelopment() || _env.IsStaging())
+            {
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in response body for {_env.EnvironmentName} mode");
+                return Ok(new
+                {
+                    user = response.user,
+                    response.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    response.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -157,6 +195,19 @@ public class AuthController : ControllerBase
             // Set new refresh token as HttpOnly cookie
             SetRefreshTokenCookie(result.Value.RefreshToken);
 
+            // Phase 6A.10: In development/staging, include refresh token in response body for localStorage mode
+            if (_env.IsDevelopment() || _env.IsStaging())
+            {
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in refresh response for {_env.EnvironmentName} mode");
+                return Ok(new
+                {
+                    result.Value.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    result.Value.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
             return Ok(new
             {
                 result.Value.AccessToken,
@@ -283,7 +334,8 @@ public class AuthController : ControllerBase
             // Set refresh token as HttpOnly cookie for security
             SetRefreshTokenCookie(result.Value.RefreshToken);
 
-            return Ok(new
+            // Phase 6A.10: In development, include refresh token in response body for localStorage mode
+            var entraResponse = new
             {
                 user = new
                 {
@@ -295,7 +347,22 @@ public class AuthController : ControllerBase
                 },
                 result.Value.AccessToken,
                 result.Value.TokenExpiresAt
-            });
+            };
+
+            if (_env.IsDevelopment() || _env.IsStaging())
+            {
+                _logger.LogInformation($"[Phase 6A.10] Including refreshToken in Entra response for {_env.EnvironmentName} mode");
+                return Ok(new
+                {
+                    entraResponse.user,
+                    entraResponse.AccessToken,
+                    RefreshToken = result.Value.RefreshToken,
+                    entraResponse.TokenExpiresAt
+                });
+            }
+
+            // Production: Only access token in response (refresh token in HttpOnly cookie)
+            return Ok(entraResponse);
         }
         catch (Exception ex)
         {
@@ -419,6 +486,112 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Resend email verification link
+    /// </summary>
+    /// <param name="request">User ID for resending verification</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Confirmation that email was sent</returns>
+    [HttpPost("resend-verification")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResendVerificationEmail([FromBody] SendEmailVerificationCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                // Check for rate limiting
+                if (result.Error.Contains("recently sent") || result.Error.Contains("rate limit"))
+                {
+                    return StatusCode(429, new { error = result.Error });
+                }
+
+                return BadRequest(new { error = result.Error });
+            }
+
+            _logger.LogInformation("Verification email resent for user: {UserId}", result.Value.UserId);
+
+            return Ok(new
+            {
+                message = result.Value.WasRecentlySent
+                    ? "A verification email was recently sent. Please check your inbox."
+                    : "Verification email has been sent. Please check your inbox.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                expiresAt = result.Value.TokenExpiresAt,
+                wasRecentlySent = result.Value.WasRecentlySent
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resending verification email for user: {UserId}", request.UserId);
+            return StatusCode(500, new { error = "An error occurred while sending the verification email" });
+        }
+    }
+
+    /// <summary>
+    /// [TEST ONLY] Verify user email without token validation
+    /// Only available in Development environment for E2E testing
+    /// </summary>
+    /// <param name="userId">User ID to verify email for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Verification result</returns>
+    [HttpPost("test/verify-user/{userId}")]
+    [ApiExplorerSettings(IgnoreApi = true)] // Hide from Swagger in production
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> TestVerifyUser(Guid userId, CancellationToken cancellationToken)
+    {
+        // IMPORTANT: Only available in non-production environments for E2E testing
+        if (_env.IsProduction())
+        {
+            _logger.LogWarning("Unauthorized attempt to access test endpoint in {Environment}", _env.EnvironmentName);
+            return Forbid();
+        }
+
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                _logger.LogWarning("Test verify user failed: user {UserId} not found", userId);
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Verify email without token validation (test-only)
+            var result = user.VerifyEmail();
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Test verify user failed: {Error}", result.Error);
+                return BadRequest(new { error = result.Error });
+            }
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Test verified email for user: {UserId}", userId);
+            return Ok(new
+            {
+                message = "Email verified successfully (test mode)",
+                userId = user.Id,
+                email = user.Email.Value,
+                verifiedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in test verify email endpoint for user: {UserId}", userId);
+            return StatusCode(500, new { error = "An error occurred during verification" });
+        }
+    }
+
+    /// <summary>
     /// Health check endpoint for authentication service
     /// </summary>
     /// <returns>Service health status</returns>
@@ -457,30 +630,54 @@ public class AuthController : ControllerBase
         return ipAddress ?? "unknown";
     }
 
-    private void SetRefreshTokenCookie(string refreshToken)
+    private void SetRefreshTokenCookie(string refreshToken, int expirationDays = 7)
     {
+        // Determine cookie security based on actual connection type, not just environment
+        // Azure Container Apps (staging/prod) always use HTTPS
+        // Only local development with HTTP should use Secure=false
+        var isHttpOnly = _env.IsDevelopment() && !Request.IsHttps;
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // Use HTTPS in production
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddDays(7), // Should match refresh token expiry
-            Path = "/"
+            // Secure=true for all HTTPS connections (staging, prod, and local HTTPS)
+            // Secure=false only for local development over HTTP
+            Secure = !isHttpOnly,
+            // SameSite=Lax for same-origin (local dev), None for cross-origin (requires Secure=true)
+            SameSite = isHttpOnly ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddDays(expirationDays),
+            Path = "/",
+            // Domain only in production for subdomain sharing
+            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
+
+        _logger.LogDebug(
+            "Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, " +
+            "Expires={Expires}, Environment={Environment}, IsHttps={IsHttps}, Path={Path}",
+            cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires,
+            _env.EnvironmentName, Request.IsHttps, cookieOptions.Path);
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 
     private void ClearRefreshTokenCookie()
     {
+        // Use same security settings as SetRefreshTokenCookie
+        var isHttpOnly = _env.IsDevelopment() && !Request.IsHttps;
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = !isHttpOnly,
+            SameSite = isHttpOnly ? SameSiteMode.Lax : SameSiteMode.None,
             Expires = DateTime.UtcNow.AddDays(-1),
-            Path = "/"
+            Path = "/",
+            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
+
+        _logger.LogDebug(
+            "Clearing refresh token cookie: Secure={Secure}, SameSite={SameSite}, Environment={Environment}, IsHttps={IsHttps}",
+            cookieOptions.Secure, cookieOptions.SameSite, _env.EnvironmentName, Request.IsHttps);
 
         Response.Cookies.Append("refreshToken", "", cookieOptions);
     }

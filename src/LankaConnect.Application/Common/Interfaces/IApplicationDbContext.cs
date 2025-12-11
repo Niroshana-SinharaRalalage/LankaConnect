@@ -1,7 +1,9 @@
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Events;
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Enterprise;
 using LankaConnect.Domain.Common.Models;
@@ -24,6 +26,14 @@ public interface IApplicationDbContext
 
     // User Domain
     DbSet<User> Users { get; }
+
+    // Events Domain
+    DbSet<MetroArea> MetroAreas { get; }
+    DbSet<EventTemplate> EventTemplates { get; } // Phase 6A.8
+    DbSet<SignUpList> SignUpLists { get; } // Phase 6A.16: Required for cascade deletion
+    DbSet<SignUpItem> SignUpItems { get; } // Phase 6A.16: Required for cascade deletion
+    DbSet<SignUpCommitment> SignUpCommitments { get; } // Phase 6A.16: Cascade deletion
+    DbSet<Registration> Registrations { get; }
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }

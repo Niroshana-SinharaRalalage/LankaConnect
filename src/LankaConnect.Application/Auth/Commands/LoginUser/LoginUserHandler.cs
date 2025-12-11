@@ -107,13 +107,20 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
             }
 
             // Create and add refresh token
-            var refreshTokenExpiry = DateTime.UtcNow.AddDays(_tokenConfiguration.RefreshTokenExpirationDays);
-            
+            // Phase AUTH-IMPROVEMENT: Support "Remember Me" functionality
+            // - RememberMe = true: 30 days (long-lived session like Facebook/Gmail)
+            // - RememberMe = false: 7 days (standard session)
+            var refreshTokenDays = request.RememberMe ? 30 : 7;
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(refreshTokenDays);
+
+            _logger.LogInformation("Creating refresh token with expiry: {Days} days (RememberMe: {RememberMe})",
+                refreshTokenDays, request.RememberMe);
+
             var refreshToken = Domain.Users.ValueObjects.RefreshToken.Create(
-                refreshTokenResult.Value, 
-                refreshTokenExpiry, 
+                refreshTokenResult.Value,
+                refreshTokenExpiry,
                 request.IpAddress ?? "unknown");
-            
+
             if (!refreshToken.IsSuccess)
             {
                 _logger.LogError("Failed to create refresh token for user: {Email}", request.Email);
@@ -143,7 +150,10 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 user.Role,
                 accessTokenResult.Value,
                 refreshTokenResult.Value,
-                tokenExpiresAt);
+                tokenExpiresAt,
+                user.PendingUpgradeRole,    // Phase 6A.7: Include pending role for UI display
+                user.UpgradeRequestedAt,    // Phase 6A.7: Include when upgrade was requested
+                user.ProfilePhotoUrl);      // Include profile photo URL for header display
 
             return Result<LoginUserResponse>.Success(response);
         }

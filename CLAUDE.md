@@ -45,6 +45,96 @@
 - `/scripts` - Utility scripts
 - `/examples` - Example code
 
+## 🚨 CRITICAL: REQUIREMENT DOCUMENTATION PROTOCOL (Phase 6A Prevention System)
+
+**PROBLEM**: Phase 6A revealed requirements discussed in conversation but NEVER documented in PRIMARY tracking docs, causing missed implementations (7-role system, BusinessOwner features, etc.).
+
+**SOLUTION**: Three-part prevention system to ensure requirement gaps are caught early.
+
+### Part 1: Conversation History Review (ALWAYS DO FIRST)
+
+**Before implementing ANY feature**:
+1. ✅ Read conversation history looking for undocumented planning
+2. ✅ Check if requirements were discussed but never written to tracking docs
+3. ✅ Verify all user intent is captured in PRIMARY docs
+
+**Red Flags to Look For**:
+- "I discussed this before..." = Requirement in conversation history only
+- "We talked about..." = Not documented in PRIMARY docs
+- Planning conversation with no follow-up documentation = ISSUE
+
+### Part 2: Phase Number Management (CRITICAL)
+
+**Before assigning ANY new phase number**:
+1. ✅ Check [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) for next available number
+2. ✅ Verify number not used in PROGRESS_TRACKER.md, STREAMLINED_ACTION_PLAN.md, TASK_SYNCHRONIZATION_STRATEGY.md
+3. ✅ **Record assignment in master index BEFORE implementation starts**
+4. ✅ Document in phase summary after completion
+
+**Phase Number Change History**:
+- If reassigning existing phase numbers, update PHASE_6A_MASTER_INDEX.md "Change History" section
+- Search ALL references in existing documents and update them
+- Update phase summary documents' "Next Steps" sections
+- This prevents future conflicts and confusion
+
+### Part 3: Documentation Synchronization (BEFORE COMPLETION)
+
+**PRIMARY Tracking Documents** (MUST STAY IN SYNC):
+1. [PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md) - Current session status + historical log
+2. [STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md) - Action items + phases
+3. [TASK_SYNCHRONIZATION_STRATEGY.md](./docs/TASK_SYNCHRONIZATION_STRATEGY.md) - Phase overview + status
+
+**At END of each Phase**:
+1. ✅ Create PHASE_[X]_[FEATURE]_SUMMARY.md with implementation details
+2. ✅ Update all 3 PRIMARY docs with:
+   - ✅ Phase status (Complete/Blocked/Deferred)
+   - ✅ Feature details and deliverables
+   - ✅ Links to summary document
+   - ✅ Links to master index
+3. ✅ Update [Master Requirements Specification.md](./docs/Master%20Requirements%20Specification.md) if user-facing features
+4. ✅ Update [PROJECT_CONTENT.md](./docs/PROJECT_CONTENT.md) with status
+5. ✅ Reference [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) at top of tracking docs
+
+### Prevention Checklist
+
+**When user mentions a requirement**:
+- [ ] Requirement is in conversation history
+- [ ] Requirement documented in at least one PRIMARY doc
+- [ ] If new feature, phase number is in master index
+- [ ] If phase number reassigned, change history updated
+
+**Before starting implementation**:
+- [ ] Conversation history reviewed for undocumented planning
+- [ ] All requirements captured in PROGRESS_TRACKER.md
+- [ ] Phase number assigned and recorded in master index
+- [ ] No ambiguity in scope or deliverables
+
+**Before calling task complete**:
+- [ ] Summary documentation created
+- [ ] All 3 PRIMARY docs updated with links to summary
+- [ ] Master index reflects current status
+- [ ] No requirement gaps remain undocumented
+- [ ] Build status verified (0 errors)
+
+### Example: How This Prevents Phase 6A Issues
+
+**Phase 6A Problem**: 7-role system discussed in conversation, but:
+- Not in PROGRESS_TRACKER.md
+- Not in STREAMLINED_ACTION_PLAN.md
+- Phase numbers 6A.8/6A.9 got reassigned without documenting original features
+- BusinessOwner role was discussed but UI disabled without clear documentation
+
+**Phase 6A Solution** (Implemented 2025-11-12):
+1. ✅ Created [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) as single source of truth
+2. ✅ Documented phase number changes (6A.8/6A.9 reassignment)
+3. ✅ Reserved 6A.10/6A.11 for deferred features
+4. ✅ Created 7 summary documents for all phases
+5. ✅ Updated all 3 PRIMARY docs with master index reference
+6. ✅ Added complete 7-role specification to Master Requirements
+7. ✅ This document ensures it never happens again
+
+---
+
 ## Project Overview
 
 This project is an **AI-powered listing application** built using:

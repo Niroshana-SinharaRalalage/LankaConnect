@@ -4,7 +4,53 @@ This directory contains Architecture Decision Records (ADRs) and detailed design
 
 ---
 
-## Latest ADR: Microsoft Entra External ID Integration
+## Latest Architecture: Event Media Features (Image Replace + Video Support)
+
+**Status:** ✅ Design Complete - Ready for Review and Approval
+**Date:** 2025-11-03
+
+### Complete Documentation Set (250+ pages)
+
+1. **[EventMedia-Executive-Summary.md](./EventMedia-Executive-Summary.md)** (15 pages)
+   - Business value and ROI analysis
+   - High-level architecture decisions
+   - Timeline (7-10 days) and cost estimates
+   - Success criteria and KPIs
+
+2. **[EventMedia-Architecture.md](./EventMedia-Architecture.md)** (60 pages)
+   - Detailed domain model design
+   - Application layer (Commands, Handlers, DTOs)
+   - Infrastructure services (storage, video processing)
+   - Database schema and EF Core configuration
+   - API endpoints and contracts
+
+3. **[EventMedia-Implementation-Plan.md](./EventMedia-Implementation-Plan.md)** (70 pages)
+   - Step-by-step TDD workflow
+   - Phase 1: Image Replace (2-3 days)
+   - Phase 2: Video Support (3-4 days)
+   - Phase 3: Polish & Optimization (2-3 days)
+   - Complete code examples for all layers
+
+4. **[EventMedia-Decision-Matrix.md](./EventMedia-Decision-Matrix.md)** (40 pages)
+   - 10 major architecture decisions
+   - Options evaluated with pros/cons scoring
+   - Rationale and trade-offs
+   - Technology selection matrix
+
+5. **[EventMedia-Architecture-Diagrams.md](./EventMedia-Architecture-Diagrams.md)** (30 pages)
+   - 15 Mermaid diagrams (C4, sequence, ER, deployment)
+   - Visual architecture representation
+   - Flow diagrams for all operations
+
+6. **[EventMedia-Risk-Mitigation.md](./EventMedia-Risk-Mitigation.md)** (50 pages)
+   - 15 identified risks with mitigation strategies
+   - Risk matrix (Impact × Probability)
+   - Incident response procedures
+   - Monitoring and alerting plans
+
+---
+
+## ADR: Microsoft Entra External ID Integration
 
 **Status:** ✅ Design Complete - Ready for Implementation
 **Date:** 2025-10-28
@@ -111,16 +157,43 @@ Entra-External-ID-Implementation-Roadmap.md
 
 ## Quick Start
 
-### For Architects
+### Event Media Features (Latest)
+
+#### For Executives & Product Owners
+Start here: [EventMedia-Executive-Summary.md](./EventMedia-Executive-Summary.md)
+
+#### For Technical Leads & Architects
+1. [EventMedia-Executive-Summary.md](./EventMedia-Executive-Summary.md) - Overview
+2. [EventMedia-Decision-Matrix.md](./EventMedia-Decision-Matrix.md) - Why this approach
+3. [EventMedia-Architecture.md](./EventMedia-Architecture.md) - Detailed design
+
+#### For Developers
+1. [EventMedia-Executive-Summary.md](./EventMedia-Executive-Summary.md) - Context
+2. [EventMedia-Implementation-Plan.md](./EventMedia-Implementation-Plan.md) - Step-by-step TDD
+3. [EventMedia-Architecture-Diagrams.md](./EventMedia-Architecture-Diagrams.md) - Visual reference
+
+#### For QA Engineers
+1. [EventMedia-Implementation-Plan.md](./EventMedia-Implementation-Plan.md) - Test scenarios
+2. [EventMedia-Risk-Mitigation.md](./EventMedia-Risk-Mitigation.md) - Edge cases
+
+#### For DevOps Engineers
+1. [EventMedia-Architecture.md](./EventMedia-Architecture.md) - Infrastructure requirements
+2. [EventMedia-Risk-Mitigation.md](./EventMedia-Risk-Mitigation.md) - Deployment risks
+
+---
+
+### Entra External ID Integration
+
+#### For Architects
 Start here: [ADR-002](./ADR-002-Entra-External-ID-Integration.md) → [Architecture Summary](./Entra-External-ID-Architecture-Summary.md)
 
-### For Developers
+#### For Developers
 Start here: [Implementation Roadmap](./Entra-External-ID-Implementation-Roadmap.md) → [Quick Reference](./Entra-External-ID-Quick-Reference.md)
 
-### For DBAs
+#### For DBAs
 Start here: [Database Migration Strategy](./Entra-External-ID-Database-Migration-Strategy.md)
 
-### For QA Engineers
+#### For QA Engineers
 Start here: [Testing Strategy (in ADR)](./ADR-002-Entra-External-ID-Integration.md#8-testing-strategy) → [Roadmap Testing Sections](./Entra-External-ID-Implementation-Roadmap.md#testing-quick-reference)
 
 ---

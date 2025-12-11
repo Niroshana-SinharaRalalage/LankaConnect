@@ -1,0 +1,19 @@
+Hello {{Name}},
+
+Thank you for registering with LankaConnect!
+
+To complete your registration and start connecting with the Sri Lankan American community, please verify your email address by clicking the link below:
+
+{{VerificationUrl}}
+
+This verification link will expire in {{ExpiryHours}} hours for your security.
+
+If you didn't create a LankaConnect account, please ignore this email.
+
+Welcome to the community!
+
+The LankaConnect Team
+
+---
+This email was sent on {{Date}}.
+Visit us at: {{SiteUrl}}

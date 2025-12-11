@@ -26,6 +26,9 @@ public interface IStripePaymentService
     Task<Result> CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken = default);
     Task<Result> UpdateSubscriptionAsync(UpdateSubscriptionRequest request, CancellationToken cancellationToken = default);
     Task<Result<StripeWebhookEvent>> ProcessWebhookAsync(string payload, string signature, CancellationToken cancellationToken = default);
+
+    // Session 23: Event ticket payment integration
+    Task<Result<string>> CreateEventCheckoutSessionAsync(CreateEventCheckoutSessionRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -339,4 +342,19 @@ public enum HinduCalendarType
     Tamil,
     Malayalam,
     Custom
+}
+
+/// <summary>
+/// Session 23: Request to create a Stripe Checkout session for event ticket purchase
+/// </summary>
+public class CreateEventCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid RegistrationId { get; init; }
+    public required string EventTitle { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
 }

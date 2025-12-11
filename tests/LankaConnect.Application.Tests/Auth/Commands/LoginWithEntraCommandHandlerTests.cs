@@ -66,7 +66,9 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
-            UserRole.User).Value;
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
+            UserRole.GeneralUser).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))
             .ReturnsAsync(Result<EntraUserInfo>.Success(entraUserInfo));
@@ -92,7 +94,7 @@ public class LoginWithEntraCommandHandlerTests
         result.Value.UserId.Should().Be(existingUser.Id);
         result.Value.Email.Should().Be(entraUserInfo.Email);
         result.Value.FullName.Should().Be($"{entraUserInfo.FirstName} {entraUserInfo.LastName}");
-        result.Value.Role.Should().Be(UserRole.User);
+        result.Value.Role.Should().Be(UserRole.GeneralUser);
         result.Value.AccessToken.Should().Be("access-token");
         result.Value.RefreshToken.Should().Be("refresh-token");
         result.Value.IsNewUser.Should().BeFalse();
@@ -140,7 +142,7 @@ public class LoginWithEntraCommandHandlerTests
         result.Value.Should().NotBeNull();
         result.Value.Email.Should().Be(entraUserInfo.Email);
         result.Value.FullName.Should().Be($"{entraUserInfo.FirstName} {entraUserInfo.LastName}");
-        result.Value.Role.Should().Be(UserRole.User);
+        result.Value.Role.Should().Be(UserRole.GeneralUser);
         result.Value.IsNewUser.Should().BeTrue();
 
         _mockUserRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -234,7 +236,9 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
-            UserRole.User).Value;
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
+            UserRole.GeneralUser).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))
             .ReturnsAsync(Result<EntraUserInfo>.Success(entraUserInfo));
@@ -283,7 +287,9 @@ public class LoginWithEntraCommandHandlerTests
             email,
             entraUserInfo.FirstName,
             entraUserInfo.LastName,
-            UserRole.User).Value;
+            FederatedProvider.Microsoft,
+            entraUserInfo.Email,
+            UserRole.GeneralUser).Value;
 
         _mockEntraService.Setup(e => e.GetUserInfoAsync(request.AccessToken))
             .ReturnsAsync(Result<EntraUserInfo>.Success(entraUserInfo));

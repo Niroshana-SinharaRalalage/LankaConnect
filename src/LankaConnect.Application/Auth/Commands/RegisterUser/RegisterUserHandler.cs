@@ -4,6 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Application.Auth.Commands.RegisterUser;
@@ -61,14 +62,31 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                 return Result<RegisterUserResponse>.Failure(hashResult.Error);
             }
 
-            // Create user
-            var userResult = User.Create(emailResult.Value, request.FirstName, request.LastName, request.Role);
+            // Phase 6A.0: Determine user role
+            // If Event Organizer is selected, create as GeneralUser and set pending upgrade role
+            // Admin will need to approve the upgrade request
+            var selectedRole = request.SelectedRole ?? UserRole.GeneralUser;
+            var actualRole = selectedRole == UserRole.EventOrganizer ? UserRole.GeneralUser : selectedRole;
+
+            // Create user with actual role (GeneralUser if Event Organizer was selected)
+            var userResult = User.Create(emailResult.Value, request.FirstName, request.LastName, actualRole);
             if (!userResult.IsSuccess)
             {
                 return Result<RegisterUserResponse>.Failure(userResult.Error);
             }
 
             var user = userResult.Value;
+
+            // Phase 6A.0: If Event Organizer selected, mark for pending upgrade
+            if (selectedRole == UserRole.EventOrganizer)
+            {
+                var setPendingRoleResult = user.SetPendingUpgradeRole(UserRole.EventOrganizer);
+                if (!setPendingRoleResult.IsSuccess)
+                {
+                    return Result<RegisterUserResponse>.Failure(setPendingRoleResult.Error);
+                }
+                // Note: ApprovalRequest entity creation will be added in Phase 6A.5
+            }
 
             // Set password
             var setPasswordResult = user.SetPassword(hashResult.Value);
@@ -85,6 +103,16 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             if (!setTokenResult.IsSuccess)
             {
                 return Result<RegisterUserResponse>.Failure(setTokenResult.Error);
+            }
+
+            // Set preferred metro areas if provided (Phase 5A: Optional)
+            if (request.PreferredMetroAreaIds != null && request.PreferredMetroAreaIds.Any())
+            {
+                var setMetroAreasResult = user.UpdatePreferredMetroAreas(request.PreferredMetroAreaIds);
+                if (!setMetroAreasResult.IsSuccess)
+                {
+                    return Result<RegisterUserResponse>.Failure(setMetroAreasResult.Error);
+                }
             }
 
             // Save user

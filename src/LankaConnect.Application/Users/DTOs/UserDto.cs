@@ -18,4 +18,7 @@ public record UserDto
     public UserLocationDto? Location { get; init; }
     public List<string> CulturalInterests { get; init; } = new();
     public List<LanguageDto> Languages { get; init; } = new();
+
+    // Phase 5B/6A.9: User Preferred Metro Areas (0-20 GUIDs)
+    public List<Guid> PreferredMetroAreas { get; init; } = new();
 }

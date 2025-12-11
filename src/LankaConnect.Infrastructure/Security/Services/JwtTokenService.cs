@@ -55,12 +55,13 @@ public class JwtTokenService : IJwtTokenService
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new(ClaimTypes.Email, user.Email.Value),
                 new(ClaimTypes.Name, user.FullName),
+                new(ClaimTypes.Role, user.Role.ToString()), // BUGFIX: Add role claim for authorization policies
                 new("firstName", user.FirstName),
                 new("lastName", user.LastName),
                 new("isActive", user.IsActive.ToString().ToLower()),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new(JwtRegisteredClaimNames.Iat, 
-                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), 
+                new(JwtRegisteredClaimNames.Iat,
+                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(),
                     ClaimValueTypes.Integer64)
             };
 

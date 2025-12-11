@@ -6,7 +6,15 @@ using LankaConnect.Application.Users.Commands.DeleteProfilePhoto;
 using LankaConnect.Application.Users.Commands.UpdateUserLocation;
 using LankaConnect.Application.Users.Commands.UpdateCulturalInterests;
 using LankaConnect.Application.Users.Commands.UpdateLanguages;
+using LankaConnect.Application.Users.Commands.LinkExternalProvider;
+using LankaConnect.Application.Users.Commands.UnlinkExternalProvider;
+using LankaConnect.Application.Users.Commands.UpdatePreferredMetroAreas;
+using LankaConnect.Application.Users.Commands.RequestRoleUpgrade;
+using LankaConnect.Application.Users.Commands.CancelRoleUpgrade;
 using LankaConnect.Application.Users.Queries.GetUserById;
+using LankaConnect.Application.Users.Queries.GetLinkedProviders;
+using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
+using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Domain.Users.Enums;
 using Microsoft.Extensions.Logging;
@@ -372,6 +380,336 @@ public class UsersController : BaseController<UsersController>
             });
         }
     }
+
+    #region External Provider Management (Epic 1 Phase 2)
+
+    /// <summary>
+    /// Links an external OAuth provider to a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">External provider details (provider, externalProviderId, providerEmail)</param>
+    /// <returns>Linked provider details on success</returns>
+    [HttpPost("{id:guid}/external-providers/link")]
+    [ProducesResponseType(typeof(LinkExternalProviderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LinkExternalProvider(Guid id, [FromBody] LinkExternalProviderRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "LinkExternalProvider",
+            ["UserId"] = id,
+            ["Provider"] = request.Provider.ToString()
+        }))
+        {
+            Logger.LogInformation("Linking external provider {Provider} for user {UserId}",
+                request.Provider, id);
+
+            var command = new LinkExternalProviderCommand(
+                id,
+                request.Provider,
+                request.ExternalProviderId,
+                request.ProviderEmail);
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("External provider {Provider} linked successfully for user {UserId}",
+                    request.Provider, id);
+            }
+            else
+            {
+                Logger.LogWarning("Failed to link external provider {Provider} for user {UserId}: {Error}",
+                    request.Provider, id, result.Errors.FirstOrDefault());
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Unlinks an external OAuth provider from a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// Business Rule: Cannot unlink last authentication method
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="provider">Provider to unlink (Facebook, Google, Apple, Microsoft)</param>
+    /// <returns>Unlink details on success</returns>
+    [HttpDelete("{id:guid}/external-providers/{provider}")]
+    [ProducesResponseType(typeof(UnlinkExternalProviderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnlinkExternalProvider(Guid id, FederatedProvider provider)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UnlinkExternalProvider",
+            ["UserId"] = id,
+            ["Provider"] = provider.ToString()
+        }))
+        {
+            Logger.LogInformation("Unlinking external provider {Provider} for user {UserId}",
+                provider, id);
+
+            var command = new UnlinkExternalProviderCommand(id, provider);
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("External provider {Provider} unlinked successfully for user {UserId}",
+                    provider, id);
+            }
+            else
+            {
+                var firstError = result.Errors.FirstOrDefault();
+                Logger.LogWarning("Failed to unlink external provider {Provider} for user {UserId}: {Error}",
+                    provider, id, firstError);
+
+                // Check if it's a "not found" error
+                if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Detail = firstError,
+                        Status = 404,
+                        Title = "Not Found"
+                    });
+                }
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Gets all external OAuth providers linked to a user's account
+    /// Epic 1 Phase 2: Multi-Provider Social Login
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <returns>List of linked providers with details</returns>
+    [HttpGet("{id:guid}/external-providers")]
+    [ProducesResponseType(typeof(GetLinkedProvidersResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLinkedProviders(Guid id)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "GetLinkedProviders",
+            ["UserId"] = id
+        }))
+        {
+            Logger.LogInformation("Retrieving linked providers for user {UserId}", id);
+
+            var query = new GetLinkedProvidersQuery(id);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                Logger.LogInformation("User not found with ID {UserId}", id);
+                return NotFound();
+            }
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Retrieved {Count} linked providers for user {UserId}",
+                    result.Value.LinkedProviders.Count, id);
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    #endregion
+
+    #region Preferred Metro Areas (Phase 5A)
+
+    /// <summary>
+    /// Updates a user's preferred metro areas for location-based filtering
+    /// Phase 5A: User Preferred Metro Areas
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">Preferred metro area IDs (0-10 allowed). Pass empty list to clear all preferences.</param>
+    /// <returns>No content on success</returns>
+    [HttpPut("{id:guid}/preferred-metro-areas")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePreferredMetroAreas(Guid id, [FromBody] UpdatePreferredMetroAreasRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UpdatePreferredMetroAreas",
+            ["UserId"] = id,
+            ["MetroAreaCount"] = request.MetroAreaIds.Count
+        }))
+        {
+            Logger.LogInformation("Updating preferred metro areas for user {UserId} with {Count} metro areas",
+                id, request.MetroAreaIds.Count);
+
+            var command = new UpdateUserPreferredMetroAreasCommand
+            {
+                UserId = id,
+                MetroAreaIds = request.MetroAreaIds
+            };
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Preferred metro areas updated successfully for user {UserId}", id);
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Preferred metro areas update failed for user {UserId}: {Error}", id, firstError);
+
+            // Check if it's a "not found" error
+            if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Detail = firstError,
+                    Status = 404,
+                    Title = "Not Found"
+                });
+            }
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Gets a user's preferred metro areas with full details
+    /// Phase 5A: User Preferred Metro Areas
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <returns>List of preferred metro areas with details</returns>
+    [HttpGet("{id:guid}/preferred-metro-areas")]
+    [ProducesResponseType(typeof(IReadOnlyList<MetroAreaDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPreferredMetroAreas(Guid id)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "GetPreferredMetroAreas",
+            ["UserId"] = id
+        }))
+        {
+            Logger.LogInformation("Retrieving preferred metro areas for user {UserId}", id);
+
+            var query = new GetUserPreferredMetroAreasQuery(id);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                Logger.LogInformation("User not found with ID {UserId}", id);
+                return NotFound();
+            }
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Retrieved {Count} preferred metro areas for user {UserId}",
+                    result.Value.Count, id);
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    #endregion
+
+    #region Role Upgrade Workflow (Phase 6A.7)
+
+    /// <summary>
+    /// Requests a role upgrade to Event Organizer
+    /// Phase 6A.7: User Upgrade Workflow
+    /// </summary>
+    /// <param name="request">Role upgrade request details</param>
+    /// <returns>No content on success</returns>
+    [HttpPost("me/request-upgrade")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RequestRoleUpgrade([FromBody] RequestRoleUpgradeRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "RequestRoleUpgrade",
+            ["TargetRole"] = request.TargetRole.ToString()
+        }))
+        {
+            Logger.LogInformation("User requesting role upgrade to {TargetRole}", request.TargetRole);
+
+            var command = new RequestRoleUpgradeCommand(request.TargetRole, request.Reason);
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Role upgrade request submitted successfully for target role {TargetRole}", request.TargetRole);
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Role upgrade request failed: {Error}", firstError);
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Cancels a pending role upgrade request
+    /// Phase 6A.7: User Upgrade Workflow
+    /// </summary>
+    /// <returns>No content on success</returns>
+    [HttpPost("me/cancel-upgrade")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CancelRoleUpgrade()
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "CancelRoleUpgrade"
+        }))
+        {
+            Logger.LogInformation("User canceling role upgrade request");
+
+            var command = new CancelRoleUpgradeCommand();
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Role upgrade request canceled successfully");
+                return NoContent();
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("Cancel role upgrade failed: {Error}", firstError);
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -408,4 +746,36 @@ public record LanguageRequestDto
 {
     public string LanguageCode { get; init; } = null!;
     public ProficiencyLevel ProficiencyLevel { get; init; }
+}
+
+/// <summary>
+/// Request model for linking an external OAuth provider
+/// Epic 1 Phase 2: Multi-Provider Social Login
+/// </summary>
+public record LinkExternalProviderRequest
+{
+    [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+    public FederatedProvider Provider { get; init; }
+    public string ExternalProviderId { get; init; } = null!;
+    public string ProviderEmail { get; init; } = null!;
+}
+
+/// <summary>
+/// Request model for updating user's preferred metro areas
+/// Phase 5A: User Preferred Metro Areas
+/// </summary>
+public record UpdatePreferredMetroAreasRequest
+{
+    public List<Guid> MetroAreaIds { get; init; } = new();
+}
+
+/// <summary>
+/// Request model for requesting a role upgrade
+/// Phase 6A.7: User Upgrade Workflow
+/// </summary>
+public record RequestRoleUpgradeRequest
+{
+    [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+    public UserRole TargetRole { get; init; }
+    public string Reason { get; init; } = null!;
 }

@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect Logo Concepts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .logos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .logo-title {
+            font-size: 1.5rem;
+            color: var(--maroon);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .logo-subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .logo-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .preview-label {
+            font-size: 0.85rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .preview-box {
+            padding: 2rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-box.light {
+            background: #f8f9fa;
+        }
+
+        .preview-box.dark {
+            background: #1a1a1a;
+        }
+
+        .preview-box.gradient {
+            background: linear-gradient(135deg, var(--saffron), var(--maroon), var(--green));
+        }
+
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .download-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #f0f0f0;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 121, 0, 0.4);
+        }
+
+        .variations-section {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .variations-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--maroon);
+            margin-bottom: 1rem;
+        }
+
+        .variations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+
+        .variation-item {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .variation-item:hover {
+            border-color: var(--saffron);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🇱🇰 LankaConnect Logo Concepts</h1>
+            <p>Professional logo designs incorporating Sri Lankan heritage and community spirit</p>
+        </div>
+
+        <div class="logos-grid">
+            <!-- Logo 1: Majestic Lion -->
+            <div class="logo-card">
+                <h2 class="logo-title">1. Majestic Lion</h2>
+                <p class="logo-subtitle">Inspired by the Sri Lankan flag's lion - strength, courage, and heritage</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Lion Head Silhouette -->
+                                    <circle cx="30" cy="30" r="28" fill="url(#gradient1)"/>
+                                    <path d="M30 10 C35 10, 40 15, 40 22 C40 25, 38 28, 35 30 L35 35 C35 40, 32 45, 30 48 C28 45, 25 40, 25 35 L25 30 C22 28, 20 25, 20 22 C20 15, 25 10, 30 10 Z" fill="white"/>
+                                    <circle cx="26" cy="22" r="2" fill="url(#gradient1)"/>
+                                    <circle cx="34" cy="22" r="2" fill="url(#gradient1)"/>
+                                    <path d="M28 26 Q30 28, 32 26" stroke="url(#gradient1)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                    <!-- Mane effect -->
+                                    <path d="M15 20 Q18 15, 22 18 M38 18 Q42 15, 45 20 M18 35 Q20 40, 25 38 M35 38 Q40 40, 42 35" stroke="#FFD700" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                    <defs>
+                                        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Dark Background</div>
+                        <div class="preview-box dark">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="30" cy="30" r="28" fill="url(#gradient1a)"/>
+                                    <path d="M30 10 C35 10, 40 15, 40 22 C40 25, 38 28, 35 30 L35 35 C35 40, 32 45, 30 48 C28 45, 25 40, 25 35 L25 30 C22 28, 20 25, 20 22 C20 15, 25 10, 30 10 Z" fill="white"/>
+                                    <circle cx="26" cy="22" r="2" fill="url(#gradient1a)"/>
+                                    <circle cx="34" cy="22" r="2" fill="url(#gradient1a)"/>
+                                    <path d="M28 26 Q30 28, 32 26" stroke="url(#gradient1a)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                    <path d="M15 20 Q18 15, 22 18 M38 18 Q42 15, 45 20 M18 35 Q20 40, 25 38 M35 38 Q40 40, 42 35" stroke="#FFD700" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                    <defs>
+                                        <linearGradient id="gradient1a" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: white;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+
+            <!-- Logo 2: Community Circle -->
+            <div class="logo-card">
+                <h2 class="logo-title">2. Community Circle</h2>
+                <p class="logo-subtitle">People united in a circle, representing connection and unity</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Outer circle with flag colors -->
+                                    <circle cx="30" cy="30" r="28" stroke="url(#gradient2)" stroke-width="3" fill="none"/>
+                                    <!-- People figures in a circle -->
+                                    <g transform="translate(30, 30)">
+                                        <!-- Top person -->
+                                        <circle cx="0" cy="-18" r="4" fill="#FF7900"/>
+                                        <path d="M-3 -14 L-3 -8 L3 -8 L3 -14" fill="#FF7900"/>
+
+                                        <!-- Right person -->
+                                        <circle cx="15" cy="-9" r="4" fill="#8B1538"/>
+                                        <path d="M12 -5 L12 1 L18 1 L18 -5" fill="#8B1538"/>
+
+                                        <!-- Bottom right person -->
+                                        <circle cx="15" cy="9" r="4" fill="#006400"/>
+                                        <path d="M12 13 L12 19 L18 19 L18 13" fill="#006400"/>
+
+                                        <!-- Bottom left person -->
+                                        <circle cx="-15" cy="9" r="4" fill="#FFD700"/>
+                                        <path d="M-18 13 L-18 19 L-12 19 L-12 13" fill="#FFD700"/>
+
+                                        <!-- Left person -->
+                                        <circle cx="-15" cy="-9" r="4" fill="#FF7900"/>
+                                        <path d="M-18 -5 L-18 1 L-12 1 L-12 -5" fill="#FF7900"/>
+
+                                        <!-- Center connection point -->
+                                        <circle cx="0" cy="0" r="5" fill="url(#gradient2)"/>
+                                    </g>
+                                    <defs>
+                                        <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Gradient Background</div>
+                        <div class="preview-box gradient">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="30" cy="30" r="28" stroke="white" stroke-width="3" fill="none"/>
+                                    <g transform="translate(30, 30)">
+                                        <circle cx="0" cy="-18" r="4" fill="white"/>
+                                        <path d="M-3 -14 L-3 -8 L3 -8 L3 -14" fill="white"/>
+                                        <circle cx="15" cy="-9" r="4" fill="white"/>
+                                        <path d="M12 -5 L12 1 L18 1 L18 -5" fill="white"/>
+                                        <circle cx="15" cy="9" r="4" fill="white"/>
+                                        <path d="M12 13 L12 19 L18 19 L18 13" fill="white"/>
+                                        <circle cx="-15" cy="9" r="4" fill="white"/>
+                                        <path d="M-18 13 L-18 19 L-12 19 L-12 13" fill="white"/>
+                                        <circle cx="-15" cy="-9" r="4" fill="white"/>
+                                        <path d="M-18 -5 L-18 1 L-12 1 L-12 -5" fill="white"/>
+                                        <circle cx="0" cy="0" r="5" fill="#FFD700"/>
+                                    </g>
+                                </svg>
+                                <span class="logo-text" style="color: white;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+
+            <!-- Logo 3: Island Connection -->
+            <div class="logo-card">
+                <h2 class="logo-title">3. Island Connection</h2>
+                <p class="logo-subtitle">Sri Lanka's island shape with connection waves</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Island of Sri Lanka (simplified) -->
+                                    <ellipse cx="30" cy="32" rx="14" ry="20" fill="url(#gradient3)"/>
+                                    <!-- Connection waves around island -->
+                                    <path d="M10 30 Q15 25, 20 30 T30 30" stroke="#FF7900" stroke-width="2" fill="none" opacity="0.6"/>
+                                    <path d="M40 30 Q45 35, 50 30 T60 30" stroke="#8B1538" stroke-width="2" fill="none" opacity="0.6"/>
+                                    <path d="M15 45 Q20 50, 25 45 T35 45" stroke="#006400" stroke-width="2" fill="none" opacity="0.6"/>
+                                    <!-- Heart/dot on island -->
+                                    <circle cx="30" cy="28" r="3" fill="#FFD700"/>
+                                    <defs>
+                                        <linearGradient id="gradient3" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Dark Background</div>
+                        <div class="preview-box dark">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <ellipse cx="30" cy="32" rx="14" ry="20" fill="url(#gradient3a)"/>
+                                    <path d="M10 30 Q15 25, 20 30 T30 30" stroke="#FF7900" stroke-width="2" fill="none" opacity="0.8"/>
+                                    <path d="M40 30 Q45 35, 50 30 T60 30" stroke="#8B1538" stroke-width="2" fill="none" opacity="0.8"/>
+                                    <path d="M15 45 Q20 50, 25 45 T35 45" stroke="#006400" stroke-width="2" fill="none" opacity="0.8"/>
+                                    <circle cx="30" cy="28" r="3" fill="#FFD700"/>
+                                    <defs>
+                                        <linearGradient id="gradient3a" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: white;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+
+            <!-- Logo 4: Modern LC Monogram -->
+            <div class="logo-card">
+                <h2 class="logo-title">4. Modern LC Monogram</h2>
+                <p class="logo-subtitle">Stylized 'LC' letters forming a connection symbol</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Circular badge -->
+                                    <circle cx="30" cy="30" r="28" fill="url(#gradient4)"/>
+                                    <!-- L letter -->
+                                    <path d="M18 15 L18 40 L28 40 L28 35 L23 35 L23 15 Z" fill="white"/>
+                                    <!-- C letter connecting to L -->
+                                    <path d="M42 15 Q35 15, 35 22 L35 38 Q35 45, 42 45 L42 40 Q38 40, 38 38 L38 22 Q38 20, 42 20 Z" fill="#FFD700"/>
+                                    <!-- Connection dot -->
+                                    <circle cx="30" cy="30" r="3" fill="#FFD700"/>
+                                    <defs>
+                                        <linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Minimal Version</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Just the letters, no circle -->
+                                    <path d="M10 5 L10 50 L30 50 L30 42 L18 42 L18 5 Z" fill="url(#gradient4a)"/>
+                                    <path d="M50 5 Q35 5, 35 18 L35 42 Q35 55, 50 55 L50 47 Q43 47, 43 42 L43 18 Q43 13, 50 13 Z" fill="url(#gradient4a)"/>
+                                    <defs>
+                                        <linearGradient id="gradient4a" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+
+            <!-- Logo 5: Network Nodes -->
+            <div class="logo-card">
+                <h2 class="logo-title">5. Network Nodes</h2>
+                <p class="logo-subtitle">Connected dots forming a network of community</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Connection lines -->
+                                    <line x1="30" y1="10" x2="15" y2="25" stroke="#FF7900" stroke-width="2" opacity="0.5"/>
+                                    <line x1="30" y1="10" x2="45" y2="25" stroke="#8B1538" stroke-width="2" opacity="0.5"/>
+                                    <line x1="15" y1="25" x2="10" y2="45" stroke="#006400" stroke-width="2" opacity="0.5"/>
+                                    <line x1="15" y1="25" x2="30" y2="50" stroke="#FFD700" stroke-width="2" opacity="0.5"/>
+                                    <line x1="45" y1="25" x2="30" y2="50" stroke="#FF7900" stroke-width="2" opacity="0.5"/>
+                                    <line x1="45" y1="25" x2="50" y2="45" stroke="#8B1538" stroke-width="2" opacity="0.5"/>
+
+                                    <!-- Nodes -->
+                                    <circle cx="30" cy="10" r="5" fill="#FF7900"/>
+                                    <circle cx="15" cy="25" r="5" fill="#8B1538"/>
+                                    <circle cx="45" cy="25" r="5" fill="#006400"/>
+                                    <circle cx="10" cy="45" r="5" fill="#FFD700"/>
+                                    <circle cx="30" cy="50" r="6" fill="url(#gradient5)"/>
+                                    <circle cx="50" cy="45" r="5" fill="#FF7900"/>
+
+                                    <defs>
+                                        <linearGradient id="gradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Dark Background</div>
+                        <div class="preview-box dark">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <line x1="30" y1="10" x2="15" y2="25" stroke="#FF7900" stroke-width="2" opacity="0.8"/>
+                                    <line x1="30" y1="10" x2="45" y2="25" stroke="#8B1538" stroke-width="2" opacity="0.8"/>
+                                    <line x1="15" y1="25" x2="10" y2="45" stroke="#006400" stroke-width="2" opacity="0.8"/>
+                                    <line x1="15" y1="25" x2="30" y2="50" stroke="#FFD700" stroke-width="2" opacity="0.8"/>
+                                    <line x1="45" y1="25" x2="30" y2="50" stroke="#FF7900" stroke-width="2" opacity="0.8"/>
+                                    <line x1="45" y1="25" x2="50" y2="45" stroke="#8B1538" stroke-width="2" opacity="0.8"/>
+
+                                    <circle cx="30" cy="10" r="5" fill="#FF7900"/>
+                                    <circle cx="15" cy="25" r="5" fill="#8B1538"/>
+                                    <circle cx="45" cy="25" r="5" fill="#006400"/>
+                                    <circle cx="10" cy="45" r="5" fill="#FFD700"/>
+                                    <circle cx="30" cy="50" r="6" fill="url(#gradient5a)"/>
+                                    <circle cx="50" cy="45" r="5" fill="#FF7900"/>
+
+                                    <defs>
+                                        <linearGradient id="gradient5a" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#8B1538;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: white;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+
+            <!-- Logo 6: Heritage Lotus -->
+            <div class="logo-card">
+                <h2 class="logo-title">6. Heritage Lotus</h2>
+                <p class="logo-subtitle">Lotus flower (Sri Lankan national flower) with modern twist</p>
+
+                <div class="logo-preview">
+                    <div class="preview-section">
+                        <div class="preview-label">Light Background</div>
+                        <div class="preview-box light">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Lotus petals -->
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#FF7900" opacity="0.8"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#8B1538" opacity="0.6" transform="rotate(45 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#006400" opacity="0.6" transform="rotate(90 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#FFD700" opacity="0.6" transform="rotate(135 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#FF7900" opacity="0.6" transform="rotate(180 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#8B1538" opacity="0.6" transform="rotate(225 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#006400" opacity="0.6" transform="rotate(270 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="#FFD700" opacity="0.6" transform="rotate(315 30 35)"/>
+
+                                    <!-- Center -->
+                                    <circle cx="30" cy="35" r="6" fill="url(#gradient6)"/>
+                                    <circle cx="30" cy="35" r="3" fill="#FFD700"/>
+
+                                    <defs>
+                                        <linearGradient id="gradient6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#FF7900;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#8B1538;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <span class="logo-text" style="color: #8B1538;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="preview-label">Gradient Background</div>
+                        <div class="preview-box gradient">
+                            <div class="logo-wrapper">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.8"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.7" transform="rotate(45 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.6" transform="rotate(90 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.7" transform="rotate(135 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.8" transform="rotate(180 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.7" transform="rotate(225 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.6" transform="rotate(270 30 35)"/>
+                                    <ellipse cx="30" cy="35" rx="8" ry="15" fill="white" opacity="0.7" transform="rotate(315 30 35)"/>
+
+                                    <circle cx="30" cy="35" r="6" fill="white"/>
+                                    <circle cx="30" cy="35" r="3" fill="#FFD700"/>
+                                </svg>
+                                <span class="logo-text" style="color: white;">LankaConnect</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button class="download-btn">Download SVG</button>
+                    <button class="download-btn" style="background: #333;">Download PNG</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Guide -->
+        <div style="background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 2rem;">
+            <h2 style="color: #8B1538; font-size: 1.8rem; margin-bottom: 1.5rem;">📐 Logo Usage Guidelines</h2>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(255, 121, 0, 0.05), rgba(139, 21, 56, 0.05)); border-radius: 12px;">
+                    <h3 style="color: #8B1538; margin-bottom: 1rem;">✅ Do's</h3>
+                    <ul style="color: #666; line-height: 2; list-style-position: inside;">
+                        <li>Use on white or dark backgrounds</li>
+                        <li>Maintain aspect ratio</li>
+                        <li>Use provided color values</li>
+                        <li>Keep clear space around logo</li>
+                        <li>Use SVG for web, PNG for print</li>
+                    </ul>
+                </div>
+
+                <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(255, 121, 0, 0.05), rgba(139, 21, 56, 0.05)); border-radius: 12px;">
+                    <h3 style="color: #8B1538; margin-bottom: 1rem;">❌ Don'ts</h3>
+                    <ul style="color: #666; line-height: 2; list-style-position: inside;">
+                        <li>Don't stretch or skew</li>
+                        <li>Don't change colors</li>
+                        <li>Don't add effects/shadows</li>
+                        <li>Don't rotate the logo</li>
+                        <li>Don't use on busy backgrounds</li>
+                    </ul>
+                </div>
+
+                <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(255, 121, 0, 0.05), rgba(139, 21, 56, 0.05)); border-radius: 12px;">
+                    <h3 style="color: #8B1538; margin-bottom: 1rem;">📏 Sizes</h3>
+                    <ul style="color: #666; line-height: 2; list-style-position: inside;">
+                        <li>Minimum: 32px × 32px</li>
+                        <li>Web header: 60px × 60px</li>
+                        <li>Mobile: 40px × 40px</li>
+                        <li>Print: 300 DPI minimum</li>
+                        <li>Social media: 512px × 512px</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 12px;">
+                <h3 style="color: #8B1538; margin-bottom: 1rem;">🎨 Color Specifications</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <div>
+                        <strong style="color: #FF7900;">Saffron</strong><br>
+                        <span style="color: #666; font-size: 0.9rem;">
+                            HEX: #FF7900<br>
+                            RGB: 255, 121, 0
+                        </span>
+                    </div>
+                    <div>
+                        <strong style="color: #8B1538;">Maroon</strong><br>
+                        <span style="color: #666; font-size: 0.9rem;">
+                            HEX: #8B1538<br>
+                            RGB: 139, 21, 56
+                        </span>
+                    </div>
+                    <div>
+                        <strong style="color: #006400;">Green</strong><br>
+                        <span style="color: #666; font-size: 0.9rem;">
+                            HEX: #006400<br>
+                            RGB: 0, 100, 0
+                        </span>
+                    </div>
+                    <div>
+                        <strong style="color: #FFD700;">Gold</strong><br>
+                        <span style="color: #666; font-size: 0.9rem;">
+                            HEX: #FFD700<br>
+                            RGB: 255, 215, 0
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

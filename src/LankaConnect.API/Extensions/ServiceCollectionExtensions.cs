@@ -63,17 +63,14 @@ public static class ServiceCollectionExtensions
 
             // Custom schema IDs to avoid conflicts
             options.CustomSchemaIds(type => type.FullName?.Replace('+', '.'));
+
+            // Add operation filter to handle IFormFile parameters
+            options.OperationFilter<Filters.FileUploadOperationFilter>();
         });
 
-        services.AddCors(options =>
-        {
-            options.AddPolicy("DefaultPolicy", policy =>
-            {
-                policy.AllowAnyOrigin()
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
-            });
-        });
+        // CORS configuration removed - now centralized in Program.cs
+        // Duplicate CORS registration was causing conflicts with credentialed requests
+        // Environment-specific CORS policies (Development/Staging/Production) are defined in Program.cs
 
         return services;
     }

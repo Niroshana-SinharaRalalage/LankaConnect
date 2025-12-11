@@ -1,0 +1,14 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/events/[id]/manage-signups/[signupId]/page": "app/events/[id]/manage-signups/[signupId]/page.js",
+  "/events/[id]/manage-signups/page": "app/events/[id]/manage-signups/page.js",
+  "/events/[id]/manage/create-signup-list/page": "app/events/[id]/manage/create-signup-list/page.js",
+  "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
+  "/events/[id]/page": "app/events/[id]/page.js",
+  "/events/[id]/signup-lists/[signupId]/page": "app/events/[id]/signup-lists/[signupId]/page.js",
+  "/events/create/page": "app/events/create/page.js",
+  "/events/page": "app/events/page.js",
+  "/page": "app/page.js"
+}

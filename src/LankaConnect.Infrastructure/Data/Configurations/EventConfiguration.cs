@@ -58,6 +58,37 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CancellationReason)
             .HasMaxLength(500);
 
+        // Configure Category enum (Epic 2 Phase 2)
+        builder.Property(e => e.Category)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(EventCategory.Community);
+
+        // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
+        // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice
+        builder.OwnsOne(e => e.TicketPrice, money =>
+        {
+            money.ToJson("ticket_price");  // Store as JSONB column
+        });
+
+        // Session 21 + Phase 6D: Configure Pricing as JSONB for dual/group pricing
+        // ToJson() automatically serializes Type, AdultPrice, ChildPrice, ChildAgeLimit, and GroupTiers
+        builder.OwnsOne(e => e.Pricing, pricing =>
+        {
+            pricing.ToJson("pricing");  // Store entire Pricing as JSONB column
+
+            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
+            pricing.OwnsOne(p => p.AdultPrice);
+            pricing.OwnsOne(p => p.ChildPrice);
+
+            // Configure GroupTiers collection
+            pricing.OwnsMany(p => p.GroupTiers, tier =>
+            {
+                tier.OwnsOne(t => t.PricePerPerson);
+            });
+        });
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()
@@ -71,6 +102,73 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey("EventId")
             .OnDelete(DeleteBehavior.Cascade);
 
+        // CRITICAL: Use backing field "_registrations" for EF Core change tracking
+        builder.Navigation(e => e.Registrations)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Configure Images relationship (Epic 2 Phase 2)
+        builder.HasMany(e => e.Images)
+            .WithOne()
+            .HasForeignKey(ei => ei.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CRITICAL: Use backing field "_images" for EF Core change tracking
+        // This ensures EF Core populates the private _images field when loading
+        // Required for SetPrimaryImage and other image management operations
+        builder.Navigation(e => e.Images)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Configure Videos relationship (Epic 2 Phase 2)
+        builder.HasMany(e => e.Videos)
+            .WithOne()
+            .HasForeignKey(ev => ev.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CRITICAL: Use backing field "_videos" for EF Core change tracking
+        // This ensures EF Core populates the private _videos field when loading
+        builder.Navigation(e => e.Videos)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Configure SignUpLists relationship (Phase 6A: Sign-up lists for volunteers/items)
+        builder.HasMany(e => e.SignUpLists)
+            .WithOne()
+            .HasForeignKey("EventId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CRITICAL: Use backing field "_signUpLists" for EF Core change tracking
+        builder.Navigation(e => e.SignUpLists)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Configure WaitingList relationship (Epic 2: Waiting List)
+        builder.OwnsMany(e => e.WaitingList, waitingList =>
+        {
+            waitingList.ToTable("event_waiting_list");
+            waitingList.Property<Guid>("Id").ValueGeneratedOnAdd();
+            waitingList.HasKey("Id");
+
+            waitingList.Property(w => w.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+
+            waitingList.Property(w => w.JoinedAt)
+                .HasColumnName("joined_at")
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            waitingList.Property(w => w.Position)
+                .HasColumnName("position")
+                .IsRequired();
+
+            // Create composite unique index to prevent duplicate user entries
+            waitingList.HasIndex("EventId", nameof(WaitingListEntry.UserId))
+                .IsUnique()
+                .HasDatabaseName("ix_event_waiting_list_event_user");
+
+            // Index for position ordering
+            waitingList.HasIndex("EventId", nameof(WaitingListEntry.Position))
+                .HasDatabaseName("ix_event_waiting_list_event_position");
+        });
+
         // Configure indexes
         builder.HasIndex(e => e.StartDate)
             .HasDatabaseName("ix_events_start_date");
@@ -83,5 +181,59 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.HasIndex(e => new { e.Status, e.StartDate })
             .HasDatabaseName("ix_events_status_start_date");
+
+        // Configure EventLocation value object (Epic 2 Phase 1)
+        builder.OwnsOne(e => e.Location, location =>
+        {
+            // Required to prevent EF Core optional dependent error
+            location.Property<bool>("_hasValue")
+                .HasColumnName("has_location")
+                .HasDefaultValue(true)
+                .IsRequired();
+
+            // Configure Address as nested owned entity
+            location.OwnsOne(l => l.Address, address =>
+            {
+                address.Property(a => a.Street)
+                    .HasColumnName("address_street")
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                address.Property(a => a.City)
+                    .HasColumnName("address_city")
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                address.Property(a => a.State)
+                    .HasColumnName("address_state")
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                address.Property(a => a.ZipCode)
+                    .HasColumnName("address_zip_code")
+                    .HasMaxLength(20)
+                    .IsRequired();
+
+                address.Property(a => a.Country)
+                    .HasColumnName("address_country")
+                    .HasMaxLength(100)
+                    .IsRequired();
+            });
+
+            // Configure GeoCoordinate as nested owned entity (nullable)
+            location.OwnsOne(l => l.Coordinates, coordinates =>
+            {
+                coordinates.Property(c => c.Latitude)
+                    .HasColumnName("coordinates_latitude")
+                    .HasPrecision(10, 7); // Precision for GPS coordinates
+
+                coordinates.Property(c => c.Longitude)
+                    .HasColumnName("coordinates_longitude")
+                    .HasPrecision(10, 7); // Precision for GPS coordinates
+            });
+        });
+
+        // Indexes for location-based searches will be added via raw SQL in migration
+        // due to nested owned entity limitations with EF Core indexing
     }
 }

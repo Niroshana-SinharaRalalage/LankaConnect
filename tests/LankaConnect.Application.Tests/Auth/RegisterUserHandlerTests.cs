@@ -58,7 +58,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
         
@@ -244,10 +244,9 @@ public class RegisterUserHandlerTests
     }
 
     [Theory]
-    [InlineData(UserRole.User)]
-    [InlineData(UserRole.BusinessOwner)]
-    [InlineData(UserRole.Moderator)]
+    [InlineData(UserRole.GeneralUser)]
     [InlineData(UserRole.Admin)]
+    [InlineData(UserRole.AdminManager)]
     public async Task Handle_WithDifferentRoles_ShouldCreateUserWithCorrectRole(UserRole role)
     {
         // Arrange
@@ -260,19 +259,19 @@ public class RegisterUserHandlerTests
 
         var email = Email.Create(request.Email).Value;
         User? capturedUser = null;
-        
+
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                           .ReturnsAsync((User?)null);
-        
+
         _mockUserRepository.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
                           .Callback<User, CancellationToken>((user, _) => capturedUser = user);
-        
+
         _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
                                   .Returns(Result.Success());
-        
+
         _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
                                   .Returns(Result<string>.Success("hashedpassword123"));
-        
+
         _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
                       .ReturnsAsync(1);
 
@@ -283,6 +282,46 @@ public class RegisterUserHandlerTests
         result.IsSuccess.Should().BeTrue();
         capturedUser.Should().NotBeNull();
         capturedUser!.Role.Should().Be(role);
+    }
+
+    [Fact]
+    public async Task Handle_WithEventOrganizerRole_ShouldCreateUserAsGeneralUserWithPendingUpgrade()
+    {
+        // Arrange: Phase 6A.0 - EventOrganizer selection converts to GeneralUser with pending upgrade role
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.EventOrganizer);
+
+        var email = Email.Create(request.Email).Value;
+        User? capturedUser = null;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockUserRepository.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+                          .Callback<User, CancellationToken>((user, _) => capturedUser = user);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        capturedUser.Should().NotBeNull();
+        // Phase 6A.0: EventOrganizer should be converted to GeneralUser with pending upgrade role for admin approval
+        capturedUser!.Role.Should().Be(UserRole.GeneralUser);
+        capturedUser!.PendingUpgradeRole.Should().Be(UserRole.EventOrganizer);
     }
 
     [Fact]
@@ -333,7 +372,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
         Guid capturedUserId = Guid.Empty;
@@ -378,7 +417,7 @@ public class RegisterUserHandlerTests
             "ValidPassword123!",
             "John",
             "Doe",
-            UserRole.User);
+            UserRole.GeneralUser);
 
         var email = Email.Create(request.Email).Value;
 

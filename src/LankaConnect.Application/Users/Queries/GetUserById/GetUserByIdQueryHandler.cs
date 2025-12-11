@@ -49,7 +49,11 @@ public class GetUserByIdQueryHandler : IQueryHandler<GetUserByIdQuery, UserDto>
             {
                 LanguageCode = l.Language.Code,
                 ProficiencyLevel = l.Proficiency
-            }).ToList()
+            }).ToList(),
+
+            // Phase 5B/6A.9: User Preferred Metro Areas (0-20 GUIDs)
+            // CRITICAL FIX: Map PreferredMetroAreaIds from domain to DTO
+            PreferredMetroAreas = user.PreferredMetroAreaIds.ToList()
         };
 
         return Result<UserDto>.Success(userDto);

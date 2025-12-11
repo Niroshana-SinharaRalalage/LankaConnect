@@ -87,8 +87,8 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
 
             // Add role-specific content
             templateParameters.Add("UserRole", user.Role.ToString());
-            templateParameters.Add("IsBusinessUser", user.Role == Domain.Users.Enums.UserRole.BusinessOwner);
-            templateParameters.Add("IsAdmin", user.Role == Domain.Users.Enums.UserRole.Admin);
+            templateParameters.Add("IsEventOrganizer", user.Role == Domain.Users.Enums.UserRole.EventOrganizer);
+            templateParameters.Add("IsAdmin", user.Role == Domain.Users.Enums.UserRole.Admin || user.Role == Domain.Users.Enums.UserRole.AdminManager);
 
             // Send welcome email
             var sendResult = await _emailService.SendTemplatedEmailAsync(

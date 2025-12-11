@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect - Mobile Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            max-width: 428px;
+            margin: 0 auto;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 60%, var(--green) 100%);
+            padding: 60px 30px 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .logo-container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .tagline {
+            color: white;
+            opacity: 0.95;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .form-container {
+            position: relative;
+            background: white;
+            border-radius: 30px 30px 0 0;
+            margin-top: -80px;
+            padding: 40px 30px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+        }
+
+        .form-header {
+            margin-bottom: 35px;
+        }
+
+        .form-header h1 {
+            font-size: 1.8rem;
+            color: var(--maroon);
+            margin-bottom: 8px;
+        }
+
+        .form-header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: #999;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px 16px 16px 50px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--saffron);
+            box-shadow: 0 0 0 4px rgba(255, 121, 0, 0.1);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .remember-checkbox input {
+            margin-right: 8px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .forgot-link {
+            color: var(--saffron);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .signin-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(255, 121, 0, 0.3);
+            transition: all 0.3s;
+        }
+
+        .signin-btn:active {
+            transform: scale(0.98);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            padding: 0 15px;
+        }
+
+        .sso-btn {
+            width: 100%;
+            padding: 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .sso-btn:active {
+            background: #f5f5f5;
+        }
+
+        .microsoft-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .signup-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.05) 0%, rgba(139, 21, 56, 0.05) 100%);
+            border-radius: 20px;
+        }
+
+        .signup-section p {
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .signup-btn {
+            color: var(--maroon);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .feature-badges {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.1) 0%, rgba(139, 21, 56, 0.1) 100%);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--maroon);
+            font-weight: 500;
+        }
+
+        .safe-area-bottom {
+            height: 30px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-gradient">
+        <div class="logo-container">
+            <img src="logos/lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon">
+            <div class="logo-text">LankaConnect</div>
+            <div class="tagline">Your Community, Connected</div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Welcome Back!</h1>
+            <p>Sign in to continue</p>
+        </div>
+
+        <form>
+            <div class="input-group">
+                <label for="email">Email Address</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">📧</span>
+                    <input type="email" id="email" placeholder="you@example.com" required>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Password</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                    <button type="button" class="toggle-password">👁️</button>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label class="remember-checkbox">
+                    <input type="checkbox">
+                    <span>Remember me</span>
+                </label>
+                <a href="#" class="forgot-link">Forgot?</a>
+            </div>
+
+            <button type="submit" class="signin-btn">Sign In</button>
+
+            <div class="divider">
+                <span>OR CONTINUE WITH</span>
+            </div>
+
+            <button type="button" class="sso-btn">
+                <svg class="microsoft-icon" viewBox="0 0 23 23">
+                    <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                </svg>
+                Microsoft Account
+            </button>
+        </form>
+
+        <div class="feature-badges">
+            <span class="badge">🎉 Events</span>
+            <span class="badge">🤝 Community</span>
+            <span class="badge">💼 Business</span>
+        </div>
+
+        <div class="signup-section">
+            <p>New to LankaConnect?</p>
+            <a href="#" class="signup-btn">Create Account →</a>
+        </div>
+    </div>
+
+    <div class="safe-area-bottom"></div>
+</body>
+</html>

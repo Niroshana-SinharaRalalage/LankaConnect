@@ -66,21 +66,25 @@ public static class AuthenticationExtensions
 
     public static IServiceCollection AddCustomAuthorization(this IServiceCollection services)
     {
+        // Phase 6A.10: Add diagnostic authorization handler for troubleshooting
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+            LankaConnect.API.Security.LoggingAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
-            // Basic role-based policies
+            // Basic role-based policies - Phase 6A.0: Updated for new role system
             options.AddPolicy("RequireUser", policy =>
-                policy.RequireRole(UserRole.User.ToString(), UserRole.BusinessOwner.ToString(), 
-                                 UserRole.Moderator.ToString(), UserRole.Admin.ToString()));
+                policy.RequireRole(UserRole.GeneralUser.ToString(), UserRole.EventOrganizer.ToString(),
+                                 UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
 
-            options.AddPolicy("RequireBusinessOwner", policy =>
-                policy.RequireRole(UserRole.BusinessOwner.ToString(), UserRole.Admin.ToString()));
-
-            options.AddPolicy("RequireModerator", policy =>
-                policy.RequireRole(UserRole.Moderator.ToString(), UserRole.Admin.ToString()));
+            options.AddPolicy("RequireEventOrganizer", policy =>
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString()));
 
             options.AddPolicy("RequireAdmin", policy =>
-                policy.RequireRole(UserRole.Admin.ToString()));
+                policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
 
             // Email verification requirement
             options.AddPolicy("RequireEmailVerified", policy =>
@@ -90,37 +94,42 @@ public static class AuthenticationExtensions
             options.AddPolicy("RequireActiveAccount", policy =>
                 policy.RequireClaim("isActive", "true"));
 
-            // Combined policies
+            // Combined policies - Phase 6A.0: Updated for new role system
             options.AddPolicy("VerifiedUser", policy =>
             {
-                policy.RequireRole(UserRole.User.ToString(), UserRole.BusinessOwner.ToString(), 
-                                 UserRole.Moderator.ToString(), UserRole.Admin.ToString());
+                policy.RequireRole(UserRole.GeneralUser.ToString(), UserRole.EventOrganizer.ToString(),
+                                 UserRole.Admin.ToString(), UserRole.AdminManager.ToString());
                 policy.RequireClaim("isActive", "true");
                 // Note: Email verification check removed for now as it's not in JWT claims yet
             });
 
-            options.AddPolicy("VerifiedBusinessOwner", policy =>
+            options.AddPolicy("VerifiedEventOrganizer", policy =>
             {
-                policy.RequireRole(UserRole.BusinessOwner.ToString(), UserRole.Admin.ToString());
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString());
                 policy.RequireClaim("isActive", "true");
             });
 
             options.AddPolicy("ContentManager", policy =>
             {
-                policy.RequireRole(UserRole.Moderator.ToString(), UserRole.Admin.ToString());
+                policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString());
                 policy.RequireClaim("isActive", "true");
             });
 
-            // Custom claim-based policies
+            // Custom claim-based policies - Phase 6A.0: Updated for new role system
             options.AddPolicy("CanManageUsers", policy =>
-                policy.RequireRole(UserRole.Admin.ToString(), UserRole.Moderator.ToString()));
+                policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
 
-            options.AddPolicy("CanManageBusinesses", policy =>
-                policy.RequireRole(UserRole.Admin.ToString(), UserRole.Moderator.ToString(), 
-                                 UserRole.BusinessOwner.ToString()));
+            options.AddPolicy("CanCreateEvents", policy =>
+                policy.RequireRole(UserRole.EventOrganizer.ToString(),
+                                 UserRole.EventOrganizerAndBusinessOwner.ToString(),
+                                 UserRole.Admin.ToString(),
+                                 UserRole.AdminManager.ToString()));
 
             options.AddPolicy("CanModerateContent", policy =>
-                policy.RequireRole(UserRole.Admin.ToString(), UserRole.Moderator.ToString()));
+                policy.RequireRole(UserRole.Admin.ToString(), UserRole.AdminManager.ToString()));
         });
 
         return services;

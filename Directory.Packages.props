@@ -4,9 +4,16 @@
   </PropertyGroup>
   <!-- ASP.NET Core -->
   <ItemGroup>
+    <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.17" />
+    <PackageVersion Include="Hangfire.PostgreSql" Version="1.20.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.19" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.19" />
-    <PackageVersion Include="Microsoft.Identity.Web" Version="3.5.0" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="3.8.2" />
+    <PackageVersion Include="MockQueryable.Moq" Version="7.0.3" />
+    <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
+    <PackageVersion Include="NetTopologySuite.IO.PostGis" Version="2.1.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite" Version="8.0.11" />
     <PackageVersion Include="Serilog.Sinks.TestCorrelator" Version="4.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.1.0" />
@@ -22,6 +29,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.19" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.19" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageVersion Include="Npgsql" Version="8.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.19" />
   </ItemGroup>
   <!-- MediatR for CQRS -->
@@ -60,8 +68,8 @@
   </ItemGroup>
   <!-- Authentication & Security -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.3.0" />
-    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.7.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.7.0" />
     <PackageVersion Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
   <!-- Email & Communication -->
@@ -118,6 +126,10 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+  </ItemGroup>
+  <!-- Stripe Payment Integration (Phase 6A.4) -->
+  <ItemGroup>
+    <PackageVersion Include="Stripe.net" Version="47.4.0" />
   </ItemGroup>
   <!-- Source Link -->
   <ItemGroup>

@@ -1,4 +1,6 @@
 using Azure.Storage.Blobs;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +12,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
+using LankaConnect.Domain.Notifications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
@@ -20,6 +23,11 @@ using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Infrastructure.Payments.Configuration;
+using LankaConnect.Infrastructure.Payments.Repositories;
+using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Domain.Payments;
+using Stripe;
 
 namespace LankaConnect.Infrastructure;
 
@@ -28,44 +36,56 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Add DbContext with enhanced connection pooling and detailed logging
+        // Configure NpgsqlDataSource with dynamic JSON support (required for List<string> and other dynamic types)
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+
+        // Enable dynamic JSON serialization for List<string>, List<T>, etc. (Npgsql 8.0+ requirement)
+        // This is required for properties like Event.PhotoUrls which are List<string>
+        // See: https://www.npgsql.org/doc/types/json.html
+        dataSourceBuilder.EnableDynamicJson();
+
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<AppDbContext>(options =>
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-            
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            options.UseNpgsql(dataSource, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly("LankaConnect.Infrastructure");
-                
+
+                // Enable NetTopologySuite for PostGIS spatial support (Epic 2 Phase 1)
+                npgsqlOptions.UseNetTopologySuite();
+
                 // Enhanced retry configuration
                 npgsqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
                     errorCodesToAdd: null);
-                
+
                 // Command timeout configuration (30 seconds)
                 npgsqlOptions.CommandTimeout(30);
             });
-            
+
             // Enhanced logging configuration based on environment
             var isDevelopment = configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
             var enableDetailedErrors = configuration.GetValue<bool>("DatabaseSettings:EnableDetailedErrors", isDevelopment);
             var enableSensitiveLogging = configuration.GetValue<bool>("DatabaseSettings:EnableSensitiveDataLogging", isDevelopment);
-            
+
             if (enableDetailedErrors)
             {
                 options.EnableDetailedErrors();
             }
-            
+
             if (enableSensitiveLogging)
             {
                 options.EnableSensitiveDataLogging();
             }
-            
+
             // Query performance tracking
             options.LogTo(
                 message => System.Diagnostics.Debug.WriteLine(message),
                 Microsoft.Extensions.Logging.LogLevel.Information);
-            
+
         }, ServiceLifetime.Scoped); // Explicitly set lifetime for connection pooling
 
         // Add Memory Cache (required by email template service)
@@ -115,10 +135,18 @@ public static class DependencyInjection
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<IUserEmailPreferencesRepository, UserEmailPreferencesRepository>();
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
+        services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
-        // Add Email Services
-        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
-        services.AddScoped<IEmailService, EmailService>();
+        // Add Notifications Repositories (Phase 6A.6)
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Add Analytics Repositories (Epic 2 Phase 3)
+        services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
+        services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
+
+        // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
+        // Note: EmailSettings is configured below with SimpleEmailService
+        services.AddScoped<IEmailService, AzureEmailService>();
 
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
@@ -145,13 +173,15 @@ public static class DependencyInjection
             return new BlobServiceClient(connectionString);
         });
 
-        // Add Image Service
-        services.AddScoped<IImageService, BasicImageService>();
+        // Phase 6A.9: Azure Blob Storage and Image Service
+        services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
+        services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
 
         // Add Authentication Services
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHashingService, PasswordHashingService>();
         services.AddScoped<ITokenConfiguration, TokenConfiguration>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>(); // Phase 6A.6
 
         // Add Entra External ID Services
         services.Configure<EntraExternalIdOptions>(configuration.GetSection(EntraExternalIdOptions.SectionName));
@@ -171,19 +201,66 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Domain.Events.Services.IGeographicProximityService, LankaConnect.Infrastructure.CulturalIntelligence.StubGeographicProximityService>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventRecommendationEngine, LankaConnect.Domain.Events.Services.EventRecommendationEngine>();
 
+        // Add GeoLocation Service for distance calculations
+        services.AddScoped<LankaConnect.Domain.Events.Services.IGeoLocationService, LankaConnect.Domain.Events.Services.GeoLocationService>();
+
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>
         {
             var configuration = provider.GetRequiredService<IConfiguration>();
             var redisConnectionString = configuration.GetConnectionString("Redis");
-            
+
             if (string.IsNullOrEmpty(redisConnectionString))
             {
                 throw new InvalidOperationException("Redis connection string is not configured");
             }
-            
+
             return ConnectionMultiplexer.Connect(redisConnectionString);
         });
+
+        // Add Hangfire Background Jobs (Epic 2 Phase 5)
+        services.AddHangfire(hangfireConfig =>
+        {
+            hangfireConfig
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UsePostgreSqlStorage(options =>
+                {
+                    options.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"));
+                });
+        });
+
+        // Add Hangfire server
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = 1; // Start with 1 worker for development
+            options.SchedulePollingInterval = TimeSpan.FromMinutes(1); // Check for scheduled jobs every minute
+        });
+
+        // Add Stripe Services (Phase 6A.4: Stripe Payment Integration - MVP)
+        services.Configure<StripeOptions>(configuration.GetSection(StripeOptions.SectionName));
+
+        // Configure Stripe client as singleton
+        services.AddSingleton<IStripeClient>(provider =>
+        {
+            var stripeOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<StripeOptions>>().Value;
+
+            if (string.IsNullOrWhiteSpace(stripeOptions.SecretKey))
+            {
+                throw new InvalidOperationException(
+                    "Stripe:SecretKey is not configured. Please add it to appsettings.json or environment variables.");
+            }
+
+            return new StripeClient(stripeOptions.SecretKey);
+        });
+
+        // Register Stripe repositories
+        services.AddScoped<IStripeCustomerRepository, StripeCustomerRepository>();
+        services.AddScoped<IStripeWebhookEventRepository, StripeWebhookEventRepository>();
+
+        // Session 23 (Phase 2B): Register Stripe payment service for event tickets
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
 
         return services;
     }

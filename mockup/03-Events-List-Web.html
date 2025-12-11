@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect - Events</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+
+        /* Header with Sri Lankan Flag Colors */
+        .header {
+            background: linear-gradient(90deg, var(--saffron) 0%, var(--saffron) 33%, var(--maroon) 33%, var(--maroon) 66%, var(--green) 66%, var(--green) 100%);
+            height: 8px;
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--maroon);
+        }
+
+        .logo-icon {
+            width: 65px;
+            height: 65px;
+            margin-right: 12px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--saffron);
+        }
+
+        .user-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+        }
+
+        .page-header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: -50px auto 0;
+            padding: 0 2rem 3rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Search and Filters */
+        .search-filter-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--saffron);
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-select {
+            padding: 0.875rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--saffron);
+        }
+
+        /* Events Grid */
+        .events-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: var(--maroon);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .view-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-btn.active {
+            background: var(--saffron);
+            color: white;
+            border-color: var(--saffron);
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .event-image {
+            height: 200px;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        .event-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--gold);
+            color: var(--maroon);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .event-badge.free {
+            background: var(--green);
+            color: white;
+        }
+
+        .event-content {
+            padding: 1.5rem;
+        }
+
+        .event-category {
+            color: var(--saffron);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .event-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--maroon);
+            margin-bottom: 0.75rem;
+        }
+
+        .event-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .event-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .event-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--maroon);
+        }
+
+        .register-btn {
+            padding: 0.625rem 1.25rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 121, 0, 0.4);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 3rem;
+        }
+
+        .page-btn {
+            padding: 0.625rem 1rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .page-btn.active {
+            background: var(--maroon);
+            color: white;
+            border-color: var(--maroon);
+        }
+
+        .page-btn:hover:not(.active) {
+            border-color: var(--saffron);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sri Lankan Flag Header -->
+    <div class="header"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <img src="logos/lankaconnect-logo-transparent.png" alt="LankaConnect" class="logo-icon">
+                LankaConnect
+            </div>
+            <ul class="nav-links">
+                <li><a href="#">Home</a></li>
+                <li><a href="#" class="active">Events</a></li>
+                <li><a href="#">Forums</a></li>
+                <li><a href="#">Business</a></li>
+                <li><a href="#">Culture</a></li>
+            </ul>
+            <div class="user-section">
+                <button style="padding: 0.625rem 1.25rem; background: var(--saffron); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">+ Create Event</button>
+                <div class="avatar">SK</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1>🎉 Community Events</h1>
+            <p>Discover and join cultural celebrations, meetups, and activities</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Search and Filters -->
+        <div class="search-filter-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search events by name, description, or keywords...">
+                <button class="search-btn">🔍 Search</button>
+            </div>
+            <div class="filter-row">
+                <select class="filter-select">
+                    <option>All Categories</option>
+                    <option>Cultural</option>
+                    <option>Sports</option>
+                    <option>Education</option>
+                    <option>Social</option>
+                </select>
+                <select class="filter-select">
+                    <option>All Dates</option>
+                    <option>This Week</option>
+                    <option>This Month</option>
+                    <option>Custom Range</option>
+                </select>
+                <select class="filter-select">
+                    <option>All Prices</option>
+                    <option>Free Only</option>
+                    <option>Paid</option>
+                </select>
+                <select class="filter-select">
+                    <option>📍 Aurora, OH</option>
+                    <option>Cleveland Metro</option>
+                    <option>Columbus Area</option>
+                    <option>All Locations</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Events Section -->
+        <div class="events-section">
+            <div class="section-header">
+                <h2>Upcoming Events <span style="color: #999; font-weight: normal; font-size: 1rem;">(127 events)</span></h2>
+                <div class="view-toggle">
+                    <button class="view-btn active">🏠 Grid</button>
+                    <button class="view-btn">📋 List</button>
+                </div>
+            </div>
+
+            <div class="events-grid">
+                <!-- Event Card 1 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        🎊
+                        <span class="event-badge">$25</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">🎉 CULTURAL</div>
+                        <h3 class="event-title">Sinhala New Year Celebration 2025</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 April 13, 2025 • 10:00 AM
+                            </div>
+                            <div class="meta-item">
+                                📍 Cleveland Sri Lankan Association Hall
+                            </div>
+                            <div class="meta-item">
+                                👥 245 people interested
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price">$25/ticket</div>
+                            <button class="register-btn">Register</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Card 2 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        🏏
+                        <span class="event-badge free">FREE</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">⚽ SPORTS</div>
+                        <h3 class="event-title">Cricket Tournament Finals</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 March 25, 2025 • 2:00 PM
+                            </div>
+                            <div class="meta-item">
+                                📍 Columbus Sports Complex
+                            </div>
+                            <div class="meta-item">
+                                👥 156 people interested
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price" style="color: var(--green);">FREE</div>
+                            <button class="register-btn">Register</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Card 3 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        🎓
+                        <span class="event-badge">$80/mo</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">📚 EDUCATION</div>
+                        <h3 class="event-title">Learn Sinhala - Spring Session</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 Every Saturday • 10:00 AM
+                            </div>
+                            <div class="meta-item">
+                                📍 Online (Zoom)
+                            </div>
+                            <div class="meta-item">
+                                👥 89 enrolled
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price">$80/month</div>
+                            <button class="register-btn">Enroll</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Card 4 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        🍛
+                        <span class="event-badge">$15</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">🍽️ FOOD</div>
+                        <h3 class="event-title">Traditional Cooking Workshop</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 March 20, 2025 • 6:00 PM
+                            </div>
+                            <div class="meta-item">
+                                📍 Lanka Kitchen, Akron
+                            </div>
+                            <div class="meta-item">
+                                👥 32 people interested
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price">$15/person</div>
+                            <button class="register-btn">Register</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Card 5 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        💼
+                        <span class="event-badge free">FREE</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">💼 PROFESSIONAL</div>
+                        <h3 class="event-title">Career Networking Mixer</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 March 28, 2025 • 7:00 PM
+                            </div>
+                            <div class="meta-item">
+                                📍 Columbus Convention Center
+                            </div>
+                            <div class="meta-item">
+                                👥 124 people interested
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price" style="color: var(--green);">FREE</div>
+                            <button class="register-btn">Register</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Card 6 -->
+                <div class="event-card">
+                    <div class="event-image">
+                        🕉️
+                        <span class="event-badge free">FREE</span>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-category">🙏 RELIGIOUS</div>
+                        <h3 class="event-title">Vesak Day Celebration</h3>
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                📅 May 23, 2025 • 9:00 AM
+                            </div>
+                            <div class="meta-item">
+                                📍 Cleveland Buddhist Temple
+                            </div>
+                            <div class="meta-item">
+                                👥 312 people interested
+                            </div>
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-price" style="color: var(--green);">FREE</div>
+                            <button class="register-btn">Register</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="page-btn">« Previous</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">4</button>
+            <button class="page-btn">5</button>
+            <button class="page-btn">Next »</button>
+        </div>
+    </main>
+</body>
+</html>

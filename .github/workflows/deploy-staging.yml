@@ -98,6 +98,29 @@ jobs:
           az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name JWT-SECRET-KEY --query value -o tsv > /dev/null
           echo "Key Vault secrets validated ✅"
 
+      - name: Run EF Migrations
+        run: |
+          # Install Entity Framework Core tools globally for the .NET 8.0 SDK
+          dotnet tool install -g dotnet-ef --version 8.0.0 2>/dev/null || dotnet tool update -g dotnet-ef --version 8.0.0
+
+          # Retrieve database connection string from Key Vault
+          DB_CONNECTION=$(az keyvault secret show \
+            --vault-name ${{ env.KEY_VAULT_NAME }} \
+            --name DATABASE-CONNECTION-STRING \
+            --query value -o tsv)
+
+          # Run pending migrations on staging database from the API project
+          echo "Applying pending migrations to staging database..."
+          cd src/LankaConnect.API
+
+          # Use dotnet ef with explicit .NET 8.0 version
+          dotnet ef database update \
+            --connection "$DB_CONNECTION" \
+            --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
+            --verbose
+
+          echo "✅ Migrations completed successfully"
+
       - name: Update Container App
         run: |
           # Get Key Vault URI
@@ -113,9 +136,9 @@ jobs:
               ASPNETCORE_ENVIRONMENT=Staging \
               ConnectionStrings__DefaultConnection=secretref:database-connection-string \
               ConnectionStrings__Redis=localhost:6379 \
-              JwtSettings__SecretKey=secretref:jwt-secret-key \
-              JwtSettings__Issuer=secretref:jwt-issuer \
-              JwtSettings__Audience=secretref:jwt-audience \
+              Jwt__Key=secretref:jwt-secret-key \
+              Jwt__Issuer=secretref:jwt-issuer \
+              Jwt__Audience=secretref:jwt-audience \
               EntraExternalId__IsEnabled=secretref:entra-enabled \
               EntraExternalId__TenantId=secretref:entra-tenant-id \
               EntraExternalId__ClientId=secretref:entra-client-id \
@@ -125,7 +148,7 @@ jobs:
               Email__SmtpUsername=secretref:smtp-username \
               Email__SmtpPassword=secretref:smtp-password \
               Email__FromEmail=secretref:email-from-address \
-              AzureBlobStorage__ConnectionString=secretref:azure-storage-connection-string
+              AzureStorage__ConnectionString=secretref:azure-storage-connection-string
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

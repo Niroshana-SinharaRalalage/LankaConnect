@@ -1,12 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Analytics;
+using LankaConnect.Domain.Notifications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
+using LankaConnect.Infrastructure.Data.Seeders;
 
 namespace LankaConnect.Infrastructure.Data;
 
@@ -22,7 +26,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Registration> Registrations => Set<Registration>();
     public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
     public DbSet<Reply> Replies => Set<Reply>();
-    
+    public DbSet<MetroArea> MetroAreas => Set<MetroArea>();
+    public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>(); // Phase 6A.8
+
     // Business Entity Sets
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<Service> Services => Set<Service>();
@@ -32,17 +38,40 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Domain.Communications.Entities.EmailMessage>();
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
 
+    // Analytics Entity Sets (Epic 2 Phase 3)
+    public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
+    public DbSet<EventViewRecord> EventViewRecords => Set<EventViewRecord>();
+
+    // Notification Entity Set (Phase 6A.6)
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    // Sign-up Management Entity Sets (Phase 6A.16)
+    public DbSet<SignUpList> SignUpLists => Set<SignUpList>(); // Phase 6A.16: Required for cascade deletion
+    public DbSet<SignUpItem> SignUpItems => Set<SignUpItem>(); // Phase 6A.16: Required for cascade deletion
+    public DbSet<SignUpCommitment> SignUpCommitments => Set<SignUpCommitment>(); // Phase 6A.16: Cascade deletion
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure NetTopologySuite for PostGIS support (Epic 2 Phase 1)
+        // This must be called before applying configurations
+        modelBuilder.HasPostgresExtension("postgis");
+
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new EventConfiguration());
+        modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
+        modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
+        modelBuilder.ApplyConfiguration(new SignUpListConfiguration()); // Sign-up lists
+        modelBuilder.ApplyConfiguration(new SignUpItemConfiguration()); // Sign-up items (category-based)
+        modelBuilder.ApplyConfiguration(new SignUpCommitmentConfiguration()); // User commitments
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
+        modelBuilder.ApplyConfiguration(new MetroAreaConfiguration()); // Phase 5
+        modelBuilder.ApplyConfiguration(new EventTemplateConfiguration()); // Phase 6A.8
 
         // Business entity configurations
         modelBuilder.ApplyConfiguration(new BusinessConfiguration());
@@ -53,6 +82,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
+
+        // Analytics entity configurations (Epic 2 Phase 3)
+        modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
+        modelBuilder.ApplyConfiguration(new EventViewRecordConfiguration());
+
+        // Notification entity configuration (Phase 6A.6)
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -62,6 +99,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Configure value object conversions
         ConfigureValueObjectConversions(modelBuilder);
+
+        // Note: Seed data is applied via DbInitializer at runtime
+        // due to complex value objects and owned entities
     }
 
     private static void ConfigureSchemas(ModelBuilder modelBuilder)
@@ -72,6 +112,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Events schema
         modelBuilder.Entity<Event>().ToTable("events", "events");
         modelBuilder.Entity<Registration>().ToTable("registrations", "events");
+        modelBuilder.Entity<SignUpList>().ToTable("sign_up_lists", "events");
+        modelBuilder.Entity<SignUpItem>().ToTable("sign_up_items", "events");
+        modelBuilder.Entity<SignUpCommitment>().ToTable("sign_up_commitments", "events");
+        modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
+        modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
+        modelBuilder.Entity<EventImage>().ToTable("EventImages", "events"); // Epic 2 Phase 2
+        modelBuilder.Entity<EventVideo>().ToTable("EventVideos", "events"); // Epic 2 Phase 2
         
         // Community schema  
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
@@ -86,6 +133,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
         modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
+        modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
+
+        // Analytics schema (Epic 2 Phase 3)
+        modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
+        modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
+
+        // Notifications schema (Phase 6A.6)
+        modelBuilder.Entity<Notification>().ToTable("notifications", "notifications");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -97,7 +152,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
         {
             typeof(User),
             typeof(Event),
+            typeof(EventImage), // Epic 2 Phase 2
+            typeof(EventVideo),  // Epic 2 Phase 2
             typeof(Registration),
+            typeof(SignUpList), // Sign-up lists
+            typeof(SignUpItem), // Sign-up items (category-based)
+            typeof(SignUpCommitment), // User commitments
+            typeof(MetroArea), // Phase 5C
+            typeof(EventTemplate), // Phase 6A.8
             typeof(ForumTopic),
             typeof(Reply),
             typeof(Business),
@@ -105,7 +167,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Review),
             typeof(EmailMessage),
             typeof(EmailTemplate),
-            typeof(UserEmailPreferences)
+            typeof(UserEmailPreferences),
+            typeof(NewsletterSubscriber), // Phase 5
+            typeof(EventAnalytics), // Epic 2 Phase 3
+            typeof(EventViewRecord), // Epic 2 Phase 3
+            typeof(Notification) // Phase 6A.6
         };
 
         // Get all types from Domain assembly that aren't in our configured list

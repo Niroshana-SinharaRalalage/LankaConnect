@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LankaConnect UI Mockups - Sri Lankan Theme</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --saffron: #FF7900;
+            --maroon: #8B1538;
+            --green: #006400;
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+
+        /* Flag Header */
+        .flag-header {
+            background: linear-gradient(90deg, var(--saffron) 0%, var(--saffron) 33%, var(--maroon) 33%, var(--maroon) 66%, var(--green) 66%, var(--green) 100%);
+            height: 10px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            margin-bottom: 1rem;
+        }
+
+        .color-palette {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .color-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .color-saffron {
+            background: var(--saffron);
+            color: white;
+        }
+
+        .color-maroon {
+            background: var(--maroon);
+            color: white;
+        }
+
+        .color-green {
+            background: var(--green);
+            color: white;
+        }
+
+        .color-gold {
+            background: var(--gold);
+            color: var(--maroon);
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: -60px auto 0;
+            padding: 0 2rem 4rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--maroon);
+            margin: 3rem 0 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .mockups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 2rem;
+        }
+
+        .mockup-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .mockup-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+        }
+
+        .mockup-preview {
+            height: 320px;
+            background: linear-gradient(135deg, var(--saffron) 0%, var(--maroon) 50%, var(--green) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mockup-preview::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            animation: rotate-slow 20s linear infinite;
+        }
+
+        @keyframes rotate-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-icon {
+            position: relative;
+            z-index: 1;
+        }
+
+        .mockup-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--gold);
+            color: var(--maroon);
+            padding: 0.625rem 1.25rem;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+
+        .mockup-content {
+            padding: 2rem;
+        }
+
+        .mockup-type {
+            color: var(--saffron);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .mockup-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--maroon);
+            margin-bottom: 0.75rem;
+        }
+
+        .mockup-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .mockup-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-tag {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.1), rgba(139, 21, 56, 0.1));
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--maroon);
+            font-weight: 500;
+        }
+
+        .view-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--saffron), var(--maroon));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 121, 0, 0.4);
+        }
+
+        /* Info Section */
+        .info-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .info-item {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 121, 0, 0.05), rgba(139, 21, 56, 0.05));
+            border-radius: 15px;
+            border-left: 4px solid var(--saffron);
+        }
+
+        .info-item h3 {
+            color: var(--maroon);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .info-item ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 1rem;
+        }
+
+        .info-item li {
+            padding: 0.5rem 0;
+            color: #666;
+        }
+
+        .info-item li::before {
+            content: '✓';
+            color: var(--green);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="flag-header"></div>
+
+    <div class="hero">
+        <div class="hero-content">
+            <div class="hero-icon">🇱🇰</div>
+            <h1>LankaConnect UI Mockups</h1>
+            <p>Modern, Beautiful Interfaces with Sri Lankan Cultural Elements</p>
+            <p style="font-size: 1rem; opacity: 0.9;">Featuring the colors of the Sri Lankan flag: Saffron, Maroon, and Green</p>
+
+            <div class="color-palette">
+                <div class="color-box color-saffron">
+                    <div>Saffron</div>
+                    <div style="font-size: 0.7rem; opacity: 0.9;">#FF7900</div>
+                </div>
+                <div class="color-box color-maroon">
+                    <div>Maroon</div>
+                    <div style="font-size: 0.7rem; opacity: 0.9;">#8B1538</div>
+                </div>
+                <div class="color-box color-green">
+                    <div>Green</div>
+                    <div style="font-size: 0.7rem; opacity: 0.9;">#006400</div>
+                </div>
+                <div class="color-box color-gold">
+                    <div>Gold</div>
+                    <div style="font-size: 0.7rem;">#FFD700</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Design Information -->
+        <div class="info-section">
+            <h2 style="color: var(--maroon); font-size: 1.8rem; margin-bottom: 1rem;">🎨 Design System Overview</h2>
+            <p style="color: #666; line-height: 1.8; font-size: 1.05rem;">
+                These mockups showcase a modern, culturally-rich design system that celebrates Sri Lankan heritage while maintaining contemporary UI/UX standards. Every element incorporates the vibrant colors of the Sri Lankan flag, creating a cohesive and meaningful user experience.
+            </p>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>🎨 Design Principles</h3>
+                    <ul>
+                        <li>Cultural authenticity</li>
+                        <li>Modern aesthetics</li>
+                        <li>Intuitive navigation</li>
+                        <li>Responsive design</li>
+                        <li>Accessibility-first</li>
+                    </ul>
+                </div>
+
+                <div class="info-item">
+                    <h3>🌈 Color Philosophy</h3>
+                    <p>
+                        Saffron represents leadership and energy, Maroon symbolizes strength and resilience, Green embodies prosperity and hope, and Gold adds celebration and warmth.
+                    </p>
+                </div>
+
+                <div class="info-item">
+                    <h3>📱 Responsive Approach</h3>
+                    <p>
+                        Each page is designed mobile-first, ensuring perfect experiences on smartphones, tablets, and desktops with fluid layouts and touch-optimized interactions.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Epic 1: Authentication Pages -->
+        <h2 class="section-title">🔐 Epic 1: Authentication & User Management</h2>
+
+        <div class="mockups-grid">
+            <!-- Login Web -->
+            <a href="01-Login-Web.html" class="mockup-card" target="_blank">
+                <div class="mockup-preview">
+                    <div class="preview-icon">🔑</div>
+                    <span class="mockup-badge">WEB</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="mockup-type">Authentication • Web</div>
+                    <h3 class="mockup-title">Login Page (Web)</h3>
+                    <p class="mockup-description">
+                        Split-panel design with cultural branding on the left and login form on the right. Features Microsoft Entra SSO integration.
+                    </p>
+                    <div class="mockup-features">
+                        <span class="feature-tag">Email/Password</span>
+                        <span class="feature-tag">SSO</span>
+                        <span class="feature-tag">Remember Me</span>
+                        <span class="feature-tag">Flag Colors</span>
+                    </div>
+                    <button class="view-button">View Mockup →</button>
+                </div>
+            </a>
+
+            <!-- Login Mobile -->
+            <a href="02-Login-Mobile.html" class="mockup-card" target="_blank">
+                <div class="mockup-preview">
+                    <div class="preview-icon">📱</div>
+                    <span class="mockup-badge">MOBILE</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="mockup-type">Authentication • Mobile</div>
+                    <h3 class="mockup-title">Login Page (Mobile)</h3>
+                    <p class="mockup-description">
+                        Mobile-optimized with gradient header, floating form, and touch-friendly inputs. Includes SSO integration and cultural elements.
+                    </p>
+                    <div class="mockup-features">
+                        <span class="feature-tag">Touch-Optimized</span>
+                        <span class="feature-tag">Gradient Header</span>
+                        <span class="feature-tag">Feature Badges</span>
+                    </div>
+                    <button class="view-button">View Mockup →</button>
+                </div>
+            </a>
+        </div>
+
+        <!-- Epic 2: Events Pages -->
+        <h2 class="section-title">🎉 Epic 2: Events Management</h2>
+
+        <div class="mockups-grid">
+            <!-- Events List Web -->
+            <a href="03-Events-List-Web.html" class="mockup-card" target="_blank">
+                <div class="mockup-preview">
+                    <div class="preview-icon">🎊</div>
+                    <span class="mockup-badge">WEB</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="mockup-type">Events • Web</div>
+                    <h3 class="mockup-title">Events List (Web)</h3>
+                    <p class="mockup-description">
+                        Comprehensive events listing with advanced search, category filters, and grid/list view toggle. Features flag-stripe header.
+                    </p>
+                    <div class="mockup-features">
+                        <span class="feature-tag">Search & Filters</span>
+                        <span class="feature-tag">Grid View</span>
+                        <span class="feature-tag">Pagination</span>
+                        <span class="feature-tag">Category Badges</span>
+                    </div>
+                    <button class="view-button">View Mockup →</button>
+                </div>
+            </a>
+
+            <!-- Event Details Web -->
+            <a href="04-Event-Details-Web.html" class="mockup-card" target="_blank">
+                <div class="mockup-preview">
+                    <div class="preview-icon">📋</div>
+                    <span class="mockup-badge">WEB</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="mockup-type">Event Details • Web</div>
+                    <h3 class="mockup-title">Event Details (Web)</h3>
+                    <p class="mockup-description">
+                        Full event page with hero image, detailed description, highlights, organizer info, and sticky registration sidebar.
+                    </p>
+                    <div class="mockup-features">
+                        <span class="feature-tag">Hero Section</span>
+                        <span class="feature-tag">Registration Card</span>
+                        <span class="feature-tag">Meta Info</span>
+                        <span class="feature-tag">Highlights</span>
+                    </div>
+                    <button class="view-button">View Mockup →</button>
+                </div>
+            </a>
+
+            <!-- Events List Mobile -->
+            <a href="05-Events-List-Mobile.html" class="mockup-card" target="_blank">
+                <div class="mockup-preview">
+                    <div class="preview-icon">📲</div>
+                    <span class="mockup-badge">MOBILE</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="mockup-type">Events • Mobile</div>
+                    <h3 class="mockup-title">Events List (Mobile)</h3>
+                    <p class="mockup-description">
+                        Mobile-first events feed with sticky header, filter chips, banner stats, and bottom navigation. Includes floating action button.
+                    </p>
+                    <div class="mockup-features">
+                        <span class="feature-tag">Filter Chips</span>
+                        <span class="feature-tag">Bottom Nav</span>
+                        <span class="feature-tag">FAB</span>
+                        <span class="feature-tag">Stats Banner</span>
+                    </div>
+                    <button class="view-button">View Mockup →</button>
+                </div>
+            </a>
+        </div>
+
+        <!-- Implementation Details -->
+        <div class="info-section" style="margin-top: 3rem;">
+            <h2 style="color: var(--maroon); font-size: 1.8rem; margin-bottom: 1rem;">🚀 Next Steps</h2>
+            <p style="color: #666; line-height: 1.8; font-size: 1.05rem; margin-bottom: 2rem;">
+                These mockups serve as the visual foundation for the frontend implementation using <strong>Next.js 14</strong>, <strong>TypeScript</strong>, <strong>Tailwind CSS</strong>, and <strong>shadcn/ui</strong> components.
+            </p>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>📦 Tech Stack</h3>
+                    <ul>
+                        <li>Next.js 14 (App Router)</li>
+                        <li>TypeScript 5.3+</li>
+                        <li>Tailwind CSS 3.4</li>
+                        <li>shadcn/ui Components</li>
+                        <li>TanStack Query</li>
+                        <li>Zustand (State)</li>
+                    </ul>
+                </div>
+
+                <div class="info-item">
+                    <h3>✅ Features Covered</h3>
+                    <ul>
+                        <li>Login/Registration</li>
+                        <li>SSO Integration</li>
+                        <li>Events List & Search</li>
+                        <li>Event Details</li>
+                        <li>Mobile Responsive</li>
+                        <li>Sri Lankan Branding</li>
+                    </ul>
+                </div>
+
+                <div class="info-item">
+                    <h3>🎯 Ready for Development</h3>
+                    <p>
+                        All design elements, color schemes, layouts, and interactions are documented and ready for implementation following TDD principles.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 3rem 0; color: #999;">
+            <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+                🇱🇰 <strong>LankaConnect</strong> - Connecting the Sri Lankan American Community
+            </p>
+            <p style="font-size: 0.9rem;">
+                Designed with ❤️ and pride in Sri Lankan heritage
+            </p>
+        </div>
+    </main>
+</body>
+</html>

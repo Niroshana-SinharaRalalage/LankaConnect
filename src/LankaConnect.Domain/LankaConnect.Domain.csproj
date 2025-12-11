@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Phase 6A.9 FIX: Expose internal members to Infrastructure layer for EF Core persistence concerns -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="LankaConnect.Infrastructure" />
+  </ItemGroup>
+
 </Project>

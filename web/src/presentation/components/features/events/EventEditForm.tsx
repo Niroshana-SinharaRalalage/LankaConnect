@@ -210,6 +210,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
       const startDateISO = new Date(data.startDate).toISOString();
       const endDateISO = new Date(data.endDate).toISOString();
 
+      // Session 33: Determine pricing mode and build appropriate pricing fields
+      const isDualPricing = !data.isFree && data.enableDualPricing;
+      const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing;
+
       const eventData = {
         eventId: event.id,
         title: data.title,
@@ -219,7 +223,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
         capacity: data.capacity,
         category: data.category,
         // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
-        // Backend infers isFree from ticketPriceAmount being null, so don't send isFree
         // CRITICAL: Use null for empty optional fields, NOT empty strings
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
@@ -230,23 +233,31 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationLatitude: locationLatitude ?? null,
           locationLongitude: locationLongitude ?? null,
         }),
-        // Use null (not undefined) for nullable fields to match C# nullable types
-        ticketPriceAmount: data.isFree ? null : data.ticketPriceAmount!,
-        ticketPriceCurrency: data.isFree ? null : data.ticketPriceCurrency!,
+        // Session 33: Pricing fields - send appropriate fields based on pricing mode
+        // Single pricing mode
+        ticketPriceAmount: isSinglePricing ? data.ticketPriceAmount : null,
+        ticketPriceCurrency: isSinglePricing ? data.ticketPriceCurrency : null,
+        // Dual pricing mode (adult/child)
+        adultPriceAmount: isDualPricing ? data.adultPriceAmount : null,
+        adultPriceCurrency: isDualPricing ? data.adultPriceCurrency : null,
+        childPriceAmount: isDualPricing ? data.childPriceAmount : null,
+        childPriceCurrency: isDualPricing ? data.childPriceCurrency : null,
+        childAgeLimit: isDualPricing ? data.childAgeLimit : null,
       };
 
       console.log('📤 Updating event with payload:', JSON.stringify(eventData, null, 2));
       console.log('📋 Event details before update:', {
         eventId: event.id,
-        eventIdType: typeof event.id,
-        currentCategory: event.category,
-        currentCategoryType: typeof event.category,
-        newCategory: data.category,
-        newCategoryType: typeof data.category,
         eventStatus: event.status,
         isFree: data.isFree,
+        pricingMode: isDualPricing ? 'dual' : isSinglePricing ? 'single' : 'free',
+        // Single pricing
         ticketPriceAmount: data.ticketPriceAmount,
-        ticketPriceCurrency: data.ticketPriceCurrency,
+        // Dual pricing
+        enableDualPricing: data.enableDualPricing,
+        adultPriceAmount: data.adultPriceAmount,
+        childPriceAmount: data.childPriceAmount,
+        childAgeLimit: data.childAgeLimit,
       });
 
       console.log('🌐 API Request Details:', {

@@ -90,16 +90,21 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
       isFree: event.isFree ?? true,
+      // Pricing mode toggles
       enableDualPricing: event.hasDualPricing ?? false,
+      enableGroupPricing: event.hasGroupPricing ?? false,
+      // Single pricing - undefined by default, populated by reset() if applicable
+      ticketPriceAmount: undefined,
+      ticketPriceCurrency: undefined,
+      // Dual pricing - undefined by default, populated by reset() if applicable
       adultPriceAmount: undefined,
-      adultPriceCurrency: Currency.USD,
+      adultPriceCurrency: undefined,
       childPriceAmount: undefined,
-      childPriceCurrency: Currency.USD,
+      childPriceCurrency: undefined,
       childAgeLimit: undefined,
-      enableGroupPricing: false,
+      // Group pricing
       groupPricingTiers: undefined,
-      ticketPriceAmount: event.ticketPriceAmount || undefined,
-      ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
+      // Location
       locationAddress: event.address || undefined,
       locationCity: event.city || undefined,
       locationState: event.state || undefined,
@@ -121,6 +126,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
     });
 
     // Session 33: Properly load existing pricing data including dual pricing
+    // Determine pricing mode to set correct defaults
+    const hasDualPricing = event.hasDualPricing ?? false;
+    const hasGroupPricing = event.hasGroupPricing ?? false;
+    const hasSinglePricing = !event.isFree && !hasDualPricing && !hasGroupPricing;
+
     reset({
       title: event.title,
       description: event.description,
@@ -129,17 +139,21 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
       isFree: event.isFree,
-      // Session 33: Load dual pricing data from event
-      enableDualPricing: event.hasDualPricing ?? false,
-      adultPriceAmount: event.adultPriceAmount || undefined,
-      adultPriceCurrency: event.adultPriceCurrency || Currency.USD,
-      childPriceAmount: event.childPriceAmount || undefined,
-      childPriceCurrency: event.childPriceCurrency || Currency.USD,
-      childAgeLimit: event.childAgeLimit || undefined,
-      enableGroupPricing: event.hasGroupPricing ?? false,
-      groupPricingTiers: event.groupPricingTiers ? [...event.groupPricingTiers] : undefined,
-      ticketPriceAmount: event.ticketPriceAmount || undefined,
-      ticketPriceCurrency: event.ticketPriceCurrency || Currency.USD,
+      // Session 33: Load pricing data based on pricing mode
+      // Single pricing - only set if in single pricing mode
+      ticketPriceAmount: hasSinglePricing ? (event.ticketPriceAmount ?? undefined) : undefined,
+      ticketPriceCurrency: hasSinglePricing ? (event.ticketPriceCurrency ?? Currency.USD) : undefined,
+      // Dual pricing - only set if in dual pricing mode
+      enableDualPricing: hasDualPricing,
+      adultPriceAmount: hasDualPricing ? (event.adultPriceAmount ?? undefined) : undefined,
+      adultPriceCurrency: hasDualPricing ? (event.adultPriceCurrency ?? Currency.USD) : undefined,
+      childPriceAmount: hasDualPricing ? (event.childPriceAmount ?? undefined) : undefined,
+      childPriceCurrency: hasDualPricing ? (event.childPriceCurrency ?? Currency.USD) : undefined,
+      childAgeLimit: hasDualPricing ? (event.childAgeLimit ?? undefined) : undefined,
+      // Group pricing
+      enableGroupPricing: hasGroupPricing,
+      groupPricingTiers: hasGroupPricing && event.groupPricingTiers ? [...event.groupPricingTiers] : undefined,
+      // Location
       locationAddress: event.address || undefined,
       locationCity: event.city || undefined,
       locationState: event.state || undefined,

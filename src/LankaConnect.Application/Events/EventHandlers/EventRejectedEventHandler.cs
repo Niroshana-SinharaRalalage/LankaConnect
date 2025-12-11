@@ -2,6 +2,7 @@ using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -13,15 +14,18 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class EventRejectedEventHandler : INotificationHandler<DomainEventNotification<EventRejectedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILogger<EventRejectedEventHandler> _logger;
 
     public EventRejectedEventHandler(
         IEmailService emailService,
+        IUserRepository userRepository,
         IEventRepository eventRepository,
         ILogger<EventRejectedEventHandler> logger)
     {
         _emailService = emailService;
+        _userRepository = userRepository;
         _eventRepository = eventRepository;
         _logger = logger;
     }
@@ -42,21 +46,29 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                 return;
             }
 
-            // Note: In production, you would retrieve the organizer's user details
-            // For now, using a simplified approach with event owner ID
+            // Retrieve organizer's user details
+            var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+            if (organizer == null)
+            {
+                _logger.LogWarning("Organizer {OrganizerId} not found for EventRejectedEvent", @event.OrganizerId);
+                return;
+            }
+
+            var organizerName = $"{organizer.FirstName} {organizer.LastName}";
             var parameters = new Dictionary<string, object>
             {
                 { "EventTitle", @event.Title.Value },
                 { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                 { "Reason", domainEvent.Reason },
-                { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") }
+                { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                { "OrganizerName", organizerName }
             };
 
             var emailMessage = new EmailMessageDto
             {
-                ToEmail = "organizer@example.com", // TODO: Get from event.OrganizerId
-                ToName = "Event Organizer",
+                ToEmail = organizer.Email.Value,
+                ToName = organizerName,
                 Subject = $"Event Requires Changes: {@event.Title.Value}",
                 HtmlBody = GenerateEventRejectedHtml(parameters),
                 Priority = 1 // High priority
@@ -83,11 +95,12 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
 
     private string GenerateEventRejectedHtml(Dictionary<string, object> parameters)
     {
+        var organizerName = parameters.TryGetValue("OrganizerName", out var name) ? name.ToString() : "Event Organizer";
         return $@"
             <html>
             <body>
                 <h2>Event Requires Changes</h2>
-                <p>Dear Event Organizer,</p>
+                <p>Dear {organizerName},</p>
                 <p>Your event submission has been reviewed and requires some changes before it can be approved:</p>
                 <ul>
                     <li><strong>Event:</strong> {parameters["EventTitle"]}</li>

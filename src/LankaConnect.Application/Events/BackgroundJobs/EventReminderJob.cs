@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
@@ -11,15 +12,18 @@ namespace LankaConnect.Application.Events.BackgroundJobs;
 public class EventReminderJob
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<EventReminderJob> _logger;
 
     public EventReminderJob(
         IEventRepository eventRepository,
+        IUserRepository userRepository,
         IEmailService emailService,
         ILogger<EventReminderJob> logger)
     {
         _eventRepository = eventRepository;
+        _userRepository = userRepository;
         _emailService = emailService;
         _logger = logger;
     }
@@ -60,6 +64,51 @@ public class EventReminderJob
                     {
                         try
                         {
+                            // Determine email recipient based on registration type
+                            string? toEmail = null;
+                            string toName = "Event Attendee";
+
+                            if (registration.UserId.HasValue)
+                            {
+                                // Authenticated user registration - look up user email
+                                var user = await _userRepository.GetByIdAsync(registration.UserId.Value, CancellationToken.None);
+                                if (user != null)
+                                {
+                                    toEmail = user.Email.Value;
+                                    toName = $"{user.FirstName} {user.LastName}";
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("EventReminderJob: User {UserId} not found for registration, skipping reminder",
+                                        registration.UserId);
+                                    continue;
+                                }
+                            }
+                            else if (registration.Contact != null)
+                            {
+                                // Anonymous registration with contact info (multi-attendee format)
+                                toEmail = registration.Contact.Email;
+                                // Try to get first attendee name if available
+                                var firstAttendee = registration.Attendees.FirstOrDefault();
+                                if (firstAttendee != null)
+                                {
+                                    toName = firstAttendee.Name;
+                                }
+                            }
+                            else if (registration.AttendeeInfo != null)
+                            {
+                                // Legacy anonymous registration format
+                                toEmail = registration.AttendeeInfo.Email.Value;
+                                toName = registration.AttendeeInfo.Name;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(toEmail))
+                            {
+                                _logger.LogWarning("EventReminderJob: No email found for registration {RegistrationId}, skipping reminder",
+                                    registration.Id);
+                                continue;
+                            }
+
                             var parameters = new Dictionary<string, object>
                             {
                                 { "EventTitle", @event.Title.Value },
@@ -67,13 +116,14 @@ public class EventReminderJob
                                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                                 { "Location", @event.Location?.Address.ToString() ?? "Location TBD" },
                                 { "Quantity", registration.Quantity },
-                                { "HoursUntilEvent", Math.Round((@event.StartDate - now).TotalHours, 1) }
+                                { "HoursUntilEvent", Math.Round((@event.StartDate - now).TotalHours, 1) },
+                                { "AttendeeName", toName }
                             };
 
                             var emailMessage = new EmailMessageDto
                             {
-                                ToEmail = "attendee@example.com", // TODO: Get from registration.UserId
-                                ToName = "Event Attendee",
+                                ToEmail = toEmail,
+                                ToName = toName,
                                 Subject = $"Reminder: {@event.Title.Value} starts in 24 hours",
                                 HtmlBody = GenerateEventReminderHtml(parameters),
                                 Priority = 1 // High priority
@@ -83,19 +133,19 @@ public class EventReminderJob
 
                             if (result.IsFailure)
                             {
-                                _logger.LogWarning("EventReminderJob: Failed to send reminder for event {EventId} to user {UserId}: {Errors}",
-                                    @event.Id, registration.UserId, string.Join(", ", result.Errors));
+                                _logger.LogWarning("EventReminderJob: Failed to send reminder for event {EventId} to {Email}: {Errors}",
+                                    @event.Id, toEmail, string.Join(", ", result.Errors));
                             }
                             else
                             {
-                                _logger.LogInformation("EventReminderJob: Reminder sent successfully for event {EventId} to user {UserId}",
-                                    @event.Id, registration.UserId);
+                                _logger.LogInformation("EventReminderJob: Reminder sent successfully for event {EventId} to {Email}",
+                                    @event.Id, toEmail);
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "EventReminderJob: Error sending reminder for event {EventId} to user {UserId}",
-                                @event.Id, registration.UserId);
+                            _logger.LogError(ex, "EventReminderJob: Error sending reminder for event {EventId} to registration {RegistrationId}",
+                                @event.Id, registration.Id);
                         }
                     }
                 }
@@ -115,11 +165,12 @@ public class EventReminderJob
 
     private string GenerateEventReminderHtml(Dictionary<string, object> parameters)
     {
+        var attendeeName = parameters.TryGetValue("AttendeeName", out var name) ? name.ToString() : "Event Attendee";
         return $@"
             <html>
             <body>
                 <h2>Event Reminder</h2>
-                <p>Dear Event Attendee,</p>
+                <p>Dear {attendeeName},</p>
                 <p>This is a friendly reminder that your event is starting soon!</p>
                 <ul>
                     <li><strong>Event:</strong> {parameters["EventTitle"]}</li>

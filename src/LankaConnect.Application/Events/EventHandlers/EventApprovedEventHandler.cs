@@ -2,6 +2,7 @@ using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -13,15 +14,18 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class EventApprovedEventHandler : INotificationHandler<DomainEventNotification<EventApprovedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILogger<EventApprovedEventHandler> _logger;
 
     public EventApprovedEventHandler(
         IEmailService emailService,
+        IUserRepository userRepository,
         IEventRepository eventRepository,
         ILogger<EventApprovedEventHandler> logger)
     {
         _emailService = emailService;
+        _userRepository = userRepository;
         _eventRepository = eventRepository;
         _logger = logger;
     }
@@ -42,20 +46,28 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 return;
             }
 
-            // Note: In production, you would retrieve the organizer's user details
-            // For now, using a simplified approach with event owner ID
+            // Retrieve organizer's user details
+            var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+            if (organizer == null)
+            {
+                _logger.LogWarning("Organizer {OrganizerId} not found for EventApprovedEvent", @event.OrganizerId);
+                return;
+            }
+
+            var organizerName = $"{organizer.FirstName} {organizer.LastName}";
             var parameters = new Dictionary<string, object>
             {
                 { "EventTitle", @event.Title.Value },
                 { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "ApprovedAt", domainEvent.ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") }
+                { "ApprovedAt", domainEvent.ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                { "OrganizerName", organizerName }
             };
 
             var emailMessage = new EmailMessageDto
             {
-                ToEmail = "organizer@example.com", // TODO: Get from event.OrganizerId
-                ToName = "Event Organizer",
+                ToEmail = organizer.Email.Value,
+                ToName = organizerName,
                 Subject = $"Event Approved: {@event.Title.Value}",
                 HtmlBody = GenerateEventApprovedHtml(parameters),
                 Priority = 1 // High priority
@@ -82,11 +94,12 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
 
     private string GenerateEventApprovedHtml(Dictionary<string, object> parameters)
     {
+        var organizerName = parameters.TryGetValue("OrganizerName", out var name) ? name.ToString() : "Event Organizer";
         return $@"
             <html>
             <body>
                 <h2>Event Approved!</h2>
-                <p>Dear Event Organizer,</p>
+                <p>Dear {organizerName},</p>
                 <p>Great news! Your event has been approved and is now published:</p>
                 <ul>
                     <li><strong>Event:</strong> {parameters["EventTitle"]}</li>

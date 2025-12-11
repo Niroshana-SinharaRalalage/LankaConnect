@@ -144,9 +144,9 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
 
-        // Add Email Services
-        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
-        services.AddScoped<IEmailService, EmailService>();
+        // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
+        // Note: EmailSettings is configured below with SimpleEmailService
+        services.AddScoped<IEmailService, AzureEmailService>();
 
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));

@@ -12,7 +12,8 @@ import {
   DollarSign,
   Image as ImageIcon,
   Video as VideoIcon,
-  Download
+  Download,
+  Award
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -24,6 +25,8 @@ import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
+import { BadgeAssignment } from '@/presentation/components/features/badges';
+import { useEventBadges } from '@/presentation/hooks/useBadges';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -52,6 +55,9 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Fetch sign-up lists for CSV download
   const { data: signUpLists } = useEventSignUps(id);
+
+  // Fetch event badges for badge assignment section
+  const { data: eventBadges, refetch: refetchBadges } = useEventBadges(id);
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {
@@ -469,6 +475,28 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                   onUploadComplete={async () => {
                     await refetch();
                   }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Badge Assignment - Phase 6A.25 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5" style={{ color: '#FF7900' }} />
+                  <CardTitle style={{ color: '#8B1538' }}>Event Badges</CardTitle>
+                </div>
+                <CardDescription>Add promotional badges to your event</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BadgeAssignment
+                  eventId={id}
+                  existingBadges={eventBadges || []}
+                  onAssignmentChange={async () => {
+                    await refetchBadges();
+                    await refetch();
+                  }}
+                  maxBadges={3}
                 />
               </CardContent>
             </Card>

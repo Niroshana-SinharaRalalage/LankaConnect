@@ -42,6 +42,9 @@ public class DbInitializer
             // Seed metro areas (Phase 5C)
             await SeedMetroAreasAsync();
 
+            // Seed badges (Phase 6A.25)
+            await SeedBadgesAsync();
+
             // Seed events
             await SeedEventsAsync();
         }
@@ -86,6 +89,24 @@ public class DbInitializer
         _logger.LogInformation("Seeding metro areas...");
         await MetroAreaSeeder.SeedAsync(_context);
         _logger.LogInformation("Successfully seeded metro areas to the database.");
+    }
+
+    /// <summary>
+    /// Seeds predefined badges into the database
+    /// Phase 6A.25: Badge Management System
+    /// </summary>
+    private async Task SeedBadgesAsync()
+    {
+        var existingBadgesCount = await _context.Badges.CountAsync();
+        if (existingBadgesCount > 0)
+        {
+            _logger.LogInformation("Database already contains {Count} badges. Skipping seed.", existingBadgesCount);
+            return;
+        }
+
+        _logger.LogInformation("Seeding predefined badges...");
+        await BadgeSeeder.SeedAsync(_context);
+        _logger.LogInformation("Successfully seeded predefined badges to the database.");
     }
 
     /// <summary>

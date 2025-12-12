@@ -1,3 +1,4 @@
+using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -67,6 +68,12 @@ public record EventDto
     // Media galleries (Epic 2 Phase 2)
     public IReadOnlyList<EventImageDto> Images { get; init; } = Array.Empty<EventImageDto>();
     public IReadOnlyList<EventVideoDto> Videos { get; init; } = Array.Empty<EventVideoDto>();
+
+    /// <summary>
+    /// Phase 6A.25: Badge Management System
+    /// Badges assigned to this event for overlay display
+    /// </summary>
+    public IReadOnlyList<EventBadgeDto> Badges { get; init; } = Array.Empty<EventBadgeDto>();
 }
 
 /// <summary>

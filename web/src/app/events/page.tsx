@@ -14,6 +14,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
+import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
@@ -372,6 +373,15 @@ function EventCard({
           <div className="w-full h-full flex items-center justify-center text-6xl text-white">
             🎉
           </div>
+        )}
+
+        {/* Phase 6A.25: Badge Overlays */}
+        {event.badges && event.badges.length > 0 && (
+          <BadgeOverlayGroup
+            badges={event.badges.map(eb => eb.badge)}
+            size={50}
+            maxBadges={2}
+          />
         )}
 
         {/* Category Badge */}

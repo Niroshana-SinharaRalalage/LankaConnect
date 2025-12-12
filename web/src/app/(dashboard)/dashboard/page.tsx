@@ -21,7 +21,9 @@ import {
   Sparkles,
   ClipboardCheck,
   FolderOpen,
-  Bell
+  Bell,
+  Award,
+  Mail
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
@@ -32,6 +34,8 @@ import { NotificationsList } from '@/presentation/components/features/dashboard/
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
+import { BadgeManagement } from '@/presentation/components/features/badges';
+import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 
@@ -148,8 +152,9 @@ export default function DashboardPage() {
     }
   };
 
+  // Session 33: Add from=dashboard parameter for back navigation tracking
   const handleEventClick = (eventId: string) => {
-    router.push(`/events/${eventId}`);
+    router.push(`/events/${eventId}?from=dashboard`);
   };
 
   // Session 30: Cancel registration handler for dashboard
@@ -398,6 +403,18 @@ export default function DashboardPage() {
                         ),
                       },
                       {
+                        id: 'badges',
+                        label: 'Badge Management',
+                        icon: Award,
+                        content: <BadgeManagement />,
+                      },
+                      {
+                        id: 'email-groups',
+                        label: 'Email Groups',
+                        icon: Mail,
+                        content: <EmailGroupsTab />,
+                      },
+                      {
                         id: 'notifications',
                         label: 'Notifications',
                         icon: Bell,
@@ -440,6 +457,18 @@ export default function DashboardPage() {
                             onEventClick={handleManageEventClick}
                           />
                         ),
+                      },
+                      {
+                        id: 'badges',
+                        label: 'Badge Management',
+                        icon: Award,
+                        content: <BadgeManagement />,
+                      },
+                      {
+                        id: 'email-groups',
+                        label: 'Email Groups',
+                        icon: Mail,
+                        content: <EmailGroupsTab />,
                       },
                       {
                         id: 'notifications',

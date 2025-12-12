@@ -1,6 +1,9 @@
 using AutoMapper;
+using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Application.Common.Mappings;
 
@@ -37,13 +40,19 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.HasGroupPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers))
             // Media galleries (Epic 2 Phase 2)
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
-            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos));
+            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos))
+            // Phase 6A.25: Badge Management System
+            .ForMember(dest => dest.Badges, opt => opt.MapFrom(src => src.Badges));
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();
 
         // EventVideo -> EventVideoDto mapping (Epic 2 Phase 2)
         CreateMap<EventVideo, EventVideoDto>();
+
+        // Phase 6A.25: Badge Management System mappings
+        CreateMap<EventBadge, EventBadgeDto>();
+        CreateMap<Badge, BadgeDto>();
 
         // Event -> EventSearchResultDto mapping (Epic 2 Phase 3 - Full-Text Search)
         // Same mappings as EventDto, plus SearchRelevance (set to 0, will be populated by repository)

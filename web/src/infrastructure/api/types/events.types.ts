@@ -3,6 +3,8 @@
  * DTOs matching backend API contracts (LankaConnect.Application.Events.Common)
  */
 
+import type { EventBadgeDto } from './badges.types';
+
 // ==================== Enums ====================
 
 /**
@@ -172,6 +174,9 @@ export interface EventDto {
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
   videos: readonly EventVideoDto[];
+
+  // Phase 6A.25: Badge overlays (optional - populated when badges are assigned)
+  badges?: readonly EventBadgeDto[];
 }
 
 /**
@@ -694,4 +699,41 @@ export interface UploadEventImageResponse {
   imageUrl: string;
   displayOrder: number;
   uploadedAt: string;
+}
+
+// ==================== Ticket DTOs (Phase 6A.24) ====================
+
+/**
+ * Phase 6A.24: Ticket attendee information
+ */
+export interface TicketAttendeeDto {
+  name: string;
+  age: number;
+}
+
+/**
+ * Phase 6A.24: Event ticket DTO
+ * Returned by GET /api/events/{eventId}/my-registration/ticket
+ */
+export interface TicketDto {
+  id: string;
+  registrationId: string;
+  eventId: string;
+  userId?: string | null;
+  ticketCode: string;
+  qrCodeBase64?: string | null;
+  pdfBlobUrl?: string | null;
+  isValid: boolean;
+  validatedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+
+  // Event details for display
+  eventTitle?: string | null;
+  eventStartDate?: string | null;
+  eventLocation?: string | null;
+
+  // Attendee information
+  attendeeCount: number;
+  attendees?: TicketAttendeeDto[] | null;
 }

@@ -131,6 +131,11 @@
   <ItemGroup>
     <PackageVersion Include="Stripe.net" Version="47.4.0" />
   </ItemGroup>
+  <!-- Phase 6A.24: QR Code and PDF generation for tickets -->
+  <ItemGroup>
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
+    <PackageVersion Include="QuestPDF" Version="2024.10.2" />
+  </ItemGroup>
   <!-- Source Link -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />

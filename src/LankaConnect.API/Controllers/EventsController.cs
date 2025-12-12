@@ -55,7 +55,10 @@ using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
+using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
+using LankaConnect.Application.Events.Queries.GetTicket;
+using LankaConnect.Application.Events.Queries.GetTicketPdf;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -519,6 +522,118 @@ public class EventsController : BaseController<EventsController>
 
         var command = new UpdateRsvpCommand(id, request.UserId, request.NewQuantity);
         var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    // ==================== TICKET ENDPOINTS (Phase 6A.24) ====================
+
+    /// <summary>
+    /// Get ticket details for a user's registration
+    /// Phase 6A.24: Ticket viewing for paid events
+    /// </summary>
+    [HttpGet("{eventId:guid}/my-registration/ticket")]
+    [Authorize]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyTicket(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Getting ticket for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var query = new GetTicketQuery(eventId, registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound(new { message = result.Error });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Download ticket as PDF
+    /// Phase 6A.24: Ticket PDF download for paid events
+    /// </summary>
+    [HttpGet("{eventId:guid}/my-registration/ticket/pdf")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DownloadMyTicketPdf(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Downloading ticket PDF for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var query = new GetTicketPdfQuery(eventId, registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            if (result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                return NotFound(new { message = result.Error });
+            }
+            return HandleResult(result);
+        }
+
+        return File(result.Value.PdfBytes, "application/pdf", result.Value.FileName);
+    }
+
+    /// <summary>
+    /// Resend ticket email to registration contact
+    /// Phase 6A.24: Allows users to request ticket email resend
+    /// </summary>
+    [HttpPost("{eventId:guid}/my-registration/ticket/resend-email")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ResendTicketEmail(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Resending ticket email for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var command = new ResendTicketEmailCommand(eventId, registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound(new { message = result.Error });
+        }
 
         return HandleResult(result);
     }

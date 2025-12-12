@@ -30,6 +30,7 @@ import type {
   CommitToSignUpItemAnonymousRequest,
   EventRegistrationCheckResult,
   RegistrationDetailsDto,
+  TicketDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -676,6 +677,59 @@ export class EventsRepository {
    */
   async deleteEventVideo(eventId: string, videoId: string): Promise<void> {
     await apiClient.delete(`${this.basePath}/${eventId}/videos/${videoId}`);
+  }
+
+  // ==================== TICKET ENDPOINTS (Phase 6A.24) ====================
+
+  /**
+   * Get ticket for user's registration
+   * Phase 6A.24: Returns ticket details with QR code for paid events
+   * Maps to backend GET /api/events/{eventId}/my-registration/ticket
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns Ticket details including QR code and attendee info
+   */
+  async getMyTicket(eventId: string): Promise<TicketDto> {
+    return await apiClient.get<TicketDto>(`${this.basePath}/${eventId}/my-registration/ticket`);
+  }
+
+  /**
+   * Download ticket as PDF
+   * Phase 6A.24: Returns PDF blob for ticket download
+   * Maps to backend GET /api/events/{eventId}/my-registration/ticket/pdf
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns PDF blob for download
+   */
+  async downloadTicketPdf(eventId: string): Promise<Blob> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const response = await fetch(
+      `${baseUrl}${this.basePath}/${eventId}/my-registration/ticket/pdf`,
+      {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to download ticket PDF');
+    }
+
+    return await response.blob();
+  }
+
+  /**
+   * Resend ticket email
+   * Phase 6A.24: Resends ticket confirmation email to registration contact
+   * Maps to backend POST /api/events/{eventId}/my-registration/ticket/resend-email
+   *
+   * @param eventId - Event ID (GUID)
+   */
+  async resendTicketEmail(eventId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/my-registration/ticket/resend-email`, {});
   }
 }
 

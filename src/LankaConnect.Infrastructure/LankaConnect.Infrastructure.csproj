@@ -29,6 +29,9 @@
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
     <PackageReference Include="Stripe.net" />
+    <!-- Phase 6A.24: QR Code and PDF generation for tickets -->
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="QuestPDF" />
   </ItemGroup>
 
   <PropertyGroup>

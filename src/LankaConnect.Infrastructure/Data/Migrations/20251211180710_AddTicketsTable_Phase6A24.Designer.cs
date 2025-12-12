@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251211180710_AddTicketsTable_Phase6A24")]
+    partial class AddTicketsTable_Phase6A24
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -140,73 +143,6 @@ namespace LankaConnect.Infrastructure.Migrations
                         .HasDatabaseName("ix_event_view_records_dedup_user");
 
                     b.ToTable("event_view_records", "analytics");
-                });
-
-            modelBuilder.Entity("LankaConnect.Domain.Badges.Badge", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("BlobName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsSystem")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DisplayOrder")
-                        .HasDatabaseName("IX_Badges_DisplayOrder");
-
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("IX_Badges_IsActive");
-
-                    b.HasIndex("IsSystem")
-                        .HasDatabaseName("IX_Badges_IsSystem");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Badges_Name");
-
-                    b.ToTable("badges", "badges");
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Business.Business", b =>
@@ -1012,46 +948,6 @@ namespace LankaConnect.Infrastructure.Migrations
                         .HasDatabaseName("ix_replies_topic_created");
 
                     b.ToTable("replies", "community");
-                });
-
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("AssignedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BadgeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BadgeId")
-                        .HasDatabaseName("IX_EventBadges_BadgeId");
-
-                    b.HasIndex("EventId")
-                        .HasDatabaseName("IX_EventBadges_EventId");
-
-                    b.HasIndex("EventId", "BadgeId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_EventBadges_EventId_BadgeId");
-
-                    b.ToTable("event_badges", "badges");
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
@@ -2369,23 +2265,6 @@ namespace LankaConnect.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
-                {
-                    b.HasOne("LankaConnect.Domain.Badges.Badge", "Badge")
-                        .WithMany()
-                        .HasForeignKey("BadgeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
-                        .WithMany("Badges")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Badge");
-                });
-
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
                 {
                     b.HasOne("LankaConnect.Domain.Events.Entities.SignUpItem", null)
@@ -3254,8 +3133,6 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
                 {
-                    b.Navigation("Badges");
-
                     b.Navigation("Images");
 
                     b.Navigation("Registrations");

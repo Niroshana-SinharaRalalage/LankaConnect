@@ -8,6 +8,7 @@ using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
 using LankaConnect.Domain.Notifications;
+using LankaConnect.Domain.Badges;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Infrastructure.Data.Seeders;
@@ -51,6 +52,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<SignUpList> SignUpLists => Set<SignUpList>(); // Phase 6A.16: Required for cascade deletion
     public DbSet<SignUpItem> SignUpItems => Set<SignUpItem>(); // Phase 6A.16: Required for cascade deletion
     public DbSet<SignUpCommitment> SignUpCommitments => Set<SignUpCommitment>(); // Phase 6A.16: Cascade deletion
+
+    // Ticket Entity Set (Phase 6A.24)
+    public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
+
+    // Badge Entity Sets (Phase 6A.25)
+    public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
+    public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
+
+    // Email Group Entity Set (Phase 6A.25)
+    public DbSet<EmailGroup> EmailGroups => Set<EmailGroup>(); // Phase 6A.25: Email Groups Management
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -90,6 +102,16 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Notification entity configuration (Phase 6A.6)
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+
+        // Ticket entity configuration (Phase 6A.24)
+        modelBuilder.ApplyConfiguration(new TicketConfiguration());
+
+        // Badge entity configurations (Phase 6A.25)
+        modelBuilder.ApplyConfiguration(new BadgeConfiguration());
+        modelBuilder.ApplyConfiguration(new EventBadgeConfiguration());
+
+        // Email Group entity configuration (Phase 6A.25)
+        modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -141,6 +163,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Notifications schema (Phase 6A.6)
         modelBuilder.Entity<Notification>().ToTable("notifications", "notifications");
+
+        // Tickets schema (Phase 6A.24)
+        modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
+
+        // Badges schema (Phase 6A.25)
+        modelBuilder.Entity<Badge>().ToTable("badges", "badges");
+        modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -171,7 +200,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(NewsletterSubscriber), // Phase 5
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord), // Epic 2 Phase 3
-            typeof(Notification) // Phase 6A.6
+            typeof(Notification), // Phase 6A.6
+            typeof(Ticket), // Phase 6A.24
+            typeof(Badge), // Phase 6A.25
+            typeof(EventBadge), // Phase 6A.25
+            typeof(EmailGroup) // Phase 6A.25: Email Groups Management
         };
 
         // Get all types from Domain assembly that aren't in our configured list

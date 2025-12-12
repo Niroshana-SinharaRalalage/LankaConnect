@@ -22,4 +22,10 @@ public interface ICurrentUserService
     /// Indicates whether the user is authenticated
     /// </summary>
     bool IsAuthenticated { get; }
+
+    /// <summary>
+    /// Indicates whether the current user is an admin
+    /// Phase 6A.25: Added for email group access control
+    /// </summary>
+    bool IsAdmin { get; }
 }

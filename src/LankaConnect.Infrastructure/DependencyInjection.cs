@@ -13,6 +13,8 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Notifications;
+using LankaConnect.Domain.Badges;
+using LankaConnect.Domain.Communications;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
@@ -26,7 +28,9 @@ using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Infrastructure.Services.Tickets;
 using LankaConnect.Domain.Payments;
+using LankaConnect.Domain.Events.Repositories;
 using Stripe;
 
 namespace LankaConnect.Infrastructure;
@@ -139,6 +143,12 @@ public static class DependencyInjection
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Add Badge Repositories (Phase 6A.25)
+        services.AddScoped<IBadgeRepository, BadgeRepository>();
+
+        // Add Email Group Repository (Phase 6A.25)
+        services.AddScoped<IEmailGroupRepository, EmailGroupRepository>();
 
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
@@ -261,6 +271,12 @@ public static class DependencyInjection
 
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+
+        // Phase 6A.24: Ticket services for QR code and PDF generation
+        services.AddScoped<IQrCodeService, QrCodeService>();
+        services.AddScoped<IPdfTicketService, PdfTicketService>();
+        services.AddScoped<ITicketService, TicketService>();
+        services.AddScoped<ITicketRepository, TicketRepository>();
 
         return services;
     }

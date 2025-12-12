@@ -15,8 +15,10 @@ public class Event : BaseEntity
     private readonly List<WaitingListEntry> _waitingList = new(); // Epic 2: Waiting List support
     private readonly List<EventPass> _passes = new(); // Event passes/tickets support
     private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
+    private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
 
     private const int MAX_IMAGES = 10; // Maximum images per event
+    private const int MAX_BADGES = 3; // Maximum badges per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
 
     public EventTitle Title { get; private set; }
@@ -38,6 +40,7 @@ public class Event : BaseEntity
     public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly(); // Epic 2: Read-only waiting list collection
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
+    public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
@@ -1329,6 +1332,72 @@ public class Event : BaseEntity
     /// Checks if event has any sign-up lists
     /// </summary>
     public bool HasSignUpLists() => _signUpLists.Any();
+
+    #endregion
+
+    #region Badge Management (Phase 6A.25)
+
+    /// <summary>
+    /// Assigns a badge to this event
+    /// Business rules:
+    /// - Same badge cannot be assigned twice
+    /// - Maximum 3 badges per event
+    /// </summary>
+    public Result<EventBadge> AssignBadge(Guid badgeId, Guid assignedByUserId)
+    {
+        if (badgeId == Guid.Empty)
+            return Result<EventBadge>.Failure("Badge ID is required");
+
+        if (assignedByUserId == Guid.Empty)
+            return Result<EventBadge>.Failure("Assigner user ID is required");
+
+        // Business Rule 1: Cannot assign same badge twice
+        if (_badges.Any(b => b.BadgeId == badgeId))
+            return Result<EventBadge>.Failure("This badge is already assigned to the event");
+
+        // Business Rule 2: Maximum badges limit
+        if (_badges.Count >= MAX_BADGES)
+            return Result<EventBadge>.Failure($"Event cannot have more than {MAX_BADGES} badges");
+
+        var eventBadgeResult = EventBadge.Create(Id, badgeId, assignedByUserId);
+        if (eventBadgeResult.IsFailure)
+            return Result<EventBadge>.Failure(eventBadgeResult.Error);
+
+        _badges.Add(eventBadgeResult.Value);
+        MarkAsUpdated();
+
+        return Result<EventBadge>.Success(eventBadgeResult.Value);
+    }
+
+    /// <summary>
+    /// Removes a badge from this event
+    /// </summary>
+    public Result RemoveBadge(Guid badgeId)
+    {
+        var eventBadge = _badges.FirstOrDefault(b => b.BadgeId == badgeId);
+        if (eventBadge == null)
+            return Result.Failure($"Badge with ID {badgeId} is not assigned to this event");
+
+        _badges.Remove(eventBadge);
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if event has any badges assigned
+    /// </summary>
+    public bool HasBadges() => _badges.Any();
+
+    /// <summary>
+    /// Checks if a specific badge is assigned to this event
+    /// </summary>
+    public bool HasBadge(Guid badgeId) => _badges.Any(b => b.BadgeId == badgeId);
+
+    /// <summary>
+    /// Gets the number of badges assigned to this event
+    /// </summary>
+    public int BadgeCount() => _badges.Count;
 
     #endregion
 }

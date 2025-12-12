@@ -633,8 +633,17 @@ public class Event : BaseEntity
 
         Pricing = pricing;
 
-        // Maintain backward compatibility: Set TicketPrice to AdultPrice
-        TicketPrice = pricing.AdultPrice;
+        // Session 33: Create a NEW Money instance for backward compatibility
+        // CRITICAL: Do NOT share the same Money object reference between TicketPrice and Pricing.AdultPrice
+        // EF Core cannot track the same owned entity instance in two different navigations
+        if (pricing.AdultPrice != null)
+        {
+            var copyResult = Money.Create(pricing.AdultPrice.Amount, pricing.AdultPrice.Currency);
+            if (copyResult.IsSuccess)
+            {
+                TicketPrice = copyResult.Value;
+            }
+        }
 
         MarkAsUpdated();
 

@@ -190,8 +190,8 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // If not free and not using dual pricing, single price and currency are required
-    if (!data.isFree && !data.enableDualPricing) {
+    // Session 33: If not free and not using dual or group pricing, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&

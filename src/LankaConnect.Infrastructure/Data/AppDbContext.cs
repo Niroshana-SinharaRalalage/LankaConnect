@@ -11,6 +11,8 @@ using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
+using LankaConnect.Infrastructure.Payments.Entities;
+using LankaConnect.Infrastructure.Payments.Configurations;
 using LankaConnect.Infrastructure.Data.Seeders;
 
 namespace LankaConnect.Infrastructure.Data;
@@ -63,6 +65,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Email Group Entity Set (Phase 6A.25)
     public DbSet<EmailGroup> EmailGroups => Set<EmailGroup>(); // Phase 6A.25: Email Groups Management
 
+    // Stripe Customer Entity Set (Phase 6A.4)
+    public DbSet<StripeCustomer> StripeCustomers => Set<StripeCustomer>(); // Phase 6A.4: Stripe Payment Integration
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -112,6 +117,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Email Group entity configuration (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
+
+        // Stripe Customer configuration (Phase 6A.4)
+        modelBuilder.ApplyConfiguration(new StripeCustomerConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -204,7 +212,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Ticket), // Phase 6A.24
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
-            typeof(EmailGroup) // Phase 6A.25: Email Groups Management
+            typeof(EmailGroup), // Phase 6A.25: Email Groups Management
+            typeof(StripeCustomer) // Phase 6A.4: Stripe Payment Integration
         };
 
         // Get all types from Domain assembly that aren't in our configured list

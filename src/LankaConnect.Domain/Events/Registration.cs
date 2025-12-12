@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -228,7 +229,8 @@ public class Registration : BaseEntity
     }
 
     /// <summary>
-    /// Completes payment when Stripe webhook confirms successful payment
+    /// Completes payment when Stripe webhook confirms successful payment.
+    /// Phase 6A.24: Now raises PaymentCompletedEvent for email and ticket generation.
     /// </summary>
     public Result CompletePayment(string paymentIntentId)
     {
@@ -242,6 +244,22 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Completed;
         Status = RegistrationStatus.Confirmed;  // Confirm registration when payment succeeds
         MarkAsUpdated();
+
+        // Phase 6A.24: Raise PaymentCompletedEvent to trigger email and ticket generation
+        var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
+        var amountPaid = TotalPrice?.Amount ?? 0m;
+        var attendeeCount = GetAttendeeCount();
+
+        RaiseDomainEvent(new PaymentCompletedEvent(
+            EventId,
+            Id,
+            UserId,
+            contactEmail,
+            paymentIntentId,
+            amountPaid,
+            attendeeCount,
+            DateTime.UtcNow));
+
         return Result.Success();
     }
 

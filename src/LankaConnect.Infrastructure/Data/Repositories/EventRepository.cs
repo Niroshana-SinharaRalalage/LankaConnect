@@ -33,8 +33,10 @@ public class EventRepository : Repository<Event>, IEventRepository
 
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)
     {
+        // Session 33: Include Registrations to populate CurrentRegistrations for dashboard
         return await _dbSet
             .AsNoTracking()
+            .Include(e => e.Registrations)
             .Where(e => e.OrganizerId == organizerId)
             .OrderByDescending(e => e.StartDate)
             .ToListAsync(cancellationToken);

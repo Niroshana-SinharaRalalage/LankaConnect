@@ -10,4 +10,10 @@ public interface IRegistrationRepository : IRepository<Registration>
     Task<Registration?> GetByEventAndUserAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Registration>> GetByStatusAsync(RegistrationStatus status, CancellationToken cancellationToken = default);
     Task<int> GetTotalQuantityForEventAsync(Guid eventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.24: Gets an anonymous registration by event ID and contact email
+    /// Used to fetch registration details for anonymous users' confirmation emails
+    /// </summary>
+    Task<Registration?> GetAnonymousByEventAndEmailAsync(Guid eventId, string email, CancellationToken cancellationToken = default);
 }

@@ -57,4 +57,21 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
             .Where(r => r.EventId == eventId && r.Status == RegistrationStatus.Confirmed)
             .SumAsync(r => r.Quantity, cancellationToken);
     }
+
+    /// <summary>
+    /// Phase 6A.24: Gets an anonymous registration by event ID and contact email
+    /// Used to fetch registration details for anonymous users' confirmation emails
+    /// </summary>
+    public async Task<Registration?> GetAnonymousByEventAndEmailAsync(Guid eventId, string email, CancellationToken cancellationToken = default)
+    {
+        // Look for anonymous registrations (UserId is null) with matching contact email
+        return await _dbSet
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.EventId == eventId &&
+                                     r.UserId == null &&
+                                     r.Contact != null &&
+                                     r.Contact.Email == email &&
+                                     r.Status != RegistrationStatus.Cancelled &&
+                                     r.Status != RegistrationStatus.Refunded, cancellationToken);
+    }
 }

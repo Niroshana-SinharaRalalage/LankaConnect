@@ -101,15 +101,27 @@ export function BadgeManagement() {
     }
 
     try {
-      // Update badge details
-      const dto: UpdateBadgeDto = {
-        name: editBadgeName.trim(),
-        position: editBadgePosition,
-        isActive: editBadgeActive,
-      };
-      await updateBadge.mutateAsync({ badgeId: selectedBadge.id, dto });
+      // For system badges, only isActive can be changed
+      // For custom badges, all properties can be updated
+      if (selectedBadge.isSystem) {
+        // System badge: only update active status if changed
+        if (editBadgeActive !== selectedBadge.isActive) {
+          await updateBadge.mutateAsync({
+            badgeId: selectedBadge.id,
+            dto: { isActive: editBadgeActive },
+          });
+        }
+      } else {
+        // Custom badge: update all details
+        const dto: UpdateBadgeDto = {
+          name: editBadgeName.trim(),
+          position: editBadgePosition,
+          isActive: editBadgeActive,
+        };
+        await updateBadge.mutateAsync({ badgeId: selectedBadge.id, dto });
+      }
 
-      // Update badge image if new file selected
+      // Update badge image if new file selected (works for both system and custom)
       if (editBadgeFile) {
         await updateBadgeImage.mutateAsync({
           badgeId: selectedBadge.id,

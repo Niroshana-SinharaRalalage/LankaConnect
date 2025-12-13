@@ -9,6 +9,7 @@ namespace LankaConnect.Application.Badges.Queries.GetBadges;
 /// Handler for GetBadgesQuery
 /// Phase 6A.25: Returns list of badges for selection or management
 /// Phase 6A.27: Added role-based filtering for ForManagement and ForAssignment modes
+/// Phase 6A.28: Removed ExpiresAt filtering (badges no longer expire, only EventBadge assignments do)
 /// </summary>
 public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList<BadgeDto>>
 {
@@ -27,7 +28,6 @@ public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList
     {
         var userId = _currentUserService.UserId;
         var isAdmin = _currentUserService.IsAdmin;
-        var now = DateTime.UtcNow;
 
         // Get all badges - we'll filter in memory for flexibility
         IEnumerable<Badge> badges;
@@ -58,8 +58,8 @@ public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList
         else if (request.ForAssignment)
         {
             // Badge Assignment UI filtering
-            // Always exclude expired badges for assignment
-            badges = badges.Where(b => !b.ExpiresAt.HasValue || b.ExpiresAt > now);
+            // Phase 6A.28: Badges no longer expire - only EventBadge assignments do
+            // All active badges are available for assignment
 
             if (isAdmin)
             {
@@ -72,15 +72,7 @@ public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList
                 badges = badges.Where(b => b.IsSystem || b.CreatedByUserId == userId);
             }
         }
-        else
-        {
-            // Default behavior (no ForManagement/ForAssignment specified)
-            // If ActiveOnly, also filter out expired badges
-            if (request.ActiveOnly)
-            {
-                badges = badges.Where(b => !b.ExpiresAt.HasValue || b.ExpiresAt > now);
-            }
-        }
+        // Default behavior (no ForManagement/ForAssignment specified) - just return based on ActiveOnly
 
         // Map to DTOs using the extension method
         var dtos = badges

@@ -94,19 +94,21 @@ public class DbInitializer
     /// <summary>
     /// Seeds predefined badges into the database
     /// Phase 6A.25: Badge Management System
+    /// Phase 6A.28: Changed to check only for system badges, so seeding works even if custom badges exist
     /// </summary>
     private async Task SeedBadgesAsync()
     {
-        var existingBadgesCount = await _context.Badges.CountAsync();
-        if (existingBadgesCount > 0)
+        var existingSystemBadgesCount = await _context.Badges.CountAsync(b => b.IsSystem);
+        if (existingSystemBadgesCount > 0)
         {
-            _logger.LogInformation("Database already contains {Count} badges. Skipping seed.", existingBadgesCount);
+            _logger.LogInformation("Database already contains {Count} system badges. Skipping seed.", existingSystemBadgesCount);
             return;
         }
 
-        _logger.LogInformation("Seeding predefined badges...");
+        var existingTotalBadgesCount = await _context.Badges.CountAsync();
+        _logger.LogInformation("Seeding predefined system badges... (found {Count} existing custom badges)", existingTotalBadgesCount);
         await BadgeSeeder.SeedAsync(_context);
-        _logger.LogInformation("Successfully seeded predefined badges to the database.");
+        _logger.LogInformation("Successfully seeded predefined system badges to the database.");
     }
 
     /// <summary>

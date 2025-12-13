@@ -15,13 +15,14 @@ public static class BadgeSeeder
 {
     /// <summary>
     /// Seed predefined badges into database
+    /// Phase 6A.28: Changed to check only for system badges, so seeding works even if custom badges exist
     /// </summary>
     public static async Task SeedAsync(AppDbContext context)
     {
-        // Check if any badges already exist
-        if (await context.Badges.AnyAsync())
+        // Check if system badges already exist (don't skip if only custom badges exist)
+        if (await context.Badges.AnyAsync(b => b.IsSystem))
         {
-            return; // Already seeded
+            return; // System badges already seeded
         }
 
         var badges = new List<Badge>

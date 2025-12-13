@@ -7,6 +7,7 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 /// <summary>
 /// EF Core configuration for EventBadge join entity
 /// Phase 6A.25: Badge Management System
+/// Phase 6A.28: Added duration and expiration fields
 /// </summary>
 public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
 {
@@ -34,6 +35,13 @@ public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
         builder.Property(eb => eb.AssignedByUserId)
             .IsRequired();
 
+        // Phase 6A.28: Duration and expiration fields
+        builder.Property(eb => eb.DurationDays)
+            .IsRequired(false);
+
+        builder.Property(eb => eb.ExpiresAt)
+            .IsRequired(false);
+
         // Audit fields from BaseEntity
         builder.Property(eb => eb.CreatedAt)
             .IsRequired()
@@ -51,6 +59,11 @@ public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
 
         builder.HasIndex(eb => eb.BadgeId)
             .HasDatabaseName("IX_EventBadges_BadgeId");
+
+        // Phase 6A.28: Index for expired badge queries
+        builder.HasIndex(eb => eb.ExpiresAt)
+            .HasDatabaseName("IX_EventBadges_ExpiresAt")
+            .HasFilter("\"ExpiresAt\" IS NOT NULL");
 
         // Relationships
         builder.HasOne(eb => eb.Badge)

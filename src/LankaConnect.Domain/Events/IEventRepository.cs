@@ -40,4 +40,11 @@ public interface IEventRepository : IRepository<Event>
     /// Used by ExpiredBadgeCleanupJob to remove expired badges from events
     /// </summary>
     Task<IReadOnlyList<Event>> GetEventsWithBadgeAsync(Guid badgeId, CancellationToken cancellationToken = default);
+
+    // Badge cleanup queries (Phase 6A.28)
+    /// <summary>
+    /// Gets all events that have at least one expired badge assignment (EventBadge.ExpiresAt &lt; now)
+    /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
+    /// </summary>
+    Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default);
 }

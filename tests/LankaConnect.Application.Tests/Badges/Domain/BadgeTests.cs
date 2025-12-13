@@ -494,6 +494,164 @@ public class BadgeTests
 
     #endregion
 
+    #region Badge Duration Tests - Phase 6A.28
+
+    [Fact]
+    public void Create_WithDefaultDuration_ShouldSetDefaultDurationDays()
+    {
+        // Arrange
+        var durationDays = 30;
+
+        // Act
+        var result = Badge.Create(
+            "Duration Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            Guid.NewGuid(),
+            durationDays);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DefaultDurationDays.Should().Be(durationDays);
+    }
+
+    [Fact]
+    public void Create_WithoutDuration_ShouldHaveNullDefaultDurationDays()
+    {
+        // Act
+        var result = Badge.Create(
+            "Non-Expiring Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            Guid.NewGuid());
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DefaultDurationDays.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateSystemBadge_WithDuration_ShouldSetDefaultDurationDays()
+    {
+        // Arrange
+        var durationDays = 90;
+
+        // Act
+        var badge = Badge.CreateSystemBadge(
+            "Holiday Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            durationDays);
+
+        // Assert
+        badge.DefaultDurationDays.Should().Be(durationDays);
+    }
+
+    [Fact]
+    public void CreateSystemBadge_WithoutDuration_ShouldHaveNullDefaultDurationDays()
+    {
+        // Act
+        var badge = Badge.CreateSystemBadge(
+            "Permanent Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1);
+
+        // Assert
+        badge.DefaultDurationDays.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateDefaultDuration_ShouldSetNewDuration()
+    {
+        // Arrange
+        var badge = CreateCustomBadge();
+        var newDuration = 60;
+
+        // Act
+        var result = badge.UpdateDefaultDuration(newDuration);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        badge.DefaultDurationDays.Should().Be(newDuration);
+    }
+
+    [Fact]
+    public void UpdateDefaultDuration_WithNull_ShouldRemoveDuration()
+    {
+        // Arrange
+        var badgeResult = Badge.Create(
+            "Badge With Duration",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            Guid.NewGuid(),
+            30);
+        var badge = badgeResult.Value;
+
+        // Act
+        var result = badge.UpdateDefaultDuration(null);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        badge.DefaultDurationDays.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateDefaultDuration_WithZeroOrNegative_ShouldFail()
+    {
+        // Arrange
+        var badge = CreateCustomBadge();
+
+        // Act & Assert - Zero
+        var resultZero = badge.UpdateDefaultDuration(0);
+        resultZero.IsSuccess.Should().BeFalse();
+
+        // Act & Assert - Negative
+        var resultNegative = badge.UpdateDefaultDuration(-5);
+        resultNegative.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_WithZeroOrNegativeDuration_ShouldFail()
+    {
+        // Act - Zero duration
+        var resultZero = Badge.Create(
+            "Zero Duration Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            Guid.NewGuid(),
+            0);
+
+        // Assert
+        resultZero.IsSuccess.Should().BeFalse();
+
+        // Act - Negative duration
+        var resultNegative = Badge.Create(
+            "Negative Duration Badge",
+            "https://example.com/badge.png",
+            "badge.png",
+            BadgePosition.TopRight,
+            1,
+            Guid.NewGuid(),
+            -7);
+
+        // Assert
+        resultNegative.IsSuccess.Should().BeFalse();
+    }
+
+    #endregion
+
     #region Test Helpers
 
     private static Badge CreateCustomBadge()

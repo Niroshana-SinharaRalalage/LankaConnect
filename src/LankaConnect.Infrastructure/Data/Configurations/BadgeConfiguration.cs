@@ -55,8 +55,8 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
 
         builder.Property(b => b.CreatedByUserId);
 
-        // Phase 6A.27: Optional expiry date
-        builder.Property(b => b.ExpiresAt)
+        // Phase 6A.28: Default duration in days for badge assignments
+        builder.Property(b => b.DefaultDurationDays)
             .IsRequired(false);
 
         // Audit fields from BaseEntity
@@ -80,9 +80,9 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
         builder.HasIndex(b => b.IsSystem)
             .HasDatabaseName("IX_Badges_IsSystem");
 
-        // Phase 6A.27: Index for expiry queries
-        builder.HasIndex(b => b.ExpiresAt)
-            .HasDatabaseName("IX_Badges_ExpiresAt")
-            .HasFilter("\"ExpiresAt\" IS NOT NULL");
+        // Phase 6A.28: Index for duration queries (removed ExpiresAt index as expiration moved to EventBadge)
+        builder.HasIndex(b => b.DefaultDurationDays)
+            .HasDatabaseName("IX_Badges_DefaultDurationDays")
+            .HasFilter("\"DefaultDurationDays\" IS NOT NULL");
     }
 }

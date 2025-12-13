@@ -84,11 +84,12 @@ public class BadgesController : BaseController<BadgesController>
     /// <summary>
     /// Create a new badge with uploaded image
     /// Phase 6A.27: Admin creates System badges, EventOrganizer creates Custom badges
+    /// Phase 6A.28: Changed expiresAt to defaultDurationDays (duration-based expiration)
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>
     /// <param name="name">Badge name</param>
     /// <param name="position">Position on event image (TopLeft, TopRight, BottomLeft, BottomRight)</param>
-    /// <param name="expiresAt">Optional expiry date for the badge (ISO 8601 format)</param>
+    /// <param name="defaultDurationDays">Optional default duration in days for badge assignments (null = never expires)</param>
     /// <param name="file">Badge image file (PNG recommended for transparency)</param>
     /// <returns>Created badge</returns>
     [HttpPost]
@@ -101,11 +102,11 @@ public class BadgesController : BaseController<BadgesController>
     public async Task<IActionResult> CreateBadge(
         [FromForm] string name,
         [FromForm] BadgePosition position,
-        [FromForm] DateTime? expiresAt,
+        [FromForm] int? defaultDurationDays,
         IFormFile file)
     {
-        Logger.LogInformation("User {UserId} creating badge: {Name} (expiresAt: {ExpiresAt})",
-            User.TryGetUserId(), name, expiresAt);
+        Logger.LogInformation("User {UserId} creating badge: {Name} (defaultDurationDays: {DefaultDurationDays})",
+            User.TryGetUserId(), name, defaultDurationDays);
 
         if (file == null || file.Length == 0)
             return BadRequest(new ProblemDetails { Detail = "Badge image is required", Status = 400 });
@@ -117,7 +118,7 @@ public class BadgesController : BaseController<BadgesController>
         {
             Name = name,
             Position = position,
-            ExpiresAt = expiresAt,
+            DefaultDurationDays = defaultDurationDays,
             ImageData = memoryStream.ToArray(),
             FileName = file.FileName
         };
@@ -133,8 +134,9 @@ public class BadgesController : BaseController<BadgesController>
     }
 
     /// <summary>
-    /// Update a badge's details (name, position, displayOrder, isActive, expiresAt)
+    /// Update a badge's details (name, position, displayOrder, isActive, defaultDurationDays)
     /// Phase 6A.27: Ownership validation - Admin can edit any, EventOrganizer only their own
+    /// Phase 6A.28: Changed expiresAt to defaultDurationDays (duration-based expiration)
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>
     /// <param name="id">Badge ID</param>
@@ -159,8 +161,8 @@ public class BadgesController : BaseController<BadgesController>
             Position = dto.Position,
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder,
-            ExpiresAt = dto.ExpiresAt,
-            ClearExpiry = dto.ClearExpiry
+            DefaultDurationDays = dto.DefaultDurationDays,
+            ClearDuration = dto.ClearDuration
         };
 
         var result = await Mediator.Send(command);
@@ -255,10 +257,12 @@ public class BadgesController : BaseController<BadgesController>
 
     /// <summary>
     /// Assign a badge to an event
+    /// Phase 6A.28: Added durationDays parameter for duration override
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>
     /// <param name="eventId">Event ID</param>
     /// <param name="badgeId">Badge ID to assign</param>
+    /// <param name="durationDays">Optional duration override in days (null = use badge default, cannot exceed badge's default)</param>
     /// <returns>Event badge assignment</returns>
     [HttpPost("events/{eventId:guid}/badges/{badgeId:guid}")]
     [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
@@ -267,12 +271,17 @@ public class BadgesController : BaseController<BadgesController>
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AssignBadgeToEvent(Guid eventId, Guid badgeId)
+    public async Task<IActionResult> AssignBadgeToEvent(Guid eventId, Guid badgeId, [FromQuery] int? durationDays = null)
     {
-        Logger.LogInformation("User {UserId} assigning badge {BadgeId} to event {EventId}",
-            User.TryGetUserId(), badgeId, eventId);
+        Logger.LogInformation("User {UserId} assigning badge {BadgeId} to event {EventId} (durationDays: {DurationDays})",
+            User.TryGetUserId(), badgeId, eventId, durationDays);
 
-        var command = new AssignBadgeToEventCommand { EventId = eventId, BadgeId = badgeId };
+        var command = new AssignBadgeToEventCommand
+        {
+            EventId = eventId,
+            BadgeId = badgeId,
+            DurationDays = durationDays
+        };
         var result = await Mediator.Send(command);
 
         if (result.IsSuccess)

@@ -276,4 +276,18 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Where(e => e.Badges.Any(b => b.BadgeId == badgeId))
             .ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Phase 6A.28: Gets all events that have at least one expired badge assignment
+    /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
+    /// </summary>
+    public async Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        return await _dbSet
+            .Include(e => e.Badges)
+                .ThenInclude(eb => eb.Badge)
+            .Where(e => e.Badges.Any(eb => eb.ExpiresAt.HasValue && eb.ExpiresAt < now))
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -77,14 +77,16 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
                 return Result<BadgeDto>.Failure(activationResult.Errors);
         }
 
-        // 6. Phase 6A.27: Handle expiry date update
-        if (request.ClearExpiry)
+        // 6. Phase 6A.28: Handle default duration update
+        if (request.ClearDuration)
         {
-            badge.UpdateExpiry(null);
+            badge.UpdateDefaultDuration(null);
         }
-        else if (request.ExpiresAt.HasValue)
+        else if (request.DefaultDurationDays.HasValue)
         {
-            badge.UpdateExpiry(request.ExpiresAt.Value);
+            var durationResult = badge.UpdateDefaultDuration(request.DefaultDurationDays.Value);
+            if (!durationResult.IsSuccess)
+                return Result<BadgeDto>.Failure(durationResult.Errors);
         }
 
         // 7. Save changes

@@ -1351,8 +1351,17 @@ public class Event : BaseEntity
     /// Business rules:
     /// - Same badge cannot be assigned twice
     /// - Maximum 3 badges per event
+    /// Phase 6A.28: Added duration support
     /// </summary>
-    public Result<EventBadge> AssignBadge(Guid badgeId, Guid assignedByUserId)
+    /// <param name="badgeId">Badge ID to assign</param>
+    /// <param name="assignedByUserId">User performing the assignment</param>
+    /// <param name="durationDays">Duration override in days (null = use badge default or never expire)</param>
+    /// <param name="maxDurationDays">Maximum duration from badge's DefaultDurationDays (for validation)</param>
+    public Result<EventBadge> AssignBadge(
+        Guid badgeId,
+        Guid assignedByUserId,
+        int? durationDays = null,
+        int? maxDurationDays = null)
     {
         if (badgeId == Guid.Empty)
             return Result<EventBadge>.Failure("Badge ID is required");
@@ -1368,7 +1377,7 @@ public class Event : BaseEntity
         if (_badges.Count >= MAX_BADGES)
             return Result<EventBadge>.Failure($"Event cannot have more than {MAX_BADGES} badges");
 
-        var eventBadgeResult = EventBadge.Create(Id, badgeId, assignedByUserId);
+        var eventBadgeResult = EventBadge.Create(Id, badgeId, assignedByUserId, durationDays, maxDurationDays);
         if (eventBadgeResult.IsFailure)
             return Result<EventBadge>.Failure(eventBadgeResult.Error);
 

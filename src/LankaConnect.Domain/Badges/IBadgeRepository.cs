@@ -27,9 +27,4 @@ public interface IBadgeRepository : IRepository<Badge>
     /// Gets the next available display order
     /// </summary>
     Task<int> GetNextDisplayOrderAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Phase 6A.27: Gets all expired badges (ExpiresAt is not null and is in the past)
-    /// </summary>
-    Task<IEnumerable<Badge>> GetExpiredBadgesAsync(CancellationToken cancellationToken = default);
 }

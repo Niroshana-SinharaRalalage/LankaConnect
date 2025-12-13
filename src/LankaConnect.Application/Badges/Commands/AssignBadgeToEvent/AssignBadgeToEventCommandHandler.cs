@@ -10,6 +10,7 @@ namespace LankaConnect.Application.Badges.Commands.AssignBadgeToEvent;
 /// <summary>
 /// Handler for AssignBadgeToEventCommand
 /// Phase 6A.25: Assigns a badge to an event
+/// Phase 6A.28: Added duration-based expiration support
 /// </summary>
 public class AssignBadgeToEventCommandHandler : IRequestHandler<AssignBadgeToEventCommand, Result<EventBadgeDto>>
 {
@@ -46,16 +47,25 @@ public class AssignBadgeToEventCommandHandler : IRequestHandler<AssignBadgeToEve
         if (!badge.IsActive)
             return Result<EventBadgeDto>.Failure("Cannot assign an inactive badge to an event");
 
-        // 4. Assign badge to event
-        var assignResult = @event.AssignBadge(request.BadgeId, _currentUserService.UserId);
+        // 4. Determine effective duration (Phase 6A.28)
+        // If DurationDays not specified in request, use badge's DefaultDurationDays
+        int? effectiveDuration = request.DurationDays ?? badge.DefaultDurationDays;
+
+        // 5. Assign badge to event with duration
+        var assignResult = @event.AssignBadge(
+            request.BadgeId,
+            _currentUserService.UserId,
+            effectiveDuration,
+            badge.DefaultDurationDays); // Pass max duration for validation
+
         if (!assignResult.IsSuccess)
             return Result<EventBadgeDto>.Failure(assignResult.Errors);
 
-        // 5. Save changes
+        // 6. Save changes
         _eventRepository.Update(@event);
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 6. Return DTO
+        // 7. Return DTO with expiration info
         var eventBadge = assignResult.Value;
         var dto = new EventBadgeDto
         {
@@ -71,10 +81,15 @@ public class AssignBadgeToEventCommandHandler : IRequestHandler<AssignBadgeToEve
                 IsActive = badge.IsActive,
                 IsSystem = badge.IsSystem,
                 DisplayOrder = badge.DisplayOrder,
-                CreatedAt = badge.CreatedAt
+                CreatedAt = badge.CreatedAt,
+                DefaultDurationDays = badge.DefaultDurationDays,
+                CreatedByUserId = badge.CreatedByUserId
             },
             AssignedAt = eventBadge.AssignedAt,
-            AssignedByUserId = eventBadge.AssignedByUserId
+            AssignedByUserId = eventBadge.AssignedByUserId,
+            DurationDays = eventBadge.DurationDays,
+            ExpiresAt = eventBadge.ExpiresAt,
+            IsExpired = eventBadge.IsExpired()
         };
 
         return Result<EventBadgeDto>.Success(dto);

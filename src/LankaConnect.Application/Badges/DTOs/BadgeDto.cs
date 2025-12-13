@@ -5,7 +5,8 @@ namespace LankaConnect.Application.Badges.DTOs;
 /// <summary>
 /// DTO for Badge entity
 /// Phase 6A.25: Badge Management System
-/// Phase 6A.27: Added ExpiresAt, IsExpired, CreatedByUserId, CreatorName
+/// Phase 6A.27: Added role-based filtering
+/// Phase 6A.28: Changed ExpiresAt to DefaultDurationDays (duration-based expiration)
 /// </summary>
 public record BadgeDto
 {
@@ -19,14 +20,10 @@ public record BadgeDto
     public DateTime CreatedAt { get; init; }
 
     /// <summary>
-    /// Phase 6A.27: Optional expiry date (null means never expires)
+    /// Phase 6A.28: Default duration in days for badge assignments (null = never expires)
+    /// Replaces ExpiresAt from Phase 6A.27
     /// </summary>
-    public DateTime? ExpiresAt { get; init; }
-
-    /// <summary>
-    /// Phase 6A.27: Computed property - true if ExpiresAt has passed
-    /// </summary>
-    public bool IsExpired { get; init; }
+    public int? DefaultDurationDays { get; init; }
 
     /// <summary>
     /// Phase 6A.27: User ID of the creator (null for system badges)

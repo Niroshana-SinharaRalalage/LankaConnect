@@ -50,24 +50,24 @@ export class BadgesRepository {
 
   /**
    * Create a new badge with image upload
-   * Phase 6A.27: Added optional expiresAt parameter
+   * Phase 6A.28: Changed expiresAt to defaultDurationDays
    * @param name Badge name
    * @param position Badge position on event images
    * @param imageFile Badge image file (PNG recommended)
-   * @param expiresAt Optional expiry date (ISO string)
+   * @param defaultDurationDays Optional default duration in days (null = never expires)
    */
   async createBadge(
     name: string,
     position: BadgePosition,
     imageFile: File,
-    expiresAt?: string
+    defaultDurationDays?: number | null
   ): Promise<BadgeDto> {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('position', position.toString());
     formData.append('file', imageFile);
-    if (expiresAt) {
-      formData.append('expiresAt', expiresAt);
+    if (defaultDurationDays !== undefined && defaultDurationDays !== null) {
+      formData.append('defaultDurationDays', defaultDurationDays.toString());
     }
 
     const response = await apiClient.post<BadgeDto>(
@@ -131,14 +131,21 @@ export class BadgesRepository {
 
   /**
    * Assign a badge to an event
+   * Phase 6A.28: Added durationDays parameter for duration override
+   * @param eventId Event ID
+   * @param badgeId Badge ID
+   * @param durationDays Optional duration override in days (null = use badge default)
    */
   async assignBadgeToEvent(
     eventId: string,
-    badgeId: string
+    badgeId: string,
+    durationDays?: number | null
   ): Promise<EventBadgeDto> {
-    const response = await apiClient.post<EventBadgeDto>(
-      `${this.basePath}/events/${eventId}/badges/${badgeId}`
-    );
+    let url = `${this.basePath}/events/${eventId}/badges/${badgeId}`;
+    if (durationDays !== undefined && durationDays !== null) {
+      url += `?durationDays=${durationDays}`;
+    }
+    const response = await apiClient.post<EventBadgeDto>(url);
     return response;
   }
 

@@ -5,6 +5,7 @@ namespace LankaConnect.Application.Badges.DTOs;
 /// <summary>
 /// Extension methods for mapping Badge domain entity to DTOs
 /// Phase 6A.27: Centralized mapping logic
+/// Phase 6A.28: Changed to duration-based expiration model
 /// </summary>
 public static class BadgeMappingExtensions
 {
@@ -25,8 +26,7 @@ public static class BadgeMappingExtensions
             IsSystem = badge.IsSystem,
             DisplayOrder = badge.DisplayOrder,
             CreatedAt = badge.CreatedAt,
-            ExpiresAt = badge.ExpiresAt,
-            IsExpired = badge.IsExpired(),
+            DefaultDurationDays = badge.DefaultDurationDays,
             CreatedByUserId = badge.CreatedByUserId,
             CreatorName = creatorName
         };

@@ -124,6 +124,7 @@ export function useEventBadges(
  *
  * Mutation hook for creating a new badge
  * Phase 6A.27: Added optional expiresAt parameter
+ * Phase 6A.28: Changed to defaultDurationDays (duration-based expiration)
  *
  * @example
  * ```tsx
@@ -133,7 +134,7 @@ export function useEventBadges(
  *   name: 'New Event',
  *   position: BadgePosition.TopRight,
  *   imageFile: file,
- *   expiresAt: '2025-12-31T00:00:00Z' // optional
+ *   defaultDurationDays: 30 // optional, null = never expire
  * });
  * ```
  */
@@ -145,13 +146,13 @@ export function useCreateBadge() {
       name,
       position,
       imageFile,
-      expiresAt,
+      defaultDurationDays,
     }: {
       name: string;
       position: BadgePosition;
       imageFile: File;
-      expiresAt?: string;
-    }) => badgesRepository.createBadge(name, position, imageFile, expiresAt),
+      defaultDurationDays?: number | null;
+    }) => badgesRepository.createBadge(name, position, imageFile, defaultDurationDays),
     onSuccess: () => {
       // Invalidate badge lists to refetch
       queryClient.invalidateQueries({ queryKey: badgeKeys.lists() });
@@ -233,6 +234,7 @@ export function useDeleteBadge() {
  * useAssignBadgeToEvent Hook
  *
  * Mutation hook for assigning a badge to an event
+ * Phase 6A.28: Added optional durationDays for assignment-specific duration override
  */
 export function useAssignBadgeToEvent() {
   const queryClient = useQueryClient();
@@ -241,10 +243,12 @@ export function useAssignBadgeToEvent() {
     mutationFn: ({
       eventId,
       badgeId,
+      durationDays,
     }: {
       eventId: string;
       badgeId: string;
-    }) => badgesRepository.assignBadgeToEvent(eventId, badgeId),
+      durationDays?: number | null;
+    }) => badgesRepository.assignBadgeToEvent(eventId, badgeId, durationDays),
     onSuccess: (data, variables) => {
       // Invalidate event badges
       queryClient.invalidateQueries({

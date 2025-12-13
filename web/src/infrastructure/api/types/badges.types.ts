@@ -2,6 +2,7 @@
  * Badge API Types
  * Phase 6A.25: Badge Management System
  * Phase 6A.27: Added expiry date and role-based access
+ * Phase 6A.28: Changed to duration-based expiration model
  */
 
 /**
@@ -15,8 +16,26 @@ export enum BadgePosition {
 }
 
 /**
+ * Phase 6A.28: Duration preset options for dropdown
+ */
+export type DurationPreset = 7 | 14 | 30 | 90 | null | 'custom';
+
+/**
+ * Phase 6A.28: Duration preset options for UI
+ */
+export const DURATION_PRESETS = [
+  { value: 7, label: '7 days' },
+  { value: 14, label: '14 days (2 weeks)' },
+  { value: 30, label: '30 days (1 month)' },
+  { value: 90, label: '90 days (3 months)' },
+  { value: null, label: 'Never expire' },
+  { value: 'custom' as const, label: 'Custom days...' },
+] as const;
+
+/**
  * Badge DTO matching backend BadgeDto
  * Phase 6A.27: Added expiresAt, isExpired, createdByUserId, creatorName
+ * Phase 6A.28: Changed expiresAt/isExpired to defaultDurationDays
  */
 export interface BadgeDto {
   id: string;
@@ -27,10 +46,8 @@ export interface BadgeDto {
   isSystem: boolean;
   displayOrder: number;
   createdAt: string;
-  /** Phase 6A.27: Optional expiry date (ISO string, null = never expires) */
-  expiresAt: string | null;
-  /** Phase 6A.27: Whether the badge has expired */
-  isExpired: boolean;
+  /** Phase 6A.28: Default duration in days for badge assignments (null = never expires) */
+  defaultDurationDays: number | null;
   /** Phase 6A.27: ID of the user who created this badge (null for system badges) */
   createdByUserId: string | null;
   /** Phase 6A.27: Display name of the creator (for Admin view) */
@@ -39,32 +56,33 @@ export interface BadgeDto {
 
 /**
  * Create badge request DTO
- * Phase 6A.27: Added expiresAt parameter
+ * Phase 6A.28: Changed expiresAt to defaultDurationDays
  */
 export interface CreateBadgeDto {
   name: string;
   position: BadgePosition;
-  /** Phase 6A.27: Optional expiry date (ISO string) */
-  expiresAt?: string;
+  /** Phase 6A.28: Default duration in days for badge assignments (null = never expires) */
+  defaultDurationDays?: number | null;
 }
 
 /**
  * Update badge request DTO
- * Phase 6A.27: Added expiresAt and clearExpiry parameters
+ * Phase 6A.28: Changed expiresAt/clearExpiry to defaultDurationDays/clearDuration
  */
 export interface UpdateBadgeDto {
   name?: string;
   position?: BadgePosition;
   isActive?: boolean;
   displayOrder?: number;
-  /** Phase 6A.27: New expiry date (ISO string, or null to not change) */
-  expiresAt?: string | null;
-  /** Phase 6A.27: Set to true to explicitly clear/remove the expiry date */
-  clearExpiry?: boolean;
+  /** Phase 6A.28: Default duration in days (null = no change, set value = update duration) */
+  defaultDurationDays?: number | null;
+  /** Phase 6A.28: Set to true to explicitly clear/remove the default duration (making badge never expire) */
+  clearDuration?: boolean;
 }
 
 /**
  * Event badge assignment DTO
+ * Phase 6A.28: Added duration and expiration fields
  */
 export interface EventBadgeDto {
   id: string;
@@ -73,6 +91,12 @@ export interface EventBadgeDto {
   badge: BadgeDto;
   assignedAt: string;
   assignedByUserId: string;
+  /** Phase 6A.28: Duration in days for this specific assignment (may differ from badge default) */
+  durationDays: number | null;
+  /** Phase 6A.28: Calculated expiration date: assignedAt + durationDays */
+  expiresAt: string | null;
+  /** Phase 6A.28: Whether this assignment has expired */
+  isExpired: boolean;
 }
 
 /**

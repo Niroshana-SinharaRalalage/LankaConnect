@@ -5,7 +5,7 @@ namespace LankaConnect.Application.Badges.DTOs;
 /// <summary>
 /// DTO for updating a Badge
 /// Phase 6A.25: Badge Management System
-/// Phase 6A.27: Added ExpiresAt and ClearExpiry for expiry feature
+/// Phase 6A.28: Changed from ExpiresAt to DefaultDurationDays (duration-based expiration)
 /// </summary>
 public record UpdateBadgeDto
 {
@@ -15,12 +15,12 @@ public record UpdateBadgeDto
     public int? DisplayOrder { get; init; }
 
     /// <summary>
-    /// Phase 6A.27: Optional expiry date (null = no change, set value = update expiry)
+    /// Phase 6A.28: Default duration in days for badge assignments (null = no change, set value = update duration)
     /// </summary>
-    public DateTime? ExpiresAt { get; init; }
+    public int? DefaultDurationDays { get; init; }
 
     /// <summary>
-    /// Phase 6A.27: Set to true to explicitly clear/remove the expiry date
+    /// Phase 6A.28: Set to true to explicitly clear/remove the default duration (making badge never expire)
     /// </summary>
-    public bool ClearExpiry { get; init; } = false;
+    public bool ClearDuration { get; init; } = false;
 }

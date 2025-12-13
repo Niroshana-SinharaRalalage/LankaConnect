@@ -7,9 +7,16 @@ namespace LankaConnect.Application.Badges.Commands.AssignBadgeToEvent;
 /// <summary>
 /// Command to assign a badge to an event
 /// Phase 6A.25: Badge Management System
+/// Phase 6A.28: Added DurationDays for per-assignment expiration
 /// </summary>
 public record AssignBadgeToEventCommand : IRequest<Result<EventBadgeDto>>
 {
     public Guid EventId { get; init; }
     public Guid BadgeId { get; init; }
+
+    /// <summary>
+    /// Optional duration override in days (null = use badge's DefaultDurationDays)
+    /// Phase 6A.28
+    /// </summary>
+    public int? DurationDays { get; init; }
 }

@@ -52,11 +52,11 @@ public class Badge : BaseEntity
     public Guid? CreatedByUserId { get; private set; }
 
     /// <summary>
-    /// Optional expiration date for the badge (null means never expires)
-    /// When expired, badge is automatically removed from all events
-    /// Phase 6A.27
+    /// Default duration in days for this badge when assigned to events
+    /// null = Never expires (no time limit)
+    /// Phase 6A.28: Changed from ExpiresAt (fixed date) to duration-based model
     /// </summary>
-    public DateTime? ExpiresAt { get; private set; }
+    public int? DefaultDurationDays { get; private set; }
 
     // EF Core constructor
     private Badge()
@@ -74,7 +74,7 @@ public class Badge : BaseEntity
         bool isSystem,
         int displayOrder,
         Guid? createdByUserId,
-        DateTime? expiresAt = null)
+        int? defaultDurationDays = null)
     {
         Name = name;
         ImageUrl = imageUrl;
@@ -84,13 +84,14 @@ public class Badge : BaseEntity
         IsSystem = isSystem;
         DisplayOrder = displayOrder;
         CreatedByUserId = createdByUserId;
-        ExpiresAt = expiresAt;
+        DefaultDurationDays = defaultDurationDays;
     }
 
     /// <summary>
     /// Factory method to create a new custom badge
+    /// Phase 6A.28: Changed from expiresAt to defaultDurationDays
     /// </summary>
-    /// <param name="expiresAt">Optional expiry date (null means never expires)</param>
+    /// <param name="defaultDurationDays">Default duration in days for assignments (null = never expires)</param>
     public static Result<Badge> Create(
         string name,
         string imageUrl,
@@ -98,7 +99,7 @@ public class Badge : BaseEntity
         BadgePosition position,
         int displayOrder,
         Guid createdByUserId,
-        DateTime? expiresAt = null)
+        int? defaultDurationDays = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result<Badge>.Failure("Badge name is required");
@@ -118,6 +119,9 @@ public class Badge : BaseEntity
         if (createdByUserId == Guid.Empty)
             return Result<Badge>.Failure("Creator user ID is required");
 
+        if (defaultDurationDays.HasValue && defaultDurationDays.Value <= 0)
+            return Result<Badge>.Failure("Default duration must be a positive number of days");
+
         var badge = new Badge(
             name.Trim(),
             imageUrl,
@@ -126,25 +130,29 @@ public class Badge : BaseEntity
             isSystem: false,
             displayOrder,
             createdByUserId,
-            expiresAt);
+            defaultDurationDays);
 
         return Result<Badge>.Success(badge);
     }
 
     /// <summary>
     /// Factory method to create a system/predefined badge (used for seeding)
+    /// Phase 6A.28: Changed from expiresAt to defaultDurationDays
     /// </summary>
-    /// <param name="expiresAt">Optional expiry date (null means never expires)</param>
+    /// <param name="defaultDurationDays">Default duration in days for assignments (null = never expires)</param>
     public static Badge CreateSystemBadge(
         string name,
         string imageUrl,
         string blobName,
         BadgePosition position,
         int displayOrder,
-        DateTime? expiresAt = null)
+        int? defaultDurationDays = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Badge name is required", nameof(name));
+
+        if (defaultDurationDays.HasValue && defaultDurationDays.Value <= 0)
+            throw new ArgumentException("Default duration must be a positive number of days", nameof(defaultDurationDays));
 
         return new Badge(
             name.Trim(),
@@ -154,7 +162,7 @@ public class Badge : BaseEntity
             isSystem: true,
             displayOrder,
             createdByUserId: null,
-            expiresAt);
+            defaultDurationDays);
     }
 
     /// <summary>
@@ -237,20 +245,17 @@ public class Badge : BaseEntity
     public bool CanDelete() => !IsSystem;
 
     /// <summary>
-    /// Checks if this badge has expired based on ExpiresAt date
-    /// Returns false if ExpiresAt is null (never expires)
-    /// Phase 6A.27
+    /// Updates the default duration for this badge
+    /// Admin can set for system badges, EventOrganizer for their custom badges
+    /// Phase 6A.28: Replaced UpdateExpiry with duration-based approach
     /// </summary>
-    public bool IsExpired() => ExpiresAt.HasValue && ExpiresAt.Value < DateTime.UtcNow;
-
-    /// <summary>
-    /// Updates the expiry date of the badge
-    /// Pass null to remove expiration (badge never expires)
-    /// Phase 6A.27
-    /// </summary>
-    public Result UpdateExpiry(DateTime? expiresAt)
+    /// <param name="durationDays">Duration in days (null = never expires)</param>
+    public Result UpdateDefaultDuration(int? durationDays)
     {
-        ExpiresAt = expiresAt;
+        if (durationDays.HasValue && durationDays.Value <= 0)
+            return Result.Failure("Duration must be a positive number of days");
+
+        DefaultDurationDays = durationDays;
         MarkAsUpdated();
         return Result.Success();
     }

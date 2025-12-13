@@ -23,8 +23,10 @@ import {
 import {
   BadgePosition,
   getPositionDisplayName,
+  DURATION_PRESETS,
   type BadgeDto,
   type UpdateBadgeDto,
+  type DurationPreset,
 } from '@/infrastructure/api/types/badges.types';
 
 /**
@@ -33,12 +35,15 @@ import {
  * Features:
  * - List all badges in a grid/table format
  * - Create new badge with image upload
- * - Edit badge details (name, position, active status, expiry date)
+ * - Edit badge details (name, position, active status, default duration)
  * - Delete custom badges (system badges can only be deactivated)
  * - Preview badge overlay
  * Phase 6A.27: Added expiry date support and type indicators
  * - Admin sees ALL badges (system + custom) with type tags
  * - EventOrganizer sees only their own custom badges
+ * Phase 6A.28: Changed to duration-based expiration model
+ * - Replaced date picker with duration dropdown
+ * - Duration presets: 7 days, 14 days, 30 days, 90 days, Never, Custom
  */
 export function BadgeManagement() {
   // Phase 6A.27: Fetch badges for management (forManagement=true):
@@ -62,13 +67,17 @@ export function BadgeManagement() {
   const [newBadgeName, setNewBadgeName] = React.useState('');
   const [newBadgePosition, setNewBadgePosition] = React.useState<BadgePosition>(BadgePosition.TopRight);
   const [newBadgeFile, setNewBadgeFile] = React.useState<File | null>(null);
-  const [newBadgeExpiresAt, setNewBadgeExpiresAt] = React.useState<string>(''); // Phase 6A.27
+  // Phase 6A.28: Duration-based expiration - replace date picker with duration dropdown
+  const [newBadgeDurationPreset, setNewBadgeDurationPreset] = React.useState<DurationPreset>(null);
+  const [newBadgeCustomDays, setNewBadgeCustomDays] = React.useState<number>(30);
   const [editBadgeName, setEditBadgeName] = React.useState('');
   const [editBadgePosition, setEditBadgePosition] = React.useState<BadgePosition>(BadgePosition.TopRight);
   const [editBadgeActive, setEditBadgeActive] = React.useState(true);
   const [editBadgeFile, setEditBadgeFile] = React.useState<File | null>(null);
-  const [editBadgeExpiresAt, setEditBadgeExpiresAt] = React.useState<string>(''); // Phase 6A.27
-  const [editBadgeClearExpiry, setEditBadgeClearExpiry] = React.useState(false); // Phase 6A.27
+  // Phase 6A.28: Duration-based expiration for edit dialog
+  const [editBadgeDurationPreset, setEditBadgeDurationPreset] = React.useState<DurationPreset>(null);
+  const [editBadgeCustomDays, setEditBadgeCustomDays] = React.useState<number>(30);
+  const [editBadgeClearDuration, setEditBadgeClearDuration] = React.useState(false);
 
   // File input refs
   const createFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -79,6 +88,13 @@ export function BadgeManagement() {
   const isUpdating = updateBadge.isPending || updateBadgeImage.isPending;
   const isDeleting = deleteBadge.isPending;
 
+  // Phase 6A.28: Helper to get effective duration from preset and custom days
+  const getEffectiveDuration = (preset: DurationPreset, customDays: number): number | null => {
+    if (preset === null) return null; // Never expire
+    if (preset === 'custom') return customDays > 0 ? customDays : null;
+    return preset as number;
+  };
+
   // Handle create badge
   const handleCreate = async () => {
     if (!newBadgeName.trim() || !newBadgeFile) {
@@ -86,18 +102,22 @@ export function BadgeManagement() {
     }
 
     try {
+      // Phase 6A.28: Use duration-based expiration
+      const defaultDurationDays = getEffectiveDuration(newBadgeDurationPreset, newBadgeCustomDays);
+
       await createBadge.mutateAsync({
         name: newBadgeName.trim(),
         position: newBadgePosition,
         imageFile: newBadgeFile,
-        expiresAt: newBadgeExpiresAt || undefined, // Phase 6A.27
+        defaultDurationDays,
       });
 
       // Reset form and close dialog
       setNewBadgeName('');
       setNewBadgePosition(BadgePosition.TopRight);
       setNewBadgeFile(null);
-      setNewBadgeExpiresAt(''); // Phase 6A.27
+      setNewBadgeDurationPreset(null);
+      setNewBadgeCustomDays(30);
       setIsCreateOpen(false);
     } catch (err) {
       console.error('Failed to create badge:', err);
@@ -122,13 +142,14 @@ export function BadgeManagement() {
           });
         }
       } else {
-        // Custom badge: update all details including expiry (Phase 6A.27)
+        // Phase 6A.28: Custom badge update with duration-based expiration
+        const effectiveDuration = getEffectiveDuration(editBadgeDurationPreset, editBadgeCustomDays);
         const dto: UpdateBadgeDto = {
           name: editBadgeName.trim(),
           position: editBadgePosition,
           isActive: editBadgeActive,
-          clearExpiry: editBadgeClearExpiry,
-          expiresAt: editBadgeClearExpiry ? undefined : (editBadgeExpiresAt || undefined),
+          clearDuration: editBadgeClearDuration,
+          defaultDurationDays: editBadgeClearDuration ? undefined : effectiveDuration,
         };
         await updateBadge.mutateAsync({ badgeId: selectedBadge.id, dto });
       }
@@ -144,8 +165,9 @@ export function BadgeManagement() {
       // Reset and close
       setSelectedBadge(null);
       setEditBadgeFile(null);
-      setEditBadgeExpiresAt(''); // Phase 6A.27
-      setEditBadgeClearExpiry(false); // Phase 6A.27
+      setEditBadgeDurationPreset(null);
+      setEditBadgeCustomDays(30);
+      setEditBadgeClearDuration(false);
       setIsEditOpen(false);
     } catch (err) {
       console.error('Failed to update badge:', err);
@@ -165,6 +187,13 @@ export function BadgeManagement() {
     }
   };
 
+  // Phase 6A.28: Helper to convert duration days to preset
+  const durationToPreset = (days: number | null): DurationPreset => {
+    if (days === null) return null;
+    const preset = DURATION_PRESETS.find(p => p.value === days);
+    return preset ? (days as DurationPreset) : 'custom';
+  };
+
   // Open edit dialog
   const openEditDialog = (badge: BadgeDto) => {
     setSelectedBadge(badge);
@@ -172,9 +201,11 @@ export function BadgeManagement() {
     setEditBadgePosition(badge.position);
     setEditBadgeActive(badge.isActive);
     setEditBadgeFile(null);
-    // Phase 6A.27: Set expiry state
-    setEditBadgeExpiresAt(badge.expiresAt ? badge.expiresAt.substring(0, 16) : ''); // Format for datetime-local input
-    setEditBadgeClearExpiry(false);
+    // Phase 6A.28: Set duration state from badge
+    const preset = durationToPreset(badge.defaultDurationDays);
+    setEditBadgeDurationPreset(preset);
+    setEditBadgeCustomDays(badge.defaultDurationDays || 30);
+    setEditBadgeClearDuration(false);
     setIsEditOpen(true);
   };
 
@@ -317,15 +348,13 @@ export function BadgeManagement() {
                   </button>
                 </div>
 
-                {/* Phase 6A.27: Expiry status and creator info */}
+                {/* Phase 6A.28: Duration display and creator info */}
                 <div className="text-xs text-gray-500 space-y-1 mb-2">
-                  {badge.expiresAt && (
-                    <div className={badge.isExpired ? 'text-red-500' : ''}>
-                      {badge.isExpired
-                        ? `Expired: ${new Date(badge.expiresAt).toLocaleDateString()}`
-                        : `Expires: ${new Date(badge.expiresAt).toLocaleDateString()}`}
-                    </div>
-                  )}
+                  <div>
+                    Duration: {badge.defaultDurationDays
+                      ? `${badge.defaultDurationDays} days`
+                      : 'Never expires'}
+                  </div>
                   {!badge.isSystem && badge.creatorName && (
                     <div>By: {badge.creatorName}</div>
                   )}
@@ -400,19 +429,52 @@ export function BadgeManagement() {
               </select>
             </div>
 
-            {/* Phase 6A.27: Expiry Date (optional) */}
+            {/* Phase 6A.28: Default Duration dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Expiry Date (optional)
+                Default Duration (when assigned to events)
               </label>
-              <Input
-                type="datetime-local"
-                value={newBadgeExpiresAt}
-                onChange={(e) => setNewBadgeExpiresAt(e.target.value)}
-                className="w-full"
-              />
+              <select
+                value={newBadgeDurationPreset === null ? '' : String(newBadgeDurationPreset)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    setNewBadgeDurationPreset(null);
+                  } else if (val === 'custom') {
+                    setNewBadgeDurationPreset('custom');
+                  } else {
+                    setNewBadgeDurationPreset(Number(val) as DurationPreset);
+                  }
+                }}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {DURATION_PRESETS.map((preset) => (
+                  <option
+                    key={preset.value === null ? 'never' : String(preset.value)}
+                    value={preset.value === null ? '' : String(preset.value)}
+                  >
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Custom days input */}
+              {newBadgeDurationPreset === 'custom' && (
+                <div className="mt-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="365"
+                    placeholder="Enter number of days"
+                    value={newBadgeCustomDays}
+                    onChange={(e) => setNewBadgeCustomDays(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
               <p className="text-xs text-gray-400 mt-1">
-                Leave empty for no expiration. Expired badges are auto-removed from events.
+                Duration determines when badge assignments expire. "Never expire" means the badge stays permanently on assigned events.
               </p>
             </div>
 
@@ -535,46 +597,77 @@ export function BadgeManagement() {
               </select>
             </div>
 
-            {/* Phase 6A.27: Expiry Date (only for custom badges) */}
+            {/* Phase 6A.28: Default Duration (only for custom badges) */}
             {!selectedBadge?.isSystem && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Expiry Date (optional)
+                  Default Duration (when assigned to events)
                 </label>
                 <div className="space-y-2">
-                  <Input
-                    type="datetime-local"
-                    value={editBadgeClearExpiry ? '' : editBadgeExpiresAt}
+                  <select
+                    value={editBadgeClearDuration ? '' : (editBadgeDurationPreset === null ? '' : String(editBadgeDurationPreset))}
                     onChange={(e) => {
-                      setEditBadgeExpiresAt(e.target.value);
-                      setEditBadgeClearExpiry(false);
+                      const val = e.target.value;
+                      setEditBadgeClearDuration(false);
+                      if (val === '') {
+                        setEditBadgeDurationPreset(null);
+                      } else if (val === 'custom') {
+                        setEditBadgeDurationPreset('custom');
+                      } else {
+                        setEditBadgeDurationPreset(Number(val) as DurationPreset);
+                      }
                     }}
-                    className="w-full"
-                    disabled={editBadgeClearExpiry}
-                  />
-                  {selectedBadge?.expiresAt && (
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    disabled={editBadgeClearDuration}
+                  >
+                    {DURATION_PRESETS.map((preset) => (
+                      <option
+                        key={preset.value === null ? 'never' : String(preset.value)}
+                        value={preset.value === null ? '' : String(preset.value)}
+                      >
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Custom days input */}
+                  {editBadgeDurationPreset === 'custom' && !editBadgeClearDuration && (
+                    <Input
+                      type="number"
+                      min="1"
+                      max="365"
+                      placeholder="Enter number of days"
+                      value={editBadgeCustomDays}
+                      onChange={(e) => setEditBadgeCustomDays(Number(e.target.value))}
+                      className="w-full"
+                    />
+                  )}
+
+                  {/* Option to clear duration */}
+                  {selectedBadge?.defaultDurationDays && (
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        id="clearExpiry"
-                        checked={editBadgeClearExpiry}
+                        id="clearDuration"
+                        checked={editBadgeClearDuration}
                         onChange={(e) => {
-                          setEditBadgeClearExpiry(e.target.checked);
+                          setEditBadgeClearDuration(e.target.checked);
                           if (e.target.checked) {
-                            setEditBadgeExpiresAt('');
+                            setEditBadgeDurationPreset(null);
                           }
                         }}
                         className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
                       />
-                      <label htmlFor="clearExpiry" className="text-sm text-gray-600">
-                        Remove expiry date (badge will never expire)
+                      <label htmlFor="clearDuration" className="text-sm text-gray-600">
+                        Remove duration (badge assignments will never expire)
                       </label>
                     </div>
                   )}
+
                   <p className="text-xs text-gray-400">
-                    {selectedBadge?.expiresAt
-                      ? `Current: ${new Date(selectedBadge.expiresAt).toLocaleString()}`
-                      : 'No expiry set. Badge will not expire.'}
+                    {selectedBadge?.defaultDurationDays
+                      ? `Current: ${selectedBadge.defaultDurationDays} days`
+                      : 'No duration set. Badge assignments will never expire.'}
                   </p>
                 </div>
               </div>

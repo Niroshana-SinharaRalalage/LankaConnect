@@ -10,6 +10,7 @@ namespace LankaConnect.Application.Badges.Commands.CreateBadge;
 /// Handler for CreateBadgeCommand
 /// Phase 6A.25: Creates a new badge with uploaded image
 /// Phase 6A.27: Role-based badge creation (Admin = System badge, EventOrganizer = Custom badge)
+/// Phase 6A.28: Changed ExpiresAt to DefaultDurationDays (duration-based expiration)
 /// </summary>
 public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Result<BadgeDto>>
 {
@@ -65,6 +66,7 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
         // Phase 6A.27: Role-based badge type determination
         // - Admins create System badges (IsSystem = true, CreatedByUserId = null)
         // - EventOrganizers create Custom badges (IsSystem = false, CreatedByUserId = their ID)
+        // Phase 6A.28: Changed ExpiresAt to DefaultDurationDays
         Badge badge;
         if (_currentUserService.IsAdmin)
         {
@@ -75,7 +77,7 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
                 blobName,
                 request.Position,
                 displayOrder,
-                request.ExpiresAt);
+                request.DefaultDurationDays);
         }
         else
         {
@@ -87,7 +89,7 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
                 request.Position,
                 displayOrder,
                 _currentUserService.UserId,
-                request.ExpiresAt);
+                request.DefaultDurationDays);
 
             if (!badgeResult.IsSuccess)
             {

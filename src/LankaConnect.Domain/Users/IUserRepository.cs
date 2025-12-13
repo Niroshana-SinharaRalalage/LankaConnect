@@ -20,4 +20,9 @@ public interface IUserRepository : IRepository<User>
 
     // Phase 6A.5: Admin approval workflow
     Task<IReadOnlyList<User>> GetUsersWithPendingRoleUpgradesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.29: Get user full names by their IDs (for badge creator display)
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetUserNamesAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default);
 }

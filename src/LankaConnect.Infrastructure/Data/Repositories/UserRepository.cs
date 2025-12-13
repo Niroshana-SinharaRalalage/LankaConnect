@@ -138,6 +138,23 @@ public class UserRepository : Repository<User>, IUserRepository
     }
 
     /// <summary>
+    /// Phase 6A.29: Get user full names by their IDs (for badge creator display)
+    /// </summary>
+    public async Task<Dictionary<Guid, string>> GetUserNamesAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        var ids = userIds.ToList();
+        if (!ids.Any()) return new Dictionary<Guid, string>();
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(
+                u => u.Id,
+                u => $"{u.FirstName} {u.LastName}",
+                cancellationToken);
+    }
+
+    /// <summary>
     /// Override to sync shadow navigation for metro areas when adding new user
     /// Phase 6A.9 FIX: When creating a new user with metro areas, the domain's _preferredMetroAreaIds list
     /// contains the metro area GUIDs, but the shadow navigation _preferredMetroAreaEntities needs to be populated

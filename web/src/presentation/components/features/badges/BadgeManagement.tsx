@@ -28,6 +28,7 @@ import {
   type UpdateBadgeDto,
   type DurationPreset,
 } from '@/infrastructure/api/types/badges.types';
+import { BadgePreviewSection } from './BadgePreviewSection';
 
 /**
  * Phase 6A.26: Badge Management Component
@@ -79,6 +80,10 @@ export function BadgeManagement() {
   const [editBadgeCustomDays, setEditBadgeCustomDays] = React.useState<number>(30);
   const [editBadgeClearDuration, setEditBadgeClearDuration] = React.useState(false);
 
+  // Phase 6A.29: Preview URL for newly uploaded files
+  const [newBadgePreviewUrl, setNewBadgePreviewUrl] = React.useState<string | null>(null);
+  const [editBadgePreviewUrl, setEditBadgePreviewUrl] = React.useState<string | null>(null);
+
   // File input refs
   const createFileInputRef = React.useRef<HTMLInputElement>(null);
   const editFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -87,6 +92,27 @@ export function BadgeManagement() {
   const isCreating = createBadge.isPending;
   const isUpdating = updateBadge.isPending || updateBadgeImage.isPending;
   const isDeleting = deleteBadge.isPending;
+
+  // Phase 6A.29: Create and cleanup preview URLs for file uploads
+  React.useEffect(() => {
+    if (newBadgeFile) {
+      const url = URL.createObjectURL(newBadgeFile);
+      setNewBadgePreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setNewBadgePreviewUrl(null);
+    }
+  }, [newBadgeFile]);
+
+  React.useEffect(() => {
+    if (editBadgeFile) {
+      const url = URL.createObjectURL(editBadgeFile);
+      setEditBadgePreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setEditBadgePreviewUrl(null);
+    }
+  }, [editBadgeFile]);
 
   // Phase 6A.28: Helper to get effective duration from preset and custom days
   const getEffectiveDuration = (preset: DurationPreset, customDays: number): number | null => {
@@ -348,7 +374,8 @@ export function BadgeManagement() {
                   </button>
                 </div>
 
-                {/* Phase 6A.28: Duration display and creator info */}
+                {/* Phase 6A.28: Duration display */}
+                {/* Phase 6A.29: Creator display styled like Email Groups tab */}
                 <div className="text-xs text-gray-500 space-y-1 mb-2">
                   <div>
                     Duration: {badge.defaultDurationDays
@@ -356,7 +383,9 @@ export function BadgeManagement() {
                       : 'Never expires'}
                   </div>
                   {!badge.isSystem && badge.creatorName && (
-                    <div>By: {badge.creatorName}</div>
+                    <div className="text-[#8B1538]">
+                      Owner: {badge.creatorName}
+                    </div>
                   )}
                 </div>
 
@@ -512,6 +541,21 @@ export function BadgeManagement() {
                 )}
               </div>
             </div>
+
+            {/* Phase 6A.29: Badge Preview Section */}
+            {newBadgePreviewUrl && (
+              <div className="pt-4 border-t border-gray-200">
+                <BadgePreviewSection
+                  badge={{
+                    imageUrl: newBadgePreviewUrl,
+                    name: newBadgeName || 'New Badge',
+                    position: newBadgePosition,
+                  }}
+                  position={newBadgePosition}
+                  onPositionChange={(pos) => setNewBadgePosition(pos)}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -729,6 +773,21 @@ export function BadgeManagement() {
                 )}
               </div>
             </div>
+
+            {/* Phase 6A.29: Badge Preview Section for Edit */}
+            {selectedBadge && (
+              <div className="pt-4 border-t border-gray-200">
+                <BadgePreviewSection
+                  badge={{
+                    imageUrl: editBadgePreviewUrl || selectedBadge.imageUrl,
+                    name: editBadgeName || selectedBadge.name,
+                    position: editBadgePosition,
+                  }}
+                  position={editBadgePosition}
+                  onPositionChange={(pos) => !selectedBadge.isSystem && setEditBadgePosition(pos)}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>

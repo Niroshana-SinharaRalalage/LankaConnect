@@ -9,6 +9,7 @@ namespace LankaConnect.Application.Badges.Commands.CreateBadge;
 /// <summary>
 /// Handler for CreateBadgeCommand
 /// Phase 6A.25: Creates a new badge with uploaded image
+/// Phase 6A.27: Role-based badge creation (Admin = System badge, EventOrganizer = Custom badge)
 /// </summary>
 public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Result<BadgeDto>>
 {
@@ -61,41 +62,49 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
             cancellationToken);
 
         // 5. Create badge entity
-        var badgeResult = Badge.Create(
-            request.Name,
-            blobUrl,
-            blobName,
-            request.Position,
-            displayOrder,
-            _currentUserService.UserId);
-
-        if (!badgeResult.IsSuccess)
+        // Phase 6A.27: Role-based badge type determination
+        // - Admins create System badges (IsSystem = true, CreatedByUserId = null)
+        // - EventOrganizers create Custom badges (IsSystem = false, CreatedByUserId = their ID)
+        Badge badge;
+        if (_currentUserService.IsAdmin)
         {
-            // Rollback: Delete uploaded blob if domain validation fails
-            await _blobStorageService.DeleteFileAsync(blobName, "badges", cancellationToken);
-            return Result<BadgeDto>.Failure(badgeResult.Errors);
+            // Admin creates system badge
+            badge = Badge.CreateSystemBadge(
+                request.Name,
+                blobUrl,
+                blobName,
+                request.Position,
+                displayOrder,
+                request.ExpiresAt);
         }
+        else
+        {
+            // EventOrganizer creates custom (private) badge
+            var badgeResult = Badge.Create(
+                request.Name,
+                blobUrl,
+                blobName,
+                request.Position,
+                displayOrder,
+                _currentUserService.UserId,
+                request.ExpiresAt);
 
-        var badge = badgeResult.Value;
+            if (!badgeResult.IsSuccess)
+            {
+                // Rollback: Delete uploaded blob if domain validation fails
+                await _blobStorageService.DeleteFileAsync(blobName, "badges", cancellationToken);
+                return Result<BadgeDto>.Failure(badgeResult.Errors);
+            }
+
+            badge = badgeResult.Value;
+        }
 
         // 6. Save to repository
         await _badgeRepository.AddAsync(badge, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 7. Return DTO
-        var dto = new BadgeDto
-        {
-            Id = badge.Id,
-            Name = badge.Name,
-            ImageUrl = badge.ImageUrl,
-            Position = badge.Position,
-            IsActive = badge.IsActive,
-            IsSystem = badge.IsSystem,
-            DisplayOrder = badge.DisplayOrder,
-            CreatedAt = badge.CreatedAt
-        };
-
-        return Result<BadgeDto>.Success(dto);
+        // 7. Return DTO using mapping extension
+        return Result<BadgeDto>.Success(badge.ToBadgeDto());
     }
 
     private static string GetContentType(string fileName)

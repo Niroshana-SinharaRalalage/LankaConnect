@@ -4,6 +4,7 @@ using LankaConnect.API.Filters;
 using LankaConnect.Application;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -407,6 +408,16 @@ try
             "event-status-update-job",
             job => job.ExecuteAsync(),
             Cron.Hourly, // Run every hour
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Phase 6A.27: Expired Badge Cleanup Job - Runs daily to remove expired badges from events
+        recurringJobManager.AddOrUpdate<ExpiredBadgeCleanupJob>(
+            "expired-badge-cleanup-job",
+            job => job.ExecuteAsync(),
+            Cron.Daily, // Run once daily at midnight UTC
             new RecurringJobOptions
             {
                 TimeZone = TimeZoneInfo.Utc

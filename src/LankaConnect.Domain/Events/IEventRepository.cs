@@ -33,4 +33,11 @@ public interface IEventRepository : IRepository<Event>
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
         CancellationToken cancellationToken = default);
+
+    // Badge cleanup queries (Phase 6A.27)
+    /// <summary>
+    /// Gets all events that have a specific badge assigned
+    /// Used by ExpiredBadgeCleanupJob to remove expired badges from events
+    /// </summary>
+    Task<IReadOnlyList<Event>> GetEventsWithBadgeAsync(Guid badgeId, CancellationToken cancellationToken = default);
 }

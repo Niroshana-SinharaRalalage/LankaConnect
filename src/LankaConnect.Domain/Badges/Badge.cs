@@ -51,6 +51,13 @@ public class Badge : BaseEntity
     /// </summary>
     public Guid? CreatedByUserId { get; private set; }
 
+    /// <summary>
+    /// Optional expiration date for the badge (null means never expires)
+    /// When expired, badge is automatically removed from all events
+    /// Phase 6A.27
+    /// </summary>
+    public DateTime? ExpiresAt { get; private set; }
+
     // EF Core constructor
     private Badge()
     {
@@ -66,7 +73,8 @@ public class Badge : BaseEntity
         BadgePosition position,
         bool isSystem,
         int displayOrder,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        DateTime? expiresAt = null)
     {
         Name = name;
         ImageUrl = imageUrl;
@@ -76,18 +84,21 @@ public class Badge : BaseEntity
         IsSystem = isSystem;
         DisplayOrder = displayOrder;
         CreatedByUserId = createdByUserId;
+        ExpiresAt = expiresAt;
     }
 
     /// <summary>
     /// Factory method to create a new custom badge
     /// </summary>
+    /// <param name="expiresAt">Optional expiry date (null means never expires)</param>
     public static Result<Badge> Create(
         string name,
         string imageUrl,
         string blobName,
         BadgePosition position,
         int displayOrder,
-        Guid createdByUserId)
+        Guid createdByUserId,
+        DateTime? expiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result<Badge>.Failure("Badge name is required");
@@ -114,7 +125,8 @@ public class Badge : BaseEntity
             position,
             isSystem: false,
             displayOrder,
-            createdByUserId);
+            createdByUserId,
+            expiresAt);
 
         return Result<Badge>.Success(badge);
     }
@@ -122,12 +134,14 @@ public class Badge : BaseEntity
     /// <summary>
     /// Factory method to create a system/predefined badge (used for seeding)
     /// </summary>
+    /// <param name="expiresAt">Optional expiry date (null means never expires)</param>
     public static Badge CreateSystemBadge(
         string name,
         string imageUrl,
         string blobName,
         BadgePosition position,
-        int displayOrder)
+        int displayOrder,
+        DateTime? expiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Badge name is required", nameof(name));
@@ -139,7 +153,8 @@ public class Badge : BaseEntity
             position,
             isSystem: true,
             displayOrder,
-            createdByUserId: null);
+            createdByUserId: null,
+            expiresAt);
     }
 
     /// <summary>
@@ -220,4 +235,23 @@ public class Badge : BaseEntity
     /// System badges cannot be deleted, only deactivated
     /// </summary>
     public bool CanDelete() => !IsSystem;
+
+    /// <summary>
+    /// Checks if this badge has expired based on ExpiresAt date
+    /// Returns false if ExpiresAt is null (never expires)
+    /// Phase 6A.27
+    /// </summary>
+    public bool IsExpired() => ExpiresAt.HasValue && ExpiresAt.Value < DateTime.UtcNow;
+
+    /// <summary>
+    /// Updates the expiry date of the badge
+    /// Pass null to remove expiration (badge never expires)
+    /// Phase 6A.27
+    /// </summary>
+    public Result UpdateExpiry(DateTime? expiresAt)
+    {
+        ExpiresAt = expiresAt;
+        MarkAsUpdated();
+        return Result.Success();
+    }
 }

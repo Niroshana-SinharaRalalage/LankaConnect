@@ -7,13 +7,72 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 38: PHASE 6A.24 TICKET GENERATION (2025-12-11)
+## ✅ CURRENT STATUS - SESSION 42: PHASE 6A.27 BADGE ENHANCEMENT (2025-12-12)
+**Date**: 2025-12-12 (Session 42)
+**Session**: Phase 6A.27 - Badge Management Enhancement
+**Status**: ✅ COMPLETE - Full-stack implementation with TDD
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Tests**: ✅ 41 Badge tests passing
+
+### SESSION 42: PHASE 6A.27 - BADGE ENHANCEMENT (2025-12-12)
+**Goal**: Enhance Badge Management with expiry dates, role-based access, and private custom badges
+
+**Implementation**:
+- **Domain**: Added `ExpiresAt` property, `UpdateExpiry()` method, `IsExpired()` helper, TDD tests
+- **Application**:
+  - `CreateBadge`: Role-based `IsSystem` logic (Admin→System, EventOrganizer→Custom)
+  - `UpdateBadge`: Ownership validation (Admin edits all, EventOrganizer edits own)
+  - `DeleteBadge`: Ownership validation
+  - `GetBadges`: `ForManagement` and `ForAssignment` filtering parameters
+  - `BadgeDto`: Added `ExpiresAt`, `IsExpired`, `CreatedByUserId`, `CreatorName`
+- **Infrastructure**: `ExpiredBadgeCleanupJob` (daily Hangfire job), `GetExpiredBadgesAsync` repository method
+- **API**: Updated `BadgesController` with new query params and expiry support
+- **Frontend**:
+  - `BadgeManagement.tsx`: Type indicators (System/Custom), expiry picker, creator display
+  - `BadgeAssignment.tsx`: Uses `forAssignment=true` to exclude expired badges
+
+**Role-Based Access Rules**:
+| Role | Management View | Assignment View |
+|------|----------------|-----------------|
+| Admin | ALL badges (system + custom) | System badges only |
+| EventOrganizer | Own custom badges only | Own custom + System badges |
+
+**Files Modified**: 15+ files across domain, application, infrastructure, API, and frontend layers
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 39: PHASE 6A.26 BADGE MANAGEMENT SYSTEM (2025-12-12)
+**Date**: 2025-12-12 (Session 39)
+**Session**: Phase 6A.26 - Badge Management System
+**Status**: ✅ COMPLETE - Full-stack implementation with TDD
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Deployment**: ✅ Deployed to Azure Container Apps staging
+**API Test**: ✅ All 11 badges returned from staging API
+
+### SESSION 39: PHASE 6A.26 - BADGE MANAGEMENT SYSTEM (2025-12-12)
+**Goal**: Badge management for event promotional overlays (visual stickers on event images)
+
+**Implementation**:
+- **Domain**: `Badge` entity, `EventBadge` join entity, `BadgePosition` enum, `IBadgeRepository`, 31 TDD tests
+- **Application**: 6 Commands, 3 Queries, 4 DTOs with CQRS pattern
+- **Infrastructure**: `BadgeRepository`, `BadgeConfiguration`, `EventBadgeConfiguration`, `BadgeSeeder`
+- **API**: `BadgesController` with 9 endpoints (GET, POST, PUT, DELETE for badges and event assignments)
+- **Frontend**: `badges.types.ts`, `badges.repository.ts`, `useBadges.ts`, `BadgeManagement.tsx`, `BadgeAssignment.tsx`, `BadgeOverlayGroup.tsx`
+- **UI Integration**: Dashboard Badge Management tab, Event Manage page Badge Assignment section, Event cards with badge overlays
+
+**Predefined System Badges (11)**: New Event, New, Canceled, New Year, Valentines, Christmas, Thanksgiving, Halloween, Easter, Sinhala Tamil New Year, Vesak
+
+**Files Created**: 35+ new files (domain, application, infrastructure, API, frontend)
+**Files Modified**: 15+ files (AppDbContext, DependencyInjection, Event entity, Dashboard, Events pages)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 38: PHASE 6A.24 TICKET GENERATION (2025-12-11)
 **Date**: 2025-12-11 (Session 38)
 **Session**: Phase 6A.24 - Ticket Generation & Email Enhancement
 **Status**: ✅ COMPLETE - Full-stack implementation committed
 **Build Status**: ✅ Zero Tolerance Maintained - 0 errors
 **Commit**: `a80492b` - feat(tickets): Phase 6A.24 - Ticket generation & email enhancement
-**Next**: Apply migration to staging, test ticket API endpoints
 
 ### SESSION 38: PHASE 6A.24 - TICKET GENERATION (2025-12-11)
 **Goal**: Generate tickets with QR codes for paid event registrations
@@ -27,9 +86,6 @@
 - **Migration**: `AddTicketsTable_Phase6A24` for Tickets table
 
 **NuGet Packages Added**: QRCoder, QuestPDF
-
-**Files Created**: 17 backend files, 1 frontend component
-**Files Modified**: 8 files (DI, DbContext, EventsController, repository, types)
 
 **Documentation**: [PHASE_6A_24_TICKET_GENERATION_SUMMARY.md](./PHASE_6A_24_TICKET_GENERATION_SUMMARY.md)
 

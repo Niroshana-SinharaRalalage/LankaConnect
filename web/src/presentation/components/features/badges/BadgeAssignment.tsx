@@ -32,6 +32,7 @@ interface BadgeAssignmentProps {
  * - Select from available badges
  * - Assign/remove badges with optimistic updates
  * - Position preview indicator
+ * Phase 6A.27: Uses forAssignment=true to get role-appropriate badges (excludes expired)
  */
 export function BadgeAssignment({
   eventId,
@@ -39,8 +40,10 @@ export function BadgeAssignment({
   onAssignmentChange,
   maxBadges = 3,
 }: BadgeAssignmentProps) {
-  // Fetch all active badges for selection
-  const { data: allBadges, isLoading: loadingBadges, error: badgesError } = useBadges(true);
+  // Phase 6A.27: Fetch badges for assignment (forAssignment=true):
+  // - EventOrganizer sees: their own custom badges + all system badges
+  // - Excludes expired badges
+  const { data: allBadges, isLoading: loadingBadges, error: badgesError } = useBadges(true, false, true);
 
   // Fetch event's assigned badges
   const { data: eventBadges, isLoading: loadingEventBadges } = useEventBadges(eventId);

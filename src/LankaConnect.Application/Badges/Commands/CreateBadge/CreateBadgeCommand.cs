@@ -8,6 +8,7 @@ namespace LankaConnect.Application.Badges.Commands.CreateBadge;
 /// <summary>
 /// Command to create a new badge with uploaded image
 /// Phase 6A.25: Badge Management System
+/// Phase 6A.27: Added ExpiresAt for badge expiry feature
 /// </summary>
 public record CreateBadgeCommand : IRequest<Result<BadgeDto>>
 {
@@ -15,4 +16,9 @@ public record CreateBadgeCommand : IRequest<Result<BadgeDto>>
     public BadgePosition Position { get; init; } = BadgePosition.TopRight;
     public byte[] ImageData { get; init; } = Array.Empty<byte>();
     public string FileName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 6A.27: Optional expiry date (null means never expires)
+    /// </summary>
+    public DateTime? ExpiresAt { get; init; }
 }

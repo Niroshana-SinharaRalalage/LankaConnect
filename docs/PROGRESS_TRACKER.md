@@ -1,9 +1,108 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-12 (Current Session) - Session 40: Phase 6A.26 Badge Management UI ✅ COMPLETE*
+*Last Updated: 2025-12-12 (Current Session) - Session 42: Phase 6A.27 Badge Enhancement ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 40: Phase 6A.26 Badge Management UI Implementation ✅ COMPLETE
+## 🎯 Current Session Status - Session 42: Phase 6A.27 Badge Enhancement ✅ COMPLETE
+
+### Session 42: Phase 6A.27 Badge Management Enhancement - COMPLETE - 2025-12-12
+
+**Status**: ✅ **COMPLETE** (Full-stack implementation with TDD)
+
+**Requirement**: Enhance Badge Management system with:
+1. **Expiry Date Feature** - Badges can have optional expiration dates
+2. **Role-Based Access Control** - Different permissions for EventOrganizers vs Admins
+3. **Private Custom Badges** - EventOrganizer-created badges are private to their creator
+
+**Implementation**:
+
+**Domain Layer**:
+- Added `ExpiresAt` nullable DateTime property to Badge entity
+- Added `UpdateExpiry(DateTime? expiresAt)` method
+- Added `IsExpired()` helper method
+- TDD tests for expiry behavior (Create with/without expiry, IsExpired scenarios)
+
+**Database**:
+- Migration `AddBadgeExpiryDate` adds `expires_at` column to badges table
+
+**Application Layer (CQRS)**:
+- Updated `CreateBadgeCommand/Handler` with role-based `IsSystem` logic:
+  - Admin creates → `IsSystem = true`
+  - EventOrganizer creates → `IsSystem = false`, `CreatedByUserId` set
+- Updated `UpdateBadgeCommand/Handler` with ownership validation
+- Updated `DeleteBadgeCommand/Handler` with ownership validation
+- Updated `GetBadgesQuery/Handler` with `ForManagement` and `ForAssignment` filtering:
+  - `ForManagement=true`: Admin sees ALL, EventOrganizer sees only their own
+  - `ForAssignment=true`: Excludes expired badges, EventOrganizer sees own + system badges
+- Updated `BadgeDto` with `ExpiresAt`, `IsExpired`, `CreatedByUserId`, `CreatorName`
+
+**Background Job**:
+- Created `ExpiredBadgeCleanupJob` (runs daily via Hangfire)
+  - Finds expired badges
+  - Removes badge assignments from events
+  - Deactivates expired badges
+
+**API Layer**:
+- Updated `BadgesController` with new query parameters (`forManagement`, `forAssignment`)
+- Updated Create endpoint to accept `expiresAt` parameter
+- Updated Update endpoint to accept `expiresAt` and `clearExpiry` parameters
+
+**Frontend**:
+- Updated `badges.types.ts` with `expiresAt`, `isExpired`, `createdByUserId`, `creatorName`
+- Updated `badges.repository.ts` with `forManagement`, `forAssignment` params
+- Updated `useBadges.ts` hook with new parameters
+- Updated `BadgeManagement.tsx`:
+  - Uses `forManagement=true` parameter
+  - Type indicators: "System" (blue) / "Custom" (purple) tags
+  - Expiry status display with date
+  - Creator name display for custom badges
+  - Expiry date picker in Create dialog
+  - Expiry date picker in Edit dialog with "Clear Expiry" checkbox
+- Updated `BadgeAssignment.tsx`:
+  - Uses `forAssignment=true` parameter
+  - Excludes expired badges from selection
+
+**Build Status**: ✅ Backend: 0 errors | Frontend: Build succeeded | Tests: 41 Badge tests passing
+
+**Files Modified**:
+- Domain: Badge.cs
+- Application: 6 command/query handlers, BadgeDto.cs
+- Infrastructure: BadgeRepository.cs, ExpiredBadgeCleanupJob.cs, Program.cs
+- API: BadgesController.cs
+- Frontend: 5 TypeScript files
+
+---
+
+### Session 41: Email Groups Database Migration Fix - COMPLETE - 2025-12-12
+
+**Status**: ✅ **COMPLETE** (Database issue resolved, API verified working)
+
+**Issue**: Email Groups API returning HTTP 500 Internal Server Error on staging
+
+**Root Cause Analysis**:
+- Previous migration `20251211184730_AddEmailGroups.cs` was **mislabeled** - it actually created `badges` and `event_badges` tables instead of `email_groups`
+- The `email_groups` table was never created in the database
+- DbSet and EF Core configuration existed but no actual table
+
+**Solution**:
+1. Created new migration `20251212143334_AddEmailGroupsTable.cs` that properly creates:
+   - `email_groups` table in `communications` schema
+   - Columns: Id, name, description, owner_id, email_addresses, is_active, created_at, updated_at
+   - Indexes: IX_EmailGroups_OwnerId, IX_EmailGroups_Owner_Name (unique), IX_EmailGroups_IsActive, IX_EmailGroups_Owner_IsActive
+
+**Verification**:
+- ✅ Build succeeded: 0 errors, 0 warnings
+- ✅ Deployment: GitHub Actions run #20170204724 succeeded
+- ✅ GET `/api/EmailGroups` returns HTTP 200 with empty array
+- ✅ POST `/api/EmailGroups` returns HTTP 201 with created group
+- ✅ Email group created: "Test Group 1" with 3 emails
+
+**Ticket Generation API Verification**:
+- ✅ GET `/api/Events/{eventId}/my-registration/ticket` returns HTTP 404 with proper error message "You are not registered for this event" (expected - requires paid registration)
+
+**Commit**: `3ae52e5` - fix(db): Add missing email_groups table migration
+
+---
 
 ### Session 40: Phase 6A.26 Badge Management UI - COMPLETE - 2025-12-12
 
@@ -174,6 +273,13 @@
 **Files Modified**: 8 files (AppDbContext, DependencyInjection, EventsController, repository, types)
 
 **Build Status**: ✅ .NET solution builds with 0 errors, 0 warnings
+
+**Staging API Verification (Session 38)**: ✅ All 3 ticket endpoints deployed and tested
+- `GET /api/events/{eventId}/my-registration/ticket` - Returns 404 "You are not registered for this event" (correct for non-registered user)
+- `GET /api/events/{eventId}/my-registration/ticket/pdf` - Returns 404 "You are not registered for this event" (correct)
+- `POST /api/events/{eventId}/my-registration/ticket/resend-email` - Returns 404 "You are not registered for this event" (correct)
+- Unauthenticated requests properly return 401 Unauthorized
+- Staging URL: `https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io`
 
 **Documentation**:
 - Plan file at `C:\Users\Niroshana\.claude\plans\sunny-conjuring-pike.md`

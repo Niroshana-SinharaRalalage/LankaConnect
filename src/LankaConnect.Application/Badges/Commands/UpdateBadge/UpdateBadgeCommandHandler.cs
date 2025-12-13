@@ -9,17 +9,21 @@ namespace LankaConnect.Application.Badges.Commands.UpdateBadge;
 /// <summary>
 /// Handler for UpdateBadgeCommand
 /// Phase 6A.25: Updates an existing badge
+/// Phase 6A.27: Added ownership validation and expiry update
 /// </summary>
 public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Result<BadgeDto>>
 {
     private readonly IBadgeRepository _badgeRepository;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateBadgeCommandHandler(
         IBadgeRepository badgeRepository,
+        ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork)
     {
         _badgeRepository = badgeRepository;
+        _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
     }
 
@@ -30,7 +34,19 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
         if (badge == null)
             return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
 
-        // 2. Check for duplicate name if name is being changed
+        // 2. Phase 6A.27: Ownership validation
+        // - Admins can edit ANY badge (system or custom)
+        // - EventOrganizers can only edit their own custom badges
+        if (!_currentUserService.IsAdmin)
+        {
+            if (badge.IsSystem)
+                return Result<BadgeDto>.Failure("Only administrators can edit system badges");
+
+            if (badge.CreatedByUserId != _currentUserService.UserId)
+                return Result<BadgeDto>.Failure("You can only edit your own badges");
+        }
+
+        // 3. Check for duplicate name if name is being changed
         if (!string.IsNullOrWhiteSpace(request.Name) && request.Name != badge.Name)
         {
             var existingBadge = await _badgeRepository.GetByNameAsync(request.Name, cancellationToken);
@@ -38,7 +54,7 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
                 return Result<BadgeDto>.Failure($"A badge with the name '{request.Name}' already exists");
         }
 
-        // 3. Update badge properties (name, position, displayOrder) - only if values provided
+        // 4. Update badge properties (name, position, displayOrder) - only if values provided
         if (request.Name != null || request.Position != null || request.DisplayOrder != null)
         {
             var updateResult = badge.Update(
@@ -50,7 +66,7 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
                 return Result<BadgeDto>.Failure(updateResult.Errors);
         }
 
-        // 4. Handle IsActive separately if provided
+        // 5. Handle IsActive separately if provided
         if (request.IsActive.HasValue && request.IsActive.Value != badge.IsActive)
         {
             var activationResult = request.IsActive.Value
@@ -61,23 +77,21 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
                 return Result<BadgeDto>.Failure(activationResult.Errors);
         }
 
-        // 5. Save changes
+        // 6. Phase 6A.27: Handle expiry date update
+        if (request.ClearExpiry)
+        {
+            badge.UpdateExpiry(null);
+        }
+        else if (request.ExpiresAt.HasValue)
+        {
+            badge.UpdateExpiry(request.ExpiresAt.Value);
+        }
+
+        // 7. Save changes
         _badgeRepository.Update(badge);
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 5. Return updated DTO
-        var dto = new BadgeDto
-        {
-            Id = badge.Id,
-            Name = badge.Name,
-            ImageUrl = badge.ImageUrl,
-            Position = badge.Position,
-            IsActive = badge.IsActive,
-            IsSystem = badge.IsSystem,
-            DisplayOrder = badge.DisplayOrder,
-            CreatedAt = badge.CreatedAt
-        };
-
-        return Result<BadgeDto>.Success(dto);
+        // 8. Return updated DTO using mapping extension
+        return Result<BadgeDto>.Success(badge.ToBadgeDto());
     }
 }

@@ -10,17 +10,30 @@ import type {
  * BadgesRepository
  * Handles all badge-related API calls
  * Phase 6A.25: Badge Management System
+ * Phase 6A.27: Added forManagement and forAssignment parameters
  */
 export class BadgesRepository {
   private readonly basePath = '/badges';
 
   /**
-   * Get all badges (optionally filtered by active status)
+   * Get all badges with optional filters
+   * Phase 6A.27: Added forManagement and forAssignment parameters for role-based filtering
    * @param activeOnly If true, returns only active badges (default). If false, returns all.
+   * @param forManagement If true, filters for Badge Management UI (Admin: all, EventOrganizer: own custom)
+   * @param forAssignment If true, filters for Badge Assignment UI (excludes expired badges)
    */
-  async getBadges(activeOnly: boolean = true): Promise<BadgeDto[]> {
+  async getBadges(
+    activeOnly: boolean = true,
+    forManagement: boolean = false,
+    forAssignment: boolean = false
+  ): Promise<BadgeDto[]> {
+    const params = new URLSearchParams();
+    params.append('activeOnly', String(activeOnly));
+    if (forManagement) params.append('forManagement', 'true');
+    if (forAssignment) params.append('forAssignment', 'true');
+
     const response = await apiClient.get<BadgeDto[]>(
-      `${this.basePath}?activeOnly=${activeOnly}`
+      `${this.basePath}?${params.toString()}`
     );
     return response;
   }
@@ -37,19 +50,25 @@ export class BadgesRepository {
 
   /**
    * Create a new badge with image upload
+   * Phase 6A.27: Added optional expiresAt parameter
    * @param name Badge name
    * @param position Badge position on event images
    * @param imageFile Badge image file (PNG recommended)
+   * @param expiresAt Optional expiry date (ISO string)
    */
   async createBadge(
     name: string,
     position: BadgePosition,
-    imageFile: File
+    imageFile: File,
+    expiresAt?: string
   ): Promise<BadgeDto> {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('position', position.toString());
     formData.append('file', imageFile);
+    if (expiresAt) {
+      formData.append('expiresAt', expiresAt);
+    }
 
     const response = await apiClient.post<BadgeDto>(
       this.basePath,

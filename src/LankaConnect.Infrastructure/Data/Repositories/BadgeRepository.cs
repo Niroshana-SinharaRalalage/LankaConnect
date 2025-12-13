@@ -82,4 +82,25 @@ public class BadgeRepository : Repository<Badge>, IBadgeRepository
             return nextOrder;
         }
     }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// Phase 6A.27: Gets all expired badges for cleanup job processing
+    /// </summary>
+    public async Task<IEnumerable<Badge>> GetExpiredBadgesAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetExpiredBadges"))
+        {
+            var now = DateTime.UtcNow;
+            _logger.Debug("Getting all expired badges (ExpiresAt < {Now})", now);
+
+            var badges = await _dbSet
+                .Where(b => b.ExpiresAt.HasValue && b.ExpiresAt.Value < now)
+                .OrderBy(b => b.ExpiresAt)
+                .ToListAsync(cancellationToken);
+
+            _logger.Debug("Retrieved {Count} expired badges", badges.Count);
+            return badges;
+        }
+    }
 }

@@ -31,19 +31,30 @@ public class BadgesController : BaseController<BadgesController>
     }
 
     /// <summary>
-    /// Get all badges (active only by default, all if activeOnly=false)
+    /// Get all badges with optional filters
+    /// Phase 6A.27: Added forManagement and forAssignment parameters for role-based filtering
     /// </summary>
-    /// <param name="activeOnly">If true, returns only active badges (default). If false, returns all badges for admin management.</param>
+    /// <param name="activeOnly">If true, returns only active badges (default). If false, returns all badges.</param>
+    /// <param name="forManagement">If true, filters for Badge Management UI (Admin: all badges, EventOrganizer: own custom badges)</param>
+    /// <param name="forAssignment">If true, filters for Badge Assignment UI (EventOrganizer: own + system, Admin: system only). Excludes expired badges.</param>
     /// <returns>List of badges</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BadgeDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetBadges([FromQuery] bool activeOnly = true)
+    public async Task<IActionResult> GetBadges(
+        [FromQuery] bool activeOnly = true,
+        [FromQuery] bool forManagement = false,
+        [FromQuery] bool forAssignment = false)
     {
-        Logger.LogInformation("User {UserId} retrieving badges (activeOnly: {ActiveOnly})",
-            User.TryGetUserId(), activeOnly);
+        Logger.LogInformation("User {UserId} retrieving badges (activeOnly: {ActiveOnly}, forManagement: {ForManagement}, forAssignment: {ForAssignment})",
+            User.TryGetUserId(), activeOnly, forManagement, forAssignment);
 
-        var query = new GetBadgesQuery { ActiveOnly = activeOnly };
+        var query = new GetBadgesQuery
+        {
+            ActiveOnly = activeOnly,
+            ForManagement = forManagement,
+            ForAssignment = forAssignment
+        };
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -72,10 +83,12 @@ public class BadgesController : BaseController<BadgesController>
 
     /// <summary>
     /// Create a new badge with uploaded image
+    /// Phase 6A.27: Admin creates System badges, EventOrganizer creates Custom badges
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>
     /// <param name="name">Badge name</param>
     /// <param name="position">Position on event image (TopLeft, TopRight, BottomLeft, BottomRight)</param>
+    /// <param name="expiresAt">Optional expiry date for the badge (ISO 8601 format)</param>
     /// <param name="file">Badge image file (PNG recommended for transparency)</param>
     /// <returns>Created badge</returns>
     [HttpPost]
@@ -88,10 +101,11 @@ public class BadgesController : BaseController<BadgesController>
     public async Task<IActionResult> CreateBadge(
         [FromForm] string name,
         [FromForm] BadgePosition position,
+        [FromForm] DateTime? expiresAt,
         IFormFile file)
     {
-        Logger.LogInformation("User {UserId} creating badge: {Name}",
-            User.TryGetUserId(), name);
+        Logger.LogInformation("User {UserId} creating badge: {Name} (expiresAt: {ExpiresAt})",
+            User.TryGetUserId(), name, expiresAt);
 
         if (file == null || file.Length == 0)
             return BadRequest(new ProblemDetails { Detail = "Badge image is required", Status = 400 });
@@ -103,6 +117,7 @@ public class BadgesController : BaseController<BadgesController>
         {
             Name = name,
             Position = position,
+            ExpiresAt = expiresAt,
             ImageData = memoryStream.ToArray(),
             FileName = file.FileName
         };
@@ -118,7 +133,8 @@ public class BadgesController : BaseController<BadgesController>
     }
 
     /// <summary>
-    /// Update a badge's details (name, position, displayOrder, isActive)
+    /// Update a badge's details (name, position, displayOrder, isActive, expiresAt)
+    /// Phase 6A.27: Ownership validation - Admin can edit any, EventOrganizer only their own
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>
     /// <param name="id">Badge ID</param>
@@ -142,7 +158,9 @@ public class BadgesController : BaseController<BadgesController>
             Name = dto.Name,
             Position = dto.Position,
             IsActive = dto.IsActive,
-            DisplayOrder = dto.DisplayOrder
+            DisplayOrder = dto.DisplayOrder,
+            ExpiresAt = dto.ExpiresAt,
+            ClearExpiry = dto.ClearExpiry
         };
 
         var result = await Mediator.Send(command);
@@ -190,6 +208,7 @@ public class BadgesController : BaseController<BadgesController>
 
     /// <summary>
     /// Delete a badge
+    /// Phase 6A.27: Ownership validation - Admin can delete any, EventOrganizer only their own
     /// System badges are only deactivated, not deleted
     /// Requires EventOrganizer, Admin, or AdminManager role
     /// </summary>

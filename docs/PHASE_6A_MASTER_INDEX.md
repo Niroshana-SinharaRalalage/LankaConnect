@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-12-11
+**Last Updated**: 2025-12-12
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -28,6 +28,8 @@
 | 6A.23 | Anonymous Sign-Up Workflow | ✅ Complete | PROGRESS_TRACKER.md Session 32 | 2025-12-10 |
 | 6A.24 | Ticket Generation & Email Enhancement | ✅ Complete | [PHASE_6A_24_TICKET_GENERATION_SUMMARY.md](./PHASE_6A_24_TICKET_GENERATION_SUMMARY.md) | 2025-12-11 |
 | 6A.25 | Email Groups Management | ✅ Complete | [PHASE_6A_25_EMAIL_GROUPS_SUMMARY.md](./PHASE_6A_25_EMAIL_GROUPS_SUMMARY.md) | 2025-12-11 |
+| 6A.26 | Badge Management System | ✅ Complete | PROGRESS_TRACKER.md Sessions 38-40 | 2025-12-12 |
+| 6A.27 | Badge Management Enhancement | ✅ Complete | PROGRESS_TRACKER.md Session 42 | 2025-12-12 |
 
 ---
 

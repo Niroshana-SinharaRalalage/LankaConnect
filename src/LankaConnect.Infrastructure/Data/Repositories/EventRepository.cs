@@ -264,4 +264,16 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         return (events, totalCount);
     }
+
+    /// <summary>
+    /// Phase 6A.27: Gets all events that have a specific badge assigned
+    /// Used by ExpiredBadgeCleanupJob to remove expired badges from events
+    /// </summary>
+    public async Task<IReadOnlyList<Event>> GetEventsWithBadgeAsync(Guid badgeId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(e => e.Badges)
+            .Where(e => e.Badges.Any(b => b.BadgeId == badgeId))
+            .ToListAsync(cancellationToken);
+    }
 }

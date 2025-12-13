@@ -1,6 +1,7 @@
 /**
  * Badge API Types
  * Phase 6A.25: Badge Management System
+ * Phase 6A.27: Added expiry date and role-based access
  */
 
 /**
@@ -15,6 +16,7 @@ export enum BadgePosition {
 
 /**
  * Badge DTO matching backend BadgeDto
+ * Phase 6A.27: Added expiresAt, isExpired, createdByUserId, creatorName
  */
 export interface BadgeDto {
   id: string;
@@ -25,24 +27,40 @@ export interface BadgeDto {
   isSystem: boolean;
   displayOrder: number;
   createdAt: string;
+  /** Phase 6A.27: Optional expiry date (ISO string, null = never expires) */
+  expiresAt: string | null;
+  /** Phase 6A.27: Whether the badge has expired */
+  isExpired: boolean;
+  /** Phase 6A.27: ID of the user who created this badge (null for system badges) */
+  createdByUserId: string | null;
+  /** Phase 6A.27: Display name of the creator (for Admin view) */
+  creatorName: string | null;
 }
 
 /**
  * Create badge request DTO
+ * Phase 6A.27: Added expiresAt parameter
  */
 export interface CreateBadgeDto {
   name: string;
   position: BadgePosition;
+  /** Phase 6A.27: Optional expiry date (ISO string) */
+  expiresAt?: string;
 }
 
 /**
  * Update badge request DTO
+ * Phase 6A.27: Added expiresAt and clearExpiry parameters
  */
 export interface UpdateBadgeDto {
   name?: string;
   position?: BadgePosition;
   isActive?: boolean;
   displayOrder?: number;
+  /** Phase 6A.27: New expiry date (ISO string, or null to not change) */
+  expiresAt?: string | null;
+  /** Phase 6A.27: Set to true to explicitly clear/remove the expiry date */
+  clearExpiry?: boolean;
 }
 
 /**

@@ -1,6 +1,7 @@
 /**
  * Badges React Query Hooks
  * Phase 6A.25: Badge Management System
+ * Phase 6A.27: Added forManagement and forAssignment parameters
  *
  * Provides React Query hooks for Badges API integration
  * Implements caching, optimistic updates, and proper error handling
@@ -29,11 +30,13 @@ import { ApiError } from '@/infrastructure/api/client/api-errors';
 /**
  * Query Keys for Badges
  * Centralized query key management for cache invalidation
+ * Phase 6A.27: Updated list key to include forManagement and forAssignment
  */
 export const badgeKeys = {
   all: ['badges'] as const,
   lists: () => [...badgeKeys.all, 'list'] as const,
-  list: (activeOnly: boolean) => [...badgeKeys.lists(), { activeOnly }] as const,
+  list: (activeOnly: boolean, forManagement: boolean = false, forAssignment: boolean = false) =>
+    [...badgeKeys.lists(), { activeOnly, forManagement, forAssignment }] as const,
   details: () => [...badgeKeys.all, 'detail'] as const,
   detail: (id: string) => [...badgeKeys.details(), id] as const,
   eventBadges: () => [...badgeKeys.all, 'event'] as const,
@@ -43,24 +46,31 @@ export const badgeKeys = {
 /**
  * useBadges Hook
  *
- * Fetches all badges (optionally filtered by active status)
+ * Fetches all badges with optional filters
+ * Phase 6A.27: Added forManagement and forAssignment parameters
  *
  * @param activeOnly - If true, returns only active badges (default). If false, returns all.
+ * @param forManagement - If true, filters for Badge Management UI (Admin: all, EventOrganizer: own custom)
+ * @param forAssignment - If true, filters for Badge Assignment UI (excludes expired badges)
  * @param options - Additional React Query options
  *
  * @example
  * ```tsx
  * const { data: badges, isLoading } = useBadges();
  * const { data: allBadges } = useBadges(false); // Include inactive
+ * const { data: managementBadges } = useBadges(false, true, false); // For badge management
+ * const { data: assignmentBadges } = useBadges(true, false, true); // For badge assignment
  * ```
  */
 export function useBadges(
   activeOnly: boolean = true,
+  forManagement: boolean = false,
+  forAssignment: boolean = false,
   options?: Omit<UseQueryOptions<BadgeDto[], ApiError>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
-    queryKey: badgeKeys.list(activeOnly),
-    queryFn: () => badgesRepository.getBadges(activeOnly),
+    queryKey: badgeKeys.list(activeOnly, forManagement, forAssignment),
+    queryFn: () => badgesRepository.getBadges(activeOnly, forManagement, forAssignment),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     ...options,
@@ -113,6 +123,7 @@ export function useEventBadges(
  * useCreateBadge Hook
  *
  * Mutation hook for creating a new badge
+ * Phase 6A.27: Added optional expiresAt parameter
  *
  * @example
  * ```tsx
@@ -121,7 +132,8 @@ export function useEventBadges(
  * await createBadge.mutateAsync({
  *   name: 'New Event',
  *   position: BadgePosition.TopRight,
- *   imageFile: file
+ *   imageFile: file,
+ *   expiresAt: '2025-12-31T00:00:00Z' // optional
  * });
  * ```
  */
@@ -133,11 +145,13 @@ export function useCreateBadge() {
       name,
       position,
       imageFile,
+      expiresAt,
     }: {
       name: string;
       position: BadgePosition;
       imageFile: File;
-    }) => badgesRepository.createBadge(name, position, imageFile),
+      expiresAt?: string;
+    }) => badgesRepository.createBadge(name, position, imageFile, expiresAt),
     onSuccess: () => {
       // Invalidate badge lists to refetch
       queryClient.invalidateQueries({ queryKey: badgeKeys.lists() });

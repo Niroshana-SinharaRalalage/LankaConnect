@@ -33,13 +33,18 @@ import {
  * Features:
  * - List all badges in a grid/table format
  * - Create new badge with image upload
- * - Edit badge details (name, position, active status)
+ * - Edit badge details (name, position, active status, expiry date)
  * - Delete custom badges (system badges can only be deactivated)
  * - Preview badge overlay
+ * Phase 6A.27: Added expiry date support and type indicators
+ * - Admin sees ALL badges (system + custom) with type tags
+ * - EventOrganizer sees only their own custom badges
  */
 export function BadgeManagement() {
-  // Fetch all badges (including inactive for admin management)
-  const { data: badges, isLoading, error, refetch } = useBadges(false);
+  // Phase 6A.27: Fetch badges for management (forManagement=true):
+  // - Admin sees ALL badges (system + custom) with type indicators
+  // - EventOrganizer sees only their own custom badges
+  const { data: badges, isLoading, error, refetch } = useBadges(false, true, false);
 
   // Mutations
   const createBadge = useCreateBadge();
@@ -57,10 +62,13 @@ export function BadgeManagement() {
   const [newBadgeName, setNewBadgeName] = React.useState('');
   const [newBadgePosition, setNewBadgePosition] = React.useState<BadgePosition>(BadgePosition.TopRight);
   const [newBadgeFile, setNewBadgeFile] = React.useState<File | null>(null);
+  const [newBadgeExpiresAt, setNewBadgeExpiresAt] = React.useState<string>(''); // Phase 6A.27
   const [editBadgeName, setEditBadgeName] = React.useState('');
   const [editBadgePosition, setEditBadgePosition] = React.useState<BadgePosition>(BadgePosition.TopRight);
   const [editBadgeActive, setEditBadgeActive] = React.useState(true);
   const [editBadgeFile, setEditBadgeFile] = React.useState<File | null>(null);
+  const [editBadgeExpiresAt, setEditBadgeExpiresAt] = React.useState<string>(''); // Phase 6A.27
+  const [editBadgeClearExpiry, setEditBadgeClearExpiry] = React.useState(false); // Phase 6A.27
 
   // File input refs
   const createFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -82,12 +90,14 @@ export function BadgeManagement() {
         name: newBadgeName.trim(),
         position: newBadgePosition,
         imageFile: newBadgeFile,
+        expiresAt: newBadgeExpiresAt || undefined, // Phase 6A.27
       });
 
       // Reset form and close dialog
       setNewBadgeName('');
       setNewBadgePosition(BadgePosition.TopRight);
       setNewBadgeFile(null);
+      setNewBadgeExpiresAt(''); // Phase 6A.27
       setIsCreateOpen(false);
     } catch (err) {
       console.error('Failed to create badge:', err);
@@ -112,11 +122,13 @@ export function BadgeManagement() {
           });
         }
       } else {
-        // Custom badge: update all details
+        // Custom badge: update all details including expiry (Phase 6A.27)
         const dto: UpdateBadgeDto = {
           name: editBadgeName.trim(),
           position: editBadgePosition,
           isActive: editBadgeActive,
+          clearExpiry: editBadgeClearExpiry,
+          expiresAt: editBadgeClearExpiry ? undefined : (editBadgeExpiresAt || undefined),
         };
         await updateBadge.mutateAsync({ badgeId: selectedBadge.id, dto });
       }
@@ -132,6 +144,8 @@ export function BadgeManagement() {
       // Reset and close
       setSelectedBadge(null);
       setEditBadgeFile(null);
+      setEditBadgeExpiresAt(''); // Phase 6A.27
+      setEditBadgeClearExpiry(false); // Phase 6A.27
       setIsEditOpen(false);
     } catch (err) {
       console.error('Failed to update badge:', err);
@@ -158,6 +172,9 @@ export function BadgeManagement() {
     setEditBadgePosition(badge.position);
     setEditBadgeActive(badge.isActive);
     setEditBadgeFile(null);
+    // Phase 6A.27: Set expiry state
+    setEditBadgeExpiresAt(badge.expiresAt ? badge.expiresAt.substring(0, 16) : ''); // Format for datetime-local input
+    setEditBadgeClearExpiry(false);
     setIsEditOpen(true);
   };
 
@@ -265,13 +282,18 @@ export function BadgeManagement() {
                   {getPositionDisplayName(badge.position)}
                 </div>
 
-                {/* System badge indicator */}
-                {badge.isSystem && (
+                {/* Phase 6A.27: Badge type indicator (System/Custom) */}
+                {badge.isSystem ? (
                   <div
-                    className="absolute top-2 left-2 px-2 py-0.5 text-xs font-medium rounded"
-                    style={{ background: '#FF7900', color: 'white' }}
+                    className="absolute top-2 left-2 px-2 py-0.5 text-xs font-medium rounded bg-blue-600 text-white"
                   >
                     System
+                  </div>
+                ) : (
+                  <div
+                    className="absolute top-2 left-2 px-2 py-0.5 text-xs font-medium rounded bg-purple-600 text-white"
+                  >
+                    Custom
                   </div>
                 )}
               </div>
@@ -293,6 +315,20 @@ export function BadgeManagement() {
                   >
                     {badge.isActive ? 'Active' : 'Inactive'}
                   </button>
+                </div>
+
+                {/* Phase 6A.27: Expiry status and creator info */}
+                <div className="text-xs text-gray-500 space-y-1 mb-2">
+                  {badge.expiresAt && (
+                    <div className={badge.isExpired ? 'text-red-500' : ''}>
+                      {badge.isExpired
+                        ? `Expired: ${new Date(badge.expiresAt).toLocaleDateString()}`
+                        : `Expires: ${new Date(badge.expiresAt).toLocaleDateString()}`}
+                    </div>
+                  )}
+                  {!badge.isSystem && badge.creatorName && (
+                    <div>By: {badge.creatorName}</div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -362,6 +398,22 @@ export function BadgeManagement() {
                 <option value={BadgePosition.BottomLeft}>Bottom Left</option>
                 <option value={BadgePosition.BottomRight}>Bottom Right</option>
               </select>
+            </div>
+
+            {/* Phase 6A.27: Expiry Date (optional) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expiry Date (optional)
+              </label>
+              <Input
+                type="datetime-local"
+                value={newBadgeExpiresAt}
+                onChange={(e) => setNewBadgeExpiresAt(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Leave empty for no expiration. Expired badges are auto-removed from events.
+              </p>
             </div>
 
             {/* Badge Image Upload */}
@@ -482,6 +534,51 @@ export function BadgeManagement() {
                 <option value={BadgePosition.BottomRight}>Bottom Right</option>
               </select>
             </div>
+
+            {/* Phase 6A.27: Expiry Date (only for custom badges) */}
+            {!selectedBadge?.isSystem && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expiry Date (optional)
+                </label>
+                <div className="space-y-2">
+                  <Input
+                    type="datetime-local"
+                    value={editBadgeClearExpiry ? '' : editBadgeExpiresAt}
+                    onChange={(e) => {
+                      setEditBadgeExpiresAt(e.target.value);
+                      setEditBadgeClearExpiry(false);
+                    }}
+                    className="w-full"
+                    disabled={editBadgeClearExpiry}
+                  />
+                  {selectedBadge?.expiresAt && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="clearExpiry"
+                        checked={editBadgeClearExpiry}
+                        onChange={(e) => {
+                          setEditBadgeClearExpiry(e.target.checked);
+                          if (e.target.checked) {
+                            setEditBadgeExpiresAt('');
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                      />
+                      <label htmlFor="clearExpiry" className="text-sm text-gray-600">
+                        Remove expiry date (badge will never expire)
+                      </label>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    {selectedBadge?.expiresAt
+                      ? `Current: ${new Date(selectedBadge.expiresAt).toLocaleString()}`
+                      : 'No expiry set. Badge will not expire.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Active Status */}
             <div className="flex items-center gap-3">

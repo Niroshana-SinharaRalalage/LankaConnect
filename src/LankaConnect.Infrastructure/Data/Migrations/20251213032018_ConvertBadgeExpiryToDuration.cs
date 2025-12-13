@@ -21,22 +21,6 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 schema: "badges",
                 table: "badges");
 
-            migrationBuilder.RenameColumn(
-                name: "HasOpenItems",
-                schema: "events",
-                table: "sign_up_lists",
-                newName: "has_open_items");
-
-            migrationBuilder.AlterColumn<bool>(
-                name: "has_open_items",
-                schema: "events",
-                table: "sign_up_lists",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean");
-
             migrationBuilder.AddColumn<int>(
                 name: "DurationDays",
                 schema: "badges",
@@ -100,22 +84,6 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 name: "DefaultDurationDays",
                 schema: "badges",
                 table: "badges");
-
-            migrationBuilder.RenameColumn(
-                name: "has_open_items",
-                schema: "events",
-                table: "sign_up_lists",
-                newName: "HasOpenItems");
-
-            migrationBuilder.AlterColumn<bool>(
-                name: "HasOpenItems",
-                schema: "events",
-                table: "sign_up_lists",
-                type: "boolean",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean",
-                oldDefaultValue: false);
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "ExpiresAt",

@@ -126,6 +126,10 @@ jobs:
           # Get Key Vault URI
           KEY_VAULT_URI=$(az keyvault show --name ${{ env.KEY_VAULT_NAME }} --query properties.vaultUri -o tsv)
 
+          # Get Stripe secrets from Key Vault
+          STRIPE_SECRET_KEY=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name stripe-secret-key --query value -o tsv)
+          STRIPE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name stripe-publishable-key --query value -o tsv)
+
           # Update Container App with new image and environment variables
           # Using ASP.NET Core hierarchical configuration format (e.g., ConnectionStrings__DefaultConnection)
           az containerapp update \
@@ -149,8 +153,8 @@ jobs:
               Email__SmtpPassword=secretref:smtp-password \
               Email__FromEmail=secretref:email-from-address \
               AzureStorage__ConnectionString=secretref:azure-storage-connection-string \
-              Stripe__SecretKey=secretref:stripe-secret-key \
-              Stripe__PublishableKey=secretref:stripe-publishable-key
+              "Stripe__SecretKey=$STRIPE_SECRET_KEY" \
+              "Stripe__PublishableKey=$STRIPE_PUBLISHABLE_KEY"
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

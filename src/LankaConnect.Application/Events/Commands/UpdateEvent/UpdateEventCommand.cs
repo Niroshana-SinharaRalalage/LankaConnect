@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -28,5 +29,7 @@ public record UpdateEventCommand(
     Currency? AdultPriceCurrency = null,
     decimal? ChildPriceAmount = null,
     Currency? ChildPriceCurrency = null,
-    int? ChildAgeLimit = null
+    int? ChildAgeLimit = null,
+    // Session 33: Group Tiered Pricing - optional
+    List<GroupPricingTierRequest>? GroupPricingTiers = null
 ) : ICommand;

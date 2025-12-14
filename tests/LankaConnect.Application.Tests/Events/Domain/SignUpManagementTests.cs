@@ -490,7 +490,7 @@ public class SignUpManagementTests
             true,
             false).Value;
 
-        signUpList.AddItem("Dessert", 3, SignUpItemCategory.Preferred);
+        signUpList.AddItem("Dessert", 3, SignUpItemCategory.Suggested);
 
         // Act
         var result = signUpList.UpdateDetails("Food", "Description", false, false, false);

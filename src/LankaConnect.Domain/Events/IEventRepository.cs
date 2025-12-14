@@ -47,11 +47,4 @@ public interface IEventRepository : IRepository<Event>
     /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
     /// </summary>
     Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default);
-
-    // EF Core change tracking helpers (Session 33: Group Pricing Tier Update Fix)
-    /// <summary>
-    /// Explicitly marks the Pricing property as modified for EF Core change tracking
-    /// Required for JSONB-stored owned entities that may not be automatically detected as modified
-    /// </summary>
-    void MarkPricingAsModified(Event @event);
 }

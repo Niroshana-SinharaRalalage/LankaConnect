@@ -290,16 +290,4 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Where(e => e.Badges.Any(eb => eb.ExpiresAt.HasValue && eb.ExpiresAt < now))
             .ToListAsync(cancellationToken);
     }
-
-    /// <summary>
-    /// Session 33: Explicitly marks the Pricing property as modified for EF Core change tracking
-    /// CRITICAL FIX: EF Core does not automatically detect changes to owned entities stored as JSONB
-    /// This method ensures that updates to group pricing tiers are persisted to the database
-    /// </summary>
-    public void MarkPricingAsModified(Event @event)
-    {
-        // Mark the Pricing owned entity as modified
-        // This forces EF Core to update the JSONB column even if it doesn't detect the change automatically
-        _context.Entry(@event).Property(e => e.Pricing).IsModified = true;
-    }
 }

@@ -223,9 +223,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             if (setPricingResult.IsFailure)
                 return setPricingResult;
 
-            // CRITICAL FIX: Explicitly mark Pricing as modified for EF Core JSONB change tracking
-            // Without this, EF Core might not detect changes to owned entities stored as JSONB
-            _eventRepository.MarkPricingAsModified(@event);
+            // Session 33 CORRECTED: EF Core automatically detects changes when Pricing object reference changes
+            // The domain methods (SetGroupPricing/SetDualPricing) assign "Pricing = pricing" which triggers automatic tracking
+            // No explicit change marking needed for JSONB columns - object replacement is sufficient
         }
 
         // Legacy: Update ticket price for backward compatibility

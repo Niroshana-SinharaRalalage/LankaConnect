@@ -419,7 +419,7 @@ export function BadgeManagement() {
 
       {/* Create Badge Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Badge</DialogTitle>
             <DialogDescription>
@@ -580,7 +580,7 @@ export function BadgeManagement() {
 
       {/* Edit Badge Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Badge</DialogTitle>
             <DialogDescription>

@@ -480,28 +480,28 @@ public class SignUpManagementTests
     }
 
     [Fact]
-    public void UpdateDetails_DisablingPreferredCategoryWithItems_ShouldFail()
+    public void UpdateDetails_DisablingSuggestedCategoryWithItems_ShouldFail()
     {
         // Arrange
         var signUpList = SignUpList.CreateWithCategories(
             "Food",
             "Description",
             false,
-            true,
-            false).Value;
+            false,
+            true).Value;  // Create with Suggested category enabled
 
         signUpList.AddItem("Dessert", 3, SignUpItemCategory.Suggested);
 
         // Act
-        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);
+        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);  // Try to disable all categories
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain("Cannot disable Preferred category because it contains items");
+        result.Errors.Should().Contain("Cannot disable Suggested category because it contains items");
     }
 
     [Fact]
-    public void UpdateDetails_DisablingSuggestedCategoryWithItems_ShouldFail()
+    public void UpdateDetails_DisablingSuggestedCategoryWithItems_AnotherScenario_ShouldFail()
     {
         // Arrange
         var signUpList = SignUpList.CreateWithCategories(

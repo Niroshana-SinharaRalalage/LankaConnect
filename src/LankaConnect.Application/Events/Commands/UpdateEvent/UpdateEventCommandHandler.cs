@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -89,12 +90,45 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             location = locationResult.Value;
         }
 
-        // Session 21: Handle pricing - dual pricing takes precedence over legacy single pricing
+        // Session 33: Handle pricing - group pricing takes precedence over dual and legacy single pricing
         Money? ticketPrice = null;
         TicketPricing? pricing = null;
+        bool isGroupPricing = false;
 
-        // Check if dual pricing fields are provided
-        if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
+        // Session 33: Check if group pricing tiers are provided (highest priority)
+        if (request.GroupPricingTiers != null && request.GroupPricingTiers.Count > 0)
+        {
+            // Build GroupPricingTier objects from request
+            var tiers = new List<GroupPricingTier>();
+            var currency = request.GroupPricingTiers[0].Currency; // Use currency from first tier
+
+            foreach (var tierRequest in request.GroupPricingTiers)
+            {
+                var priceResult = Money.Create(tierRequest.PricePerPerson, tierRequest.Currency);
+                if (priceResult.IsFailure)
+                    return Result.Failure(priceResult.Error);
+
+                var tierResult = GroupPricingTier.Create(
+                    tierRequest.MinAttendees,
+                    tierRequest.MaxAttendees,
+                    priceResult.Value
+                );
+
+                if (tierResult.IsFailure)
+                    return Result.Failure(tierResult.Error);
+
+                tiers.Add(tierResult.Value);
+            }
+
+            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency);
+            if (groupPricingResult.IsFailure)
+                return Result.Failure(groupPricingResult.Error);
+
+            pricing = groupPricingResult.Value;
+            isGroupPricing = true;
+        }
+        // Session 21: Check if dual pricing fields are provided
+        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
         {
             // Build dual pricing using TicketPricing value object
             var adultPriceResult = Money.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency.Value);
@@ -171,12 +205,27 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return removeLocationResult;
         }
 
-        // Session 21: Update dual pricing if provided
+        // Session 33 + Session 21: Update pricing if provided
         if (pricing != null)
         {
-            var setPricingResult = @event.SetDualPricing(pricing);
+            Result setPricingResult;
+            if (isGroupPricing)
+            {
+                // Session 33: Use SetGroupPricing for group tiered pricing
+                setPricingResult = @event.SetGroupPricing(pricing);
+            }
+            else
+            {
+                // Session 21: Use SetDualPricing for dual or single pricing
+                setPricingResult = @event.SetDualPricing(pricing);
+            }
+
             if (setPricingResult.IsFailure)
                 return setPricingResult;
+
+            // CRITICAL FIX: Explicitly mark Pricing as modified for EF Core JSONB change tracking
+            // Without this, EF Core might not detect changes to owned entities stored as JSONB
+            _eventRepository.MarkPricingAsModified(@event);
         }
 
         // Legacy: Update ticket price for backward compatibility

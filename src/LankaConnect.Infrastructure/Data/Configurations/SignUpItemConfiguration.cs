@@ -35,11 +35,16 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
         builder.Property(si => si.ItemCategory)
             .HasColumnName("item_category")
             .IsRequired()
-            .HasConversion<int>(); // Store as int: 0=Mandatory, 1=Preferred, 2=Suggested
+            .HasConversion<int>(); // Store as int: 0=Mandatory, 1=Preferred, 2=Suggested, 3=Open
 
         builder.Property(si => si.Notes)
             .HasColumnName("notes")
             .HasMaxLength(500);
+
+        // Phase 6A.27: User who created Open items (null for organizer-created items)
+        builder.Property(si => si.CreatedByUserId)
+            .HasColumnName("created_by_user_id")
+            .IsRequired(false);
 
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")

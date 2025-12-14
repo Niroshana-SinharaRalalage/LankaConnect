@@ -37,13 +37,15 @@ public class CreateSignUpListWithItemsCommandHandler : ICommandHandler<CreateSig
         ));
 
         // Create sign-up list with items in single operation
+        // Phase 6A.27: Pass HasOpenItems parameter
         var signUpListResult = SignUpList.CreateWithCategoriesAndItems(
             request.Category,
             request.Description,
             request.HasMandatoryItems,
             request.HasPreferredItems,
             request.HasSuggestedItems,
-            items);
+            items,
+            request.HasOpenItems);
 
         if (signUpListResult.IsFailure)
             return Result<Guid>.Failure(signUpListResult.Error);

@@ -34,12 +34,14 @@ public class UpdateSignUpListCommandHandler : ICommandHandler<UpdateSignUpListCo
             return Result.Failure($"Sign-up list with ID {request.SignUpListId} not found");
 
         // Update the sign-up list using domain method
+        // Phase 6A.27: Pass HasOpenItems parameter
         var updateResult = signUpList.UpdateDetails(
             request.Category,
             request.Description,
             request.HasMandatoryItems,
             request.HasPreferredItems,
-            request.HasSuggestedItems);
+            request.HasSuggestedItems,
+            request.HasOpenItems);
 
         if (updateResult.IsFailure)
             return updateResult;

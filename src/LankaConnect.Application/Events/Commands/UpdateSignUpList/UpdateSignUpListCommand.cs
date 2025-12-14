@@ -5,6 +5,7 @@ namespace LankaConnect.Application.Events.Commands.UpdateSignUpList;
 /// <summary>
 /// Command to update sign-up list details (category, description, and category flags)
 /// Phase 6A.13: Edit Sign-Up List feature
+/// Phase 6A.27: Added HasOpenItems for user-submitted items
 /// </summary>
 public record UpdateSignUpListCommand(
     Guid EventId,
@@ -13,5 +14,6 @@ public record UpdateSignUpListCommand(
     string Description,
     bool HasMandatoryItems,
     bool HasPreferredItems,
-    bool HasSuggestedItems
+    bool HasSuggestedItems,
+    bool HasOpenItems = false // Phase 6A.27
 ) : ICommand;

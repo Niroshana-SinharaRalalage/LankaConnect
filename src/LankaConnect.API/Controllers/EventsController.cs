@@ -56,6 +56,9 @@ using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
+using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
+using LankaConnect.Application.Events.Commands.UpdateOpenSignUpItem;
+using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
 using LankaConnect.Application.Events.Queries.GetTicket;
 using LankaConnect.Application.Events.Queries.GetTicketPdf;
@@ -1309,7 +1312,8 @@ public class EventsController : BaseController<EventsController>
             request.HasMandatoryItems,
             request.HasPreferredItems,
             request.HasSuggestedItems,
-            items);
+            items,
+            request.HasOpenItems); // Phase 6A.28: Open Items support
 
         var result = await Mediator.Send(command);
 
@@ -1338,7 +1342,8 @@ public class EventsController : BaseController<EventsController>
             request.Description,
             request.HasMandatoryItems,
             request.HasPreferredItems,
-            request.HasSuggestedItems);
+            request.HasSuggestedItems,
+            request.HasOpenItems); // Phase 6A.28: Open Items support
 
         var result = await Mediator.Send(command);
 
@@ -1526,6 +1531,113 @@ public class EventsController : BaseController<EventsController>
 
     #endregion
 
+    #region Open Sign-Up Items (Phase 6A.27)
+
+    /// <summary>
+    /// Add a user-submitted Open item to a sign-up list
+    /// Phase 6A.27: Allows authenticated users to add their own items to Open sign-up lists
+    /// The user who creates the item is automatically committed to bringing it
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/open-items")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] AddOpenSignUpItemRequest request)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} adding Open item '{ItemName}' to sign-up list {SignUpId} for event {EventId}",
+            userId, request.ItemName, signupId, eventId);
+
+        var command = new AddOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            userId,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update a user-submitted Open item
+    /// Phase 6A.27: Allows users to update their own Open items
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}/open-items/{itemId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        Guid itemId,
+        [FromBody] UpdateOpenSignUpItemRequest request)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} updating Open item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            userId, itemId, signupId, eventId);
+
+        var command = new UpdateOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            itemId,
+            userId,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Cancel (delete) a user-submitted Open item
+    /// Phase 6A.27: Allows users to cancel their own Open items
+    /// </summary>
+    [HttpDelete("{eventId:guid}/signups/{signupId:guid}/open-items/{itemId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        Guid itemId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} canceling Open item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            userId, itemId, signupId, eventId);
+
+        var command = new CancelOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            itemId,
+            userId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
     #endregion
 }
 
@@ -1594,7 +1706,8 @@ public record CreateSignUpListRequest(
     bool HasMandatoryItems,
     bool HasPreferredItems,
     bool HasSuggestedItems,
-    List<SignUpItemRequestDto> Items);
+    List<SignUpItemRequestDto> Items,
+    bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 
@@ -1603,7 +1716,8 @@ public record UpdateSignUpListRequest(
     string Description,
     bool HasMandatoryItems,
     bool HasPreferredItems,
-    bool HasSuggestedItems);
+    bool HasSuggestedItems,
+    bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
 public record SignUpItemRequestDto(
     string ItemDescription,
@@ -1648,4 +1762,28 @@ public record CommitToSignUpItemAnonymousRequest(
     int Quantity,
     string? Notes = null,
     string? ContactName = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request to add a user-submitted Open item to a sign-up list
+/// Phase 6A.27: Open sign-up items feature
+/// </summary>
+public record AddOpenSignUpItemRequest(
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request to update a user-submitted Open item
+/// Phase 6A.27: Open sign-up items feature
+/// </summary>
+public record UpdateOpenSignUpItemRequest(
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
     string? ContactPhone = null);

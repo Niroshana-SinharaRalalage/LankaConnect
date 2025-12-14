@@ -44,6 +44,11 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
             .HasColumnName("has_suggested_items")
             .HasDefaultValue(false);
 
+        // Phase 6A.27: Open items flag - allows users to add their own items
+        builder.Property(s => s.HasOpenItems)
+            .HasColumnName("has_open_items")
+            .HasDefaultValue(false);
+
         // Store predefined items as JSON array (legacy)
         builder.Property<List<string>>("_predefinedItems")
             .HasColumnName("predefined_items")

@@ -15,6 +15,8 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNotification<PaymentCompletedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ITicketService _ticketService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
@@ -22,12 +24,16 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
 
     public PaymentCompletedEventHandler(
         IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
+        ITicketService ticketService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         ILogger<PaymentCompletedEventHandler> logger)
     {
         _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
+        _ticketService = ticketService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
@@ -136,23 +142,82 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 parameters["HasContactInfo"] = false;
             }
 
-            // TODO: Phase 6A.24 - Generate ticket with QR code here (Phase 5)
-            // var ticketResult = await _ticketService.GenerateTicketAsync(registration.Id, @event.Id, cancellationToken);
-            // if (ticketResult.IsSuccess)
-            // {
-            //     parameters["TicketCode"] = ticketResult.Value.TicketCode;
-            //     parameters["TicketPdfUrl"] = ticketResult.Value.PdfBlobUrl;
-            //     parameters["HasTicket"] = true;
-            // }
+            // Phase 6A.24: Generate ticket with QR code
+            var ticketResult = await _ticketService.GenerateTicketAsync(
+                registration.Id,
+                @event.Id,
+                cancellationToken);
 
-            parameters["HasTicket"] = false; // Placeholder until ticket generation is implemented
+            byte[]? pdfAttachment = null;
+            if (ticketResult.IsSuccess)
+            {
+                _logger.LogInformation("Ticket generated successfully: {TicketCode}", ticketResult.Value.TicketCode);
 
-            // Send templated email
-            var result = await _emailService.SendTemplatedEmailAsync(
-                "RsvpConfirmation",
-                recipientEmail,
+                parameters["HasTicket"] = true;
+                parameters["TicketCode"] = ticketResult.Value.TicketCode;
+                parameters["TicketExpiryDate"] = @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy");
+
+                // Get PDF bytes for email attachment
+                var pdfResult = await _ticketService.GetTicketPdfAsync(ticketResult.Value.TicketId, cancellationToken);
+                if (pdfResult.IsSuccess)
+                {
+                    pdfAttachment = pdfResult.Value;
+                    _logger.LogInformation("Ticket PDF retrieved successfully, size: {Size} bytes", pdfAttachment.Length);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to retrieve ticket PDF: {Error}", string.Join(", ", pdfResult.Errors));
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Failed to generate ticket: {Error}", string.Join(", ", ticketResult.Errors));
+                parameters["HasTicket"] = false;
+            }
+
+            // Render email template
+            var subjectResult = await _emailTemplateService.RenderTemplateAsync(
+                "ticket-confirmation-subject",
                 parameters,
                 cancellationToken);
+            var htmlResult = await _emailTemplateService.RenderTemplateAsync(
+                "ticket-confirmation-html",
+                parameters,
+                cancellationToken);
+            var textResult = await _emailTemplateService.RenderTemplateAsync(
+                "ticket-confirmation-text",
+                parameters,
+                cancellationToken);
+
+            if (subjectResult.IsFailure || htmlResult.IsFailure || textResult.IsFailure)
+            {
+                _logger.LogError("Failed to render email template");
+                return;
+            }
+
+            // Build email message with attachment
+            var emailMessage = new EmailMessageDto
+            {
+                ToEmail = recipientEmail,
+                ToName = recipientName,
+                Subject = subjectResult.Value.Subject,
+                HtmlBody = htmlResult.Value.HtmlBody,
+                PlainTextBody = textResult.Value.PlainTextBody,
+                Attachments = pdfAttachment != null
+                    ? new List<EmailAttachment>
+                    {
+                        new EmailAttachment
+                        {
+                            FileName = $"ticket-{ticketResult.Value?.TicketCode ?? "event"}.pdf",
+                            Content = pdfAttachment,
+                            ContentType = "application/pdf"
+                        }
+                    }
+                    : null
+            };
+
+            // Send email with attachment
+            var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
 
             if (result.IsFailure)
             {
@@ -163,8 +228,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             else
             {
                 _logger.LogInformation(
-                    "Payment confirmation email sent successfully to {Email} for Registration {RegistrationId} with {AttendeeCount} attendees",
-                    recipientEmail, domainEvent.RegistrationId, attendeeDetails.Count);
+                    "Payment confirmation email sent successfully to {Email} for Registration {RegistrationId} with {AttendeeCount} attendees, HasTicket: {HasTicket}",
+                    recipientEmail, domainEvent.RegistrationId, attendeeDetails.Count, parameters["HasTicket"]);
             }
         }
         catch (Exception ex)

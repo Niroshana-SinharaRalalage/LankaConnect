@@ -12,6 +12,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
+using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
@@ -55,7 +56,6 @@ using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
-using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
 using LankaConnect.Application.Events.Commands.UpdateOpenSignUpItem;
 using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
@@ -463,6 +463,46 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.24: Resend ticket email to the registered user
+    /// Only the registration owner can resend their ticket
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/resend-ticket")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ResendTicket(Guid registrationId)
+    {
+        // Get current user ID from claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            Logger.LogWarning("Resend ticket attempted without valid user ID claim");
+            return Unauthorized();
+        }
+
+        Logger.LogInformation("User {UserId} requesting to resend ticket for Registration {RegistrationId}",
+            userId, registrationId);
+
+        var command = new ResendTicketEmailCommand(registrationId, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            return Ok(new { message = "Ticket email resent successfully" });
+        }
+
+        // Check if it's an authorization error
+        if (result.Errors.Any(e => e.Contains("Not authorized")))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = result.Errors.First() });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Register anonymous attendee for an event (No authentication required)
     /// </summary>
     [HttpPost("{id:guid}/register-anonymous")]
@@ -630,7 +670,7 @@ public class EventsController : BaseController<EventsController>
             return NotFound(new { message = "You are not registered for this event" });
         }
 
-        var command = new ResendTicketEmailCommand(eventId, registrationResult.Value.Id, userId);
+        var command = new ResendTicketEmailCommand(registrationResult.Value.Id, userId);
         var result = await Mediator.Send(command);
 
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)

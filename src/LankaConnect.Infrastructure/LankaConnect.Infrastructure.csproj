@@ -40,4 +40,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Phase 6A.24: Include email templates in publish output -->
+  <ItemGroup>
+    <Content Include="Templates\Email\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -277,7 +277,8 @@ public class PaymentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing webhook");
+            _logger.LogError(ex, "Error processing webhook - Type: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                ex.GetType().FullName, ex.Message, ex.StackTrace);
             return StatusCode(500);
         }
     }
@@ -367,9 +368,9 @@ public class PaymentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling checkout.session.completed webhook");
-            // Don't throw - we've already logged the error and marked the event as processed
-            // This prevents Stripe from retrying the webhook indefinitely
+            _logger.LogError(ex, "Error handling checkout.session.completed webhook - Type: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
+                ex.GetType().FullName, ex.Message, ex.InnerException?.Message ?? "None");
+            throw; // Re-throw to trigger outer catch block with HTTP 500
         }
     }
 

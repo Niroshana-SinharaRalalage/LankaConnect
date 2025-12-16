@@ -152,7 +152,8 @@ jobs:
               EmailSettings__TemplateBasePath=Templates/Email \
               AzureStorage__ConnectionString=secretref:azure-storage-connection-string \
               Stripe__SecretKey=secretref:stripe-secret-key \
-              Stripe__PublishableKey=secretref:stripe-publishable-key
+              Stripe__PublishableKey=secretref:stripe-publishable-key \
+              Stripe__WebhookSecret=secretref:stripe-webhook-secret
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

@@ -232,7 +232,8 @@ public class PaymentsController : ControllerBase
             var stripeEvent = EventUtility.ConstructEvent(
                 json,
                 signatureHeader,
-                _stripeOptions.WebhookSecret
+                _stripeOptions.WebhookSecret,
+                throwOnApiVersionMismatch: false
             );
 
             _logger.LogInformation("Processing webhook event {EventId} of type {EventType}", stripeEvent.Id, stripeEvent.Type);

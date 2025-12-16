@@ -6,6 +6,7 @@ namespace LankaConnect.Application.Badges.DTOs;
 /// Extension methods for mapping Badge domain entity to DTOs
 /// Phase 6A.27: Centralized mapping logic
 /// Phase 6A.28: Changed to duration-based expiration model
+/// Phase 6A.31a: Added per-location configuration mapping
 /// </summary>
 public static class BadgeMappingExtensions
 {
@@ -21,7 +22,17 @@ public static class BadgeMappingExtensions
             Id = badge.Id,
             Name = badge.Name,
             ImageUrl = badge.ImageUrl,
+
+            // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
             Position = badge.Position,
+#pragma warning restore CS0618
+
+            // Phase 6A.31a: Map per-location configurations
+            ListingConfig = badge.ListingConfig.ToDto(),
+            FeaturedConfig = badge.FeaturedConfig.ToDto(),
+            DetailConfig = badge.DetailConfig.ToDto(),
+
             IsActive = badge.IsActive,
             IsSystem = badge.IsSystem,
             DisplayOrder = badge.DisplayOrder,
@@ -29,6 +40,22 @@ public static class BadgeMappingExtensions
             DefaultDurationDays = badge.DefaultDurationDays,
             CreatedByUserId = badge.CreatedByUserId,
             CreatorName = creatorName
+        };
+    }
+
+    /// <summary>
+    /// Maps BadgeLocationConfig value object to DTO
+    /// Phase 6A.31a: Per-location configuration mapping
+    /// </summary>
+    public static BadgeLocationConfigDto ToDto(this BadgeLocationConfig config)
+    {
+        return new BadgeLocationConfigDto
+        {
+            PositionX = config.PositionX,
+            PositionY = config.PositionY,
+            SizeWidth = config.SizeWidth,
+            SizeHeight = config.SizeHeight,
+            Rotation = config.Rotation
         };
     }
 }

@@ -2,6 +2,9 @@ using FluentAssertions;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Badges.Enums;
 
+// Phase 6A.31a: Suppress obsolete warnings for backward compatibility during two-phase migration
+#pragma warning disable CS0618
+
 namespace LankaConnect.Application.Tests.Badges.Domain;
 
 /// <summary>

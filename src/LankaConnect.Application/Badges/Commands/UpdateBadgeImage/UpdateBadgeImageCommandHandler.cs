@@ -78,17 +78,8 @@ public class UpdateBadgeImageCommandHandler : IRequestHandler<UpdateBadgeImageCo
         }
 
         // 8. Return updated DTO
-        var dto = new BadgeDto
-        {
-            Id = badge.Id,
-            Name = badge.Name,
-            ImageUrl = badge.ImageUrl,
-            Position = badge.Position,
-            IsActive = badge.IsActive,
-            IsSystem = badge.IsSystem,
-            DisplayOrder = badge.DisplayOrder,
-            CreatedAt = badge.CreatedAt
-        };
+        // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
+        var dto = badge.ToBadgeDto();
 
         return Result<BadgeDto>.Success(dto);
     }

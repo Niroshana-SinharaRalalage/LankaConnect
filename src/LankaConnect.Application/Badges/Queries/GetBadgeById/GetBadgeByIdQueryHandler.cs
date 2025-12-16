@@ -25,17 +25,8 @@ public class GetBadgeByIdQueryHandler : IQueryHandler<GetBadgeByIdQuery, BadgeDt
         if (badge == null)
             return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
 
-        var dto = new BadgeDto
-        {
-            Id = badge.Id,
-            Name = badge.Name,
-            ImageUrl = badge.ImageUrl,
-            Position = badge.Position,
-            IsActive = badge.IsActive,
-            IsSystem = badge.IsSystem,
-            DisplayOrder = badge.DisplayOrder,
-            CreatedAt = badge.CreatedAt
-        };
+        // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
+        var dto = badge.ToBadgeDto();
 
         return Result<BadgeDto>.Success(dto);
     }

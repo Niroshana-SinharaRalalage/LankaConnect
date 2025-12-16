@@ -35,12 +35,101 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
             .HasMaxLength(255)
             .IsRequired();
 
+        // Phase 6A.31a: Keep Position field for backward compatibility during two-phase migration
+#pragma warning disable CS0618
         builder.Property(b => b.Position)
             .IsRequired()
             .HasConversion(
                 v => v.ToString(),
                 v => (BadgePosition)Enum.Parse(typeof(BadgePosition), v))
             .HasMaxLength(20);
+#pragma warning restore CS0618
+
+        // Phase 6A.31a: Owned entity mapping for location-specific badge configurations
+        // Using individual columns per ADR-1 (not JSON) for type safety and query performance
+        builder.OwnsOne(b => b.ListingConfig, cfg =>
+        {
+            cfg.Property(c => c.PositionX)
+                .HasColumnName("position_x_listing")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.PositionY)
+                .HasColumnName("position_y_listing")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeWidth)
+                .HasColumnName("size_width_listing")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeHeight)
+                .HasColumnName("size_height_listing")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.Rotation)
+                .HasColumnName("rotation_listing")
+                .HasColumnType("decimal(5,2)")
+                .IsRequired();
+        });
+
+        builder.OwnsOne(b => b.FeaturedConfig, cfg =>
+        {
+            cfg.Property(c => c.PositionX)
+                .HasColumnName("position_x_featured")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.PositionY)
+                .HasColumnName("position_y_featured")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeWidth)
+                .HasColumnName("size_width_featured")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeHeight)
+                .HasColumnName("size_height_featured")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.Rotation)
+                .HasColumnName("rotation_featured")
+                .HasColumnType("decimal(5,2)")
+                .IsRequired();
+        });
+
+        builder.OwnsOne(b => b.DetailConfig, cfg =>
+        {
+            cfg.Property(c => c.PositionX)
+                .HasColumnName("position_x_detail")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.PositionY)
+                .HasColumnName("position_y_detail")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeWidth)
+                .HasColumnName("size_width_detail")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.SizeHeight)
+                .HasColumnName("size_height_detail")
+                .HasColumnType("decimal(5,4)")
+                .IsRequired();
+
+            cfg.Property(c => c.Rotation)
+                .HasColumnName("rotation_detail")
+                .HasColumnType("decimal(5,2)")
+                .IsRequired();
+        });
 
         builder.Property(b => b.IsActive)
             .IsRequired()

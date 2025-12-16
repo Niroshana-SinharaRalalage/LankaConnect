@@ -67,24 +67,13 @@ public class AssignBadgeToEventCommandHandler : IRequestHandler<AssignBadgeToEve
 
         // 7. Return DTO with expiration info
         var eventBadge = assignResult.Value;
+        // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
         var dto = new EventBadgeDto
         {
             Id = eventBadge.Id,
             EventId = eventBadge.EventId,
             BadgeId = eventBadge.BadgeId,
-            Badge = new BadgeDto
-            {
-                Id = badge.Id,
-                Name = badge.Name,
-                ImageUrl = badge.ImageUrl,
-                Position = badge.Position,
-                IsActive = badge.IsActive,
-                IsSystem = badge.IsSystem,
-                DisplayOrder = badge.DisplayOrder,
-                CreatedAt = badge.CreatedAt,
-                DefaultDurationDays = badge.DefaultDurationDays,
-                CreatedByUserId = badge.CreatedByUserId
-            },
+            Badge = badge.ToBadgeDto(),
             AssignedAt = eventBadge.AssignedAt,
             AssignedByUserId = eventBadge.AssignedByUserId,
             DurationDays = eventBadge.DurationDays,

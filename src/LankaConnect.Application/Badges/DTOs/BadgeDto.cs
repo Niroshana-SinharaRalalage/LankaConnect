@@ -7,13 +7,36 @@ namespace LankaConnect.Application.Badges.DTOs;
 /// Phase 6A.25: Badge Management System
 /// Phase 6A.27: Added role-based filtering
 /// Phase 6A.28: Changed ExpiresAt to DefaultDurationDays (duration-based expiration)
+/// Phase 6A.31a: Added per-location badge configurations
 /// </summary>
 public record BadgeDto
 {
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public string ImageUrl { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 6A.31a: DEPRECATED - Use ListingConfig, FeaturedConfig, DetailConfig instead
+    /// Kept for backward compatibility during two-phase migration
+    /// </summary>
+    [Obsolete("Use ListingConfig, FeaturedConfig, and DetailConfig instead")]
     public BadgePosition Position { get; init; }
+
+    /// <summary>
+    /// Phase 6A.31a: Badge configuration for Events Listing page
+    /// </summary>
+    public BadgeLocationConfigDto ListingConfig { get; init; } = null!;
+
+    /// <summary>
+    /// Phase 6A.31a: Badge configuration for Featured Banner (home page)
+    /// </summary>
+    public BadgeLocationConfigDto FeaturedConfig { get; init; } = null!;
+
+    /// <summary>
+    /// Phase 6A.31a: Badge configuration for Event Detail Hero
+    /// </summary>
+    public BadgeLocationConfigDto DetailConfig { get; init; } = null!;
+
     public bool IsActive { get; init; }
     public bool IsSystem { get; init; }
     public int DisplayOrder { get; init; }

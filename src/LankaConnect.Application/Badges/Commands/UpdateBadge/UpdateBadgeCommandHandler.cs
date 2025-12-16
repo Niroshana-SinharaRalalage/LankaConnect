@@ -57,10 +57,13 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
         // 4. Update badge properties (name, position, displayOrder) - only if values provided
         if (request.Name != null || request.Position != null || request.DisplayOrder != null)
         {
+            // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
             var updateResult = badge.Update(
                 request.Name ?? badge.Name,
                 request.Position ?? badge.Position,
                 request.DisplayOrder ?? badge.DisplayOrder);
+#pragma warning restore CS0618
 
             if (!updateResult.IsSuccess)
                 return Result<BadgeDto>.Failure(updateResult.Errors);

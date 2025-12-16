@@ -25,6 +25,7 @@ public class GetEventBadgesQueryHandler : IQueryHandler<GetEventBadgesQuery, IRe
         if (@event == null)
             return Result<IReadOnlyList<EventBadgeDto>>.Failure($"Event with ID {request.EventId} not found");
 
+        // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
         var dtos = @event.Badges
             .Where(eb => eb.Badge != null)
             .Select(eb => new EventBadgeDto
@@ -32,17 +33,7 @@ public class GetEventBadgesQueryHandler : IQueryHandler<GetEventBadgesQuery, IRe
                 Id = eb.Id,
                 EventId = eb.EventId,
                 BadgeId = eb.BadgeId,
-                Badge = new BadgeDto
-                {
-                    Id = eb.Badge!.Id,
-                    Name = eb.Badge.Name,
-                    ImageUrl = eb.Badge.ImageUrl,
-                    Position = eb.Badge.Position,
-                    IsActive = eb.Badge.IsActive,
-                    IsSystem = eb.Badge.IsSystem,
-                    DisplayOrder = eb.Badge.DisplayOrder,
-                    CreatedAt = eb.Badge.CreatedAt
-                },
+                Badge = eb.Badge!.ToBadgeDto(),
                 AssignedAt = eb.AssignedAt,
                 AssignedByUserId = eb.AssignedByUserId
             })

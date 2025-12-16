@@ -27,8 +27,29 @@ public class Badge : BaseEntity
 
     /// <summary>
     /// Position where the badge should appear on event images
+    /// Phase 6A.31a: DEPRECATED - Use location-specific configs instead
+    /// Kept for backward compatibility during two-phase migration
     /// </summary>
+    [Obsolete("Use ListingConfig, FeaturedConfig, and DetailConfig instead")]
     public BadgePosition Position { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Events Listing page (/events)
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig ListingConfig { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Featured Banner (home page)
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig FeaturedConfig { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Event Detail Hero (/events/{id})
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig DetailConfig { get; private set; }
 
     /// <summary>
     /// Whether the badge is currently active and available for assignment
@@ -64,6 +85,9 @@ public class Badge : BaseEntity
         Name = null!;
         ImageUrl = null!;
         BlobName = null!;
+        ListingConfig = BadgeLocationConfig.DefaultListing;
+        FeaturedConfig = BadgeLocationConfig.DefaultFeatured;
+        DetailConfig = BadgeLocationConfig.DefaultDetail;
     }
 
     private Badge(
@@ -74,17 +98,30 @@ public class Badge : BaseEntity
         bool isSystem,
         int displayOrder,
         Guid? createdByUserId,
-        int? defaultDurationDays = null)
+        int? defaultDurationDays = null,
+        BadgeLocationConfig? listingConfig = null,
+        BadgeLocationConfig? featuredConfig = null,
+        BadgeLocationConfig? detailConfig = null)
     {
         Name = name;
         ImageUrl = imageUrl;
         BlobName = blobName;
+
+        // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
         Position = position;
+#pragma warning restore CS0618
+
         IsActive = true;
         IsSystem = isSystem;
         DisplayOrder = displayOrder;
         CreatedByUserId = createdByUserId;
         DefaultDurationDays = defaultDurationDays;
+
+        // Phase 6A.31a: Initialize location-specific configs with defaults if not provided
+        ListingConfig = listingConfig ?? BadgeLocationConfig.DefaultListing;
+        FeaturedConfig = featuredConfig ?? BadgeLocationConfig.DefaultFeatured;
+        DetailConfig = detailConfig ?? BadgeLocationConfig.DefaultDetail;
     }
 
     /// <summary>
@@ -184,7 +221,12 @@ public class Badge : BaseEntity
             return Result.Failure("Display order must be non-negative");
 
         Name = name.Trim();
+
+        // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
         Position = position;
+#pragma warning restore CS0618
+
         DisplayOrder = displayOrder;
         MarkAsUpdated();
 
@@ -258,5 +300,59 @@ public class Badge : BaseEntity
         DefaultDurationDays = durationDays;
         MarkAsUpdated();
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Events Listing page
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateListingConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        ListingConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Featured Banner
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateFeaturedConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        FeaturedConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Event Detail Hero
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateDetailConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        DetailConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates all location configs at once (convenience method)
+    /// Phase 6A.31a: For "Apply to all locations" UI feature
+    /// </summary>
+    public void UpdateAllLocationConfigs(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        ListingConfig = config;
+        FeaturedConfig = config;
+        DetailConfig = config;
+        MarkAsUpdated();
     }
 }

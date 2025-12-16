@@ -29,6 +29,10 @@ import {
   useAddSignUpList,
   useRemoveSignUpList,
   useCommitToSignUpItem,
+  // Phase 6A.27: Open Sign-Up Items
+  useAddOpenSignUpItem,
+  useUpdateOpenSignUpItem,
+  useCancelOpenSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
 import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import {
@@ -41,8 +45,10 @@ import {
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
+import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 /**
  * Props for SignUpManagementSection
@@ -83,6 +89,12 @@ export function SignUpManagementSection({
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Phase 6A.27: Open sign-up item modal state
+  const [openItemModalOpen, setOpenItemModalOpen] = useState(false);
+  const [openItemSignUpListId, setOpenItemSignUpListId] = useState<string>('');
+  const [openItemSignUpListCategory, setOpenItemSignUpListCategory] = useState<string>('');
+  const [editingOpenItem, setEditingOpenItem] = useState<SignUpItemDto | null>(null);
+
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
 
@@ -91,6 +103,14 @@ export function SignUpManagementSection({
   const cancelCommitment = useCancelCommitment();
   const commitToSignUpItem = useCommitToSignUpItem();
   const removeSignUpListMutation = useRemoveSignUpList();
+
+  // Phase 6A.27: Open sign-up item mutations
+  const addOpenSignUpItem = useAddOpenSignUpItem();
+  const updateOpenSignUpItem = useUpdateOpenSignUpItem();
+  const cancelOpenSignUpItem = useCancelOpenSignUpItem();
+
+  // Auth store for user info
+  const { user } = useAuthStore();
 
   // Initialize active tab on first load (moved here to fix hooks order)
   React.useEffect(() => {
@@ -259,6 +279,8 @@ export function SignUpManagementSection({
         return 'bg-blue-100 text-blue-800 border-blue-300';
       case SignUpItemCategory.Suggested:
         return 'bg-green-100 text-green-800 border-green-300';
+      case SignUpItemCategory.Open:
+        return 'bg-purple-100 text-purple-800 border-purple-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
@@ -273,9 +295,77 @@ export function SignUpManagementSection({
         return 'Preferred';
       case SignUpItemCategory.Suggested:
         return 'Suggested';
+      case SignUpItemCategory.Open:
+        return 'Open';
       default:
         return 'Unknown';
     }
+  };
+
+  // Phase 6A.27: Open item handlers
+  const openAddOpenItemModal = (signUpListId: string, signUpListCategory: string) => {
+    if (!userId) {
+      alert('Please log in to add items');
+      return;
+    }
+    setOpenItemSignUpListId(signUpListId);
+    setOpenItemSignUpListCategory(signUpListCategory);
+    setEditingOpenItem(null);
+    setOpenItemModalOpen(true);
+  };
+
+  const openEditOpenItemModal = (signUpListId: string, signUpListCategory: string, item: SignUpItemDto) => {
+    if (!userId) {
+      alert('Please log in to edit items');
+      return;
+    }
+    setOpenItemSignUpListId(signUpListId);
+    setOpenItemSignUpListCategory(signUpListCategory);
+    setEditingOpenItem(item);
+    setOpenItemModalOpen(true);
+  };
+
+  const handleOpenItemSubmit = async (data: OpenItemFormData) => {
+    if (!userId) {
+      throw new Error('Please log in to submit items');
+    }
+
+    if (editingOpenItem) {
+      // Update existing Open item
+      await updateOpenSignUpItem.mutateAsync({
+        eventId,
+        signupId: openItemSignUpListId,
+        itemId: editingOpenItem.id,
+        itemName: data.itemName,
+        quantity: data.quantity,
+        notes: data.notes,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+      });
+    } else {
+      // Add new Open item
+      await addOpenSignUpItem.mutateAsync({
+        eventId,
+        signupId: openItemSignUpListId,
+        itemName: data.itemName,
+        quantity: data.quantity,
+        notes: data.notes,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+      });
+    }
+  };
+
+  const handleOpenItemCancel = async () => {
+    if (!editingOpenItem || !userId) return;
+
+    await cancelOpenSignUpItem.mutateAsync({
+      eventId,
+      signupId: openItemSignUpListId,
+      itemId: editingOpenItem.id,
+    });
   };
 
   // Loading state
@@ -352,8 +442,15 @@ export function SignUpManagementSection({
         // Check if current user has committed to this list
         const userCommitment = signUpList.commitments.find((c) => c.userId === userId);
 
-        // Check if this is a category-based sign-up (has items)
-        const isCategoryBased = signUpList.items && signUpList.items.length > 0;
+        // Check if this is a category-based sign-up (has items or has category flags)
+        // Phase 6A.28: hasPreferredItems kept for backwards compatibility but Preferred UI is hidden
+        const isCategoryBased = (signUpList.items && signUpList.items.length > 0) ||
+          signUpList.hasMandatoryItems || signUpList.hasPreferredItems ||
+          signUpList.hasSuggestedItems || signUpList.hasOpenItems;
+
+        // Phase 6A.27: Get Open items (user-submitted)
+        const openItems = signUpList.items?.filter(item => item.isOpenItem) || [];
+        const userOpenItems = openItems.filter(item => item.createdByUserId === userId);
 
         return (
           <Card key={signUpList.id}>
@@ -414,9 +511,15 @@ export function SignUpManagementSection({
               {/* CATEGORY-BASED SIGN-UPS (NEW) */}
               {isCategoryBased ? (
                 <div className="space-y-6">
-                  {/* Group items by category */}
-                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Preferred, SignUpItemCategory.Suggested].map((category) => {
-                    const categoryItems = signUpList.items.filter(item => item.itemCategory === category);
+                  {/* Group items by category - Phase 6A.28: Preferred is DEPRECATED and hidden from UI */}
+                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category) => {
+                    // For predefined categories, filter out Open items
+                    // Phase 6A.28: Also skip Preferred items - they are deprecated
+                    const categoryItems = signUpList.items.filter(item =>
+                      item.itemCategory === category &&
+                      !item.isOpenItem &&
+                      item.itemCategory !== SignUpItemCategory.Preferred
+                    );
 
                     if (categoryItems.length === 0) return null;
 
@@ -544,6 +647,110 @@ export function SignUpManagementSection({
                       </div>
                     );
                   })}
+
+                  {/* Phase 6A.27: Open Items Section */}
+                  {signUpList.hasOpenItems && (
+                    <div className="space-y-3 border-t pt-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(SignUpItemCategory.Open)}`}>
+                            Open
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            (Bring your own item)
+                          </span>
+                        </h4>
+                        {userId && (
+                          <Button
+                            onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Sign Up
+                          </Button>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        You can add your own item to bring to this sign-up list.
+                      </p>
+
+                      {/* Display existing Open items */}
+                      {openItems.length > 0 ? (
+                        <div className="space-y-3">
+                          {openItems.map((item) => {
+                            const isOwnItem = item.createdByUserId === userId;
+                            const commitment = item.commitments?.[0];
+
+                            return (
+                              <div key={item.id} className="border rounded-lg p-4 space-y-2 bg-purple-50/50">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{item.itemDescription}</p>
+                                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-semibold">
+                                        Qty: {item.quantity}
+                                      </span>
+                                      {isOwnItem && (
+                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                                          Your item
+                                        </span>
+                                      )}
+                                    </div>
+                                    {item.notes && (
+                                      <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+                                    )}
+                                    {commitment && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        Bringing by: {commitment.contactName || 'Anonymous'}
+                                        {commitment.contactEmail && ` (${commitment.contactEmail})`}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Update/Cancel buttons for own items */}
+                                  {isOwnItem && (
+                                    <div className="flex gap-2 ml-4">
+                                      <Button
+                                        onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
+                                        size="sm"
+                                        variant="outline"
+                                      >
+                                        Update
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">
+                          No one has signed up with their own item yet. Be the first!
+                        </p>
+                      )}
+
+                      {/* Sign Up button for authenticated users */}
+                      {userId && (
+                        <Button
+                          onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
+                          className="w-full mt-3"
+                          variant="default"
+                        >
+                          Sign Up with Your Own Item
+                        </Button>
+                      )}
+
+                      {/* Login prompt for non-authenticated users */}
+                      {!userId && (
+                        <p className="text-sm text-muted-foreground">
+                          Please log in to sign up with your own item.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* LEGACY OPEN/PREDEFINED SIGN-UPS */
@@ -676,6 +883,19 @@ export function SignUpManagementSection({
         onCommit={handleCommitToItem}
         onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
+      />
+
+      {/* Phase 6A.27: Open Item Sign-Up Modal */}
+      <OpenItemSignUpModal
+        open={openItemModalOpen}
+        onOpenChange={setOpenItemModalOpen}
+        signUpListId={openItemSignUpListId}
+        signUpListCategory={openItemSignUpListCategory}
+        eventId={eventId}
+        existingItem={editingOpenItem}
+        onSubmit={handleOpenItemSubmit}
+        onCancel={editingOpenItem ? handleOpenItemCancel : undefined}
+        isSubmitting={addOpenSignUpItem.isPending || updateOpenSignUpItem.isPending || cancelOpenSignUpItem.isPending}
       />
     </div>
   );

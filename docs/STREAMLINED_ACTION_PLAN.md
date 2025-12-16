@@ -7,7 +7,136 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 42: PHASE 6A.27 BADGE ENHANCEMENT (2025-12-12)
+## ✅ CURRENT STATUS - SESSION 45: PHASE 6A.31a BADGE LOCATION CONFIGS (2025-12-15)
+**Date**: 2025-12-15 (Session 45)
+**Session**: Phase 6A.31a - Per-Location Badge Positioning System (Backend)
+**Status**: ✅ COMPLETE - Backend implementation ready for deployment
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors, 1,141 tests passing
+
+### SESSION 45: PHASE 6A.31a - BADGE LOCATION CONFIGS (2025-12-15)
+**Goal**: Implement percentage-based per-location badge positioning to support responsive scaling across 3 event display locations
+
+**Problem**: Phase 6A.30 delivered static previews, but user needed interactive positioning with percentage-based storage for responsive scaling across:
+- Events Listing page (/events) - 192×144px containers
+- Home Featured Banner - 160×120px containers
+- Event Detail Hero (/events/{id}) - 384×288px containers
+
+**Implementation**:
+- **Domain Layer**:
+  - Created `BadgeLocationConfig` value object (PositionX/Y 0-1, SizeWidth/Height 0.05-1, Rotation 0-360)
+  - Updated `Badge` entity with `ListingConfig`, `FeaturedConfig`, `DetailConfig` properties
+  - Marked old `Position` property as `[Obsolete]` for backward compatibility
+  - 27 unit tests - ALL PASSING
+
+- **Application Layer**:
+  - Created `BadgeLocationConfigDto` for API responses
+  - Updated `BadgeDto` with 3 location config properties
+  - Enhanced `BadgeMappingExtensions` with `.ToDto()` method
+  - Fixed 6 compilation errors across handler files
+  - Suppressed obsolete warnings with #pragma directives
+
+- **Infrastructure Layer**:
+  - Updated `BadgeConfiguration` with 15 owned entity columns:
+    - position_x/y_listing/featured/detail (6 columns)
+    - size_width/height_listing/featured/detail (6 columns)
+    - rotation_listing/featured/detail (3 columns)
+  - Column types: decimal(5,4) for percentages, decimal(5,2) for rotation
+
+**Testing**:
+- ✅ 1,141 tests passing (1 skipped)
+- ✅ Zero compilation errors
+- ✅ Solution builds successfully
+- ✅ Badge location configs verified in migration 20251215235924
+
+**Migration**: Database changes already exist in migration `20251215235924_AddHasOpenItemsToSignUpLists`. Ready for deployment to staging.
+
+**Impact**:
+- ✅ **UNBLOCKED OTHER AGENTS** - No more Badge compilation errors preventing migrations/deployments
+- ✅ Backend ready for Phase 6A.32 (frontend interactive UI components)
+- ✅ Maintains backward compatibility during two-phase migration
+- ✅ API endpoints return new location configs automatically
+
+**Next Steps**: Phase 6A.32 - Frontend interactive badge positioning UI components
+
+**Documentation**: [Commit c6ee6bc](../../../commit/c6ee6bc)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 44: SESSION 33 GROUP PRICING FIX (2025-12-14)
+**Date**: 2025-12-14 (Session 44)
+**Session**: Session 33 - Group Pricing Tier Update Bug Fix (CORRECTED)
+**Status**: ✅ COMPLETE - Root cause identified and corrected
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+
+### SESSION 44: SESSION 33 GROUP PRICING FIX - CORRECTED (2025-12-14)
+**Goal**: Fix HTTP 500 error when updating group pricing tiers - correct the incorrect MarkPricingAsModified() fix
+
+**Problem Timeline**:
+1. Original Issue: Group pricing tier updates returned HTTP 200 OK but didn't persist to database
+2. Incorrect Fix (Commit 8ae5f56): Added `MarkPricingAsModified()` → caused HTTP 500 errors
+3. Corrected Fix (Commit 6a574c8): Removed `MarkPricingAsModified()` → restored HTTP 200 OK
+
+**Root Cause**: The pattern `_context.Entry(@event).Property(e => e.Pricing).IsModified = true` is INVALID for JSONB-stored owned entities in EF Core 8. Manual property marking conflicts with JSONB serialization model.
+
+**Corrected Solution**: Trust EF Core's automatic change tracking. The domain method `SetGroupPricing()` assigns `Pricing = pricing;` which replaces the object reference and triggers automatic tracking.
+
+**Implementation**:
+- **REMOVED**: `MarkPricingAsModified()` from IEventRepository.cs
+- **REMOVED**: Implementation from EventRepository.cs
+- **REMOVED**: Call from UpdateEventCommandHandler.cs
+- **ADDED**: Corrective comments explaining EF Core's automatic detection pattern
+
+**Architecture Analysis**:
+- Consulted system-architect for comprehensive root cause analysis
+- Created 130+ pages of architecture documentation
+  - ADR-005-Group-Pricing-JSONB-Update-Failure-Analysis.md (46 pages)
+  - SUMMARY-Session-33-Group-Pricing-Fix.md (12 pages)
+  - technology-evaluation-ef-core-jsonb.md (42 pages)
+  - ef-core-jsonb-patterns.md (30 pages)
+
+**Testing Results** (2025-12-14 21:26 UTC):
+- ✅ HTTP 200 OK (was HTTP 500 with incorrect fix)
+- ✅ Title updated correctly
+- ✅ Tier count: 2 (removed 1 tier as expected)
+- ✅ Tier 1 price: $6.00 (changed from $5.00)
+- ✅ Tier 2 price: $12.00 (changed from $10.00)
+- ✅ Database persistence verified
+
+**Documentation**: [SESSION_33_GROUP_PRICING_UPDATE_BUG_FIX.md](./SESSION_33_GROUP_PRICING_UPDATE_BUG_FIX.md)
+
+**Lessons Learned**:
+1. Trust the framework - EF Core's automatic tracking is robust
+2. Read the docs - Microsoft explicitly covers JSONB patterns
+3. Test before deploy - API test would have caught HTTP 500
+4. Consult experts - System-architect identified the issue immediately
+5. Document thoroughly - 130+ pages prevent future mistakes
+
+---
+
+### SESSION 43: PHASE 6A.28 - OPEN SIGN-UP ITEMS (2025-12-12)
+**Goal**: Allow users to add their own custom items to sign-up lists (SignUpGenius "Open" category)
+
+**Implementation**:
+- **Domain**: Added `Open = 3` to SignUpItemCategory enum, deprecated Preferred
+- **SignUpList**: Added `HasOpenItems` property
+- **SignUpItem**: Added `CreatedByUserId` for tracking item ownership
+- **Application**: AddOpenSignUpItemCommand, UpdateOpenSignUpItemCommand, CancelOpenSignUpItemCommand with handlers
+- **API**: 3 new endpoints (POST/PUT/DELETE for open-items)
+- **Frontend Types**: Updated `events.types.ts` with Open category and new DTOs
+- **Frontend Hooks**: `useAddOpenSignUpItem`, `useUpdateOpenSignUpItem`, `useCancelOpenSignUpItem`
+- **Frontend UI**: `OpenItemSignUpModal.tsx`, updated `SignUpManagementSection.tsx`
+
+**UI Flow**:
+1. Event attendees see "Open (Bring your own item)" section with purple badge
+2. Click "Sign Up" to open modal → enter item name, quantity, notes, contact info
+3. After submitting, see their item with "Update" button
+4. Can cancel via the Update modal
+
+**Documentation**: [PHASE_6A_28_OPEN_SIGNUP_ITEMS_SUMMARY.md](./PHASE_6A_28_OPEN_SIGNUP_ITEMS_SUMMARY.md)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 42: PHASE 6A.27 BADGE ENHANCEMENT (2025-12-12)
 **Date**: 2025-12-12 (Session 42)
 **Session**: Phase 6A.27 - Badge Management Enhancement
 **Status**: ✅ COMPLETE - Full-stack implementation with TDD

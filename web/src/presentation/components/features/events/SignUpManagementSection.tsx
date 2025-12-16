@@ -729,28 +729,28 @@ export function SignUpManagementSection({
                                       </p>
                                     )}
                                   </div>
-
-                                  {/* Update/Cancel buttons for own items */}
-                                  {isOwnItem && (
-                                    <div className="flex gap-2 ml-4">
-                                      <Button
-                                        onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
-                                        size="sm"
-                                        variant="outline"
-                                      >
-                                        Update
-                                      </Button>
-                                      <Button
-                                        onClick={() => handleCancelOpenItem(signUpList.id, item.id)}
-                                        size="sm"
-                                        variant="destructive"
-                                        disabled={isCancelling && cancelConfirmId === item.id}
-                                      >
-                                        {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
-                                      </Button>
-                                    </div>
-                                  )}
                                 </div>
+
+                                {/* Update/Cancel buttons for own items */}
+                                {isOwnItem && (
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      Update Sign Up
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleCancelOpenItem(signUpList.id, item.id)}
+                                      size="sm"
+                                      variant="destructive"
+                                      disabled={isCancelling && cancelConfirmId === item.id}
+                                    >
+                                      {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

@@ -787,13 +787,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
 
         {/* Sign-Up Management Section */}
-        <div className="mt-8">
-          <SignUpManagementSection
-            eventId={id}
-            userId={(user?.userId && isHydrated) ? user.userId : undefined}
-            isOrganizer={false}
-          />
-        </div>
+        {/* Wait for auth hydration before rendering to ensure userId is available */}
+        {isHydrated && (
+          <div className="mt-8">
+            <SignUpManagementSection
+              eventId={id}
+              userId={user?.userId}
+              isOrganizer={false}
+            />
+          </div>
+        )}
       </div>
 
       <Footer />

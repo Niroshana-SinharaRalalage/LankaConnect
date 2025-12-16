@@ -143,10 +143,11 @@ export default function EditSignUpListPage() {
            description !== originalDescription ||
            hasMandatoryItems !== originalHasMandatoryItems ||
            hasPreferredItems !== originalHasPreferredItems ||
-           hasSuggestedItems !== originalHasSuggestedItems;
+           hasSuggestedItems !== originalHasSuggestedItems ||
+           hasOpenItems !== originalHasOpenItems; // Phase 6A.28: Track Open Items changes
   }, [
-    category, description, hasMandatoryItems, hasPreferredItems, hasSuggestedItems,
-    originalCategory, originalDescription, originalHasMandatoryItems, originalHasPreferredItems, originalHasSuggestedItems
+    category, description, hasMandatoryItems, hasPreferredItems, hasSuggestedItems, hasOpenItems,
+    originalCategory, originalDescription, originalHasMandatoryItems, originalHasPreferredItems, originalHasSuggestedItems, originalHasOpenItems
   ]);
 
   // Handle save list details

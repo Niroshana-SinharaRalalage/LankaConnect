@@ -232,12 +232,18 @@ export enum SignUpType {
  * For category-based sign-up lists
  *
  * IMPORTANT: Uses string values to match ASP.NET Core's JsonStringEnumConverter
- * The API serializes enums as strings: "Mandatory", "Preferred", "Suggested"
+ * The API serializes enums as strings: "Mandatory", "Preferred", "Suggested", "Open"
+ *
+ * Phase 6A.27: Added Open category for user-submitted items
+ * Note: Preferred is deprecated, use Suggested instead
  */
 export enum SignUpItemCategory {
   Mandatory = "Mandatory",
+  /** @deprecated Use Suggested instead. Preferred is being deprecated. */
   Preferred = "Preferred",
   Suggested = "Suggested",
+  /** Phase 6A.27: User-submitted items - users can add their own items */
+  Open = "Open",
 }
 
 /**
@@ -263,6 +269,7 @@ export interface SignUpCommitmentDto {
 /**
  * Sign-up item DTO
  * Represents a specific item in a category-based sign-up list
+ * Phase 6A.27: Enhanced with Open item support (createdByUserId, isOpenItem)
  */
 export interface SignUpItemDto {
   id: string;
@@ -274,11 +281,16 @@ export interface SignUpItemDto {
   commitments: SignUpCommitmentDto[];
   isFullyCommitted: boolean;
   committedQuantity: number;
+  /** Phase 6A.27: User ID who created this item (only for Open items) */
+  createdByUserId?: string | null;
+  /** Phase 6A.27: True if this is a user-submitted Open item */
+  isOpenItem: boolean;
 }
 
 /**
  * Sign-up list DTO
  * Matches backend SignUpListDto - supports both legacy and category-based models
+ * Phase 6A.27: Added hasOpenItems for user-submitted items
  */
 export interface SignUpListDto {
   id: string;
@@ -293,8 +305,11 @@ export interface SignUpListDto {
 
   // New category-based fields
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.27: True if users can add their own Open items */
+  hasOpenItems: boolean;
   items: SignUpItemDto[];
 }
 
@@ -423,6 +438,17 @@ export interface UpdateEventRequest {
   // Pricing (nullable to match C# decimal? and Currency?)
   ticketPriceAmount?: number | null;
   ticketPriceCurrency?: Currency | null;
+
+  // Session 21: Dual ticket pricing (optional)
+  adultPriceAmount?: number | null;
+  adultPriceCurrency?: Currency | null;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+
+  // Session 33: Group tiered pricing (optional)
+  groupPricingTiers?: GroupPricingTierRequest[];
+
   // Note: isFree is NOT in backend UpdateEventCommand - backend infers it from ticketPriceAmount
 }
 
@@ -580,27 +606,35 @@ export interface CancelCommitmentRequest {
 /**
  * Create sign-up list with items request
  * Matches backend CreateSignUpListRequest - creates list WITH items in single API call
+ * Phase 6A.27: Added hasOpenItems for user-submitted items
  */
 export interface CreateSignUpListRequest {
   category: string;
   description: string;
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.27: Allow users to add their own Open items */
+  hasOpenItems?: boolean;
   items: SignUpItemRequestDto[];
 }
 
 /**
  * Update sign-up list request
  * Phase 6A.13: Edit Sign-Up List feature
+ * Phase 6A.28: Added hasOpenItems for user-submitted items
  * Matches backend UpdateSignUpListRequest
  */
 export interface UpdateSignUpListRequest {
   category: string;
   description: string;
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.28: Allow users to add their own Open items */
+  hasOpenItems: boolean; // Made required for type safety
 }
 
 /**
@@ -632,6 +666,47 @@ export interface UpdateSignUpItemRequest {
   itemDescription: string;
   quantity: number;
   notes?: string | null;
+}
+
+// ==================== Phase 6A.27: Open Sign-Up Items ====================
+
+/**
+ * Phase 6A.27: Add an Open sign-up item (user-submitted)
+ * POST /api/events/{eventId}/signups/{signupId}/open-items
+ */
+export interface AddOpenSignUpItemRequest {
+  /** Name of the item the user will bring */
+  itemName: string;
+  /** Number of items */
+  quantity: number;
+  /** Optional notes/description */
+  notes?: string | null;
+  /** Optional contact name */
+  contactName?: string | null;
+  /** Optional contact email */
+  contactEmail?: string | null;
+  /** Optional contact phone */
+  contactPhone?: string | null;
+}
+
+/**
+ * Phase 6A.27: Update an Open sign-up item
+ * PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+ * Only the user who created the item can update it
+ */
+export interface UpdateOpenSignUpItemRequest {
+  /** Updated item name */
+  itemName: string;
+  /** Updated quantity */
+  quantity: number;
+  /** Updated notes/description */
+  notes?: string | null;
+  /** Updated contact name */
+  contactName?: string | null;
+  /** Updated contact email */
+  contactEmail?: string | null;
+  /** Updated contact phone */
+  contactPhone?: string | null;
 }
 
 /**

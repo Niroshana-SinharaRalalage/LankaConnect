@@ -431,7 +431,7 @@ export function SignUpManagementSection({
             >
               {list.category}
               <span className="ml-1 text-xs text-gray-500">
-                ({list.items?.length || list.commitments.length})
+                ({list.commitmentCount})
               </span>
             </button>
           ))}
@@ -651,7 +651,7 @@ export function SignUpManagementSection({
                   {/* Phase 6A.27: Open Items Section */}
                   {signUpList.hasOpenItems && (
                     <div className="space-y-3 border-t pt-4 mt-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <h4 className="font-semibold flex items-center gap-2">
                           <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(SignUpItemCategory.Open)}`}>
                             Open
@@ -660,16 +660,6 @@ export function SignUpManagementSection({
                             (Bring your own item)
                           </span>
                         </h4>
-                        {userId && (
-                          <Button
-                            onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
-                            size="sm"
-                            className="bg-purple-600 hover:bg-purple-700"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Sign Up
-                          </Button>
-                        )}
                       </div>
 
                       <p className="text-sm text-muted-foreground">
@@ -736,10 +726,10 @@ export function SignUpManagementSection({
                       {userId && (
                         <Button
                           onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
-                          className="w-full mt-3"
-                          variant="default"
+                          size="sm"
+                          variant="outline"
                         >
-                          Sign Up with Your Own Item
+                          Sign Up
                         </Button>
                       )}
 

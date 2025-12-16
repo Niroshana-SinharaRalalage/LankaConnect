@@ -52,27 +52,32 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
             cfg.Property(c => c.PositionX)
                 .HasColumnName("position_x_listing")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(1.0m); // Default: right edge
 
             cfg.Property(c => c.PositionY)
                 .HasColumnName("position_y_listing")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m); // Default: top edge
 
             cfg.Property(c => c.SizeWidth)
                 .HasColumnName("size_width_listing")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.26m); // Default: 26% width
 
             cfg.Property(c => c.SizeHeight)
                 .HasColumnName("size_height_listing")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.26m); // Default: 26% height
 
             cfg.Property(c => c.Rotation)
                 .HasColumnName("rotation_listing")
                 .HasColumnType("decimal(5,2)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m); // Default: no rotation
         });
 
         builder.OwnsOne(b => b.FeaturedConfig, cfg =>
@@ -80,27 +85,32 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
             cfg.Property(c => c.PositionX)
                 .HasColumnName("position_x_featured")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(1.0m);
 
             cfg.Property(c => c.PositionY)
                 .HasColumnName("position_y_featured")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m);
 
             cfg.Property(c => c.SizeWidth)
                 .HasColumnName("size_width_featured")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.26m);
 
             cfg.Property(c => c.SizeHeight)
                 .HasColumnName("size_height_featured")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.26m);
 
             cfg.Property(c => c.Rotation)
                 .HasColumnName("rotation_featured")
                 .HasColumnType("decimal(5,2)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m);
         });
 
         builder.OwnsOne(b => b.DetailConfig, cfg =>
@@ -108,27 +118,32 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
             cfg.Property(c => c.PositionX)
                 .HasColumnName("position_x_detail")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(1.0m);
 
             cfg.Property(c => c.PositionY)
                 .HasColumnName("position_y_detail")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m);
 
             cfg.Property(c => c.SizeWidth)
                 .HasColumnName("size_width_detail")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.21m);
 
             cfg.Property(c => c.SizeHeight)
                 .HasColumnName("size_height_detail")
                 .HasColumnType("decimal(5,4)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.21m);
 
             cfg.Property(c => c.Rotation)
                 .HasColumnName("rotation_detail")
                 .HasColumnType("decimal(5,2)")
-                .IsRequired();
+                .IsRequired()
+                .HasDefaultValue(0.0m);
         });
 
         builder.Property(b => b.IsActive)

@@ -6,6 +6,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
+using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
 
 namespace LankaConnect.Application.Events.Commands.UpdateEvent;
 
@@ -14,15 +15,18 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
+    private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
-        IEmailGroupRepository emailGroupRepository) // Phase 6A.32: Email groups
+        IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        IApplicationDbContext dbContext) // Phase 6A.32: ChangeTracker API
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
     }
 
     public async Task<Result> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -261,19 +265,52 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                     return Result.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
             }
 
-            // Update email groups
+            // Update email group IDs in domain model (for business logic)
             var updateResult = @event.SetEmailGroups(distinctGroupIds);
             if (updateResult.IsFailure)
                 return updateResult;
+
+            // CRITICAL FIX Phase 6A.32: Use EF Core ChangeTracker API to update shadow navigation
+            // We cannot modify shadow navigation from domain layer - must use EF Core's API
+            // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
+            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler (lines 70-89)
+            var dbContext = _dbContext as DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
+            await emailGroupsCollection.LoadAsync(cancellationToken);  // Ensure tracked
+
+            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
+                ?? new List<Domain.Communications.Entities.EmailGroup>();
+
+            // Clear existing and add new entities using EF Core's tracked collection
+            currentEmailGroups.Clear();
+
+            foreach (var emailGroup in emailGroups)
+            {
+                currentEmailGroups.Add(emailGroup);
+            }
         }
         else if (request.EmailGroupIds != null && !request.EmailGroupIds.Any())
         {
             // Empty list provided - clear all email groups
             @event.ClearEmailGroups();
+
+            // Also clear the shadow navigation
+            var dbContext = _dbContext as DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
+            await emailGroupsCollection.LoadAsync(cancellationToken);
+
+            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
+                ?? new List<Domain.Communications.Entities.EmailGroup>();
+
+            currentEmailGroups.Clear();
         }
         // If null, don't modify existing email groups
 
-        // Save changes (EF Core tracks changes automatically)
+        // Save changes (EF Core now detects changes via ChangeTracker)
         await _unitOfWork.CommitAsync(cancellationToken);
 
         return Result.Success();

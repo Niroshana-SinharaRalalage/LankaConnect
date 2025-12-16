@@ -8,6 +8,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
+using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
 
@@ -17,17 +18,20 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
+    private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        IEmailGroupRepository emailGroupRepository) // Phase 6A.32: Email groups
+        IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        IApplicationDbContext dbContext) // Phase 6A.32: ChangeTracker API
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -229,14 +233,40 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                     return Result<Guid>.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
             }
 
-            // Assign email groups to the event
+            // Assign email group IDs to domain model (for business logic)
             var assignResult = eventResult.Value.SetEmailGroups(distinctGroupIds);
             if (assignResult.IsFailure)
                 return Result<Guid>.Failure(assignResult.Error);
+
+            // Add to repository first (so entity is tracked by EF Core)
+            await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
+
+            // CRITICAL FIX Phase 6A.32: Use EF Core ChangeTracker API to update shadow navigation
+            // We cannot modify shadow navigation from domain layer - must use EF Core's API
+            // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
+            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler (lines 70-89)
+            var dbContext = _dbContext as DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            var emailGroupsCollection = dbContext.Entry(eventResult.Value).Collection("_emailGroupEntities");
+            await emailGroupsCollection.LoadAsync(cancellationToken);  // Ensure tracked
+
+            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
+                ?? new List<Domain.Communications.Entities.EmailGroup>();
+
+            // Add email group entities using EF Core's tracked collection
+            foreach (var emailGroup in emailGroups)
+            {
+                currentEmailGroups.Add(emailGroup);
+            }
+        }
+        else
+        {
+            // No email groups - add to repository
+            await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
         }
 
-        // Add to repository and commit
-        await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
+        // Commit changes (EF Core now detects changes via ChangeTracker)
         await _unitOfWork.CommitAsync(cancellationToken);
 
         return Result<Guid>.Success(eventResult.Value.Id);

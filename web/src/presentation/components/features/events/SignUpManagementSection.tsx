@@ -368,6 +368,37 @@ export function SignUpManagementSection({
     });
   };
 
+  // Handle direct cancel of open item from list
+  const handleCancelOpenItem = async (signUpListId: string, itemId: string) => {
+    if (!userId) {
+      alert('Please log in to cancel sign-ups');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to cancel your sign-up for this item?')) {
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      setCancelConfirmId(itemId);
+
+      await cancelOpenSignUpItem.mutateAsync({
+        eventId,
+        signupId: signUpListId,
+        itemId: itemId,
+      });
+
+      setCancelConfirmId(null);
+    } catch (error) {
+      console.error('Failed to cancel open item sign-up:', error);
+      alert('Failed to cancel sign-up. Please try again.');
+      setCancelConfirmId(null);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -708,6 +739,14 @@ export function SignUpManagementSection({
                                         variant="outline"
                                       >
                                         Update
+                                      </Button>
+                                      <Button
+                                        onClick={() => handleCancelOpenItem(signUpList.id, item.id)}
+                                        size="sm"
+                                        variant="destructive"
+                                        disabled={isCancelling && cancelConfirmId === item.id}
+                                      >
+                                        {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
                                       </Button>
                                     </div>
                                   )}

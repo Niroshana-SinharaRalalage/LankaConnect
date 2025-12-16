@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -26,7 +26,11 @@ import { useState } from 'react';
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isHydrated } = useAuthStore();
+
+  // Session 33: Track where user came from for back navigation
+  const fromPage = searchParams.get('from');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -242,8 +246,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-neutral-500 mb-6">
                 The event you're looking for doesn't exist or has been removed.
               </p>
-              <Button onClick={() => router.push('/events')}>
-                Back to Events
+              <Button onClick={() => router.push(fromPage === 'dashboard' ? '/dashboard' : '/events')}>
+                {fromPage === 'dashboard' ? 'Back to Dashboard' : 'Back to Events'}
               </Button>
             </CardContent>
           </Card>
@@ -281,11 +285,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
-            onClick={() => router.push('/events')}
+            onClick={() => router.push(fromPage === 'dashboard' ? '/dashboard' : '/events')}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Events
+            {fromPage === 'dashboard' ? 'Back to Dashboard' : 'Back to Events'}
           </Button>
 
           {/* Organizer-only actions */}
@@ -397,7 +401,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              {/* Pricing - Session 23: Dual pricing support */}
+              {/* Pricing - Session 23: Dual pricing, Session 33: Group pricing support */}
               <div className="flex items-start gap-3">
                 <div className="p-3 rounded-lg" style={{ background: '#FFF4ED' }}>
                   <DollarSign className="h-6 w-6" style={{ color: '#FF7900' }} />
@@ -408,6 +412,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
                       Free Event
                     </p>
+                  ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                    // Session 33: Group tiered pricing display - show individual tiers
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-neutral-600 mb-1">Group Tiered Pricing</p>
+                      {event.groupPricingTiers.map((tier, index) => (
+                        <p key={index} className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                          {tier.maxAttendees
+                            ? (tier.minAttendees === tier.maxAttendees
+                                ? `${tier.minAttendees} ${tier.minAttendees === 1 ? 'person' : 'persons'}`
+                                : `${tier.minAttendees}-${tier.maxAttendees} persons`)
+                            : `${tier.minAttendees}+ persons`}
+                          : ${tier.pricePerPerson.toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
                   ) : event.hasDualPricing ? (
                     <>
                       <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
@@ -420,15 +439,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         {event.adultPriceCurrency === 1 ? 'USD' : 'LKR'}
                       </p>
                     </>
-                  ) : (
+                  ) : event.ticketPriceAmount != null ? (
                     <>
                       <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
-                        ${event.ticketPriceAmount?.toFixed(2)} per person
+                        ${event.ticketPriceAmount.toFixed(2)} per person
                       </p>
                       <p className="text-sm text-neutral-600">
                         {event.ticketPriceCurrency === 1 ? 'USD' : 'LKR'}
                       </p>
                     </>
+                  ) : (
+                    <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                      Paid Event
+                    </p>
                   )}
                 </div>
               </div>
@@ -767,7 +790,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <div className="mt-8">
           <SignUpManagementSection
             eventId={id}
-            userId={user?.userId}
+            userId={(user?.userId && isHydrated) ? user.userId : undefined}
             isOrganizer={false}
           />
         </div>

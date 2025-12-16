@@ -30,7 +30,9 @@ public record CreateEventCommand(
     Currency? ChildPriceCurrency = null,
     int? ChildAgeLimit = null,
     // Phase 6D: Group Tiered Pricing - optional
-    List<GroupPricingTierRequest>? GroupPricingTiers = null
+    List<GroupPricingTierRequest>? GroupPricingTiers = null,
+    // Phase 6A.32: Email Groups - optional
+    List<Guid>? EmailGroupIds = null
 ) : ICommand<Guid>;
 
 /// <summary>

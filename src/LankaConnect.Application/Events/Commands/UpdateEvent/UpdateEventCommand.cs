@@ -31,5 +31,7 @@ public record UpdateEventCommand(
     Currency? ChildPriceCurrency = null,
     int? ChildAgeLimit = null,
     // Session 33: Group Tiered Pricing - optional
-    List<GroupPricingTierRequest>? GroupPricingTiers = null
+    List<GroupPricingTierRequest>? GroupPricingTiers = null,
+    // Phase 6A.32: Email Groups - optional
+    List<Guid>? EmailGroupIds = null
 ) : ICommand;

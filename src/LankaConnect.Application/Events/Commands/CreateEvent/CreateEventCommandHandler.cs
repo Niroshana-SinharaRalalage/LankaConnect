@@ -7,6 +7,7 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
 
@@ -15,15 +16,18 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IEmailGroupRepository emailGroupRepository) // Phase 6A.32: Email groups
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -200,6 +204,35 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
             if (setPricingResult.IsFailure)
                 return Result<Guid>.Failure(setPricingResult.Error);
+        }
+
+        // Phase 6A.32: Validate and assign email groups (Fix #3: Batch query to prevent N+1)
+        if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
+        {
+            var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
+
+            // Batch query to prevent N+1 problem (Fix #3)
+            var emailGroups = await _emailGroupRepository.GetByIdsAsync(distinctGroupIds, cancellationToken);
+
+            // Validate all groups exist, belong to organizer, and are active
+            foreach (var groupId in distinctGroupIds)
+            {
+                var emailGroup = emailGroups.FirstOrDefault(g => g.Id == groupId);
+
+                if (emailGroup == null)
+                    return Result<Guid>.Failure($"Email group with ID {groupId} not found");
+
+                if (emailGroup.OwnerId != request.OrganizerId)
+                    return Result<Guid>.Failure($"You do not have permission to use email group '{emailGroup.Name}'");
+
+                if (!emailGroup.IsActive)
+                    return Result<Guid>.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
+            }
+
+            // Assign email groups to the event
+            var assignResult = eventResult.Value.SetEmailGroups(distinctGroupIds);
+            if (assignResult.IsFailure)
+                return Result<Guid>.Failure(assignResult.Error);
         }
 
         // Add to repository and commit

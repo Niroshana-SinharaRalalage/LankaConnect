@@ -61,4 +61,26 @@ public class EmailGroupRepository : Repository<EmailGroup>, IEmailGroupRepositor
         return await query
             .AnyAsync(g => g.Name.ToLower() == normalizedName, cancellationToken);
     }
+
+    /// <summary>
+    /// Gets multiple email groups by their IDs in a single query
+    /// Phase 6A.32: Batch query to prevent N+1 problem (Fix #3)
+    /// Used by events to fetch multiple email groups efficiently
+    /// PostgreSQL optimizes WHERE id IN (...) queries very well
+    /// </summary>
+    public async Task<IReadOnlyList<EmailGroup>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids == null || !ids.Any())
+        {
+            return Array.Empty<EmailGroup>();
+        }
+
+        // Convert to list to avoid multiple enumeration
+        var idList = ids.ToList();
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(g => idList.Contains(g.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

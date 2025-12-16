@@ -74,6 +74,19 @@ public record EventDto
     /// Badges assigned to this event for overlay display
     /// </summary>
     public IReadOnlyList<EventBadgeDto> Badges { get; init; } = Array.Empty<EventBadgeDto>();
+
+    /// <summary>
+    /// Phase 6A.32: Email Groups Integration
+    /// IDs of email groups associated with this event for invitations
+    /// </summary>
+    public IReadOnlyList<Guid> EmailGroupIds { get; init; } = Array.Empty<Guid>();
+
+    /// <summary>
+    /// Phase 6A.32: Email Groups Integration
+    /// Summary details of email groups associated with this event
+    /// Includes IsActive flag to detect soft-deleted groups
+    /// </summary>
+    public IReadOnlyList<EmailGroupSummaryDto> EmailGroups { get; init; } = Array.Empty<EmailGroupSummaryDto>();
 }
 
 /// <summary>
@@ -102,4 +115,16 @@ public record EventVideoDto
     public long FileSizeBytes { get; init; }
     public int DisplayOrder { get; init; }
     public DateTime UploadedAt { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.32: Email Groups Integration
+/// Summary DTO for email groups associated with events
+/// Includes IsActive flag to detect soft-deleted groups
+/// </summary>
+public record EmailGroupSummaryDto
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public bool IsActive { get; init; }
 }

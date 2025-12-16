@@ -5,6 +5,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
 
 namespace LankaConnect.Application.Events.Commands.UpdateEvent;
 
@@ -12,11 +13,16 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
 
-    public UpdateEventCommandHandler(IEventRepository eventRepository, IUnitOfWork unitOfWork)
+    public UpdateEventCommandHandler(
+        IEventRepository eventRepository,
+        IUnitOfWork unitOfWork,
+        IEmailGroupRepository emailGroupRepository) // Phase 6A.32: Email groups
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
     }
 
     public async Task<Result> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -231,6 +237,41 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         // Legacy: Update ticket price for backward compatibility
         var ticketPriceProperty = typeof(Event).GetProperty(nameof(Event.TicketPrice));
         ticketPriceProperty?.SetValue(@event, ticketPrice);
+
+        // Phase 6A.32: Validate and update email groups (Fix #3: Batch query to prevent N+1)
+        if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
+        {
+            var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
+
+            // Batch query to prevent N+1 problem (Fix #3)
+            var emailGroups = await _emailGroupRepository.GetByIdsAsync(distinctGroupIds, cancellationToken);
+
+            // Validate all groups exist, belong to organizer, and are active
+            foreach (var groupId in distinctGroupIds)
+            {
+                var emailGroup = emailGroups.FirstOrDefault(g => g.Id == groupId);
+
+                if (emailGroup == null)
+                    return Result.Failure($"Email group with ID {groupId} not found");
+
+                if (emailGroup.OwnerId != @event.OrganizerId)
+                    return Result.Failure($"You do not have permission to use email group '{emailGroup.Name}'");
+
+                if (!emailGroup.IsActive)
+                    return Result.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
+            }
+
+            // Update email groups
+            var updateResult = @event.SetEmailGroups(distinctGroupIds);
+            if (updateResult.IsFailure)
+                return updateResult;
+        }
+        else if (request.EmailGroupIds != null && !request.EmailGroupIds.Any())
+        {
+            // Empty list provided - clear all email groups
+            @event.ClearEmailGroups();
+        }
+        // If null, don't modify existing email groups
 
         // Save changes (EF Core tracks changes automatically)
         await _unitOfWork.CommitAsync(cancellationToken);

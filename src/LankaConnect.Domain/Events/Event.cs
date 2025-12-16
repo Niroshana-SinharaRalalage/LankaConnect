@@ -16,6 +16,8 @@ public class Event : BaseEntity
     private readonly List<EventPass> _passes = new(); // Event passes/tickets support
     private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
     private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
+    private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
+    private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_BADGES = 3; // Maximum badges per event
@@ -41,6 +43,7 @@ public class Event : BaseEntity
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
     public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
+    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly(); // Phase 6A.32: Read-only email group ID collection
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
@@ -1416,6 +1419,110 @@ public class Event : BaseEntity
     /// Gets the number of badges assigned to this event
     /// </summary>
     public int BadgeCount() => _badges.Count;
+
+    #endregion
+
+    #region Email Group Management
+
+    /// <summary>
+    /// Assigns email groups to this event for invitation distribution
+    /// Business Rules:
+    /// - Email groups must belong to the event organizer
+    /// - Duplicate assignments are prevented
+    /// - Can assign multiple groups at once
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public Result AssignEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
+
+        if (!groupList.Any())
+            return Result.Success(); // No groups to assign
+
+        // Add groups that aren't already assigned
+        foreach (var groupId in groupList)
+        {
+            if (!_emailGroupIds.Contains(groupId))
+            {
+                _emailGroupIds.Add(groupId);
+            }
+        }
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Replaces all email groups with a new set
+    /// Primary method for updating email groups during event editing
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public Result SetEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
+
+        _emailGroupIds.Clear();
+        _emailGroupIds.AddRange(groupList);
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes specific email groups from this event
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public Result RemoveEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).ToList();
+
+        if (!groupList.Any())
+            return Result.Success(); // No groups to remove
+
+        foreach (var groupId in groupList)
+        {
+            _emailGroupIds.Remove(groupId);
+        }
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes all email groups from this event
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public Result ClearEmailGroups()
+    {
+        if (_emailGroupIds.Any())
+        {
+            _emailGroupIds.Clear();
+            MarkAsUpdated();
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if this event has any email groups assigned
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public bool HasEmailGroups() => _emailGroupIds.Any();
+
+    /// <summary>
+    /// Gets the count of email groups assigned to this event
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public int EmailGroupCount() => _emailGroupIds.Count;
 
     #endregion
 }

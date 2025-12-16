@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251216051336_AddEventEmailGroups")]
+    partial class AddEventEmailGroups
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2047,33 +2050,23 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<decimal>("PositionX")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(1.0m)
                                 .HasColumnName("position_x_detail");
 
                             b1.Property<decimal>("PositionY")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("position_y_detail");
 
                             b1.Property<decimal>("Rotation")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,2)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("rotation_detail");
 
                             b1.Property<decimal>("SizeHeight")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.21m)
                                 .HasColumnName("size_height_detail");
 
                             b1.Property<decimal>("SizeWidth")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.21m)
                                 .HasColumnName("size_width_detail");
 
                             b1.HasKey("BadgeId");
@@ -2090,33 +2083,23 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<decimal>("PositionX")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(1.0m)
                                 .HasColumnName("position_x_featured");
 
                             b1.Property<decimal>("PositionY")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("position_y_featured");
 
                             b1.Property<decimal>("Rotation")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,2)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("rotation_featured");
 
                             b1.Property<decimal>("SizeHeight")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.26m)
                                 .HasColumnName("size_height_featured");
 
                             b1.Property<decimal>("SizeWidth")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.26m)
                                 .HasColumnName("size_width_featured");
 
                             b1.HasKey("BadgeId");
@@ -2133,33 +2116,23 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasColumnType("uuid");
 
                             b1.Property<decimal>("PositionX")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(1.0m)
                                 .HasColumnName("position_x_listing");
 
                             b1.Property<decimal>("PositionY")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("position_y_listing");
 
                             b1.Property<decimal>("Rotation")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,2)")
-                                .HasDefaultValue(0.0m)
                                 .HasColumnName("rotation_listing");
 
                             b1.Property<decimal>("SizeHeight")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.26m)
                                 .HasColumnName("size_height_listing");
 
                             b1.Property<decimal>("SizeWidth")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("decimal(5,4)")
-                                .HasDefaultValue(0.26m)
                                 .HasColumnName("size_width_listing");
 
                             b1.HasKey("BadgeId");

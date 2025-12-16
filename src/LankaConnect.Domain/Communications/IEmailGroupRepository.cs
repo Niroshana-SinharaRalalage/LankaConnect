@@ -30,4 +30,14 @@ public interface IEmailGroupRepository : IRepository<EmailGroup>
         string name,
         Guid? excludeId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets multiple email groups by their IDs in a single query
+    /// Phase 6A.32: Batch query to prevent N+1 problem (Fix #3)
+    /// Used when events reference multiple email groups
+    /// </summary>
+    /// <param name="ids">Collection of email group IDs to fetch</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Read-only list of email groups that were found</returns>
+    Task<IReadOnlyList<EmailGroup>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
 }

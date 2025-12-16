@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: Email groups relationship
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -235,5 +236,35 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         // Indexes for location-based searches will be added via raw SQL in migration
         // due to nested owned entity limitations with EF Core indexing
+
+        // Phase 6A.32: Email Groups - Many-to-Many Relationship
+        // Fix #1: Junction table ONLY, no JSONB denormalization
+        // Fix #2: Cascade delete on BOTH FKs (safe with soft delete pattern)
+        builder
+            .HasMany<EmailGroup>("_emailGroupEntities")
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "event_email_groups",
+                j => j
+                    .HasOne<EmailGroup>()
+                    .WithMany()
+                    .HasForeignKey("email_group_id")
+                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
+                j => j
+                    .HasOne<Event>()
+                    .WithMany()
+                    .HasForeignKey("event_id")
+                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
+                j =>
+                {
+                    j.ToTable("event_email_groups");
+                    j.HasKey("event_id", "email_group_id"); // Composite primary key
+                    j.Property<DateTime>("assigned_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    // Indexes for query performance
+                    j.HasIndex("event_id");
+                    j.HasIndex("email_group_id");
+                });
     }
 }

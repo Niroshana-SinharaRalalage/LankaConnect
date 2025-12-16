@@ -2017,6 +2017,117 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.ToTable("user_preferred_metro_areas", "identity");
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Badges.Badge", b =>
+                {
+                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "DetailConfig", b1 =>
+                        {
+                            b1.Property<Guid>("BadgeId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("PositionX")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_x_detail");
+
+                            b1.Property<decimal>("PositionY")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_y_detail");
+
+                            b1.Property<decimal>("Rotation")
+                                .HasColumnType("decimal(5,2)")
+                                .HasColumnName("rotation_detail");
+
+                            b1.Property<decimal>("SizeHeight")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_height_detail");
+
+                            b1.Property<decimal>("SizeWidth")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_width_detail");
+
+                            b1.HasKey("BadgeId");
+
+                            b1.ToTable("badges", "badges");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BadgeId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "FeaturedConfig", b1 =>
+                        {
+                            b1.Property<Guid>("BadgeId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("PositionX")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_x_featured");
+
+                            b1.Property<decimal>("PositionY")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_y_featured");
+
+                            b1.Property<decimal>("Rotation")
+                                .HasColumnType("decimal(5,2)")
+                                .HasColumnName("rotation_featured");
+
+                            b1.Property<decimal>("SizeHeight")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_height_featured");
+
+                            b1.Property<decimal>("SizeWidth")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_width_featured");
+
+                            b1.HasKey("BadgeId");
+
+                            b1.ToTable("badges", "badges");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BadgeId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "ListingConfig", b1 =>
+                        {
+                            b1.Property<Guid>("BadgeId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("PositionX")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_x_listing");
+
+                            b1.Property<decimal>("PositionY")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("position_y_listing");
+
+                            b1.Property<decimal>("Rotation")
+                                .HasColumnType("decimal(5,2)")
+                                .HasColumnName("rotation_listing");
+
+                            b1.Property<decimal>("SizeHeight")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_height_listing");
+
+                            b1.Property<decimal>("SizeWidth")
+                                .HasColumnType("decimal(5,4)")
+                                .HasColumnName("size_width_listing");
+
+                            b1.HasKey("BadgeId");
+
+                            b1.ToTable("badges", "badges");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BadgeId");
+                        });
+
+                    b.Navigation("DetailConfig")
+                        .IsRequired();
+
+                    b.Navigation("FeaturedConfig")
+                        .IsRequired();
+
+                    b.Navigation("ListingConfig")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Business.Business", b =>
                 {
                     b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.BusinessLocation", "Location", b1 =>

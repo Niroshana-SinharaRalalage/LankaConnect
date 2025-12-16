@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251215235924_AddHasOpenItemsToSignUpLists")]
-    partial class AddHasOpenItemsToSignUpLists
+    [Migration("20251216022927_AddHasOpenItemsToSignUpListsSafe")]
+    partial class AddHasOpenItemsToSignUpListsSafe
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

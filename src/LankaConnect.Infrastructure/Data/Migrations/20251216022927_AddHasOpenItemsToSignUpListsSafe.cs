@@ -5,19 +5,28 @@
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddHasOpenItemsToSignUpLists : Migration
+    public partial class AddHasOpenItemsToSignUpListsSafe : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Phase 6A.28: Add has_open_items column to sign_up_lists table
-            migrationBuilder.AddColumn<bool>(
-                name: "has_open_items",
-                schema: "events",
-                table: "sign_up_lists",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            // Phase 6A.28: Add has_open_items column to sign_up_lists table (if not exists)
+            // This migration uses conditional logic to avoid duplicate column errors
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'events'
+                        AND table_name = 'sign_up_lists'
+                        AND column_name = 'has_open_items'
+                    ) THEN
+                        ALTER TABLE events.sign_up_lists
+                        ADD COLUMN has_open_items boolean NOT NULL DEFAULT FALSE;
+                    END IF;
+                END $$;
+            ");
 
             migrationBuilder.AddColumn<decimal>(
                 name: "position_x_detail",

@@ -48,6 +48,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
             HasMandatoryItems = signUpList.HasMandatoryItems,
             HasPreferredItems = signUpList.HasPreferredItems,
             HasSuggestedItems = signUpList.HasSuggestedItems,
+            HasOpenItems = signUpList.HasOpenItems, // Phase 6A.27
             Items = signUpList.Items.Select(item => new SignUpItemDto
             {
                 Id = item.Id,
@@ -56,6 +57,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                 RemainingQuantity = item.RemainingQuantity,
                 ItemCategory = item.ItemCategory,
                 Notes = item.Notes,
+                CreatedByUserId = item.CreatedByUserId, // Phase 6A.27
                 Commitments = item.Commitments.Select(c => new SignUpCommitmentDto
                 {
                     Id = c.Id,

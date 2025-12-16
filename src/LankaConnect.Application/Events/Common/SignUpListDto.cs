@@ -18,6 +18,10 @@ public class SignUpListDto
     public bool HasMandatoryItems { get; set; }
     public bool HasPreferredItems { get; set; }
     public bool HasSuggestedItems { get; set; }
+
+    // Phase 6A.27: Open items flag - allows users to add their own items
+    public bool HasOpenItems { get; set; }
+
     public List<SignUpItemDto> Items { get; set; } = new();
 }
 
@@ -32,6 +36,12 @@ public class SignUpItemDto
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
     public bool IsFullyCommitted => RemainingQuantity == 0;
     public int CommittedQuantity => Quantity - RemainingQuantity;
+
+    // Phase 6A.27: User who created this Open item (null for organizer-created items)
+    public Guid? CreatedByUserId { get; set; }
+
+    // Helper to check if this is a user-created Open item
+    public bool IsOpenItem => ItemCategory == SignUpItemCategory.Open && CreatedByUserId.HasValue;
 }
 
 public class SignUpCommitmentDto

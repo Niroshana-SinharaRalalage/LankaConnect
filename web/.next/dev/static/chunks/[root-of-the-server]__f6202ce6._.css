@@ -3485,6 +3485,10 @@ body {
   transition-duration: .5s;
 }
 
+.duration-150 {
+  transition-duration: .15s;
+}
+
 .ease-in-out {
   transition-timing-function: cubic-bezier(.4, 0, .2, 1);
 }
@@ -3513,6 +3517,10 @@ body {
 
 .duration-500 {
   animation-duration: .5s;
+}
+
+.duration-150 {
+  animation-duration: .15s;
 }
 
 .ease-in-out {
@@ -3645,6 +3653,11 @@ body {
 
 .hover\:border-white\/50:hover {
   border-color: #ffffff80;
+}
+
+.hover\:border-neutral-400:hover {
+  --tw-border-opacity: 1;
+  border-color: rgb(163 163 163 / var(--tw-border-opacity, 1));
 }
 
 .hover\:bg-\[\#006400\]:hover {

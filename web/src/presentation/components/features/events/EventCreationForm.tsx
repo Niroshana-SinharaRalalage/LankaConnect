@@ -4,12 +4,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
+import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useCreateEvent } from '@/presentation/hooks/useEvents';
+import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
@@ -32,6 +34,9 @@ export function EventCreationForm() {
   const { user } = useAuthStore();
   const createEventMutation = useCreateEvent();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Phase 6A.32: Fetch email groups for selection
+  const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
 
   const {
     register,
@@ -149,6 +154,8 @@ export function EventCreationForm() {
         organizerId: user.userId,
         capacity: data.capacity,
         category: data.category,
+        // Phase 6A.32: Email Groups Integration
+        emailGroupIds: data.emailGroupIds || [],
         // Only include location if we have at least address and city
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
@@ -806,6 +813,35 @@ export function EventCreationForm() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Phase 6A.32: Email Groups Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Email Groups (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Select email groups to notify about this event
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <MultiSelect
+            options={emailGroups.map(group => ({
+              id: group.id,
+              label: group.name,
+              disabled: !group.isActive
+            }))}
+            value={watch('emailGroupIds') || []}
+            onChange={(ids) => setValue('emailGroupIds', ids)}
+            placeholder="Select email groups to notify"
+            isLoading={isLoadingEmailGroups}
+            error={!!errors.emailGroupIds}
+            errorMessage={errors.emailGroupIds?.message}
+            helperText="Select groups that should receive invitations for this event"
+          />
         </CardContent>
       </Card>
 

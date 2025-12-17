@@ -224,8 +224,19 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Webhook()
     {
+        // CRITICAL: Log that we've reached the webhook endpoint
+        _logger.LogInformation("Webhook endpoint reached - Method: {Method}, Path: {Path}, ContentType: {ContentType}, ContentLength: {ContentLength}",
+            HttpContext.Request.Method,
+            HttpContext.Request.Path,
+            HttpContext.Request.ContentType,
+            HttpContext.Request.ContentLength);
+
         var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
         var signatureHeader = Request.Headers["Stripe-Signature"].ToString();
+
+        _logger.LogInformation("Webhook body received - Length: {Length}, HasSignature: {HasSignature}",
+            json?.Length ?? 0,
+            !string.IsNullOrEmpty(signatureHeader));
 
         try
         {

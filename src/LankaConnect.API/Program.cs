@@ -328,11 +328,11 @@ try
     {
         options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
         options.GetLevel = (httpContext, elapsed, ex) => ex != null
-            ? LogEventLevel.Error 
-            : httpContext.Response.StatusCode > 499 
-                ? LogEventLevel.Error 
+            ? LogEventLevel.Error
+            : httpContext.Response.StatusCode > 499
+                ? LogEventLevel.Error
                 : LogEventLevel.Information;
-        
+
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
@@ -341,7 +341,7 @@ try
             diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
             diagnosticContext.Set("RequestSize", httpContext.Request.ContentLength ?? 0);
             diagnosticContext.Set("ResponseSize", httpContext.Response.ContentLength ?? 0);
-            
+
             if (httpContext.User.Identity?.IsAuthenticated == true)
             {
                 diagnosticContext.Set("UserId", httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("id")?.Value ?? "Unknown");
@@ -350,9 +350,14 @@ try
         };
     });
 
+    // CRITICAL FIX: Enable routing BEFORE authentication so [AllowAnonymous] is respected
+    // This is essential for webhook endpoints that don't use JWT authentication
+    app.UseRouting();
+
     // Authentication & Authorization
     app.UseCustomAuthentication();
 
+    // Map controllers AFTER authentication middleware
     app.MapControllers();
 
     // Add Health Check endpoint with detailed response
@@ -384,6 +389,7 @@ try
         DisplayStorageConnectionString = false,
         DashboardTitle = "LankaConnect Background Jobs"
     });
+
 
     // Register Recurring Jobs (Epic 2 Phase 5)
     using (var scope = app.Services.CreateScope())

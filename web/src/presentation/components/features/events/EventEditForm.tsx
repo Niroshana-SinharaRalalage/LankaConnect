@@ -5,14 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X, Mail } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
+import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { editEventSchema, type EditEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency, type EventDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { eventKeys } from '@/presentation/hooks/useEvents';
 
@@ -39,6 +41,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const { user } = useAuthStore();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Phase 6A.32: Fetch email groups for selection
+  const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
 
   // Convert string enum to number (backend returns enums as strings due to JsonStringEnumConverter)
   // Wrapped in useCallback to prevent infinite re-renders in useEffect
@@ -136,6 +141,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 6A.32: Email Groups Integration
+      emailGroupIds: event.emailGroupIds || [],
     },
   });
 
@@ -293,6 +300,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         endDate: endDateISO,
         capacity: data.capacity,
         category: data.category,
+        // Phase 6A.32: Email Groups Integration
+        emailGroupIds: data.emailGroupIds || [],
         // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
         // CRITICAL: Use null for empty optional fields, NOT empty strings
         ...(hasCompleteLocation && {
@@ -1052,6 +1061,35 @@ export function EventEditForm({ event }: EventEditFormProps) {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Phase 6A.32: Email Groups Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Email Groups (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Select email groups to notify about this event
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <MultiSelect
+            options={emailGroups.map(group => ({
+              id: group.id,
+              label: group.name,
+              disabled: !group.isActive
+            }))}
+            value={watch('emailGroupIds') || []}
+            onChange={(ids) => setValue('emailGroupIds', ids)}
+            placeholder="Select email groups to notify"
+            isLoading={isLoadingEmailGroups}
+            error={!!errors.emailGroupIds}
+            errorMessage={errors.emailGroupIds?.message}
+            helperText="Select groups that should receive invitations for this event"
+          />
         </CardContent>
       </Card>
 

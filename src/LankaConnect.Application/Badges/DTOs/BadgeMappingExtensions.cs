@@ -46,9 +46,24 @@ public static class BadgeMappingExtensions
     /// <summary>
     /// Maps BadgeLocationConfig value object to DTO
     /// Phase 6A.31a: Per-location configuration mapping
+    /// Phase 6A.31b: Added defensive null handling for database schema drift scenarios
     /// </summary>
-    public static BadgeLocationConfigDto ToDto(this BadgeLocationConfig config)
+    public static BadgeLocationConfigDto ToDto(this BadgeLocationConfig? config)
     {
+        // Defensive programming: If config is somehow null (database schema drift),
+        // return default TopRight configuration rather than throwing NullReferenceException
+        if (config == null)
+        {
+            return new BadgeLocationConfigDto
+            {
+                PositionX = 1.0m,
+                PositionY = 0.0m,
+                SizeWidth = 0.26m,
+                SizeHeight = 0.26m,
+                Rotation = 0.0m
+            };
+        }
+
         return new BadgeLocationConfigDto
         {
             PositionX = config.PositionX,

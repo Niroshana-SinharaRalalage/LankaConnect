@@ -8,6 +8,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
+using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: EmailGroup entity
 using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
@@ -221,7 +222,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
                 ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-            var emailGroups = await dbContext.Set<Domain.Communications.Entities.EmailGroup>()
+            var emailGroups = await dbContext.Set<EmailGroup>()
                 .Where(g => distinctGroupIds.Contains(g.Id))
                 .ToListAsync(cancellationToken);
 
@@ -248,23 +249,27 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             // Add to repository first (so entity is tracked by EF Core)
             await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
 
-            // CRITICAL FIX Phase 6A.32: Use EF Core ChangeTracker API to update shadow navigation
-            // We cannot modify shadow navigation from domain layer - must use EF Core's API
-            // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
+            // CRITICAL FIX Phase 6A.33: Set EmailGroup entities to Unchanged state
+            // This prevents EF Core state conflicts when adding Unchanged entities to an Added entity's navigation
+            // Pattern mirrors UpdateEventCommandHandler but without LoadAsync (new entity has no existing relationships)
+            foreach (var emailGroup in emailGroups)
+            {
+                dbContext.Entry(emailGroup).State = EntityState.Unchanged;
+            }
+
+            // Get collection reference (but don't LoadAsync - new entity has no DB relationships yet)
             var emailGroupsCollection = dbContext.Entry(eventResult.Value).Collection("_emailGroupEntities");
-            await emailGroupsCollection.LoadAsync(cancellationToken);  // Ensure tracked
+            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<EmailGroup>
+                ?? new List<EmailGroup>();
 
-            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
-                ?? new List<Domain.Communications.Entities.EmailGroup>();
-
-            // Add new entities (now tracked from DbContext query above)
+            // Add new entities (now all in Unchanged state)
             foreach (var emailGroup in emailGroups)
             {
                 currentEmailGroups.Add(emailGroup);
             }
 
-            // Mark entity as updated to ensure EF Core tracks shadow navigation changes
-            _eventRepository.Update(eventResult.Value);
+            // DO NOT call Update() - entity is already in Added state from AddAsync()
+            // Calling Update() would incorrectly transition Added -> Modified
         }
         else
         {

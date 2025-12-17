@@ -177,6 +177,9 @@ export interface EventDto {
 
   // Phase 6A.25: Badge overlays (optional - populated when badges are assigned)
   badges?: readonly EventBadgeDto[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
 }
 
 /**
@@ -399,6 +402,9 @@ export interface CreateEventRequest {
 
   // Phase 6D: Group tiered pricing (optional)
   groupPricingTiers?: GroupPricingTierRequest[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
 }
 
 /**
@@ -448,6 +454,9 @@ export interface UpdateEventRequest {
 
   // Session 33: Group tiered pricing (optional)
   groupPricingTiers?: GroupPricingTierRequest[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
 
   // Note: isFree is NOT in backend UpdateEventCommand - backend infers it from ticketPriceAmount
 }

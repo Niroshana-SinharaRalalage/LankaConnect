@@ -177,6 +177,12 @@ export const createEventSchema = z.object({
     .array(groupPricingTierSchema)
     .optional()
     .nullable(),
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds: z
+    .array(z.string().uuid('Invalid email group ID'))
+    .optional()
+    .nullable(),
 }).refine(
   (data) => {
     // Validate that end date is after start date
@@ -474,6 +480,12 @@ const baseEditEventSchema = z.object({
 
   groupPricingTiers: z
     .array(groupPricingTierSchema)
+    .optional()
+    .nullable(),
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds: z
+    .array(z.string().uuid('Invalid email group ID'))
     .optional()
     .nullable(),
 });

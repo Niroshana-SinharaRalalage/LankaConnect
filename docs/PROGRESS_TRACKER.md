@@ -173,6 +173,46 @@
 
 ---
 
+### Session 52: Phase 6A.28 Database Fix - COMPLETE - 2025-12-16
+
+**Status**: ✅ **COMPLETE** (Critical database migration fix)
+
+**Issue**: Phase 6A.28 was deployed but had missing database column preventing the feature from working:
+1. "Sign Up" button missing for Open Items
+2. Edit mode showing validation errors when Open Items checkbox was selected
+3. API not returning `hasOpenItems` field in responses
+
+**Root Cause**: The `has_open_items` column was never created in the database during the original Phase 6A.28 migration (AddSignUpItemCategorySupport on 2025-11-29). The EF Core configuration existed in code but database was missing the column.
+
+**Fix Implementation**:
+
+**Database Migration**:
+- Created safe migration: `AddHasOpenItemsToSignUpListsSafe` (20251216022927)
+- Uses PostgreSQL DO block with conditional logic to check column existence
+- Prevents duplicate column errors when column already exists in staging
+- Migration successfully applied to staging database
+
+**Frontend Fix**:
+- Added "Sign Up with Your Own Item" button to `SignUpManagementSection.tsx` (lines 735-744)
+- Button calls `openNewOpenItemModal()` to trigger correct Open Items flow using `/open-items` endpoint
+
+**Deployment**:
+- Commit: `e268a85` - Safe migration with conditional SQL logic
+- GitHub Actions run: 20254479524 - Status: ✅ completed:success
+- Migration logs: "✅ Migrations completed successfully"
+- Health checks: PostgreSQL Database ✅ Healthy, EF Core DbContext ✅ Healthy
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Data/Migrations/20251216022927_AddHasOpenItemsToSignUpListsSafe.cs` - Conditional migration
+- `src/LankaConnect.Infrastructure/Data/AppDbContextModelSnapshot.cs` - Auto-updated by EF Core
+- `web/src/presentation/components/features/events/SignUpManagementSection.tsx` - Added Sign Up button
+
+**Build Status**: ✅ Backend: 0 errors | Frontend: Build succeeded
+
+**Verification**: Manual UI testing recommended (API testing blocked by missing user credentials in staging)
+
+---
+
 ### Session 42: Phase 6A.27 Badge Management Enhancement - COMPLETE - 2025-12-12
 
 **Status**: ✅ **COMPLETE** (Full-stack implementation with TDD)

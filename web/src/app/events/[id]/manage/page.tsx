@@ -324,18 +324,37 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
 
-                  {/* Revenue (if paid event) */}
-                  {!event.isFree && event.ticketPriceAmount && (
+                  {/* Revenue (if paid event) - Session 33: Support dual & group pricing display */}
+                  {!event.isFree && (event.ticketPriceAmount || event.hasDualPricing || event.hasGroupPricing) && (
                     <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                       <div className="flex items-center justify-between mb-2">
                         <DollarSign className="h-5 w-5 text-orange-600" />
                         <span className="text-2xl font-bold text-orange-900">
-                          ${(event.ticketPriceAmount * event.currentRegistrations).toFixed(2)}
+                          {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                            `$${(event.groupPricingTiers[0].pricePerPerson * event.currentRegistrations).toFixed(2)}`
+                          ) : event.hasDualPricing ? (
+                            `$${((event.adultPriceAmount ?? 0) * event.currentRegistrations).toFixed(2)}`
+                          ) : (
+                            `$${((event.ticketPriceAmount ?? 0) * event.currentRegistrations).toFixed(2)}`
+                          )}
                         </span>
                       </div>
-                      <p className="text-sm text-orange-700 font-medium">Revenue</p>
+                      <p className="text-sm text-orange-700 font-medium">Est. Revenue</p>
                       <p className="text-xs text-orange-600 mt-1">
-                        ${event.ticketPriceAmount} per ticket
+                        {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                          (() => {
+                            const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
+                            const minPrice = Math.min(...prices);
+                            const maxPrice = Math.max(...prices);
+                            return minPrice === maxPrice
+                              ? `$${minPrice} range`
+                              : `$${minPrice}-$${maxPrice} range`;
+                          })()
+                        ) : event.hasDualPricing ? (
+                          <>Adult: ${event.adultPriceAmount} | Child: ${event.childPriceAmount}</>
+                        ) : (
+                          <>${event.ticketPriceAmount} per ticket</>
+                        )}
                       </p>
                     </div>
                   )}
@@ -406,15 +425,47 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                   </Badge>
                 </div>
 
-                {/* Pricing */}
+                {/* Pricing - Session 33: Support dual & group pricing display - improved format */}
                 <div>
                   <h4 className="text-sm font-semibold text-neutral-700 mb-2">Pricing</h4>
                   {event.isFree ? (
                     <Badge className="bg-green-100 text-green-700">Free Event</Badge>
-                  ) : (
+                  ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                    <div className="space-y-2">
+                      <Badge className="bg-purple-100 text-purple-700 mb-2">Group Tiered Pricing</Badge>
+                      {/* Session 33: Compact inline format: $5/person | $10/2 persons | $15/3+ persons */}
+                      <div className="flex flex-wrap items-center gap-1 text-sm">
+                        {event.groupPricingTiers.map((tier, index) => (
+                          <span key={index} className="inline-flex items-center">
+                            <Badge className="bg-[#FFE8CC] text-[#8B1538]">
+                              ${tier.pricePerPerson}/{tier.maxAttendees
+                                ? (tier.minAttendees === tier.maxAttendees
+                                    ? `${tier.minAttendees} ${tier.minAttendees === 1 ? 'person' : 'persons'}`
+                                    : `${tier.minAttendees}-${tier.maxAttendees} persons`)
+                                : `${tier.minAttendees}+ persons`}
+                            </Badge>
+                            {index < event.groupPricingTiers.length - 1 && (
+                              <span className="mx-1 text-neutral-400">|</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : event.hasDualPricing ? (
+                    <div className="flex flex-col gap-1">
+                      <Badge className="bg-[#FFE8CC] text-[#8B1538]">
+                        Adult: ${event.adultPriceAmount}
+                      </Badge>
+                      <Badge className="bg-[#FFE8CC] text-[#8B1538]">
+                        Child: ${event.childPriceAmount} (under {event.childAgeLimit})
+                      </Badge>
+                    </div>
+                  ) : event.ticketPriceAmount != null ? (
                     <Badge className="bg-[#FFE8CC] text-[#8B1538]">
                       ${event.ticketPriceAmount} per ticket
                     </Badge>
+                  ) : (
+                    <Badge className="bg-yellow-100 text-yellow-700">Paid Event</Badge>
                   )}
                 </div>
               </CardContent>

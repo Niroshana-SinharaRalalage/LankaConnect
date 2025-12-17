@@ -1,6 +1,1 @@
-{
-  "email": "niroshhh2@gmail.com",
-  "password": "12!@qwASzx",
-  "rememberMe": true,
-  "ipAddress": "127.0.0.1"
-}
+{"email": "niroshhh2@gmail.com", "password": "12!@qwASzx", "rememberMe": true, "ipAddress": "string"}

@@ -31,6 +31,9 @@ import type {
   EventRegistrationCheckResult,
   RegistrationDetailsDto,
   TicketDto,
+  // Phase 6A.27: Open Sign-Up Items
+  AddOpenSignUpItemRequest,
+  UpdateOpenSignUpItemRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -530,6 +533,70 @@ export class EventsRepository {
       `${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}/commit`,
       request,
       { timeout: 60000 } // 60 seconds timeout for commitment operations
+    );
+  }
+
+  // ==================== PHASE 6A.27: OPEN SIGN-UP ITEMS ====================
+
+  /**
+   * Add an Open sign-up item (user-submitted)
+   * Phase 6A.27: Users can add their own items to sign-up lists with hasOpenItems enabled
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/open-items
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param request - Open item details
+   * @returns Created item ID
+   */
+  async addOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    request: AddOpenSignUpItemRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items`,
+      request
+    );
+  }
+
+  /**
+   * Update an Open sign-up item
+   * Phase 6A.27: Only the user who created the item can update it
+   * Maps to backend PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param itemId - Item ID (GUID)
+   * @param request - Updated item details
+   */
+  async updateOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string,
+    request: UpdateOpenSignUpItemRequest
+  ): Promise<void> {
+    await apiClient.put<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items/${itemId}`,
+      request
+    );
+  }
+
+  /**
+   * Cancel/Delete an Open sign-up item
+   * Phase 6A.27: Only the user who created the item can cancel it
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param itemId - Item ID (GUID)
+   */
+  async cancelOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string
+  ): Promise<void> {
+    await apiClient.delete<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items/${itemId}`
     );
   }
 

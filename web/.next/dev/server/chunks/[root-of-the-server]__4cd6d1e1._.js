@@ -77,6 +77,7 @@ module.exports = mod;
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/server.js [app-route] (ecmascript)");
 ;
 // IMPORTANT: Use explicit staging URL, NOT NEXT_PUBLIC_API_URL (which points to /api/proxy)
+// Always use the staging backend URL (local development should still use Azure staging for API calls)
 const BACKEND_URL = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
 async function GET(request, { params }) {
     const resolvedParams = await params;
@@ -101,7 +102,10 @@ async function PATCH(request, { params }) {
 async function forwardRequest(request, pathSegments, method) {
     try {
         const path = pathSegments.join('/');
-        const targetUrl = `${BACKEND_URL}/${path}`;
+        // CRITICAL FIX: Preserve query string parameters for filtering, pagination, etc.
+        // Without this, GET requests with query params (e.g., /events?category=0) lose their filters
+        const queryString = request.nextUrl.search; // Returns "?param=value" or empty string
+        const targetUrl = `${BACKEND_URL}/${path}${queryString}`;
         // Get Content-Type to detect multipart/form-data
         const contentType = request.headers.get('content-type');
         const isMultipart = contentType?.includes('multipart/form-data');
@@ -124,6 +128,23 @@ async function forwardRequest(request, pathSegments, method) {
         // Forward cookies from request
         const cookies = request.cookies.getAll();
         const cookieHeader = cookies.map((c)=>`${c.name}=${c.value}`).join('; ');
+        // PHASE 6A.10: Detailed cookie forwarding logging for token refresh debugging
+        const isAuthRefresh = path === 'Auth/refresh';
+        const hasRefreshToken = cookies.some((c)=>c.name === 'refreshToken');
+        if (isAuthRefresh) {
+            console.log('🔍 [PROXY] Token Refresh Request Detected', {
+                path,
+                method,
+                allCookies: cookies.map((c)=>({
+                        name: c.name,
+                        valueLength: c.value.length
+                    })),
+                hasRefreshToken,
+                refreshTokenValue: hasRefreshToken ? cookies.find((c)=>c.name === 'refreshToken')?.value.substring(0, 30) + '...' : 'NOT FOUND',
+                cookieHeaderLength: cookieHeader.length,
+                totalCookies: cookies.length
+            });
+        }
         // Build headers for backend request
         const headers = {
             // CRITICAL: Preserve exact Content-Type for multipart (includes boundary parameter)
@@ -139,10 +160,21 @@ async function forwardRequest(request, pathSegments, method) {
         if (cookieHeader) {
             headers['Cookie'] = cookieHeader;
         }
+        // PHASE 6A.10: Log headers being sent to backend for token refresh
+        if (isAuthRefresh) {
+            console.log('🔍 [PROXY] Headers being sent to backend:', {
+                'Content-Type': headers['Content-Type'],
+                'Authorization': authHeader ? `Bearer ${authHeader.toString().substring(7, 30)}...` : 'Not present',
+                'Cookie': cookieHeader ? `${cookieHeader.substring(0, 100)}...` : 'Not present',
+                cookieHeaderFull: cookieHeader
+            });
+        }
         console.log(`[Proxy] ${method} ${targetUrl}`, {
             contentType,
             isMultipart,
-            hasBody: !!body
+            hasBody: !!body,
+            isAuthRefresh,
+            hasRefreshToken
         });
         // Build fetch options
         const fetchOptions = {
@@ -162,21 +194,84 @@ async function forwardRequest(request, pathSegments, method) {
         }
         // Make request to backend
         const response = await fetch(targetUrl, fetchOptions);
-        // Get response body
+        // PHASE 6A.10: Log backend response for token refresh
+        if (isAuthRefresh) {
+            console.log('🔍 [PROXY] Backend Response:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: {
+                    'Content-Type': response.headers.get('content-type'),
+                    'Set-Cookie': response.headers.get('set-cookie')
+                },
+                setCookieHeaders: response.headers.getSetCookie?.() || []
+            });
+        }
+        // Get response body - handle empty responses (e.g., successful free event registration returns null)
         const responseText = await response.text();
         let responseBody;
-        try {
-            responseBody = JSON.parse(responseText);
-        } catch  {
-            responseBody = responseText;
+        // Special handling for RSVP endpoint
+        const isRsvpEndpoint = path.includes('events') && path.endsWith('rsvp');
+        // Phase 6A.13: Log set-primary requests for debugging
+        const isSetPrimaryEndpoint = path.includes('set-primary');
+        if (isSetPrimaryEndpoint) {
+            console.log('[Proxy] Set Primary Image Response:', {
+                path,
+                status: response.status,
+                statusText: response.statusText,
+                responseText: responseText?.substring(0, 500)
+            });
         }
-        // Create Next.js response
-        const nextResponse = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"](JSON.stringify(responseBody), {
-            status: response.status,
-            headers: {
-                'Content-Type': 'application/json'
+        // Handle empty/null responses
+        if (!responseText || responseText === 'null' || responseText.trim() === '') {
+            console.log('[Proxy] Empty response body received (normal for free event registration)');
+            responseBody = null;
+        } else {
+            try {
+                responseBody = JSON.parse(responseText);
+            } catch  {
+                responseBody = responseText;
             }
-        });
+        }
+        // Log RSVP responses for debugging
+        if (isRsvpEndpoint) {
+            console.log('[Proxy] RSVP Response:', {
+                status: response.status,
+                responseBody,
+                responseText: responseText?.substring(0, 100),
+                isNull: responseBody === null,
+                isEmpty: !responseText || responseText.trim() === ''
+            });
+        }
+        // PHASE 6A.10: Log response body for token refresh
+        if (isAuthRefresh) {
+            console.log('🔍 [PROXY] Backend Response Body:', {
+                status: response.status,
+                bodyType: typeof responseBody,
+                hasAccessToken: responseBody?.accessToken ? 'YES' : 'NO',
+                hasError: responseBody?.error ? 'YES' : 'NO',
+                errorMessage: responseBody?.error || responseBody?.message || 'None',
+                body: responseBody
+            });
+        }
+        // Create Next.js response - handle different response types
+        let nextResponse;
+        // Special handling for 204 No Content - MUST NOT have a body per HTTP spec
+        if (response.status === 204) {
+            nextResponse = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"](null, {
+                status: 204,
+                statusText: 'No Content'
+            });
+        } else {
+            // For other responses, return JSON
+            // Return 'null' as JSON string for null responses (not empty string)
+            const responseContent = responseBody === null ? 'null' : JSON.stringify(responseBody);
+            nextResponse = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"](responseContent, {
+                status: response.status,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
         // Forward Set-Cookie headers from backend
         const setCookieHeaders = response.headers.getSetCookie?.() || [];
         setCookieHeaders.forEach((cookie)=>{

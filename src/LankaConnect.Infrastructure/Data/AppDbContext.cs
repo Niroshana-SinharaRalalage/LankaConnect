@@ -68,6 +68,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Stripe Customer Entity Set (Phase 6A.4)
     public DbSet<StripeCustomer> StripeCustomers => Set<StripeCustomer>(); // Phase 6A.4: Stripe Payment Integration
 
+    // Stripe Webhook Event Entity Set (Phase 6A.24)
+    public DbSet<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent> StripeWebhookEvents => Set<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent>(); // Phase 6A.24: Webhook idempotency tracking
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -120,6 +123,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Stripe Customer configuration (Phase 6A.4)
         modelBuilder.ApplyConfiguration(new StripeCustomerConfiguration());
+
+        // Stripe Webhook Event configuration (Phase 6A.24)
+        modelBuilder.ApplyConfiguration(new StripeWebhookEventConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -213,7 +219,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management
-            typeof(StripeCustomer) // Phase 6A.4: Stripe Payment Integration
+            typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
+            typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent) // Phase 6A.24: Webhook idempotency tracking
         };
 
         // Get all types from Domain assembly that aren't in our configured list

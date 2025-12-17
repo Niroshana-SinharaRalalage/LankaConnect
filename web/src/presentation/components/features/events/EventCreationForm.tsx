@@ -47,9 +47,15 @@ export function EventCreationForm() {
       enableGroupPricing: false,
       groupPricingTiers: [],
       capacity: 50,
-      ticketPriceCurrency: Currency.USD,
+      // Session 33: Don't set default currencies - they should only be set when user enters pricing mode
+      // This prevents validation errors when switching between pricing modes
+      ticketPriceAmount: undefined,
+      ticketPriceCurrency: undefined,
+      adultPriceAmount: undefined,
       adultPriceCurrency: Currency.USD,
+      childPriceAmount: undefined,
       childPriceCurrency: Currency.USD,
+      childAgeLimit: undefined,
       category: EventCategory.Community, // Default to Community instead of empty
     },
   });
@@ -58,6 +64,32 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const groupPricingTiers = watch('groupPricingTiers') || [];
+
+  // Session 33: Track validation errors for display
+  const hasErrors = Object.keys(errors).length > 0;
+
+  // Session 33: Handle form validation errors - displays message when validation fails
+  const onValidationError = (validationErrors: Record<string, any>) => {
+    console.error('❌ Form Validation Failed:', validationErrors);
+    // List all validation error fields for debugging
+    const errorFields = Object.keys(validationErrors);
+    console.error('Fields with errors:', errorFields);
+
+    // Session 33: Debug - log current form values for pricing mode
+    console.log('🔍 Debug - Current form state:', {
+      isFree,
+      enableDualPricing,
+      enableGroupPricing,
+      ticketPriceAmount: watch('ticketPriceAmount'),
+      ticketPriceCurrency: watch('ticketPriceCurrency'),
+      adultPriceAmount: watch('adultPriceAmount'),
+      childPriceAmount: watch('childPriceAmount'),
+    });
+
+    setSubmitError(`Please fix the validation errors: ${errorFields.join(', ')}`);
+    // Scroll to top of form to show errors
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     if (!user?.userId) {
@@ -173,8 +205,8 @@ export function EventCreationForm() {
       const eventId = await createEventMutation.mutateAsync(eventData);
       console.log('✅ Event created successfully! ID:', eventId);
 
-      // Redirect to event management page
-      router.push(`/events/${eventId}/manage`);
+      // Session 33: Redirect to dashboard instead of event management page
+      router.push('/dashboard');
     } catch (err) {
       // PHASE 6A.10: Enhanced error logging
       console.error('❌ Event creation failed - Detailed Analysis:');
@@ -201,7 +233,7 @@ export function EventCreationForm() {
         console.error('Response Data:', axiosError.response?.data);
       }
     }
-  });
+  }, onValidationError);  // Session 33: Add validation error callback
 
   // Category labels
   const categoryOptions = [
@@ -498,7 +530,7 @@ export function EventCreationForm() {
 
               {/* Pricing Mode Selection */}
               <div className="space-y-3">
-                {/* Dual Pricing Toggle - Session 33: Fixed onChange override bug */}
+                {/* Dual Pricing Toggle - Session 33: Fixed onChange override bug + clear fields */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableDualPricing"
@@ -507,7 +539,25 @@ export function EventCreationForm() {
                     {...register('enableDualPricing', {
                       onChange: (e) => {
                         if (e.target.checked) {
+                          // Disable other pricing modes
                           setValue('enableGroupPricing', false);
+                          // Clear single pricing fields to prevent validation conflicts
+                          setValue('ticketPriceAmount', undefined);
+                          setValue('ticketPriceCurrency', undefined);
+                          // Clear group pricing fields
+                          setValue('groupPricingTiers', []);
+                          // Set default currencies for dual pricing
+                          setValue('adultPriceCurrency', Currency.USD);
+                          setValue('childPriceCurrency', Currency.USD);
+                        } else {
+                          // When unchecking, clear dual pricing fields
+                          setValue('adultPriceAmount', undefined);
+                          setValue('adultPriceCurrency', undefined);
+                          setValue('childPriceAmount', undefined);
+                          setValue('childPriceCurrency', undefined);
+                          setValue('childAgeLimit', undefined);
+                          // Set default for single pricing
+                          setValue('ticketPriceCurrency', Currency.USD);
                         }
                       }
                     })}
@@ -517,7 +567,7 @@ export function EventCreationForm() {
                   </label>
                 </div>
 
-                {/* Group Pricing Toggle - Phase 6D - Session 33: Fixed onChange override bug */}
+                {/* Group Pricing Toggle - Phase 6D - Session 33: Fixed onChange override bug + clear fields */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableGroupPricing"
@@ -526,7 +576,22 @@ export function EventCreationForm() {
                     {...register('enableGroupPricing', {
                       onChange: (e) => {
                         if (e.target.checked) {
+                          // Disable other pricing modes
                           setValue('enableDualPricing', false);
+                          // Clear single pricing fields
+                          setValue('ticketPriceAmount', undefined);
+                          setValue('ticketPriceCurrency', undefined);
+                          // Clear dual pricing fields
+                          setValue('adultPriceAmount', undefined);
+                          setValue('adultPriceCurrency', undefined);
+                          setValue('childPriceAmount', undefined);
+                          setValue('childPriceCurrency', undefined);
+                          setValue('childAgeLimit', undefined);
+                        } else {
+                          // When unchecking, clear group pricing fields
+                          setValue('groupPricingTiers', []);
+                          // Set default for single pricing
+                          setValue('ticketPriceCurrency', Currency.USD);
                         }
                       }
                     })}
@@ -550,13 +615,22 @@ export function EventCreationForm() {
                       type="number"
                       min="0"
                       max="10000"
-                      step="0.01"
-                      placeholder="e.g., 25.00"
+                      step="1"
+                      placeholder="e.g., 25"
                       error={!!errors.ticketPriceAmount}
                       {...register('ticketPriceAmount', { valueAsNumber: true })}
                     />
                     {errors.ticketPriceAmount && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
+                    )}
+                    {/* Session 33: Commission info message - standardized format */}
+                    {(watch('ticketPriceAmount') ?? 0) > 0 && (
+                      <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                        <p>5% (Stripe + LankaConnect commission) applies</p>
+                        <p className="font-medium text-green-700">
+                          You'll receive: ${((watch('ticketPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                        </p>
+                      </div>
                     )}
                   </div>
 
@@ -570,6 +644,7 @@ export function EventCreationForm() {
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                         errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                       }`}
+                      defaultValue={Currency.USD}
                       {...register('ticketPriceCurrency', { valueAsNumber: true })}
                     >
                       <option value={Currency.USD}>USD ($)</option>
@@ -608,25 +683,35 @@ export function EventCreationForm() {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 25.00"
+                        step="1"
+                        placeholder="e.g., 25"
                         error={!!errors.adultPriceAmount}
                         {...register('adultPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.adultPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
                       )}
+                      {/* Session 33: Commission info for adult price - standardized format */}
+                      {(watch('adultPriceAmount') ?? 0) > 0 && (
+                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                          <p>5% (Stripe + LankaConnect commission) applies</p>
+                          <p className="font-medium text-green-700">
+                            You'll receive: ${((watch('adultPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label htmlFor="adultPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Adult Currency *
+                        Currency *
                       </label>
                       <select
                         id="adultPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.adultPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('adultPriceCurrency', { valueAsNumber: true })}
                       >
                         <option value={Currency.USD}>USD ($)</option>
@@ -649,25 +734,35 @@ export function EventCreationForm() {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 15.00"
+                        step="1"
+                        placeholder="e.g., 15"
                         error={!!errors.childPriceAmount}
                         {...register('childPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.childPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
                       )}
+                      {/* Session 33: Commission info for child price - standardized format */}
+                      {(watch('childPriceAmount') ?? 0) > 0 && (
+                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                          <p>5% (Stripe + LankaConnect commission) applies</p>
+                          <p className="font-medium text-green-700">
+                            You'll receive: ${((watch('childPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label htmlFor="childPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Child Currency *
+                        Currency *
                       </label>
                       <select
                         id="childPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.childPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('childPriceCurrency', { valueAsNumber: true })}
                       >
                         <option value={Currency.USD}>USD ($)</option>
@@ -743,12 +838,31 @@ export function EventCreationForm() {
         </div>
       )}
 
+      {/* Session 33: Validation Error Summary - Shows when form has validation errors */}
+      {hasErrors && !submitError && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-amber-800">Please fix the following errors:</p>
+              <ul className="mt-1 text-sm text-amber-700 list-disc list-inside">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{field}: {(error as any)?.message || 'Invalid'}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-4">
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push('/events')}
+          onClick={() => router.push('/dashboard')}
           disabled={isSubmitting}
         >
           Cancel

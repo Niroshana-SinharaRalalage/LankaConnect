@@ -213,13 +213,25 @@ export function EventsList({
                 </span>
               )}
 
-              {/* Price - Session 23: Dual pricing support */}
+              {/* Price - Session 23: Dual pricing, Session 33: Group pricing support */}
               {!event.isFree && (
                 <span className="px-2 py-1 bg-[#FFE8CC] text-[#8B1538] rounded text-xs font-medium">
-                  {event.hasDualPricing ? (
+                  {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                    // Session 33: Display price range for group pricing (no "/person")
+                    (() => {
+                      const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
+                      const minPrice = Math.min(...prices);
+                      const maxPrice = Math.max(...prices);
+                      return minPrice === maxPrice
+                        ? `$${minPrice}`
+                        : `$${minPrice}-$${maxPrice}`;
+                    })()
+                  ) : event.hasDualPricing ? (
                     `Adult: $${event.adultPriceAmount} | Child: $${event.childPriceAmount}`
-                  ) : (
+                  ) : event.ticketPriceAmount != null ? (
                     `$${event.ticketPriceAmount}`
+                  ) : (
+                    'Paid Event'
                   )}
                 </span>
               )}

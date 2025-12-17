@@ -203,7 +203,21 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
-Please follow these best practices
+curl -X 'POST' \
+  'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "niroshhh2@gmail.com",
+  "password": "12!@qwASzx",
+  "rememberMe": true,
+  "ipAddress": "string"
+}'
+  -------------------------------------------
+
+Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
+
+Think harder and smarter as a Senior Software Engineer and follow these best practices:
 
 1. Follow established UI/UX best practices at all times — clarity and usability matter.
 
@@ -213,17 +227,21 @@ Please follow these best practices
 
 4. Before making code changes, search the codebase for similar implementations and prefer reusable components over duplication.
 
-5. For detailed guidelines, see: C:\Work\LankaConnect\CLAUDE.md.
+5. Ensure that no existing functionality is broken when updating or implementing new code. This is especially important on the UI side, where components can be very fragile—so please make changes carefully and thoughtfully.
 
-6. Commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+6. For detailed guidelines, see: C:\Work\LankaConnect\CLAUDE.md.
 
-7. Use EF Core migrations for all database schema changes. If migration issues occur, fix them before running migrations.
+7. Commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
 
-8. Do not use local databases or Docker for staging. We have a staging database and staging is deployed to Azure using deploy-staging.yml. The UI may run locally, but it should point to the staging APIs.
+8. Use EF Core migrations for all database schema changes. If migration issues occur, fix them before running migrations.
 
-9. Be accurate and honest in status reports. Diagnose issues methodically — test the API endpoint, then check Azure container logs to determine whether the problem is a database/EF migration issue or something else.
+9. Make sure to test the relevent API(s) after make any backend code change,  database changes or any EF change or configuration.
 
-10. Think harder and smarter as a Senior Software Engineer: handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches.
+10. Do not use local databases or Docker for staging. We have a staging database and staging is deployed to Azure using deploy-staging.yml. The UI must run locally (on 3000 poert), but it should point to the staging APIs.
+
+11. Be accurate and honest in status reports. Diagnose issues methodically — test the API endpoint, then check Azure container logs to determine whether the problem is a database/EF migration issue or something else.
+
+12. Handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches.
   -------------------------------------------------
 
   1. ✅ Landing Page (/)
@@ -589,154 +607,15 @@ Subscription status should update to "Active"
 
 =========================================================================
 
-New Features from Session 12 (Organizer Features)
-1. Event Creation Form (/events/create)
-Access: Requires authentication (redirects to login if not authenticated) Test Steps:
-Navigate to /events/create (or click "Create Event" button from events page)
-Fill out the form sections:
-Basic Information: Title (5-200 chars), Description (20-5000 chars), Category dropdown
-Date & Time: Start date/time (must be future), End date/time (must be after start)
-Location (optional): Street address, City, State, ZIP code (format: 12345 or 12345-6789), Country
-Capacity & Pricing: Maximum capacity (1-10,000), Free event checkbox, Ticket price + currency (if not free)
-Click "Create Event" button
-Verify redirect to event detail page after successful creation
-Validation to Test:
-Title too short/long
-Description too short/long
-Start date in the past
-End date before start date
-Paid event without price/currency
-ZIP code format validation
-Expected Result: Event created and visible in event list and organizer dashboard
-2. Organizer Dashboard (/events/my-events)
-Access: Requires authentication (redirects to login if not authenticated) Test Steps:
-Navigate to /events/my-events
-Verify 4 stat cards display correctly:
-Total Events (count)
-Upcoming Events (events with future start dates)
-Total Registrations (sum of all registrations)
-Total Revenue (calculated from paid events × registrations)
-Test status filtering:
-Click "All Events" to see everything
-Click individual status buttons (Draft, Published, Active, Postponed, Cancelled, Completed, Archived, Under Review)
-Verify count badges update correctly
-Test event management actions:
-Click "View" button → redirects to event detail page
-Click "Edit" button → redirects to event edit page
-Click "Delete" button → shows confirmation buttons
-Click "Confirm Delete" → event removed from list
-Click "Cancel" → cancels deletion
-Expected Results:
-Stats update in real-time as events change
-Filtering works correctly
-Delete requires confirmation
-Only shows events created by logged-in organizer
-3. Sign-Up List Management (/events/[id]/manage-signups)
-Access: Organizer-only (checks if user is event organizer) Test Steps:
-Navigate to an event you created: /events/[your-event-id]/manage-signups
-Verify 2 stat cards:
-Total Sign-Up Lists (count)
-Total Commitments (sum across all lists)
-Create Sign-Up List:
-Select list type (Open or Predefined)
-Enter category name (e.g., "Food", "Decorations")
-If Predefined: Add items with descriptions and quantities
-Click "Add Item" to add more predefined items
-Click "Remove" to delete items
-Click "Create Sign-Up List"
-View Commitments:
-Expand sign-up lists to see committed items
-Verify user details (name, quantity, commitment date)
-Download CSV:
-Click "Download All Sign-Ups (CSV)" button
-Verify CSV file downloads with format: Category, Item Description, User ID, Quantity, Committed At
-Expected Results:
-Only event organizer can access this page
-Sign-up lists created successfully
-Commitments display correctly with user details
-CSV export contains all commitment data
-📋 Existing Features (All Users)
-4. Events List Page (/events)
-Test Steps:
-Navigate to /events
-View all published events
-Test search and filtering (if implemented)
-Click on an event card to view details
-5. Event Detail Page (/events/[id])
-Test Steps:
-Navigate to any event detail page
-View event information (title, description, date, location, capacity, pricing)
-Test RSVP functionality (if user is attendee):
-Click "RSVP" button
-Verify registration confirmation
-Check "Current Registrations" count updates
-Test Waitlist (if event is full):
-Join waitlist
-Verify waitlist count updates
-Test Sign-Up Commitments (attendee view):
-View available sign-up lists
-Commit to items
-Verify commitment appears in list
-🔄 Complete Testing Workflows
-Workflow 1: As an Organizer (Full Lifecycle)
-Create Event (/events/create)
-Fill out all event details
-Set capacity and pricing
-Click "Create Event"
-Manage Event (/events/my-events)
-View event in dashboard
-Check stats update
-Edit event details if needed
-Manage Sign-Ups (/events/[id]/manage-signups)
-Create multiple sign-up lists (Food, Decorations, etc.)
-Add predefined items
-Monitor commitments as users join
-Download Data
-Export CSV with all commitments
-Review attendee data
-Workflow 2: As an Attendee
-Discover Events (/events)
-Browse event list
-Search/filter events
-View Details (/events/[id])
-Read event information
-Check availability
-Register (Event Detail Page)
-Click "RSVP" button
-Confirm registration
-Commit to Sign-Ups (Event Detail Page)
-View available sign-up lists
-Commit to bringing items
-Verify commitments saved
-Workflow 3: Edge Cases & Validation
-Unauthenticated Access:
-Try accessing /events/create without login → redirects to login
-Try accessing /events/my-events without login → redirects to login
-Organizer-Only Access:
-Try accessing /events/[someone-else's-event]/manage-signups → should show error or redirect
-Form Validation:
-Submit event creation form with invalid data
-Verify error messages display correctly
-Event Capacity:
-Create event with capacity of 5
-Register 5 users
-Verify 6th user sees "Event Full" and waitlist option
-Pricing:
-Create free event → verify no price shown
-Create paid event → verify ticket price displays
-Verify revenue calculation in organizer dashboard
-🎨 UI/UX Features to Test
-Brand Colors: Verify Saffron Orange (#FF7900) and Burgundy (#8B1538) used throughout
-Responsive Design: Test on mobile, tablet, desktop breakpoints
-Loading States: Check skeleton loaders while data fetches
-Error States: Verify error messages display correctly
-Empty States: Check "No events yet" messages with call-to-action buttons
-✅ Current Build Status
-TypeScript Errors: 0 (Zero Tolerance maintained)
-New Code: 1,731 lines across 3 options
-Commits: 6 total (3 features + 3 documentation)
-Routes Created:
-/events/create ✅
-/events/my-events ✅
-/events/[id]/manage-signups ✅
-All features are ready for testing! Start with the organizer workflows to test the Session 12 features, then verify existing attendee features still work correctly.
+Recommended Solution: Dual Storage Strategy (Option A)
+Implementation:
+Development: Store refresh token in localStorage
+Production: Use HttpOnly cookies (current approach)
+Why This Solution?
+✅ Works immediately with minimal changes
+✅ Industry standard (Auth0, Firebase use this pattern)
+✅ Backend already supports both modes
+✅ No SSL certificate complexity
+✅ Production maintains full security
+
+===================================================================

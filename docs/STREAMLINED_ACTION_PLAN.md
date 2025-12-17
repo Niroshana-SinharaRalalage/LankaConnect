@@ -136,6 +136,29 @@
 
 ---
 
+### SESSION 52: PHASE 6A.28 DATABASE FIX (2025-12-16)
+**Goal**: Fix missing database column preventing Phase 6A.28 Open Items feature from working
+
+**Issues Fixed**:
+1. Missing "Sign Up" button for Open Items
+2. Validation errors in edit mode when Open Items was selected
+3. API not returning `hasOpenItems` field
+
+**Root Cause**: Database missing `has_open_items` column (original migration on 2025-11-29 didn't create it)
+
+**Solution**:
+- **Safe Migration**: Created `AddHasOpenItemsToSignUpListsSafe` with PostgreSQL conditional logic
+  - DO block checks `information_schema.columns` for column existence
+  - Only adds column if it doesn't exist
+  - Prevents duplicate column errors
+- **Frontend**: Added "Sign Up with Your Own Item" button to `SignUpManagementSection.tsx`
+- **Deployment**: Successfully deployed to staging (commit `e268a85`, run 20254479524)
+- **Verification**: Health checks passed, migration logs show success
+
+**Status**: ✅ COMPLETE - Feature fully operational
+
+---
+
 ## ✅ PREVIOUS STATUS - SESSION 42: PHASE 6A.27 BADGE ENHANCEMENT (2025-12-12)
 **Date**: 2025-12-12 (Session 42)
 **Session**: Phase 6A.27 - Badge Management Enhancement

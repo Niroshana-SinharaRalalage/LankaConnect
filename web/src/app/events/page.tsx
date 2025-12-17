@@ -424,12 +424,27 @@ function EventCard({
           </span>
         </div>
 
-        {/* Pricing */}
+        {/* Pricing - Session 33: Group and dual pricing support */}
         <div className="flex items-center justify-between pt-3 border-t border-neutral-200">
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" style={{ color: '#FF7900' }} />
             <span className="text-sm font-semibold" style={{ color: '#8B1538' }}>
-              {event.isFree ? 'Free Event' : `$${event.ticketPriceAmount?.toFixed(2)}`}
+              {event.isFree
+                ? 'Free Event'
+                : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0
+                  ? (() => {
+                      const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
+                      const minPrice = Math.min(...prices);
+                      const maxPrice = Math.max(...prices);
+                      return minPrice === maxPrice
+                        ? `$${minPrice.toFixed(2)}`
+                        : `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)}`;
+                    })()
+                  : event.hasDualPricing
+                    ? `$${event.adultPriceAmount?.toFixed(2)} / $${event.childPriceAmount?.toFixed(2)}`
+                    : event.ticketPriceAmount != null
+                      ? `$${event.ticketPriceAmount.toFixed(2)}`
+                      : 'Paid Event'}
             </span>
           </div>
           <button

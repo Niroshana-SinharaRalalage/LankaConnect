@@ -1,11 +1,11 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -61,6 +61,31 @@ export function EventEditForm({ event }: EventEditFormProps) {
     return categoryMap[category] ?? EventCategory.Community;
   }, []);
 
+  // Session 33 Fix: Convert currency string/number to Currency enum value
+  // Backend may return "USD" (string) or 1 (number) depending on serialization
+  const convertCurrencyToNumber = useCallback((currency: any): Currency => {
+    // If it's already a valid Currency enum number, return it
+    if (typeof currency === 'number' && currency >= 1 && currency <= 6) {
+      return currency as Currency;
+    }
+
+    // If it's a string, map it to the enum value
+    if (typeof currency === 'string') {
+      const currencyMap: Record<string, Currency> = {
+        'USD': Currency.USD,
+        'LKR': Currency.LKR,
+        'GBP': Currency.GBP,
+        'EUR': Currency.EUR,
+        'CAD': Currency.CAD,
+        'AUD': Currency.AUD,
+      };
+      return currencyMap[currency] ?? Currency.USD;
+    }
+
+    // Default to USD
+    return Currency.USD;
+  }, []);
+
   // Format dates for datetime-local input
   const formatDateForInput = (dateString: string | Date) => {
     const date = new Date(dateString);
@@ -79,6 +104,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
     watch,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm<EditEventFormData>({
     resolver: zodResolver(editEventSchema),
@@ -102,8 +128,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       childPriceAmount: undefined,
       childPriceCurrency: undefined,
       childAgeLimit: undefined,
-      // Group pricing
-      groupPricingTiers: undefined,
+      // Group pricing - populated by reset() if applicable
+      groupPricingTiers: [],
       // Location
       locationAddress: event.address || undefined,
       locationCity: event.city || undefined,
@@ -117,12 +143,31 @@ export function EventEditForm({ event }: EventEditFormProps) {
   // We don't want to reset when user is typing!
   useEffect(() => {
     const categoryNumber = convertCategoryToNumber(event.category);
+
+    // Session 33 Fix: Convert backend currency values to proper enum numbers
+    const ticketCurrency = event.ticketPriceCurrency ? convertCurrencyToNumber(event.ticketPriceCurrency) : Currency.USD;
+    const adultCurrency = event.adultPriceCurrency ? convertCurrencyToNumber(event.adultPriceCurrency) : Currency.USD;
+    const childCurrency = event.childPriceCurrency ? convertCurrencyToNumber(event.childPriceCurrency) : Currency.USD;
+
     console.log('🔄 Resetting form with event data:', {
       eventId: event.id,
       category: event.category,
       categoryType: typeof event.category,
       categoryNumber,
       isFree: event.isFree,
+      // Session 33: Debug pricing mode loading
+      hasDualPricing: event.hasDualPricing,
+      hasGroupPricing: event.hasGroupPricing,
+      adultPriceAmount: event.adultPriceAmount,
+      adultPriceCurrency: event.adultPriceCurrency,
+      adultCurrencyConverted: adultCurrency,
+      childPriceAmount: event.childPriceAmount,
+      childPriceCurrency: event.childPriceCurrency,
+      childCurrencyConverted: childCurrency,
+      childAgeLimit: event.childAgeLimit,
+      ticketPriceAmount: event.ticketPriceAmount,
+      ticketPriceCurrency: event.ticketPriceCurrency,
+      ticketCurrencyConverted: ticketCurrency,
     });
 
     // Session 33: Properly load existing pricing data including dual pricing
@@ -139,20 +184,25 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
       isFree: event.isFree,
-      // Session 33: Load pricing data based on pricing mode
+      // Session 33 Fix: Load pricing data with PROPERLY CONVERTED currency values
       // Single pricing - only set if in single pricing mode
       ticketPriceAmount: hasSinglePricing ? (event.ticketPriceAmount ?? undefined) : undefined,
-      ticketPriceCurrency: hasSinglePricing ? (event.ticketPriceCurrency ?? Currency.USD) : undefined,
+      ticketPriceCurrency: hasSinglePricing ? ticketCurrency : undefined,
       // Dual pricing - only set if in dual pricing mode
       enableDualPricing: hasDualPricing,
       adultPriceAmount: hasDualPricing ? (event.adultPriceAmount ?? undefined) : undefined,
-      adultPriceCurrency: hasDualPricing ? (event.adultPriceCurrency ?? Currency.USD) : undefined,
+      adultPriceCurrency: hasDualPricing ? adultCurrency : undefined,
       childPriceAmount: hasDualPricing ? (event.childPriceAmount ?? undefined) : undefined,
-      childPriceCurrency: hasDualPricing ? (event.childPriceCurrency ?? Currency.USD) : undefined,
+      childPriceCurrency: hasDualPricing ? childCurrency : undefined,
       childAgeLimit: hasDualPricing ? (event.childAgeLimit ?? undefined) : undefined,
-      // Group pricing
+      // Group pricing - Session 44: Convert currency values from string to number
       enableGroupPricing: hasGroupPricing,
-      groupPricingTiers: hasGroupPricing && event.groupPricingTiers ? [...event.groupPricingTiers] : undefined,
+      groupPricingTiers: hasGroupPricing && event.groupPricingTiers
+        ? event.groupPricingTiers.map(tier => ({
+            ...tier,
+            currency: convertCurrencyToNumber(tier.currency),
+          }))
+        : undefined,
       // Location
       locationAddress: event.address || undefined,
       locationCity: event.city || undefined,
@@ -166,6 +216,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const isFree = watch('isFree');
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
+
+  // Session 33: Use useFieldArray for dynamic group pricing tiers management
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'groupPricingTiers',
+  });
 
   const onSubmit = handleSubmit(async (data: EditEventFormData) => {
     if (!user?.userId) {
@@ -226,6 +282,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
       // Session 33: Determine pricing mode and build appropriate pricing fields
       const isDualPricing = !data.isFree && data.enableDualPricing;
+      const isGroupPricing = !data.isFree && data.enableGroupPricing;
       const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing;
 
       const eventData = {
@@ -257,6 +314,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
         childPriceAmount: isDualPricing ? data.childPriceAmount : null,
         childPriceCurrency: isDualPricing ? data.childPriceCurrency : null,
         childAgeLimit: isDualPricing ? data.childAgeLimit : null,
+        // Session 33: Group pricing mode - use form data directly
+        ...(isGroupPricing && data.groupPricingTiers && data.groupPricingTiers.length > 0 && {
+          groupPricingTiers: data.groupPricingTiers.map((tier) => ({
+            minAttendees: tier.minAttendees,
+            maxAttendees: tier.maxAttendees ?? null,
+            pricePerPerson: tier.pricePerPerson,
+            currency: tier.currency,
+          })),
+        }),
       };
 
       console.log('📤 Updating event with payload:', JSON.stringify(eventData, null, 2));
@@ -650,13 +716,22 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       type="number"
                       min="0"
                       max="10000"
-                      step="0.01"
-                      placeholder="e.g., 25.00"
+                      step="1"
+                      placeholder="e.g., 25"
                       error={!!errors.ticketPriceAmount}
                       {...register('ticketPriceAmount', { valueAsNumber: true })}
                     />
                     {errors.ticketPriceAmount && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
+                    )}
+                    {/* Session 33: Commission info message */}
+                    {(watch('ticketPriceAmount') ?? 0) > 0 && (
+                      <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                        <p>5% Stripe + LankaConnect commission applies</p>
+                        <p className="font-medium text-green-700">
+                          You'll receive: ${((watch('ticketPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                        </p>
+                      </div>
                     )}
                   </div>
 
@@ -670,6 +745,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                         errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                       }`}
+                      defaultValue={Currency.USD}
                       {...register('ticketPriceCurrency', { valueAsNumber: true })}
                     >
                       <option value={Currency.USD}>USD ($)</option>
@@ -696,25 +772,35 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 25.00"
+                        step="1"
+                        placeholder="e.g., 25"
                         error={!!errors.adultPriceAmount}
                         {...register('adultPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.adultPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
                       )}
+                      {/* Session 33: Commission info for adult price */}
+                      {(watch('adultPriceAmount') ?? 0) > 0 && (
+                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                          <p>5% Stripe + LankaConnect commission applies</p>
+                          <p className="font-medium text-green-700">
+                            You'll receive: ${((watch('adultPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label htmlFor="adultPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Adult Currency *
+                        Currency *
                       </label>
                       <select
                         id="adultPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.adultPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('adultPriceCurrency', { valueAsNumber: true })}
                       >
                         <option value={Currency.USD}>USD ($)</option>
@@ -737,25 +823,35 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 15.00"
+                        step="1"
+                        placeholder="e.g., 15"
                         error={!!errors.childPriceAmount}
                         {...register('childPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.childPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
                       )}
+                      {/* Session 33: Commission info for child price */}
+                      {(watch('childPriceAmount') ?? 0) > 0 && (
+                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                          <p>5% Stripe + LankaConnect commission applies</p>
+                          <p className="font-medium text-green-700">
+                            You'll receive: ${((watch('childPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label htmlFor="childPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Child Currency *
+                        Currency *
                       </label>
                       <select
                         id="childPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.childPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('childPriceCurrency', { valueAsNumber: true })}
                       >
                         <option value={Currency.USD}>USD ($)</option>
@@ -798,12 +894,160 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 </div>
               )}
 
-              {/* Group Pricing - Phase 6D (placeholder) */}
+              {/* Group Pricing - Session 33: Editable group pricing tiers with useFieldArray */}
               {enableGroupPricing && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    Group tiered pricing editing is coming soon. Currently, you can only set this when creating a new event.
-                  </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="text-sm font-semibold text-neutral-900">Group Pricing Tiers</h4>
+                      <p className="text-xs text-neutral-600 mt-1">
+                        Edit pricing tiers by changing the attendee numbers and prices below
+                      </p>
+                    </div>
+                    {/* Session 44: Add Tier Button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => append({
+                        minAttendees: fields.length > 0 ? (watch(`groupPricingTiers.${fields.length - 1}.maxAttendees`) ?? 0) + 1 : 1,
+                        maxAttendees: null,
+                        pricePerPerson: 0,
+                        currency: Currency.USD,
+                      })}
+                      className="flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Tier
+                    </Button>
+                  </div>
+
+                  {/* Existing tiers with inline editable inputs using useFieldArray */}
+                  {fields.length > 0 && (
+                    <div className="space-y-4">
+                      {fields.map((field, index) => {
+                        const tierPrice = watch(`groupPricingTiers.${index}.pricePerPerson`) ?? 0;
+                        return (
+                          <div key={field.id} className="p-4 bg-white border-2 border-orange-200 rounded-lg space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-sm font-semibold text-neutral-900">Tier {index + 1}</h5>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                                  Original: {field.minAttendees}{field.maxAttendees ? `-${field.maxAttendees}` : '+'} attendees
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => remove(index)}
+                                  className="p-1 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete this tier"
+                                >
+                                  <X className="h-4 w-4 text-red-600" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Min Attendees */}
+                              <div>
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                  Min Attendees *
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="10000"
+                                  {...register(`groupPricingTiers.${index}.minAttendees`, { valueAsNumber: true })}
+                                  error={!!errors.groupPricingTiers?.[index]?.minAttendees}
+                                />
+                                {errors.groupPricingTiers?.[index]?.minAttendees && (
+                                  <p className="mt-1 text-sm text-destructive">
+                                    {errors.groupPricingTiers[index]?.minAttendees?.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Max Attendees */}
+                              <div>
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                  Max Attendees
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="10000"
+                                  placeholder="Leave empty for unlimited"
+                                  {...register(`groupPricingTiers.${index}.maxAttendees`, {
+                                    setValueAs: (v) => v === '' || v === null || v === undefined ? null : parseInt(v)
+                                  })}
+                                  error={!!errors.groupPricingTiers?.[index]?.maxAttendees}
+                                />
+                                <p className="mt-1 text-xs text-neutral-500">Leave empty for unlimited (e.g., "3+")</p>
+                                {errors.groupPricingTiers?.[index]?.maxAttendees && (
+                                  <p className="mt-1 text-sm text-destructive">
+                                    {errors.groupPricingTiers[index]?.maxAttendees?.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Price Per Person */}
+                              <div>
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                  Price Per Person *
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    className="px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    {...register(`groupPricingTiers.${index}.currency`, { valueAsNumber: true })}
+                                  >
+                                    <option value={Currency.USD}>USD ($)</option>
+                                    <option value={Currency.LKR}>LKR (Rs)</option>
+                                  </select>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="10000"
+                                    step="1"
+                                    {...register(`groupPricingTiers.${index}.pricePerPerson`, { valueAsNumber: true })}
+                                    error={!!errors.groupPricingTiers?.[index]?.pricePerPerson}
+                                  />
+                                </div>
+                                {errors.groupPricingTiers?.[index]?.pricePerPerson && (
+                                  <p className="mt-1 text-sm text-destructive">
+                                    {errors.groupPricingTiers[index]?.pricePerPerson?.message}
+                                  </p>
+                                )}
+                                {/* Commission info */}
+                                {tierPrice > 0 && (
+                                  <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                                    <p>5% (Stripe + LankaConnect commission) applies</p>
+                                    <p className="font-medium text-green-700">
+                                      You'll receive: ${(tierPrice * 0.95).toFixed(2)} per person
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Helpful guidelines */}
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h5 className="text-xs font-semibold text-blue-900 mb-1">Tier Guidelines:</h5>
+                    <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                      <li>First tier must start at 1 attendee</li>
+                      <li>Tiers must be continuous with no gaps</li>
+                      <li>All tiers must use the same currency</li>
+                      <li>Only the last tier can have unlimited max attendees</li>
+                    </ul>
+                  </div>
+
+                  {errors.groupPricingTiers && typeof errors.groupPricingTiers === 'object' && 'message' in errors.groupPricingTiers && (
+                    <p className="mt-2 text-sm text-destructive">{errors.groupPricingTiers.message as string}</p>
+                  )}
                 </div>
               )}
             </div>

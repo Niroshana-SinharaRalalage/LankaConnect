@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-12-12
+**Last Updated**: 2025-12-14
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -30,6 +30,10 @@
 | 6A.25 | Email Groups Management | ✅ Complete | [PHASE_6A_25_EMAIL_GROUPS_SUMMARY.md](./PHASE_6A_25_EMAIL_GROUPS_SUMMARY.md) | 2025-12-11 |
 | 6A.26 | Badge Management System | ✅ Complete | PROGRESS_TRACKER.md Sessions 38-40 | 2025-12-12 |
 | 6A.27 | Badge Management Enhancement | ✅ Complete | PROGRESS_TRACKER.md Session 42 | 2025-12-12 |
+| 6A.28 | Open Sign-Up Items | ✅ Complete | [PHASE_6A_28_OPEN_SIGNUP_ITEMS_SUMMARY.md](./PHASE_6A_28_OPEN_SIGNUP_ITEMS_SUMMARY.md) | 2025-12-12 |
+| 6A.29 | Badge Creator Display & Preview | ✅ Complete | [PHASE_6A_29_BADGE_ENHANCEMENTS_SUMMARY.md](./PHASE_6A_29_BADGE_ENHANCEMENTS_SUMMARY.md) | 2025-12-13 |
+| 6A.30 | Multi-Location Badge Preview | ✅ Complete | [PHASE_6A_30_MULTI_LOCATION_PREVIEW_SUMMARY.md](./PHASE_6A_30_MULTI_LOCATION_PREVIEW_SUMMARY.md) | 2025-12-14 |
+| 6A.31 | Live Badges on Home/Detail Pages | ⏳ Planned | TBD | Not started |
 
 ---
 

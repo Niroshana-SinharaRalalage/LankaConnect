@@ -1,0 +1,1 @@
+{"title":"API Test - Single Pricing Event","description":"Testing single pricing mode after EF Core fix","startDate":"2025-12-26T10:00:00Z","endDate":"2025-12-26T18:00:00Z","capacity":50,"category":1,"ticketPriceAmount":25.00,"ticketPriceCurrency":1,"locationAddress":"123 Test St","locationCity":"Colombo","locationCountry":"Sri Lanka"}

@@ -33,6 +33,7 @@ export function GroupPricingTierBuilder({
   errors,
 }: GroupPricingTierBuilderProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newTier, setNewTier] = useState<Partial<GroupPricingTierFormData>>({
     minAttendees: tiers.length === 0 ? 1 : undefined,
     maxAttendees: undefined,
@@ -273,21 +274,30 @@ export function GroupPricingTierBuilder({
                     setNewTier({ ...newTier, currency: parseInt(e.target.value) as Currency })
                   }
                 >
-                  <option value={Currency.USD}>$</option>
-                  <option value={Currency.LKR}>Rs</option>
+                  <option value={Currency.USD}>USD ($)</option>
+                  <option value={Currency.LKR}>LKR (Rs)</option>
                 </select>
                 <Input
                   type="number"
                   min="0"
                   max="10000"
-                  step="0.01"
-                  placeholder="25.00"
+                  step="1"
+                  placeholder="25"
                   value={newTier.pricePerPerson || ''}
                   onChange={(e) =>
                     setNewTier({ ...newTier, pricePerPerson: parseFloat(e.target.value) || undefined })
                   }
                 />
               </div>
+              {/* Session 33: Commission info message for group pricing - standardized format */}
+              {(newTier.pricePerPerson ?? 0) > 0 && (
+                <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                  <p>5% (Stripe + LankaConnect commission) applies</p>
+                  <p className="font-medium text-green-700">
+                    You'll receive: ${((newTier.pricePerPerson ?? 0) * 0.95).toFixed(2)} per person
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

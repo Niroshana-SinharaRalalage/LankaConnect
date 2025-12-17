@@ -53,6 +53,14 @@
       "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage(?:/)?$"
     },
     {
+      "page": "/events/[id]/manage/create-signup-list",
+      "regex": "^/events/([^/]+?)/manage/create\\-signup\\-list(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage/create\\-signup\\-list(?:/)?$"
+    },
+    {
       "page": "/events/[id]/manage-signups",
       "regex": "^/events/([^/]+?)/manage\\-signups(?:/)?$",
       "routeKeys": {
@@ -68,6 +76,15 @@
         "nxtPsignupId": "nxtPsignupId"
       },
       "namedRegex": "^/events/(?<nxtPid>[^/]+?)/manage\\-signups/(?<nxtPsignupId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/events/[id]/signup-lists/[signupId]",
+      "regex": "^/events/([^/]+?)/signup\\-lists/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPsignupId": "nxtPsignupId"
+      },
+      "namedRegex": "^/events/(?<nxtPid>[^/]+?)/signup\\-lists/(?<nxtPsignupId>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [

@@ -155,6 +155,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/events/[id]/manage/create-signup-list/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/events/[id]/manage/create-signup-list">> = Specific
+  const handler = {} as typeof import("../../src/app/events/[id]/manage/create-signup-list/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/events/[id]/manage/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/events/[id]/manage">> = Specific
@@ -168,6 +177,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends AppPageConfig<"/events/[id]">> = Specific
   const handler = {} as typeof import("../../src/app/events/[id]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/events/[id]/signup-lists/[signupId]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/events/[id]/signup-lists/[signupId]">> = Specific
+  const handler = {} as typeof import("../../src/app/events/[id]/signup-lists/[signupId]/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

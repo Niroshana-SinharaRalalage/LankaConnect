@@ -167,6 +167,13 @@ export function SignUpCommitmentModal({
   /**
    * Handle form submission with proper UX flow
    * Phase 6A.23: Supports both logged-in and anonymous users
+   *
+   * Decision Flow:
+   * - If LOGGED IN → Skip email check, use authenticated endpoint directly
+   * - If NOT LOGGED IN → Check email:
+   *   - Member account → Prompt to log in
+   *   - Registered for event → Allow anonymous commitment
+   *   - Not registered → Prompt to register first
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,14 +182,34 @@ export function SignUpCommitmentModal({
       return;
     }
 
-    setIsValidatingEmail(true);
     setErrors({});
 
     try {
-      // Step 1: Check email registration status
+      // PATH 1: User is LOGGED IN - skip email validation, use authenticated endpoint
+      if (isLoggedIn && user?.userId) {
+        const commitmentData: CommitmentFormData = {
+          userId: user.userId,
+          signUpListId,
+          itemId: item.id,
+          quantity,
+          notes: notes.trim() || undefined,
+          contactName: name.trim() || undefined,
+          contactEmail: email.trim() || undefined,
+          contactPhone: phone.trim() || undefined,
+        };
+
+        await onCommit(commitmentData);
+        onOpenChange(false);
+        return;
+      }
+
+      // PATH 2: User is NOT LOGGED IN - need to validate email
+      setIsValidatingEmail(true);
+
+      // Check email registration status for anonymous users
       const registrationCheck = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
 
-      // Step 2: Handle based on result
+      // Handle based on result
       if (registrationCheck.shouldPromptLogin) {
         // Email belongs to a member - they should log in
         setErrors({
@@ -201,26 +228,10 @@ export function SignUpCommitmentModal({
         return;
       }
 
-      // Step 3: User can proceed - determine which path
       setIsValidatingEmail(false);
 
-      if (isLoggedIn && user?.userId) {
-        // Logged-in user - use authenticated endpoint
-        const commitmentData: CommitmentFormData = {
-          userId: user.userId,
-          signUpListId,
-          itemId: item.id,
-          quantity,
-          notes: notes.trim() || undefined,
-          contactName: name.trim() || undefined,
-          contactEmail: email.trim() || undefined,
-          contactPhone: phone.trim() || undefined,
-        };
-
-        await onCommit(commitmentData);
-        onOpenChange(false);
-      } else if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
-        // Anonymous user registered for event - use anonymous endpoint
+      // Anonymous user registered for event - use anonymous endpoint
+      if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
         const anonymousData: AnonymousCommitmentFormData = {
           signUpListId,
           itemId: item.id,

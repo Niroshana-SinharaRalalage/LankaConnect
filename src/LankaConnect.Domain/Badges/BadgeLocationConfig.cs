@@ -57,6 +57,23 @@ public class BadgeLocationConfig : ValueObject
     public static BadgeLocationConfig DefaultDetail =>
         new(positionX: 1.0m, positionY: 0.0m, sizeWidth: 0.21m, sizeHeight: 0.21m, rotation: 0m);
 
+    /// <summary>
+    /// Private parameterless constructor required by EF Core for OwnsOne value object hydration.
+    /// EF Core will instantiate this and then set properties from database columns.
+    /// Validation occurs only during domain object creation via public constructor.
+    /// Phase 6A.31d: Added to fix HTTP 500 error caused by missing parameterless constructor.
+    /// </summary>
+    private BadgeLocationConfig()
+    {
+        // Set temporary defaults - EF Core will overwrite these with database values
+        // These defaults are never used in production, only during EF Core materialization
+        PositionX = 0m;
+        PositionY = 0m;
+        SizeWidth = 0.26m;
+        SizeHeight = 0.26m;
+        Rotation = 0m;
+    }
+
     public BadgeLocationConfig(
         decimal positionX,
         decimal positionY,

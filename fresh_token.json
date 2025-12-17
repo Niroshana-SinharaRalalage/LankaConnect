@@ -1,3 +1,0 @@
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   471    0   424  100    47   1452    160 --:--:-- --:--:-- --:--:--  1635{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"request":["The request field is required."],"$.password":["'!' is an invalid escapable character within a JSON string. The string should be correctly escaped. Path: $.password | LineNumber: 0 | BytePositionInLine: 44."]},"traceId":"00-daee1c50e689d9fe26bc70974361c6cb-05783d1e23259998-00"}

@@ -75,7 +75,18 @@ public class EventRepository : Repository<Event>, IEventRepository
             {
                 // Extract IDs and sync to domain's _emailGroupIds list
                 var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
+
+                // CRITICAL FIX Phase 6A.33: Store original state before sync
+                var originalState = _context.Entry(eventEntity).State;
+
+                // Sync the email group IDs from shadow navigation to domain list
                 eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
+
+                // CRITICAL FIX Phase 6A.33: Reset entity state to prevent UPDATE conflicts
+                // The sync modifies _emailGroupIds which EF Core detects as a change
+                // But this is infrastructure hydration, not a business modification
+                // Reset state to what it was before sync (Unchanged for tracked entities)
+                _context.Entry(eventEntity).State = originalState;
             }
         }
 

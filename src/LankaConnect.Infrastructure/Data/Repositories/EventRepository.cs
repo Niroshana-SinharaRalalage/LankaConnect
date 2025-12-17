@@ -14,15 +14,16 @@ public class EventRepository : Repository<Event>, IEventRepository
         _geoLocationService = geoLocationService;
     }
 
-    // Override GetByIdAsync to eagerly load SignUpLists, Images, Videos, and Registrations with all related data
+    // Override GetByIdAsync to eagerly load SignUpLists, Images, Videos, Registrations, and EmailGroups with all related data
     // This is required for GetEventSignUpLists query, media gallery display, correct DisplayOrder calculation,
-    // and registration management (cancel/update operations)
+    // registration management (cancel/update operations), and email group integration
     public override async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(e => e.Images)
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
             .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
+            .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
             .Include(e => e.SignUpLists)
                 .ThenInclude(s => s.Commitments)
             .Include(e => e.SignUpLists)

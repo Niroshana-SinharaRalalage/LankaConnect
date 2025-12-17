@@ -250,9 +250,13 @@ export class EventsRepository {
   /**
    * Cancel RSVP
    * Removes registration and frees up capacity
+   * Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
+   * @param eventId - The event ID
+   * @param deleteSignUpCommitments - If true, deletes sign-up commitments and restores remaining quantities
    */
-  async cancelRsvp(eventId: string): Promise<void> {
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp`);
+  async cancelRsvp(eventId: string, deleteSignUpCommitments: boolean = false): Promise<void> {
+    const params = deleteSignUpCommitments ? '?deleteSignUpCommitments=true' : '';
+    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${params}`);
   }
 
   /**

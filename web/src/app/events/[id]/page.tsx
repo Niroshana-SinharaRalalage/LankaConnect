@@ -40,6 +40,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isCancelling, setIsCancelling] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isUpdatingRegistration, setIsUpdatingRegistration] = useState(false);
+  // Phase 6A.28: User choice for deleting signup commitments
+  const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -679,55 +681,81 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           Cancel Registration
                         </Button>
                       ) : (
-                        <div className="flex flex-1 gap-2">
-                          <Button
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              console.log('[CancelRsvp] User cancelled the cancellation');
-                              setShowCancelConfirm(false);
-                              setCancelError(null);
-                              setIsCancelling(false);
-                            }}
-                          >
-                            Keep Registration
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="flex-1"
-                            disabled={isCancelling}
-                            style={{
-                              borderColor: '#EF4444',
-                              color: '#FFFFFF',
-                              backgroundColor: '#EF4444',
-                              opacity: isCancelling ? 0.6 : 1
-                            }}
-                            onClick={async () => {
-                              try {
-                                console.log('[CancelRsvp] User confirmed cancellation, attempting to cancel registration for event:', id);
-                                setIsCancelling(true);
+                        <div className="flex-1 space-y-3">
+                          {/* Phase 6A.28: User choice for signup commitments */}
+                          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={deleteSignUpCommitments}
+                                onChange={(e) => setDeleteSignUpCommitments(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Also delete my sign-up commitments
+                                </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {deleteSignUpCommitments
+                                    ? "Your sign-up items will be removed and available for others to claim."
+                                    : "Your sign-up commitments will be kept even after cancellation (default)."}
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => {
+                                console.log('[CancelRsvp] User cancelled the cancellation');
+                                setShowCancelConfirm(false);
                                 setCancelError(null);
-                                await eventsRepository.cancelRsvp(id);
-                                console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
-                                window.location.reload();
-                              } catch (error: any) {
-                                console.error('[CancelRsvp] Failed to cancel registration:', error);
-                                console.error('[CancelRsvp] Error details:', {
-                                  message: error?.message,
-                                  response: error?.response,
-                                  status: error?.response?.status,
-                                  data: error?.response?.data,
-                                  detail: error?.response?.data?.detail
-                                });
-                                const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || error?.message || 'Unknown error';
-                                setCancelError(errorMessage);
                                 setIsCancelling(false);
-                                // Don't reset showCancelConfirm so user can see the error and try again
-                              }
-                            }}
-                          >
-                            {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
-                          </Button>
+                                setDeleteSignUpCommitments(false);
+                              }}
+                            >
+                              Keep Registration
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              disabled={isCancelling}
+                              style={{
+                                borderColor: '#EF4444',
+                                color: '#FFFFFF',
+                                backgroundColor: '#EF4444',
+                                opacity: isCancelling ? 0.6 : 1
+                              }}
+                              onClick={async () => {
+                                try {
+                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments);
+                                  setIsCancelling(true);
+                                  setCancelError(null);
+                                  await eventsRepository.cancelRsvp(id, deleteSignUpCommitments);
+                                  console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
+                                  window.location.reload();
+                                } catch (error: any) {
+                                  console.error('[CancelRsvp] Failed to cancel registration:', error);
+                                  console.error('[CancelRsvp] Error details:', {
+                                    message: error?.message,
+                                    response: error?.response,
+                                    status: error?.response?.status,
+                                    data: error?.response?.data,
+                                    detail: error?.response?.data?.detail
+                                  });
+                                  const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || error?.message || 'Unknown error';
+                                  setCancelError(errorMessage);
+                                  setIsCancelling(false);
+                                  // Don't reset showCancelConfirm so user can see the error and try again
+                                }
+                              }}
+                            >
+                              {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

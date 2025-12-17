@@ -254,9 +254,13 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
                 ?? new List<Domain.Communications.Entities.EmailGroup>();
 
-            // Add email group entities using EF Core's tracked collection
+            // CRITICAL FIX Phase 6A.33: Attach email group entities with Unchanged state
+            // This prevents EF Core from trying to INSERT existing entities
+            // EF Core will only create the join table entries, not try to insert EmailGroup entities
             foreach (var emailGroup in emailGroups)
             {
+                // Attach with Unchanged state so EF Core knows these entities already exist
+                dbContext.Entry(emailGroup).State = Microsoft.EntityFrameworkCore.EntityState.Unchanged;
                 currentEmailGroups.Add(emailGroup);
             }
 

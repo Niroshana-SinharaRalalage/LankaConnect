@@ -98,8 +98,11 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
+        // CRITICAL FIX: Remove AsNoTracking to enable token rotation
+        // RefreshToken endpoint needs to update/revoke old tokens and add new ones
+        // AsNoTracking prevents EF Core from tracking these changes
         return await _dbSet
-            .AsNoTracking()
+            .Include(u => u.RefreshTokens)
             .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken && rt.IsRevoked == false),
                 cancellationToken);
     }

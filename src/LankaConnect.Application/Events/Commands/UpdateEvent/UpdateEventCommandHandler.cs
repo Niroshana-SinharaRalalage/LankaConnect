@@ -286,8 +286,13 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             // Clear existing and add new entities using EF Core's tracked collection
             currentEmailGroups.Clear();
 
+            // CRITICAL FIX Phase 6A.33: Attach email group entities with Unchanged state
+            // This prevents EF Core from trying to INSERT existing entities
+            // EF Core will only create the join table entries, not try to insert EmailGroup entities
             foreach (var emailGroup in emailGroups)
             {
+                // Attach with Unchanged state so EF Core knows these entities already exist
+                dbContext.Entry(emailGroup).State = Microsoft.EntityFrameworkCore.EntityState.Unchanged;
                 currentEmailGroups.Add(emailGroup);
             }
         }

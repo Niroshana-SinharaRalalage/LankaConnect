@@ -78,28 +78,29 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         // Cancel the registration
         registration.Cancel();
 
-        // Phase 6A.16: Cascade delete sign-up commitments when registration is cancelled
-        // Find all sign-up commitments for this user in this event's sign-up lists
-        var userCommitments = await _dbContext.SignUpCommitments
-            .Where(c => c.UserId == request.UserId && c.SignUpItemId != null)
-            .Join(_dbContext.SignUpItems,
-                c => c.SignUpItemId,
-                item => item.Id,
-                (c, item) => new { Commitment = c, Item = item })
-            .Join(_dbContext.SignUpLists,
-                ci => ci.Item.SignUpListId,
-                list => list.Id,
-                (ci, list) => new { ci.Commitment, ci.Item, List = list })
-            .Where(x => EF.Property<Guid>(x.List, "EventId") == request.EventId)
-            .Select(x => x.Commitment)
-            .ToListAsync(cancellationToken);
-
-        if (userCommitments.Any())
+        // Phase 6A.28: Handle sign-up commitments based on user choice
+        if (request.DeleteSignUpCommitments)
         {
-            _logger.LogInformation("[CancelRsvp] Removing {Count} sign-up commitments for UserId={UserId}, EventId={EventId}",
-                userCommitments.Count, request.UserId, request.EventId);
+            _logger.LogInformation("[CancelRsvp] User chose to delete sign-up commitments for EventId={EventId}, UserId={UserId}",
+                request.EventId, request.UserId);
 
-            _dbContext.SignUpCommitments.RemoveRange(userCommitments);
+            // Use domain method which properly restores remaining_quantity
+            var cancelResult = @event.CancelAllUserCommitments(request.UserId);
+
+            if (cancelResult.IsFailure)
+            {
+                _logger.LogWarning("[CancelRsvp] Failed to cancel commitments: {Error}", cancelResult.Error);
+                // Don't fail the whole operation - registration is still cancelled
+            }
+            else
+            {
+                _logger.LogInformation("[CancelRsvp] {Message}", cancelResult.Error);
+            }
+        }
+        else
+        {
+            _logger.LogInformation("[CancelRsvp] User chose to keep sign-up commitments for EventId={EventId}, UserId={UserId}",
+                request.EventId, request.UserId);
         }
 
         // Save changes

@@ -533,18 +533,25 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Cancel RSVP to an event (Authenticated users)
+    /// Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
     /// </summary>
+    /// <param name="id">The event ID</param>
+    /// <param name="deleteSignUpCommitments">
+    /// If true, deletes all sign-up commitments and restores remaining quantities.
+    /// If false (default), keeps sign-up commitments intact.
+    /// </param>
     [HttpDelete("{id:guid}/rsvp")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CancelRsvp(Guid id)
+    public async Task<IActionResult> CancelRsvp(Guid id, [FromQuery] bool deleteSignUpCommitments = false)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}", userId, id);
+        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}",
+            userId, id, deleteSignUpCommitments);
 
-        var command = new CancelRsvpCommand(id, userId);
+        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);

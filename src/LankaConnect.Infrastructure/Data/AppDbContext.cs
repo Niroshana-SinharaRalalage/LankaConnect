@@ -14,13 +14,22 @@ using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Infrastructure.Payments.Entities;
 using LankaConnect.Infrastructure.Payments.Configurations;
 using LankaConnect.Infrastructure.Data.Seeders;
+using MediatR;
+using LankaConnect.Application.Common;
 
 namespace LankaConnect.Infrastructure.Data;
 
 public class AppDbContext : DbContext, IApplicationDbContext
 {
+    private readonly IPublisher? _publisher;
+
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
+    }
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, IPublisher publisher) : base(options)
+    {
+        _publisher = publisher;
     }
 
     // Domain Entity Sets
@@ -289,6 +298,36 @@ public class AppDbContext : DbContext, IApplicationDbContext
             }
         }
 
-        return await SaveChangesAsync(cancellationToken);
+        // Collect domain events before saving
+        var domainEvents = ChangeTracker.Entries<BaseEntity>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .SelectMany(e => e.Entity.DomainEvents)
+            .ToList();
+
+        // Save changes to database
+        var result = await SaveChangesAsync(cancellationToken);
+
+        // Dispatch domain events after successful save
+        if (_publisher != null && domainEvents.Any())
+        {
+            foreach (var domainEvent in domainEvents)
+            {
+                var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
+                var notification = Activator.CreateInstance(notificationType, domainEvent);
+
+                if (notification != null)
+                {
+                    await _publisher.Publish(notification, cancellationToken);
+                }
+            }
+
+            // Clear domain events after publishing
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                entry.Entity.ClearDomainEvents();
+            }
+        }
+
+        return result;
     }
 }

@@ -567,18 +567,7 @@ export function SignUpManagementSection({
 
                         <div className="space-y-3">
                           {categoryItems.map((item) => {
-                            // Debug logging
-                            console.log('[SignUpManagement] Item:', item.itemDescription);
-                            console.log('[SignUpManagement] userId prop:', userId, 'type:', typeof userId);
-                            console.log('[SignUpManagement] commitments:', item.commitments.map(c => ({
-                              userId: c.userId,
-                              type: typeof c.userId,
-                              contactName: c.contactName
-                            })));
-
                             const userItemCommitment = item.commitments.find(c => c.userId === userId);
-                            console.log('[SignUpManagement] userItemCommitment found:', !!userItemCommitment);
-
                             const remainingQty = item.remainingQuantity;
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
 

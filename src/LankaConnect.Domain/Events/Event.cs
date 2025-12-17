@@ -1325,6 +1325,61 @@ public class Event : BaseEntity
     }
 
     /// <summary>
+    /// Cancels all signup commitments for a specific user across all sign-up lists in this event
+    /// Phase 6A.28: Called during registration cancellation when user opts to delete commitments
+    /// Properly restores remaining_quantity for each affected SignUpItem via domain logic
+    /// </summary>
+    /// <param name="userId">The ID of the user whose commitments should be cancelled</param>
+    /// <returns>Result indicating success or failure with error details</returns>
+    public Result CancelAllUserCommitments(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        var cancelledCount = 0;
+        var errors = new List<string>();
+
+        foreach (var signUpList in _signUpLists)
+        {
+            foreach (var item in signUpList.Items)
+            {
+                // Check if this item has a commitment from the user
+                if (item.Commitments.Any(c => c.UserId == userId))
+                {
+                    // Use domain method which properly restores remaining_quantity
+                    var result = item.CancelCommitment(userId);
+
+                    if (result.IsSuccess)
+                    {
+                        cancelledCount++;
+                    }
+                    else
+                    {
+                        // Log error but continue processing other commitments
+                        errors.Add($"Failed to cancel commitment for item '{item.ItemDescription}': {result.Error}");
+                    }
+                }
+            }
+        }
+
+        if (cancelledCount > 0)
+        {
+            MarkAsUpdated();
+        }
+
+        // Return success if at least one commitment was cancelled, even if some failed
+        if (cancelledCount > 0)
+        {
+            return Result.Success();
+        }
+
+        // No commitments found or all failed
+        return errors.Any()
+            ? Result.Failure($"Failed to cancel commitments: {string.Join("; ", errors)}")
+            : Result.Success();
+    }
+
+    /// <summary>
     /// Gets a sign-up list by ID
     /// </summary>
     public SignUpList? GetSignUpList(Guid signUpListId)

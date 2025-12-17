@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251217030432_FixBadgeLocationConfigNullValues")]
-    partial class FixBadgeLocationConfigNullValues
+    [Migration("20251217053649_ApplyBadgeLocationConfigDefaults")]
+    partial class ApplyBadgeLocationConfigDefaults
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1994,6 +1994,73 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_stripe_customers_user_id");
 
                     b.ToTable("stripe_customers", "payments");
+                });
+
+            modelBuilder.Entity("LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("event_type");
+
+                    b.Property<bool>("Processed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("processed");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stripe_webhook_events_event_id");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("ix_stripe_webhook_events_event_type");
+
+                    b.HasIndex("Processed")
+                        .HasDatabaseName("ix_stripe_webhook_events_processed");
+
+                    b.HasIndex("Processed", "CreatedAt")
+                        .HasDatabaseName("ix_stripe_webhook_events_processed_created_at");
+
+                    b.ToTable("stripe_webhook_events", "payments");
                 });
 
             modelBuilder.Entity("event_email_groups", b =>

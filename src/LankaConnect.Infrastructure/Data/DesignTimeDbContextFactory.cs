@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.IO;
 
 namespace LankaConnect.Infrastructure.Data;
@@ -76,6 +77,33 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
         optionsBuilder.EnableDetailedErrors();
         optionsBuilder.EnableSensitiveDataLogging();
 
-        return new AppDbContext(optionsBuilder.Options);
+        // Create mock dependencies for design-time operations (migrations)
+        // Actual dependencies are injected by DI at runtime
+        var mockPublisher = new NullPublisher();
+        var mockLogger = new NullLogger<AppDbContext>();
+
+        return new AppDbContext(optionsBuilder.Options, mockPublisher, mockLogger);
+    }
+
+    // Null implementation of IPublisher for design-time operations
+    private class NullPublisher : MediatR.IPublisher
+    {
+        public Task Publish(object notification, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : MediatR.INotification
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    // Null logger for design-time operations
+    private class NullLogger<T> : ILogger<T>
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => false;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
     }
 }

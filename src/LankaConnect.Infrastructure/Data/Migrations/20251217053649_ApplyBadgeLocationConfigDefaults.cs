@@ -1,20 +1,18 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class FixBadgeLocationConfigNullValues : Migration
+    public partial class ApplyBadgeLocationConfigDefaults : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Phase 6A.31a: DATA-ONLY migration to fix existing NULL values in badge location config columns
-            // This migration contains ONLY the UPDATE statement because the schema changes (default values)
-            // were already applied in migration 20251216150703_UpdateBadgeLocationConfigsWithDefaults
-            // However, that migration's UPDATE statement didn't execute properly on staging database
+            // Previous migrations (20251216150703 and 20251217030432) were marked as applied but UPDATE didn't execute
+            // This fresh migration with new timestamp ensures the UPDATE statement runs
             migrationBuilder.Sql(@"
                 UPDATE badges.badges
                 SET
@@ -46,7 +44,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // No down migration - we don't want to set values back to NULL
+
         }
     }
 }

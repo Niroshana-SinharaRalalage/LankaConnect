@@ -45,8 +45,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         var domainEvent = notification.DomainEvent;
 
         _logger.LogInformation(
-            "Handling PaymentCompletedEvent for Event {EventId}, Registration {RegistrationId}, Amount {Amount}",
-            domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid);
+            "[Phase 6A.24] ✅ PaymentCompletedEventHandler INVOKED - Event {EventId}, Registration {RegistrationId}, Amount {Amount}, Email {Email}",
+            domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid, domainEvent.ContactEmail);
 
         try
         {

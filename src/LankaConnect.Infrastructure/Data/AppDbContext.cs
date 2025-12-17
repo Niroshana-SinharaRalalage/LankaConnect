@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
@@ -21,15 +22,23 @@ namespace LankaConnect.Infrastructure.Data;
 
 public class AppDbContext : DbContext, IApplicationDbContext
 {
-    private readonly IPublisher? _publisher;
+    private readonly IPublisher _publisher;
+    private readonly ILogger<AppDbContext> _logger;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-    {
-    }
+    // REMOVED parameterless constructor to force EF Core DI to inject IPublisher
+    // This ensures domain events are properly dispatched via MediatR (Phase 6A.24)
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, IPublisher publisher) : base(options)
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        IPublisher publisher,
+        ILogger<AppDbContext> logger) : base(options)
     {
-        _publisher = publisher;
+        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher),
+            "IPublisher must be injected for domain event dispatching");
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _logger.LogInformation("AppDbContext initialized with IPublisher: {PublisherType}",
+            publisher.GetType().FullName);
     }
 
     // Domain Entity Sets
@@ -304,20 +313,39 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
+        if (domainEvents.Any())
+        {
+            _logger.LogInformation(
+                "[Phase 6A.24] Found {Count} domain events to dispatch: {EventTypes}",
+                domainEvents.Count,
+                string.Join(", ", domainEvents.Select(e => e.GetType().Name)));
+        }
+
         // Save changes to database
         var result = await SaveChangesAsync(cancellationToken);
+        _logger.LogDebug("SaveChangesAsync completed, {Count} entities saved", result);
 
         // Dispatch domain events after successful save
-        if (_publisher != null && domainEvents.Any())
+        if (domainEvents.Any())
         {
+            _logger.LogInformation("[Phase 6A.24] Dispatching {Count} domain events via MediatR", domainEvents.Count);
+
             foreach (var domainEvent in domainEvents)
             {
-                var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
+                var eventType = domainEvent.GetType();
+                _logger.LogInformation("[Phase 6A.24] Dispatching domain event: {EventType}", eventType.Name);
+
+                var notificationType = typeof(DomainEventNotification<>).MakeGenericType(eventType);
                 var notification = Activator.CreateInstance(notificationType, domainEvent);
 
                 if (notification != null)
                 {
                     await _publisher.Publish(notification, cancellationToken);
+                    _logger.LogInformation("[Phase 6A.24] Successfully dispatched domain event: {EventType}", eventType.Name);
+                }
+                else
+                {
+                    _logger.LogWarning("[Phase 6A.24] Failed to create notification for domain event: {EventType}", eventType.Name);
                 }
             }
 
@@ -326,6 +354,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
             {
                 entry.Entity.ClearDomainEvents();
             }
+
+            _logger.LogInformation("[Phase 6A.24] Successfully dispatched all {Count} domain events", domainEvents.Count);
+        }
+        else
+        {
+            _logger.LogDebug("No domain events to dispatch");
         }
 
         return result;

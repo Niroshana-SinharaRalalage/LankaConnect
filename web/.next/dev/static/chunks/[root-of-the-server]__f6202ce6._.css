@@ -1759,6 +1759,11 @@ body {
   border-color: rgb(250 204 21 / var(--tw-border-opacity, 1));
 }
 
+.border-yellow-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(254 240 138 / var(--tw-border-opacity, 1));
+}
+
 .border-t-\[\#FF7900\] {
   --tw-border-opacity: 1;
   border-top-color: rgb(255 121 0 / var(--tw-border-opacity, 1));
@@ -2107,6 +2112,11 @@ body {
 .bg-yellow-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
+}
+
+.bg-yellow-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(254 252 232 / var(--tw-bg-opacity, 1));
 }
 
 .bg-opacity-50 {

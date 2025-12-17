@@ -5192,8 +5192,12 @@ class EventsRepository {
     /**
    * Cancel RSVP
    * Removes registration and frees up capacity
-   */ async cancelRsvp(eventId) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/rsvp`);
+   * Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
+   * @param eventId - The event ID
+   * @param deleteSignUpCommitments - If true, deletes sign-up commitments and restores remaining quantities
+   */ async cancelRsvp(eventId, deleteSignUpCommitments = false) {
+        const params = deleteSignUpCommitments ? '?deleteSignUpCommitments=true' : '';
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].delete(`${this.basePath}/${eventId}/rsvp${params}`);
     }
     /**
    * Update RSVP quantity

@@ -274,7 +274,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             // We cannot modify shadow navigation from domain layer - must use EF Core's API
             // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
             // Same pattern as UpdateUserPreferredMetroAreasCommandHandler (lines 70-89)
-            var dbContext = _dbContext as DbContext
+            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
                 ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
             var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
@@ -297,7 +297,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             @event.ClearEmailGroups();
 
             // Also clear the shadow navigation
-            var dbContext = _dbContext as DbContext
+            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
                 ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
             var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
@@ -311,6 +311,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         // If null, don't modify existing email groups
 
         // Save changes (EF Core now detects changes via ChangeTracker)
+        _eventRepository.Update(@event);
         await _unitOfWork.CommitAsync(cancellationToken);
 
         return Result.Success();

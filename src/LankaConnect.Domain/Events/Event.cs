@@ -43,9 +43,10 @@ public class Event : BaseEntity
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
     public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
-    // Phase 6A.33 FIX: EmailGroupIds must derive from _emailGroupEntities (source of truth)
-    // _emailGroupIds is kept in sync for domain logic, but _emailGroupEntities is persisted
-    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupEntities.Select(eg => eg.Id).ToList().AsReadOnly();
+    // Phase 6A.33 FIX: EmailGroupIds exposes domain's _emailGroupIds list (source of truth for business logic)
+    // Infrastructure layer syncs _emailGroupEntities shadow navigation from _emailGroupIds for persistence
+    // Pattern mirrors User.PreferredMetroAreaIds per ADR-009
+    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly();
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
@@ -1488,6 +1489,7 @@ public class Event : BaseEntity
     /// - Duplicate assignments are prevented
     /// - Can assign multiple groups at once
     /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
     /// </summary>
     public Result AssignEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -1499,7 +1501,7 @@ public class Event : BaseEntity
         if (!groupList.Any())
             return Result.Success(); // No groups to assign
 
-        // Add groups that aren't already assigned
+        // Add groups that aren't already assigned to domain list
         foreach (var groupId in groupList)
         {
             if (!_emailGroupIds.Contains(groupId))
@@ -1507,6 +1509,9 @@ public class Event : BaseEntity
                 _emailGroupIds.Add(groupId);
             }
         }
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
 
         MarkAsUpdated();
         return Result.Success();
@@ -1516,6 +1521,7 @@ public class Event : BaseEntity
     /// Replaces all email groups with a new set
     /// Primary method for updating email groups during event editing
     /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
     /// </summary>
     public Result SetEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -1524,8 +1530,12 @@ public class Event : BaseEntity
 
         var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
 
+        // Update domain collection (used by business logic)
         _emailGroupIds.Clear();
         _emailGroupIds.AddRange(groupList);
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
 
         MarkAsUpdated();
         return Result.Success();
@@ -1534,6 +1544,7 @@ public class Event : BaseEntity
     /// <summary>
     /// Removes specific email groups from this event
     /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
     /// </summary>
     public Result RemoveEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -1545,10 +1556,14 @@ public class Event : BaseEntity
         if (!groupList.Any())
             return Result.Success(); // No groups to remove
 
+        // Remove from domain list
         foreach (var groupId in groupList)
         {
             _emailGroupIds.Remove(groupId);
         }
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository - uses EF Core Entry API per ADR-009
 
         MarkAsUpdated();
         return Result.Success();
@@ -1557,16 +1572,37 @@ public class Event : BaseEntity
     /// <summary>
     /// Removes all email groups from this event
     /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
     /// </summary>
     public Result ClearEmailGroups()
     {
         if (_emailGroupIds.Any())
         {
             _emailGroupIds.Clear();
+
+            // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+            // See EventRepository - uses EF Core Entry API per ADR-009
+
             MarkAsUpdated();
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.33 FIX: Sync domain's email group ID list from loaded EF Core entities
+    /// This method is called ONLY by infrastructure layer after loading event from database
+    /// Does NOT mark entity as updated or raise events - this is a hydration concern
+    /// Per ADR-009: Domain maintains List&lt;Guid&gt; for business logic, EF Core has shadow navigation for persistence
+    /// Pattern mirrors User.SyncPreferredMetroAreaIdsFromEntities
+    /// </summary>
+    /// <param name="emailGroupIds">IDs extracted from loaded shadow navigation entities</param>
+    internal void SyncEmailGroupIdsFromEntities(IEnumerable<Guid> emailGroupIds)
+    {
+        _emailGroupIds.Clear();
+        _emailGroupIds.AddRange(emailGroupIds);
+        // NOTE: Do NOT call MarkAsUpdated() - this is a read operation, not a modification
+        // NOTE: Do NOT raise domain events - this is infrastructure hydration, not business operation
     }
 
     /// <summary>

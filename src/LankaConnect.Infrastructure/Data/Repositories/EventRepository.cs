@@ -49,9 +49,10 @@ public class EventRepository : Repository<Event>, IEventRepository
     // This is required for GetEventSignUpLists query, media gallery display, correct DisplayOrder calculation,
     // registration management (cancel/update operations), and email group integration
     // Phase 6A.28: Removed duplicate .Include(SignUpLists).ThenInclude(Commitments) to fix EF Core change tracking bug
+    // Phase 6A.33 FIX: After loading, sync shadow navigation entities to domain's email group ID list
     public override async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet
+        var eventEntity = await _dbSet
             .Include(e => e.Images)
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
             .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
@@ -60,6 +61,25 @@ public class EventRepository : Repository<Event>, IEventRepository
                 .ThenInclude(s => s.Items)
                     .ThenInclude(i => i.Commitments)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+
+        // Phase 6A.33 FIX: Sync loaded shadow navigation entities to domain's email group ID list
+        // This bridges the gap between EF Core's entity references and domain's business logic IDs
+        // Pattern mirrors UserRepository.GetByIdAsync per ADR-009
+        if (eventEntity != null)
+        {
+            // Access the shadow navigation using EF Core's Entry API
+            var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
+            var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
+
+            if (emailGroupEntities != null)
+            {
+                // Extract IDs and sync to domain's _emailGroupIds list
+                var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
+                eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
+            }
+        }
+
+        return eventEntity;
     }
 
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)

@@ -43,7 +43,9 @@ public class Event : BaseEntity
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
     public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
-    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly(); // Phase 6A.32: Read-only email group ID collection
+    // Phase 6A.33 FIX: EmailGroupIds must derive from _emailGroupEntities (source of truth)
+    // _emailGroupIds is kept in sync for domain logic, but _emailGroupEntities is persisted
+    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupEntities.Select(eg => eg.Id).ToList().AsReadOnly();
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations

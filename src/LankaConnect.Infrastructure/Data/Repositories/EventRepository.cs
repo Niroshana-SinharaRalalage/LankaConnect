@@ -14,6 +14,37 @@ public class EventRepository : Repository<Event>, IEventRepository
         _geoLocationService = geoLocationService;
     }
 
+    /// <summary>
+    /// Phase 6A.33 FIX: Override AddAsync to sync shadow navigation for email groups when adding new event
+    /// When creating a new event with email groups, the domain's _emailGroupIds list contains the email group GUIDs,
+    /// but the shadow navigation _emailGroupEntities needs to be populated with actual EmailGroup entities
+    /// for EF Core to create the many-to-many junction table rows.
+    /// Pattern mirrors UserRepository.AddAsync for metro areas - no entity state changes, just set CurrentValue.
+    /// </summary>
+    public override async Task AddAsync(Event entity, CancellationToken cancellationToken = default)
+    {
+        // Call base implementation to add entity to DbSet (state = Added)
+        await base.AddAsync(entity, cancellationToken);
+
+        // Sync email groups from domain list to shadow navigation for persistence
+        // This bridges the gap between domain's List<Guid> and EF Core's ICollection<EmailGroup>
+        if (entity.EmailGroupIds.Any())
+        {
+            // Load the EmailGroup entities from the database based on the domain's ID list
+            var emailGroupEntities = await _context.Set<Domain.Communications.Entities.EmailGroup>()
+                .Where(eg => entity.EmailGroupIds.Contains(eg.Id))
+                .ToListAsync(cancellationToken);
+
+            // Access shadow navigation using EF Core's Entry API
+            var emailGroupsCollection = _context.Entry(entity).Collection("_emailGroupEntities");
+
+            // Set the loaded entities into the shadow navigation
+            // EF Core will detect this and create rows in event_email_groups junction table
+            // Entity remains in Added state - NO state changes needed
+            emailGroupsCollection.CurrentValue = emailGroupEntities;
+        }
+    }
+
     // Override GetByIdAsync to eagerly load SignUpLists, Images, Videos, Registrations, and EmailGroups with all related data
     // This is required for GetEventSignUpLists query, media gallery display, correct DisplayOrder calculation,
     // registration management (cancel/update operations), and email group integration

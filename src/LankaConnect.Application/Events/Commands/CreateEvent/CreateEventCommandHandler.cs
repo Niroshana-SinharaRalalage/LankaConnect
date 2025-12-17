@@ -211,14 +211,12 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(setPricingResult.Error);
         }
 
-        // Phase 6A.32/33: Validate and assign email groups (Fix #3: Batch query to prevent N+1)
+        // Phase 6A.32/33: Validate and assign email groups
         if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
         {
             var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
 
-            // CRITICAL FIX Phase 6A.33: Load EmailGroup entities WITH TRACKING from DbContext
-            // Repository's GetByIdsAsync uses AsNoTracking(), so entities aren't tracked
-            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler - load from DbContext directly
+            // Load EmailGroup entities for validation
             var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
                 ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
@@ -245,38 +243,11 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             var assignResult = eventResult.Value.SetEmailGroups(distinctGroupIds);
             if (assignResult.IsFailure)
                 return Result<Guid>.Failure(assignResult.Error);
-
-            // Add to repository first (so entity is tracked by EF Core)
-            await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
-
-            // CRITICAL FIX Phase 6A.33: Set EmailGroup entities to Unchanged state
-            // This prevents EF Core state conflicts when adding Unchanged entities to an Added entity's navigation
-            // Pattern mirrors UpdateEventCommandHandler but without LoadAsync (new entity has no existing relationships)
-            foreach (var emailGroup in emailGroups)
-            {
-                dbContext.Entry(emailGroup).State = EntityState.Unchanged;
-            }
-
-            // Get collection reference (but don't LoadAsync - new entity has no DB relationships yet)
-            var emailGroupsCollection = dbContext.Entry(eventResult.Value).Collection("_emailGroupEntities");
-            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<EmailGroup>
-                ?? new List<EmailGroup>();
-
-            // Add new entities (now all in Unchanged state)
-            foreach (var emailGroup in emailGroups)
-            {
-                currentEmailGroups.Add(emailGroup);
-            }
-
-            // CRITICAL FIX: Mark entity as Modified to enable EF Core junction table tracking
-            // Added entities don't track navigation changes - must explicitly set to Modified
-            dbContext.Entry(eventResult.Value).State = EntityState.Modified;
         }
-        else
-        {
-            // No email groups - add to repository
-            await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
-        }
+
+        // Phase 6A.33 FIX: Repository.AddAsync now handles email group shadow navigation sync
+        // No manual EF Core state manipulation needed - repository pattern handles it
+        await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
 
         // Commit changes (EF Core now detects changes via ChangeTracker)
         await _unitOfWork.CommitAsync(cancellationToken);

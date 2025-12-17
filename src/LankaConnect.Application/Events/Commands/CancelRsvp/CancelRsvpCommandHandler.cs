@@ -84,17 +84,48 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             _logger.LogInformation("[CancelRsvp] User chose to delete sign-up commitments for EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
 
-            // Use domain method which properly restores remaining_quantity
-            var cancelResult = @event.CancelAllUserCommitments(request.UserId);
+            // Query all commitments for this user in this event's signup lists
+            var commitmentsToDelete = await _dbContext.SignUpCommitments
+                .Where(c => c.UserId == request.UserId && c.SignUpItemId != null)
+                .Join(_dbContext.SignUpItems,
+                    c => c.SignUpItemId,
+                    item => item.Id,
+                    (c, item) => new { Commitment = c, Item = item })
+                .Join(_dbContext.SignUpLists,
+                    ci => ci.Item.SignUpListId,
+                    list => list.Id,
+                    (ci, list) => new { ci.Commitment, ci.Item, List = list })
+                .Where(x => EF.Property<Guid>(x.List, "EventId") == request.EventId)
+                .Select(x => new { x.Commitment, x.Item })
+                .ToListAsync(cancellationToken);
 
-            if (cancelResult.IsFailure)
+            if (commitmentsToDelete.Any())
             {
-                _logger.LogWarning("[CancelRsvp] Failed to cancel commitments: {Error}", cancelResult.Error);
-                // Don't fail the whole operation - registration is still cancelled
+                _logger.LogInformation("[CancelRsvp] Found {Count} commitments to delete", commitmentsToDelete.Count);
+
+                // Use domain method to properly restore remaining_quantity
+                var cancelResult = @event.CancelAllUserCommitments(request.UserId);
+
+                if (cancelResult.IsFailure)
+                {
+                    _logger.LogWarning("[CancelRsvp] Domain method failed: {Error}", cancelResult.Error);
+                }
+                else
+                {
+                    _logger.LogInformation("[CancelRsvp] Domain method succeeded, commitments cancelled");
+                }
+
+                // Ensure EF Core tracks the deletions by explicitly removing from DbContext
+                foreach (var item in commitmentsToDelete)
+                {
+                    _dbContext.SignUpCommitments.Remove(item.Commitment);
+                    _logger.LogDebug("[CancelRsvp] Marked commitment {CommitmentId} for deletion from item {ItemDesc}",
+                        item.Commitment.Id, item.Item.ItemDescription);
+                }
             }
             else
             {
-                _logger.LogInformation("[CancelRsvp] {Message}", cancelResult.Error);
+                _logger.LogInformation("[CancelRsvp] No commitments found to delete for UserId={UserId}", request.UserId);
             }
         }
         else

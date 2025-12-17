@@ -210,13 +210,20 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(setPricingResult.Error);
         }
 
-        // Phase 6A.32: Validate and assign email groups (Fix #3: Batch query to prevent N+1)
+        // Phase 6A.32/33: Validate and assign email groups (Fix #3: Batch query to prevent N+1)
         if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
         {
             var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
 
-            // Batch query to prevent N+1 problem (Fix #3)
-            var emailGroups = await _emailGroupRepository.GetByIdsAsync(distinctGroupIds, cancellationToken);
+            // CRITICAL FIX Phase 6A.33: Load EmailGroup entities WITH TRACKING from DbContext
+            // Repository's GetByIdsAsync uses AsNoTracking(), so entities aren't tracked
+            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler - load from DbContext directly
+            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            var emailGroups = await dbContext.Set<Domain.Communications.Entities.EmailGroup>()
+                .Where(g => distinctGroupIds.Contains(g.Id))
+                .ToListAsync(cancellationToken);
 
             // Validate all groups exist, belong to organizer, and are active
             foreach (var groupId in distinctGroupIds)
@@ -244,23 +251,15 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             // CRITICAL FIX Phase 6A.32: Use EF Core ChangeTracker API to update shadow navigation
             // We cannot modify shadow navigation from domain layer - must use EF Core's API
             // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
-            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler (lines 70-89)
-            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
             var emailGroupsCollection = dbContext.Entry(eventResult.Value).Collection("_emailGroupEntities");
             await emailGroupsCollection.LoadAsync(cancellationToken);  // Ensure tracked
 
             var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
                 ?? new List<Domain.Communications.Entities.EmailGroup>();
 
-            // CRITICAL FIX Phase 6A.33: Attach email group entities with Unchanged state
-            // This prevents EF Core from trying to INSERT existing entities
-            // EF Core will only create the join table entries, not try to insert EmailGroup entities
+            // Add new entities (now tracked from DbContext query above)
             foreach (var emailGroup in emailGroups)
             {
-                // Attach with Unchanged state so EF Core knows these entities already exist
-                dbContext.Entry(emailGroup).State = Microsoft.EntityFrameworkCore.EntityState.Unchanged;
                 currentEmailGroups.Add(emailGroup);
             }
 

@@ -268,8 +268,9 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 currentEmailGroups.Add(emailGroup);
             }
 
-            // DO NOT call Update() - entity is already in Added state from AddAsync()
-            // Calling Update() would incorrectly transition Added -> Modified
+            // CRITICAL FIX: Mark entity as Modified to enable EF Core junction table tracking
+            // Added entities don't track navigation changes - must explicitly set to Modified
+            dbContext.Entry(eventResult.Value).State = EntityState.Modified;
         }
         else
         {

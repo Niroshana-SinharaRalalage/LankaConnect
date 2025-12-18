@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, Check, X, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Upload, Loader2, AlertCircle, Move } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import {
@@ -27,8 +27,11 @@ import {
   type BadgeDto,
   type UpdateBadgeDto,
   type DurationPreset,
+  type BadgeLocationConfigDto,
+  type BadgeDisplayLocation,
 } from '@/infrastructure/api/types/badges.types';
 import { BadgePreviewSection } from './BadgePreviewSection';
+import { InteractiveBadgeEditor } from './InteractiveBadgeEditor';
 
 /**
  * Phase 6A.26: Badge Management Component
@@ -62,6 +65,7 @@ export function BadgeManagement() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
+  const [isPositionOpen, setIsPositionOpen] = React.useState(false);
   const [selectedBadge, setSelectedBadge] = React.useState<BadgeDto | null>(null);
 
   // Form states
@@ -83,6 +87,12 @@ export function BadgeManagement() {
   // Phase 6A.29: Preview URL for newly uploaded files
   const [newBadgePreviewUrl, setNewBadgePreviewUrl] = React.useState<string | null>(null);
   const [editBadgePreviewUrl, setEditBadgePreviewUrl] = React.useState<string | null>(null);
+
+  // Phase 6A.32: Position dialog state - track unsaved changes
+  const [positionListingConfig, setPositionListingConfig] = React.useState<BadgeLocationConfigDto | null>(null);
+  const [positionFeaturedConfig, setPositionFeaturedConfig] = React.useState<BadgeLocationConfigDto | null>(null);
+  const [positionDetailConfig, setPositionDetailConfig] = React.useState<BadgeLocationConfigDto | null>(null);
+  const [hasUnsavedPositionChanges, setHasUnsavedPositionChanges] = React.useState(false);
 
   // File input refs
   const createFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -253,6 +263,65 @@ export function BadgeManagement() {
     }
   };
 
+  // Phase 6A.32: Open position dialog
+  const openPositionDialog = (badge: BadgeDto) => {
+    setSelectedBadge(badge);
+    setPositionListingConfig(badge.listingConfig);
+    setPositionFeaturedConfig(badge.featuredConfig);
+    setPositionDetailConfig(badge.detailConfig);
+    setHasUnsavedPositionChanges(false);
+    setIsPositionOpen(true);
+  };
+
+  // Phase 6A.32: Handle position config changes
+  const handlePositionConfigChange = (location: BadgeDisplayLocation, config: BadgeLocationConfigDto) => {
+    setHasUnsavedPositionChanges(true);
+    if (location === 'listing') {
+      setPositionListingConfig(config);
+    } else if (location === 'featured') {
+      setPositionFeaturedConfig(config);
+    } else if (location === 'detail') {
+      setPositionDetailConfig(config);
+    }
+  };
+
+  // Phase 6A.32: Save position changes
+  const handleSavePositionChanges = async () => {
+    if (!selectedBadge || !positionListingConfig || !positionFeaturedConfig || !positionDetailConfig) {
+      return;
+    }
+
+    try {
+      const dto: UpdateBadgeDto = {
+        listingConfig: positionListingConfig,
+        featuredConfig: positionFeaturedConfig,
+        detailConfig: positionDetailConfig,
+      };
+      await updateBadge.mutateAsync({ badgeId: selectedBadge.id, dto });
+
+      // Close and reset
+      setIsPositionOpen(false);
+      setSelectedBadge(null);
+      setHasUnsavedPositionChanges(false);
+    } catch (err) {
+      console.error('Failed to update badge positions:', err);
+    }
+  };
+
+  // Phase 6A.32: Close position dialog with unsaved changes warning
+  const handleClosePositionDialog = () => {
+    if (hasUnsavedPositionChanges) {
+      if (confirm('You have unsaved position changes. Are you sure you want to close?')) {
+        setIsPositionOpen(false);
+        setSelectedBadge(null);
+        setHasUnsavedPositionChanges(false);
+      }
+    } else {
+      setIsPositionOpen(false);
+      setSelectedBadge(null);
+    }
+  };
+
   // Render loading state
   if (isLoading) {
     return (
@@ -390,26 +459,39 @@ export function BadgeManagement() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="space-y-2 mt-3">
+                  {/* Phase 6A.32: Position Badge button */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 gap-1"
-                    onClick={() => openEditDialog(badge)}
+                    className="w-full gap-1"
+                    onClick={() => openPositionDialog(badge)}
+                    style={{ borderColor: '#FF7900', color: '#FF7900' }}
                   >
-                    <Pencil className="w-3 h-3" />
-                    Edit
+                    <Move className="w-3 h-3" />
+                    Position Badge
                   </Button>
-                  {!badge.isSystem && (
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => openDeleteDialog(badge)}
+                      className="flex-1 gap-1"
+                      onClick={() => openEditDialog(badge)}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Pencil className="w-3 h-3" />
+                      Edit
                     </Button>
-                  )}
+                    {!badge.isSystem && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => openDeleteDialog(badge)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -850,6 +932,51 @@ export function BadgeManagement() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Delete Badge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Phase 6A.32: Position Badge Dialog */}
+      <Dialog open={isPositionOpen} onOpenChange={handleClosePositionDialog}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Position Badge: {selectedBadge?.name}</DialogTitle>
+            <DialogDescription>
+              Customize badge position, size, and rotation for each display location using drag, resize, and sliders.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBadge && positionListingConfig && positionFeaturedConfig && positionDetailConfig && (
+            <div className="py-4">
+              <InteractiveBadgeEditor
+                badge={{
+                  ...selectedBadge,
+                  listingConfig: positionListingConfig,
+                  featuredConfig: positionFeaturedConfig,
+                  detailConfig: positionDetailConfig,
+                }}
+                onConfigChange={handlePositionConfigChange}
+                disabled={isUpdating}
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleClosePositionDialog}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePositionChanges}
+              disabled={!hasUnsavedPositionChanges || isUpdating}
+              loading={isUpdating}
+              style={{ background: '#FF7900', color: 'white' }}
+            >
+              Save Positions
             </Button>
           </DialogFooter>
         </DialogContent>

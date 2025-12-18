@@ -41,9 +41,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     position_y_detail = 0.0,
                     size_width_detail = 0.21,
                     size_height_detail = 0.21,
-                    rotation_detail = 0.0,
-
-                    "UpdatedAt" = NOW()
+                    rotation_detail = 0.0
                 WHERE
                     -- Only update badges with incorrect zero values (result of NULL->NOT NULL conversion)
                     position_x_listing = 0 OR size_width_listing = 0;

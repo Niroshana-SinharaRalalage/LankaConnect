@@ -1,0 +1,23 @@
+Hi {{UserName}},
+
+Thank you for registering for {{EventTitle}}!
+
+EVENT DETAILS
+-------------
+Date: {{EventStartDate}} at {{EventStartTime}}
+Location: {{EventLocation}}
+Quantity: {{Quantity}} attendee(s)
+
+REGISTERED ATTENDEES
+--------------------
+{{Attendees}}
+
+CONTACT INFORMATION
+-------------------
+Email: {{ContactEmail}}
+Phone: {{ContactPhone}}
+
+We look forward to seeing you at the event!
+
+(c) 2025 LankaConnect
+Questions? Reply to this email or visit our support page.

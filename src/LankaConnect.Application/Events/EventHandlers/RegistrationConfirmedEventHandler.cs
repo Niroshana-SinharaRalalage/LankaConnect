@@ -123,8 +123,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             }
 
             // Send templated email
+            // Phase 6A.34 FIX: Use registration-confirmation template for free event registrations
+            // (separate from ticket-confirmation which is for paid events with payment details)
             var result = await _emailService.SendTemplatedEmailAsync(
-                "RsvpConfirmation",
+                "registration-confirmation",
                 user.Email.Value,
                 parameters,
                 cancellationToken);

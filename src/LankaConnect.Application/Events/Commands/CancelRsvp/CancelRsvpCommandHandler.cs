@@ -90,6 +90,11 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             {
                 _logger.LogInformation("[CancelRsvp] Commitments cancelled successfully");
             }
+
+            // CRITICAL FIX ADR-007: Explicitly mark event as modified for EF Core change tracking
+            // Without this, collection deletions (commitments removed) are not tracked even though
+            // domain method executed successfully. Pattern matches RsvpToEventCommandHandler (Phase 6A.24)
+            _eventRepository.Update(@event);
         }
         else
         {

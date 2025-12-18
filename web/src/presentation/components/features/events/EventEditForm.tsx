@@ -146,13 +146,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
     },
   });
 
-  // Phase 6A.32 Fix (Issue 2): Load email groups into form after data is available
-  useEffect(() => {
-    if (event.emailGroupIds && event.emailGroupIds.length > 0) {
-      setValue('emailGroupIds', event.emailGroupIds);
-    }
-  }, [event.emailGroupIds, setValue]);
-
   // Reset form ONLY when event ID changes (prevents infinite re-renders)
   // We don't want to reset when user is typing!
   useEffect(() => {
@@ -182,6 +175,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
       ticketPriceAmount: event.ticketPriceAmount,
       ticketPriceCurrency: event.ticketPriceCurrency,
       ticketCurrencyConverted: ticketCurrency,
+      // Phase 6A.32: Email groups debug
+      emailGroupIds: event.emailGroupIds,
+      emailGroupsCount: event.emailGroupIds?.length || 0,
     });
 
     // Session 33: Properly load existing pricing data including dual pricing
@@ -223,6 +219,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 6A.32: Email Groups Integration
+      emailGroupIds: event.emailGroupIds || [],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id]); // Only reset when navigating to different event

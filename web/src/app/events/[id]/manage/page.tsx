@@ -30,6 +30,8 @@ import { useEventBadges } from '@/presentation/hooks/useBadges';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
+import { Mail, AlertTriangle } from 'lucide-react';
 
 /**
  * Event Management Page
@@ -58,6 +60,9 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Fetch event badges for badge assignment section
   const { data: eventBadges, refetch: refetchBadges } = useEventBadges(id);
+
+  // Phase 6A.32 Fix (Issue 3 & 4): Fetch email groups for display
+  const { data: emailGroups = [] } = useEmailGroups();
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {
@@ -466,6 +471,48 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                     </Badge>
                   ) : (
                     <Badge className="bg-yellow-100 text-yellow-700">Paid Event</Badge>
+                  )}
+                </div>
+
+                {/* Phase 6A.32 Fix (Issue 3 & 4): Email Groups Section */}
+                <div>
+                  <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-[#FF7900]" />
+                    Email Groups
+                  </h4>
+                  {event.emailGroupIds && event.emailGroupIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {event.emailGroupIds.map((groupId) => {
+                        const group = emailGroups.find(g => g.id === groupId);
+                        return group ? (
+                          <Badge key={groupId} className="bg-[#FFE8CC] text-[#8B1538]">
+                            {group.name}
+                          </Badge>
+                        ) : (
+                          <Badge key={groupId} className="bg-gray-100 text-gray-600">
+                            Unknown Group
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm text-amber-700 mb-1">
+                          No email groups assigned to this event
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          Want to notify specific groups about this event?{' '}
+                          <button
+                            onClick={() => router.push(`/events/${id}/edit`)}
+                            className="underline hover:text-amber-800 font-medium"
+                          >
+                            Edit event to add email groups
+                          </button>
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>

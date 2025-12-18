@@ -120,7 +120,7 @@ export function MultiSelect({
   };
 
   return (
-    <div className="w-full" ref={containerRef}>
+    <div className="w-full relative" ref={containerRef}>
       {/* Dropdown Button */}
       <button
         type="button"
@@ -174,7 +174,7 @@ export function MultiSelect({
 
       {/* Dropdown Menu */}
       {isOpen && !disabled && !isLoading && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-neutral-300 rounded-lg shadow-lg overflow-y-auto" style={{ maxHeight: '16rem' }}>
           {options.length === 0 ? (
             <div className="px-4 py-3 text-sm text-neutral-500 text-center">
               No options available

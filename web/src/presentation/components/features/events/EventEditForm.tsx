@@ -146,6 +146,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
     },
   });
 
+  // Phase 6A.32 Fix (Issue 2): Load email groups into form after data is available
+  useEffect(() => {
+    if (event.emailGroupIds && event.emailGroupIds.length > 0) {
+      setValue('emailGroupIds', event.emailGroupIds);
+    }
+  }, [event.emailGroupIds, setValue]);
+
   // Reset form ONLY when event ID changes (prevents infinite re-renders)
   // We don't want to reset when user is typing!
   useEffect(() => {

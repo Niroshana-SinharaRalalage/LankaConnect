@@ -17,7 +17,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // handles NULL, not zeros.
             //
             // SOLUTION: Directly UPDATE all badges with correct default values without COALESCE.
-            // This ensures badges with zero values (from NULL→NOT NULL conversion) get proper defaults.
+            // This ensures badges with zero values (from NULL->NOT NULL conversion) get proper defaults.
 
             migrationBuilder.Sql(@"
                 UPDATE badges.badges
@@ -43,9 +43,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     size_height_detail = 0.21,
                     rotation_detail = 0.0,
 
-                    updated_at = NOW()
+                    "UpdatedAt" = NOW()
                 WHERE
-                    -- Only update badges with incorrect zero values (result of NULL→NOT NULL conversion)
+                    -- Only update badges with incorrect zero values (result of NULL->NOT NULL conversion)
                     position_x_listing = 0 OR size_width_listing = 0;
             ");
         }

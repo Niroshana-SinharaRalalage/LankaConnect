@@ -1,9 +1,69 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-15 (Current Session) - Session 45: Phase 6A.31a Badge Location Configs ✅ COMPLETE*
+*Last Updated: 2025-12-18 (Current Session) - Session 46: Phase 6A.24 Webhook Logging Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 45: Phase 6A.31a Badge Location Configs - Backend ✅ COMPLETE
+## 🎯 Current Session Status - Session 46: Phase 6A.24 Webhook Logging Fix ✅ COMPLETE
+
+### Session 46: Phase 6A.24 Stripe Webhook Logging Fix - COMPLETE - 2025-12-18
+
+**Status**: ✅ **COMPLETE** (Serilog configuration fixed, deployed to staging)
+
+**Feature**: Fix webhook logging in Staging environment to enable visibility of Stripe payment webhook processing
+
+**Root Cause Analysis** (by system-architect):
+- Serilog configuration in `appsettings.Staging.json` set `Microsoft.AspNetCore` to `Warning` level
+- This suppressed all `Information`-level logs from ASP.NET Core routing and MVC pipeline
+- PaymentsController webhook endpoint logs at `Information` level (line 228-232)
+- Result: Webhooks delivered successfully (HTTP 200 in Stripe) but **zero logs** visible in Azure Container Apps
+- No visibility into webhook processing, payment completion, ticket generation, or email sending
+
+**Implementation**:
+
+**Configuration Changes** ([appsettings.Staging.json](../src/LankaConnect.API/appsettings.Staging.json)):
+1. **Updated log levels**:
+   - `Microsoft.AspNetCore`: `Warning` → `Information` (line 9)
+   - Added `Microsoft.AspNetCore.Routing`: `Debug` (line 10) - for webhook route debugging
+   - Added `Microsoft.AspNetCore.Mvc`: `Information` (line 11)
+   - Added `LankaConnect.API.Controllers.PaymentsController`: `Debug` (line 14) - payment-specific logging
+
+2. **Added File sink** (lines 25-35):
+   - Path: `/tmp/lankaconnect-staging-.log` (rolls daily)
+   - Retains 7 days of logs
+   - Backup logging if console streaming fails
+   - Structured JSON properties for troubleshooting
+
+**Expected Results**:
+- ✅ Webhook endpoint logs now visible in Azure Container App logs
+- ✅ PaymentCompletedEventHandler invocation logs appear
+- ✅ Debug-level detail for all payment operations
+- ✅ File-based backup logging available at `/tmp/lankaconnect-staging-*.log`
+- ✅ Full visibility into: webhook receipt → payment processing → ticket generation → email sending
+
+**Testing Required** (Next Steps):
+1. Resend test webhook from Stripe Dashboard
+2. Monitor Azure Container App logs for "Webhook endpoint reached" message
+3. Verify PaymentCompletedEventHandler logs appear
+4. Confirm ticket generation and email sending logs are visible
+5. Test with real payment to verify complete flow
+
+**Build Status**: ✅ 0 errors, build succeeded in 1m37s
+
+**Deployment**: ✅ GitHub Actions workflow completed successfully (7m16s) at 2025-12-18T03:37:40Z
+
+**Commit**: [fd8bdd4] fix(phase-6a24): Fix Serilog configuration to capture webhook logs in Staging
+
+**Impact**:
+- ✅ Unblocks Phase 6A.24 completion (webhook integration testing)
+- ✅ Enables full observability of payment flow
+- ✅ File-based logging provides audit trail
+- ✅ Debug-level logging aids troubleshooting
+
+**Phase Reference**: Phase 6A.24 - Stripe Webhook Integration & Ticket Email with PDF
+
+---
+
+## 🎯 Previous Session - Session 45: Phase 6A.31a Badge Location Configs - Backend ✅ COMPLETE
 
 ### Session 45: Phase 6A.31a Badge Location Configs - Backend - COMPLETE - 2025-12-15
 

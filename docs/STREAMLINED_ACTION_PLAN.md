@@ -7,7 +7,45 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 45: PHASE 6A.31a BADGE LOCATION CONFIGS (2025-12-15)
+## ✅ CURRENT STATUS - SESSION 46: PHASE 6A.24 WEBHOOK LOGGING FIX (2025-12-18)
+**Date**: 2025-12-18 (Session 46)
+**Session**: Phase 6A.24 - Stripe Webhook Logging Fix
+**Status**: ✅ COMPLETE - Serilog configuration fixed, deployed to staging
+**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
+**Commit**: `fd8bdd4` - fix(phase-6a24): Fix Serilog configuration to capture webhook logs in Staging
+
+### SESSION 46: PHASE 6A.24 - WEBHOOK LOGGING FIX (2025-12-18)
+**Goal**: Fix webhook logging in Staging environment to enable visibility of Stripe payment webhook processing
+
+**Root Cause Analysis**:
+- Serilog configuration in `appsettings.Staging.json` set `Microsoft.AspNetCore` to `Warning` level
+- Suppressed all `Information`-level logs from ASP.NET Core routing and MVC pipeline
+- Result: Webhooks delivered (HTTP 200 in Stripe) but zero logs in Azure Container Apps
+
+**Implementation**:
+- Updated `Microsoft.AspNetCore` log level: `Warning` → `Information`
+- Added `Microsoft.AspNetCore.Routing`: `Debug` for webhook debugging
+- Added `Microsoft.AspNetCore.Mvc`: `Information`
+- Added `LankaConnect.API.Controllers.PaymentsController`: `Debug` for payment-specific logging
+- Added File sink: `/tmp/lankaconnect-staging-.log` (backup logging, 7-day retention)
+
+**Expected Results**:
+- ✅ Webhook endpoint logs now visible in Azure Container App logs
+- ✅ PaymentCompletedEventHandler invocation logs appear
+- ✅ Debug-level detail for all payment operations
+- ✅ File-based backup logging available
+
+**Testing Required**:
+1. Resend test webhook from Stripe Dashboard
+2. Monitor Azure Container App logs for "Webhook endpoint reached"
+3. Verify PaymentCompletedEventHandler logs appear
+4. Test complete flow: webhook → payment → ticket → email
+
+**Phase Reference**: Phase 6A.24 - Stripe Webhook Integration & Ticket Email with PDF
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 45: PHASE 6A.31a BADGE LOCATION CONFIGS (2025-12-15)
 **Date**: 2025-12-15 (Session 45)
 **Session**: Phase 6A.31a - Per-Location Badge Positioning System (Backend)
 **Status**: ✅ COMPLETE - Backend implementation ready for deployment

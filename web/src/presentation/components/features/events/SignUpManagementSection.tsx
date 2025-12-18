@@ -421,6 +421,18 @@ export function SignUpManagementSection({
 
   // No sign-up lists
   if (!signUpLists || signUpLists.length === 0) {
+    // Issue 3 Fix: Don't show duplicate Card on manage page (isOrganizer=true)
+    // The manage page already has a Card wrapper with header/actions
+    if (isOrganizer) {
+      return (
+        <div className="py-8 text-center text-muted-foreground">
+          <p>No sign-up lists for this event yet.</p>
+          <p className="text-sm mt-2">Create one to let attendees volunteer to bring items!</p>
+        </div>
+      );
+    }
+
+    // For attendee view (event detail page), show Card
     return (
       <div className="py-8">
         <Card>
@@ -428,7 +440,6 @@ export function SignUpManagementSection({
             <CardTitle>Sign-Up Lists</CardTitle>
             <CardDescription>
               No sign-up lists for this event yet.
-              {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -737,7 +748,7 @@ export function SignUpManagementSection({
                                     <Button
                                       onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
                                       size="sm"
-                                      variant="outline"
+                                      variant="default"
                                     >
                                       Update Sign Up
                                     </Button>

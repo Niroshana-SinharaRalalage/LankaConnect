@@ -254,6 +254,9 @@ public class SignUpItem : BaseEntity
 
     /// <summary>
     /// User cancels their commitment to this item
+    /// Phase 6A.28 Issue 4 Fix: Raises CommitmentCancelledEvent so infrastructure
+    /// can explicitly mark the entity as Deleted in EF Core change tracker.
+    /// See ADR-008 for why this is necessary (private backing field issue).
     /// </summary>
     public Result CancelCommitment(Guid userId)
     {
@@ -264,6 +267,12 @@ public class SignUpItem : BaseEntity
         // Return the quantity back to remaining
         RemainingQuantity += commitment.Quantity;
         _commitments.Remove(commitment);
+
+        // Phase 6A.28 Issue 4 Fix: Raise domain event for infrastructure to handle deletion
+        // EF Core cannot detect collection removals from private backing fields
+        // This event allows infrastructure to explicitly mark entity as Deleted
+        RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(Id, commitment.Id, userId));
+
         MarkAsUpdated();
 
         return Result.Success();

@@ -208,12 +208,16 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-  "email": "niroshhh2@gmail.com",
+  "email": "niroshhh@gmail.com",
   "password": "12!@qwASzx",
   "rememberMe": true,
   "ipAddress": "string"
 }'
   -------------------------------------------
+
+Please consult systeme-architect for the diagnosis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
+
+---------------------------------------------
 
 Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
 

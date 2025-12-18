@@ -307,6 +307,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             }
         }
 
+        // CRITICAL FIX Phase 6A.24: Force change detection BEFORE collecting domain events
+        // Without this, ChangeTracker.Entries<BaseEntity>() returns empty collection
+        // because EF Core only auto-detects changes DURING SaveChangesAsync()
+        ChangeTracker.DetectChanges();
+
         // Collect domain events before saving
         var domainEvents = ChangeTracker.Entries<BaseEntity>()
             .Where(e => e.Entity.DomainEvents.Any())

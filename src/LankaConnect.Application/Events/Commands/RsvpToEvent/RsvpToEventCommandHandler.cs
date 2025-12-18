@@ -97,6 +97,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         if (registerResult.IsFailure)
             return Result<string?>.Failure(registerResult.Error);
 
+        // DEFENSIVE FIX Phase 6A.24: Explicitly mark event as modified for change tracking
+        _eventRepository.Update(@event);
+
         // Session 23: Handle payment for paid events
         var registration = @event.Registrations.Last();  // Get the just-created registration
 
@@ -159,6 +162,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         var registerResult = @event.Register(request.UserId, request.Quantity);
         if (registerResult.IsFailure)
             return Result<string?>.Failure(registerResult.Error);
+
+        // DEFENSIVE FIX Phase 6A.24: Explicitly mark event as modified for change tracking
+        _eventRepository.Update(@event);
 
         // Save changes (EF Core tracks changes automatically)
         await _unitOfWork.CommitAsync(cancellationToken);

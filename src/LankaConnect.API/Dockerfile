@@ -59,9 +59,9 @@ WORKDIR /app
 # No need for separate COPY command - they're already in /app/publish
 COPY --from=publish /app/publish .
 
-# Set correct permissions for Templates directory (before switching to non-root user)
-# Phase 6A.34: Templates are at ./Templates/Email/ in the publish output
-RUN if [ -d ./Templates ]; then chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates; fi
+# Phase 6A.35: Set world-readable permissions for Templates (Azure Container Apps runs as uid=1654 but doesn't respect our chown)
+# Make templates readable by all users since Azure might override ownership
+RUN if [ -d ./Templates ]; then chmod -R a+rX ./Templates; fi
 
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000

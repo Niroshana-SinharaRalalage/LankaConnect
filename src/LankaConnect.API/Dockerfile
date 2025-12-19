@@ -43,6 +43,12 @@ RUN dotnet publish "LankaConnect.API.csproj" \
 # Stage 3: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 
+# Phase 6A.35: Define APP_UID and create non-root user for security
+# This ensures Templates directory has correct ownership and read permissions
+ARG APP_UID=1654
+RUN groupadd -g $APP_UID appgroup && \
+    useradd -m -u $APP_UID -g appgroup appuser
+
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 

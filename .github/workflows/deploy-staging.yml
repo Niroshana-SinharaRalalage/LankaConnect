@@ -141,14 +141,10 @@ jobs:
               EntraExternalId__TenantId=secretref:entra-tenant-id \
               EntraExternalId__ClientId=secretref:entra-client-id \
               EntraExternalId__Audience=secretref:entra-audience \
-              EmailSettings__Provider=Smtp \
-              EmailSettings__SmtpServer=secretref:smtp-host \
-              EmailSettings__SmtpPort=secretref:smtp-port \
-              EmailSettings__Username=secretref:smtp-username \
-              EmailSettings__Password=secretref:smtp-password \
-              EmailSettings__SenderEmail=secretref:email-from-address \
+              EmailSettings__Provider=Azure \
+              EmailSettings__AzureConnectionString=secretref:azure-email-connection-string \
+              EmailSettings__AzureSenderAddress=secretref:azure-email-sender-address \
               EmailSettings__SenderName="LankaConnect Staging" \
-              EmailSettings__EnableSsl=true \
               EmailSettings__TemplateBasePath=Templates/Email \
               AzureStorage__ConnectionString=secretref:azure-storage-connection-string \
               Stripe__SecretKey=secretref:stripe-secret-key \

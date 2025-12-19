@@ -7,45 +7,49 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 46: PHASE 6A.24 WEBHOOK LOGGING FIX (2025-12-18)
-**Date**: 2025-12-18 (Session 46)
-**Session**: Phase 6A.24 - Stripe Webhook Logging Fix
-**Status**: ✅ COMPLETE - Serilog configuration fixed, deployed to staging
+## ✅ CURRENT STATUS - SESSION 35: PHASE 6A.28 ISSUE 4 - OPEN ITEMS DELETION FIX (2025-12-19)
+**Date**: 2025-12-19 (Session 35)
+**Session**: Phase 6A.28 Issue 4 - Open Items Deletion Fix
+**Status**: ✅ COMPLETE - Deployed, tested, and verified working
 **Build Status**: ✅ Zero Tolerance Maintained - 0 errors
-**Commit**: `fd8bdd4` - fix(phase-6a24): Fix Serilog configuration to capture webhook logs in Staging
+**Commit**: `5a988c30` - fix(phase-6a28): Issue 4 - Delete user-created Open Items when canceling registration
 
-### SESSION 46: PHASE 6A.24 - WEBHOOK LOGGING FIX (2025-12-18)
-**Goal**: Fix webhook logging in Staging environment to enable visibility of Stripe payment webhook processing
+### SESSION 35: PHASE 6A.28 ISSUE 4 - OPEN ITEMS DELETION FIX (2025-12-19)
+**Goal**: Fix Open Items not being deleted when users cancel registration with "Also delete my sign-up commitments" checkbox
 
-**Root Cause Analysis**:
-- Serilog configuration in `appsettings.Staging.json` set `Microsoft.AspNetCore` to `Warning` level
-- Suppressed all `Information`-level logs from ASP.NET Core routing and MVC pipeline
-- Result: Webhooks delivered (HTTP 200 in Stripe) but zero logs in Azure Container Apps
+**Root Cause Analysis** (by system-architect):
+- `Event.CancelAllUserCommitments()` treated all signup categories equally - only canceling commitments
+- Correct for Mandatory/Suggested (organizer-owned items should remain for others)
+- WRONG for Open Items (user-owned items should be deleted when user cancels)
+- "Cancel Sign Up" button correctly deleted both commitment AND item
+- Registration cancellation WITH checkbox only deleted commitment → **Inconsistency**
 
 **Implementation**:
-- Updated `Microsoft.AspNetCore` log level: `Warning` → `Information`
-- Added `Microsoft.AspNetCore.Routing`: `Debug` for webhook debugging
-- Added `Microsoft.AspNetCore.Mvc`: `Information`
-- Added `LankaConnect.API.Controllers.PaymentsController`: `Debug` for payment-specific logging
-- Added File sink: `/tmp/lankaconnect-staging-.log` (backup logging, 7-day retention)
+- Enhanced `CancelAllUserCommitments()` to detect user-created Open Items
+- After canceling commitment, check if `item.CreatedByUserId == userId`
+- Track items for deletion in separate list, then delete using `signUpList.RemoveItem(itemId)`
+- Maintains separation: cancel commitment first (domain), then delete item (lifecycle)
 
-**Expected Results**:
-- ✅ Webhook endpoint logs now visible in Azure Container App logs
-- ✅ PaymentCompletedEventHandler invocation logs appear
-- ✅ Debug-level detail for all payment operations
-- ✅ File-based backup logging available
+**Testing Complete** ✅:
+1. ✅ Registered for event in staging (event ID: 0458806b-8672-4ad5-a7cb-f5346f1b282a)
+2. ✅ Created Open Items and committed to them
+3. ✅ Canceled registration WITH "Also delete my sign-up commitments" checkbox
+4. ✅ Verified Open Items disappear from UI (Update/Cancel buttons gone)
+5. ✅ Page reload confirmed items deleted from database
+6. ✅ User confirmed fix working in staging environment
 
-**Testing Required**:
-1. Resend test webhook from Stripe Dashboard
-2. Monitor Azure Container App logs for "Webhook endpoint reached"
-3. Verify PaymentCompletedEventHandler logs appear
-4. Test complete flow: webhook → payment → ticket → email
+**Related Issues**:
+- Issue 4: Delete Open Items when canceling registration - ✅ **COMPLETE**
+- Issue 3: Cannot cancel individual Open Items (400 error) - ⏳ Pending
+- Issue 1: Remove Sign Up buttons from manage page - ⏳ Pending
+- Issue 2: Remove commitment count numbers - ⏳ Pending
 
-**Phase Reference**: Phase 6A.24 - Stripe Webhook Integration & Ticket Email with PDF
+**Phase Reference**: Phase 6A.28 - Open Sign-Up Items Feature
+**Documentation**: [PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md](./PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md)
 
 ---
 
-## ✅ PREVIOUS STATUS - SESSION 45: PHASE 6A.31a BADGE LOCATION CONFIGS (2025-12-15)
+## ✅ PREVIOUS STATUS - SESSION 46: PHASE 6A.24 WEBHOOK LOGGING FIX (2025-12-18)
 **Date**: 2025-12-15 (Session 45)
 **Session**: Phase 6A.31a - Per-Location Badge Positioning System (Backend)
 **Status**: ✅ COMPLETE - Backend implementation ready for deployment

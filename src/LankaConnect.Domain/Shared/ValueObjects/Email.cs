@@ -5,8 +5,10 @@ namespace LankaConnect.Domain.Shared.ValueObjects;
 
 public class Email : ValueObject
 {
+    // RFC 5322 compliant email regex supporting Azure Communication Services domains
+    // Supports formats like: DoNotReply@7689582e-73cc-4552-b2ff-8afd9d1a6814.azurecomm.net
     private static readonly Regex EmailRegex = new(
-        @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+        @"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public string Value { get; }

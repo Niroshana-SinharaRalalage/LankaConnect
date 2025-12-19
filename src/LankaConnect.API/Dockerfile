@@ -25,8 +25,10 @@ COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
 COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
 COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
 
-# Copy email templates (needed for runtime)
-COPY ["Templates/", "LankaConnect.API/Templates/"]
+# Copy email templates from Infrastructure project (single source of truth)
+# Phase 6A.34: Templates now live in Infrastructure/Templates/Email/
+# Infrastructure .csproj already marks these as CopyToPublishDirectory
+# This ensures new templates (registration-confirmation, ticket-confirmation) are included
 
 # Build application
 WORKDIR "/src/LankaConnect.API"
@@ -52,8 +54,9 @@ WORKDIR /app
 # Copy published output
 COPY --from=publish /app/publish .
 
-# Copy email templates to runtime
-COPY --from=build /src/LankaConnect.API/Templates ./Templates
+# Copy email templates from Infrastructure publish output
+# Phase 6A.34: Infrastructure .csproj CopyToPublishDirectory ensures templates are in publish folder
+COPY --from=publish /app/publish/Templates ./Templates
 
 # Set correct permissions for Templates directory (before switching to non-root user)
 RUN chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates

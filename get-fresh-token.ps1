@@ -2,8 +2,8 @@
 $loginUrl = "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login"
 
 $body = @{
-    email = "johndoe@example.com"
-    password = "Password123!"
+    email = "niroshhh2@gmail.com"
+    password = "12!@qwASzx"
 } | ConvertTo-Json
 
 Write-Host "Getting fresh token..." -ForegroundColor Yellow

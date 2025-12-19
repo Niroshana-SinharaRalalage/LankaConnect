@@ -1,9 +1,78 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-18 (Current Session) - Session 46: Phase 6A.24 Webhook Logging Fix ✅ COMPLETE*
+*Last Updated: 2025-12-19 (Current Session) - Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 46: Phase 6A.24 Webhook Logging Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix ✅ DEPLOYED
+
+### Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix - DEPLOYED - 2025-12-19
+
+**Status**: ✅ **DEPLOYED** (Ready for user testing in staging)
+
+**Feature**: Fix Open Items not being deleted when users cancel registration with "Also delete my sign-up commitments" checkbox
+
+**Root Cause Analysis** (by system-architect):
+- `Event.CancelAllUserCommitments()` treated all signup categories equally - only canceling commitments but leaving items
+- Correct for Mandatory/Suggested (organizer-owned items should remain for others)
+- WRONG for Open Items (user-owned items should be deleted when user cancels)
+- "Cancel Sign Up" button correctly deleted both commitment AND item
+- Registration cancellation WITH checkbox only deleted commitment, leaving item visible
+- **Inconsistency** between two deletion paths for same user action
+
+**Implementation**:
+
+**Domain Changes** ([Event.cs:1337-1404](../src/LankaConnect.Domain/Events/Event.cs)):
+- Enhanced `CancelAllUserCommitments()` to detect user-created Open Items
+- After canceling commitment, check if `item.CreatedByUserId == userId`
+- Track items for deletion in separate list
+- Delete items using `signUpList.RemoveItem(itemId)`
+- Maintains separation: cancel commitment first (domain), then delete item (lifecycle)
+
+**Before Fix**:
+```
+Mandatory/Suggested: Commitment cancelled, item remains ✅ (correct)
+Open Items: Commitment cancelled, item remains ❌ (bug - should delete item)
+```
+
+**After Fix**:
+```
+Mandatory/Suggested: Commitment cancelled, item remains ✅ (unchanged)
+Open Items: Commitment cancelled, item DELETED ✅ (fixed - matches "Cancel Sign Up" button)
+```
+
+**Testing Required** (Next Steps):
+1. Register for event in staging
+2. Create 2-3 Open Items and commit to them
+3. Cancel registration WITH "Also delete my sign-up commitments" checkbox
+4. Verify Open Items disappear from UI (Update/Cancel buttons gone)
+5. Reload page to confirm items deleted from database
+6. Test Mandatory/Suggested items remain (unchanged behavior)
+
+**Build Status**: ✅ 0 errors, 0 warnings, build succeeded in 2m24s
+
+**Deployment**: ✅ GitHub Actions workflow 20359195154 completed successfully
+
+**Commit**: [5a988c30] fix(phase-6a28): Issue 4 - Delete user-created Open Items when canceling registration
+
+**Impact**:
+- ✅ Open Items behavior now consistent between "Cancel Sign Up" button and registration cancellation
+- ✅ User-owned items correctly deleted when user opts to delete commitments
+- ✅ Organizer-owned items (Mandatory/Suggested) unchanged
+- ✅ No breaking changes to existing functionality
+
+**Phase Reference**: Phase 6A.28 - Open Sign-Up Items Feature
+
+**Documentation**: [PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md](./PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md)
+
+**Related Issues**:
+- Issue 4: Delete Open Items when canceling registration - ✅ **FIXED**
+- Issue 3: Cannot cancel individual Open Items (400 error) - ⏳ Pending
+- Issue 1: Remove Sign Up buttons from manage page - ⏳ Pending
+- Issue 2: Remove commitment count numbers - ⏳ Pending
+
+---
+
+## 🎯 Previous Session - Session 46: Phase 6A.24 Webhook Logging Fix ✅ COMPLETE
 
 ### Session 46: Phase 6A.24 Stripe Webhook Logging Fix - COMPLETE - 2025-12-18
 

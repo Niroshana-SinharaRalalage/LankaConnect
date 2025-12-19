@@ -13,10 +13,10 @@ echo ""
 echo "Step 1: Login..."
 LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/api/Auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email": "niroshhh@gmail.com", "password": "Test@123"}')
+  -d '{"email": "niroshhh@gmail.com", "password": "12!@qwASzx"}')
 
-# Extract token using grep and sed
-TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | sed 's/"token":"\([^"]*\)"/\1/')
+# Extract token using grep and sed (API returns "accessToken" not "token")
+TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | sed 's/"accessToken":"\([^"]*\)"/\1/')
 USER_ID=$(echo "$LOGIN_RESPONSE" | grep -o '"userId":"[^"]*"' | sed 's/"userId":"\([^"]*\)"/\1/')
 
 if [ -z "$TOKEN" ]; then
@@ -47,22 +47,22 @@ fi
 # Wait for processing
 sleep 2
 
-# Step 3: Create NEW registration
+# Step 3: Create NEW registration (correct format per system-architect RCA)
 echo ""
 echo "Step 3: Create NEW registration..."
 RSVP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
   "$API_URL/api/Events/$EVENT_ID/rsvp" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "quantity": 2,
-    "attendees": [
-      {"firstName": "Test1", "lastName": "User1", "email": "test1@example.com"},
-      {"firstName": "Test2", "lastName": "User2", "email": "test2@example.com"}
+  -d "{
+    \"userId\": \"$USER_ID\",
+    \"quantity\": 1,
+    \"attendees\": [
+      {\"name\": \"Test User\", \"age\": 30}
     ],
-    "contactEmail": "niroshhh@gmail.com",
-    "contactPhone": "+94771234567"
-  }')
+    \"email\": \"niroshhh@gmail.com\",
+    \"phoneNumber\": \"+94771234567\"
+  }")
 
 HTTP_STATUS=$(echo "$RSVP_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
 RESPONSE_BODY=$(echo "$RSVP_RESPONSE" | grep -v "HTTP_STATUS:")

@@ -213,12 +213,15 @@ curl -X 'POST' \
   "rememberMe": true,
   "ipAddress": "string"
 }'
-  -------------------------------------------
-
-Please consult systeme-architect for the diagnosis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
 
 ---------------------------------------------
-
+Please proceed and make sure to stick to the plan. If you face any issues, consult the
+system-architect again for proper RCA and a fix plan. Repeat this process until all the issues are resolved.
+---------------------------------------------
+Please rivew this plan with system-architect and show me the system-architect approved final plan,
+----------------------------------------------
+Please consult systeme-architect for the diagnosis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
+---------------------------------------------
 Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
 
 Think harder and smarter as a Senior Software Engineer and follow these best practices:

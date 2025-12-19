@@ -92,7 +92,23 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
                 return Result<BadgeDto>.Failure(durationResult.Errors);
         }
 
-        // 7. Save changes
+        // 7. Phase 6A.32: Handle location config updates (Fixes Issue #2 - Badge positioning not saved/loaded)
+        if (request.ListingConfig != null)
+        {
+            badge.UpdateListingConfig(request.ListingConfig.FromDto());
+        }
+
+        if (request.FeaturedConfig != null)
+        {
+            badge.UpdateFeaturedConfig(request.FeaturedConfig.FromDto());
+        }
+
+        if (request.DetailConfig != null)
+        {
+            badge.UpdateDetailConfig(request.DetailConfig.FromDto());
+        }
+
+        // 8. Save changes
         _badgeRepository.Update(badge);
         await _unitOfWork.CommitAsync(cancellationToken);
 

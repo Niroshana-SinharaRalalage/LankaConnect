@@ -73,4 +73,19 @@ public static class BadgeMappingExtensions
             Rotation = config.Rotation
         };
     }
+
+    /// <summary>
+    /// Maps BadgeLocationConfigDto to domain value object
+    /// Phase 6A.32: Reverse mapping for updating badge configurations (Fixes Issue #2)
+    /// </summary>
+    public static BadgeLocationConfig FromDto(this BadgeLocationConfigDto dto)
+    {
+        return new BadgeLocationConfig(
+            positionX: dto.PositionX,
+            positionY: dto.PositionY,
+            sizeWidth: dto.SizeWidth,
+            sizeHeight: dto.SizeHeight,
+            rotation: dto.Rotation
+        );
+    }
 }

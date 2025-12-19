@@ -162,7 +162,11 @@ public class BadgesController : BaseController<BadgesController>
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder,
             DefaultDurationDays = dto.DefaultDurationDays,
-            ClearDuration = dto.ClearDuration
+            ClearDuration = dto.ClearDuration,
+            // Phase 6A.32: Map location configs (Fixes Issue #2 - Badge positioning not saved/loaded)
+            ListingConfig = dto.ListingConfig,
+            FeaturedConfig = dto.FeaturedConfig,
+            DetailConfig = dto.DetailConfig
         };
 
         var result = await Mediator.Send(command);

@@ -15,8 +15,10 @@ public class RazorEmailTemplateService : IEmailTemplateService
     private readonly IMemoryCache _cache;
     private readonly ILogger<RazorEmailTemplateService> _logger;
     private readonly string _templateBasePath;
-    
-    private static readonly ConcurrentDictionary<string, bool> TemplateExistsCache = new();
+
+    // Phase 6A.34: Changed from static to instance-level to prevent caching issues across deployments
+    // Static cache persisted "template not found" even after templates were deployed
+    private readonly ConcurrentDictionary<string, bool> _templateExistsCache = new();
 
     public RazorEmailTemplateService(
         IOptions<EmailSettings> emailSettings,
@@ -186,7 +188,7 @@ public class RazorEmailTemplateService : IEmailTemplateService
 
     public async Task<bool> TemplateExistsAsync(string templateName, CancellationToken cancellationToken = default)
     {
-        if (TemplateExistsCache.TryGetValue(templateName, out var exists))
+        if (_templateExistsCache.TryGetValue(templateName, out var exists))
         {
             return exists;
         }
@@ -197,10 +199,10 @@ public class RazorEmailTemplateService : IEmailTemplateService
         var htmlPath = GetHtmlBodyPath(templateName);
 
         // At minimum, we need either the main template file or separate files
-        var templateExists = File.Exists(templatePath) || 
+        var templateExists = File.Exists(templatePath) ||
                            (File.Exists(subjectPath) && (File.Exists(textPath) || File.Exists(htmlPath)));
 
-        TemplateExistsCache.TryAdd(templateName, templateExists);
+        _templateExistsCache.TryAdd(templateName, templateExists);
         return await Task.FromResult(templateExists);
     }
 

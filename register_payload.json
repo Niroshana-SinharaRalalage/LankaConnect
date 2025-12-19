@@ -1,0 +1,13 @@
+{
+  "userId": "5e782b4d-29ed-4e1d-9039-6c8f698aeea9",
+  "quantity": 1,
+  "attendees": [
+    {
+      "name": "Test User",
+      "age": 30
+    }
+  ],
+  "email": "niroshhh@gmail.com",
+  "phoneNumber": "+1234567890",
+  "address": "123 Test Street"
+}

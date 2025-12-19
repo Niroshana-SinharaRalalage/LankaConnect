@@ -20,15 +20,12 @@ COPY ["src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj", "Lan
 RUN dotnet restore "LankaConnect.API/LankaConnect.API.csproj"
 
 # Copy ALL source code (including all projects)
+# Phase 6A.34: API.csproj now links Infrastructure email templates via <Content Include>
+# This ensures templates are automatically included in build and publish output
 COPY ["src/LankaConnect.API/", "LankaConnect.API/"]
 COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
 COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
 COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
-
-# Copy email templates from Infrastructure project (single source of truth)
-# Phase 6A.34: Templates now live in Infrastructure/Templates/Email/
-# Infrastructure .csproj already marks these as CopyToPublishDirectory
-# This ensures new templates (registration-confirmation, ticket-confirmation) are included
 
 # Build application
 WORKDIR "/src/LankaConnect.API"
@@ -52,14 +49,13 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy published output
+# Phase 6A.34: Templates are automatically included via API.csproj linked content
+# No need for separate COPY command - they're already in /app/publish
 COPY --from=publish /app/publish .
 
-# Copy email templates from Infrastructure publish output
-# Phase 6A.34: Infrastructure .csproj CopyToPublishDirectory ensures templates are in publish folder
-COPY --from=publish /app/publish/Templates ./Templates
-
 # Set correct permissions for Templates directory (before switching to non-root user)
-RUN chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates
+# Phase 6A.34: Templates are at ./Templates/Email/ in the publish output
+RUN if [ -d ./Templates ]; then chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates; fi
 
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000

@@ -45,12 +45,26 @@ public class CancelOpenSignUpItemCommandHandler : ICommandHandler<CancelOpenSign
         if (!item.IsCreatedByUser(request.UserId))
             return Result.Failure("You can only cancel Open items that you created");
 
-        // Cancel/remove the user's commitment first
-        var cancelCommitResult = item.CancelCommitment(request.UserId);
-        if (cancelCommitResult.IsFailure)
-            return cancelCommitResult;
+        // Phase 6A.28 Issue 3 Fix: Cancel user's own commitment first (if exists)
+        var userCommitment = item.Commitments.FirstOrDefault(c => c.UserId == request.UserId);
+        if (userCommitment != null)
+        {
+            var cancelCommitResult = item.CancelCommitment(request.UserId);
+            if (cancelCommitResult.IsFailure)
+                return cancelCommitResult;
+        }
 
-        // Remove the item from the list
+        // Phase 6A.28 Issue 3 Fix: Check if there are OTHER users' commitments
+        // User can only delete their own Open item if no one else has committed to it
+        var otherCommitmentsCount = item.Commitments.Count(c => c.UserId != request.UserId);
+        if (otherCommitmentsCount > 0)
+        {
+            return Result.Failure(
+                $"Cannot delete this Open item because {otherCommitmentsCount} other user(s) have committed to it. " +
+                "Your commitment has been canceled, but the item will remain available for others.");
+        }
+
+        // Remove the item from the list (now safe because only user's own commitment existed)
         var removeResult = signUpList.RemoveItem(request.ItemId);
         if (removeResult.IsFailure)
             return removeResult;

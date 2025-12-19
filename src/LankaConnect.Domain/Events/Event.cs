@@ -1342,6 +1342,9 @@ public class Event : BaseEntity
         var cancelledCount = 0;
         var errors = new List<string>();
 
+        // Phase 6A.28 Issue 4 Fix: Track Open items to delete (user-created items should be removed entirely)
+        var itemsToRemove = new List<(SignUpList signUpList, Guid itemId)>();
+
         foreach (var signUpList in _signUpLists)
         {
             foreach (var item in signUpList.Items)
@@ -1355,6 +1358,14 @@ public class Event : BaseEntity
                     if (result.IsSuccess)
                     {
                         cancelledCount++;
+
+                        // Phase 6A.28 Issue 4 Fix: If this is an Open item created by this user, mark for deletion
+                        // Open items are user-owned, so when the user cancels, both commitment AND item should be removed
+                        // This makes Open items consistent with the "Cancel Sign Up" button behavior
+                        if (item.CreatedByUserId.HasValue && item.CreatedByUserId.Value == userId)
+                        {
+                            itemsToRemove.Add((signUpList, item.Id));
+                        }
                     }
                     else
                     {
@@ -1362,6 +1373,16 @@ public class Event : BaseEntity
                         errors.Add($"Failed to cancel commitment for item '{item.ItemDescription}': {result.Error}");
                     }
                 }
+            }
+        }
+
+        // Phase 6A.28 Issue 4 Fix: Remove user-created Open items (commitment already cancelled above)
+        foreach (var (signUpList, itemId) in itemsToRemove)
+        {
+            var removeResult = signUpList.RemoveItem(itemId);
+            if (removeResult.IsFailure)
+            {
+                errors.Add($"Failed to remove Open item: {removeResult.Error}");
             }
         }
 

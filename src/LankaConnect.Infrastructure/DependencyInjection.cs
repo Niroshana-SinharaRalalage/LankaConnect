@@ -150,6 +150,9 @@ public static class DependencyInjection
         // Add Email Group Repository (Phase 6A.25)
         services.AddScoped<IEmailGroupRepository, EmailGroupRepository>();
 
+        // Add Metro Area Repository (Phase 6A Event Notifications)
+        services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
+
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
@@ -213,6 +216,9 @@ public static class DependencyInjection
 
         // Add GeoLocation Service for distance calculations
         services.AddScoped<LankaConnect.Domain.Events.Services.IGeoLocationService, LankaConnect.Domain.Events.Services.GeoLocationService>();
+
+        // Add Event Notification Recipient Service (Phase 6A Event Notifications)
+        services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
 
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>

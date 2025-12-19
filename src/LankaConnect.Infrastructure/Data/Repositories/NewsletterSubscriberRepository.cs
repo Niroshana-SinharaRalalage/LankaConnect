@@ -102,6 +102,41 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         }
     }
 
+    public async Task<IReadOnlyList<NewsletterSubscriber>> GetConfirmedSubscribersByStateAsync(
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetConfirmedSubscribersByState"))
+        using (LogContext.PushProperty("State", state))
+        {
+            _logger.Debug("Getting confirmed subscribers for state-level areas in state {State}", state);
+
+            // Get all metro area IDs for state-level areas in the given state
+            var stateMetroAreaIds = await _context.MetroAreas
+                .Where(m => m.State.ToLower() == state.ToLower() && m.IsStateLevelArea)
+                .Select(m => m.Id)
+                .ToListAsync(cancellationToken);
+
+            if (!stateMetroAreaIds.Any())
+            {
+                _logger.Debug("No state-level metro areas found for state {State}", state);
+                return new List<NewsletterSubscriber>();
+            }
+
+            // Get subscribers for those state-level metro areas
+            var result = await _dbSet
+                .Where(ns => ns.MetroAreaId.HasValue && stateMetroAreaIds.Contains(ns.MetroAreaId.Value))
+                .Where(ns => ns.IsActive)
+                .Where(ns => ns.IsConfirmed)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            _logger.Debug("Retrieved {Count} confirmed subscribers for state-level areas in {State}",
+                result.Count, state);
+            return result;
+        }
+    }
+
     public async Task<bool> IsEmailSubscribedAsync(string email, Guid? metroAreaId = null, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "IsEmailSubscribed"))

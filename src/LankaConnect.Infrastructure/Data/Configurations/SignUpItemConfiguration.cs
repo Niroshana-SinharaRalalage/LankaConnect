@@ -66,6 +66,13 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
             .HasForeignKey(sc => sc.SignUpItemId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Phase 6A.28 Fix: Configure navigation to use backing field "_commitments"
+        // CRITICAL: This enables EF Core to populate the private readonly List backing field
+        // Without this, EF Core cannot write to IReadOnlyList<> property → commitments stay empty
+        // Same pattern successfully used in SignUpListConfiguration.cs line 83-84
+        builder.Navigation(si => si.Commitments)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Indexes
         builder.HasIndex(si => si.SignUpListId)
             .HasDatabaseName("ix_sign_up_items_list_id");

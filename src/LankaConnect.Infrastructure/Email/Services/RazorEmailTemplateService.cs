@@ -190,6 +190,7 @@ public class RazorEmailTemplateService : IEmailTemplateService
     {
         if (_templateExistsCache.TryGetValue(templateName, out var exists))
         {
+            _logger.LogInformation("[Phase 6A.35] Template '{TemplateName}' found in cache: {Exists}", templateName, exists);
             return exists;
         }
 
@@ -198,10 +199,18 @@ public class RazorEmailTemplateService : IEmailTemplateService
         var textPath = GetTextBodyPath(templateName);
         var htmlPath = GetHtmlBodyPath(templateName);
 
+        _logger.LogInformation("[Phase 6A.35] Checking template paths for '{TemplateName}':", templateName);
+        _logger.LogInformation("[Phase 6A.35]   Base path: {BasePath}", _templateBasePath);
+        _logger.LogInformation("[Phase 6A.35]   Template: {Path} (exists: {Exists})", templatePath, File.Exists(templatePath));
+        _logger.LogInformation("[Phase 6A.35]   Subject: {Path} (exists: {Exists})", subjectPath, File.Exists(subjectPath));
+        _logger.LogInformation("[Phase 6A.35]   Text: {Path} (exists: {Exists})", textPath, File.Exists(textPath));
+        _logger.LogInformation("[Phase 6A.35]   HTML: {Path} (exists: {Exists})", htmlPath, File.Exists(htmlPath));
+
         // At minimum, we need either the main template file or separate files
         var templateExists = File.Exists(templatePath) ||
                            (File.Exists(subjectPath) && (File.Exists(textPath) || File.Exists(htmlPath)));
 
+        _logger.LogInformation("[Phase 6A.35] Template '{TemplateName}' exists: {Exists}", templateName, templateExists);
         _templateExistsCache.TryAdd(templateName, templateExists);
         return await Task.FromResult(templateExists);
     }

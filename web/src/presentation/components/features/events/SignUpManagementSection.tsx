@@ -472,9 +472,12 @@ export function SignUpManagementSection({
               }`}
             >
               {list.category}
-              <span className="ml-1 text-xs text-gray-500">
-                ({list.commitmentCount})
-              </span>
+              {/* Phase 6A.28 Issue 2 Fix: Hide commitment count on manage page (isOrganizer=true) */}
+              {!isOrganizer && (
+                <span className="ml-1 text-xs text-gray-500">
+                  ({list.commitmentCount})
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -814,7 +817,8 @@ export function SignUpManagementSection({
                   {signUpList.commitments.length > 0 ? (
                     <div>
                       <h4 className="font-semibold mb-2">
-                        Commitments ({signUpList.commitmentCount}):
+                        {/* Phase 6A.28 Issue 2 Fix: Hide commitment count on manage page */}
+                        Commitments{!isOrganizer && ` (${signUpList.commitmentCount})`}:
                       </h4>
                       <div className="space-y-2">
                         {signUpList.commitments.map((commitment) => (

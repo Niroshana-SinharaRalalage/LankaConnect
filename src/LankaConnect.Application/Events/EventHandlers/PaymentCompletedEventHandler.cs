@@ -95,18 +95,27 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     : "Guest";
             }
 
-            // Prepare attendee details for email
-            var attendeeDetails = new List<Dictionary<string, object>>();
+            // Phase 6A.24 FIX: Format attendee details as HTML/text strings for template rendering
+            // Previously passed List<Dictionary> which rendered as garbage with ToString()
+            var attendeeDetailsHtml = new System.Text.StringBuilder();
+            var attendeeDetailsText = new System.Text.StringBuilder();
+
             if (registration.HasDetailedAttendees())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetails.Add(new Dictionary<string, object>
-                    {
-                        { "Name", attendee.Name },
-                        { "Age", attendee.Age }
-                    });
+                    // HTML format for ticket-confirmation-html.html
+                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
+
+                    // Plain text format for ticket-confirmation-text.txt
+                    attendeeDetailsText.AppendLine($"- {attendee.Name} (Age: {attendee.Age})");
                 }
+            }
+            else
+            {
+                // Fallback if no detailed attendees
+                attendeeDetailsHtml.AppendLine($"<p>{domainEvent.AttendeeCount} attendee(s)</p>");
+                attendeeDetailsText.AppendLine($"{domainEvent.AttendeeCount} attendee(s)");
             }
 
             // Prepare email parameters with payment details
@@ -123,9 +132,9 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 { "Quantity", domainEvent.AttendeeCount },
                 { "AttendeeCount", domainEvent.AttendeeCount }, // Phase 6A.24 FIX: Template uses {{AttendeeCount}}
                 { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                // Attendee details
-                { "Attendees", attendeeDetails },
-                { "HasAttendeeDetails", attendeeDetails.Any() },
+                // Phase 6A.24 FIX: Attendee details as formatted HTML string (not List<Dictionary>)
+                { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                { "HasAttendeeDetails", registration.HasDetailedAttendees() },
                 // Payment details
                 { "IsPaidEvent", true },
                 { "AmountPaid", domainEvent.AmountPaid.ToString("C") },
@@ -226,7 +235,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             {
                 _logger.LogInformation(
                     "Payment confirmation email sent successfully to {Email} for Registration {RegistrationId} with {AttendeeCount} attendees, HasTicket: {HasTicket}",
-                    recipientEmail, domainEvent.RegistrationId, attendeeDetails.Count, parameters["HasTicket"]);
+                    recipientEmail, domainEvent.RegistrationId, registration.Attendees.Count, parameters["HasTicket"]);
             }
         }
         catch (Exception ex)

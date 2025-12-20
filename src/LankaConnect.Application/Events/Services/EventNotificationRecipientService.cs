@@ -38,25 +38,70 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Resolving email recipients for event {EventId}", eventId);
+        _logger.LogInformation("[RCA-1] ResolveRecipientsAsync START - EventId: {EventId}", eventId);
 
         // Fetch event details
-        var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
+        Event? @event;
+        try
+        {
+            _logger.LogInformation("[RCA-2] Fetching event from repository...");
+            @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
+            _logger.LogInformation("[RCA-3] Event fetch complete - Found: {Found}", @event != null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-ERR] Failed to fetch event {EventId} from repository", eventId);
+            throw;
+        }
+
         if (@event == null)
         {
-            _logger.LogWarning("Event {EventId} not found", eventId);
+            _logger.LogWarning("[RCA-4] Event {EventId} not found", eventId);
             return CreateEmptyResult();
         }
 
+        _logger.LogInformation("[RCA-5] Event details - Title: {Title}, Location: {HasLocation}, EmailGroupIds: {EmailGroupCount}",
+            @event.Title?.Value ?? "N/A",
+            @event.Location != null,
+            @event.EmailGroupIds?.Count ?? 0);
+
         // Get email addresses from email groups
-        var emailGroupAddresses = await GetEmailGroupAddressesAsync(@event, cancellationToken);
-        _logger.LogDebug("Found {Count} emails from email groups", emailGroupAddresses.Count);
+        List<string> emailGroupAddresses;
+        try
+        {
+            _logger.LogInformation("[RCA-6] Getting email group addresses...");
+            emailGroupAddresses = await GetEmailGroupAddressesAsync(@event, cancellationToken);
+            _logger.LogInformation("[RCA-7] Email group addresses retrieved: {Count}", emailGroupAddresses.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-ERR] Failed to get email group addresses for event {EventId}", eventId);
+            throw;
+        }
 
         // Get newsletter subscriber emails (3-level location matching with parallel execution)
-        var newsletterAddresses = @event.Location != null
-            ? await GetNewsletterSubscriberEmailsAsync(@event.Location, cancellationToken)
-            : new NewsletterEmailsWithBreakdown(new HashSet<string>(), 0, 0, 0);
-        _logger.LogDebug("Found {Count} emails from newsletter subscribers", newsletterAddresses.Emails.Count);
+        NewsletterEmailsWithBreakdown newsletterAddresses;
+        try
+        {
+            if (@event.Location != null)
+            {
+                _logger.LogInformation("[RCA-8] Getting newsletter subscribers for location: {City}, {State}",
+                    @event.Location.Address?.City ?? "N/A",
+                    @event.Location.Address?.State ?? "N/A");
+                newsletterAddresses = await GetNewsletterSubscriberEmailsAsync(@event.Location, cancellationToken);
+            }
+            else
+            {
+                _logger.LogInformation("[RCA-8] No location on event, skipping newsletter subscribers");
+                newsletterAddresses = new NewsletterEmailsWithBreakdown(new HashSet<string>(), 0, 0, 0);
+            }
+            _logger.LogInformation("[RCA-9] Newsletter subscribers retrieved: {Count}", newsletterAddresses.Emails.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-ERR] Failed to get newsletter subscribers for event {EventId}", eventId);
+            throw;
+        }
 
         // Calculate breakdown before deduplication
         var breakdown = new RecipientBreakdown(
@@ -93,19 +138,34 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
     {
         if (@event.EmailGroupIds == null || !@event.EmailGroupIds.Any())
         {
-            _logger.LogDebug("Event {@EventId} has no email groups", @event.Id);
+            _logger.LogInformation("[RCA-EG1] Event {EventId} has no email groups", @event.Id);
             return new List<string>();
         }
 
-        var emailGroups = await _emailGroupRepository.GetByIdsAsync(
-            @event.EmailGroupIds,
-            cancellationToken);
+        _logger.LogInformation("[RCA-EG2] Fetching {Count} email groups: [{Ids}]",
+            @event.EmailGroupIds.Count,
+            string.Join(", ", @event.EmailGroupIds));
+
+        IReadOnlyList<Domain.Communications.Entities.EmailGroup> emailGroups;
+        try
+        {
+            emailGroups = await _emailGroupRepository.GetByIdsAsync(
+                @event.EmailGroupIds,
+                cancellationToken);
+            _logger.LogInformation("[RCA-EG3] Email groups fetched: {Count}", emailGroups.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-EG-ERR] Failed to fetch email groups for IDs: [{Ids}]",
+                string.Join(", ", @event.EmailGroupIds));
+            throw;
+        }
 
         var emails = emailGroups
             .SelectMany(g => g.GetEmailList())
             .ToList();
 
-        _logger.LogDebug("Retrieved {Count} emails from {GroupCount} email groups",
+        _logger.LogInformation("[RCA-EG4] Retrieved {Count} emails from {GroupCount} email groups",
             emails.Count, emailGroups.Count);
 
         return emails;
@@ -118,21 +178,35 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         var city = location.Address.City;
         var state = location.Address.State;
 
-        _logger.LogDebug("Querying newsletter subscribers for location: {City}, {State}", city, state);
+        _logger.LogInformation("[RCA-NL1] Querying newsletter subscribers for location: {City}, {State}", city, state);
 
         // Execute 3-level location matching queries IN PARALLEL for performance
-        var metroTask = GetMetroAreaSubscribersAsync(city, state, cancellationToken);
-        var stateTask = _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
-        var allLocationsTask = _subscriberRepository.GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> metroTask;
+        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> stateTask;
+        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> allLocationsTask;
 
-        await Task.WhenAll(metroTask, stateTask, allLocationsTask);
+        try
+        {
+            _logger.LogInformation("[RCA-NL2] Starting parallel subscriber queries...");
+            metroTask = GetMetroAreaSubscribersAsync(city, state, cancellationToken);
+            stateTask = _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
+            allLocationsTask = _subscriberRepository.GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+
+            await Task.WhenAll(metroTask, stateTask, allLocationsTask);
+            _logger.LogInformation("[RCA-NL3] All parallel queries completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-NL-ERR] Failed during parallel subscriber queries for {City}, {State}", city, state);
+            throw;
+        }
 
         var metroSubscribers = await metroTask;
         var stateSubscribers = await stateTask;
         var allLocationsSubscribers = await allLocationsTask;
 
-        _logger.LogDebug(
-            "Retrieved newsletter subscribers: Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+        _logger.LogInformation(
+            "[RCA-NL4] Retrieved newsletter subscribers: Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
             metroSubscribers.Count, stateSubscribers.Count, allLocationsSubscribers.Count);
 
         // Combine all subscriber emails (deduplication will happen at higher level)
@@ -158,22 +232,44 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         string state,
         CancellationToken cancellationToken)
     {
+        _logger.LogInformation("[RCA-MA1] Finding metro area for {City}, {State}", city, state);
+
         // Find metro area by city and state
-        var metroArea = await _metroAreaRepository.FindByLocationAsync(city, state, cancellationToken);
+        Domain.Events.MetroArea? metroArea;
+        try
+        {
+            metroArea = await _metroAreaRepository.FindByLocationAsync(city, state, cancellationToken);
+            _logger.LogInformation("[RCA-MA2] Metro area lookup result: {Found}, Id: {MetroAreaId}",
+                metroArea != null, metroArea?.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-MA-ERR] Failed to find metro area for {City}, {State}", city, state);
+            throw;
+        }
 
         if (metroArea == null)
         {
-            _logger.LogDebug("No metro area found for {City}, {State}", city, state);
+            _logger.LogInformation("[RCA-MA3] No metro area found for {City}, {State}", city, state);
             return new List<NewsletterSubscriber>();
         }
 
         // Get subscribers for this metro area
-        var subscribers = await _subscriberRepository.GetConfirmedSubscribersByMetroAreaAsync(
-            metroArea.Id,
-            cancellationToken);
-
-        _logger.LogDebug("Found {Count} subscribers for metro area {MetroAreaId}",
-            subscribers.Count, metroArea.Id);
+        IReadOnlyList<NewsletterSubscriber> subscribers;
+        try
+        {
+            _logger.LogInformation("[RCA-MA4] Fetching subscribers for metro area {MetroAreaId}", metroArea.Id);
+            subscribers = await _subscriberRepository.GetConfirmedSubscribersByMetroAreaAsync(
+                metroArea.Id,
+                cancellationToken);
+            _logger.LogInformation("[RCA-MA5] Found {Count} subscribers for metro area {MetroAreaId}",
+                subscribers.Count, metroArea.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-MA-ERR] Failed to get subscribers for metro area {MetroAreaId}", metroArea.Id);
+            throw;
+        }
 
         return subscribers;
     }

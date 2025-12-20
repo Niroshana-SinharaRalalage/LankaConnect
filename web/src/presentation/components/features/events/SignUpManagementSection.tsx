@@ -575,7 +575,7 @@ export function SignUpManagementSection({
               {isCategoryBased ? (
                 <div className="space-y-6">
                   {/* Group items by category - Phase 6A.28: Preferred is DEPRECATED and hidden from UI */}
-                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category) => {
+                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category, index) => {
                     // For predefined categories, filter out Open items
                     // Phase 6A.28: Also skip Preferred items - they are deprecated
                     const categoryItems = signUpList.items.filter(item =>
@@ -586,8 +586,14 @@ export function SignUpManagementSection({
 
                     if (categoryItems.length === 0) return null;
 
+                    // Check if there are items in previous categories (for separator)
+                    const hasPreviousCategoryItems = index > 0 && signUpList.items.some(item =>
+                      item.itemCategory === SignUpItemCategory.Mandatory &&
+                      !item.isOpenItem
+                    );
+
                     return (
-                      <div key={category} className="space-y-3">
+                      <div key={category} className={`space-y-3 ${hasPreviousCategoryItems ? 'border-t pt-4 mt-4' : ''}`}>
                         <h4 className="font-semibold flex items-center gap-2">
                           <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(category)}`}>
                             {getCategoryLabel(category)}
@@ -715,16 +721,14 @@ export function SignUpManagementSection({
                   {/* Phase 6A.27: Open Items Section */}
                   {signUpList.hasOpenItems && (
                     <div className="space-y-3 border-t pt-4 mt-4">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(SignUpItemCategory.Open)}`}>
-                            Open
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            (Bring your own item)
-                          </span>
-                        </h4>
-                      </div>
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
+                          {getCategoryLabel(SignUpItemCategory.Open)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          (Bring your own item)
+                        </span>
+                      </h4>
 
                       <p className="text-sm text-muted-foreground">
                         You can add your own item to bring to this sign-up list.

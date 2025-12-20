@@ -7,45 +7,54 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 35: PHASE 6A.28 ISSUE 4 - OPEN ITEMS DELETION FIX (2025-12-19)
-**Date**: 2025-12-19 (Session 35)
-**Session**: Phase 6A.28 Issue 4 - Open Items Deletion Fix
-**Status**: ✅ COMPLETE - Deployed, tested, and verified working
-**Build Status**: ✅ Zero Tolerance Maintained - 0 errors
-**Commit**: `5a988c30` - fix(phase-6a28): Issue 4 - Delete user-created Open Items when canceling registration
+## ✅ CURRENT STATUS - SESSION 36: PHASE 6A.28 COMPLETE - ALL ISSUES RESOLVED (2025-12-20)
+**Date**: 2025-12-20 (Session 36)
+**Session**: Phase 6A.28 Complete - All Issues Resolved
+**Status**: ✅ COMPLETE - All 4 issues fixed, deployed, and verified
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors | Frontend: 0 errors
+**Commits**:
+- `1cda9587` - fix(phase-6a28): Fix Rice Tay commitment names not displaying in UI
+- `172aa4de` - fix(phase-6a28): Hide Sign Up buttons and commitment counts on manage page
 
-### SESSION 35: PHASE 6A.28 ISSUE 4 - OPEN ITEMS DELETION FIX (2025-12-19)
-**Goal**: Fix Open Items not being deleted when users cancel registration with "Also delete my sign-up commitments" checkbox
+### SESSION 36: PHASE 6A.28 FINAL FIXES (2025-12-20)
+**Goal**: Complete all remaining Phase 6A.28 Open Items issues
 
-**Root Cause Analysis** (by system-architect):
-- `Event.CancelAllUserCommitments()` treated all signup categories equally - only canceling commitments
-- Correct for Mandatory/Suggested (organizer-owned items should remain for others)
-- WRONG for Open Items (user-owned items should be deleted when user cancels)
-- "Cancel Sign Up" button correctly deleted both commitment AND item
-- Registration cancellation WITH checkbox only deleted commitment → **Inconsistency**
+**Fixes Implemented**:
 
-**Implementation**:
-- Enhanced `CancelAllUserCommitments()` to detect user-created Open Items
-- After canceling commitment, check if `item.CreatedByUserId == userId`
-- Track items for deletion in separate list, then delete using `signUpList.RemoveItem(itemId)`
-- Maintains separation: cancel commitment first (domain), then delete item (lifecycle)
+#### Rice Tay Commitment Display Fix
+- **Problem**: Commitments array empty in API despite `committedQuantity: 2`
+- **Root Cause**: Missing `UsePropertyAccessMode(PropertyAccessMode.Field)` in SignUpItemConfiguration.cs
+- **Solution**: Added EF Core navigation configuration (same pattern as SignUpListConfiguration.cs)
+- **Data Repair**: Executed SQL to fix orphaned `remainingQuantity` values (data corruption)
+- **File**: [SignUpItemConfiguration.cs:73-74](../src/LankaConnect.Infrastructure/Data/Configurations/SignUpItemConfiguration.cs)
 
-**Testing Complete** ✅:
-1. ✅ Registered for event in staging (event ID: 0458806b-8672-4ad5-a7cb-f5346f1b282a)
-2. ✅ Created Open Items and committed to them
-3. ✅ Canceled registration WITH "Also delete my sign-up commitments" checkbox
-4. ✅ Verified Open Items disappear from UI (Update/Cancel buttons gone)
-5. ✅ Page reload confirmed items deleted from database
-6. ✅ User confirmed fix working in staging environment
+#### Issue 1: Remove Sign Up Buttons from Manage Page
+- Added `!isOrganizer` check to Mandatory/Preferred/Suggested item buttons (line 646)
+- Added `!isOrganizer` check to Open Items Update/Cancel buttons (line 748)
+- Added `!isOrganizer` check to Open Items Sign Up button (line 779)
 
-**Related Issues**:
-- Issue 4: Delete Open Items when canceling registration - ✅ **COMPLETE**
-- Issue 3: Cannot cancel individual Open Items (400 error) - ⏳ Pending
-- Issue 1: Remove Sign Up buttons from manage page - ⏳ Pending
-- Issue 2: Remove commitment count numbers - ⏳ Pending
+#### Issue 2: Remove Commitment Count Numbers from Manage Page
+- Added `!isOrganizer` check to tab navigation commitment counts (line 476)
+- Added `!isOrganizer` check to legacy commitments header (line 821)
+
+**All Related Issues - NOW COMPLETE**:
+- Issue 4: Delete Open Items when canceling registration - ✅ **COMPLETE** (Session 35)
+- Issue 3: Cannot cancel individual Open Items (400 error) - ✅ **COMPLETE** (Session 35)
+- Issue 1: Remove Sign Up buttons from manage page - ✅ **COMPLETE** (Session 36)
+- Issue 2: Remove commitment count numbers - ✅ **COMPLETE** (Session 36)
+- Rice Tay Commitment Display - ✅ **COMPLETE** (Session 36)
+
+**Deployment**: ✅ GitHub Actions workflow 20395974304 completed successfully
 
 **Phase Reference**: Phase 6A.28 - Open Sign-Up Items Feature
 **Documentation**: [PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md](./PHASE_6A28_ISSUE_4_OPEN_ITEMS_FIX.md)
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 35: PHASE 6A.28 ISSUE 4 - OPEN ITEMS DELETION FIX (2025-12-19)
+**Date**: 2025-12-19 (Session 35)
+**Session**: Phase 6A.28 Issue 4 - Open Items Deletion Fix
+**Status**: ✅ COMPLETE - Deployed, tested, and verified working
 
 ---
 

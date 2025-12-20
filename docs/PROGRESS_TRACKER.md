@@ -1,9 +1,50 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-19 (Current Session) - Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix ✅ COMPLETE*
+*Last Updated: 2025-12-20 (Current Session) - Session 36: Phase 6A.28 Complete - All Issues Resolved ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix ✅ COMPLETE
+## 🎯 Current Session Status - Session 36: Phase 6A.28 Complete - All Issues Resolved ✅
+
+### Session 36: Phase 6A.28 Final Fixes - COMPLETE - 2025-12-20
+
+**Status**: ✅ **COMPLETE** (All 4 issues resolved, deployed, and verified)
+
+**Summary**: Fixed remaining Phase 6A.28 Open Items issues including:
+- Rice Tay commitment display (EF Core configuration + data repair)
+- Issue 1: Hide Sign Up buttons from manage page
+- Issue 2: Hide commitment count numbers from manage page
+- Issue 3: Fix orphaned Open Items deletion (deployed in previous session)
+
+**Fixes Implemented**:
+
+#### Rice Tay Commitment Display Fix
+- **Root Cause**: Missing `UsePropertyAccessMode(PropertyAccessMode.Field)` in SignUpItemConfiguration.cs
+- **Solution**: Added EF Core navigation configuration (same pattern as SignUpListConfiguration.cs)
+- **Data Repair**: Executed SQL to fix orphaned `remainingQuantity` values
+- **Commit**: [1cda9587](../src/LankaConnect.Infrastructure/Data/Configurations/SignUpItemConfiguration.cs)
+
+#### Issue 1: Remove Sign Up Buttons from Manage Page
+- **File**: [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx)
+- **Changes**:
+  - Added `!isOrganizer` check to Mandatory/Preferred/Suggested item buttons (line 646)
+  - Added `!isOrganizer` check to Open Items Update/Cancel buttons (line 748)
+  - Added `!isOrganizer` check to Open Items Sign Up button (line 779)
+
+#### Issue 2: Remove Commitment Count Numbers from Manage Page
+- **File**: [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx)
+- **Changes**:
+  - Added `!isOrganizer` check to tab navigation commitment counts (line 476)
+  - Added `!isOrganizer` check to legacy commitments header (line 821)
+
+**Commits**:
+- [1cda9587] fix(phase-6a28): Fix Rice Tay commitment names not displaying in UI
+- [172aa4de] fix(phase-6a28): Hide Sign Up buttons and commitment counts on manage page
+
+**Build Status**: ✅ Backend: 0 errors | Frontend: 0 errors
+
+**Deployment**: ✅ GitHub Actions workflow 20395974304 completed successfully
+
+---
 
 ### Session 35: Phase 6A.28 Issue 4 - Open Items Deletion Fix - COMPLETE - 2025-12-19
 
@@ -66,9 +107,10 @@ Open Items: Commitment cancelled, item DELETED ✅ (fixed - matches "Cancel Sign
 
 **Related Issues**:
 - Issue 4: Delete Open Items when canceling registration - ✅ **COMPLETE** (tested & verified)
-- Issue 3: Cannot cancel individual Open Items (400 error) - ⏳ Pending
-- Issue 1: Remove Sign Up buttons from manage page - ⏳ Pending
-- Issue 2: Remove commitment count numbers - ⏳ Pending
+- Issue 3: Cannot cancel individual Open Items (400 error) - ✅ **COMPLETE** (fixed in Session 35)
+- Issue 1: Remove Sign Up buttons from manage page - ✅ **COMPLETE** (fixed in Session 36)
+- Issue 2: Remove commitment count numbers - ✅ **COMPLETE** (fixed in Session 36)
+- Rice Tay Commitment Display - ✅ **COMPLETE** (EF Core fix + data repair in Session 36)
 
 ---
 

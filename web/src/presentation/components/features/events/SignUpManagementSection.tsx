@@ -642,7 +642,8 @@ export function SignUpManagementSection({
                                 )}
 
                                 {/* Sign Up/Update button - Show if remaining qty OR user has commitment */}
-                                {(remainingQty > 0 || userItemCommitment) && (
+                                {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                                {!isOrganizer && (remainingQty > 0 || userItemCommitment) && (
                                   <div className="mt-3 flex gap-2">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
@@ -743,7 +744,8 @@ export function SignUpManagementSection({
                                 </div>
 
                                 {/* Update/Cancel buttons for own items */}
-                                {isOwnItem && (
+                                {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                                {!isOrganizer && isOwnItem && (
                                   <div className="mt-3 flex gap-2">
                                     <Button
                                       onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
@@ -773,7 +775,8 @@ export function SignUpManagementSection({
                       )}
 
                       {/* Sign Up button for authenticated users */}
-                      {userId && (
+                      {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                      {!isOrganizer && userId && (
                         <Button
                           onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
                           size="sm"

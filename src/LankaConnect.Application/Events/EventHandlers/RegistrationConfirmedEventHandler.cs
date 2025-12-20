@@ -102,6 +102,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 attendeeDetailsText.AppendLine($"{domainEvent.Quantity} attendee(s)");
             }
 
+            // Phase 6A.34 Enhancement: Get event's primary image URL (if available)
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? "";
+
             // Prepare email parameters with enhanced attendee details
             var parameters = new Dictionary<string, object>
             {
@@ -115,7 +119,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                 // Phase 6A.34: Format attendees as HTML/text string for template rendering
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                { "HasAttendeeDetails", registration.HasDetailedAttendees() }
+                { "HasAttendeeDetails", registration.HasDetailedAttendees() },
+                // Phase 6A.34 Enhancement: Event image for branded email
+                { "EventImageUrl", eventImageUrl },
+                { "HasEventImage", !string.IsNullOrEmpty(eventImageUrl) }
             };
 
             // Phase 6A.24: Add contact information if available

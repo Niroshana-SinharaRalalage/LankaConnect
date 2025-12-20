@@ -472,12 +472,7 @@ export function SignUpManagementSection({
               }`}
             >
               {list.category}
-              {/* Phase 6A.28 Issue 2 Fix: Hide commitment count on manage page (isOrganizer=true) */}
-              {!isOrganizer && (
-                <span className="ml-1 text-xs text-gray-500">
-                  ({list.commitmentCount})
-                </span>
-              )}
+              {/* Phase 6A.28 Issue 2 Fix: Remove commitment count from tabs - redundant info already shown per item */}
             </button>
           ))}
         </div>
@@ -817,8 +812,8 @@ export function SignUpManagementSection({
                   {signUpList.commitments.length > 0 ? (
                     <div>
                       <h4 className="font-semibold mb-2">
-                        {/* Phase 6A.28 Issue 2 Fix: Hide commitment count on manage page */}
-                        Commitments{!isOrganizer && ` (${signUpList.commitmentCount})`}:
+                        {/* Phase 6A.28 Issue 2 Fix: Remove commitment count - redundant */}
+                        Commitments:
                       </h4>
                       <div className="space-y-2">
                         {signUpList.commitments.map((commitment) => (

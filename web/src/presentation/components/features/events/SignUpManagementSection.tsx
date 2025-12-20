@@ -286,6 +286,27 @@ export function SignUpManagementSection({
     }
   };
 
+  // Get item card background and border colors based on category
+  // Phase 6A.28: Light colors matching LankaConnect theme for visual differentiation
+  const getItemCardStyle = (category: SignUpItemCategory) => {
+    switch (category) {
+      case SignUpItemCategory.Mandatory:
+        // Warm red/orange tones - indicates required items
+        return 'bg-red-50 border-l-4 border-l-red-400 border-red-200';
+      case SignUpItemCategory.Preferred:
+        // Blue tones - indicates preferred items (hidden but kept for data consistency)
+        return 'bg-blue-50 border-l-4 border-l-blue-400 border-blue-200';
+      case SignUpItemCategory.Suggested:
+        // Green/teal tones - indicates optional suggestions
+        return 'bg-emerald-50 border-l-4 border-l-emerald-400 border-emerald-200';
+      case SignUpItemCategory.Open:
+        // Purple tones - indicates user-contributed items
+        return 'bg-purple-50 border-l-4 border-l-purple-400 border-purple-200';
+      default:
+        return 'bg-gray-50 border-l-4 border-l-gray-400 border-gray-200';
+    }
+  };
+
   // Get category label
   const getCategoryLabel = (category: SignUpItemCategory) => {
     switch (category) {
@@ -581,7 +602,7 @@ export function SignUpManagementSection({
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
 
                             return (
-                              <div key={item.id} className="border rounded-lg p-4 space-y-2">
+                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
@@ -715,7 +736,7 @@ export function SignUpManagementSection({
                             const commitment = item.commitments?.[0];
 
                             return (
-                              <div key={item.id} className="border rounded-lg p-4 space-y-2 bg-purple-50/50">
+                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(SignUpItemCategory.Open)}`}>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">

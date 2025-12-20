@@ -15,6 +15,7 @@ public record GetTicketQuery(Guid EventId, Guid RegistrationId, Guid UserId) : I
 
 /// <summary>
 /// Phase 6A.24: Handler for getting ticket details
+/// Phase 6A.24 FIX: Now also generates ticket if payment is complete but ticket was never created
 /// </summary>
 public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<TicketDto>>
 {
@@ -22,6 +23,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IQrCodeService _qrCodeService;
+    private readonly ITicketService _ticketService;
     private readonly ILogger<GetTicketQueryHandler> _logger;
 
     public GetTicketQueryHandler(
@@ -29,12 +31,14 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
         IRegistrationRepository registrationRepository,
         IEventRepository eventRepository,
         IQrCodeService qrCodeService,
+        ITicketService ticketService,
         ILogger<GetTicketQueryHandler> logger)
     {
         _ticketRepository = ticketRepository;
         _registrationRepository = registrationRepository;
         _eventRepository = eventRepository;
         _qrCodeService = qrCodeService;
+        _ticketService = ticketService;
         _logger = logger;
     }
 
@@ -59,12 +63,45 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
             return Result<TicketDto>.Failure("You are not authorized to view this ticket");
         }
 
-        // Get ticket for the registration
+        // Phase 6A.24 FIX: Get or generate ticket
+        // If ticket doesn't exist (webhook initially failed), generate it now
         var ticket = await _ticketRepository.GetByRegistrationIdAsync(request.RegistrationId, cancellationToken);
         if (ticket == null)
         {
-            _logger.LogWarning("Ticket not found for registration {RegistrationId}", request.RegistrationId);
-            return Result<TicketDto>.Failure("Ticket not found for this registration");
+            _logger.LogInformation("No ticket found for registration {RegistrationId}, attempting to generate...",
+                request.RegistrationId);
+
+            // Check if payment is complete before generating
+            if (registration.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
+            {
+                _logger.LogWarning("Cannot generate ticket - payment not completed for registration {RegistrationId}",
+                    request.RegistrationId);
+                return Result<TicketDto>.Failure("Payment not completed - ticket cannot be generated");
+            }
+
+            // Generate ticket now
+            var generateResult = await _ticketService.GenerateTicketAsync(
+                request.RegistrationId,
+                request.EventId,
+                cancellationToken);
+
+            if (generateResult.IsFailure)
+            {
+                _logger.LogError("Failed to generate ticket for registration {RegistrationId}: {Error}",
+                    request.RegistrationId, string.Join(", ", generateResult.Errors));
+                return Result<TicketDto>.Failure("Failed to generate ticket");
+            }
+
+            // Retrieve the newly generated ticket
+            ticket = await _ticketRepository.GetByIdAsync(generateResult.Value.TicketId, cancellationToken);
+            _logger.LogInformation("Ticket generated successfully: {TicketCode}", generateResult.Value.TicketCode);
+
+            if (ticket == null)
+            {
+                _logger.LogError("Ticket still not found after generation for registration {RegistrationId}",
+                    request.RegistrationId);
+                return Result<TicketDto>.Failure("Ticket generation failed");
+            }
         }
 
         // Get event details

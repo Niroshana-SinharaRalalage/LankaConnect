@@ -6,7 +6,11 @@ EVENT DETAILS
 -------------
 Date: {{EventStartDate}} at {{EventStartTime}}
 Location: {{EventLocation}}
-Attendees: {{AttendeeCount}}
+Number of Attendees: {{AttendeeCount}}
+
+REGISTERED ATTENDEES
+--------------------
+{{Attendees}}
 
 PAYMENT CONFIRMATION
 --------------------

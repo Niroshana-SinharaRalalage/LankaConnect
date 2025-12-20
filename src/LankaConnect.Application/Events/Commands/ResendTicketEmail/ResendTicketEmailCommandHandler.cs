@@ -11,10 +11,13 @@ namespace LankaConnect.Application.Events.Commands.ResendTicketEmail;
 /// <summary>
 /// Phase 6A.24: Handler for resending ticket emails
 /// Verifies ownership and payment status before resending
+/// Phase 6A.24 FIX: Now also generates tickets if payment is complete but ticket was never created
+/// (handles case where webhook initially failed)
 /// </summary>
 public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmailCommand>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository;
     private readonly ITicketService _ticketService;
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
@@ -23,6 +26,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
 
     public ResendTicketEmailCommandHandler(
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository,
         ITicketService ticketService,
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
@@ -30,6 +34,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         ILogger<ResendTicketEmailCommandHandler> logger)
     {
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
         _ticketService = ticketService;
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
@@ -41,31 +46,24 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
     {
         try
         {
-            _logger.LogInformation("Resending ticket email for Registration {RegistrationId}, User {UserId}",
+            _logger.LogInformation("Processing ticket email request for Registration {RegistrationId}, User {UserId}",
                 request.RegistrationId, request.UserId);
 
-            // 1. Get ticket by registration ID
-            var ticket = await _ticketService.GetTicketByRegistrationIdAsync(request.RegistrationId, cancellationToken);
-            if (ticket == null)
-            {
-                _logger.LogWarning("Ticket not found for Registration {RegistrationId}", request.RegistrationId);
-                return Result.Failure("Ticket not found");
-            }
-
-            // 2. Get event and registration
-            var @event = await _eventRepository.GetByIdAsync(ticket.EventId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning("Event {EventId} not found", ticket.EventId);
-                return Result.Failure("Event not found");
-            }
-
-            var registration = @event.Registrations.FirstOrDefault(r => r.Id == request.RegistrationId);
+            // 1. Get registration by ID (using base repository method)
+            var registration = await _registrationRepository.GetByIdAsync(request.RegistrationId, cancellationToken);
             if (registration == null)
             {
-                _logger.LogWarning("Registration {RegistrationId} not found in Event {EventId}",
-                    request.RegistrationId, ticket.EventId);
+                _logger.LogWarning("Registration {RegistrationId} not found", request.RegistrationId);
                 return Result.Failure("Registration not found");
+            }
+
+            // 2. Get event for details
+            var @event = await _eventRepository.GetByIdAsync(registration.EventId, cancellationToken);
+            if (@event == null)
+            {
+                _logger.LogWarning("Event {EventId} not found for Registration {RegistrationId}",
+                    registration.EventId, request.RegistrationId);
+                return Result.Failure("Event not found");
             }
 
             // 3. Authorization check: Only owner can resend
@@ -84,7 +82,41 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("Payment not completed for this registration");
             }
 
-            // 5. Get ticket PDF
+            // 5. Phase 6A.24 FIX: Get or generate ticket
+            // If ticket doesn't exist (webhook initially failed), generate it now
+            var ticket = await _ticketService.GetTicketByRegistrationIdAsync(request.RegistrationId, cancellationToken);
+            TicketResult? ticketResult = null;
+
+            if (ticket == null)
+            {
+                _logger.LogInformation("No ticket found for Registration {RegistrationId}, generating now...",
+                    request.RegistrationId);
+
+                var generateResult = await _ticketService.GenerateTicketAsync(
+                    request.RegistrationId,
+                    registration.EventId,
+                    cancellationToken);
+
+                if (generateResult.IsFailure)
+                {
+                    _logger.LogError("Failed to generate ticket for Registration {RegistrationId}: {Error}",
+                        request.RegistrationId, string.Join(", ", generateResult.Errors));
+                    return Result.Failure("Failed to generate ticket");
+                }
+
+                ticketResult = generateResult.Value;
+                ticket = await _ticketService.GetTicketByIdAsync(ticketResult.TicketId, cancellationToken);
+                _logger.LogInformation("Ticket generated successfully: {TicketCode}", ticketResult.TicketCode);
+            }
+
+            if (ticket == null)
+            {
+                _logger.LogError("Ticket still not found after generation attempt for Registration {RegistrationId}",
+                    request.RegistrationId);
+                return Result.Failure("Ticket not found");
+            }
+
+            // 6. Get ticket PDF
             var pdfResult = await _ticketService.GetTicketPdfAsync(ticket.Id, cancellationToken);
             if (pdfResult.IsFailure)
             {
@@ -93,7 +125,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("Failed to retrieve ticket PDF");
             }
 
-            // 6. Get user details
+            // 7. Get user details
             var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
             var recipientEmail = registration.Contact?.Email ?? user?.Email.Value ?? "";
             var recipientName = user != null
@@ -108,18 +140,18 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("No email address found for this registration");
             }
 
-            // 7. Prepare email parameters
-            var attendeeDetails = new List<Dictionary<string, object>>();
+            // 8. Phase 6A.24 FIX: Format attendee details as HTML string (not List<Dictionary>)
+            var attendeeDetailsHtml = new System.Text.StringBuilder();
             if (registration.HasDetailedAttendees())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetails.Add(new Dictionary<string, object>
-                    {
-                        { "Name", attendee.Name },
-                        { "Age", attendee.Age }
-                    });
+                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
                 }
+            }
+            else
+            {
+                attendeeDetailsHtml.AppendLine($"<p>{registration.GetAttendeeCount()} attendee(s)</p>");
             }
 
             var parameters = new Dictionary<string, object>
@@ -130,8 +162,8 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                 { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
                 { "AttendeeCount", registration.GetAttendeeCount() },
-                { "Attendees", attendeeDetails },
-                { "HasAttendeeDetails", attendeeDetails.Any() },
+                { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                { "HasAttendeeDetails", registration.HasDetailedAttendees() },
                 { "IsPaidEvent", true },
                 { "AmountPaid", registration.TotalPrice?.Amount.ToString("C") ?? "$0.00" },
                 { "PaymentIntentId", registration.StripePaymentIntentId ?? "" },
@@ -142,7 +174,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 { "ContactEmail", registration.Contact?.Email ?? "support@lankaconnect.com" }
             };
 
-            // 8. Render email template
+            // 9. Render email template
             // Phase 6A.24 FIX: Call RenderTemplateAsync with single template name "ticket-confirmation"
             // The service will automatically find: ticket-confirmation-subject.txt, ticket-confirmation-html.html, ticket-confirmation-text.txt
             var renderResult = await _emailTemplateService.RenderTemplateAsync(
@@ -156,7 +188,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("Failed to render email template");
             }
 
-            // 9. Build email message with PDF attachment
+            // 10. Build email message with PDF attachment
             var emailMessage = new EmailMessageDto
             {
                 ToEmail = recipientEmail,
@@ -175,7 +207,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 }
             };
 
-            // 10. Send email
+            // 11. Send email
             var emailResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
             if (emailResult.IsFailure)
             {
@@ -184,16 +216,16 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("Failed to send ticket email");
             }
 
-            _logger.LogInformation("Ticket email resent successfully to {Email} for Registration {RegistrationId}",
-                recipientEmail, request.RegistrationId);
+            _logger.LogInformation("Ticket email sent successfully to {Email} for Registration {RegistrationId} (Ticket: {TicketCode})",
+                recipientEmail, request.RegistrationId, ticket.TicketCode);
 
             return Result.Success();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resending ticket email for Registration {RegistrationId}",
+            _logger.LogError(ex, "Error processing ticket email for Registration {RegistrationId}",
                 request.RegistrationId);
-            return Result.Failure($"Error resending ticket email: {ex.Message}");
+            return Result.Failure($"Error processing ticket email: {ex.Message}");
         }
     }
 }

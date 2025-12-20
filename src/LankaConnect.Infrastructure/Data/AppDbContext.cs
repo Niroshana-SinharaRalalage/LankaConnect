@@ -293,6 +293,24 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("[DIAG-10] AppDbContext.CommitAsync START");
+
+        // DIAGNOSTIC: Log all tracked entities BEFORE DetectChanges
+        var trackedEntitiesBeforeDetect = ChangeTracker.Entries<BaseEntity>().ToList();
+        _logger.LogInformation(
+            "[DIAG-11] Tracked BaseEntity count BEFORE DetectChanges: {Count}",
+            trackedEntitiesBeforeDetect.Count);
+
+        foreach (var entry in trackedEntitiesBeforeDetect)
+        {
+            _logger.LogInformation(
+                "[DIAG-12] Entity BEFORE DetectChanges - Type: {EntityType}, Id: {EntityId}, State: {State}, DomainEvents: {DomainEventCount}",
+                entry.Entity.GetType().Name,
+                entry.Entity.Id,
+                entry.State,
+                entry.Entity.DomainEvents.Count);
+        }
+
         // Update timestamps before saving
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -312,11 +330,33 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // because EF Core only auto-detects changes DURING SaveChangesAsync()
         ChangeTracker.DetectChanges();
 
+        // DIAGNOSTIC: Log all tracked entities AFTER DetectChanges
+        var trackedEntitiesAfterDetect = ChangeTracker.Entries<BaseEntity>().ToList();
+        _logger.LogInformation(
+            "[DIAG-13] Tracked BaseEntity count AFTER DetectChanges: {Count}",
+            trackedEntitiesAfterDetect.Count);
+
+        foreach (var entry in trackedEntitiesAfterDetect)
+        {
+            _logger.LogInformation(
+                "[DIAG-14] Entity AFTER DetectChanges - Type: {EntityType}, Id: {EntityId}, State: {State}, DomainEvents: {DomainEventCount}, EventTypes: [{EventTypes}]",
+                entry.Entity.GetType().Name,
+                entry.Entity.Id,
+                entry.State,
+                entry.Entity.DomainEvents.Count,
+                string.Join(", ", entry.Entity.DomainEvents.Select(e => e.GetType().Name)));
+        }
+
         // Collect domain events before saving
         var domainEvents = ChangeTracker.Entries<BaseEntity>()
             .Where(e => e.Entity.DomainEvents.Any())
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
+
+        _logger.LogInformation(
+            "[DIAG-15] Domain events collected: {Count}, Types: [{EventTypes}]",
+            domainEvents.Count,
+            string.Join(", ", domainEvents.Select(e => e.GetType().Name)));
 
         if (domainEvents.Any())
         {
@@ -328,7 +368,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Save changes to database
         var result = await SaveChangesAsync(cancellationToken);
-        _logger.LogDebug("SaveChangesAsync completed, {Count} entities saved", result);
+        _logger.LogInformation("[DIAG-16] SaveChangesAsync completed, {Count} entities saved", result);
 
         // Dispatch domain events after successful save
         if (domainEvents.Any())
@@ -338,13 +378,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
             foreach (var domainEvent in domainEvents)
             {
                 var eventType = domainEvent.GetType();
-                _logger.LogInformation("[Phase 6A.24] Dispatching domain event: {EventType}", eventType.Name);
+                _logger.LogInformation("[DIAG-17] About to dispatch domain event: {EventType}", eventType.Name);
 
                 var notificationType = typeof(DomainEventNotification<>).MakeGenericType(eventType);
                 var notification = Activator.CreateInstance(notificationType, domainEvent);
 
                 if (notification != null)
                 {
+                    _logger.LogInformation("[DIAG-18] Publishing notification for: {EventType}", eventType.Name);
                     await _publisher.Publish(notification, cancellationToken);
                     _logger.LogInformation("[Phase 6A.24] Successfully dispatched domain event: {EventType}", eventType.Name);
                 }
@@ -364,9 +405,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         }
         else
         {
-            _logger.LogDebug("No domain events to dispatch");
+            _logger.LogInformation("[DIAG-19] No domain events to dispatch - this may indicate an issue!");
         }
 
+        _logger.LogInformation("[DIAG-20] AppDbContext.CommitAsync COMPLETE");
         return result;
     }
 }

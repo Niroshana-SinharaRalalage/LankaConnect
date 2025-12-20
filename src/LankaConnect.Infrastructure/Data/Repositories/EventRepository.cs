@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
@@ -8,10 +9,15 @@ namespace LankaConnect.Infrastructure.Data.Repositories;
 public class EventRepository : Repository<Event>, IEventRepository
 {
     private readonly IGeoLocationService _geoLocationService;
+    private readonly ILogger<EventRepository> _repoLogger;
 
-    public EventRepository(AppDbContext context, IGeoLocationService geoLocationService) : base(context)
+    public EventRepository(
+        AppDbContext context,
+        IGeoLocationService geoLocationService,
+        ILogger<EventRepository> logger) : base(context)
     {
         _geoLocationService = geoLocationService;
+        _repoLogger = logger;
     }
 
     /// <summary>
@@ -52,6 +58,8 @@ public class EventRepository : Repository<Event>, IEventRepository
     // Phase 6A.33 FIX: After loading, sync shadow navigation entities to domain's email group ID list
     public override async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        _repoLogger.LogInformation("[DIAG-R1] EventRepository.GetByIdAsync START - EventId: {EventId}", id);
+
         var eventEntity = await _dbSet
             .Include(e => e.Images)
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
@@ -62,29 +70,54 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .ThenInclude(i => i.Commitments)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
+        if (eventEntity == null)
+        {
+            _repoLogger.LogWarning("[DIAG-R2] Event not found: {EventId}", id);
+            return null;
+        }
+
+        // DIAGNOSTIC: Log entity tracking state immediately after query
+        var entryAfterQuery = _context.Entry(eventEntity);
+        _repoLogger.LogInformation(
+            "[DIAG-R3] Event loaded - Id: {EventId}, Status: {Status}, State AFTER query: {State}, DomainEvents: {DomainEventCount}",
+            eventEntity.Id,
+            eventEntity.Status,
+            entryAfterQuery.State,
+            eventEntity.DomainEvents.Count);
+
         // Phase 6A.33 FIX: Sync loaded shadow navigation entities to domain's email group ID list
         // This bridges the gap between EF Core's entity references and domain's business logic IDs
         // Pattern mirrors UserRepository.GetByIdAsync per ADR-009
-        if (eventEntity != null)
+        // Access the shadow navigation using EF Core's Entry API
+        var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
+        var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
+
+        if (emailGroupEntities != null)
         {
-            // Access the shadow navigation using EF Core's Entry API
-            var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
-            var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
+            // Extract IDs and sync to domain's _emailGroupIds list
+            var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
 
-            if (emailGroupEntities != null)
-            {
-                // Extract IDs and sync to domain's _emailGroupIds list
-                var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
+            // CRITICAL FIX Phase 6A.34: Sync email group IDs from shadow navigation to domain list
+            // This is infrastructure hydration for read operations
+            // IMPORTANT: Do NOT reset entity state after sync - it breaks domain event detection
+            // The state reset was preventing ChangeTracker.DetectChanges() from finding modified Event entities
+            // in AppDbContext.CommitAsync(), which blocked RegistrationConfirmedEvent dispatch
+            // Pattern: Unlike Phase 6A.33 approach, we let EF Core maintain proper change tracking state
+            eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
 
-                // CRITICAL FIX Phase 6A.34: Sync email group IDs from shadow navigation to domain list
-                // This is infrastructure hydration for read operations
-                // IMPORTANT: Do NOT reset entity state after sync - it breaks domain event detection
-                // The state reset was preventing ChangeTracker.DetectChanges() from finding modified Event entities
-                // in AppDbContext.CommitAsync(), which blocked RegistrationConfirmedEvent dispatch
-                // Pattern: Unlike Phase 6A.33 approach, we let EF Core maintain proper change tracking state
-                eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
-            }
+            _repoLogger.LogInformation(
+                "[DIAG-R4] Synced {EmailGroupCount} email group IDs to domain entity",
+                emailGroupIds.Count);
         }
+
+        // DIAGNOSTIC: Log entity tracking state after sync
+        var entryAfterSync = _context.Entry(eventEntity);
+        _repoLogger.LogInformation(
+            "[DIAG-R5] Event state AFTER sync - State: {State}, DomainEvents: {DomainEventCount}",
+            entryAfterSync.State,
+            eventEntity.DomainEvents.Count);
+
+        _repoLogger.LogInformation("[DIAG-R6] EventRepository.GetByIdAsync COMPLETE - EventId: {EventId}", id);
 
         return eventEntity;
     }

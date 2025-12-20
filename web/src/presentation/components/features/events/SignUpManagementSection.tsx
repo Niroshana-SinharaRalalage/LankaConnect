@@ -270,56 +270,58 @@ export function SignUpManagementSection({
     }
   };
 
-  // Get category badge color
+  // Get category badge color - Phase 6A.28: Updated to match item card colors
+  // Avoiding green since it's used for Registration details section
   const getCategoryColor = (category: SignUpItemCategory) => {
     switch (category) {
       case SignUpItemCategory.Mandatory:
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-orange-100 text-orange-800 border-orange-300';
       case SignUpItemCategory.Preferred:
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-rose-100 text-rose-800 border-rose-300';
       case SignUpItemCategory.Suggested:
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-sky-100 text-sky-800 border-sky-300';
       case SignUpItemCategory.Open:
-        return 'bg-purple-100 text-purple-800 border-purple-300';
+        return 'bg-violet-100 text-violet-800 border-violet-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
   // Get item card background and border colors based on category
-  // Phase 6A.28: Light colors matching LankaConnect theme for visual differentiation
+  // Phase 6A.28: Distinct colors matching LankaConnect theme (Saffron/Orange primary, Maroon secondary)
+  // Avoiding green since it's used for Registration details section
   const getItemCardStyle = (category: SignUpItemCategory) => {
     switch (category) {
       case SignUpItemCategory.Mandatory:
-        // Warm red/orange tones - indicates required items
-        return 'bg-red-50 border-l-4 border-l-red-400 border-red-200';
+        // Orange/Saffron - LankaConnect primary color, indicates required items
+        return 'bg-orange-50 border-l-[6px] border-l-orange-500 border border-orange-200 shadow-sm';
       case SignUpItemCategory.Preferred:
-        // Blue tones - indicates preferred items (hidden but kept for data consistency)
-        return 'bg-blue-50 border-l-4 border-l-blue-400 border-blue-200';
+        // Rose/Pink - indicates preferred items (hidden but kept for data consistency)
+        return 'bg-rose-50 border-l-[6px] border-l-rose-500 border border-rose-200 shadow-sm';
       case SignUpItemCategory.Suggested:
-        // Green/teal tones - indicates optional suggestions
-        return 'bg-emerald-50 border-l-4 border-l-emerald-400 border-emerald-200';
+        // Sky blue - cool, calm optional suggestions
+        return 'bg-sky-50 border-l-[6px] border-l-sky-500 border border-sky-200 shadow-sm';
       case SignUpItemCategory.Open:
-        // Purple tones - indicates user-contributed items
-        return 'bg-purple-50 border-l-4 border-l-purple-400 border-purple-200';
+        // Violet/Purple - creative, user-contributed items
+        return 'bg-violet-50 border-l-[6px] border-l-violet-500 border border-violet-200 shadow-sm';
       default:
-        return 'bg-gray-50 border-l-4 border-l-gray-400 border-gray-200';
+        return 'bg-gray-50 border-l-[6px] border-l-gray-500 border border-gray-200 shadow-sm';
     }
   };
 
-  // Get category label
+  // Get category label - Phase 6A.28: Updated to include "Items" suffix for clarity
   const getCategoryLabel = (category: SignUpItemCategory) => {
     switch (category) {
       case SignUpItemCategory.Mandatory:
-        return 'Mandatory';
+        return 'Mandatory Items';
       case SignUpItemCategory.Preferred:
-        return 'Preferred';
+        return 'Preferred Items';
       case SignUpItemCategory.Suggested:
-        return 'Suggested';
+        return 'Suggested Items';
       case SignUpItemCategory.Open:
-        return 'Open';
+        return 'Open Items';
       default:
-        return 'Unknown';
+        return 'Unknown Items';
     }
   };
 
@@ -587,11 +589,11 @@ export function SignUpManagementSection({
                     return (
                       <div key={category} className="space-y-3">
                         <h4 className="font-semibold flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(category)}`}>
+                          <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(category)}`}>
                             {getCategoryLabel(category)}
                           </span>
                           <span className="text-sm text-muted-foreground">
-                            ({categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'})
+                            ({categoryItems.length})
                           </span>
                         </h4>
 

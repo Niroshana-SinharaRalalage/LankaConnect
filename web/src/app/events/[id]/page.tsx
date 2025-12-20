@@ -13,6 +13,7 @@ import { SignUpManagementSection } from '@/presentation/components/features/even
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
+import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -813,6 +814,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </Card>
           </CardContent>
         </Card>
+
+        {/* Phase 6A.24: Ticket Section for Paid Events */}
+        {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
+        {isUserRegistered && event && !event.isFree && (
+          <div className="mt-8">
+            <TicketSection eventId={id} isPaidEvent={!event.isFree} />
+          </div>
+        )}
 
         {/* Sign-Up Management Section */}
         {/* Wait for auth hydration before rendering to ensure userId is available */}

@@ -110,6 +110,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             }
 
             // Prepare email parameters with payment details
+            // Phase 6A.24 FIX: Added AttendeeCount to match template variable {{AttendeeCount}}
+            // Template also uses {{Quantity}} for backward compatibility
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", recipientName },
@@ -119,6 +121,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
                 { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
                 { "Quantity", domainEvent.AttendeeCount },
+                { "AttendeeCount", domainEvent.AttendeeCount }, // Phase 6A.24 FIX: Template uses {{AttendeeCount}}
                 { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
                 // Attendee details
                 { "Attendees", attendeeDetails },

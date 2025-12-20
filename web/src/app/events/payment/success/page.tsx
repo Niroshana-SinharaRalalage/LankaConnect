@@ -7,7 +7,8 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { useEventById } from '@/presentation/hooks/useEvents';
+import { useEventById, useUserRegistrationDetails } from '@/presentation/hooks/useEvents';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 /**
  * Payment Success Callback Page
@@ -25,9 +26,17 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const eventId = searchParams?.get('eventId');
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const { user, isHydrated } = useAuthStore();
 
   // Fetch event details to show confirmation
   const { data: event, isLoading, error } = useEventById(eventId || undefined);
+
+  // Phase 6A.24: Fetch registration details to get actual amount paid
+  // Wait for auth hydration before fetching user-specific data
+  const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
+    (user?.userId && isHydrated && eventId) ? eventId : undefined,
+    true // User is registered (they just completed payment)
+  );
 
   useEffect(() => {
     // If no eventId, redirect to events list after 3 seconds
@@ -115,12 +124,23 @@ function PaymentSuccessContent() {
                         })}
                       </span>
                     </div>
-                    {event.ticketPriceAmount && (
+                    {/* Phase 6A.24 FIX: Show actual amount paid from registration, not base ticket price */}
+                    {/* Use registrationDetails.totalPriceAmount for accurate total (group pricing etc) */}
+                    {(registrationDetails?.totalPriceAmount || event.ticketPriceAmount) && (
                       <div className="flex justify-between border-t pt-2 mt-2">
                         <span className="text-muted-foreground font-semibold">Amount Paid:</span>
                         <span className="font-bold text-green-600">
-                          {event.ticketPriceCurrency} {event.ticketPriceAmount.toFixed(2)}
+                          ${registrationDetails?.totalPriceAmount
+                            ? registrationDetails.totalPriceAmount.toFixed(2)
+                            : event.ticketPriceAmount?.toFixed(2)}
                         </span>
+                      </div>
+                    )}
+                    {/* Show attendee count if available */}
+                    {registrationDetails?.quantity && registrationDetails.quantity > 1 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Attendees:</span>
+                        <span className="font-medium">{registrationDetails.quantity} person(s)</span>
                       </div>
                     )}
                   </div>

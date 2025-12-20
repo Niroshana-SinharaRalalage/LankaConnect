@@ -20,10 +20,20 @@ public class StripeWebhookEventRepository : IStripeWebhookEventRepository
         _dbSet = context.Set<StripeWebhookEvent>();
     }
 
+    /// <summary>
+    /// Phase 6A.24 FIX: Check if event has been RECORDED (not just processed).
+    ///
+    /// Previous bug: Only checked for Processed=true, which caused 500 errors on Stripe retries.
+    /// If webhook was recorded but not yet marked processed, retry would pass this check
+    /// but fail on INSERT due to unique constraint on EventId.
+    ///
+    /// Fix: Check if ANY record exists with this EventId, regardless of processed status.
+    /// This prevents duplicate INSERT attempts on webhook retries.
+    /// </summary>
     public async Task<bool> IsEventProcessedAsync(string eventId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
-            .AnyAsync(e => e.EventId == eventId && e.Processed, cancellationToken);
+            .AnyAsync(e => e.EventId == eventId, cancellationToken);
     }
 
     public async Task<Guid> RecordEventAsync(

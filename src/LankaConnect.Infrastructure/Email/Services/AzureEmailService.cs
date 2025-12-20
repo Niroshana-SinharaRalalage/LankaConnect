@@ -118,11 +118,11 @@ public class AzureEmailService : IEmailService
             _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail}",
                 templateName, recipientEmail);
 
-            // Validate template exists
+            // Get template from database (Phase 6A.34 Fix: Use database template directly for rendering)
             var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
             if (template == null)
             {
-                _logger.LogWarning("Email template '{TemplateName}' not found", templateName);
+                _logger.LogWarning("Email template '{TemplateName}' not found in database", templateName);
                 return Result.Failure($"Email template '{templateName}' not found");
             }
 
@@ -132,20 +132,22 @@ public class AzureEmailService : IEmailService
                 return Result.Failure($"Email template '{templateName}' is not active");
             }
 
-            // Render template
-            var renderResult = await _templateService.RenderTemplateAsync(templateName, parameters, cancellationToken);
-            if (renderResult.IsFailure)
-            {
-                return Result.Failure(renderResult.Error);
-            }
+            // Phase 6A.34 Fix: Render template directly from database content
+            // Previously used RazorEmailTemplateService which reads from filesystem files
+            // This caused a mismatch: database template was validated but filesystem template was rendered
+            var subject = RenderTemplateContent(template.SubjectTemplate.Value, parameters);
+            var htmlBody = RenderTemplateContent(template.HtmlTemplate ?? string.Empty, parameters);
+            var textBody = RenderTemplateContent(template.TextTemplate, parameters);
+
+            _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
             // Create email message DTO
             var emailMessage = new EmailMessageDto
             {
                 ToEmail = recipientEmail,
-                Subject = renderResult.Value.Subject,
-                HtmlBody = renderResult.Value.HtmlBody,
-                PlainTextBody = renderResult.Value.PlainTextBody,
+                Subject = subject,
+                HtmlBody = htmlBody,
+                PlainTextBody = textBody,
                 FromEmail = _emailSettings.FromEmail,
                 FromName = _emailSettings.FromName,
                 Priority = 2 // Normal priority for templated emails
@@ -160,6 +162,65 @@ public class AzureEmailService : IEmailService
                 templateName, recipientEmail);
             return Result.Failure($"Failed to send templated email: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.34: Render template content by replacing {{variable}} placeholders
+    /// Supports conditional sections with {{#variable}}...{{/variable}} syntax
+    /// </summary>
+    private static string RenderTemplateContent(string template, Dictionary<string, object> parameters)
+    {
+        if (string.IsNullOrEmpty(template))
+            return string.Empty;
+
+        var result = template;
+
+        // Process conditional sections first: {{#HasEventImage}}...{{/HasEventImage}}
+        foreach (var param in parameters)
+        {
+            var isTruthy = param.Value switch
+            {
+                bool b => b,
+                string s => !string.IsNullOrEmpty(s),
+                null => false,
+                _ => true
+            };
+
+            var openTag = $"{{{{#{param.Key}}}}}";
+            var closeTag = $"{{{{/{param.Key}}}}}";
+
+            // Find and process all conditional sections for this parameter
+            int startIndex = 0;
+            while ((startIndex = result.IndexOf(openTag, startIndex, StringComparison.Ordinal)) != -1)
+            {
+                var endIndex = result.IndexOf(closeTag, startIndex, StringComparison.Ordinal);
+                if (endIndex == -1) break;
+
+                var contentStart = startIndex + openTag.Length;
+                var content = result.Substring(contentStart, endIndex - contentStart);
+
+                if (isTruthy)
+                {
+                    // Keep the content, remove the tags
+                    result = result.Remove(endIndex, closeTag.Length);
+                    result = result.Remove(startIndex, openTag.Length);
+                }
+                else
+                {
+                    // Remove the entire section including tags
+                    result = result.Remove(startIndex, endIndex - startIndex + closeTag.Length);
+                }
+            }
+        }
+
+        // Then replace simple placeholders: {{variable}}
+        foreach (var param in parameters)
+        {
+            var placeholder = $"{{{{{param.Key}}}}}";
+            result = result.Replace(placeholder, param.Value?.ToString() ?? string.Empty);
+        }
+
+        return result;
     }
 
     public async Task<Result<BulkEmailResult>> SendBulkEmailAsync(IEnumerable<EmailMessageDto> emailMessages,

@@ -27,6 +27,7 @@ public class PaymentsController : ControllerBase
     private readonly IStripeWebhookEventRepository _webhookEventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
@@ -37,6 +38,7 @@ public class PaymentsController : ControllerBase
         IStripeWebhookEventRepository webhookEventRepository,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository,
         IUnitOfWork unitOfWork,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
@@ -46,6 +48,7 @@ public class PaymentsController : ControllerBase
         _webhookEventRepository = webhookEventRepository;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
         _unitOfWork = unitOfWork;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
@@ -368,6 +371,11 @@ public class PaymentsController : ControllerBase
                     completeResult.Error);
                 return;
             }
+
+            // Phase 6A.24 FIX: Explicitly mark Registration as Modified to ensure domain events are collected
+            // Without this, EF Core won't track the entity loaded via navigation property (@event.Registrations)
+            // This ensures PaymentCompletedEvent is dispatched by AppDbContext.CommitAsync()
+            _registrationRepository.Update(registration);
 
             // Save changes
             await _unitOfWork.CommitAsync();

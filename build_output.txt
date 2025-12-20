@@ -1,6 +1,31 @@
-MSBUILD : error MSB1008: Only one project can be specified.
-    Full command line: 'C:\Program Files\dotnet\sdk\8.0.414\MSBuild.dll -maxcpucount -verbosity:m -nologo -restore -consoleloggerparameters:Summary LankaConnect.sln p:TreatWarningsAsErrors=false -distributedlogger:Microsoft.DotNet.Tools.MSBuild.MSBuildLogger,C:\Program Files\dotnet\sdk\8.0.414\dotnet.dll*Microsoft.DotNet.Tools.MSBuild.MSBuildForwardingLogger,C:\Program Files\dotnet\sdk\8.0.414\dotnet.dll'
-  Switches appended by response files:
-Switch: p:TreatWarningsAsErrors=false
+  Determining projects to restore...
+  Restored C:\Work\LankaConnect\src\LankaConnect.Domain\LankaConnect.Domain.csproj (in 210 ms).
+  Restored C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj (in 567 ms).
+  Restored c:\Work\LankaConnect\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj (in 654 ms).
+  Restored C:\Work\LankaConnect\src\LankaConnect.API\LankaConnect.API.csproj (in 669 ms).
+  LankaConnect.Domain -> C:\Work\LankaConnect\src\LankaConnect.Domain\bin\Release\net8.0\LankaConnect.Domain.dll
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(80,40): error CS0019: Operator '??' cannot be applied to operands of type 'EventDescription' and 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(86,30): error CS8974: Converting method group 'IsFree' to non-delegate type 'object'. Did you intend to invoke the method? [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(87,42): error CS0428: Cannot convert method group 'IsFree' to non-delegate type 'bool'. Did you intend to invoke the method? [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(87,79): error CS1501: No overload for method 'ToString' takes 1 arguments [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(119,17): error CS0117: 'EmailMessageDto' does not contain a definition for 'To' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(120,17): error CS0117: 'EmailMessageDto' does not contain a definition for 'Bcc' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(121,27): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(122,28): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(123,33): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
 
-For switch syntax, type "MSBuild -help"
+Build FAILED.
+
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(80,40): error CS0019: Operator '??' cannot be applied to operands of type 'EventDescription' and 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(86,30): error CS8974: Converting method group 'IsFree' to non-delegate type 'object'. Did you intend to invoke the method? [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(87,42): error CS0428: Cannot convert method group 'IsFree' to non-delegate type 'bool'. Did you intend to invoke the method? [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(87,79): error CS1501: No overload for method 'ToString' takes 1 arguments [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(119,17): error CS0117: 'EmailMessageDto' does not contain a definition for 'To' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(120,17): error CS0117: 'EmailMessageDto' does not contain a definition for 'Bcc' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(121,27): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(122,28): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+C:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\EventPublishedEventHandler.cs(123,33): error CS0029: Cannot implicitly convert type 'LankaConnect.Application.Common.Interfaces.RenderedEmailTemplate' to 'string' [C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+    0 Warning(s)
+    9 Error(s)
+
+Time Elapsed 00:00:20.40

@@ -175,23 +175,17 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 parameters["HasTicket"] = false;
             }
 
-            // Render email template
-            var subjectResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-subject",
-                parameters,
-                cancellationToken);
-            var htmlResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-html",
-                parameters,
-                cancellationToken);
-            var textResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-text",
+            // Phase 6A.24 FIX: Call RenderTemplateAsync with single template name "ticket-confirmation"
+            // The service will automatically find: ticket-confirmation-subject.txt, ticket-confirmation-html.html, ticket-confirmation-text.txt
+            // Previous code incorrectly passed "ticket-confirmation-subject" which looked for "ticket-confirmation-subject-subject.txt"
+            var renderResult = await _emailTemplateService.RenderTemplateAsync(
+                "ticket-confirmation",
                 parameters,
                 cancellationToken);
 
-            if (subjectResult.IsFailure || htmlResult.IsFailure || textResult.IsFailure)
+            if (renderResult.IsFailure)
             {
-                _logger.LogError("Failed to render email template");
+                _logger.LogError("Failed to render email template 'ticket-confirmation': {Error}", renderResult.Error);
                 return;
             }
 
@@ -200,9 +194,9 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             {
                 ToEmail = recipientEmail,
                 ToName = recipientName,
-                Subject = subjectResult.Value.Subject,
-                HtmlBody = htmlResult.Value.HtmlBody,
-                PlainTextBody = textResult.Value.PlainTextBody,
+                Subject = renderResult.Value.Subject,
+                HtmlBody = renderResult.Value.HtmlBody,
+                PlainTextBody = renderResult.Value.PlainTextBody,
                 Attachments = pdfAttachment != null
                     ? new List<EmailAttachment>
                     {

@@ -142,23 +142,17 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 { "ContactEmail", registration.Contact?.Email ?? "support@lankaconnect.com" }
             };
 
-            // 8. Render email templates
-            var subjectResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-subject",
-                parameters,
-                cancellationToken);
-            var htmlResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-html",
-                parameters,
-                cancellationToken);
-            var textResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation-text",
+            // 8. Render email template
+            // Phase 6A.24 FIX: Call RenderTemplateAsync with single template name "ticket-confirmation"
+            // The service will automatically find: ticket-confirmation-subject.txt, ticket-confirmation-html.html, ticket-confirmation-text.txt
+            var renderResult = await _emailTemplateService.RenderTemplateAsync(
+                "ticket-confirmation",
                 parameters,
                 cancellationToken);
 
-            if (subjectResult.IsFailure || htmlResult.IsFailure || textResult.IsFailure)
+            if (renderResult.IsFailure)
             {
-                _logger.LogError("Failed to render email template");
+                _logger.LogError("Failed to render email template 'ticket-confirmation': {Error}", renderResult.Error);
                 return Result.Failure("Failed to render email template");
             }
 
@@ -167,9 +161,9 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
             {
                 ToEmail = recipientEmail,
                 ToName = recipientName,
-                Subject = subjectResult.Value.Subject,
-                HtmlBody = htmlResult.Value.HtmlBody,
-                PlainTextBody = textResult.Value.PlainTextBody,
+                Subject = renderResult.Value.Subject,
+                HtmlBody = renderResult.Value.HtmlBody,
+                PlainTextBody = renderResult.Value.PlainTextBody,
                 Attachments = new List<EmailAttachment>
                 {
                     new EmailAttachment

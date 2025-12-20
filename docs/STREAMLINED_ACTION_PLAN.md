@@ -7,7 +7,33 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 36: PHASE 6A.28 COMPLETE - ALL ISSUES RESOLVED (2025-12-20)
+## ✅ CURRENT STATUS - SESSION 47: PHASE 6A.24 PAID EVENT BUG FIXES (2025-12-20)
+**Date**: 2025-12-20 (Session 47)
+**Session**: Phase 6A.24 Stripe Webhook & Email Fixes
+**Status**: ✅ COMPLETE - All 4 issues fixed and deployed
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors | Frontend: 0 errors
+**Commit**: `fe59ee76` - fix(phase-6a24): Fix Stripe webhook 500 error and paid event email issues
+
+### SESSION 47: PHASE 6A.24 PAID EVENT BUG FIXES (2025-12-20)
+**Goal**: Fix multiple issues with paid event registration flow
+
+**Issues Fixed**:
+1. **Stripe 500 Webhook Error** - Idempotency check only looked for `Processed=true` causing INSERT failures on retries
+2. **{{AttendeeCount}} Not Rendering** - Template/handler key mismatch (`Quantity` vs `AttendeeCount`)
+3. **Missing Ticket UI** - `TicketSection` component existed but wasn't rendered on event page
+4. **Wrong Amount Displayed** - Payment success showed base price, not total paid for group registrations
+
+**Files Modified**:
+- `StripeWebhookEventRepository.cs` - Fixed idempotency check
+- `PaymentCompletedEventHandler.cs` - Added AttendeeCount parameter
+- `web/src/app/events/[id]/page.tsx` - Added TicketSection component
+- `web/src/app/events/payment/success/page.tsx` - Display actual total paid
+
+**Deployment**: ✅ GitHub Actions workflow 20398917878 completed successfully
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 36: PHASE 6A.28 COMPLETE - ALL ISSUES RESOLVED (2025-12-20)
 **Date**: 2025-12-20 (Session 36)
 **Session**: Phase 6A.28 Complete - All Issues Resolved
 **Status**: ✅ COMPLETE - All 4 issues fixed, deployed, and verified

@@ -1,9 +1,58 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-20 (Current Session) - Session 36: Phase 6A.28 Complete - All Issues Resolved ✅*
+*Last Updated: 2025-12-20 (Current Session) - Session 47: Phase 6A.24 Paid Event Fixes Complete ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 36: Phase 6A.28 Complete - All Issues Resolved ✅
+## 🎯 Current Session Status - Session 47: Phase 6A.24 Paid Event Bug Fixes ✅
+
+### Session 47: Phase 6A.24 Stripe Webhook & Email Fixes - COMPLETE - 2025-12-20
+
+**Status**: ✅ **COMPLETE** (All 4 issues resolved, deployed to staging)
+
+**Summary**: Fixed multiple issues with paid event registration flow discovered during end-to-end testing:
+1. Stripe webhook returning 500 error on retries
+2. Email template not rendering {{AttendeeCount}}
+3. Missing ticket UI (QR code, download, resend) on event page
+4. Payment success page not showing actual amount paid
+
+**Root Cause Analysis** (Comprehensive RCA performed):
+
+#### Issue 1: Stripe 500 Webhook Error (CRITICAL)
+- **Root Cause**: `IsEventProcessedAsync` only checked for `Processed=true` records
+- **Effect**: If webhook recorded but not yet processed, Stripe retry passed check but failed on INSERT (unique constraint)
+- **Fix**: Changed to check if ANY record exists, regardless of processed status
+- **File**: [StripeWebhookEventRepository.cs:23-37](../src/LankaConnect.Infrastructure/Payments/Repositories/StripeWebhookEventRepository.cs)
+
+#### Issue 2: {{AttendeeCount}} Not Rendering in Email
+- **Root Cause**: Handler passed `"Quantity"` but template expected `{{AttendeeCount}}`
+- **Fix**: Added `AttendeeCount` parameter alongside `Quantity` for template compatibility
+- **File**: [PaymentCompletedEventHandler.cs:124](../src/LankaConnect.Application/Events/EventHandlers/PaymentCompletedEventHandler.cs)
+
+#### Issue 3: Missing Ticket UI on Event Page
+- **Root Cause**: `TicketSection` component existed but wasn't imported/rendered
+- **Fix**: Added import and conditionally rendered for registered paid events
+- **Features Enabled**: QR code display, PDF download, email resend buttons
+- **File**: [web/src/app/events/[id]/page.tsx:16,818-824](../web/src/app/events/[id]/page.tsx)
+
+#### Issue 4: Payment Success Page Missing Amount
+- **Root Cause**: Showed base ticket price, not actual total paid (group pricing issue)
+- **Fix**: Fetched registration details and displayed `totalPriceAmount`
+- **Also Added**: Attendee count display for group registrations
+- **File**: [web/src/app/events/payment/success/page.tsx](../web/src/app/events/payment/success/page.tsx)
+
+**Files Modified**:
+1. `src/LankaConnect.Infrastructure/Payments/Repositories/StripeWebhookEventRepository.cs`
+2. `src/LankaConnect.Application/Events/EventHandlers/PaymentCompletedEventHandler.cs`
+3. `web/src/app/events/[id]/page.tsx`
+4. `web/src/app/events/payment/success/page.tsx`
+
+**Build Status**: ✅ Backend: 0 errors | Frontend: 0 errors
+
+**Deployment**: ✅ GitHub Actions workflow 20398917878 completed successfully (6m40s)
+
+**Commit**: [fe59ee76] fix(phase-6a24): Fix Stripe webhook 500 error and paid event email issues
+
+---
 
 ### Session 36: Phase 6A.28 Final Fixes - COMPLETE - 2025-12-20
 

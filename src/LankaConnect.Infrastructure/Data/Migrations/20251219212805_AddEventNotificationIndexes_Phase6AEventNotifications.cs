@@ -14,7 +14,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Used by: GetConfirmedSubscribersByMetroAreaAsync
             migrationBuilder.Sql(@"
                 CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_metro_area_active
-                ON newsletter_subscribers(metro_area_id)
+                ON communications.newsletter_subscribers(metro_area_id)
                 WHERE is_active = true AND is_confirmed = true;
             ");
 
@@ -22,7 +22,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Used by: GetConfirmedSubscribersForAllLocationsAsync
             migrationBuilder.Sql(@"
                 CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_all_locations
-                ON newsletter_subscribers(receive_all_locations)
+                ON communications.newsletter_subscribers(receive_all_locations)
                 WHERE is_active = true AND is_confirmed = true AND receive_all_locations = true;
             ");
 
@@ -30,7 +30,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Used by: GetConfirmedSubscribersByStateAsync (joins with metro_areas)
             migrationBuilder.Sql(@"
                 CREATE INDEX IF NOT EXISTS idx_metro_areas_state_level
-                ON metro_areas(state, is_state_level_area)
+                ON events.metro_areas(state, is_state_level_area)
                 WHERE is_state_level_area = true;
             ");
         }

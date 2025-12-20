@@ -81,17 +81,25 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             }
 
             // Phase 6A.24: Prepare attendee details for email
-            var attendeeDetails = new List<Dictionary<string, object>>();
+            var attendeeDetailsHtml = new System.Text.StringBuilder();
+            var attendeeDetailsText = new System.Text.StringBuilder();
+
             if (registration.HasDetailedAttendees())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetails.Add(new Dictionary<string, object>
-                    {
-                        { "Name", attendee.Name },
-                        { "Age", attendee.Age }
-                    });
+                    // HTML format
+                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
+
+                    // Plain text format
+                    attendeeDetailsText.AppendLine($"- {attendee.Name} (Age: {attendee.Age})");
                 }
+            }
+            else
+            {
+                // Fallback if no detailed attendees
+                attendeeDetailsHtml.AppendLine($"<p>{domainEvent.Quantity} attendee(s)</p>");
+                attendeeDetailsText.AppendLine($"{domainEvent.Quantity} attendee(s)");
             }
 
             // Prepare email parameters with enhanced attendee details
@@ -105,9 +113,9 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
                 { "Quantity", domainEvent.Quantity },
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
-                // Phase 6A.24: Add attendee details
-                { "Attendees", attendeeDetails },
-                { "HasAttendeeDetails", attendeeDetails.Any() }
+                // Phase 6A.34: Format attendees as HTML/text string for template rendering
+                { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                { "HasAttendeeDetails", registration.HasDetailedAttendees() }
             };
 
             // Phase 6A.24: Add contact information if available
@@ -139,7 +147,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             else
             {
                 _logger.LogInformation("RSVP confirmation email sent successfully to {Email} with {AttendeeCount} attendees",
-                    user.Email.Value, attendeeDetails.Count);
+                    user.Email.Value, domainEvent.Quantity);
             }
         }
         catch (Exception ex)

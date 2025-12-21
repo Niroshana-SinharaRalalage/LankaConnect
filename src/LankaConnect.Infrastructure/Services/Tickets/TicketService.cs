@@ -68,18 +68,26 @@ public class TicketService : ITicketService
                 });
             }
 
-            // Get event details
-            var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
+            // Phase 6A.24 FIX: Use GetWithRegistrationsAsync to include registrations
+            var @event = await _eventRepository.GetWithRegistrationsAsync(eventId, cancellationToken);
             if (@event == null)
             {
                 return Result<TicketResult>.Failure($"Event {eventId} not found");
             }
 
-            // Get registration details
+            // Get registration details from event, with fallback to direct repository load
             var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
             if (registration == null)
             {
-                return Result<TicketResult>.Failure($"Registration {registrationId} not found in event {eventId}");
+                _logger.LogWarning("Registration {RegistrationId} not found in event {EventId} registrations. Loading directly...",
+                    registrationId, eventId);
+
+                // Fallback: Load registration directly from repository
+                registration = await _registrationRepository.GetByIdAsync(registrationId, cancellationToken);
+                if (registration == null)
+                {
+                    return Result<TicketResult>.Failure($"Registration {registrationId} not found");
+                }
             }
 
             // Create ticket entity
@@ -226,7 +234,8 @@ public class TicketService : ITicketService
             return Result<string>.Failure("Ticket not found");
         }
 
-        var @event = await _eventRepository.GetByIdAsync(ticket.EventId, cancellationToken);
+        // Phase 6A.24 FIX: Use GetWithRegistrationsAsync to include registrations
+        var @event = await _eventRepository.GetWithRegistrationsAsync(ticket.EventId, cancellationToken);
         if (@event == null)
         {
             return Result<string>.Failure("Event not found");
@@ -235,7 +244,15 @@ public class TicketService : ITicketService
         var registration = @event.Registrations.FirstOrDefault(r => r.Id == ticket.RegistrationId);
         if (registration == null)
         {
-            return Result<string>.Failure("Registration not found");
+            _logger.LogWarning("Registration {RegistrationId} not found in event {EventId} registrations. Loading directly...",
+                ticket.RegistrationId, ticket.EventId);
+
+            // Fallback: Load registration directly from repository
+            registration = await _registrationRepository.GetByIdAsync(ticket.RegistrationId, cancellationToken);
+            if (registration == null)
+            {
+                return Result<string>.Failure("Registration not found");
+            }
         }
 
         // Generate QR code

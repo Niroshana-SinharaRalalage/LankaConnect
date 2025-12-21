@@ -128,7 +128,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                 { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
-                { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
+                { "EventLocation", GetEventLocationString(@event) },
                 { "Quantity", domainEvent.AttendeeCount },
                 { "AttendeeCount", domainEvent.AttendeeCount }, // Phase 6A.24 FIX: Template uses {{AttendeeCount}}
                 { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
@@ -245,5 +245,31 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 "Error handling PaymentCompletedEvent for Event {EventId}, Registration {RegistrationId}",
                 domainEvent.EventId, domainEvent.RegistrationId);
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.35: Safely extracts event location string with defensive null handling.
+    /// Handles data inconsistency where has_location=true but address fields are null.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        // Check if Location or Address is null (defensive against data inconsistency)
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        // Handle case where address fields exist but are empty
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
     }
 }

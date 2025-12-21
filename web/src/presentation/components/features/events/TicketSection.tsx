@@ -259,7 +259,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
             ) : (
               <>
                 <Download className="h-4 w-4 mr-2" />
-                Download PDF
+                Download Ticket
               </>
             )}
           </Button>
@@ -283,7 +283,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
             ) : (
               <>
                 <Mail className="h-4 w-4 mr-2" />
-                Resend Email
+                Resend Confirmation Email
               </>
             )}
           </Button>

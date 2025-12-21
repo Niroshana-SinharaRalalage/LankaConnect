@@ -114,7 +114,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                 { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
-                { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
+                { "EventLocation", GetEventLocationString(@event) },
                 { "Quantity", domainEvent.Quantity },
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                 // Phase 6A.34: Format attendees as HTML/text string for template rendering
@@ -160,8 +160,35 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         catch (Exception ex)
         {
             // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
+            _logger.LogError(ex,
+                "Error handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
                 domainEvent.EventId, domainEvent.AttendeeId);
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.35: Safely extracts event location string with defensive null handling.
+    /// Handles data inconsistency where has_location=true but address fields are null.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        // Check if Location or Address is null (defensive against data inconsistency)
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        // Handle case where address fields exist but are empty
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
     }
 }

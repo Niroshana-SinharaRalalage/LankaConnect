@@ -12,26 +12,25 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// Phase 6A Event Notifications: Handles EventPublishedEvent to send notification emails.
 /// This handler is triggered when an event is published (status changes from Draft to Published).
 /// Sends email to consolidated list of event email groups and location-matched newsletter subscribers.
+/// Phase 6A.39: Refactored to use IEmailService.SendTemplatedEmailAsync (database-based templates)
+/// instead of IEmailTemplateService (filesystem-based) for consistency with other handlers.
 /// </summary>
 public class EventPublishedEventHandler : INotificationHandler<DomainEventNotification<EventPublishedEvent>>
 {
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailService _emailService;
-    private readonly IEmailTemplateService _emailTemplateService;
     private readonly ILogger<EventPublishedEventHandler> _logger;
 
     public EventPublishedEventHandler(
         IEventNotificationRecipientService recipientService,
         IEventRepository eventRepository,
         IEmailService emailService,
-        IEmailTemplateService emailTemplateService,
         ILogger<EventPublishedEventHandler> logger)
     {
         _recipientService = recipientService;
         _eventRepository = eventRepository;
         _emailService = emailService;
-        _emailTemplateService = emailTemplateService;
         _logger = logger;
     }
 
@@ -40,7 +39,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         var domainEvent = notification.DomainEvent;
 
         _logger.LogInformation(
-            "[Phase 6A] ✅ EventPublishedEventHandler INVOKED - Event {EventId}, Published By {PublishedBy} at {PublishedAt}",
+            "[Phase 6A] EventPublishedEventHandler INVOKED - Event {EventId}, Published By {PublishedBy} at {PublishedAt}",
             domainEvent.EventId, domainEvent.PublishedBy, domainEvent.PublishedAt);
 
         try
@@ -83,69 +82,49 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 ["EventDescription"] = @event.Description.Value,
                 ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
                 ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
-                ["EventLocation"] = @event.Location?.ToString() ?? "Location TBA",
+                ["EventLocation"] = GetEventLocationString(@event),
                 ["EventCity"] = @event.Location?.Address.City ?? "TBA",
                 ["EventState"] = @event.Location?.Address.State ?? "TBA",
                 ["IsFree"] = isFree,
+                ["IsPaid"] = !isFree,
                 ["TicketPrice"] = ticketPriceText,
                 ["EventUrl"] = $"https://lankaconnect.com/events/{@event.Id}"
             };
 
-            // Render email templates
-            var subjectResult = await _emailTemplateService.RenderTemplateAsync(
-                "event-published-subject",
-                parameters,
-                cancellationToken);
-            var htmlResult = await _emailTemplateService.RenderTemplateAsync(
-                "event-published-html",
-                parameters,
-                cancellationToken);
-            var textResult = await _emailTemplateService.RenderTemplateAsync(
-                "event-published-text",
-                parameters,
-                cancellationToken);
+            // Phase 6A.39: Send email to each recipient using database-based template
+            // Using the same pattern as RegistrationConfirmedEventHandler for consistency
+            var successCount = 0;
+            var failCount = 0;
 
-            if (subjectResult.IsFailure || htmlResult.IsFailure || textResult.IsFailure)
+            foreach (var email in recipients.EmailAddresses)
             {
-                _logger.LogError(
-                    "Failed to render email template for event {EventId}. Subject: {SubjectError}, HTML: {HtmlError}, Text: {TextError}",
-                    domainEvent.EventId,
-                    subjectResult.IsFailure ? string.Join(", ", subjectResult.Errors) : "OK",
-                    htmlResult.IsFailure ? string.Join(", ", htmlResult.Errors) : "OK",
-                    textResult.IsFailure ? string.Join(", ", textResult.Errors) : "OK");
-                return;
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    "event-published",
+                    email,
+                    parameters,
+                    cancellationToken);
+
+                if (result.IsSuccess)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    failCount++;
+                    _logger.LogWarning(
+                        "Failed to send event notification email to {Email} for event {EventId}: {Errors}",
+                        email, domainEvent.EventId, string.Join(", ", result.Errors));
+                }
             }
 
-            // Build email messages for bulk sending (one per recipient)
-            var emailMessages = recipients.EmailAddresses.Select(email => new EmailMessageDto
-            {
-                ToEmail = email,
-                ToName = string.Empty, // Generic name for newsletter recipients
-                Subject = subjectResult.Value.Subject,
-                HtmlBody = htmlResult.Value.HtmlBody,
-                PlainTextBody = textResult.Value.PlainTextBody,
-                Priority = 1 // High priority for event notifications
-            }).ToList();
-
-            var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
-
-            if (result.IsFailure)
-            {
-                _logger.LogError(
-                    "Failed to send event notification email for event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
-            }
-            else
-            {
-                _logger.LogInformation(
-                    "Event notification email sent successfully for event {EventId} to {RecipientCount} recipients. " +
-                    "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
-                    domainEvent.EventId, recipients.EmailAddresses.Count,
-                    recipients.Breakdown.EmailGroupCount,
-                    recipients.Breakdown.MetroAreaSubscribers,
-                    recipients.Breakdown.StateLevelSubscribers,
-                    recipients.Breakdown.AllLocationsSubscribers);
-            }
+            _logger.LogInformation(
+                "Event notification emails completed for event {EventId}. Success: {SuccessCount}, Failed: {FailCount}. " +
+                "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+                domainEvent.EventId, successCount, failCount,
+                recipients.Breakdown.EmailGroupCount,
+                recipients.Breakdown.MetroAreaSubscribers,
+                recipients.Breakdown.StateLevelSubscribers,
+                recipients.Breakdown.AllLocationsSubscribers);
         }
         catch (Exception ex)
         {
@@ -154,5 +133,28 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 "Error handling EventPublishedEvent for Event {EventId}",
                 domainEvent.EventId);
         }
+    }
+
+    /// <summary>
+    /// Safely extracts event location string with defensive null handling.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+        var state = @event.Location.Address.State;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+        return string.Join(", ", parts);
     }
 }

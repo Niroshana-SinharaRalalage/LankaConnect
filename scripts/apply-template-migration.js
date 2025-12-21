@@ -10,13 +10,13 @@ const client = new Client({
   ssl: { rejectUnauthorized: false }
 });
 
-// Phase 6A.36: Updated email template with:
-// 1. Corrected gradient direction to match landing page (orange → rose/maroon → emerald)
-// 2. Removed external image URL (won't work in email clients) - using pure CSS logo fallback
-// 3. 650px width maintained
-// 4. Cross/plus pattern simulated with + symbols (closer to landing page SVG pattern)
+// Phase 6A.37: Updated email template with:
+// 1. CID-embedded header banner image (downloaded from Azure, not external URL)
+// 2. CID-embedded event image (downloaded and embedded inline)
+// 3. CID-embedded footer banner with logo
+// 4. 650px width maintained
 // 5. All inline styles for maximum email client compatibility
-// 6. REMOVED event image section - external images blocked by email clients by default
+// 6. Images use src="cid:{ContentId}" for inline embedding
 const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -29,31 +29,20 @@ const htmlTemplate = `<!DOCTYPE html>
         <tr>
             <td align="center" style="padding: 20px 10px;">
                 <table role="presentation" width="650" cellspacing="0" cellpadding="0" border="0" style="max-width: 650px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <!-- Header with gradient matching landing page: orange → rose/maroon → emerald -->
+                    <!-- Header Banner (CID embedded) -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #ea580c 0%, #9f1239 50%, #166534 100%); padding: 0;">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                                <!-- Top decoration row with cross/plus pattern -->
-                                <tr>
-                                    <td align="center" style="padding: 12px 0 8px 0; font-size: 16px; letter-spacing: 12px; color: rgba(255,255,255,0.15);">
-                                        + + + + + + + + + + +
-                                    </td>
-                                </tr>
-                                <!-- Main title -->
-                                <tr>
-                                    <td align="center" style="padding: 15px 25px; color: white;">
-                                        <h1 style="margin: 0; font-size: 28px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">Registration Confirmed!</h1>
-                                    </td>
-                                </tr>
-                                <!-- Bottom decoration row -->
-                                <tr>
-                                    <td align="center" style="padding: 8px 0 12px 0; font-size: 16px; letter-spacing: 12px; color: rgba(255,255,255,0.15);">
-                                        + + + + + + + + + + +
-                                    </td>
-                                </tr>
-                            </table>
+                        <td style="padding: 0;">
+                            <img src="cid:email-header-banner" alt="Registration Confirmed!" width="650" style="width: 100%; max-width: 650px; height: auto; display: block; border: 0;">
                         </td>
                     </tr>
+                    <!-- Event Image (CID embedded, conditional) -->
+                    {{#HasEventImage}}
+                    <tr>
+                        <td style="background: #f9f9f9; padding: 0;">
+                            <img src="cid:event-image" alt="{{EventTitle}}" width="650" style="width: 100%; max-width: 650px; height: auto; display: block; border: 0;">
+                        </td>
+                    </tr>
+                    {{/HasEventImage}}
                     <!-- Content -->
                     <tr>
                         <td style="padding: 30px 25px; background: #ffffff;">
@@ -96,47 +85,10 @@ const htmlTemplate = `<!DOCTYPE html>
                             <p style="margin: 25px 0 0 0; font-size: 15px; color: #555555;">We look forward to seeing you at the event!</p>
                         </td>
                     </tr>
-                    <!-- Footer with gradient matching landing page -->
+                    <!-- Footer Banner (CID embedded) -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #ea580c 0%, #9f1239 50%, #166534 100%); padding: 0;">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                                <!-- Top decoration -->
-                                <tr>
-                                    <td align="center" style="padding: 15px 0 10px 0; font-size: 14px; letter-spacing: 10px; color: rgba(255,255,255,0.12);">
-                                        + + + + + + + + + + +
-                                    </td>
-                                </tr>
-                                <!-- CSS-based logo circle (no external image) -->
-                                <tr>
-                                    <td align="center" style="padding: 5px 0;">
-                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                                            <tr>
-                                                <td style="width: 70px; height: 70px; background: white; border-radius: 35px; text-align: center; vertical-align: middle;">
-                                                    <span style="color: #9f1239; font-size: 28px; font-weight: bold; line-height: 70px;">LC</span>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <!-- Brand name -->
-                                <tr>
-                                    <td align="center" style="padding: 10px 0 0 0;">
-                                        <p style="color: white; font-size: 22px; font-weight: bold; margin: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">LankaConnect</p>
-                                    </td>
-                                </tr>
-                                <!-- Tagline -->
-                                <tr>
-                                    <td align="center" style="padding: 5px 0;">
-                                        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Sri Lankan Community Hub</p>
-                                    </td>
-                                </tr>
-                                <!-- Copyright -->
-                                <tr>
-                                    <td align="center" style="padding: 15px 0 20px 0;">
-                                        <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0;">&copy; 2025 LankaConnect. All rights reserved.</p>
-                                    </td>
-                                </tr>
-                            </table>
+                        <td style="padding: 0;">
+                            <img src="cid:email-footer-banner" alt="LankaConnect" width="650" style="width: 100%; max-width: 650px; height: auto; display: block; border: 0;">
                         </td>
                     </tr>
                 </table>
@@ -168,7 +120,9 @@ async function applyTemplateMigration() {
       SELECT name, updated_at,
              LENGTH(html_template) as html_length,
              html_template LIKE '%650%' as has_650_width,
-             html_template LIKE '%✦%' as has_stars,
+             html_template LIKE '%cid:email-header-banner%' as has_header_cid,
+             html_template LIKE '%cid:email-footer-banner%' as has_footer_cid,
+             html_template LIKE '%cid:event-image%' as has_event_image_cid,
              html_template LIKE '%table role%' as has_table_layout
       FROM communications.email_templates
       WHERE name = 'registration-confirmation'

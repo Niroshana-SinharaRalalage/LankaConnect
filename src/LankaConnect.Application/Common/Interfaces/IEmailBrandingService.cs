@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 namespace LankaConnect.Application.Common.Interfaces;
 
 /// <summary>
-/// Phase 6A.35: Service for providing email branding assets (logo, banner) as embedded resources.
+/// Phase 6A.35/6A.37: Service for providing email branding assets (logo, banners) as embedded resources.
 /// These assets are embedded inline in emails using CID (Content-ID) to ensure they display
 /// immediately without requiring users to click "display images" in email clients.
 /// </summary>
@@ -21,6 +21,22 @@ public interface IEmailBrandingService
     /// </summary>
     /// <returns>Banner image bytes</returns>
     Task<Result<EmailBrandingAsset>> GetBannerAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.37: Gets the email header banner (650x120px) with gradient and "Registration Confirmed!" text.
+    /// </summary>
+    Task<Result<EmailBrandingAsset>> GetHeaderBannerAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.37: Gets the email footer banner (650x180px) with logo and branding.
+    /// </summary>
+    Task<Result<EmailBrandingAsset>> GetFooterBannerAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.37: Downloads an image from a URL and returns it as a branding asset for CID embedding.
+    /// Used for event images that need to be embedded inline.
+    /// </summary>
+    Task<Result<EmailBrandingAsset>> DownloadImageAsync(string imageUrl, string contentId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

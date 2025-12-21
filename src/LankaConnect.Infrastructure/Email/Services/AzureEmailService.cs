@@ -165,6 +165,64 @@ public class AzureEmailService : IEmailService
     }
 
     /// <summary>
+    /// Phase 6A.37: Sends an email using a template with parameters and inline image attachments.
+    /// Attachments with ContentId are embedded using CID for immediate display in email clients.
+    /// </summary>
+    public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
+        Dictionary<string, object> parameters, List<Application.Common.Interfaces.EmailAttachment>? attachments,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail} with {AttachmentCount} attachments",
+                templateName, recipientEmail, attachments?.Count ?? 0);
+
+            // Get template from database
+            var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+            if (template == null)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' not found in database", templateName);
+                return Result.Failure($"Email template '{templateName}' not found");
+            }
+
+            if (!template.IsActive)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
+                return Result.Failure($"Email template '{templateName}' is not active");
+            }
+
+            // Render template directly from database content
+            var subject = RenderTemplateContent(template.SubjectTemplate.Value, parameters);
+            var htmlBody = RenderTemplateContent(template.HtmlTemplate ?? string.Empty, parameters);
+            var textBody = RenderTemplateContent(template.TextTemplate, parameters);
+
+            _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
+
+            // Create email message DTO with attachments
+            var emailMessage = new EmailMessageDto
+            {
+                ToEmail = recipientEmail,
+                Subject = subject,
+                HtmlBody = htmlBody,
+                PlainTextBody = textBody,
+                FromEmail = _emailSettings.FromEmail,
+                FromName = _emailSettings.FromName,
+                Priority = 2,
+                Attachments = attachments
+            };
+
+            // Send the email
+            return await SendEmailAsync(emailMessage, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send templated email '{TemplateName}' to {RecipientEmail}",
+                templateName, recipientEmail);
+            return Result.Failure($"Failed to send templated email: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Phase 6A.34: Render template content by replacing {{variable}} placeholders
     /// Supports conditional sections with {{#variable}}...{{/variable}} syntax
     /// </summary>

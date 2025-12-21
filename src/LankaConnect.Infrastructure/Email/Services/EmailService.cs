@@ -212,6 +212,74 @@ public class EmailService : IEmailService
         }
     }
 
+    /// <summary>
+    /// Phase 6A.37: Sends an email using a template with parameters and inline image attachments.
+    /// This SMTP version delegates to the base method since SMTP doesn't require special handling.
+    /// </summary>
+    public Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
+        Dictionary<string, object> parameters, List<EmailAttachment>? attachments,
+        CancellationToken cancellationToken = default)
+    {
+        // For SMTP, we use the same approach as the base method since attachments are handled in SendViaSmtpAsync
+        // The attachments will be added to the EmailMessageDto and sent with the email
+        _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail} with {AttachmentCount} attachments",
+            templateName, recipientEmail, attachments?.Count ?? 0);
+
+        // Create a wrapper that includes attachments in the email message
+        return SendTemplatedEmailWithAttachmentsAsync(templateName, recipientEmail, parameters, attachments, cancellationToken);
+    }
+
+    private async Task<Result> SendTemplatedEmailWithAttachmentsAsync(string templateName, string recipientEmail,
+        Dictionary<string, object> parameters, List<EmailAttachment>? attachments,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Validate template exists
+            var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+            if (template == null)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' not found", templateName);
+                return Result.Failure($"Email template '{templateName}' not found");
+            }
+
+            if (!template.IsActive)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
+                return Result.Failure($"Email template '{templateName}' is not active");
+            }
+
+            // Render template
+            var renderResult = await _templateService.RenderTemplateAsync(templateName, parameters, cancellationToken);
+            if (renderResult.IsFailure)
+            {
+                return Result.Failure(renderResult.Error);
+            }
+
+            // Create email message DTO with attachments
+            var emailMessage = new EmailMessageDto
+            {
+                ToEmail = recipientEmail,
+                Subject = renderResult.Value.Subject,
+                HtmlBody = renderResult.Value.HtmlBody,
+                PlainTextBody = renderResult.Value.PlainTextBody,
+                FromEmail = _smtpSettings.FromEmail,
+                FromName = _smtpSettings.FromName,
+                Priority = 2,
+                Attachments = attachments
+            };
+
+            // Send the email
+            return await SendEmailAsync(emailMessage, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send templated email '{TemplateName}' to {RecipientEmail}",
+                templateName, recipientEmail);
+            return Result.Failure($"Failed to send templated email: {ex.Message}");
+        }
+    }
+
     private static Result ValidateEmailMessage(EmailMessageDto emailMessage)
     {
         if (string.IsNullOrWhiteSpace(emailMessage.ToEmail))

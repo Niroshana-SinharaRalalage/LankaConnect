@@ -817,7 +817,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
-        {isUserRegistered && event && !event.isFree && (
+        {/* Wait for auth hydration before rendering to ensure token is available for API calls */}
+        {isHydrated && isUserRegistered && event && !event.isFree && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
           </div>

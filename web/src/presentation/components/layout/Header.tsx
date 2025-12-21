@@ -25,7 +25,7 @@ export interface HeaderProps {
  * Phase 6A.4: Fixed mobile responsive navigation with hamburger menu
  */
 export function Header({ className = '' }: HeaderProps) {
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, isHydrated, clearAuth } = useAuthStore();
   const router = useRouter();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
@@ -34,9 +34,11 @@ export function Header({ className = '' }: HeaderProps) {
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
-  // Fetch unread notifications only when authenticated
+  // Fetch unread notifications only when authenticated AND hydrated
+  // CRITICAL: Must wait for isHydrated to be true to ensure auth token is set in API client
+  // Without this check, requests fire before token is restored, causing 401 errors
   const { data: unreadNotifications = [] } = useUnreadNotifications({
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isHydrated,
   });
 
   // Close dropdowns when clicking outside

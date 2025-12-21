@@ -43,9 +43,12 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
         const ticketData = await eventsRepository.getMyTicket(eventId);
         setTicket(ticketData);
       } catch (err) {
-        // Check if it's a 404 (no ticket yet)
+        // Check if it's a 404 (no ticket yet) or payment not completed
         if (err instanceof Error && err.message.includes('404')) {
           setError('Ticket not yet generated. It will be available after payment confirmation.');
+        } else if (err instanceof Error && err.message.toLowerCase().includes('payment not completed')) {
+          // Payment status shows pending - common during checkout process
+          setError('Payment processing. Your ticket will be available once payment is confirmed.');
         } else {
           setError('Failed to load ticket. Please try again later.');
         }

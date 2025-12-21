@@ -767,29 +767,18 @@ export class EventsRepository {
   /**
    * Download ticket as PDF
    * Phase 6A.24: Returns PDF blob for ticket download
+   * Phase 6A.24 FIX: Now uses apiClient for proper authentication
    * Maps to backend GET /api/events/{eventId}/my-registration/ticket/pdf
    *
    * @param eventId - Event ID (GUID)
    * @returns PDF blob for download
    */
   async downloadTicketPdf(eventId: string): Promise<Blob> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const response = await fetch(
-      `${baseUrl}${this.basePath}/${eventId}/my-registration/ticket/pdf`,
-      {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      }
+    // Use apiClient with responseType: 'blob' to properly handle auth and binary response
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/my-registration/ticket/pdf`,
+      { responseType: 'blob' }
     );
-
-    if (!response.ok) {
-      throw new Error('Failed to download ticket PDF');
-    }
-
-    return await response.blob();
   }
 
   /**

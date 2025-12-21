@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Infrastructure.Common;
 using Serilog.Context;
 
 namespace LankaConnect.Infrastructure.Data.Repositories;
@@ -8,6 +9,7 @@ namespace LankaConnect.Infrastructure.Data.Repositories;
 /// <summary>
 /// Repository implementation for NewsletterSubscriber aggregate root
 /// Follows TDD principles and integrates with base Repository pattern
+/// Phase 6A Event Notifications: Supports both full state names and abbreviations
 /// </summary>
 public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, INewsletterSubscriberRepository
 {
@@ -111,11 +113,30 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         {
             _logger.Debug("Getting confirmed subscribers for state-level areas in state {State}", state);
 
-            // Get all metro area IDs for state-level areas in the given state
-            var stateMetroAreaIds = await _context.MetroAreas
-                .Where(m => m.State.ToLower() == state.ToLower() && m.IsStateLevelArea)
-                .Select(m => m.Id)
-                .ToListAsync(cancellationToken);
+            // Phase 6A Fix: Normalize state to abbreviation for matching
+            // Database stores 2-letter abbreviations (e.g., "CA"), but events may have full names (e.g., "California")
+            var stateAbbreviation = USStateHelper.NormalizeToAbbreviation(state);
+
+            _logger.Debug("Normalized state {State} to abbreviation {Abbreviation}", state, stateAbbreviation ?? "null");
+
+            List<Guid> stateMetroAreaIds;
+
+            if (!string.IsNullOrEmpty(stateAbbreviation))
+            {
+                // Match using normalized abbreviation
+                stateMetroAreaIds = await _context.MetroAreas
+                    .Where(m => m.State.ToLower() == stateAbbreviation.ToLower() && m.IsStateLevelArea)
+                    .Select(m => m.Id)
+                    .ToListAsync(cancellationToken);
+            }
+            else
+            {
+                // Fallback: try exact match for non-US states
+                stateMetroAreaIds = await _context.MetroAreas
+                    .Where(m => m.State.ToLower() == state.ToLower() && m.IsStateLevelArea)
+                    .Select(m => m.Id)
+                    .ToListAsync(cancellationToken);
+            }
 
             if (!stateMetroAreaIds.Any())
             {

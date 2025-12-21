@@ -180,30 +180,33 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
 
         _logger.LogInformation("[RCA-NL1] Querying newsletter subscribers for location: {City}, {State}", city, state);
 
-        // Execute 3-level location matching queries IN PARALLEL for performance
-        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> metroTask;
-        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> stateTask;
-        Task<IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber>> allLocationsTask;
+        // Execute 3-level location matching queries SEQUENTIALLY
+        // Note: Cannot run in parallel because DbContext is not thread-safe
+        // Each query shares the same scoped DbContext instance
+        IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber> metroSubscribers;
+        IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber> stateSubscribers;
+        IReadOnlyList<Domain.Communications.Entities.NewsletterSubscriber> allLocationsSubscribers;
 
         try
         {
-            _logger.LogInformation("[RCA-NL2] Starting parallel subscriber queries...");
-            metroTask = GetMetroAreaSubscribersAsync(city, state, cancellationToken);
-            stateTask = _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
-            allLocationsTask = _subscriberRepository.GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+            _logger.LogInformation("[RCA-NL2] Starting subscriber queries...");
 
-            await Task.WhenAll(metroTask, stateTask, allLocationsTask);
-            _logger.LogInformation("[RCA-NL3] All parallel queries completed successfully");
+            // Query 1: Metro area subscribers
+            metroSubscribers = await GetMetroAreaSubscribersAsync(city, state, cancellationToken);
+
+            // Query 2: State-level subscribers
+            stateSubscribers = await _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
+
+            // Query 3: All locations subscribers
+            allLocationsSubscribers = await _subscriberRepository.GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+
+            _logger.LogInformation("[RCA-NL3] All subscriber queries completed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RCA-NL-ERR] Failed during parallel subscriber queries for {City}, {State}", city, state);
+            _logger.LogError(ex, "[RCA-NL-ERR] Failed during subscriber queries for {City}, {State}", city, state);
             throw;
         }
-
-        var metroSubscribers = await metroTask;
-        var stateSubscribers = await stateTask;
-        var allLocationsSubscribers = await allLocationsTask;
 
         _logger.LogInformation(
             "[RCA-NL4] Retrieved newsletter subscribers: Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",

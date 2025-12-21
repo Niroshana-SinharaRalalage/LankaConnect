@@ -10,12 +10,13 @@ const client = new Client({
   ssl: { rejectUnauthorized: false }
 });
 
-// Phase 6A.35: Updated email template with:
+// Phase 6A.36: Updated email template with:
 // 1. Corrected gradient direction to match landing page (orange → rose/maroon → emerald)
 // 2. Removed external image URL (won't work in email clients) - using pure CSS logo fallback
 // 3. 650px width maintained
 // 4. Cross/plus pattern simulated with + symbols (closer to landing page SVG pattern)
 // 5. All inline styles for maximum email client compatibility
+// 6. REMOVED event image section - external images blocked by email clients by default
 const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -53,14 +54,6 @@ const htmlTemplate = `<!DOCTYPE html>
                             </table>
                         </td>
                     </tr>
-                    <!-- Event Image (conditional) -->
-                    {{#HasEventImage}}
-                    <tr>
-                        <td style="background: #f9f9f9; padding: 0;">
-                            <img src="{{EventImageUrl}}" alt="{{EventTitle}}" width="650" style="width: 100%; max-width: 650px; height: auto; display: block; border: 0;">
-                        </td>
-                    </tr>
-                    {{/HasEventImage}}
                     <!-- Content -->
                     <tr>
                         <td style="padding: 30px 25px; background: #ffffff;">

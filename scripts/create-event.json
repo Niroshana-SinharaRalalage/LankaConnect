@@ -1,0 +1,13 @@
+{
+  "title": "RCA Test Event WITH Location",
+  "description": "Testing event publish notification handler with location data",
+  "startDate": "2025-12-26T14:00:00Z",
+  "endDate": "2025-12-26T18:00:00Z",
+  "capacity": 100,
+  "category": 1,
+  "locationAddress": "123 Test Street",
+  "locationCity": "Los Angeles",
+  "locationState": "California",
+  "locationZipCode": "90001",
+  "locationCountry": "USA"
+}

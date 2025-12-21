@@ -12,7 +12,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// <summary>
 /// Handles RegistrationConfirmedEvent to send confirmation email to attendee.
 /// Phase 6A.24: Enhanced to include attendee details and skip paid events.
-/// Phase 6A.37: Added CID-embedded images (header/footer banners + event image)
+/// Phase 6A.38: Simplified to use direct Azure Blob Storage URLs for images (removed CID complexity).
 /// For paid events, email is sent by PaymentCompletedEventHandler after payment.
 /// </summary>
 public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<RegistrationConfirmedEvent>>
@@ -21,7 +21,6 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEmailBrandingService _emailBrandingService;
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
 
     public RegistrationConfirmedEventHandler(
@@ -29,14 +28,12 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEmailBrandingService emailBrandingService,
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _emailBrandingService = emailBrandingService;
         _logger = logger;
     }
 
@@ -86,32 +83,25 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             // Phase 6A.24: Prepare attendee details for email
             var attendeeDetailsHtml = new System.Text.StringBuilder();
-            var attendeeDetailsText = new System.Text.StringBuilder();
 
             if (registration.HasDetailedAttendees())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    // HTML format
-                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
-
-                    // Plain text format
-                    attendeeDetailsText.AppendLine($"- {attendee.Name} (Age: {attendee.Age})");
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 5px 0; font-size: 14px;\"><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
                 }
             }
             else
             {
-                // Fallback if no detailed attendees
-                attendeeDetailsHtml.AppendLine($"<p>{domainEvent.Quantity} attendee(s)</p>");
-                attendeeDetailsText.AppendLine($"{domainEvent.Quantity} attendee(s)");
+                attendeeDetailsHtml.AppendLine($"<p style=\"margin: 5px 0; font-size: 14px;\">{domainEvent.Quantity} attendee(s)</p>");
             }
 
-            // Phase 6A.37: Get event's primary image URL for CID embedding
+            // Phase 6A.38: Get event's primary image URL (direct URL, no CID)
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
             var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Prepare email parameters with enhanced attendee details
+            // Prepare email parameters
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", $"{user.FirstName} {user.LastName}" },
@@ -122,10 +112,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 { "EventLocation", GetEventLocationString(@event) },
                 { "Quantity", domainEvent.Quantity },
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
-                // Phase 6A.34: Format attendees as HTML/text string for template rendering
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                 { "HasAttendeeDetails", registration.HasDetailedAttendees() },
-                // Phase 6A.37: Event image flag for conditional rendering
+                // Phase 6A.38: Pass event image URL for direct embedding
+                { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage }
             };
 
@@ -141,15 +131,11 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 parameters["HasContactInfo"] = false;
             }
 
-            // Phase 6A.37: Prepare CID-embedded image attachments
-            var attachments = await PrepareEmailAttachmentsAsync(eventImageUrl, hasEventImage, cancellationToken);
-
-            // Send templated email with inline image attachments
+            // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
             var result = await _emailService.SendTemplatedEmailAsync(
                 "registration-confirmation",
                 user.Email.Value,
                 parameters,
-                attachments,
                 cancellationToken);
 
             if (result.IsFailure)
@@ -159,8 +145,8 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             }
             else
             {
-                _logger.LogInformation("RSVP confirmation email sent successfully to {Email} with {AttendeeCount} attendees and {AttachmentCount} images",
-                    user.Email.Value, domainEvent.Quantity, attachments?.Count ?? 0);
+                _logger.LogInformation("RSVP confirmation email sent successfully to {Email} with {AttendeeCount} attendees",
+                    user.Email.Value, domainEvent.Quantity);
             }
         }
         catch (Exception ex)
@@ -173,98 +159,16 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     }
 
     /// <summary>
-    /// Phase 6A.37: Prepares email attachments including header banner, footer banner, and optional event image.
-    /// All images are embedded using CID for immediate display in email clients.
-    /// </summary>
-    private async Task<List<EmailAttachment>?> PrepareEmailAttachmentsAsync(
-        string eventImageUrl, bool hasEventImage, CancellationToken cancellationToken)
-    {
-        var attachments = new List<EmailAttachment>();
-
-        try
-        {
-            // Get header banner
-            var headerResult = await _emailBrandingService.GetHeaderBannerAsync(cancellationToken);
-            if (headerResult.IsSuccess)
-            {
-                attachments.Add(new EmailAttachment
-                {
-                    FileName = headerResult.Value.FileName,
-                    Content = headerResult.Value.Content,
-                    ContentType = headerResult.Value.ContentType,
-                    ContentId = headerResult.Value.ContentId
-                });
-                _logger.LogDebug("Added header banner attachment, size: {Size} bytes", headerResult.Value.Content.Length);
-            }
-            else
-            {
-                _logger.LogWarning("Failed to get header banner: {Errors}", string.Join(", ", headerResult.Errors));
-            }
-
-            // Get footer banner
-            var footerResult = await _emailBrandingService.GetFooterBannerAsync(cancellationToken);
-            if (footerResult.IsSuccess)
-            {
-                attachments.Add(new EmailAttachment
-                {
-                    FileName = footerResult.Value.FileName,
-                    Content = footerResult.Value.Content,
-                    ContentType = footerResult.Value.ContentType,
-                    ContentId = footerResult.Value.ContentId
-                });
-                _logger.LogDebug("Added footer banner attachment, size: {Size} bytes", footerResult.Value.Content.Length);
-            }
-            else
-            {
-                _logger.LogWarning("Failed to get footer banner: {Errors}", string.Join(", ", footerResult.Errors));
-            }
-
-            // Get event image if available
-            if (hasEventImage && !string.IsNullOrEmpty(eventImageUrl))
-            {
-                var eventImageResult = await _emailBrandingService.DownloadImageAsync(
-                    eventImageUrl, "event-image", cancellationToken);
-
-                if (eventImageResult.IsSuccess)
-                {
-                    attachments.Add(new EmailAttachment
-                    {
-                        FileName = eventImageResult.Value.FileName,
-                        Content = eventImageResult.Value.Content,
-                        ContentType = eventImageResult.Value.ContentType,
-                        ContentId = eventImageResult.Value.ContentId
-                    });
-                    _logger.LogDebug("Added event image attachment, size: {Size} bytes", eventImageResult.Value.Content.Length);
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to download event image from {Url}: {Errors}",
-                        eventImageUrl, string.Join(", ", eventImageResult.Errors));
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error preparing email attachments - email will be sent without images");
-        }
-
-        return attachments.Count > 0 ? attachments : null;
-    }
-
-    /// <summary>
-    /// Phase 6A.35: Safely extracts event location string with defensive null handling.
-    /// Handles data inconsistency where has_location=true but address fields are null.
+    /// Safely extracts event location string with defensive null handling.
     /// </summary>
     private static string GetEventLocationString(Event @event)
     {
-        // Check if Location or Address is null (defensive against data inconsistency)
         if (@event.Location?.Address == null)
             return "Online Event";
 
         var street = @event.Location.Address.Street;
         var city = @event.Location.Address.City;
 
-        // Handle case where address fields exist but are empty
         if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
             return "Online Event";
 

@@ -73,12 +73,25 @@ public class EmailMessageDto
 
 /// <summary>
 /// Represents an email attachment
+/// Phase 6A.35: Added ContentId for CID inline image embedding in emails
 /// </summary>
 public class EmailAttachment
 {
     public string FileName { get; set; } = string.Empty;
     public byte[] Content { get; set; } = Array.Empty<byte>();
     public string ContentType { get; set; } = "application/octet-stream";
+
+    /// <summary>
+    /// Content-ID for inline attachments (CID embedding).
+    /// When set, the attachment can be referenced in HTML using: src="cid:{ContentId}"
+    /// This ensures images display immediately without user action in email clients.
+    /// </summary>
+    public string? ContentId { get; set; }
+
+    /// <summary>
+    /// Indicates if this is an inline attachment (embedded in email body) vs regular attachment
+    /// </summary>
+    public bool IsInline => !string.IsNullOrEmpty(ContentId);
 }
 
 /// <summary>

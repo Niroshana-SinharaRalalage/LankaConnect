@@ -418,6 +418,7 @@ public class AzureEmailService : IEmailService
             var azureEmailMessage = new EmailMessage(senderAddress, recipients, emailContent);
 
             // Add attachments if any
+            // Phase 6A.35: Support CID inline attachments for embedded images
             if (emailMessage.Attachments?.Any() == true)
             {
                 foreach (var attachment in emailMessage.Attachments)
@@ -426,6 +427,16 @@ public class AzureEmailService : IEmailService
                         attachment.FileName,
                         attachment.ContentType,
                         new BinaryData(attachment.Content));
+
+                    // Phase 6A.35: Set ContentId for inline CID attachments
+                    // This allows images to be embedded in email body using src="cid:{ContentId}"
+                    if (!string.IsNullOrEmpty(attachment.ContentId))
+                    {
+                        azureAttachment.ContentId = attachment.ContentId;
+                        _logger.LogDebug("Adding inline attachment {FileName} with ContentId: {ContentId}",
+                            attachment.FileName, attachment.ContentId);
+                    }
+
                     azureEmailMessage.Attachments.Add(azureAttachment);
                 }
             }

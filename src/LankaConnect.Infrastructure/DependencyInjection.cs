@@ -205,6 +205,9 @@ public static class DependencyInjection
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
         services.AddScoped<IEmailTemplateService, RazorEmailTemplateService>();
 
+        // Phase 6A.35: Add Email Branding Service for CID inline image embedding
+        services.AddScoped<IEmailBrandingService, EmailBrandingService>();
+
         // Add Email Queue Processor (Background Service)
         services.AddHostedService<EmailQueueProcessor>();
 

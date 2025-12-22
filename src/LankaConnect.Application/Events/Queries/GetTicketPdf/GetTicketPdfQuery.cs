@@ -19,6 +19,7 @@ public record TicketPdfResult(byte[] PdfBytes, string FileName);
 
 /// <summary>
 /// Phase 6A.24: Handler for getting ticket PDF
+/// Phase 6A.24 FIX: Now also generates ticket if payment is complete but ticket was never created
 /// </summary>
 public class GetTicketPdfQueryHandler : IRequestHandler<GetTicketPdfQuery, Result<TicketPdfResult>>
 {
@@ -63,12 +64,45 @@ public class GetTicketPdfQueryHandler : IRequestHandler<GetTicketPdfQuery, Resul
             return Result<TicketPdfResult>.Failure("You are not authorized to download this ticket");
         }
 
-        // Get ticket for the registration
+        // Phase 6A.24 FIX: Get or generate ticket
+        // If ticket doesn't exist (webhook initially failed), generate it now
         var ticket = await _ticketRepository.GetByRegistrationIdAsync(request.RegistrationId, cancellationToken);
         if (ticket == null)
         {
-            _logger.LogWarning("Ticket not found for registration {RegistrationId}", request.RegistrationId);
-            return Result<TicketPdfResult>.Failure("Ticket not found for this registration");
+            _logger.LogInformation("No ticket found for registration {RegistrationId}, attempting to generate...",
+                request.RegistrationId);
+
+            // Check if payment is complete before generating
+            if (registration.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
+            {
+                _logger.LogWarning("Cannot generate ticket PDF - payment not completed for registration {RegistrationId}",
+                    request.RegistrationId);
+                return Result<TicketPdfResult>.Failure("Payment not completed - ticket cannot be generated");
+            }
+
+            // Generate ticket now
+            var generateResult = await _ticketService.GenerateTicketAsync(
+                request.RegistrationId,
+                request.EventId,
+                cancellationToken);
+
+            if (generateResult.IsFailure)
+            {
+                _logger.LogError("Failed to generate ticket for registration {RegistrationId}: {Error}",
+                    request.RegistrationId, string.Join(", ", generateResult.Errors));
+                return Result<TicketPdfResult>.Failure("Failed to generate ticket");
+            }
+
+            // Retrieve the newly generated ticket
+            ticket = await _ticketRepository.GetByIdAsync(generateResult.Value.TicketId, cancellationToken);
+            _logger.LogInformation("Ticket generated successfully: {TicketCode}", generateResult.Value.TicketCode);
+
+            if (ticket == null)
+            {
+                _logger.LogError("Ticket still not found after generation for registration {RegistrationId}",
+                    request.RegistrationId);
+                return Result<TicketPdfResult>.Failure("Ticket generation failed");
+            }
         }
 
         // Get event details for the PDF

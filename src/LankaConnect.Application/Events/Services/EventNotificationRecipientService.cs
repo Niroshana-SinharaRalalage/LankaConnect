@@ -83,16 +83,25 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         NewsletterEmailsWithBreakdown newsletterAddresses;
         try
         {
-            if (@event.Location != null)
+            // Phase 6A.40: Check both Location AND Address for validity
+            // EF Core may create a "shell" Location object with null Address for optional owned entities
+            // This defensive check prevents NullReferenceException in GetNewsletterSubscriberEmailsAsync
+            var hasValidLocation = @event.Location?.Address != null &&
+                                   !string.IsNullOrWhiteSpace(@event.Location.Address.City) &&
+                                   !string.IsNullOrWhiteSpace(@event.Location.Address.State);
+
+            if (hasValidLocation)
             {
                 _logger.LogInformation("[RCA-8] Getting newsletter subscribers for location: {City}, {State}",
-                    @event.Location.Address?.City ?? "N/A",
-                    @event.Location.Address?.State ?? "N/A");
+                    @event.Location!.Address.City,
+                    @event.Location.Address.State);
                 newsletterAddresses = await GetNewsletterSubscriberEmailsAsync(@event.Location, cancellationToken);
             }
             else
             {
-                _logger.LogInformation("[RCA-8] No location on event, skipping newsletter subscribers");
+                _logger.LogInformation("[RCA-8] No valid location on event (Location: {HasLocation}, Address: {HasAddress}), skipping newsletter subscribers",
+                    @event.Location != null,
+                    @event.Location?.Address != null);
                 newsletterAddresses = new NewsletterEmailsWithBreakdown(new HashSet<string>(), 0, 0, 0);
             }
             _logger.LogInformation("[RCA-9] Newsletter subscribers retrieved: {Count}", newsletterAddresses.Emails.Count);

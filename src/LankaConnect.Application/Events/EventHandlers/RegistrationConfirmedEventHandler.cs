@@ -81,19 +81,16 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 return;
             }
 
-            // Phase 6A.24: Prepare attendee details for email
+            // Phase 6A.40: Prepare attendee details for email - show actual attendee names
             var attendeeDetailsHtml = new System.Text.StringBuilder();
+            var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
 
-            if (registration.HasDetailedAttendees())
+            if (hasAttendeeDetails)
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 5px 0; font-size: 14px;\"><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
                 }
-            }
-            else
-            {
-                attendeeDetailsHtml.AppendLine($"<p style=\"margin: 5px 0; font-size: 14px;\">{domainEvent.Quantity} attendee(s)</p>");
             }
 
             // Phase 6A.38: Get event's primary image URL (direct URL, no CID)
@@ -101,33 +98,35 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
             var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
+            // Phase 6A.40: Format date/time range properly
+            var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
+
             // Prepare email parameters
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", $"{user.FirstName} {user.LastName}" },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
+                { "EventDateTime", eventDateTimeRange },
                 { "EventLocation", GetEventLocationString(@event) },
-                { "Quantity", domainEvent.Quantity },
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                { "HasAttendeeDetails", registration.HasDetailedAttendees() },
+                { "HasAttendeeDetails", hasAttendeeDetails },
                 // Phase 6A.38: Pass event image URL for direct embedding
                 { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage }
             };
 
-            // Phase 6A.24: Add contact information if available
+            // Phase 6A.40: Add registrant's contact information (what they provided during registration)
             if (registration.Contact != null)
             {
                 parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
+                parameters["ContactPhone"] = registration.Contact.PhoneNumber;
                 parameters["HasContactInfo"] = true;
             }
             else
             {
+                parameters["ContactEmail"] = "";
+                parameters["ContactPhone"] = "";
                 parameters["HasContactInfo"] = false;
             }
 
@@ -179,5 +178,25 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             return street;
 
         return $"{street}, {city}";
+    }
+
+    /// <summary>
+    /// Phase 6A.40: Formats event date/time range for display.
+    /// Examples:
+    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
+    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
+        {
+            // Same day event
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
+        }
     }
 }

@@ -22,11 +22,13 @@ public class GetUserRegistrationForEventQueryHandler
     {
         // Only return active registrations (exclude cancelled and refunded)
         // This fixes the multi-attendee re-registration issue (Session 30)
+        // Phase 6A.41: Fixed to return NEWEST registration (OrderByDescending)
         var registration = await _context.Registrations
             .Where(r => r.EventId == request.EventId &&
                        r.UserId == request.UserId &&
                        r.Status != RegistrationStatus.Cancelled &&
                        r.Status != RegistrationStatus.Refunded)
+            .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RegistrationDetailsDto
             {
                 Id = r.Id,

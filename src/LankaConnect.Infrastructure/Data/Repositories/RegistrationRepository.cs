@@ -34,12 +34,18 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
     {
         // Only return active registrations (exclude cancelled and refunded)
         // This fixes the multi-attendee re-registration issue (Session 30)
+        // Phase 6A.41: Fixed to return NEWEST registration (OrderByDescending)
+        // and include Attendees collection to prevent stale data issues
         return await _dbSet
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.EventId == eventId &&
-                                     r.UserId == userId &&
-                                     r.Status != RegistrationStatus.Cancelled &&
-                                     r.Status != RegistrationStatus.Refunded, cancellationToken);
+            .Include(r => r.Attendees)
+            .Include(r => r.Contact)
+            .Where(r => r.EventId == eventId &&
+                       r.UserId == userId &&
+                       r.Status != RegistrationStatus.Cancelled &&
+                       r.Status != RegistrationStatus.Refunded)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<Registration>> GetByStatusAsync(RegistrationStatus status, CancellationToken cancellationToken = default)
@@ -61,17 +67,23 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
     /// <summary>
     /// Phase 6A.24: Gets an anonymous registration by event ID and contact email
     /// Used to fetch registration details for anonymous users' confirmation emails
+    /// Phase 6A.41: Fixed to return NEWEST registration with includes
     /// </summary>
     public async Task<Registration?> GetAnonymousByEventAndEmailAsync(Guid eventId, string email, CancellationToken cancellationToken = default)
     {
         // Look for anonymous registrations (UserId is null) with matching contact email
+        // Return newest registration with all related data loaded
         return await _dbSet
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.EventId == eventId &&
-                                     r.UserId == null &&
-                                     r.Contact != null &&
-                                     r.Contact.Email == email &&
-                                     r.Status != RegistrationStatus.Cancelled &&
-                                     r.Status != RegistrationStatus.Refunded, cancellationToken);
+            .Include(r => r.Attendees)
+            .Include(r => r.Contact)
+            .Where(r => r.EventId == eventId &&
+                       r.UserId == null &&
+                       r.Contact != null &&
+                       r.Contact.Email == email &&
+                       r.Status != RegistrationStatus.Cancelled &&
+                       r.Status != RegistrationStatus.Refunded)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

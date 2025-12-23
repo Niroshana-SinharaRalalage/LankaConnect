@@ -6,6 +6,7 @@ using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Application.Events.Commands.UpdateEvent;
 using LankaConnect.Application.Events.Commands.DeleteEvent;
 using LankaConnect.Application.Events.Commands.PublishEvent;
+using LankaConnect.Application.Events.Commands.UnpublishEvent;
 using LankaConnect.Application.Events.Commands.CancelEvent;
 using LankaConnect.Application.Events.Commands.PostponeEvent;
 using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
@@ -383,6 +384,25 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.41: Unpublish an event (return to Draft status) (Owner only)
+    /// Allows organizers to make corrections after premature publication.
+    /// </summary>
+    [HttpPost("{id:guid}/unpublish")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UnpublishEvent(Guid id)
+    {
+        Logger.LogInformation("Unpublishing event: {EventId}", id);
+
+        var command = new UnpublishEventCommand(id);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Cancel an event with reason (Owner only)
     /// </summary>
     [HttpPost("{id:guid}/cancel")]
@@ -514,12 +534,24 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Anonymous attendee {Email} registering for event {EventId}",
             request.Email, id);
 
-        // Session 21: Updated for new command signature (backward compatible)
+        // Phase 6A.43: Support both legacy and multi-attendee formats
+        // Convert AnonymousAttendeeDto to Application layer AttendeeDto if provided
+        List<LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto>? attendees = null;
+        if (request.Attendees != null && request.Attendees.Any())
+        {
+            attendees = request.Attendees.Select(a =>
+                new LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto(
+                    a.Name,
+                    a.AgeCategory,
+                    a.Gender
+                )).ToList();
+        }
+
         var command = new RegisterAnonymousAttendeeCommand(
             EventId: id,
             Name: request.Name,
             Age: request.Age,
-            Attendees: null, // Legacy format - no detailed attendees
+            Attendees: attendees, // Phase 6A.43: Pass attendees array from request
             Email: request.Email,
             PhoneNumber: request.PhoneNumber,
             Address: request.Address,
@@ -1709,13 +1741,30 @@ public record RsvpRequest(
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
 
+/// <summary>
+/// Phase 6A.43: Updated to support multi-attendee format with AgeCategory/Gender
+/// Supports both legacy format (Name/Age) and new format (Attendees array)
+/// </summary>
 public record AnonymousRegistrationRequest(
-    string Name,
-    int Age,
-    string Address,
-    string Email,
-    string PhoneNumber,
+    // Legacy format fields (backward compatibility)
+    string? Name = null,
+    int? Age = null,
+    // New format (Phase 6A.43 - multi-attendee with AgeCategory/Gender)
+    List<AnonymousAttendeeDto>? Attendees = null,
+    // Contact information (required)
+    string Address = "",
+    string Email = "",
+    string PhoneNumber = "",
+    // Quantity for multiple attendees
     int Quantity = 1);
+
+/// <summary>
+/// Attendee DTO for anonymous registration
+/// </summary>
+public record AnonymousAttendeeDto(
+    string Name,
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 /// <summary>
 /// Phase 6A.14: Request to update registration details

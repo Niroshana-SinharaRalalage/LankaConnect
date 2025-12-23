@@ -529,6 +529,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         adultPrice={event.adultPriceAmount ?? undefined}
                         childPrice={event.childPriceAmount ?? undefined}
                         childAgeLimit={event.childAgeLimit ?? undefined}
+                        hasGroupPricing={event.hasGroupPricing}
+                        groupPricingTiers={event.groupPricingTiers}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -772,6 +774,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     adultPrice={event.adultPriceAmount ?? undefined}
                     childPrice={event.childPriceAmount ?? undefined}
                     childAgeLimit={event.childAgeLimit ?? undefined}
+                    hasGroupPricing={event.hasGroupPricing}
+                    groupPricingTiers={event.groupPricingTiers}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}

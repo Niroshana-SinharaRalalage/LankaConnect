@@ -130,7 +130,29 @@ public class Event : BaseEntity
         
         // Raise domain event
         RaiseDomainEvent(new EventPublishedEvent(Id, DateTime.UtcNow, OrganizerId));
-        
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.41: Unpublishes a published event, returning it to Draft status.
+    /// Allows organizers to make corrections after premature publication.
+    /// Business Rules:
+    /// - Only Published events can be unpublished
+    /// - Cannot unpublish Active, Cancelled, Postponed, or Completed events
+    /// - Events with registrations CAN be unpublished (organizer's decision)
+    /// </summary>
+    public Result Unpublish()
+    {
+        if (Status != EventStatus.Published)
+            return Result.Failure("Only published events can be unpublished");
+
+        Status = EventStatus.Draft;
+        MarkAsUpdated();
+
+        // Raise domain event (for potential notification/logging)
+        RaiseDomainEvent(new EventUnpublishedEvent(Id, DateTime.UtcNow));
+
         return Result.Success();
     }
 

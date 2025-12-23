@@ -215,6 +215,14 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.41: Unpublish event (return to Draft status)
+   * Allows organizers to make corrections after premature publication
+   */
+  async unpublishEvent(id: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${id}/unpublish`);
+  }
+
+  /**
    * Cancel event with reason
    * Notifies all registered users
    */

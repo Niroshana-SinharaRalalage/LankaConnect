@@ -50,6 +50,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const { user } = useAuthStore();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch event details
@@ -105,6 +106,33 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       console.error('Failed to publish event:', err);
       setError(err instanceof Error ? err.message : 'Failed to publish event. Please try again.');
       setIsPublishing(false);
+    }
+  };
+
+  // Phase 6A.41: Handle Unpublish Event
+  const handleUnpublishEvent = async () => {
+    if (!event || event.organizerId !== user?.userId) {
+      return;
+    }
+
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      'Are you sure you want to unpublish this event? It will return to Draft status and will not be visible to the public until published again.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsUnpublishing(true);
+      setError(null);
+      await eventsRepository.unpublishEvent(id);
+      setIsUnpublishing(false);
+      // Refetch to show updated status
+      await refetch();
+    } catch (err) {
+      console.error('Failed to unpublish event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unpublish event. Please try again.');
+      setIsUnpublishing(false);
     }
   };
 
@@ -209,11 +237,18 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                    (event.status as any) === 'Draft' ||
                    String(event.status).toLowerCase() === 'draft';
 
+  // Phase 6A.41: Check if event is Published (for unpublish button)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isPublished = (event.status as any) === EventStatus.Published ||
+                       (event.status as any) === 'Published' ||
+                       String(event.status).toLowerCase() === 'published';
+
   // Debug: log the actual status value
   console.log('Event Status Check:', {
     rawStatus: event.status,
     statusType: typeof event.status,
     isDraft,
+    isPublished,
     EventStatusDraft: EventStatus.Draft
   });
 
@@ -254,7 +289,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           </Button>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Publish/Unpublish Button - Show for Draft events */}
+            {/* Publish Button - Show for Draft events */}
             {isDraft && (
               <Button
                 onClick={handlePublishEvent}
@@ -263,6 +298,18 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 style={{ background: '#10B981', color: 'white' }}
               >
                 {isPublishing ? 'Publishing...' : 'Publish Event'}
+              </Button>
+            )}
+
+            {/* Phase 6A.41: Unpublish Button - Show for Published events */}
+            {isPublished && (
+              <Button
+                onClick={handleUnpublishEvent}
+                disabled={isUnpublishing}
+                className="flex items-center gap-2 text-white"
+                style={{ background: '#EF4444', color: 'white' }}
+              >
+                {isUnpublishing ? 'Unpublishing...' : 'Unpublish Event'}
               </Button>
             )}
 

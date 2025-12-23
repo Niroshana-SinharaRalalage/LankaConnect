@@ -212,8 +212,9 @@ export function EventCreationForm() {
       const eventId = await createEventMutation.mutateAsync(eventData);
       console.log('✅ Event created successfully! ID:', eventId);
 
-      // Session 33: Redirect to dashboard instead of event management page
-      router.push('/dashboard');
+      // Phase 6A.41: Redirect to manage page for seamless event setup workflow
+      // User can immediately upload images, configure sign-ups, and publish
+      router.push(`/events/${eventId}/manage`);
     } catch (err) {
       // PHASE 6A.10: Enhanced error logging
       console.error('❌ Event creation failed - Detailed Analysis:');

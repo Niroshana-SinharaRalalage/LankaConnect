@@ -294,6 +294,10 @@ public static class DependencyInjection
         services.AddScoped<IQrCodeService, QrCodeService>();
         services.AddScoped<IPdfTicketService, PdfTicketService>();
         services.AddScoped<ITicketService, TicketService>();
+
+        // Phase 6A.45: Export services for attendee management
+        services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
+        services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
 
         return services;

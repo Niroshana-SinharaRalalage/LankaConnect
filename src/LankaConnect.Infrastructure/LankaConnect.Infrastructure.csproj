@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Email" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="CsvHelper" />
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

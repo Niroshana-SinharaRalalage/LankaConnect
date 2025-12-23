@@ -203,7 +203,13 @@ public static class DependencyInjection
         // Add Email Services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
-        services.AddScoped<IEmailTemplateService, RazorEmailTemplateService>();
+
+        // Phase 6A.43 Fix: Register AzureEmailService for both IEmailService and IEmailTemplateService
+        // This ensures all emails (free and paid) use database-stored templates consistently
+        // Previously: IEmailTemplateService → RazorEmailTemplateService (filesystem templates)
+        // Now: IEmailTemplateService → AzureEmailService (database templates)
+        services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<IEmailService>() as IEmailTemplateService
+            ?? throw new InvalidOperationException("IEmailService must implement IEmailTemplateService"));
 
         // Phase 6A.37: Add HttpClient for email branding service to download images
         services.AddHttpClient();

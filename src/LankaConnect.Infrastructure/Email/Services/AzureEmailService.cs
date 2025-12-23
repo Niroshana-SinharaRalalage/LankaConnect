@@ -15,15 +15,15 @@ using AzureEmailAttachment = Azure.Communication.Email.EmailAttachment;
 namespace LankaConnect.Infrastructure.Email.Services;
 
 /// <summary>
-/// Email service implementation using Azure Communication Services SDK
-/// Supports easy provider switching through configuration
+/// Phase 6A.43 Fix: Email service implementation using Azure Communication Services SDK.
+/// Now implements both IEmailService and IEmailTemplateService to provide unified email functionality.
+/// This ensures all email templates (free and paid events) use database-stored templates consistently.
 /// </summary>
-public class AzureEmailService : IEmailService
+public class AzureEmailService : IEmailService, IEmailTemplateService
 {
     private readonly ILogger<AzureEmailService> _logger;
     private readonly IEmailMessageRepository _emailMessageRepository;
     private readonly IEmailTemplateRepository _emailTemplateRepository;
-    private readonly IEmailTemplateService _templateService;
     private readonly EmailSettings _emailSettings;
     private readonly EmailClient? _azureEmailClient;
 
@@ -31,13 +31,11 @@ public class AzureEmailService : IEmailService
         ILogger<AzureEmailService> logger,
         IEmailMessageRepository emailMessageRepository,
         IEmailTemplateRepository emailTemplateRepository,
-        IEmailTemplateService templateService,
         IOptions<EmailSettings> emailSettings)
     {
         _logger = logger;
         _emailMessageRepository = emailMessageRepository;
         _emailTemplateRepository = emailTemplateRepository;
-        _templateService = templateService;
         _emailSettings = emailSettings.Value;
 
         // Initialize Azure Email Client if Azure provider is configured
@@ -600,4 +598,164 @@ public class AzureEmailService : IEmailService
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
         return text;
     }
+
+    #region IEmailTemplateService Implementation
+
+    /// <summary>
+    /// Phase 6A.43 Fix: Implements RenderTemplateAsync from IEmailTemplateService.
+    /// Uses database-stored templates instead of filesystem templates for consistency.
+    /// This method is called by PaymentCompletedEventHandler.
+    /// </summary>
+    public async Task<Result<RenderedEmailTemplate>> RenderTemplateAsync(
+        string templateName,
+        Dictionary<string, object> parameters,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.43 Fix] RenderTemplateAsync called for template '{TemplateName}' - using DATABASE template",
+                templateName);
+
+            // Get template from database
+            var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+            if (template == null)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' not found in database", templateName);
+                return Result<RenderedEmailTemplate>.Failure($"Email template '{templateName}' not found");
+            }
+
+            if (!template.IsActive)
+            {
+                _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
+                return Result<RenderedEmailTemplate>.Failure($"Email template '{templateName}' is not active");
+            }
+
+            // Render template directly from database content using existing RenderTemplateContent method
+            var subject = RenderTemplateContent(template.SubjectTemplate.Value, parameters);
+            var htmlBody = RenderTemplateContent(template.HtmlTemplate ?? string.Empty, parameters);
+            var textBody = RenderTemplateContent(template.TextTemplate, parameters);
+
+            _logger.LogInformation(
+                "[Phase 6A.43 Fix] Template '{TemplateName}' rendered successfully from database",
+                templateName);
+
+            var renderedTemplate = new RenderedEmailTemplate
+            {
+                Subject = subject,
+                HtmlBody = htmlBody,
+                PlainTextBody = textBody
+            };
+
+            return Result<RenderedEmailTemplate>.Success(renderedTemplate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to render template '{TemplateName}'", templateName);
+            return Result<RenderedEmailTemplate>.Failure($"Failed to render template: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets available email templates from database.
+    /// </summary>
+    public async Task<Result<List<EmailTemplateInfo>>> GetAvailableTemplatesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var templates = await _emailTemplateRepository.GetAllAsync(cancellationToken);
+            var templateInfos = templates.Select(t => new EmailTemplateInfo
+            {
+                Name = t.Name,
+                DisplayName = t.Name.Replace("-", " ").Replace("_", " "),
+                Description = t.Description,
+                RequiredParameters = new List<string>(),
+                OptionalParameters = new List<string>(),
+                Category = "General",
+                IsActive = t.IsActive,
+                LastModified = t.UpdatedAt ?? t.CreatedAt
+            }).ToList();
+
+            return Result<List<EmailTemplateInfo>>.Success(templateInfos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get available templates");
+            return Result<List<EmailTemplateInfo>>.Failure($"Failed to get available templates: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets template metadata from database.
+    /// </summary>
+    public async Task<Result<EmailTemplateInfo>> GetTemplateInfoAsync(
+        string templateName,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+            if (template == null)
+            {
+                return Result<EmailTemplateInfo>.Failure($"Template '{templateName}' not found");
+            }
+
+            var info = new EmailTemplateInfo
+            {
+                Name = template.Name,
+                DisplayName = template.Name.Replace("-", " ").Replace("_", " "),
+                Description = template.Description,
+                RequiredParameters = new List<string>(),
+                OptionalParameters = new List<string>(),
+                Category = "General",
+                IsActive = template.IsActive,
+                LastModified = template.UpdatedAt ?? template.CreatedAt
+            };
+
+            return Result<EmailTemplateInfo>.Success(info);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get template info for '{TemplateName}'", templateName);
+            return Result<EmailTemplateInfo>.Failure($"Failed to get template info: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Validates template parameters against database template.
+    /// </summary>
+    public async Task<Result> ValidateTemplateParametersAsync(
+        string templateName,
+        Dictionary<string, object> parameters,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+            if (template == null)
+            {
+                return Result.Failure($"Template '{templateName}' not found");
+            }
+
+            if (!template.IsActive)
+            {
+                return Result.Failure($"Template '{templateName}' is not active");
+            }
+
+            if (parameters == null)
+            {
+                return Result.Failure("Parameters cannot be null");
+            }
+
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate template parameters for '{TemplateName}'", templateName);
+            return Result.Failure($"Failed to validate template parameters: {ex.Message}");
+        }
+    }
+
+    #endregion
 }

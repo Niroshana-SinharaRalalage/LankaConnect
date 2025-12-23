@@ -7,8 +7,9 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { useEventById, useUserRegistrationDetails } from '@/presentation/hooks/useEvents';
+import { useEventById, useUserRegistrationDetails, eventKeys } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Payment Success Callback Page
@@ -27,6 +28,7 @@ function PaymentSuccessContent() {
   const eventId = searchParams?.get('eventId');
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { user, isHydrated } = useAuthStore();
+  const queryClient = useQueryClient();
 
   // Fetch event details to show confirmation
   const { data: event, isLoading, error } = useEventById(eventId || undefined);
@@ -37,6 +39,18 @@ function PaymentSuccessContent() {
     (user?.userId && isHydrated && eventId) ? eventId : undefined,
     true // User is registered (they just completed payment)
   );
+
+  // Phase 6A.43 Fix: Invalidate React Query cache after Stripe redirect
+  // Stripe checkout redirects user to this page, causing browser to rehydrate
+  // React Query cache with STALE data (showing "not registered")
+  // Solution: Invalidate all event-related queries on mount to force fresh fetch
+  useEffect(() => {
+    if (eventId && isHydrated) {
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ['user-rsvps'] });
+      queryClient.invalidateQueries({ queryKey: ['user-registration', eventId] });
+    }
+  }, [eventId, isHydrated, queryClient]);
 
   useEffect(() => {
     // If no eventId, redirect to events list after 3 seconds
@@ -136,11 +150,13 @@ function PaymentSuccessContent() {
                         </span>
                       </div>
                     )}
-                    {/* Show attendee count if available */}
-                    {registrationDetails?.quantity && registrationDetails.quantity > 1 && (
+                    {/* Phase 6A.43 Fix: Show attendee count for 1 or more attendees (changed from > 1 to >= 1) */}
+                    {registrationDetails?.quantity && registrationDetails.quantity >= 1 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Attendees:</span>
-                        <span className="font-medium">{registrationDetails.quantity} person(s)</span>
+                        <span className="font-medium">
+                          {registrationDetails.quantity} {registrationDetails.quantity === 1 ? 'person' : 'people'}
+                        </span>
                       </div>
                     )}
                   </div>

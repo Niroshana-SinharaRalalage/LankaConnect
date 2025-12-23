@@ -129,11 +129,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         setIsProcessing(false);
       } else {
         // Anonymous registration
-        await eventsRepository.registerAnonymous(id, data);
+        // Phase 6A.44: Build redirect URLs for anonymous payment flow
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const successUrl = `${baseUrl}/events/payment/success?eventId=${id}`;
+        const cancelUrl = `${baseUrl}/events/payment/cancel?eventId=${id}`;
 
+        // Phase 6A.44: Anonymous registration returns checkout URL for paid events
+        const response = await eventsRepository.registerAnonymous(id, {
+          ...data,
+          successUrl,
+          cancelUrl,
+        });
+
+        // If checkout URL is returned, redirect to Stripe for payment
+        if (response.checkoutUrl) {
+          // Paid event - redirect to Stripe Checkout
+          window.location.href = response.checkoutUrl;
+          return; // Don't set isProcessing false - user is being redirected
+        }
+
+        // Free event - show success message and reload
         // Phase 6A.25 Fix: For anonymous registration, we still need to refresh
         // since there's no React Query mutation handling cache invalidation
-        // But we can do a softer refresh by just reloading the page
         window.location.reload();
       }
 

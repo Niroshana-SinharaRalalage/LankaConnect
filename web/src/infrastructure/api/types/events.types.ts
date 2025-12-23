@@ -82,6 +82,25 @@ export enum PaymentStatus {
   NotRequired = 4,
 }
 
+/**
+ * Phase 6A.43: Age category enum matching backend LankaConnect.Domain.Events.Enums.AgeCategory
+ * Used for attendee registration to distinguish adults from children
+ */
+export enum AgeCategory {
+  Adult = 1,
+  Child = 2,
+}
+
+/**
+ * Phase 6A.43: Gender enum matching backend LankaConnect.Domain.Events.Enums.Gender
+ * Optional field for attendee registration
+ */
+export enum Gender {
+  Male = 1,
+  Female = 2,
+  Other = 3,
+}
+
 // ==================== Event DTOs ====================
 
 /**
@@ -490,6 +509,7 @@ export interface RsvpRequest {
  * Anonymous registration request
  * Matches backend AnonymousRegistrationRequest for unauthenticated event registration
  * Session 21: Added multi-attendee support with individual names and ages
+ * Phase 6A.44: Added successUrl and cancelUrl for Stripe Checkout
  */
 export interface AnonymousRegistrationRequest {
   // Legacy format (Session 20 - backward compatibility)
@@ -506,15 +526,33 @@ export interface AnonymousRegistrationRequest {
 
   // Legacy quantity field (backward compatibility)
   quantity?: number; // Default: 1
+
+  // Phase 6A.44: Stripe checkout URLs (required for paid events)
+  successUrl?: string;
+  cancelUrl?: string;
+}
+
+/**
+ * Phase 6A.44: Response from anonymous registration
+ * - For FREE events: success=true, checkoutUrl=null
+ * - For PAID events: success=true, checkoutUrl=<stripe_checkout_url>
+ * - For errors: success=false (shouldn't happen, API returns error status)
+ */
+export interface AnonymousRegistrationResponse {
+  success: boolean;
+  checkoutUrl: string | null;
+  message: string;
 }
 
 /**
  * Session 21: Individual attendee information
  * Used for multi-attendee registration
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
  */
 export interface AttendeeDto {
   name: string;
-  age: number;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
 }
 
 /**
@@ -566,10 +604,12 @@ export interface UpdateRegistrationRequest {
 
 /**
  * Phase 6A.14: Attendee DTO for registration update
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
  */
 export interface UpdateRegistrationAttendeeDto {
   name: string;
-  age: number;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
 }
 
 /**
@@ -789,10 +829,12 @@ export interface UploadEventImageResponse {
 
 /**
  * Phase 6A.24: Ticket attendee information
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
  */
 export interface TicketAttendeeDto {
   name: string;
-  age: number;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
 }
 
 /**

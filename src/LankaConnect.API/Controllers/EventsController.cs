@@ -47,6 +47,8 @@ using LankaConnect.Application.Events.Queries.GetWaitingList;
 using LankaConnect.Application.Events.Queries.GetEventIcs;
 using LankaConnect.Application.Events.Commands.AddPassToEvent;
 using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
+using LankaConnect.Application.Events.Queries.GetEventAttendees;
+using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventPasses;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
@@ -524,10 +526,11 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Register anonymous attendee for an event (No authentication required)
+    /// Phase 6A.44: Returns checkout URL for paid events, null for free events
     /// </summary>
     [HttpPost("{id:guid}/register-anonymous")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AnonymousRegistrationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterAnonymousAttendee(Guid id, [FromBody] AnonymousRegistrationRequest request)
     {
@@ -555,10 +558,25 @@ public class EventsController : BaseController<EventsController>
             Email: request.Email,
             PhoneNumber: request.PhoneNumber,
             Address: request.Address,
-            Quantity: request.Quantity
+            Quantity: request.Quantity,
+            SuccessUrl: request.SuccessUrl, // Phase 6A.44: Stripe checkout URLs
+            CancelUrl: request.CancelUrl
         );
 
         var result = await Mediator.Send(command);
+
+        // Phase 6A.44: Return structured response with checkout URL for paid events
+        if (result.IsSuccess)
+        {
+            var checkoutUrl = result.Value;
+            return Ok(new AnonymousRegistrationResponse(
+                Success: true,
+                CheckoutUrl: checkoutUrl,
+                Message: checkoutUrl != null
+                    ? "Please complete payment to confirm your registration."
+                    : "Registration successful! You will receive a confirmation email shortly."
+            ));
+        }
 
         return HandleResult(result);
     }
@@ -1718,6 +1736,118 @@ public class EventsController : BaseController<EventsController>
     #endregion
 
     #endregion
+
+    #region Attendee Management & Export (Phase 6A.45)
+
+    /// <summary>
+    /// Get all attendees for an event (organizer only)
+    /// Phase 6A.45: Attendee management and export system
+    /// </summary>
+    [HttpGet("{eventId:guid}/attendees")]
+    [Authorize]
+    [ProducesResponseType(typeof(EventAttendeesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventAttendees(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} requesting attendees for event {EventId}", userId, eventId);
+
+        // First, get event to check ownership
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        // Authorization: Only event organizer can view attendees
+        if (eventResult.Value!.OrganizerId != userId)
+        {
+            Logger.LogWarning("User {UserId} attempted to access attendees for event {EventId} without authorization",
+                userId, eventId);
+            return Forbid();
+        }
+
+        // Get attendees
+        var query = new LankaConnect.Application.Events.Queries.GetEventAttendees.GetEventAttendeesQuery(eventId);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Export event attendees to Excel or CSV (organizer only)
+    /// Phase 6A.45: Multi-sheet Excel export with signup lists
+    /// </summary>
+    [HttpGet("{eventId:guid}/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExportEventAttendees(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} requesting export for event {EventId} in format {Format}",
+            userId, eventId, format);
+
+        // First, get event to check ownership
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        // Authorization: Only event organizer can export attendees
+        if (eventResult.Value!.OrganizerId != userId)
+        {
+            Logger.LogWarning("User {UserId} attempted to export attendees for event {EventId} without authorization",
+                userId, eventId);
+            return Forbid();
+        }
+
+        // Parse format
+        var exportFormat = format.ToLower() == "csv"
+            ? LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv
+            : LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel;
+
+        // Export attendees
+        var query = new LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportEventAttendeesQuery(
+            eventId,
+            exportFormat);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            return HandleResult(result);
+        }
+
+        Logger.LogInformation("Successfully exported attendees for event {EventId} in {Format} format. File: {FileName}",
+            eventId, format, result.Value!.FileName);
+
+        return File(
+            result.Value.FileContent,
+            result.Value.ContentType,
+            result.Value.FileName
+        );
+    }
+
+    #endregion
 }
 
 // Request DTOs
@@ -1745,6 +1875,9 @@ public record RsvpRequest(
 /// Phase 6A.43: Updated to support multi-attendee format with AgeCategory/Gender
 /// Supports both legacy format (Name/Age) and new format (Attendees array)
 /// </summary>
+/// <summary>
+/// Phase 6A.44: Updated to include SuccessUrl and CancelUrl for Stripe Checkout
+/// </summary>
 public record AnonymousRegistrationRequest(
     // Legacy format fields (backward compatibility)
     string? Name = null,
@@ -1756,7 +1889,10 @@ public record AnonymousRegistrationRequest(
     string Email = "",
     string PhoneNumber = "",
     // Quantity for multiple attendees
-    int Quantity = 1);
+    int Quantity = 1,
+    // Phase 6A.44: Stripe checkout URLs (required for paid events)
+    string? SuccessUrl = null,
+    string? CancelUrl = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration
@@ -1765,6 +1901,15 @@ public record AnonymousAttendeeDto(
     string Name,
     LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
     LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+
+/// <summary>
+/// Phase 6A.44: Response from anonymous registration
+/// </summary>
+public record AnonymousRegistrationResponse(
+    bool Success,
+    string? CheckoutUrl,
+    string Message);
+
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 /// <summary>
 /// Phase 6A.14: Request to update registration details

@@ -11,6 +11,7 @@ import type {
   UpdateEventRequest,
   RsvpRequest,
   AnonymousRegistrationRequest,
+  AnonymousRegistrationResponse, // Phase 6A.44
   UpdateRsvpRequest,
   UpdateRegistrationRequest,
   CancelEventRequest,
@@ -292,9 +293,10 @@ export class EventsRepository {
    * Register anonymous attendee for an event
    * No authentication required - for users without accounts
    * Maps to backend RegisterAnonymousAttendeeCommand
+   * Phase 6A.44: Returns checkout URL for paid events, null for free events
    */
-  async registerAnonymous(eventId: string, request: AnonymousRegistrationRequest): Promise<void> {
-    await apiClient.post<void>(`${this.basePath}/${eventId}/register-anonymous`, request);
+  async registerAnonymous(eventId: string, request: AnonymousRegistrationRequest): Promise<AnonymousRegistrationResponse> {
+    return await apiClient.post<AnonymousRegistrationResponse>(`${this.basePath}/${eventId}/register-anonymous`, request);
   }
 
   /**

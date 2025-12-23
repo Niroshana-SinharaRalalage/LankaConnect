@@ -22,24 +22,31 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // - Convert 'age' (int) to 'age_category' (string: "Adult" or "Child")
             // - Add 'gender' field as null
             // - Age <= 18 → "Child", Age > 18 → "Adult"
+            // NOTE: This migration is idempotent and safe to run on empty databases
             migrationBuilder.Sql(@"
-                UPDATE registrations
-                SET attendees = (
-                    SELECT jsonb_agg(
-                        jsonb_build_object(
-                            'name', elem->>'name',
-                            'age_category', CASE
-                                WHEN (elem->>'age')::int <= 18 THEN 'Child'
-                                ELSE 'Adult'
-                            END,
-                            'gender', null::text
+                DO $$
+                BEGIN
+                    -- Only run if registrations table exists
+                    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'registrations') THEN
+                        UPDATE registrations
+                        SET attendees = (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'name', elem->>'name',
+                                    'age_category', CASE
+                                        WHEN (elem->>'age')::int <= 18 THEN 'Child'
+                                        ELSE 'Adult'
+                                    END,
+                                    'gender', null::text
+                                )
+                            )
+                            FROM jsonb_array_elements(attendees) elem
                         )
-                    )
-                    FROM jsonb_array_elements(attendees) elem
-                )
-                WHERE attendees IS NOT NULL
-                  AND jsonb_array_length(attendees) > 0
-                  AND attendees->0 ? 'age';
+                        WHERE attendees IS NOT NULL
+                          AND jsonb_array_length(attendees) > 0
+                          AND attendees->0 ? 'age';
+                    END IF;
+                END $$;
             ");
         }
 
@@ -48,23 +55,30 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         {
             // Reverse transformation: Convert age_category back to age
             // Adult → 25 (default adult age), Child → 10 (default child age)
+            // NOTE: This migration is idempotent and safe to run on empty databases
             migrationBuilder.Sql(@"
-                UPDATE registrations
-                SET attendees = (
-                    SELECT jsonb_agg(
-                        jsonb_build_object(
-                            'name', elem->>'name',
-                            'age', CASE
-                                WHEN elem->>'age_category' = 'Child' THEN 10
-                                ELSE 25
-                            END
+                DO $$
+                BEGIN
+                    -- Only run if registrations table exists
+                    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'registrations') THEN
+                        UPDATE registrations
+                        SET attendees = (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'name', elem->>'name',
+                                    'age', CASE
+                                        WHEN elem->>'age_category' = 'Child' THEN 10
+                                        ELSE 25
+                                    END
+                                )
+                            )
+                            FROM jsonb_array_elements(attendees) elem
                         )
-                    )
-                    FROM jsonb_array_elements(attendees) elem
-                )
-                WHERE attendees IS NOT NULL
-                  AND jsonb_array_length(attendees) > 0
-                  AND attendees->0 ? 'age_category';
+                        WHERE attendees IS NOT NULL
+                          AND jsonb_array_length(attendees) > 0
+                          AND attendees->0 ? 'age_category';
+                    END IF;
+                END $$;
             ");
         }
     }

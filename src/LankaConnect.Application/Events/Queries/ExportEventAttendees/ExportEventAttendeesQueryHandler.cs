@@ -2,6 +2,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,14 +49,11 @@ public class ExportEventAttendeesQueryHandler
 
         if (request.Format == ExportFormat.Excel)
         {
-            var signUpLists = await _context.SignUpLists
-                .AsNoTracking()
-                .Include(s => s.Items)
-                    .ThenInclude(i => i.Commitments)
-                .Where(s => s.EventId == request.EventId)
-                .ToListAsync(cancellationToken);
-
-            signUpListDtos = signUpLists.Select(s => new SignUpListDto
+            // Get event with sign up lists
+            var eventWithSignUps = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+            if (eventWithSignUps != null && eventWithSignUps.SignUpLists.Any())
+            {
+                signUpListDtos = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
             {
                 Id = s.Id,
                 Category = s.Category,
@@ -70,7 +68,7 @@ public class ExportEventAttendeesQueryHandler
                     ItemDescription = i.ItemDescription,
                     Quantity = i.Quantity,
                     RemainingQuantity = i.RemainingQuantity,
-                    ItemCategory = i.Category,
+                    ItemCategory = i.ItemCategory,
                     CreatedByUserId = i.CreatedByUserId,
                     Commitments = i.Commitments.Select(c => new SignUpCommitmentDto
                     {
@@ -85,6 +83,7 @@ public class ExportEventAttendeesQueryHandler
                     }).ToList()
                 }).ToList()
             }).ToList();
+            }
         }
 
         // Generate export based on format

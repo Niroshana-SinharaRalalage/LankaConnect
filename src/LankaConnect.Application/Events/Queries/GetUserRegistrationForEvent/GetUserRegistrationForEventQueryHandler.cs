@@ -40,10 +40,12 @@ public class GetUserRegistrationForEventQueryHandler
                 UpdatedAt = r.UpdatedAt,
 
                 // Map attendees (Session 21 multi-attendee feature)
+                // Phase 6A.43: Updated to use AgeCategory instead of Age
                 Attendees = r.Attendees.Select(a => new AttendeeDetailsDto
                 {
                     Name = a.Name,
-                    Age = a.Age
+                    AgeCategory = a.AgeCategory,
+                    Gender = a.Gender
                 }).ToList(),
 
                 // Contact information

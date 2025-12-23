@@ -120,8 +120,9 @@ public class TicketService : ITicketService
             var qrCodeBase64 = _qrCodeService.GenerateQrCodeBase64(ticket.QrCodeData);
 
             // Prepare attendee info for PDF
+            // Phase 6A.43: Use AgeCategory instead of Age
             var attendees = registration.Attendees
-                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.Age))
+                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
                 .ToList();
 
             var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()
@@ -259,8 +260,9 @@ public class TicketService : ITicketService
         var qrCodeBase64 = _qrCodeService.GenerateQrCodeBase64(ticket.QrCodeData);
 
         // Prepare attendee info
+        // Phase 6A.43: Use AgeCategory instead of Age
         var attendees = registration.Attendees
-            .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.Age))
+            .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
             .ToList();
 
         var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()

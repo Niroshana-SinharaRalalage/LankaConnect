@@ -143,12 +143,13 @@ public class PdfTicketService : IPdfTicketService
                 });
 
                 // Attendee list
+                // Phase 6A.43: Use AgeCategory instead of Age
                 foreach (var attendee in data.Attendees)
                 {
                     column.Item().Row(r =>
                     {
                         r.ConstantItem(80).Text("");
-                        r.RelativeItem().Text($"• {attendee.Name} (Age: {attendee.Age})");
+                        r.RelativeItem().Text($"• {attendee.Name} ({attendee.AgeCategory})");
                     });
                 }
 

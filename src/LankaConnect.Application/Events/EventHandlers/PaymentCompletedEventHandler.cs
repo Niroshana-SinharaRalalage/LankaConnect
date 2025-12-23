@@ -95,48 +95,41 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     : "Guest";
             }
 
-            // Phase 6A.24 FIX: Format attendee details as HTML/text strings for template rendering
-            // Previously passed List<Dictionary> which rendered as garbage with ToString()
+            // Phase 6A.43: Format attendee details - names only (no age) to match free event template
             var attendeeDetailsHtml = new System.Text.StringBuilder();
-            var attendeeDetailsText = new System.Text.StringBuilder();
 
-            if (registration.HasDetailedAttendees())
+            if (registration.HasDetailedAttendees() && registration.Attendees.Any())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    // HTML format for ticket-confirmation-html.html
-                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
-
-                    // Plain text format for ticket-confirmation-text.txt
-                    attendeeDetailsText.AppendLine($"- {attendee.Name} (Age: {attendee.Age})");
+                    // HTML format - names only, matching free event template style
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
                 }
             }
-            else
-            {
-                // Fallback if no detailed attendees
-                attendeeDetailsHtml.AppendLine($"<p>{domainEvent.AttendeeCount} attendee(s)</p>");
-                attendeeDetailsText.AppendLine($"{domainEvent.AttendeeCount} attendee(s)");
-            }
 
-            // Prepare email parameters with payment details
-            // Phase 6A.24 FIX: Added AttendeeCount to match template variable {{AttendeeCount}}
-            // Template also uses {{Quantity}} for backward compatibility
+            // Phase 6A.43: Prepare email parameters aligned with free event template
+            var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
+
+            // Get event's primary image URL (direct URL, no CID)
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? "";
+            var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
+
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", recipientName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
+                // Phase 6A.43: Use date range format matching free event template
+                { "EventDateTime", FormatEventDateTimeRange(@event.StartDate, @event.EndDate) },
                 { "EventLocation", GetEventLocationString(@event) },
-                { "Quantity", domainEvent.AttendeeCount },
-                { "AttendeeCount", domainEvent.AttendeeCount }, // Phase 6A.24 FIX: Template uses {{AttendeeCount}}
                 { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                // Phase 6A.24 FIX: Attendee details as formatted HTML string (not List<Dictionary>)
+                // Attendee details - names only (no age)
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                { "HasAttendeeDetails", registration.HasDetailedAttendees() },
+                { "HasAttendeeDetails", hasAttendeeDetails },
+                // Event image
+                { "EventImageUrl", eventImageUrl },
+                { "HasEventImage", hasEventImage },
                 // Payment details
-                { "IsPaidEvent", true },
                 { "AmountPaid", domainEvent.AmountPaid.ToString("C") },
                 { "PaymentIntentId", domainEvent.PaymentIntentId },
                 { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") }
@@ -271,5 +264,26 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             return street;
 
         return $"{street}, {city}";
+    }
+
+    /// <summary>
+    /// Phase 6A.43: Formats event date/time range for display.
+    /// Matches the format used in RegistrationConfirmedEventHandler.
+    /// Examples:
+    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
+    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
+        {
+            // Same day event
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
+        }
     }
 }

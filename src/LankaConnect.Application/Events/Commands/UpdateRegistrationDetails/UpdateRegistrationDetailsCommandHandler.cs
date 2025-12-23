@@ -30,8 +30,9 @@ public class UpdateRegistrationDetailsCommandHandler : ICommandHandler<UpdateReg
             return Result.Failure($"Event with ID {request.EventId} not found");
 
         // Convert DTOs to domain value objects
+        // Phase 6A.43: Updated to use AgeCategory instead of Age
         var attendeeResults = request.Attendees
-            .Select(a => AttendeeDetails.Create(a.Name, a.Age))
+            .Select(a => AttendeeDetails.Create(a.Name, a.AgeCategory, a.Gender))
             .ToList();
 
         // Check if any attendee creation failed

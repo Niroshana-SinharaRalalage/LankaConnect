@@ -77,6 +77,7 @@ public record TicketPdfData
 
     /// <summary>
     /// Attendee information for the ticket
+    /// Phase 6A.43: Updated to use AgeCategory string instead of numeric Age
     /// </summary>
-    public record AttendeeInfo(string Name, int Age);
+    public record AttendeeInfo(string Name, string AgeCategory);
 }

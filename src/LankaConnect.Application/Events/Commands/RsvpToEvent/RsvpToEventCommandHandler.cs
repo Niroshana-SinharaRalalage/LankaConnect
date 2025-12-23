@@ -67,10 +67,11 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             return Result<string?>.Failure("Email and phone number are required for multi-attendee registration");
 
         // Create AttendeeDetails value objects from DTOs
+        // Phase 6A.43: Updated to use AgeCategory instead of Age
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
-            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.Age);
+            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
             if (attendeeResult.IsFailure)
                 return Result<string?>.Failure(attendeeResult.Error);
 

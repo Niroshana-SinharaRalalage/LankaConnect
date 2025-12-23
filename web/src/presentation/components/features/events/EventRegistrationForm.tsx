@@ -7,6 +7,7 @@ import { Clock } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Registration Form Component
@@ -58,9 +59,10 @@ export function EventRegistrationForm({
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Session 21: Multi-attendee state (array of { name, age } objects)
-  const [attendees, setAttendees] = useState<Array<{ name: string; age: number | '' }>>([
-    { name: '', age: '' },
+  // Session 21: Multi-attendee state
+  // Phase 6A.43: Updated to use AgeCategory and Gender instead of age
+  const [attendees, setAttendees] = useState<Array<{ name: string; ageCategory: AgeCategory | ''; gender: Gender | null }>>([
+    { name: '', ageCategory: '', gender: null },
   ]);
 
   // Validation state
@@ -95,11 +97,12 @@ export function EventRegistrationForm({
       }
 
       // Pre-populate first attendee with user's profile name
-      // Note: Age must still be entered by user as it's not stored in profile
+      // Note: AgeCategory and Gender must still be entered by user
       setAttendees([
         {
           name: `${profile.firstName} ${profile.lastName}`.trim(),
-          age: '',
+          ageCategory: '',
+          gender: null,
         },
       ]);
     }
@@ -109,7 +112,7 @@ export function EventRegistrationForm({
   useEffect(() => {
     const newAttendees = Array.from({ length: quantity }, (_, index) => {
       // Preserve existing attendee data if available
-      return attendees[index] || { name: '', age: '' };
+      return attendees[index] || { name: '', ageCategory: '', gender: null };
     });
     setAttendees(newAttendees);
     setTouched(prev => ({
@@ -119,12 +122,16 @@ export function EventRegistrationForm({
   }, [quantity]);
 
   // Session 21: Update individual attendee
-  const handleAttendeeChange = (index: number, field: 'name' | 'age', value: string | number) => {
+  // Phase 6A.43: Updated to handle AgeCategory and Gender
+  const handleAttendeeChange = (index: number, field: 'name' | 'ageCategory' | 'gender', value: string | AgeCategory | Gender | null) => {
     const updated = [...attendees];
-    updated[index] = {
-      ...updated[index],
-      [field]: field === 'age' ? (value === '' ? '' : Number(value)) : value,
-    };
+    if (field === 'name') {
+      updated[index] = { ...updated[index], name: value as string };
+    } else if (field === 'ageCategory') {
+      updated[index] = { ...updated[index], ageCategory: value === '' ? '' : (value as AgeCategory) };
+    } else if (field === 'gender') {
+      updated[index] = { ...updated[index], gender: value === '' ? null : (value as Gender) };
+    }
     setAttendees(updated);
   };
 
@@ -172,13 +179,13 @@ export function EventRegistrationForm({
       return 0; // No applicable tier found
     }
 
-    // Session 21: Dual pricing (age-based)
-    if (hasDualPricing && adultPrice && childPrice && childAgeLimit) {
-      // Calculate based on attendee ages
+    // Session 21: Dual pricing (age category-based)
+    // Phase 6A.43: Updated to use AgeCategory instead of age
+    if (hasDualPricing && adultPrice && childPrice) {
+      // Calculate based on attendee age categories
       return attendees.reduce((total, attendee) => {
-        if (attendee.age === '' || attendee.age === 0) return total;
-        const age = Number(attendee.age);
-        return total + (age < childAgeLimit ? childPrice : adultPrice);
+        if (attendee.ageCategory === '') return total;
+        return total + (attendee.ageCategory === AgeCategory.Child ? childPrice : adultPrice);
       }, 0);
     }
 
@@ -191,27 +198,29 @@ export function EventRegistrationForm({
   };
 
   // Validation - BOTH authenticated and anonymous users need contact info
+  // Phase 6A.43: Updated validation to use AgeCategory instead of age
   const errors = {
     address: touched.address && !address.trim() ? 'Address is required' : '',
     email: touched.email && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
     phoneNumber: touched.phoneNumber && (!phoneNumber.trim() || !/^\+?[\d\s\-()]+$/.test(phoneNumber)) ? 'Valid phone number is required' : '',
     attendees: attendees.map((attendee, index) => {
-      if (!touched.attendees[index]) return { name: '', age: '' };
+      if (!touched.attendees[index]) return { name: '', ageCategory: '' };
       return {
         name: !attendee.name.trim() ? 'Name is required' : '',
-        age: !attendee.age || attendee.age < 1 || attendee.age > 120 ? 'Valid age is required (1-120)' : '',
+        ageCategory: attendee.ageCategory === '' ? 'Please select Adult or Child' : '',
       };
     }),
   };
 
   // BOTH authenticated and anonymous users must provide all fields
+  // Phase 6A.43: Updated to validate AgeCategory instead of age
   const isFormValid =
     address.trim() &&
     email.trim() &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
     phoneNumber.trim() &&
     /^\+?[\d\s\-()]+$/.test(phoneNumber) &&
-    attendees.every(a => a.name.trim() && a.age && a.age >= 1 && a.age <= 120);
+    attendees.every(a => a.name.trim() && a.ageCategory !== '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,24 +238,31 @@ export function EventRegistrationForm({
     }
 
     // Session 21: Prepare attendees array in new format
+    // Phase 6A.43: Updated to use AgeCategory and Gender instead of age
     const attendeesData: AttendeeDto[] = attendees.map(a => ({
       name: a.name.trim(),
-      age: Number(a.age),
+      ageCategory: a.ageCategory as AgeCategory,
+      gender: a.gender,
     }));
 
     if (!user) {
-      // Anonymous registration with multi-attendee
+      // Anonymous registration
+      // Phase 6A.43: Use multi-attendee format with AgeCategory and Gender
       const anonymousData: AnonymousRegistrationRequest = {
-        attendees: attendeesData,
+        // Contact information
         address: address.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
+        // Quantity for multiple attendees
+        quantity: attendeesData.length,
+        // Attendees array with AgeCategory and Gender
+        attendees: attendeesData,
       };
 
       await onSubmit(anonymousData);
     } else {
       // Authenticated registration with multi-attendee
-      // Phase 6A.11: Include quantity field for authenticated users
+      // Phase 6A.43: Updated to use AgeCategory and Gender
       const rsvpData: RsvpRequest = {
         userId: user.userId,
         quantity: attendeesData.length, // Include quantity based on number of attendees
@@ -289,7 +305,7 @@ export function EventRegistrationForm({
         <h4 className="text-sm font-semibold mb-3 text-neutral-700">Attendee Information</h4>
         {!user && (
           <p className="text-xs text-neutral-500 mb-4">
-            Please provide name and age for each attendee
+            Please provide name, age category, and optionally gender for each attendee
           </p>
         )}
         {user && profile && (
@@ -325,31 +341,65 @@ export function EventRegistrationForm({
                   )}
                 </div>
 
-                {/* Age */}
+                {/* Phase 6A.43: Age Category - Radio buttons */}
                 <div>
                   <label className="block text-sm font-medium mb-2 text-neutral-700">
-                    Age <span className="text-red-500">*</span>
-                    {hasDualPricing && childAgeLimit && (
+                    Age Category <span className="text-red-500">*</span>
+                    {hasDualPricing && (
                       <span className="text-xs text-neutral-500 ml-2">
-                        (Under {childAgeLimit} = child price)
+                        (Child = child price)
                       </span>
                     )}
                   </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={attendee.age}
-                    onChange={(e) => handleAttendeeChange(index, 'age', e.target.value ? parseInt(e.target.value) : '')}
-                    onBlur={() => handleAttendeeTouched(index)}
-                    error={!!errors.attendees[index]?.age}
-                    disabled={isProcessing}
-                    placeholder="Age"
-                    className="w-full"
-                  />
-                  {errors.attendees[index]?.age && (
-                    <p className="text-xs text-red-600 mt-1">{errors.attendees[index].age}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`ageCategory-${index}`}
+                        value={AgeCategory.Adult}
+                        checked={attendee.ageCategory === AgeCategory.Adult}
+                        onChange={() => handleAttendeeChange(index, 'ageCategory', AgeCategory.Adult)}
+                        onBlur={() => handleAttendeeTouched(index)}
+                        disabled={isProcessing}
+                        className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-neutral-700">Adult</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`ageCategory-${index}`}
+                        value={AgeCategory.Child}
+                        checked={attendee.ageCategory === AgeCategory.Child}
+                        onChange={() => handleAttendeeChange(index, 'ageCategory', AgeCategory.Child)}
+                        onBlur={() => handleAttendeeTouched(index)}
+                        disabled={isProcessing}
+                        className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-neutral-700">Child</span>
+                    </label>
+                  </div>
+                  {errors.attendees[index]?.ageCategory && (
+                    <p className="text-xs text-red-600 mt-1">{errors.attendees[index].ageCategory}</p>
                   )}
+                </div>
+
+                {/* Phase 6A.43: Gender - Dropdown (optional) */}
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-700">
+                    Gender <span className="text-xs text-neutral-400">(optional)</span>
+                  </label>
+                  <select
+                    value={attendee.gender ?? ''}
+                    onChange={(e) => handleAttendeeChange(index, 'gender', e.target.value === '' ? null : Number(e.target.value))}
+                    disabled={isProcessing}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value={Gender.Male}>Male</option>
+                    <option value={Gender.Female}>Female</option>
+                    <option value={Gender.Other}>Other</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -526,17 +576,19 @@ export function EventRegistrationForm({
           )}
 
           {/* Session 21: Dual Pricing Breakdown */}
-          {hasDualPricing && adultPrice && childPrice && childAgeLimit && (
+          {/* Phase 6A.43: Updated to use AgeCategory instead of age */}
+          {hasDualPricing && adultPrice && childPrice && (
             <div className="mb-3 space-y-2 text-sm">
               <h5 className="font-medium text-neutral-700">Price Breakdown:</h5>
               {attendees.map((attendee, index) => {
-                if (!attendee.age) return null;
-                const age = Number(attendee.age);
-                const price = age < childAgeLimit ? childPrice : adultPrice;
-                const priceType = age < childAgeLimit ? 'Child' : 'Adult';
+                if (attendee.ageCategory === '') return null;
+                const isChild = attendee.ageCategory === AgeCategory.Child;
+                const price = isChild ? childPrice : adultPrice;
+                const priceType = isChild ? 'Child' : 'Adult';
+                const genderLabel = attendee.gender ? `, ${Gender[attendee.gender]}` : '';
                 return (
                   <div key={index} className="flex justify-between text-xs text-neutral-600">
-                    <span>{attendee.name || `Attendee ${index + 1}`} ({priceType}, Age {age})</span>
+                    <span>{attendee.name || `Attendee ${index + 1}`} ({priceType}{genderLabel})</span>
                     <span>${price.toFixed(2)}</span>
                   </div>
                 );

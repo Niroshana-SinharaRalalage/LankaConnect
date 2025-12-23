@@ -718,13 +718,13 @@ public class Event : BaseEntity
                 return Result<Money>.Success(groupPriceResult.Value);
             }
 
-            // Dual pricing (AgeDual): Calculate for each attendee based on age
-            // Single pricing: Also uses CalculateForAttendee (returns AdultPrice for all)
+            // Dual pricing (AgeDual): Calculate for each attendee based on age category
+            // Single pricing: Also uses CalculateForCategory (returns AdultPrice for all)
             Money? totalPrice = null;
 
             foreach (var attendee in attendees)
             {
-                var attendeePrice = Pricing.CalculateForAttendee(attendee.Age);
+                var attendeePrice = Pricing.CalculateForCategory(attendee.AgeCategory);
 
                 if (totalPrice == null)
                 {

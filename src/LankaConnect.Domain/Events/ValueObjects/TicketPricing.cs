@@ -214,7 +214,20 @@ public class TicketPricing : ValueObject
     #region Age-based Pricing Methods
 
     /// <summary>
+    /// Calculates the ticket price for an attendee based on their age category
+    /// Child category gets child price if available, otherwise adult price
+    /// </summary>
+    public Money CalculateForCategory(AgeCategory ageCategory)
+    {
+        if (HasChildPricing && ageCategory == AgeCategory.Child)
+            return ChildPrice!;
+
+        return AdultPrice;
+    }
+
+    /// <summary>
     /// Determines if the given age qualifies for child pricing (AgeDual only)
+    /// Kept for backward compatibility during migration
     /// </summary>
     public bool IsChildAge(int age)
     {
@@ -229,7 +242,9 @@ public class TicketPricing : ValueObject
 
     /// <summary>
     /// Calculates the ticket price for an attendee based on their age (AgeDual only)
+    /// Kept for backward compatibility during migration - use CalculateForCategory instead
     /// </summary>
+    [Obsolete("Use CalculateForCategory(AgeCategory) instead")]
     public Money CalculateForAttendee(int age)
     {
         if (HasChildPricing && IsChildAge(age))

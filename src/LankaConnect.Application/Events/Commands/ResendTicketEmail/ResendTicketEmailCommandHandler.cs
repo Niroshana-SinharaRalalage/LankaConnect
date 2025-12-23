@@ -140,14 +140,14 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 return Result.Failure("No email address found for this registration");
             }
 
-            // 8. Phase 6A.24 FIX: Format attendee details as HTML string (not List<Dictionary>)
+            // 8. Phase 6A.44 FIX: Format attendee details - names only (no age) to match PaymentCompletedEventHandler
             var attendeeDetailsHtml = new System.Text.StringBuilder();
             if (registration.HasDetailedAttendees())
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    var genderInfo = attendee.Gender.HasValue ? $", {attendee.Gender}" : "";
-                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> ({attendee.AgeCategory}{genderInfo})</p>");
+                    // Phase 6A.44: Format attendee details - names only (no age displayed)
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
                 }
             }
             else
@@ -155,24 +155,38 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 attendeeDetailsHtml.AppendLine($"<p>{registration.GetAttendeeCount()} attendee(s)</p>");
             }
 
+            // Phase 6A.43 FIX: Align parameters with PaymentCompletedEventHandler
+            // Get event's primary image URL (direct URL, no CID)
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? "";
+            var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
+
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", recipientName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
-                { "AttendeeCount", registration.GetAttendeeCount() },
+                // Phase 6A.43: Use date range format matching PaymentCompletedEventHandler
+                { "EventDateTime", FormatEventDateTimeRange(@event.StartDate, @event.EndDate) },
+                { "EventLocation", GetEventLocationString(@event) },
+                { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                // Attendee details - names only (no age)
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                 { "HasAttendeeDetails", registration.HasDetailedAttendees() },
-                { "IsPaidEvent", true },
+                // Event image
+                { "EventImageUrl", eventImageUrl },
+                { "HasEventImage", hasEventImage },
+                // Payment details
                 { "AmountPaid", registration.TotalPrice?.Amount.ToString("C") ?? "$0.00" },
                 { "PaymentIntentId", registration.StripePaymentIntentId ?? "" },
-                { "PaymentDate", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
+                { "PaymentDate", registration.UpdatedAt?.ToString("MMMM dd, yyyy h:mm tt") ?? DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
+                // Ticket details
                 { "HasTicket", true },
                 { "TicketCode", ticket.TicketCode },
                 { "TicketExpiryDate", @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy") },
-                { "ContactEmail", registration.Contact?.Email ?? "support@lankaconnect.com" }
+                // Contact information
+                { "ContactEmail", registration.Contact?.Email ?? "support@lankaconnect.com" },
+                { "ContactPhone", registration.Contact?.PhoneNumber ?? "" },
+                { "HasContactInfo", registration.Contact != null }
             };
 
             // 9. Render email template
@@ -228,5 +242,51 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 request.RegistrationId);
             return Result.Failure($"Error processing ticket email: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.43 FIX: Formats event date/time range matching PaymentCompletedEventHandler.
+    /// Examples:
+    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
+    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
+        {
+            // Same day event - show date once with "from X to Y"
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event - show full date/time for both
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.43 FIX: Gets event location string matching PaymentCompletedEventHandler.
+    /// Handles data inconsistency where has_location=true but address fields are null.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        // Check if Location or Address is null (defensive against data inconsistency)
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        // Handle case where address fields exist but are empty
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
     }
 }

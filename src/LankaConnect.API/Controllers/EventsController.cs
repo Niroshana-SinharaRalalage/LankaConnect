@@ -781,7 +781,7 @@ public class EventsController : BaseController<EventsController>
         var command = new UpdateRegistrationDetailsCommand(
             eventId,
             userId,
-            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.Age)).ToList()
+            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
                 ?? new List<Application.Events.Commands.RsvpToEvent.AttendeeDto>(),
             request.Email,
             request.PhoneNumber,
@@ -1727,8 +1727,12 @@ public record UpdateRegistrationRequest(
     string? Address = null);
 /// <summary>
 /// Phase 6A.14: Attendee DTO for registration update
+/// Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
 /// </summary>
-public record UpdateRegistrationAttendeeDto(string Name, int Age);
+public record UpdateRegistrationAttendeeDto(
+    string Name,
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2

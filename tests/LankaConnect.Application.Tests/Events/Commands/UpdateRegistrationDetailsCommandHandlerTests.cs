@@ -47,7 +47,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         // Register the user with multi-attendee format
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("John Doe", 30).Value
+            AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value
         };
         var contact = RegistrationContact.Create("john@example.com", "555-1234", null).Value;
         @event.RegisterWithAttendees(userId, attendees, contact);
@@ -75,8 +75,8 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         // Register the user with multi-attendee format for paid event
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("John Doe", 30).Value,
-            AttendeeDetails.Create("Jane Doe", 28).Value
+            AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value,
+            AttendeeDetails.Create("Jane Doe", AgeCategory.Adult).Value
         };
         var contact = RegistrationContact.Create("john@example.com", "555-1234", null).Value;
         @event.RegisterWithAttendees(userId, attendees, contact);
@@ -100,7 +100,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             @event.Id,
             userId,
-            new List<AttendeeDto> { new("Jane Smith", 25) },
+            new List<AttendeeDto> { new("Jane Smith", AgeCategory.Adult) },
             "jane@example.com",
             "555-9999",
             "123 Main St");
@@ -120,7 +120,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         registration.Attendees.Should().HaveCount(1);
         registration.Attendees[0].Name.Should().Be("Jane Smith");
-        registration.Attendees[0].Age.Should().Be(25);
+        registration.Attendees[0].AgeCategory.Should().Be(AgeCategory.Adult);
         registration.Contact!.Email.Should().Be("jane@example.com");
         registration.Contact.PhoneNumber.Should().Be("555-9999");
         registration.Contact.Address.Should().Be("123 Main St");
@@ -134,7 +134,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             Guid.NewGuid(),
             Guid.NewGuid(),
-            new List<AttendeeDto> { new("John Doe", 30) },
+            new List<AttendeeDto> { new("John Doe", AgeCategory.Adult) },
             "john@example.com",
             "555-1234",
             null);
@@ -163,7 +163,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             @event.Id,
             differentUserId, // Different user who is not registered
-            new List<AttendeeDto> { new("John Doe", 30) },
+            new List<AttendeeDto> { new("John Doe", AgeCategory.Adult) },
             "john@example.com",
             "555-1234",
             null);
@@ -191,7 +191,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             @event.Id,
             userId,
-            new List<AttendeeDto> { new("John Doe", 30) },
+            new List<AttendeeDto> { new("John Doe", AgeCategory.Adult) },
             "invalid-email", // Invalid email
             "555-1234",
             null);
@@ -250,8 +250,8 @@ public class UpdateRegistrationDetailsCommandHandlerTests
             userId,
             new List<AttendeeDto>
             {
-                new("John Smith", 31),
-                new("Jane Smith", 29)
+                new("John Smith", AgeCategory.Adult),
+                new("Jane Smith", AgeCategory.Adult)
             },
             "smith@example.com",
             "555-8888",
@@ -288,9 +288,9 @@ public class UpdateRegistrationDetailsCommandHandlerTests
             userId,
             new List<AttendeeDto>
             {
-                new("John Doe", 30),
-                new("Jane Doe", 28),
-                new("New Person", 25) // Adding third attendee
+                new("John Doe", AgeCategory.Adult),
+                new("Jane Doe", AgeCategory.Adult),
+                new("New Person", AgeCategory.Adult) // Adding third attendee
             },
             "john@example.com",
             "555-1234",
@@ -322,9 +322,9 @@ public class UpdateRegistrationDetailsCommandHandlerTests
             userId,
             new List<AttendeeDto>
             {
-                new("Person 1", 25),
-                new("Person 2", 30),
-                new("Person 3", 35)
+                new("Person 1", AgeCategory.Adult),
+                new("Person 2", AgeCategory.Adult),
+                new("Person 3", AgeCategory.Adult)
             },
             "john@example.com",
             "555-1234",
@@ -357,7 +357,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             @event.Id,
             userId,
-            new List<AttendeeDto> { new("", 30) }, // Empty name
+            new List<AttendeeDto> { new("", AgeCategory.Adult) }, // Empty name
             "john@example.com",
             "555-1234",
             null);
@@ -383,7 +383,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var @event = CreatePublishedEventWithRegistration(userId, out _);
 
         var attendees = Enumerable.Range(1, 11)
-            .Select(i => new AttendeeDto($"Person {i}", 25 + i))
+            .Select(i => new AttendeeDto($"Person {i}", AgeCategory.Adult))
             .ToList();
 
         var command = new UpdateRegistrationDetailsCommand(
@@ -418,7 +418,7 @@ public class UpdateRegistrationDetailsCommandHandlerTests
         var command = new UpdateRegistrationDetailsCommand(
             @event.Id,
             userId,
-            new List<AttendeeDto> { new("John Doe", 30) },
+            new List<AttendeeDto> { new("John Doe", AgeCategory.Adult) },
             "john@example.com",
             "555-1234",
             null);

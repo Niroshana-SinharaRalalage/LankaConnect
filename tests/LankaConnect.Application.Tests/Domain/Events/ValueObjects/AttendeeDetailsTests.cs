@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using Xunit;
 
@@ -11,19 +12,19 @@ namespace LankaConnect.Domain.UnitTests.Events.ValueObjects;
 public class AttendeeDetailsTests
 {
     [Fact]
-    public void Create_WithValidNameAndAge_ShouldSucceed()
+    public void Create_WithValidNameAndAgeCategory_ShouldSucceed()
     {
         // Arrange
         var name = "John Doe";
-        var age = 30;
+        var ageCategory = AgeCategory.Adult;
 
         // Act
-        var result = AttendeeDetails.Create(name, age);
+        var result = AttendeeDetails.Create(name, ageCategory);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be(name);
-        result.Value.Age.Should().Be(age);
+        result.Value.AgeCategory.Should().Be(ageCategory);
     }
 
     [Theory]
@@ -33,7 +34,7 @@ public class AttendeeDetailsTests
     public void Create_WithInvalidName_ShouldFail(string invalidName)
     {
         // Act
-        var result = AttendeeDetails.Create(invalidName, 30);
+        var result = AttendeeDetails.Create(invalidName, AgeCategory.Adult);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -42,49 +43,31 @@ public class AttendeeDetailsTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(-10)]
-    public void Create_WithZeroOrNegativeAge_ShouldFail(int invalidAge)
+    [InlineData(99)]
+    public void Create_WithInvalidAgeCategory_ShouldFail(int invalidCategory)
     {
         // Act
-        var result = AttendeeDetails.Create("John Doe", invalidAge);
+        var result = AttendeeDetails.Create("John Doe", (AgeCategory)invalidCategory);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Age must be greater than 0");
+        result.Error.Should().Contain("Invalid age category");
     }
 
     [Theory]
-    [InlineData(121)]
-    [InlineData(150)]
-    [InlineData(200)]
-    public void Create_WithAgeTooHigh_ShouldFail(int invalidAge)
+    [InlineData("John Doe", AgeCategory.Adult)]
+    [InlineData("Jane Smith", AgeCategory.Child)]
+    [InlineData("Bob Johnson", AgeCategory.Adult)]
+    [InlineData("Alice Williams", AgeCategory.Child)]
+    public void Create_WithValidAgeCategories_ShouldSucceed(string name, AgeCategory ageCategory)
     {
         // Act
-        var result = AttendeeDetails.Create("John Doe", invalidAge);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Age must not exceed 120");
-    }
-
-    [Theory]
-    [InlineData("John Doe", 1)]
-    [InlineData("Jane Smith", 5)]
-    [InlineData("Bob Johnson", 12)]
-    [InlineData("Alice Williams", 18)]
-    [InlineData("Charlie Brown", 25)]
-    [InlineData("Eve Davis", 65)]
-    [InlineData("Frank Miller", 120)]
-    public void Create_WithValidAgeRange_ShouldSucceed(string name, int age)
-    {
-        // Act
-        var result = AttendeeDetails.Create(name, age);
+        var result = AttendeeDetails.Create(name, ageCategory);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be(name);
-        result.Value.Age.Should().Be(age);
+        result.Value.AgeCategory.Should().Be(ageCategory);
     }
 
     [Fact]
@@ -95,7 +78,7 @@ public class AttendeeDetailsTests
         var expectedName = "John Doe";
 
         // Act
-        var result = AttendeeDetails.Create(nameWithWhitespace, 30);
+        var result = AttendeeDetails.Create(nameWithWhitespace, AgeCategory.Adult);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -103,13 +86,13 @@ public class AttendeeDetailsTests
     }
 
     [Theory]
-    [InlineData("John Doe", 30)]
-    [InlineData("Jane Smith", 25)]
-    public void ValueObjectEquality_WithSameValues_ShouldBeEqual(string name, int age)
+    [InlineData("John Doe", AgeCategory.Adult)]
+    [InlineData("Jane Smith", AgeCategory.Child)]
+    public void ValueObjectEquality_WithSameValues_ShouldBeEqual(string name, AgeCategory ageCategory)
     {
         // Arrange
-        var details1 = AttendeeDetails.Create(name, age).Value;
-        var details2 = AttendeeDetails.Create(name, age).Value;
+        var details1 = AttendeeDetails.Create(name, ageCategory).Value;
+        var details2 = AttendeeDetails.Create(name, ageCategory).Value;
 
         // Act & Assert
         details1.Should().Be(details2);
@@ -121,8 +104,8 @@ public class AttendeeDetailsTests
     public void ValueObjectEquality_WithDifferentNames_ShouldNotBeEqual()
     {
         // Arrange
-        var details1 = AttendeeDetails.Create("John Doe", 30).Value;
-        var details2 = AttendeeDetails.Create("Jane Smith", 30).Value;
+        var details1 = AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value;
+        var details2 = AttendeeDetails.Create("Jane Smith", AgeCategory.Adult).Value;
 
         // Act & Assert
         details1.Should().NotBe(details2);
@@ -131,11 +114,11 @@ public class AttendeeDetailsTests
     }
 
     [Fact]
-    public void ValueObjectEquality_WithDifferentAges_ShouldNotBeEqual()
+    public void ValueObjectEquality_WithDifferentAgeCategories_ShouldNotBeEqual()
     {
         // Arrange
-        var details1 = AttendeeDetails.Create("John Doe", 30).Value;
-        var details2 = AttendeeDetails.Create("John Doe", 25).Value;
+        var details1 = AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value;
+        var details2 = AttendeeDetails.Create("John Doe", AgeCategory.Child).Value;
 
         // Act & Assert
         details1.Should().NotBe(details2);
@@ -145,12 +128,13 @@ public class AttendeeDetailsTests
     public void ToString_ShouldReturnFormattedString()
     {
         // Arrange
-        var details = AttendeeDetails.Create("John Doe", 30).Value;
+        var details = AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value;
 
         // Act
         var result = details.ToString();
 
         // Assert
-        result.Should().Be("John Doe (30)");
+        result.Should().Contain("John Doe");
+        result.Should().Contain("Adult");
     }
 }

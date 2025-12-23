@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -166,7 +167,7 @@ public class TicketPricingTests
     }
 
     [Fact]
-    public void CalculateForAttendee_ForChild_ShouldReturnChildPrice()
+    public void CalculateForCategory_ForChild_ShouldReturnChildPrice()
     {
         // Arrange
         var adultPrice = Money.Create(50.00m, Currency.USD).Value;
@@ -174,14 +175,14 @@ public class TicketPricingTests
         var pricing = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
         // Act
-        var result = pricing.CalculateForAttendee(8);
+        var result = pricing.CalculateForCategory(AgeCategory.Child);
 
         // Assert
         result.Should().Be(childPrice);
     }
 
     [Fact]
-    public void CalculateForAttendee_ForAdult_ShouldReturnAdultPrice()
+    public void CalculateForCategory_ForAdult_ShouldReturnAdultPrice()
     {
         // Arrange
         var adultPrice = Money.Create(50.00m, Currency.USD).Value;
@@ -189,21 +190,21 @@ public class TicketPricingTests
         var pricing = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
         // Act
-        var result = pricing.CalculateForAttendee(25);
+        var result = pricing.CalculateForCategory(AgeCategory.Adult);
 
         // Assert
         result.Should().Be(adultPrice);
     }
 
     [Fact]
-    public void CalculateForAttendee_WithNoChildPricing_ShouldReturnAdultPrice()
+    public void CalculateForCategory_WithNoChildPricing_ShouldReturnAdultPrice()
     {
         // Arrange
         var adultPrice = Money.Create(50.00m, Currency.USD).Value;
         var pricing = TicketPricing.Create(adultPrice, null, null).Value;
 
         // Act
-        var result = pricing.CalculateForAttendee(8);
+        var result = pricing.CalculateForCategory(AgeCategory.Child);
 
         // Assert
         result.Should().Be(adultPrice);

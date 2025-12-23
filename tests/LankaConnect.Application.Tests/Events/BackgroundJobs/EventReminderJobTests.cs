@@ -266,7 +266,7 @@ public class EventReminderJobTests
         // Add anonymous registration using attendee details
         var attendees = new[]
         {
-            AttendeeDetails.Create("Anonymous Attendee", 30).Value
+            AttendeeDetails.Create("Anonymous Attendee", AgeCategory.Adult).Value
         };
         var contact = RegistrationContact.Create(contactEmail, "555-1234", null).Value;
 

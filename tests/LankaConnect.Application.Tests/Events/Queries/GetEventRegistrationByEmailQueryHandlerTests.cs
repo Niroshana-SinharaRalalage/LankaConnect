@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -123,7 +124,7 @@ public class GetEventRegistrationByEmailQueryHandlerTests
 
         var attendee = AttendeeDetails.Create(
             name: "Test User",
-            age: 25
+            ageCategory: AgeCategory.Adult
         ).Value;
 
         var totalPrice = Money.Create(0, Currency.LKR).Value;

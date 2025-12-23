@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Commands.RsvpToEvent;
 
@@ -25,9 +26,10 @@ public record RsvpToEventCommand(
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>
-/// Session 21: Individual attendee information
+/// Individual attendee information with age category and optional gender
 /// </summary>
 public record AttendeeDto(
     string Name,
-    int Age
+    AgeCategory AgeCategory,
+    Gender? Gender = null
 );

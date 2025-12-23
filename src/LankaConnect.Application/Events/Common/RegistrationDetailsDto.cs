@@ -31,10 +31,11 @@ public record RegistrationDetailsDto
 }
 
 /// <summary>
-/// Individual attendee details
+/// Individual attendee details with age category and optional gender
 /// </summary>
 public record AttendeeDetailsDto
 {
     public string Name { get; init; } = string.Empty;
-    public int Age { get; init; }
+    public AgeCategory AgeCategory { get; init; }
+    public Gender? Gender { get; init; }
 }

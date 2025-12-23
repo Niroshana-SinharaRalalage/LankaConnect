@@ -48,7 +48,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
-            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.Age);
+            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
             if (attendeeResult.IsFailure)
                 return Result.Failure(attendeeResult.Error);
 

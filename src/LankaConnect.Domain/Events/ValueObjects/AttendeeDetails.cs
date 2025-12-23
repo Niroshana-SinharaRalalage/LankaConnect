@@ -1,16 +1,18 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Domain.Events.ValueObjects;
 
 /// <summary>
 /// Value object representing details of a single attendee
-/// Lightweight object containing only name and age
+/// Contains name, age category (Adult/Child), and optional gender
 /// Used in multi-attendee registration to store information for each person
 /// </summary>
 public class AttendeeDetails : ValueObject
 {
     public string Name { get; }
-    public int Age { get; }
+    public AgeCategory AgeCategory { get; }
+    public Gender? Gender { get; }
 
     // EF Core constructor
     private AttendeeDetails()
@@ -19,45 +21,75 @@ public class AttendeeDetails : ValueObject
         Name = null!;
     }
 
-    private AttendeeDetails(string name, int age)
+    private AttendeeDetails(string name, AgeCategory ageCategory, Gender? gender)
     {
         Name = name;
-        Age = age;
+        AgeCategory = ageCategory;
+        Gender = gender;
     }
 
     /// <summary>
     /// Creates a new AttendeeDetails instance
     /// </summary>
     /// <param name="name">Attendee's full name</param>
-    /// <param name="age">Attendee's age (1-120)</param>
-    public static Result<AttendeeDetails> Create(string? name, int age)
+    /// <param name="ageCategory">Age category (Adult or Child)</param>
+    /// <param name="gender">Optional gender (Male, Female, or Other)</param>
+    public static Result<AttendeeDetails> Create(string? name, AgeCategory ageCategory, Gender? gender = null)
     {
         // Validation: Name is required
         if (string.IsNullOrWhiteSpace(name))
             return Result<AttendeeDetails>.Failure("Name is required");
 
-        // Validation: Age must be greater than 0
-        if (age <= 0)
-            return Result<AttendeeDetails>.Failure("Age must be greater than 0");
+        // Validation: AgeCategory must be a valid enum value
+        if (!Enum.IsDefined(typeof(AgeCategory), ageCategory))
+            return Result<AttendeeDetails>.Failure("Invalid age category");
 
-        // Validation: Age must not exceed 120
-        if (age > 120)
-            return Result<AttendeeDetails>.Failure("Age must not exceed 120");
+        // Validation: Gender must be a valid enum value if provided
+        if (gender.HasValue && !Enum.IsDefined(typeof(Gender), gender.Value))
+            return Result<AttendeeDetails>.Failure("Invalid gender value");
 
         // Trim whitespace from name
         var trimmedName = name.Trim();
 
-        return Result<AttendeeDetails>.Success(new AttendeeDetails(trimmedName, age));
+        return Result<AttendeeDetails>.Success(new AttendeeDetails(trimmedName, ageCategory, gender));
+    }
+
+    /// <summary>
+    /// Creates AttendeeDetails from legacy age-based format (for data migration)
+    /// Age <= 18 maps to Child, Age > 18 maps to Adult
+    /// </summary>
+    /// <param name="name">Attendee's full name</param>
+    /// <param name="age">Attendee's age (used for category determination)</param>
+    /// <param name="gender">Optional gender</param>
+    public static Result<AttendeeDetails> CreateFromAge(string? name, int age, Gender? gender = null)
+    {
+        // Validation: Name is required
+        if (string.IsNullOrWhiteSpace(name))
+            return Result<AttendeeDetails>.Failure("Name is required");
+
+        // Validation: Age must be valid for category determination
+        if (age <= 0 || age > 120)
+            return Result<AttendeeDetails>.Failure("Age must be between 1 and 120");
+
+        // Determine age category based on age
+        var ageCategory = age <= 18 ? AgeCategory.Child : AgeCategory.Adult;
+
+        // Trim whitespace from name
+        var trimmedName = name.Trim();
+
+        return Result<AttendeeDetails>.Success(new AttendeeDetails(trimmedName, ageCategory, gender));
     }
 
     public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Name;
-        yield return Age;
+        yield return AgeCategory;
+        yield return Gender ?? Enums.Gender.Other; // Use default for null comparison
     }
 
     public override string ToString()
     {
-        return $"{Name} ({Age})";
+        var genderStr = Gender.HasValue ? $", {Gender}" : "";
+        return $"{Name} ({AgeCategory}{genderStr})";
     }
 }

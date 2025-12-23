@@ -146,7 +146,8 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
             {
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> (Age: {attendee.Age})</p>");
+                    var genderInfo = attendee.Gender.HasValue ? $", {attendee.Gender}" : "";
+                    attendeeDetailsHtml.AppendLine($"<p><strong>{attendee.Name}</strong> ({attendee.AgeCategory}{genderInfo})</p>");
                 }
             }
             else

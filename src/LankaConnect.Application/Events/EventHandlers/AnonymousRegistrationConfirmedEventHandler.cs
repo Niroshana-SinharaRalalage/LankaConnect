@@ -77,7 +77,8 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     attendeeDetails.Add(new Dictionary<string, object>
                     {
                         { "Name", attendee.Name },
-                        { "Age", attendee.Age }
+                        { "AgeCategory", attendee.AgeCategory.ToString() },
+                        { "Gender", attendee.Gender?.ToString() ?? "" }
                     });
                 }
             }

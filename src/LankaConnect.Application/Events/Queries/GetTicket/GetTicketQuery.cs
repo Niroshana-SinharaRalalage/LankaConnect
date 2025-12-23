@@ -116,7 +116,8 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
             ? registration.Attendees.Select(a => new TicketAttendeeDto
             {
                 Name = a.Name,
-                Age = a.Age
+                AgeCategory = a.AgeCategory,
+                Gender = a.Gender
             }).ToList()
             : null;
 

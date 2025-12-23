@@ -1,3 +1,5 @@
+using LankaConnect.Domain.Events.Enums;
+
 namespace LankaConnect.Application.Events.Common;
 
 /// <summary>
@@ -28,10 +30,11 @@ public record TicketDto
 }
 
 /// <summary>
-/// Phase 6A.24: Attendee information for ticket display
+/// Phase 6A.24: Attendee information for ticket display with age category and gender
 /// </summary>
 public record TicketAttendeeDto
 {
     public string Name { get; init; } = string.Empty;
-    public int Age { get; init; }
+    public AgeCategory AgeCategory { get; init; }
+    public Gender? Gender { get; init; }
 }

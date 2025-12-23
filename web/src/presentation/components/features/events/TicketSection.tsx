@@ -7,6 +7,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { Download, Mail, Ticket, CheckCircle, XCircle, Clock, Users, QrCode, RefreshCw } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { TicketDto } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 
 interface TicketSectionProps {
   eventId: string;
@@ -240,7 +241,10 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
                   className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-md"
                 >
                   <span className="font-medium">{attendee.name}</span>
-                  <span className="text-sm text-muted-foreground">Age: {attendee.age}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {attendee.ageCategory === AgeCategory.Adult || (attendee.ageCategory as unknown) === 'Adult' ? 'Adult' : 'Child'}
+                    {attendee.gender !== null && attendee.gender !== undefined && ` • ${attendee.gender === Gender.Male || (attendee.gender as unknown) === 'Male' ? 'Male' : attendee.gender === Gender.Female || (attendee.gender as unknown) === 'Female' ? 'Female' : 'Other'}`}
+                  </span>
                 </div>
               ))}
             </div>

@@ -15,7 +15,7 @@ import { MediaGallery } from '@/presentation/components/features/events/MediaGal
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState } from 'react';
@@ -120,21 +120,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           return; // Don't set isProcessing false - user is being redirected
         }
 
-        // Free event - reload after a short delay
-        // Session 30: Removed alert popup for better UX
-        // Give React Query time to invalidate cache and refetch
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        // Phase 6A.25 Fix: Free event - no page reload needed
+        // The useRsvpToEvent mutation's onSuccess handler invalidates all relevant caches:
+        // - eventKeys.detail(eventId) - updates registration count
+        // - ['user-rsvps'] - updates isUserRegistered status
+        // - ['user-registration', eventId] - updates registration details
+        // React Query will automatically refetch and update the UI
+        setIsProcessing(false);
       } else {
         // Anonymous registration
         await eventsRepository.registerAnonymous(id, data);
 
-        // Session 30: Removed alert popup for better UX
-        // Reload to show updated registration count after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        // Phase 6A.25 Fix: For anonymous registration, we still need to refresh
+        // since there's no React Query mutation handling cache invalidation
+        // But we can do a softer refresh by just reloading the page
+        window.location.reload();
       }
 
       setIsProcessing(false);
@@ -617,7 +617,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                             {index + 1}. {attendee.name}
                                           </p>
                                           <p className="text-green-700 dark:text-green-300 mt-0.5">
-                                            Age: {attendee.age}
+                                            {attendee.ageCategory === AgeCategory.Adult || (attendee.ageCategory as unknown) === 'Adult' ? 'Adult' : 'Child'}
+                                            {attendee.gender !== null && attendee.gender !== undefined && ` • ${attendee.gender === Gender.Male || (attendee.gender as unknown) === 'Male' ? 'Male' : attendee.gender === Gender.Female || (attendee.gender as unknown) === 'Female' ? 'Female' : 'Other'}`}
                                           </p>
                                         </div>
                                       </div>

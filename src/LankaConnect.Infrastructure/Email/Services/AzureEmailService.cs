@@ -403,7 +403,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             }
 
             _logger.LogInformation("[DIAG-EMAIL-4] About to create EmailSubject from: '{Subject}'", dto.Subject);
-            var subjectResult = EmailSubject.Create(dto.Subject);
+            var subjectResult = EmailSubject.Create(dto.Subject ?? string.Empty);
             if (subjectResult.IsFailure)
             {
                 _logger.LogError("[DIAG-EMAIL-5] EmailSubject validation failed for '{Subject}': {Error}", dto.Subject, subjectResult.Error);

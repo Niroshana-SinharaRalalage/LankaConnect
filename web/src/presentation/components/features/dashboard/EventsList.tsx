@@ -38,24 +38,33 @@ export function EventsList({
     });
   };
 
-  const getStatusColor = (status: EventStatus): string => {
-    switch (status) {
-      case EventStatus.Published:
-        return '#10B981'; // Green
-      case EventStatus.Active:
-        return '#FF7900'; // Saffron
-      case EventStatus.Draft:
-        return '#6B7280'; // Gray
-      case EventStatus.Postponed:
-        return '#F59E0B'; // Amber
-      case EventStatus.Cancelled:
-        return '#EF4444'; // Red
-      case EventStatus.Completed:
-        return '#3B82F6'; // Blue
-      case EventStatus.UnderReview:
-        return '#8B5CF6'; // Purple
+  /**
+   * Phase 6A.46: Get badge color based on event lifecycle label
+   * LankaConnect theme colors: Orange #FF7900, Rose #8B1538, Emerald #047857
+   */
+  const getStatusBadgeColor = (label: string): string => {
+    switch (label) {
+      case 'New':
+        return '#10B981'; // Emerald-500 - Fresh, exciting new events
+      case 'Upcoming':
+        return '#FF7900'; // LankaConnect Orange - Events starting soon
+      case 'Published':
+      case 'Active':
+        return '#6366F1'; // Indigo-500 - Currently active events
+      case 'Cancelled':
+        return '#EF4444'; // Red-500 - Cancelled events
+      case 'Completed':
+        return '#6B7280'; // Gray-500 - Past events
+      case 'Inactive':
+        return '#9CA3AF'; // Gray-400 - Old inactive events
+      case 'Draft':
+        return '#F59E0B'; // Amber-500 - Draft events
+      case 'Postponed':
+        return '#F97316'; // Orange-500 - Postponed events
+      case 'UnderReview':
+        return '#8B5CF6'; // Violet-500 - Under admin review
       default:
-        return '#6B7280';
+        return '#8B1538'; // LankaConnect Rose - Default fallback
     }
   };
 
@@ -163,7 +172,7 @@ export function EventsList({
               {/* Phase 6A.46: Display Label (computed lifecycle label from backend) */}
               <span
                 className="px-2 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
-                style={{ backgroundColor: getStatusColor(event.status) }}
+                style={{ backgroundColor: getStatusBadgeColor(event.displayLabel) }}
               >
                 {event.displayLabel}
               </span>

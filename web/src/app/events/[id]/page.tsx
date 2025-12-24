@@ -22,6 +22,36 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import { useState } from 'react';
 
 /**
+ * Phase 6A.46: Get badge color based on event lifecycle label
+ * LankaConnect theme colors: Orange #FF7900, Rose #8B1538, Emerald #047857
+ */
+function getStatusBadgeColor(label: string): string {
+  switch (label) {
+    case 'New':
+      return '#10B981'; // Emerald-500 - Fresh, exciting new events
+    case 'Upcoming':
+      return '#FF7900'; // LankaConnect Orange - Events starting soon
+    case 'Published':
+    case 'Active':
+      return '#6366F1'; // Indigo-500 - Currently active events
+    case 'Cancelled':
+      return '#EF4444'; // Red-500 - Cancelled events
+    case 'Completed':
+      return '#6B7280'; // Gray-500 - Past events
+    case 'Inactive':
+      return '#9CA3AF'; // Gray-400 - Old inactive events
+    case 'Draft':
+      return '#F59E0B'; // Amber-500 - Draft events
+    case 'Postponed':
+      return '#F97316'; // Orange-500 - Postponed events
+    case 'UnderReview':
+      return '#8B5CF6'; // Violet-500 - Under admin review
+    default:
+      return '#8B1538'; // LankaConnect Rose - Default fallback
+  }
+}
+
+/**
  * Event Detail Page
  * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management
  */
@@ -367,8 +397,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 {/* Display Label (computed lifecycle label from backend) */}
                 <Badge
                   variant="default"
-                  className="text-white text-sm"
-                  style={{ backgroundColor: '#FF7900' }}
+                  className="text-white text-sm font-semibold"
+                  style={{ backgroundColor: getStatusBadgeColor(event.displayLabel) }}
                 >
                   {event.displayLabel}
                 </Badge>

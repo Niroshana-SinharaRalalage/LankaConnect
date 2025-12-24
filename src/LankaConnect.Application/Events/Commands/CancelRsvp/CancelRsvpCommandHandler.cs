@@ -48,20 +48,15 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         {
             _logger.LogWarning("[CancelRsvp] No registration found for EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
-            return Result.Failure("User is not registered for this event");
-        }
-
-        // Check if already cancelled - make operation idempotent (REST best practice)
-        // Attempting to cancel an already-cancelled registration should succeed, not error
-        if (registrationReadOnly.Status == RegistrationStatus.Cancelled || registrationReadOnly.Status == RegistrationStatus.Refunded)
-        {
-            _logger.LogInformation("[CancelRsvp] Registration already cancelled/refunded (idempotent operation): Status={Status}", registrationReadOnly.Status);
-            // Return success - cancelling an already-cancelled registration is a no-op
+            // Phase 6A.45: Since we hard delete, no registration found means operation already succeeded (idempotent)
             // This follows REST API idempotency best practices: DELETE operations should be idempotent
+            _logger.LogInformation("[CancelRsvp] No registration found - likely already cancelled and deleted (idempotent operation)");
             return Result.Success();
         }
 
-        // Get the registration WITH tracking so EF Core can save changes
+        // Phase 6A.45 FIX: Hard delete registration instead of soft delete (marking as cancelled)
+        // This prevents duplicate/cancelled registrations from cluttering the database
+        // Get the registration WITH tracking so EF Core can delete it
         var registration = await _registrationRepository.GetByIdAsync(registrationReadOnly.Id, cancellationToken);
 
         if (registration == null)
@@ -69,9 +64,6 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             _logger.LogError("[CancelRsvp] Failed to retrieve registration with tracking: RegId={RegId}", registrationReadOnly.Id);
             return Result.Failure("Failed to cancel registration");
         }
-
-        // Cancel the registration
-        registration.Cancel();
 
         // Phase 6A.28: Handle sign-up commitments based on user choice
         // Fix: Trust domain model as single source of truth (removed competing deletion strategies)
@@ -101,6 +93,11 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             _logger.LogInformation("[CancelRsvp] User chose to keep sign-up commitments for EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
         }
+
+        // Phase 6A.45: Hard delete the registration from database
+        _logger.LogInformation("[CancelRsvp] Hard deleting registration: RegId={RegId}, EventId={EventId}, UserId={UserId}",
+            registration.Id, request.EventId, request.UserId);
+        _registrationRepository.Remove(registration);
 
         // Save changes
         await _unitOfWork.CommitAsync(cancellationToken);

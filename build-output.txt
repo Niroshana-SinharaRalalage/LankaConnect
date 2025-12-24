@@ -1,83 +1,13 @@
+  LankaConnect.Domain -> C:\Work\LankaConnect\src\LankaConnect.Domain\bin\Release\net8.0\LankaConnect.Domain.dll
+  LankaConnect.Application -> C:\Work\LankaConnect\src\LankaConnect.Application\bin\Release\net8.0\LankaConnect.Application.dll
+  LankaConnect.Infrastructure -> C:\Work\LankaConnect\src\LankaConnect.Infrastructure\bin\Release\net8.0\LankaConnect.Infrastructure.dll
+  LankaConnect.TestUtilities -> C:\Work\LankaConnect\tests\LankaConnect.TestUtilities\bin\Debug\net8.0\LankaConnect.TestUtilities.dll
+  LankaConnect.API -> C:\Work\LankaConnect\src\LankaConnect.API\bin\Release\net8.0\LankaConnect.API.dll
+  LankaConnect.Application.Tests -> C:\Work\LankaConnect\tests\LankaConnect.Application.Tests\bin\Release\net8.0\LankaConnect.Application.Tests.dll
+  LankaConnect.IntegrationTests -> C:\Work\LankaConnect\tests\LankaConnect.IntegrationTests\bin\Release\net8.0\LankaConnect.IntegrationTests.dll
 
-> web@1.0.0 build
-> next build
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
 
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
- ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
- We detected multiple lockfiles and selected the directory of C:\Work\LankaConnect\package-lock.json as the root directory.
- To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
-   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
- Detected additional lockfiles: 
-   * C:\Work\LankaConnect\web\package-lock.json
-
-   ▲ Next.js 16.0.1 (Turbopack)
-   - Environments: .env.local, .env.production
-
-   Creating an optimized production build ...
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
- ✓ Compiled successfully in 16.6s
-   Running TypeScript ...
-   Collecting page data ...
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-   Generating static pages (0/17) ...
-[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-   Generating static pages (4/17) 
-   Generating static pages (8/17) 
-=== DEBUG INFO ===
-API URL: http://localhost:3000/api/proxy
-React Query - Events: undefined
-React Query - Loading: true
-React Query - Error: null
-React Query - Status: pending
-React Query - Fetch Status: fetching
-Direct API - Result: null
-Direct API - Error: null
-   Generating static pages (12/17) 
-Simple Test Render: {
-  data: undefined,
-  isLoading: true,
-  error: null,
-  status: 'pending',
-  fetchStatus: 'fetching'
-}
- ✓ Generating static pages (17/17) in 5.7s
-   Finalizing page optimization ...
-
-Route (app)
-┌ ○ /
-├ ○ /_not-found
-├ ƒ /api/proxy/[...path]
-├ ○ /component-demo
-├ ○ /dashboard
-├ ○ /events
-├ ƒ /events/[id]
-├ ƒ /events/[id]/edit
-├ ƒ /events/[id]/manage
-├ ƒ /events/[id]/manage-signups
-├ ƒ /events/[id]/manage-signups/[signupId]
-├ ƒ /events/[id]/manage/create-signup-list
-├ ƒ /events/[id]/signup-lists/[signupId]
-├ ○ /events/create
-├ ○ /events/payment/cancel
-├ ○ /events/payment/success
-├ ƒ /forgot-password
-├ ○ /login
-├ ○ /notifications
-├ ○ /profile
-├ ƒ /register
-├ ○ /reset-password
-├ ○ /templates
-├ ○ /test-events
-├ ○ /test-simple
-└ ○ /verify-email
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
+Time Elapsed 00:01:18.65

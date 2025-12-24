@@ -326,6 +326,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const isFull = event.currentRegistrations >= event.capacity;
   const spotsLeft = event.capacity - event.currentRegistrations;
+  const hasStarted = new Date(event.startDate) <= new Date();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -545,7 +546,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {isUserRegistered
                     ? 'You are already registered for this event!'
                     : registrationDetails?.status === RegistrationStatus.Cancelled
-                    ? 'Your registration for this event has been cancelled. You can register again if you wish.'
+                    ? hasStarted
+                      ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
+                      : 'Your registration for this event has been cancelled. You can register again if you wish.'
+                    : hasStarted
+                    ? 'This event has already started. Registration is no longer available.'
                     : isFull
                     ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
                     : 'Reserve your spot now!'}
@@ -583,7 +588,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     {/* Show registration form for re-registration */}
-                    {!isFull ? (
+                    {hasStarted ? (
+                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-sm text-gray-800">
+                          This event has already started. Registration is no longer available.
+                        </p>
+                      </div>
+                    ) : !isFull ? (
                       <EventRegistrationForm
                         eventId={id}
                         spotsLeft={spotsLeft}
@@ -827,6 +838,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </div>
                       )}
                     </div>
+                  </div>
+                ) : hasStarted ? (
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-5 w-5 text-gray-600" />
+                      <h3 className="font-semibold text-gray-900">Event Has Started</h3>
+                    </div>
+                    <p className="text-sm text-gray-800">
+                      This event has already started. Registration is no longer available.
+                    </p>
                   </div>
                 ) : !isFull ? (
                   <EventRegistrationForm

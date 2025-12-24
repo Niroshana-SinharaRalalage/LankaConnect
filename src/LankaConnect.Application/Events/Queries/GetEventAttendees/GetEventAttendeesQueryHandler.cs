@@ -66,11 +66,12 @@ public class GetEventAttendeesQueryHandler
         var adultCount = registration.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult);
         var childCount = registration.Attendees.Count(a => a.AgeCategory == AgeCategory.Child);
 
-        // Calculate gender distribution (e.g., "2M, 1F, 1O")
+        // Calculate gender distribution (e.g., "2 Male, 1 Female")
+        // Phase 6A.45 FIX: Use full names instead of short codes to avoid Excel formula interpretation
         var genderCounts = registration.Attendees
             .Where(a => a.Gender.HasValue)
             .GroupBy(a => a.Gender!.Value)
-            .Select(g => $"{g.Count()}{GetGenderShortCode(g.Key)}")
+            .Select(g => $"{g.Count()} {g.Key}")
             .ToList();
 
         var genderDistribution = genderCounts.Any()

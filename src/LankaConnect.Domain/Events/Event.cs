@@ -182,6 +182,9 @@ public class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
+
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
@@ -211,6 +214,9 @@ public class Event : BaseEntity
     {
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
+
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
 
         if (attendeeInfo == null)
             return Result.Failure("Attendee information is required");
@@ -250,6 +256,9 @@ public class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
+
         if (attendees == null || !attendees.Any())
             return Result.Failure("At least one attendee is required");
 
@@ -257,6 +266,33 @@ public class Event : BaseEntity
 
         if (contact == null)
             return Result.Failure("Contact information is required");
+
+        // Phase 6A.45 FIX: Check for duplicate registration
+        // For authenticated users: check by userId
+        // For anonymous users: check by email (case-insensitive)
+        if (userId.HasValue)
+        {
+            // Authenticated user - check if already registered (not cancelled/refunded)
+            var existingRegistration = _registrations.FirstOrDefault(r =>
+                r.UserId == userId &&
+                r.Status != RegistrationStatus.Cancelled &&
+                r.Status != RegistrationStatus.Refunded);
+
+            if (existingRegistration != null)
+                return Result.Failure("You are already registered for this event. To change your registration details, please cancel your current registration first.");
+        }
+        else
+        {
+            // Anonymous user - check by email (case-insensitive)
+            var existingRegistration = _registrations.FirstOrDefault(r =>
+                r.Contact != null &&
+                r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase) &&
+                r.Status != RegistrationStatus.Cancelled &&
+                r.Status != RegistrationStatus.Refunded);
+
+            if (existingRegistration != null)
+                return Result.Failure("This email is already registered for this event. Each email can only register once.");
+        }
 
         // Check capacity for all attendees
         if (!HasCapacityFor(attendeeList.Count))

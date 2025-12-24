@@ -152,7 +152,7 @@ public class ExcelExportService : IExcelExportService
         {
             foreach (var item in list.Items)
             {
-                var categoryName = item.Category switch
+                var categoryName = item.ItemCategory switch
                 {
                     SignUpItemCategory.Mandatory => "Mandatory",
                     SignUpItemCategory.Suggested => "Suggested",

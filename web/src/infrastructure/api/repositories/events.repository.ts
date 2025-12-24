@@ -341,6 +341,19 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.44: Get registration details by registration ID (for anonymous users after payment)
+   * Maps to backend GetRegistrationByIdQuery
+   */
+  async getRegistrationById(registrationId: string): Promise<RegistrationDetailsDto | null> {
+    try {
+      return await apiClient.get<RegistrationDetailsDto>(`${this.basePath}/registrations/${registrationId}`);
+    } catch (error) {
+      console.error('Failed to get registration by ID:', error);
+      return null;
+    }
+  }
+
+  /**
    * Check if an email has registered for an event
    * Phase 6A.15: Enhanced sign-up list UX with email validation
    * Phase 6A.23: Updated to return detailed member/registration status

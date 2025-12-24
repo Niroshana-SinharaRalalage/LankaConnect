@@ -26,19 +26,30 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = searchParams?.get('eventId');
+  const registrationId = searchParams?.get('registrationId'); // Phase 6A.44: Get registrationId from URL
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { user, isHydrated } = useAuthStore();
   const queryClient = useQueryClient();
+  const [registrationDetails, setRegistrationDetails] = useState<any>(null);
 
   // Fetch event details to show confirmation
   const { data: event, isLoading, error } = useEventById(eventId || undefined);
 
-  // Phase 6A.24: Fetch registration details to get actual amount paid
-  // Wait for auth hydration before fetching user-specific data
-  const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    (user?.userId && isHydrated && eventId) ? eventId : undefined,
-    true // User is registered (they just completed payment)
-  );
+  // Phase 6A.44: Fetch registration details by registrationId if available (for anonymous users)
+  // Otherwise fallback to userId-based query for authenticated users
+  useEffect(() => {
+    if (registrationId) {
+      // Anonymous user - fetch by registrationId
+      import('@/infrastructure/api/repositories/events.repository').then(({ eventsRepository }) => {
+        eventsRepository.getRegistrationById(registrationId).then(setRegistrationDetails);
+      });
+    } else if (user?.userId && isHydrated && eventId) {
+      // Authenticated user - fetch by userId
+      import('@/infrastructure/api/repositories/events.repository').then(({ eventsRepository }) => {
+        eventsRepository.getUserRegistrationForEvent(eventId).then(setRegistrationDetails);
+      });
+    }
+  }, [registrationId, user?.userId, isHydrated, eventId]);
 
   // Phase 6A.43 Fix: Invalidate React Query cache after Stripe redirect
   // Stripe checkout redirects user to this page, causing browser to rehydrate
@@ -150,13 +161,17 @@ function PaymentSuccessContent() {
                         </span>
                       </div>
                     )}
-                    {/* Phase 6A.44 Fix: Always show attendee count (at least 1 attendee for any registration) */}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Attendees:</span>
-                      <span className="font-medium">
-                        {registrationDetails?.quantity || 1} {(registrationDetails?.quantity || 1) === 1 ? 'person' : 'people'}
-                      </span>
-                    </div>
+                    {/* Phase 6A.44 Fix: Show actual attendee count from registration details */}
+                    {(registrationDetails?.quantity || registrationDetails?.attendees?.length) && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Attendees:</span>
+                        <span className="font-medium">
+                          {registrationDetails.quantity || registrationDetails.attendees.length} {
+                            ((registrationDetails.quantity || registrationDetails.attendees.length) === 1) ? 'person' : 'people'
+                          }
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

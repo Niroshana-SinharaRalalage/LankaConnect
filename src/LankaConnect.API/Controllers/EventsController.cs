@@ -24,6 +24,7 @@ using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
 using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
+using LankaConnect.Application.Events.Queries.GetRegistrationById;
 using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
@@ -805,6 +806,29 @@ public class EventsController : BaseController<EventsController>
         }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.44: Gets registration details by registration ID (for anonymous users after payment)
+    /// </summary>
+    [HttpGet("registrations/{registrationId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(RegistrationDetailsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRegistrationById(Guid registrationId)
+    {
+        Logger.LogInformation("Getting registration details for registration {RegistrationId}", registrationId);
+
+        var query = new GetRegistrationByIdQuery(registrationId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure || result.Value == null)
+        {
+            Logger.LogInformation("Registration {RegistrationId} not found", registrationId);
+            return NotFound();
+        }
+
+        return Ok(result.Value);
     }
 
     /// <summary>

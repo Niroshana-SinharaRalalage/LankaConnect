@@ -891,7 +891,7 @@ export interface EventAttendeeDto {
   contactAddress?: string | null;
 
   // Attendee Details
-  attendees: AttendeeDetailsDto[];
+  attendees: AttendeeDto[];
   totalAttendees: number;
   adultCount: number;
   childCount: number;

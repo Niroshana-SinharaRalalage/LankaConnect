@@ -1,9 +1,11 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
   "/events/[id]/page": "app/events/[id]/page.js",
+  "/events/[id]/signup-lists/[signupId]/page": "app/events/[id]/signup-lists/[signupId]/page.js",
   "/events/page": "app/events/page.js",
   "/events/payment/success/page": "app/events/payment/success/page.js",
   "/page": "app/page.js"

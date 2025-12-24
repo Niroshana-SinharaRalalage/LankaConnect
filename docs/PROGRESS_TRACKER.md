@@ -10891,3 +10891,152 @@ Continued Phase 6A.4 Stripe Payment Integration from 50% (database layer) to 70%
 ---
 
 *Session completed 2025-11-25, awaiting documentation updates and staging deployment*
+
+---
+
+## Phase 6A.41: Event Email Sending Fix - EF Core Value Object Materialization ✅
+
+**Date**: 2025-12-24
+**Status**: ✅ COMPLETED
+**Branch**: develop
+**Deployment**: ✅ Deployed to staging
+**Documentation**: [EMAIL_SENDING_FAILURE_RCA.md](./EMAIL_SENDING_FAILURE_RCA.md), [EMAIL_SENDING_FAILURE_ACTUAL_ROOT_CAUSE.md](./EMAIL_SENDING_FAILURE_ACTUAL_ROOT_CAUSE.md)
+
+### Problem Summary
+Event publication emails and event registration emails were failing with "Cannot access value of a failed result" error during EF Core query materialization when loading `EmailTemplate` entities from the database.
+
+### Root Cause Analysis
+
+**Initial Hypothesis (Incorrect)**: Database had NULL `subject_template` column values
+- Created SQL fix script and RCA documents
+- User proved this wrong by showing actual database data had valid subject template
+
+**Actual Root Cause**: EF Core Configuration Issue
+- EF Core was using `OwnsOne` pattern for `EmailTemplate.SubjectTemplate` property
+- During query materialization, EF Core called `EmailSubject.Create()` factory method
+- Factory method returns `Result<EmailSubject>.Failure` for NULL/empty values
+- EF Core then tried to access `.Value` on the failed Result
+- This threw "Cannot access value of a failed result" exception
+
+**Evidence from Logs**:
+```
+An exception occurred while iterating over the results of a query for context type 'LankaConnect.Infrastructure.Data.AppDbContext'.
+Cannot access value of a failed result
+at LankaConnect.Domain.Common.Result`1.get_Value()
+at lambda_method3510(Closure, QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator)
+```
+
+### Solution Implemented
+
+**1. Changed EF Core Configuration** ([EmailTemplateConfiguration.cs:28-41](src/LankaConnect.Infrastructure/Data/Configurations/EmailTemplateConfiguration.cs#L28-L41))
+```csharp
+// OLD: OwnsOne pattern that calls Create() factory method
+builder.OwnsOne(e => e.SubjectTemplate, subject =>
+{
+    subject.Property(s => s.Value)
+        .HasColumnName("subject_template")
+        .HasMaxLength(200)
+        .IsRequired();
+});
+
+// NEW: HasConversion pattern with bypass method for hydration
+builder.Property(e => e.SubjectTemplate)
+    .HasColumnName("subject_template")
+    .HasMaxLength(200)
+    .IsRequired()
+    .HasConversion(
+        // Convert EmailSubject to string for database
+        subject => subject.Value,
+        // Convert string from database to EmailSubject
+        // Use FromDatabase() to bypass validation during hydration
+        value => LankaConnect.Domain.Communications.ValueObjects.EmailSubject.FromDatabase(value));
+```
+
+**2. Added Bypass Method for Database Hydration** ([EmailSubject.cs:16-26](src/LankaConnect.Domain/Communications/ValueObjects/EmailSubject.cs#L16-L26))
+```csharp
+/// <summary>
+/// Phase 6A.41: Internal constructor for EF Core hydration.
+/// Bypasses validation to allow loading potentially invalid data from database.
+/// Should only be used by infrastructure layer during entity materialization.
+/// </summary>
+internal static EmailSubject FromDatabase(string value)
+{
+    // For EF Core hydration, create instance even with empty/null value
+    // This prevents "Cannot access value of a failed result" error during query materialization
+    return new EmailSubject(value ?? string.Empty);
+}
+```
+
+### Files Modified
+
+**Domain Layer**:
+- `src/LankaConnect.Domain/Communications/ValueObjects/EmailSubject.cs` - Added `FromDatabase()` internal method
+
+**Infrastructure Layer**:
+- `src/LankaConnect.Infrastructure/Data/Configurations/EmailTemplateConfiguration.cs` - Changed from `OwnsOne` to `HasConversion`
+- `src/LankaConnect.Infrastructure/Email/Services/AzureEmailService.cs` - Added diagnostic logging (earlier investigation attempt)
+
+### Architecture Decisions
+
+**ADR-014: Value Object Hydration Pattern**
+- **Decision**: Use `HasConversion` with bypass method for EF Core value object hydration
+- **Rationale**:
+  - Factory methods (Create) should enforce validation for new entities
+  - Database hydration should be permissive to handle existing data
+  - Separation of concerns: validation at creation time, not query time
+  - Prevents EF Core from throwing exceptions during materialization
+- **Pattern**:
+  - Public `Create()` method: Strict validation, returns `Result<T>`
+  - Internal `FromDatabase()` method: Permissive, bypasses validation
+  - EF Core configuration: `HasConversion` uses `FromDatabase()` for hydration
+
+### Testing & Deployment
+
+**Deployment**:
+- ✅ Committed: `fix(phase-6a41): Fix EF Core materialization error for EmailTemplate.SubjectTemplate`
+- ✅ Pushed to develop branch
+- ✅ GitHub Actions workflow completed successfully (20478798501)
+- ✅ Deployed to Azure Container Apps staging environment
+
+**Manual Testing Required**:
+- Test event publication: Verify email sending works
+- Test event registration: Verify confirmation email works
+- Verify unpublish feature still works (should remain functional)
+
+### Related Phases
+
+**Completed**:
+- Phase 6A.40: Event notifications with 3-level location matching
+- Phase 6A.41: Unpublish feature implementation
+
+**Pending**:
+- Manual testing of email sending after deployment
+
+### Git Commits
+```
+9306c99 fix(phase-6a41): Fix EF Core materialization error for EmailTemplate.SubjectTemplate
+        - Changed EmailTemplateConfiguration from OwnsOne to HasConversion
+        - Added EmailSubject.FromDatabase() internal method for EF Core hydration
+        - Prevents "Cannot access value of a failed result" during query materialization
+        - Diagnostic logging remains in AzureEmailService for future troubleshooting
+        - 3 files changed, 25 insertions(+), 8 deletions(-)
+```
+
+### Success Metrics
+- ✅ Zero compilation errors
+- ✅ Root cause identified and documented
+- ✅ Fix implemented following Clean Architecture
+- ✅ Code committed and pushed to develop
+- ✅ Deployment completed successfully
+- ⏳ Manual testing of email functionality
+
+### Lessons Learned
+
+1. **Don't Trust Initial Hypotheses**: First diagnosis (NULL database values) was wrong; user feedback corrected course
+2. **Read Logs Carefully**: The smoking gun was in the stack trace showing EF Core materialization failure
+3. **Separate Validation from Hydration**: Factory methods should validate new entities, but database loading should be permissive
+4. **Value Object Patterns**: When using Result pattern with EF Core, use `HasConversion` instead of `OwnsOne` to avoid failed Result during materialization
+
+---
+
+*Phase 6A.41 completed 2025-12-24 - Email sending fix deployed to staging*

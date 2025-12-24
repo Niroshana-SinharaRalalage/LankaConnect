@@ -112,7 +112,8 @@ public class StripePaymentService : IStripePaymentService
                         Quantity = 1
                     }
                 },
-                SuccessUrl = request.SuccessUrl,
+                // Phase 6A.44: Append registrationId to success URL for anonymous users
+                SuccessUrl = AppendRegistrationIdToUrl(request.SuccessUrl, request.RegistrationId),
                 CancelUrl = request.CancelUrl,
                 Metadata = request.Metadata ?? new Dictionary<string, string>(),
                 PaymentIntentData = new SessionPaymentIntentDataOptions
@@ -254,4 +255,17 @@ public class StripePaymentService : IStripePaymentService
     }
 
     #endregion
+
+    /// <summary>
+    /// Phase 6A.44: Appends registrationId to success URL for anonymous user checkout
+    /// This allows the payment success page to fetch registration details without userId
+    /// </summary>
+    private string AppendRegistrationIdToUrl(string url, Guid registrationId)
+    {
+        if (string.IsNullOrEmpty(url))
+            return url;
+
+        var separator = url.Contains('?') ? "&" : "?";
+        return $"{url}{separator}registrationId={registrationId}";
+    }
 }

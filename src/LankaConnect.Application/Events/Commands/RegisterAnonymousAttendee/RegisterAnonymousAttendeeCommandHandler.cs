@@ -2,6 +2,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
 
@@ -48,10 +49,24 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     "This email is already registered as a member. Please log in to register for events.");
             }
 
-            // Retrieve event
+            // Retrieve event with registrations
             var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
             if (@event == null)
                 return Result<string?>.Failure("Event not found");
+
+            // Phase 6A.44: Check if this email is already registered for the event (anonymous registration)
+            var existingAnonymousRegistration = @event.Registrations
+                .Where(r => r.UserId == null) // Only anonymous registrations
+                .Where(r => r.Status != RegistrationStatus.Cancelled && r.Status != RegistrationStatus.Refunded)
+                .FirstOrDefault(r =>
+                    (r.Contact != null && r.Contact.Email == request.Email) ||
+                    (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == request.Email));
+
+            if (existingAnonymousRegistration != null)
+            {
+                return Result<string?>.Failure(
+                    "This email is already registered for this event. Each email can only register once.");
+            }
 
             // Session 21: Determine if using new multi-attendee format or legacy format
             if (request.Attendees != null && request.Attendees.Any())

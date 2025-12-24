@@ -345,9 +345,11 @@ export function SignUpManagementSection({
     setOpenItemModalOpen(true);
   };
 
+  // Phase 6A.44: Support both authenticated and anonymous users for Open Items
   const handleOpenItemSubmit = async (data: OpenItemFormData) => {
-    if (!userId) {
-      throw new Error('Please log in to submit items');
+    // Anonymous users must provide contact info
+    if (!userId && !data.contactEmail) {
+      throw new Error('Email is required for anonymous users');
     }
 
     if (editingOpenItem) {

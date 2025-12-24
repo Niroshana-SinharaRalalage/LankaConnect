@@ -456,7 +456,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
                     b.HasIndex("BusinessId");
 
-                    b.ToTable("BusinessImage");
+                    b.ToTable("BusinessImage", (string)null);
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.EmailGroup", b =>
@@ -2111,7 +2111,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Badges.Badge", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "DetailConfig", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Badges.Badge.DetailConfig#LankaConnect.Domain.Badges.BadgeLocationConfig", "DetailConfig", b1 =>
                         {
                             b1.Property<Guid>("BadgeId")
                                 .HasColumnType("uuid");
@@ -2154,7 +2154,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("BadgeId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "FeaturedConfig", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Badges.Badge.FeaturedConfig#LankaConnect.Domain.Badges.BadgeLocationConfig", "FeaturedConfig", b1 =>
                         {
                             b1.Property<Guid>("BadgeId")
                                 .HasColumnType("uuid");
@@ -2197,7 +2197,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("BadgeId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Badges.BadgeLocationConfig", "ListingConfig", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Badges.Badge.ListingConfig#LankaConnect.Domain.Badges.BadgeLocationConfig", "ListingConfig", b1 =>
                         {
                             b1.Property<Guid>("BadgeId")
                                 .HasColumnType("uuid");
@@ -2252,7 +2252,82 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Business.Business", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.BusinessLocation", "Location", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Business.Business.ContactInfo#LankaConnect.Domain.Business.ValueObjects.ContactInformation", "ContactInfo", b1 =>
+                        {
+                            b1.Property<Guid>("BusinessId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("FacebookPage")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("ContactFacebook");
+
+                            b1.Property<string>("InstagramHandle")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("ContactInstagram");
+
+                            b1.Property<string>("TwitterHandle")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("ContactTwitter");
+
+                            b1.Property<string>("Website")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("ContactWebsite");
+
+                            b1.HasKey("BusinessId");
+
+                            b1.ToTable("businesses", "business");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BusinessId");
+
+                            b1.OwnsOne("LankaConnect.Domain.Business.Business.ContactInfo#LankaConnect.Domain.Business.ValueObjects.ContactInformation.Email#LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b2 =>
+                                {
+                                    b2.Property<Guid>("ContactInformationBusinessId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("Value")
+                                        .IsRequired()
+                                        .HasMaxLength(100)
+                                        .HasColumnType("character varying(100)")
+                                        .HasColumnName("ContactEmail");
+
+                                    b2.HasKey("ContactInformationBusinessId");
+
+                                    b2.ToTable("businesses", "business");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ContactInformationBusinessId");
+                                });
+
+                            b1.OwnsOne("LankaConnect.Domain.Business.Business.ContactInfo#LankaConnect.Domain.Business.ValueObjects.ContactInformation.PhoneNumber#LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
+                                {
+                                    b2.Property<Guid>("ContactInformationBusinessId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("Value")
+                                        .IsRequired()
+                                        .HasMaxLength(20)
+                                        .HasColumnType("character varying(20)")
+                                        .HasColumnName("ContactPhone");
+
+                                    b2.HasKey("ContactInformationBusinessId");
+
+                                    b2.ToTable("businesses", "business");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ContactInformationBusinessId");
+                                });
+
+                            b1.Navigation("Email");
+
+                            b1.Navigation("PhoneNumber");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Business.Business.Location#LankaConnect.Domain.Business.ValueObjects.BusinessLocation", "Location", b1 =>
                         {
                             b1.Property<Guid>("BusinessId")
                                 .HasColumnType("uuid");
@@ -2264,7 +2339,7 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("BusinessId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Business.Business.Location#LankaConnect.Domain.Business.ValueObjects.BusinessLocation.Address#LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
                                 {
                                     b2.Property<Guid>("BusinessLocationBusinessId")
                                         .HasColumnType("uuid");
@@ -2307,7 +2382,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                         .HasForeignKey("BusinessLocationBusinessId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Business.Business.Location#LankaConnect.Domain.Business.ValueObjects.BusinessLocation.Coordinates#LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
                                 {
                                     b2.Property<Guid>("BusinessLocationBusinessId")
                                         .HasColumnType("uuid");
@@ -2334,7 +2409,7 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.Navigation("Coordinates");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.BusinessProfile", "Profile", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Business.Business.Profile#LankaConnect.Domain.Business.ValueObjects.BusinessProfile", "Profile", b1 =>
                         {
                             b1.Property<Guid>("BusinessId")
                                 .HasColumnType("uuid");
@@ -2359,81 +2434,6 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("BusinessId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.ContactInformation", "ContactInfo", b1 =>
-                        {
-                            b1.Property<Guid>("BusinessId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("FacebookPage")
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("ContactFacebook");
-
-                            b1.Property<string>("InstagramHandle")
-                                .HasMaxLength(50)
-                                .HasColumnType("character varying(50)")
-                                .HasColumnName("ContactInstagram");
-
-                            b1.Property<string>("TwitterHandle")
-                                .HasMaxLength(50)
-                                .HasColumnType("character varying(50)")
-                                .HasColumnName("ContactTwitter");
-
-                            b1.Property<string>("Website")
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)")
-                                .HasColumnName("ContactWebsite");
-
-                            b1.HasKey("BusinessId");
-
-                            b1.ToTable("businesses", "business");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BusinessId");
-
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b2 =>
-                                {
-                                    b2.Property<Guid>("ContactInformationBusinessId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<string>("Value")
-                                        .IsRequired()
-                                        .HasMaxLength(100)
-                                        .HasColumnType("character varying(100)")
-                                        .HasColumnName("ContactEmail");
-
-                                    b2.HasKey("ContactInformationBusinessId");
-
-                                    b2.ToTable("businesses", "business");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ContactInformationBusinessId");
-                                });
-
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
-                                {
-                                    b2.Property<Guid>("ContactInformationBusinessId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<string>("Value")
-                                        .IsRequired()
-                                        .HasMaxLength(20)
-                                        .HasColumnType("character varying(20)")
-                                        .HasColumnName("ContactPhone");
-
-                                    b2.HasKey("ContactInformationBusinessId");
-
-                                    b2.ToTable("businesses", "business");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ContactInformationBusinessId");
-                                });
-
-                            b1.Navigation("Email");
-
-                            b1.Navigation("PhoneNumber");
-                        });
-
                     b.Navigation("ContactInfo")
                         .IsRequired();
 
@@ -2452,24 +2452,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Rating", "Rating", b1 =>
-                        {
-                            b1.Property<Guid>("ReviewId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<int>("Value")
-                                .HasColumnType("integer")
-                                .HasColumnName("rating");
-
-                            b1.HasKey("ReviewId");
-
-                            b1.ToTable("reviews", "business");
-
-                            b1.WithOwner()
-                                .HasForeignKey("ReviewId");
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Business.ValueObjects.ReviewContent", "Content", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Business.Review.Content#LankaConnect.Domain.Business.ValueObjects.ReviewContent", "Content", b1 =>
                         {
                             b1.Property<Guid>("ReviewId")
                                 .HasColumnType("uuid");
@@ -2502,6 +2485,23 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("ReviewId");
                         });
 
+                    b.OwnsOne("LankaConnect.Domain.Business.Review.Rating#LankaConnect.Domain.Business.ValueObjects.Rating", "Rating", b1 =>
+                        {
+                            b1.Property<Guid>("ReviewId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Value")
+                                .HasColumnType("integer")
+                                .HasColumnName("rating");
+
+                            b1.HasKey("ReviewId");
+
+                            b1.ToTable("reviews", "business");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ReviewId");
+                        });
+
                     b.Navigation("Business");
 
                     b.Navigation("Content")
@@ -2519,7 +2519,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Price", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Business.Service.Price#LankaConnect.Domain.Shared.ValueObjects.Money", "Price", b1 =>
                         {
                             b1.Property<Guid>("ServiceId")
                                 .HasColumnType("uuid");
@@ -2555,7 +2555,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.EmailMessage", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "FromEmail", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Communications.Entities.EmailMessage.FromEmail#LankaConnect.Domain.Shared.ValueObjects.Email", "FromEmail", b1 =>
                         {
                             b1.Property<Guid>("EmailMessageId")
                                 .HasColumnType("uuid");
@@ -2574,7 +2574,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("EmailMessageId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Communications.ValueObjects.EmailSubject", "Subject", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Communications.Entities.EmailMessage.Subject#LankaConnect.Domain.Communications.ValueObjects.EmailSubject", "Subject", b1 =>
                         {
                             b1.Property<Guid>("EmailMessageId")
                                 .HasColumnType("uuid");
@@ -2602,7 +2602,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.EmailTemplate", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Communications.ValueObjects.EmailSubject", "SubjectTemplate", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Communications.Entities.EmailTemplate.SubjectTemplate#LankaConnect.Domain.Communications.ValueObjects.EmailSubject", "SubjectTemplate", b1 =>
                         {
                             b1.Property<Guid>("EmailTemplateId")
                                 .HasColumnType("uuid");
@@ -2627,7 +2627,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.NewsletterSubscriber", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Communications.Entities.NewsletterSubscriber.Email#LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b1 =>
                         {
                             b1.Property<Guid>("NewsletterSubscriberId")
                                 .HasColumnType("uuid");
@@ -2662,7 +2662,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Community.ForumTopic", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Community.ValueObjects.PostContent", "Content", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Community.ForumTopic.Content#LankaConnect.Domain.Community.ValueObjects.PostContent", "Content", b1 =>
                         {
                             b1.Property<Guid>("ForumTopicId")
                                 .HasColumnType("uuid");
@@ -2681,7 +2681,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("ForumTopicId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Community.ValueObjects.ForumTitle", "Title", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Community.ForumTopic.Title#LankaConnect.Domain.Community.ValueObjects.ForumTitle", "Title", b1 =>
                         {
                             b1.Property<Guid>("ForumTopicId")
                                 .HasColumnType("uuid");
@@ -2720,7 +2720,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Community.ValueObjects.PostContent", "Content", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Community.Reply.Content#LankaConnect.Domain.Community.ValueObjects.PostContent", "Content", b1 =>
                         {
                             b1.Property<Guid>("ReplyId")
                                 .HasColumnType("uuid");
@@ -2813,28 +2813,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
-                        {
-                            b1.Property<Guid>("EventId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<decimal>("Amount")
-                                .HasColumnType("numeric");
-
-                            b1.Property<int>("Currency")
-                                .HasColumnType("integer");
-
-                            b1.HasKey("EventId");
-
-                            b1.ToTable("events", "events");
-
-                            b1.ToJson("ticket_price");
-
-                            b1.WithOwner()
-                                .HasForeignKey("EventId");
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventDescription", "Description", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Event.Description#LankaConnect.Domain.Events.ValueObjects.EventDescription", "Description", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2853,7 +2832,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("EventId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Event.Location#LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2871,7 +2850,7 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Events.Event.Location#LankaConnect.Domain.Events.ValueObjects.EventLocation.Address#LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
                                 {
                                     b2.Property<Guid>("EventLocationEventId")
                                         .HasColumnType("uuid");
@@ -2914,7 +2893,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                         .HasForeignKey("EventLocationEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Events.Event.Location#LankaConnect.Domain.Events.ValueObjects.EventLocation.Coordinates#LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
                                 {
                                     b2.Property<Guid>("EventLocationEventId")
                                         .HasColumnType("uuid");
@@ -2943,26 +2922,7 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.Navigation("Coordinates");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventTitle", "Title", b1 =>
-                        {
-                            b1.Property<Guid>("EventId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("Value")
-                                .IsRequired()
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)")
-                                .HasColumnName("title");
-
-                            b1.HasKey("EventId");
-
-                            b1.ToTable("events", "events");
-
-                            b1.WithOwner()
-                                .HasForeignKey("EventId");
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.TicketPricing", "Pricing", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Event.Pricing#LankaConnect.Domain.Events.ValueObjects.TicketPricing", "Pricing", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2985,7 +2945,45 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
 
-                            b1.OwnsMany("LankaConnect.Domain.Events.ValueObjects.GroupPricingTier", "GroupTiers", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Events.Event.Pricing#LankaConnect.Domain.Events.ValueObjects.TicketPricing.AdultPrice#LankaConnect.Domain.Shared.ValueObjects.Money", "AdultPrice", b2 =>
+                                {
+                                    b2.Property<Guid>("TicketPricingEventId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasColumnType("numeric");
+
+                                    b2.Property<int>("Currency")
+                                        .HasColumnType("integer");
+
+                                    b2.HasKey("TicketPricingEventId");
+
+                                    b2.ToTable("events", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TicketPricingEventId");
+                                });
+
+                            b1.OwnsOne("LankaConnect.Domain.Events.Event.Pricing#LankaConnect.Domain.Events.ValueObjects.TicketPricing.ChildPrice#LankaConnect.Domain.Shared.ValueObjects.Money", "ChildPrice", b2 =>
+                                {
+                                    b2.Property<Guid>("TicketPricingEventId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasColumnType("numeric");
+
+                                    b2.Property<int>("Currency")
+                                        .HasColumnType("integer");
+
+                                    b2.HasKey("TicketPricingEventId");
+
+                                    b2.ToTable("events", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TicketPricingEventId");
+                                });
+
+                            b1.OwnsMany("LankaConnect.Domain.Events.Event.Pricing#LankaConnect.Domain.Events.ValueObjects.TicketPricing.GroupTiers#LankaConnect.Domain.Events.ValueObjects.GroupPricingTier", "GroupTiers", b2 =>
                                 {
                                     b2.Property<Guid>("TicketPricingEventId")
                                         .HasColumnType("uuid");
@@ -3007,7 +3005,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                     b2.WithOwner()
                                         .HasForeignKey("TicketPricingEventId");
 
-                                    b2.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PricePerPerson", b3 =>
+                                    b2.OwnsOne("LankaConnect.Domain.Events.Event.Pricing#LankaConnect.Domain.Events.ValueObjects.TicketPricing.GroupTiers#LankaConnect.Domain.Events.ValueObjects.GroupPricingTier.PricePerPerson#LankaConnect.Domain.Shared.ValueObjects.Money", "PricePerPerson", b3 =>
                                         {
                                             b3.Property<Guid>("GroupPricingTierTicketPricingEventId")
                                                 .HasColumnType("uuid");
@@ -3033,44 +3031,6 @@ namespace LankaConnect.Infrastructure.Migrations
                                         .IsRequired();
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "AdultPrice", b2 =>
-                                {
-                                    b2.Property<Guid>("TicketPricingEventId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<decimal>("Amount")
-                                        .HasColumnType("numeric");
-
-                                    b2.Property<int>("Currency")
-                                        .HasColumnType("integer");
-
-                                    b2.HasKey("TicketPricingEventId");
-
-                                    b2.ToTable("events", "events");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("TicketPricingEventId");
-                                });
-
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "ChildPrice", b2 =>
-                                {
-                                    b2.Property<Guid>("TicketPricingEventId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<decimal>("Amount")
-                                        .HasColumnType("numeric");
-
-                                    b2.Property<int>("Currency")
-                                        .HasColumnType("integer");
-
-                                    b2.HasKey("TicketPricingEventId");
-
-                                    b2.ToTable("events", "events");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("TicketPricingEventId");
-                                });
-
                             b1.Navigation("AdultPrice")
                                 .IsRequired();
 
@@ -3079,7 +3039,47 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.Navigation("GroupTiers");
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Events.ValueObjects.WaitingListEntry", "WaitingList", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Event.TicketPrice#LankaConnect.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
+                        {
+                            b1.Property<Guid>("EventId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric");
+
+                            b1.Property<int>("Currency")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("EventId");
+
+                            b1.ToTable("events", "events");
+
+                            b1.ToJson("ticket_price");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EventId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Events.Event.Title#LankaConnect.Domain.Events.ValueObjects.EventTitle", "Title", b1 =>
+                        {
+                            b1.Property<Guid>("EventId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("title");
+
+                            b1.HasKey("EventId");
+
+                            b1.ToTable("events", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EventId");
+                        });
+
+                    b.OwnsMany("LankaConnect.Domain.Events.Event.WaitingList#LankaConnect.Domain.Events.ValueObjects.WaitingListEntry", "WaitingList", b1 =>
                         {
                             b1.Property<Guid>("Id")
                                 .ValueGeneratedOnAdd()
@@ -3156,31 +3156,66 @@ namespace LankaConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TotalPrice", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Registration.AttendeeInfo#LankaConnect.Domain.Events.ValueObjects.AttendeeInfo", "AttendeeInfo", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("total_price_amount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("character varying(3)")
-                                .HasColumnName("total_price_currency");
 
                             b1.HasKey("RegistrationId");
 
                             b1.ToTable("registrations", "events");
 
+                            b1.ToJson("attendee_info");
+
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationId");
+
+                            b1.OwnsOne("LankaConnect.Domain.Events.Registration.AttendeeInfo#LankaConnect.Domain.Events.ValueObjects.AttendeeInfo.Email#LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b2 =>
+                                {
+                                    b2.Property<Guid>("AttendeeInfoRegistrationId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("Value")
+                                        .IsRequired()
+                                        .ValueGeneratedOnUpdateSometimes()
+                                        .HasColumnType("text")
+                                        .HasColumnName("email");
+
+                                    b2.HasKey("AttendeeInfoRegistrationId");
+
+                                    b2.ToTable("registrations", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("AttendeeInfoRegistrationId");
+                                });
+
+                            b1.OwnsOne("LankaConnect.Domain.Events.Registration.AttendeeInfo#LankaConnect.Domain.Events.ValueObjects.AttendeeInfo.PhoneNumber#LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
+                                {
+                                    b2.Property<Guid>("AttendeeInfoRegistrationId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("Value")
+                                        .IsRequired()
+                                        .ValueGeneratedOnUpdateSometimes()
+                                        .HasColumnType("text")
+                                        .HasColumnName("phone_number");
+
+                                    b2.HasKey("AttendeeInfoRegistrationId");
+
+                                    b2.ToTable("registrations", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("AttendeeInfoRegistrationId");
+                                });
+
+                            b1.Navigation("Email")
+                                .IsRequired();
+
+                            b1.Navigation("PhoneNumber")
+                                .IsRequired();
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Events.ValueObjects.AttendeeDetails", "Attendees", b1 =>
+                    b.OwnsMany("LankaConnect.Domain.Events.Registration.Attendees#LankaConnect.Domain.Events.ValueObjects.AttendeeDetails", "Attendees", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -3213,66 +3248,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.AttendeeInfo", "AttendeeInfo", b1 =>
-                        {
-                            b1.Property<Guid>("RegistrationId")
-                                .HasColumnType("uuid");
-
-                            b1.HasKey("RegistrationId");
-
-                            b1.ToTable("registrations", "events");
-
-                            b1.ToJson("attendee_info");
-
-                            b1.WithOwner()
-                                .HasForeignKey("RegistrationId");
-
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b2 =>
-                                {
-                                    b2.Property<Guid>("AttendeeInfoRegistrationId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<string>("Value")
-                                        .IsRequired()
-                                        .ValueGeneratedOnUpdateSometimes()
-                                        .HasColumnType("text")
-                                        .HasColumnName("email");
-
-                                    b2.HasKey("AttendeeInfoRegistrationId");
-
-                                    b2.ToTable("registrations", "events");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("AttendeeInfoRegistrationId");
-                                });
-
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
-                                {
-                                    b2.Property<Guid>("AttendeeInfoRegistrationId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<string>("Value")
-                                        .IsRequired()
-                                        .ValueGeneratedOnUpdateSometimes()
-                                        .HasColumnType("text")
-                                        .HasColumnName("phone_number");
-
-                                    b2.HasKey("AttendeeInfoRegistrationId");
-
-                                    b2.ToTable("registrations", "events");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("AttendeeInfoRegistrationId");
-                                });
-
-                            b1.Navigation("Email")
-                                .IsRequired();
-
-                            b1.Navigation("PhoneNumber")
-                                .IsRequired();
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.RegistrationContact", "Contact", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.Registration.Contact#LankaConnect.Domain.Events.ValueObjects.RegistrationContact", "Contact", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -3303,6 +3279,30 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("RegistrationId");
                         });
 
+                    b.OwnsOne("LankaConnect.Domain.Events.Registration.TotalPrice#LankaConnect.Domain.Shared.ValueObjects.Money", "TotalPrice", b1 =>
+                        {
+                            b1.Property<Guid>("RegistrationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("total_price_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("total_price_currency");
+
+                            b1.HasKey("RegistrationId");
+
+                            b1.ToTable("registrations", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RegistrationId");
+                        });
+
                     b.Navigation("AttendeeInfo");
 
                     b.Navigation("Attendees");
@@ -3314,49 +3314,7 @@ namespace LankaConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("LankaConnect.Domain.Users.User", b =>
                 {
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b1 =>
-                        {
-                            b1.Property<Guid>("UserId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("Value")
-                                .IsRequired()
-                                .HasMaxLength(255)
-                                .HasColumnType("character varying(255)")
-                                .HasColumnName("email");
-
-                            b1.HasKey("UserId");
-
-                            b1.HasIndex("Value")
-                                .IsUnique()
-                                .HasDatabaseName("ix_users_email");
-
-                            b1.ToTable("users", "identity");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UserId");
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b1 =>
-                        {
-                            b1.Property<Guid>("UserId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("Value")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("phone_number");
-
-                            b1.HasKey("UserId");
-
-                            b1.ToTable("users", "identity");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UserId");
-                        });
-
-                    b.OwnsMany("LankaConnect.Domain.Users.ValueObjects.CulturalInterest", "CulturalInterests", b1 =>
+                    b.OwnsMany("LankaConnect.Domain.Users.User.CulturalInterests#LankaConnect.Domain.Users.ValueObjects.CulturalInterest", "CulturalInterests", b1 =>
                         {
                             b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
@@ -3385,7 +3343,30 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("UserId");
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Users.ValueObjects.ExternalLogin", "ExternalLogins", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Users.User.Email#LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b1 =>
+                        {
+                            b1.Property<Guid>("UserId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("email");
+
+                            b1.HasKey("UserId");
+
+                            b1.HasIndex("Value")
+                                .IsUnique()
+                                .HasDatabaseName("ix_users_email");
+
+                            b1.ToTable("users", "identity");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserId");
+                        });
+
+                    b.OwnsMany("LankaConnect.Domain.Users.User.ExternalLogins#LankaConnect.Domain.Users.ValueObjects.ExternalLogin", "ExternalLogins", b1 =>
                         {
                             b1.Property<Guid>("UserId")
                                 .HasColumnType("uuid");
@@ -3431,7 +3412,7 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .HasForeignKey("UserId");
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Users.ValueObjects.LanguagePreference", "Languages", b1 =>
+                    b.OwnsMany("LankaConnect.Domain.Users.User.Languages#LankaConnect.Domain.Users.ValueObjects.LanguagePreference", "Languages", b1 =>
                         {
                             b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
@@ -3455,7 +3436,7 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("UserId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Users.ValueObjects.LanguageCode", "Language", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Users.User.Languages#LankaConnect.Domain.Users.ValueObjects.LanguagePreference.Language#LankaConnect.Domain.Users.ValueObjects.LanguageCode", "Language", b2 =>
                                 {
                                     b2.Property<int>("LanguagePreferenceId")
                                         .HasColumnType("integer");
@@ -3481,7 +3462,63 @@ namespace LankaConnect.Infrastructure.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Users.ValueObjects.RefreshToken", "RefreshTokens", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Users.User.Location#LankaConnect.Domain.Users.ValueObjects.UserLocation", "Location", b1 =>
+                        {
+                            b1.Property<Guid>("UserId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("city");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("country");
+
+                            b1.Property<string>("State")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("state");
+
+                            b1.Property<string>("ZipCode")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("zip_code");
+
+                            b1.HasKey("UserId");
+
+                            b1.ToTable("users", "identity");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Users.User.PhoneNumber#LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b1 =>
+                        {
+                            b1.Property<Guid>("UserId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("phone_number");
+
+                            b1.HasKey("UserId");
+
+                            b1.ToTable("users", "identity");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserId");
+                        });
+
+                    b.OwnsMany("LankaConnect.Domain.Users.User.RefreshTokens#LankaConnect.Domain.Users.ValueObjects.RefreshToken", "RefreshTokens", b1 =>
                         {
                             b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
@@ -3532,43 +3569,6 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.HasIndex("UserId");
 
                             b1.ToTable("user_refresh_tokens", "identity");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UserId");
-                        });
-
-                    b.OwnsOne("LankaConnect.Domain.Users.ValueObjects.UserLocation", "Location", b1 =>
-                        {
-                            b1.Property<Guid>("UserId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("City")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("city");
-
-                            b1.Property<string>("Country")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("country");
-
-                            b1.Property<string>("State")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("character varying(100)")
-                                .HasColumnName("state");
-
-                            b1.Property<string>("ZipCode")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("zip_code");
-
-                            b1.HasKey("UserId");
-
-                            b1.ToTable("users", "identity");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserId");

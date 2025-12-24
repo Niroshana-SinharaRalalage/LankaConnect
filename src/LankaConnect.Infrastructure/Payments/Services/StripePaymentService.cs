@@ -55,26 +55,41 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
-            // Get or create Stripe customer for the user
-            if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            // Phase 6A.44: Handle both authenticated and anonymous registrations
+            string? stripeCustomerId = null;
+            bool isAnonymous = request.Metadata?.ContainsKey("anonymous") == true;
+
+            if (!isAnonymous)
             {
-                return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                // Get or create Stripe customer for authenticated user
+                if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                }
+
+                stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
+
+                if (stripeCustomerId == null)
+                {
+                    return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                }
             }
-
-            var stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
-
-            if (stripeCustomerId == null)
+            else
             {
-                return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                // Phase 6A.44: For anonymous users, optionally provide email for receipt
+                // Stripe will create a guest checkout without requiring a customer record
+                _logger.LogInformation("Creating anonymous checkout session for Event {EventId}", request.EventId);
             }
 
             // Create checkout session for one-time payment (not subscription)
             var sessionService = new SessionService(_stripeClient);
             var sessionOptions = new SessionCreateOptions
             {
-                Customer = stripeCustomerId,
+                Customer = stripeCustomerId, // null for anonymous users
                 PaymentMethodTypes = new List<string> { "card" },
                 Mode = "payment",  // One-time payment (not subscription)
+                // Phase 6A.44: For anonymous users, provide email for receipt
+                CustomerEmail = isAnonymous && request.Metadata?.TryGetValue("email", out var email) == true ? email : null,
                 LineItems = new List<SessionLineItemOptions>
                 {
                     new SessionLineItemOptions

@@ -41,12 +41,13 @@ public class GetUserRegistrationForEventQueryHandler
 
                 // Map attendees (Session 21 multi-attendee feature)
                 // Phase 6A.43: Updated to use AgeCategory instead of Age
-                Attendees = r.Attendees.Select(a => new AttendeeDetailsDto
+                // Fix: Handle null Attendees for legacy registrations
+                Attendees = r.Attendees != null ? r.Attendees.Select(a => new AttendeeDetailsDto
                 {
                     Name = a.Name,
                     AgeCategory = a.AgeCategory,
                     Gender = a.Gender
-                }).ToList(),
+                }).ToList() : new List<AttendeeDetailsDto>(),
 
                 // Contact information
                 ContactEmail = r.Contact != null ? r.Contact.Email : null,

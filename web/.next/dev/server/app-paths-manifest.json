@@ -3,6 +3,7 @@
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
+  "/events/[id]/edit/page": "app/events/[id]/edit/page.js",
   "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
   "/events/[id]/page": "app/events/[id]/page.js",
   "/events/[id]/signup-lists/[signupId]/page": "app/events/[id]/signup-lists/[signupId]/page.js",

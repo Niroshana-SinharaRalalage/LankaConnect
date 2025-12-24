@@ -79,6 +79,70 @@ function getPaymentStatusColor(status: PaymentStatus): string {
 }
 
 /**
+ * Helper: Get display label for registration status
+ */
+function getRegistrationStatusLabel(status: RegistrationStatus): string {
+  // Handle numeric enum values (backend sends numbers, not strings)
+  const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
+
+  switch (statusNum) {
+    case 0: // RegistrationStatus.Pending
+    case RegistrationStatus.Pending:
+      return 'Pending';
+    case 1: // RegistrationStatus.Confirmed
+    case RegistrationStatus.Confirmed:
+      return 'Confirmed';
+    case 2: // RegistrationStatus.Waitlisted
+    case RegistrationStatus.Waitlisted:
+      return 'Waitlisted';
+    case 3: // RegistrationStatus.CheckedIn
+    case RegistrationStatus.CheckedIn:
+      return 'Checked In';
+    case 4: // RegistrationStatus.Completed
+    case RegistrationStatus.Completed:
+      return 'Completed';
+    case 5: // RegistrationStatus.Cancelled
+    case RegistrationStatus.Cancelled:
+      return 'Cancelled';
+    case 6: // RegistrationStatus.Refunded
+    case RegistrationStatus.Refunded:
+      return 'Refunded';
+    default:
+      console.warn('Unknown registration status:', status, typeof status);
+      return `Unknown (${status})`;
+  }
+}
+
+/**
+ * Helper: Get display label for payment status
+ */
+function getPaymentStatusLabel(status: PaymentStatus): string {
+  // Handle numeric enum values (backend sends numbers, not strings)
+  const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
+
+  switch (statusNum) {
+    case 0: // PaymentStatus.Pending
+    case PaymentStatus.Pending:
+      return 'Pending';
+    case 1: // PaymentStatus.Completed
+    case PaymentStatus.Completed:
+      return 'Completed';
+    case 2: // PaymentStatus.Failed
+    case PaymentStatus.Failed:
+      return 'Failed';
+    case 3: // PaymentStatus.Refunded
+    case PaymentStatus.Refunded:
+      return 'Refunded';
+    case 4: // PaymentStatus.NotRequired
+    case PaymentStatus.NotRequired:
+      return 'N/A';
+    default:
+      console.warn('Unknown payment status:', status, typeof status);
+      return `Unknown (${status})`;
+  }
+}
+
+/**
  * AttendeeManagementTab Component
  */
 export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
@@ -293,16 +357,20 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                           <td className="p-3 text-sm text-neutral-600">{attendee.contactEmail || '—'}</td>
                           <td className="p-3 text-sm text-neutral-600">{attendee.contactPhone || '—'}</td>
                           <td className="p-3">
-                            <Badge style={{ backgroundColor: getPaymentStatusColor(attendee.paymentStatus), color: 'white' }}>
-                              {PaymentStatus[attendee.paymentStatus]}
-                            </Badge>
+                            {attendee.paymentStatus === PaymentStatus.NotRequired ? (
+                              <span className="text-sm text-neutral-500">N/A</span>
+                            ) : (
+                              <Badge style={{ backgroundColor: getPaymentStatusColor(attendee.paymentStatus), color: 'white' }}>
+                                {getPaymentStatusLabel(attendee.paymentStatus)}
+                              </Badge>
+                            )}
                           </td>
                           <td className="p-3 text-sm text-neutral-900 font-medium">
                             {attendee.totalAmount ? `$${attendee.totalAmount.toFixed(2)}` : '—'}
                           </td>
                           <td className="p-3">
                             <Badge style={{ backgroundColor: getStatusColor(attendee.status), color: 'white' }}>
-                              {RegistrationStatus[attendee.status]}
+                              {getRegistrationStatusLabel(attendee.status)}
                             </Badge>
                           </td>
                         </tr>

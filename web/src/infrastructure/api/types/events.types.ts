@@ -870,3 +870,65 @@ export interface TicketDto {
   attendeeCount: number;
   attendees?: TicketAttendeeDto[] | null;
 }
+
+// ==================== Phase 6A.45: Attendee Management ====================
+
+/**
+ * Phase 6A.45: Event attendee DTO (single registration)
+ * Matches backend EventAttendeeDto
+ */
+export interface EventAttendeeDto {
+  // Registration Info
+  registrationId: string;
+  userId?: string | null;
+  status: RegistrationStatus;
+  paymentStatus: PaymentStatus;
+  createdAt: string;
+
+  // Contact Info
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress?: string | null;
+
+  // Attendee Details
+  attendees: AttendeeDetailsDto[];
+  totalAttendees: number;
+  adultCount: number;
+  childCount: number;
+  genderDistribution: string;
+
+  // Payment Info
+  totalAmount?: number | null;
+  currency?: string | null;
+
+  // Ticket Info
+  ticketCode?: string | null;
+  qrCodeData?: string | null;
+  hasTicket: boolean;
+
+  // Computed Properties (computed on backend)
+  mainAttendeeName: string;
+  additionalAttendees: string;
+}
+
+/**
+ * Phase 6A.45: Event attendees response
+ * Matches backend EventAttendeesResponse
+ */
+export interface EventAttendeesResponse {
+  eventId: string;
+  eventTitle: string;
+  attendees: EventAttendeeDto[];
+  totalRegistrations: number;
+  totalAttendees: number;
+  totalRevenue?: number | null;
+}
+
+/**
+ * Phase 6A.45: Export format enum
+ * Matches backend ExportFormat
+ */
+export enum ExportFormat {
+  Excel = 0,
+  Csv = 1,
+}

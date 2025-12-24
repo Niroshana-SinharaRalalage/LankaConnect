@@ -35,6 +35,8 @@ import type {
   // Phase 6A.27: Open Sign-Up Items
   AddOpenSignUpItemRequest,
   UpdateOpenSignUpItemRequest,
+  // Phase 6A.45: Attendee Management
+  EventAttendeesResponse,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -800,6 +802,36 @@ export class EventsRepository {
    */
   async resendTicketEmail(eventId: string): Promise<void> {
     await apiClient.post(`${this.basePath}/${eventId}/my-registration/ticket/resend-email`, {});
+  }
+
+  // ==================== ATTENDEE MANAGEMENT (Phase 6A.45) ====================
+
+  /**
+   * Get all attendees for an event (organizer only)
+   * Phase 6A.45: Returns complete list of registrations with attendee details
+   * Maps to backend GET /api/events/{eventId}/attendees
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns Event attendees response with statistics
+   */
+  async getEventAttendees(eventId: string): Promise<EventAttendeesResponse> {
+    return await apiClient.get<EventAttendeesResponse>(`${this.basePath}/${eventId}/attendees`);
+  }
+
+  /**
+   * Export event attendees to Excel or CSV (organizer only)
+   * Phase 6A.45: Returns file download with attendee data and signup lists
+   * Maps to backend GET /api/events/{eventId}/export?format={format}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param format - Export format ('excel' or 'csv')
+   * @returns Blob for file download
+   */
+  async exportEventAttendees(eventId: string, format: 'excel' | 'csv' = 'excel'): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/export?format=${format}`,
+      { responseType: 'blob' }
+    );
   }
 }
 

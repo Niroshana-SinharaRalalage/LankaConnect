@@ -30,6 +30,7 @@ import type {
   RsvpRequest,
   RegistrationDetailsDto,
   AttendeeDto,
+  EventAttendeesResponse, // Phase 6A.45
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -700,6 +701,91 @@ export function useUpdateRegistrationDetails() {
 }
 
 /**
+ * useEventAttendees Hook
+ *
+ * Phase 6A.45: Query hook for fetching event attendee list (organizer only)
+ *
+ * Features:
+ * - Automatic caching with 2-minute stale time
+ * - Returns complete registration details with attendee information
+ * - Includes summary statistics (total registrations, attendees, revenue)
+ * - Proper authorization handling (403 for non-organizers)
+ *
+ * @param eventId - Event ID to fetch attendees for
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * ```tsx
+ * const { data: attendees, isLoading, error } = useEventAttendees('event-123');
+ *
+ * if (attendees) {
+ *   console.log(`Total registrations: ${attendees.totalRegistrations}`);
+ *   console.log(`Total attendees: ${attendees.totalAttendees}`);
+ *   console.log(`Total revenue: $${attendees.totalRevenue}`);
+ * }
+ * ```
+ */
+export function useEventAttendees(
+  eventId: string,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['event-attendees', eventId] as const,
+    queryFn: async () => {
+      return await eventsRepository.getEventAttendees(eventId);
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: enabled && !!eventId,
+  });
+}
+
+/**
+ * useExportEventAttendees Hook
+ *
+ * Phase 6A.45: Mutation hook for downloading event attendee data (organizer only)
+ *
+ * Features:
+ * - Supports Excel and CSV export formats
+ * - Multi-sheet Excel export includes signup lists
+ * - Handles file download with proper MIME types
+ * - Automatic error handling for authorization failures
+ *
+ * @example
+ * ```tsx
+ * const exportAttendees = useExportEventAttendees();
+ *
+ * const handleExport = async (format: 'excel' | 'csv') => {
+ *   try {
+ *     const blob = await exportAttendees.mutateAsync({
+ *       eventId: 'event-123',
+ *       format
+ *     });
+ *
+ *     // Trigger download
+ *     const url = URL.createObjectURL(blob);
+ *     const link = document.createElement('a');
+ *     link.href = url;
+ *     link.download = `event-attendees.${format === 'excel' ? 'xlsx' : 'csv'}`;
+ *     link.click();
+ *     URL.revokeObjectURL(url);
+ *   } catch (error) {
+ *     console.error('Export failed:', error);
+ *   }
+ * };
+ * ```
+ */
+export function useExportEventAttendees() {
+  return useMutation({
+    mutationFn: async (data: {
+      eventId: string;
+      format: 'excel' | 'csv';
+    }) => {
+      return await eventsRepository.exportEventAttendees(data.eventId, data.format);
+    },
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -717,4 +803,6 @@ export default {
   useUserRsvpForEvent,
   useUserRegistrationDetails,
   useUpdateRegistrationDetails,
+  useEventAttendees,
+  useExportEventAttendees,
 };

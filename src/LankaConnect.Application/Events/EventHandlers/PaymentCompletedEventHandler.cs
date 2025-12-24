@@ -144,6 +144,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             }
             else
             {
+                parameters["ContactEmail"] = "";
+                parameters["ContactPhone"] = "";
                 parameters["HasContactInfo"] = false;
             }
 

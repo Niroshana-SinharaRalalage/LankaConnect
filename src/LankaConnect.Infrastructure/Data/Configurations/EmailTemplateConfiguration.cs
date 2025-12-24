@@ -25,14 +25,20 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
             .HasMaxLength(500)
             .IsRequired();
 
-        // Configure Subject value object (OwnsOne pattern)
-        builder.OwnsOne(e => e.SubjectTemplate, subject =>
-        {
-            subject.Property(s => s.Value)
-                .HasColumnName("subject_template")
-                .HasMaxLength(200)
-                .IsRequired();
-        });
+        // Configure Subject value object with custom conversion
+        // Phase 6A.41 Fix: Use HasConversion instead of OwnsOne to handle Result pattern
+        // When loading from database, EmailSubject.Create() may return a failed Result if value is null/empty
+        // This causes EF Core to throw "Cannot access value of a failed result" during query materialization
+        builder.Property(e => e.SubjectTemplate)
+            .HasColumnName("subject_template")
+            .HasMaxLength(200)
+            .IsRequired()
+            .HasConversion(
+                // Convert EmailSubject to string for database
+                subject => subject.Value,
+                // Convert string from database to EmailSubject
+                // Use FromDatabase() to bypass validation during hydration
+                value => LankaConnect.Domain.Communications.ValueObjects.EmailSubject.FromDatabase(value));
 
         // Configure template content
         builder.Property(e => e.TextTemplate)

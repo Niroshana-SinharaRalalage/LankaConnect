@@ -326,11 +326,8 @@ export function SignUpManagementSection({
   };
 
   // Phase 6A.27: Open item handlers
+  // Phase 6A.44: Allow anonymous users to add Open Items
   const openAddOpenItemModal = (signUpListId: string, signUpListCategory: string) => {
-    if (!userId) {
-      alert('Please log in to add items');
-      return;
-    }
     setOpenItemSignUpListId(signUpListId);
     setOpenItemSignUpListCategory(signUpListCategory);
     setEditingOpenItem(null);

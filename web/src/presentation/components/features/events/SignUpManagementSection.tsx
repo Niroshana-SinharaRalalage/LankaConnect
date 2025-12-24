@@ -799,9 +799,9 @@ export function SignUpManagementSection({
                         </p>
                       )}
 
-                      {/* Sign Up button for authenticated users */}
+                      {/* Sign Up button for all users (Phase 6A.44: Allow anonymous sign-ups for Open Items) */}
                       {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
-                      {!isOrganizer && userId && (
+                      {!isOrganizer && (
                         <Button
                           onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
                           size="sm"
@@ -809,13 +809,6 @@ export function SignUpManagementSection({
                         >
                           Sign Up
                         </Button>
-                      )}
-
-                      {/* Login prompt for non-authenticated users */}
-                      {!userId && (
-                        <p className="text-sm text-muted-foreground">
-                          Please log in to sign up with your own item.
-                        </p>
                       )}
                     </div>
                   )}

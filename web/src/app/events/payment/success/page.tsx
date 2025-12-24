@@ -150,15 +150,13 @@ function PaymentSuccessContent() {
                         </span>
                       </div>
                     )}
-                    {/* Phase 6A.43 Fix: Show attendee count for 1 or more attendees (changed from > 1 to >= 1) */}
-                    {registrationDetails?.quantity && registrationDetails.quantity >= 1 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Attendees:</span>
-                        <span className="font-medium">
-                          {registrationDetails.quantity} {registrationDetails.quantity === 1 ? 'person' : 'people'}
-                        </span>
-                      </div>
-                    )}
+                    {/* Phase 6A.44 Fix: Always show attendee count (at least 1 attendee for any registration) */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Attendees:</span>
+                      <span className="font-medium">
+                        {registrationDetails?.quantity || 1} {(registrationDetails?.quantity || 1) === 1 ? 'person' : 'people'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -172,7 +170,7 @@ function PaymentSuccessContent() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>You can view your registration details in your account</span>
+                    <span>If you are a member of LankaConnect, you can view your registration details in your account</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />

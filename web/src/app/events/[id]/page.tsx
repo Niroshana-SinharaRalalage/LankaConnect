@@ -14,6 +14,7 @@ import { EventRegistrationForm } from '@/presentation/components/features/events
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
+import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -360,6 +361,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <h1 className="text-4xl font-bold text-neutral-900 mb-4">
                 {event.title}
               </h1>
+
+              {/* Phase 6A.46: Display Label and Registration Badge */}
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                {/* Display Label (computed lifecycle label from backend) */}
+                <Badge
+                  variant="default"
+                  className="text-white text-sm"
+                  style={{ backgroundColor: '#FF7900' }}
+                >
+                  {event.displayLabel}
+                </Badge>
+
+                {/* Registration Badge */}
+                <RegistrationBadge isRegistered={isUserRegistered} compact={false} />
+              </div>
+
               <p className="text-lg text-neutral-600 leading-relaxed whitespace-pre-wrap">
                 {event.description}
               </p>

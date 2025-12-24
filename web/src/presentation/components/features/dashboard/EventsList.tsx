@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Calendar, MapPin, Users } from 'lucide-react';
 import { EventDto, EventStatus, EventCategory } from '@/infrastructure/api/types/events.types';
+import { RegistrationBadge } from '../events/RegistrationBadge';
 
 export interface EventsListProps {
   events: EventDto[];
@@ -10,6 +11,8 @@ export interface EventsListProps {
   emptyMessage?: string;
   onEventClick?: (eventId: string) => void;
   onCancelClick?: (eventId: string) => Promise<void>;
+  /** Phase 6A.46: Set of event IDs for which user is registered (for bulk registration badge display) */
+  registeredEventIds?: Set<string>;
 }
 
 /**
@@ -23,6 +26,7 @@ export function EventsList({
   emptyMessage = 'No events to display',
   onEventClick,
   onCancelClick,
+  registeredEventIds,
 }: EventsListProps) {
   const [cancellingEventId, setCancellingEventId] = React.useState<string | null>(null);
   const formatDate = (dateString: string): string => {
@@ -156,13 +160,19 @@ export function EventsList({
           <div className="flex items-start justify-between mb-2">
             <h3 className="text-lg font-semibold text-[#8B1538] flex-1">{event.title}</h3>
             <div className="flex gap-2 ml-4">
-              {/* Status Badge */}
+              {/* Phase 6A.46: Display Label (computed lifecycle label from backend) */}
               <span
                 className="px-2 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
                 style={{ backgroundColor: getStatusColor(event.status) }}
               >
-                {getStatusLabel(event.status)}
+                {event.displayLabel}
               </span>
+
+              {/* Phase 6A.46: Registration Badge */}
+              <RegistrationBadge
+                isRegistered={registeredEventIds?.has(event.id) ?? false}
+                compact={false}
+              />
             </div>
           </div>
 

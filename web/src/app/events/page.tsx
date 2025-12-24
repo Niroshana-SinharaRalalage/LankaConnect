@@ -9,12 +9,13 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { Button } from '@/presentation/components/ui/Button';
 import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
 import { Calendar, MapPin, Users, DollarSign, Filter, Plus } from 'lucide-react';
-import { useEvents } from '@/presentation/hooks/useEvents';
+import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
 import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
+import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
@@ -22,12 +23,15 @@ import { UserRole } from '@/infrastructure/api/types/auth.types';
 /**
  * Events Listing Page
  * Phase 6B: View All Events Feature
+ * Phase 6A.46: Event status labels and registration badges
  *
  * Features:
  * - Location-based sorting (same logic as featured events)
  * - Three filtering options: Event Type, Event Date, Location
  * - Displays unlimited events with scrolling
  * - Works for authenticated and anonymous users
+ * - Phase 6A.46: Shows "You are registered" badge for registered events
+ * - Phase 6A.46: Displays computed lifecycle labels (New, Upcoming, etc.)
  */
 export default function EventsPage() {
   const router = useRouter();
@@ -66,6 +70,15 @@ export default function EventsPage() {
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
+
+  // Phase 6A.46: Bulk fetch user RSVPs (1 API call) for registration badges
+  const { data: userRsvps } = useUserRsvps({ enabled: !!user });
+
+  // Phase 6A.46: Create Set of registered event IDs for O(1) lookups
+  const registeredEventIds = useMemo(
+    () => new Set(userRsvps?.map(e => e.id) || []),
+    [userRsvps]
+  );
 
   // Convert metro areas to tree structure for TreeDropdown
   const locationTreeNodes = useMemo<TreeNode[]>(() => {
@@ -323,7 +336,12 @@ export default function EventsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
-              <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
+              <EventCard
+                key={event.id}
+                event={event}
+                categoryLabels={categoryLabels}
+                isRegistered={user ? registeredEventIds.has(event.id) : false}
+              />
             ))}
           </div>
         )}
@@ -337,13 +355,16 @@ export default function EventsPage() {
 /**
  * Event Card Component
  * Displays individual event with image, title, date, location, category, and pricing
+ * Phase 6A.46: Displays registration badge and lifecycle label
  */
 function EventCard({
   event,
   categoryLabels,
+  isRegistered,
 }: {
   event: EventDto;
   categoryLabels: Record<EventCategory, string>;
+  isRegistered: boolean;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {
@@ -401,6 +422,21 @@ function EventCard({
         <h3 className="text-lg font-semibold text-neutral-900 mb-3 line-clamp-2">
           {event.title}
         </h3>
+
+        {/* Phase 6A.46: Display Label and Registration Badge */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {/* Display Label (computed lifecycle label from backend) */}
+          <Badge
+            variant="default"
+            className="text-white"
+            style={{ backgroundColor: '#FF7900' }}
+          >
+            {event.displayLabel}
+          </Badge>
+
+          {/* Registration Badge */}
+          <RegistrationBadge isRegistered={isRegistered} compact={false} />
+        </div>
 
         {/* Date & Time */}
         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-2">

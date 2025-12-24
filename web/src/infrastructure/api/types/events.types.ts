@@ -162,6 +162,13 @@ export interface EventDto {
   createdAt: string;
   updatedAt?: string | null;
 
+  /**
+   * Phase 6A.46: User-facing display label based on event lifecycle
+   * Computed based on PublishedAt, StartDate, EndDate, and Status
+   * Values: "New", "Upcoming", "Cancelled", "Completed", "Inactive", or status name
+   */
+  displayLabel: string;
+
   // Location information (nullable - not all events have physical locations)
   address?: string | null;
   city?: string | null;

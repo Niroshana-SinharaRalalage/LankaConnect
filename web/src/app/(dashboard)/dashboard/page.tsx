@@ -25,7 +25,7 @@ import {
   Award,
   Mail
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
@@ -60,6 +60,12 @@ export default function DashboardPage() {
   // Notifications
   const { data: notifications = [], isLoading: loadingNotifications } = useUnreadNotifications();
   const markAsRead = useMarkNotificationAsRead();
+
+  // Phase 6A.46: Create Set of registered event IDs for O(1) lookups
+  const registeredEventIds = useMemo(
+    () => new Set(registeredEvents.map(e => e.id)),
+    [registeredEvents]
+  );
 
   // Set mounted state after client-side hydration
   useEffect(() => {
@@ -367,6 +373,7 @@ export default function DashboardPage() {
                             emptyMessage="You haven't registered for any events yet"
                             onEventClick={handleEventClick}
                             onCancelClick={handleCancelRegistration}
+                            registeredEventIds={registeredEventIds}
                           />
                         ),
                       },
@@ -380,6 +387,7 @@ export default function DashboardPage() {
                             isLoading={loadingCreated}
                             emptyMessage="You haven't created any events yet"
                             onEventClick={handleManageEventClick}
+                            registeredEventIds={registeredEventIds}
                           />
                         ),
                       },
@@ -442,6 +450,7 @@ export default function DashboardPage() {
                             emptyMessage="You haven't registered for any events yet"
                             onEventClick={handleEventClick}
                             onCancelClick={handleCancelRegistration}
+                            registeredEventIds={registeredEventIds}
                           />
                         ),
                       },
@@ -455,6 +464,7 @@ export default function DashboardPage() {
                             isLoading={loadingCreated}
                             emptyMessage="You haven't created any events yet"
                             onEventClick={handleManageEventClick}
+                            registeredEventIds={registeredEventIds}
                           />
                         ),
                       },
@@ -499,6 +509,7 @@ export default function DashboardPage() {
                             emptyMessage="You haven't registered for any events yet. Browse events to join!"
                             onEventClick={handleEventClick}
                             onCancelClick={handleCancelRegistration}
+                            registeredEventIds={registeredEventIds}
                           />
                         ),
                       },

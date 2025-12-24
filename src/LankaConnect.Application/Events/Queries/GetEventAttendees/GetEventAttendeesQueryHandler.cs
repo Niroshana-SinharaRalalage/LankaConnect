@@ -30,8 +30,7 @@ public class GetEventAttendeesQueryHandler
 
         if (@event == null)
         {
-            return Result<EventAttendeesResponse>.Failure(
-                new Error("Event.NotFound", "Event not found"));
+            return Result<EventAttendeesResponse>.Failure("Event not found");
         }
 
         // Single query with eager loading to avoid N+1
@@ -53,7 +52,7 @@ public class GetEventAttendeesQueryHandler
         return Result<EventAttendeesResponse>.Success(new EventAttendeesResponse
         {
             EventId = request.EventId,
-            EventTitle = @event.Title,
+            EventTitle = @event.Title.Value,
             Attendees = attendeeDtos,
             TotalRegistrations = attendeeDtos.Count,
             TotalAttendees = attendeeDtos.Sum(a => a.TotalAttendees),

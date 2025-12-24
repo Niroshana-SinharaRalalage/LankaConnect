@@ -1,9 +1,43 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-20 (Current Session) - Session 47: Phase 6A.24 Paid Event Fixes Complete ✅*
+*Last Updated: 2025-12-22 (Current Session) - Session 48: Phase 6A.39/6A.40 Event Publication Email Fixes ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 47: Phase 6A.24 Paid Event Bug Fixes ✅
+## 🎯 Current Session Status - Session 48: Event Publication Email Fixes ✅
+
+### Session 48: Phase 6A.39/6A.40 Event Publication Email Fixes - COMPLETE - 2025-12-22
+
+**Status**: ✅ **COMPLETE** (Both issues resolved, deployed to staging, verified)
+
+**Summary**: Fixed event publication email notifications not being sent when events are published.
+
+#### Phase 6A.39: Database Template Fix
+- **Root Cause**: `EventPublishedEventHandler` was using `IEmailTemplateService` (filesystem-based templates) instead of `IEmailService` (database-based templates) which caused template rendering to fail silently
+- **Fix**: Refactored handler to use `IEmailService.SendTemplatedEmailAsync()` pattern (same as `RegistrationConfirmedEventHandler`)
+- **Also Added**: Database migration to seed `event-published` email template with LankaConnect branding
+- **Files**:
+  - [EventPublishedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/EventPublishedEventHandler.cs) - Refactored to use IEmailService
+  - [20251221160725_SeedEventPublishedTemplate_Phase6A39.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251221160725_SeedEventPublishedTemplate_Phase6A39.cs) - New template migration
+- **Commit**: [59d5b65d] feat(phase-6a39): Migrate event-published email to database template
+
+#### Phase 6A.40: Location Null Check Fix
+- **Root Cause**: When event has no location, EF Core creates a "shell" EventLocation object with null Address, causing NullReferenceException in newsletter subscriber lookup
+- **Symptom**: Azure logs showed `[RCA-8] Getting newsletter subscribers for location: N/A, N/A` followed by exception
+- **Fix**: Added defensive null check for both Location AND Address validity before attempting newsletter subscriber lookup
+- **File**: [EventNotificationRecipientService.cs:86-105](../src/LankaConnect.Application/Events/Services/EventNotificationRecipientService.cs)
+- **Commit**: [8ef88f15] fix(phase-6a40): Add defensive null check for event location in recipient service
+
+**Verification**:
+- Created test event with location (Los Angeles, California)
+- Published event and verified handler triggered
+- Azure logs confirmed: `[RCA-8] Getting newsletter subscribers for location: Los Angeles, California` (correct, not N/A)
+- Handler completed successfully (0 recipients found due to no email groups/subscribers in test data)
+
+**Build Status**: ✅ Backend: 0 errors, 1141 tests passing | Frontend: N/A
+
+**Deployment**: ✅ GitHub Actions workflows 20443606614, 20443692848 completed successfully
+
+---
 
 ### Session 47: Phase 6A.24 Stripe Webhook & Email Fixes - COMPLETE - 2025-12-20
 

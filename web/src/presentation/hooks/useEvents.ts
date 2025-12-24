@@ -29,6 +29,7 @@ import type {
   UpdateEventRequest,
   RsvpRequest,
   RegistrationDetailsDto,
+  AttendeeDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -423,8 +424,17 @@ export function useRsvpToEvent() {
       }
     },
     onSuccess: (_data, variables) => {
-      // Refetch to get accurate data from server
+      // Phase 6A.25 Fix: Invalidate all relevant caches after successful RSVP
+      // This ensures the UI updates correctly without needing a page reload
+
+      // Refetch event details to get accurate registration count
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+
+      // Invalidate user's RSVP list so isUserRegistered updates correctly
+      queryClient.invalidateQueries({ queryKey: ['user-rsvps'] });
+
+      // Invalidate registration details for this specific event
+      queryClient.invalidateQueries({ queryKey: ['user-registration', variables.eventId] });
     },
   });
 }
@@ -545,7 +555,17 @@ export function useUserRsvpForEvent(
     enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: false, // Don't retry - let auth interceptor handle token refresh
+    // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+    // The auth interceptor refreshes the token, but with retry: false the query wouldn't retry
+    // This allows the query to retry once after successful token refresh
+    retry: (failureCount, error) => {
+      // Only retry once for 401 errors (after token refresh)
+      if (failureCount < 1 && (error as any)?.response?.status === 401) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000, // Wait 1 second for token refresh to complete
     ...options,
   });
 }
@@ -615,7 +635,16 @@ export function useUserRegistrationDetails(
     enabled: !!eventId && isUserRegistered, // Only fetch if user is registered
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: false, // Don't retry on 401/404
+    // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+    // Note: 404 errors are handled in queryFn and return null, so they won't trigger retry
+    retry: (failureCount, error) => {
+      // Only retry once for 401 errors (after token refresh)
+      if (failureCount < 1 && (error as any)?.response?.status === 401) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000, // Wait 1 second for token refresh to complete
     ...options,
   });
 }
@@ -649,7 +678,7 @@ export function useUpdateRegistrationDetails() {
   return useMutation({
     mutationFn: (data: {
       eventId: string;
-      attendees: { name: string; age: number }[];
+      attendees: AttendeeDto[];
       email: string;
       phoneNumber: string;
       address?: string;

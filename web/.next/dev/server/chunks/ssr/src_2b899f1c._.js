@@ -5162,6 +5162,12 @@ class EventsRepository {
         await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${id}/publish`);
     }
     /**
+   * Phase 6A.41: Unpublish event (return to Draft status)
+   * Allows organizers to make corrections after premature publication
+   */ async unpublishEvent(id) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${id}/unpublish`);
+    }
+    /**
    * Cancel event with reason
    * Notifies all registered users
    */ async cancelEvent(id, reason) {
@@ -5225,8 +5231,9 @@ class EventsRepository {
    * Register anonymous attendee for an event
    * No authentication required - for users without accounts
    * Maps to backend RegisterAnonymousAttendeeCommand
+   * Phase 6A.44: Returns checkout URL for paid events, null for free events
    */ async registerAnonymous(eventId, request) {
-        await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/register-anonymous`, request);
+        return await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$infrastructure$2f$api$2f$client$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["apiClient"].post(`${this.basePath}/${eventId}/register-anonymous`, request);
     }
     /**
    * Get current user's RSVPs
@@ -5851,9 +5858,24 @@ function useRsvpToEvent() {
             }
         },
         onSuccess: (_data, variables)=>{
-            // Refetch to get accurate data from server
+            // Phase 6A.25 Fix: Invalidate all relevant caches after successful RSVP
+            // This ensures the UI updates correctly without needing a page reload
+            // Refetch event details to get accurate registration count
             queryClient.invalidateQueries({
                 queryKey: eventKeys.detail(variables.eventId)
+            });
+            // Invalidate user's RSVP list so isUserRegistered updates correctly
+            queryClient.invalidateQueries({
+                queryKey: [
+                    'user-rsvps'
+                ]
+            });
+            // Invalidate registration details for this specific event
+            queryClient.invalidateQueries({
+                queryKey: [
+                    'user-registration',
+                    variables.eventId
+                ]
             });
         }
     });
@@ -5904,7 +5926,17 @@ function useUserRsvpForEvent(eventId, options) {
         enabled: !!eventId,
         staleTime: 5 * 60 * 1000,
         refetchOnWindowFocus: true,
-        retry: false,
+        // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+        // The auth interceptor refreshes the token, but with retry: false the query wouldn't retry
+        // This allows the query to retry once after successful token refresh
+        retry: (failureCount, error)=>{
+            // Only retry once for 401 errors (after token refresh)
+            if (failureCount < 1 && error?.response?.status === 401) {
+                return true;
+            }
+            return false;
+        },
+        retryDelay: 1000,
         ...options
     });
 }
@@ -5948,7 +5980,16 @@ function useUserRegistrationDetails(eventId, isUserRegistered = false, options) 
         enabled: !!eventId && isUserRegistered,
         staleTime: 5 * 60 * 1000,
         refetchOnWindowFocus: true,
-        retry: false,
+        // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+        // Note: 404 errors are handled in queryFn and return null, so they won't trigger retry
+        retry: (failureCount, error)=>{
+            // Only retry once for 401 errors (after token refresh)
+            if (failureCount < 1 && error?.response?.status === 401) {
+                return true;
+            }
+            return false;
+        },
+        retryDelay: 1000,
         ...options
     });
 }

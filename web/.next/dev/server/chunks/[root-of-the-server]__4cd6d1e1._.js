@@ -206,6 +206,41 @@ async function forwardRequest(request, pathSegments, method) {
                 setCookieHeaders: response.headers.getSetCookie?.() || []
             });
         }
+        // Phase 6A.24 FIX: Check if response is binary (PDF, images, etc.)
+        // Binary responses must be streamed as-is, not parsed as text/JSON
+        const responseContentType = response.headers.get('content-type') || '';
+        const isBinaryResponse = responseContentType.includes('application/pdf') || responseContentType.includes('application/octet-stream') || responseContentType.includes('image/') || responseContentType.includes('video/') || responseContentType.includes('audio/');
+        if (isBinaryResponse) {
+            console.log('[Proxy] Binary response detected:', {
+                path,
+                contentType: responseContentType,
+                status: response.status
+            });
+            // Stream binary response as-is with proper headers
+            const binaryData = await response.arrayBuffer();
+            const nextResponse = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"](binaryData, {
+                status: response.status,
+                headers: {
+                    'Content-Type': responseContentType,
+                    'Content-Disposition': response.headers.get('content-disposition') || ''
+                }
+            });
+            // Forward Set-Cookie headers from backend for binary responses too
+            const setCookieHeaders = response.headers.getSetCookie?.() || [];
+            setCookieHeaders.forEach((cookie)=>{
+                const cookieParts = cookie.split(';').map((p)=>p.trim());
+                const [nameValue, ...attributes] = cookieParts;
+                const newAttributes = attributes.filter((attr)=>!attr.toLowerCase().startsWith('secure')).filter((attr)=>!attr.toLowerCase().startsWith('samesite=none'));
+                newAttributes.push('SameSite=Lax');
+                newAttributes.push('Path=/');
+                const newCookie = [
+                    nameValue,
+                    ...newAttributes
+                ].join('; ');
+                nextResponse.headers.append('Set-Cookie', newCookie);
+            });
+            return nextResponse;
+        }
         // Get response body - handle empty responses (e.g., successful free event registration returns null)
         const responseText = await response.text();
         let responseBody;

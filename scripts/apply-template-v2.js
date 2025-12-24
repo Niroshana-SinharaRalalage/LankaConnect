@@ -8,18 +8,12 @@ const client = new Client({
   ssl: { rejectUnauthorized: false }
 });
 
-// Phase 6A.40: Updated template with all user feedback:
-// 1. LankaConnect NOT bold, with "Sri Lankan Community Hub" underneath
-// 2. Removed bottom "LankaConnect / Sri Lankan Community Hub" - just centered copyright
-// 3. Year changed to 2026
-// 4. Removed all emojis
-// 5. Date shows full range: start date/time to end date/time (handled by backend)
-// 6. Removed "Attendees: X" count
-// 7. Registered Attendees shows names only (no age) - handled by backend
-// 8. Contact info uses correct phone from registration
-// 9. Removed "We look forward to seeing you at the event!"
-// 10. Changed footer text to "contact your event organizer"
-// 11. Width: 850px
+// Phase 6A.42: Updated template layout:
+// 1. Moved "LankaConnect / Sri Lankan Community Hub" from header to footer
+// 2. Header now shows only "Registration Confirmed!"
+// 3. Footer shows branding + copyright centered
+// 4. Year: 2026, no emojis, 850px width
+// 5. Date shows full range, attendees names only, contact info from registration
 
 const htmlTemplate = `<!DOCTYPE html>
 <html>
@@ -35,29 +29,13 @@ const htmlTemplate = `<!DOCTYPE html>
                 <!-- Main Container - 850px width -->
                 <table role="presentation" width="850" cellspacing="0" cellpadding="0" border="0" style="width: 850px; max-width: 850px; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 
-                    <!-- Header Section - Gradient with LankaConnect branding -->
+                    <!-- Header Section - Just "Registration Confirmed!" -->
                     <tr>
                         <td style="padding: 0;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
                                     <td style="background: linear-gradient(to right, #ea580c 0%, #9f1239 50%, #166534 100%); padding: 36px 50px; text-align: center;">
-                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                                            <tr>
-                                                <td style="text-align: center; padding-bottom: 4px;">
-                                                    <span style="font-size: 28px; font-weight: 400; color: #ffffff; letter-spacing: 0.5px;">LankaConnect</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: center; padding-bottom: 20px;">
-                                                    <span style="font-size: 13px; font-weight: 400; color: #ffffff; opacity: 0.9;">Sri Lankan Community Hub</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: center;">
-                                                    <span style="font-size: 26px; font-weight: 600; color: #ffffff;">Registration Confirmed!</span>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                        <span style="font-size: 28px; font-weight: 600; color: #ffffff;">Registration Confirmed!</span>
                                     </td>
                                 </tr>
                             </table>
@@ -145,13 +123,24 @@ const htmlTemplate = `<!DOCTYPE html>
                         </td>
                     </tr>
 
-                    <!-- Footer Section - Simple centered copyright -->
+                    <!-- Footer Section - Branding only -->
                     <tr>
                         <td style="padding: 0;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
-                                    <td style="background: linear-gradient(to right, #ea580c 0%, #9f1239 50%, #166534 100%); padding: 24px 50px; text-align: center;">
-                                        <span style="font-size: 14px; color: #ffffff;">© 2026 LankaConnect. All rights reserved.</span>
+                                    <td style="background: linear-gradient(to right, #ea580c 0%, #9f1239 50%, #166534 100%); padding: 28px 50px; text-align: center;">
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="text-align: center; padding-bottom: 4px;">
+                                                    <span style="font-size: 24px; font-weight: 400; color: #ffffff; letter-spacing: 0.5px;">LankaConnect</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: center;">
+                                                    <span style="font-size: 13px; font-weight: 400; color: #ffffff; opacity: 0.9;">Sri Lankan Community Hub</span>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
                                 </tr>
                             </table>
@@ -180,19 +169,13 @@ async function applyTemplateMigration() {
   try {
     await client.connect();
 
-    console.log('=== APPLYING TEMPLATE V2 (Phase 6A.40) ===');
+    console.log('=== APPLYING TEMPLATE V3 (Phase 6A.42) ===');
     console.log('Template size:', htmlTemplate.length, 'chars');
     console.log('Changes:');
-    console.log('  1. LankaConnect NOT bold, with tagline underneath');
-    console.log('  2. Footer simplified - just centered copyright');
-    console.log('  3. Year: 2026');
-    console.log('  4. NO emojis');
-    console.log('  5. Date shows {{EventDateTime}} (full range from backend)');
-    console.log('  6. NO attendee count');
-    console.log('  7. Attendees section conditional {{#HasAttendeeDetails}}');
-    console.log('  8. Contact info from registration');
-    console.log('  9. NO "We look forward..." message');
-    console.log(' 10. Footer: "contact your event organizer"');
+    console.log('  1. Header: Only "Registration Confirmed!" (branding moved to footer)');
+    console.log('  2. Footer: LankaConnect + Sri Lankan Community Hub (no copyright)');
+    console.log('  3. Year: 2026, no emojis, 850px width');
+    console.log('  4. Date shows full range, attendees names only');
 
     const updateResult = await client.query(
       `UPDATE communications.email_templates
@@ -220,7 +203,7 @@ async function applyTemplateMigration() {
     console.log(JSON.stringify(verify.rows, null, 2));
 
     await client.end();
-    console.log('\nTemplate V2 applied successfully!');
+    console.log('\nTemplate V3 applied successfully!');
   } catch (err) {
     console.error('Error:', err.message);
     process.exit(1);

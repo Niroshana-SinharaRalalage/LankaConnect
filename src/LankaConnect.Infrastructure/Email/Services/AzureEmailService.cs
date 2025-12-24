@@ -385,17 +385,30 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
         try
         {
             // Create domain value objects
+            _logger.LogInformation("[DIAG-EMAIL-1] Creating domain email - From: {From}, To: {To}, Subject length: {SubjectLen}",
+                _emailSettings.FromEmail, dto.ToEmail, dto.Subject?.Length ?? 0);
+
             var fromEmailResult = EmailValueObject.Create(_emailSettings.FromEmail);
             if (fromEmailResult.IsFailure)
+            {
+                _logger.LogError("[DIAG-EMAIL-2] FromEmail validation failed: {Error}", fromEmailResult.Error);
                 return Result<DomainEmailMessage>.Failure(fromEmailResult.Error);
+            }
 
             var toEmailResult = EmailValueObject.Create(dto.ToEmail);
             if (toEmailResult.IsFailure)
+            {
+                _logger.LogError("[DIAG-EMAIL-3] ToEmail validation failed for {Email}: {Error}", dto.ToEmail, toEmailResult.Error);
                 return Result<DomainEmailMessage>.Failure(toEmailResult.Error);
+            }
 
+            _logger.LogInformation("[DIAG-EMAIL-4] About to create EmailSubject from: '{Subject}'", dto.Subject);
             var subjectResult = EmailSubject.Create(dto.Subject);
             if (subjectResult.IsFailure)
+            {
+                _logger.LogError("[DIAG-EMAIL-5] EmailSubject validation failed for '{Subject}': {Error}", dto.Subject, subjectResult.Error);
                 return Result<DomainEmailMessage>.Failure(subjectResult.Error);
+            }
 
             // Create domain entity
             var emailMessageResult = DomainEmailMessage.Create(

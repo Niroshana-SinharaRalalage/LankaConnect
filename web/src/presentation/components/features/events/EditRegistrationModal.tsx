@@ -4,7 +4,7 @@
  * Phase 6A.14: Modal dialog for editing event registration details
  *
  * Features:
- * - Edit attendee names and ages
+ * - Edit attendee names, age categories, and gender
  * - Edit contact information (email, phone, address)
  * - Add/remove attendees for free events
  * - Prevents attendee count changes for paid events
@@ -26,6 +26,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { AlertCircle, Plus, Trash2, User } from 'lucide-react';
 import type { RegistrationDetailsDto, AttendeeDto, PaymentStatus } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 
 interface EditRegistrationModalProps {
   open: boolean;
@@ -83,7 +84,7 @@ export function EditRegistrationModal({
         const placeholders: AttendeeDto[] = [];
         const qty = registration.quantity || 1;
         for (let i = 0; i < qty; i++) {
-          placeholders.push({ name: '', age: 0 });
+          placeholders.push({ name: '', ageCategory: AgeCategory.Adult, gender: null });
         }
         setAttendees(placeholders);
       }
@@ -114,12 +115,14 @@ export function EditRegistrationModal({
   if (!registration) return null;
 
   // Update attendee field
-  const updateAttendee = (index: number, field: keyof AttendeeDto, value: string | number) => {
+  const updateAttendee = (index: number, field: keyof AttendeeDto, value: string | AgeCategory | Gender | null) => {
     const newAttendees = [...attendees];
     if (field === 'name') {
       newAttendees[index] = { ...newAttendees[index], name: value as string };
-    } else if (field === 'age') {
-      newAttendees[index] = { ...newAttendees[index], age: value as number };
+    } else if (field === 'ageCategory') {
+      newAttendees[index] = { ...newAttendees[index], ageCategory: value as AgeCategory };
+    } else if (field === 'gender') {
+      newAttendees[index] = { ...newAttendees[index], gender: value as Gender | null };
     }
     setAttendees(newAttendees);
 
@@ -135,7 +138,7 @@ export function EditRegistrationModal({
   // Add new attendee
   const addAttendee = () => {
     if (attendees.length < maxAttendeesAllowed) {
-      setAttendees([...attendees, { name: '', age: 0 }]);
+      setAttendees([...attendees, { name: '', ageCategory: AgeCategory.Adult, gender: null }]);
     }
   };
 
@@ -163,8 +166,8 @@ export function EditRegistrationModal({
         newErrors[`attendee_${index}_name`] = 'Name cannot exceed 100 characters';
       }
 
-      if (attendee.age < 0 || attendee.age > 120) {
-        newErrors[`attendee_${index}_age`] = 'Age must be between 0 and 120';
+      if (!attendee.ageCategory) {
+        newErrors[`attendee_${index}_ageCategory`] = 'Age category is required';
       }
     });
 
@@ -207,7 +210,11 @@ export function EditRegistrationModal({
 
     try {
       await onSave({
-        attendees: attendees.map(a => ({ name: a.name.trim(), age: a.age })),
+        attendees: attendees.map(a => ({
+          name: a.name.trim(),
+          ageCategory: a.ageCategory,
+          gender: a.gender
+        })),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         address: address.trim() || undefined,
@@ -290,9 +297,9 @@ export function EditRegistrationModal({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
                       {/* Name */}
-                      <div className="col-span-2 sm:col-span-1">
+                      <div>
                         <label
                           htmlFor={`attendee-name-${index}`}
                           className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
@@ -318,35 +325,61 @@ export function EditRegistrationModal({
                         )}
                       </div>
 
-                      {/* Age */}
+                      {/* Age Category */}
                       <div>
-                        <label
-                          htmlFor={`attendee-age-${index}`}
-                          className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
-                        >
-                          Age *
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-2">
+                          Age Category *
                         </label>
-                        <input
-                          id={`attendee-age-${index}`}
-                          type="number"
-                          min="0"
-                          max="120"
-                          value={attendee.age || ''}
-                          onChange={(e) =>
-                            updateAttendee(index, 'age', parseInt(e.target.value) || 0)
-                          }
-                          className={`w-full px-3 py-2 text-sm border rounded-md ${
-                            errors[`attendee_${index}_age`]
-                              ? 'border-red-500 focus:ring-red-500'
-                              : 'border-neutral-300 dark:border-neutral-600 focus:ring-blue-500'
-                          } focus:outline-none focus:ring-2`}
-                          placeholder="Age"
-                        />
-                        {errors[`attendee_${index}_age`] && (
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`attendee-age-category-${index}`}
+                              checked={attendee.ageCategory === AgeCategory.Adult}
+                              onChange={() => updateAttendee(index, 'ageCategory', AgeCategory.Adult)}
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-neutral-700 dark:text-neutral-300">Adult</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`attendee-age-category-${index}`}
+                              checked={attendee.ageCategory === AgeCategory.Child}
+                              onChange={() => updateAttendee(index, 'ageCategory', AgeCategory.Child)}
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-neutral-700 dark:text-neutral-300">Child</span>
+                          </label>
+                        </div>
+                        {errors[`attendee_${index}_ageCategory`] && (
                           <p className="mt-1 text-xs text-red-600">
-                            {errors[`attendee_${index}_age`]}
+                            {errors[`attendee_${index}_ageCategory`]}
                           </p>
                         )}
+                      </div>
+
+                      {/* Gender */}
+                      <div>
+                        <label
+                          htmlFor={`attendee-gender-${index}`}
+                          className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+                        >
+                          Gender (Optional)
+                        </label>
+                        <select
+                          id={`attendee-gender-${index}`}
+                          value={attendee.gender ?? ''}
+                          onChange={(e) =>
+                            updateAttendee(index, 'gender', e.target.value ? parseInt(e.target.value) as Gender : null)
+                          }
+                          className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select gender</option>
+                          <option value={Gender.Male}>Male</option>
+                          <option value={Gender.Female}>Female</option>
+                          <option value={Gender.Other}>Other</option>
+                        </select>
                       </div>
                     </div>
                   </div>

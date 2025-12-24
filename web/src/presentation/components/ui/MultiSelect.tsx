@@ -121,15 +121,24 @@ export function MultiSelect({
 
   return (
     <div className="w-full relative" ref={containerRef}>
-      {/* Dropdown Button */}
-      <button
-        type="button"
+      {/* Dropdown Trigger - Using div with role="combobox" to avoid nested button issue */}
+      {/* Phase 6A.25 Fix: Changed from <button> to <div> to allow nested clear button */}
+      <div
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        tabIndex={disabled || isLoading ? -1 : 0}
         onClick={() => !disabled && !isLoading && setIsOpen(!isOpen)}
-        disabled={disabled || isLoading}
+        onKeyDown={(e) => {
+          if (!disabled && !isLoading && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
         className={`
           w-full px-4 py-2 text-left border rounded-lg
           flex items-center justify-between gap-2
-          transition-colors duration-150
+          transition-colors duration-150 cursor-pointer
           ${error ? 'border-red-500 focus:ring-red-500' : 'border-neutral-300 focus:ring-orange-500'}
           ${disabled || isLoading ? 'bg-neutral-100 cursor-not-allowed' : 'bg-white hover:border-neutral-400'}
           focus:outline-none focus:ring-2
@@ -170,7 +179,7 @@ export function MultiSelect({
             }`}
           />
         </div>
-      </button>
+      </div>
 
       {/* Dropdown Menu */}
       {isOpen && !disabled && !isLoading && (

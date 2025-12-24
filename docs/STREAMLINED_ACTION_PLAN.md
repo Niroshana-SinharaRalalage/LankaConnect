@@ -7,7 +7,34 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 47: PHASE 6A.24 PAID EVENT BUG FIXES (2025-12-20)
+## ✅ CURRENT STATUS - SESSION 48: PHASE 6A.39/6A.40 EVENT PUBLICATION EMAIL FIXES (2025-12-22)
+**Date**: 2025-12-22 (Session 48)
+**Session**: Event Publication Email Fixes
+**Status**: ✅ COMPLETE - Both issues fixed and deployed
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors, 1141 tests | Frontend: N/A
+**Commits**:
+- `59d5b65d` - feat(phase-6a39): Migrate event-published email to database template
+- `8ef88f15` - fix(phase-6a40): Add defensive null check for event location in recipient service
+
+### SESSION 48: PHASE 6A.39/6A.40 EVENT PUBLICATION EMAIL FIXES (2025-12-22)
+**Goal**: Fix event publication email notifications not being sent
+
+**Issues Fixed**:
+1. **Phase 6A.39 - Template Mismatch** - EventPublishedEventHandler used IEmailTemplateService (filesystem) instead of IEmailService (database), causing silent failures
+2. **Phase 6A.40 - Location Null Check** - EF Core created "shell" EventLocation with null Address, causing NullReferenceException in newsletter subscriber lookup
+
+**Files Modified**:
+- `EventPublishedEventHandler.cs` - Refactored to use IEmailService pattern
+- `20251221160725_SeedEventPublishedTemplate_Phase6A39.cs` - New template migration
+- `EventNotificationRecipientService.cs` - Added defensive null check for Location/Address
+
+**Verification**: Test event published successfully, Azure logs showed correct location resolution (Los Angeles, California instead of N/A, N/A)
+
+**Deployment**: ✅ GitHub Actions workflows 20443606614, 20443692848 completed successfully
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 47: PHASE 6A.24 PAID EVENT BUG FIXES (2025-12-20)
 **Date**: 2025-12-20 (Session 47)
 **Session**: Phase 6A.24 Stripe Webhook & Email Fixes
 **Status**: ✅ COMPLETE - All 4 issues fixed and deployed

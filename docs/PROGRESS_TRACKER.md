@@ -1,9 +1,96 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-22 (Current Session) - Session 48: Phase 6A.39/6A.40 Event Publication Email Fixes ✅*
+*Last Updated: 2025-12-23 (Current Session) - Session 49: Phase 6A.46 Event Lifecycle Labels & Registration Badges ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 48: Event Publication Email Fixes ✅
+## 🎯 Current Session Status - Session 49: Event Lifecycle Labels & Registration Badges ✅
+
+### Session 49: Phase 6A.46 Event Lifecycle Labels & Registration Badges - COMPLETE - 2025-12-23
+
+**Status**: ✅ **COMPLETE** (Backend + Frontend implemented, tested, and committed)
+
+**Summary**: Implemented time-based event status labels and registration badges to improve user experience by showing lifecycle information (New, Upcoming, Inactive) and registration status across all event displays.
+
+#### Part 1: Backend Implementation (Commit: e38ca62e)
+
+**Database Changes**:
+- Added `PublishedAt` (nullable DateTime) column to Events table
+- Migration `20251224002710_Phase6A46_AddPublishedAtToEvents.cs` with backfill SQL
+- Backfill logic: `PublishedAt = COALESCE(UpdatedAt, CreatedAt)` for existing published events
+- Tracks actual publish timestamp for accurate "New" label calculation
+
+**Domain Changes**:
+- `Event.PublishedAt` property added to Event entity
+- `Publish()` method sets `PublishedAt = DateTime.UtcNow`
+- `Unpublish()` clears `PublishedAt` (sets to null)
+- `Approve()` (admin approval) also sets `PublishedAt`
+
+**Application Layer**:
+- `EventDto.DisplayLabel` property added
+- `EventExtensions.GetDisplayLabel()` calculates user-facing label with priority logic
+- AutoMapper integration in `EventMappingProfile`
+
+**Label Calculation Logic** (Priority Order):
+1. **Cancelled** - If Status == Cancelled (highest priority)
+2. **Completed** - If Status == Completed
+3. **Inactive** - If EndDate + 7 days < now (1 week after event ended)
+4. **New** - If PublishedAt + 7 days > now (within 1 week of publish)
+5. **Upcoming** - If StartDate - 7 days <= now < StartDate (1 week before start)
+6. **Default** - Returns Status.ToString() (Draft, Published, Active, Postponed, Archived, UnderReview)
+
+**Files Modified**:
+- [Event.cs](../src/LankaConnect.Domain/Events/Event.cs) - Added PublishedAt property and timestamp management
+- [EventConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/EventConfiguration.cs) - Configured PublishedAt column
+- [EventDto.cs](../src/LankaConnect.Application/Events/Common/EventDto.cs) - Added DisplayLabel property
+- [EventExtensions.cs](../src/LankaConnect.Application/Events/Common/EventExtensions.cs) - NEW: GetDisplayLabel() method
+- [EventMappingProfile.cs](../src/LankaConnect.Application/Common/Mappings/EventMappingProfile.cs) - AutoMapper integration
+
+#### Part 2: Frontend Implementation (Commit: 8d68425c)
+
+**New Component**:
+- `RegistrationBadge.tsx` - Displays "You are registered" badge with green checkmark
+- Compact mode support for different layouts
+- Conditional rendering (only shows if user is registered)
+
+**Events Listing Page** ([web/src/app/events/page.tsx](../web/src/app/events/page.tsx)):
+- Bulk RSVP fetch using `useUserRsvps()` hook (1 API call)
+- Created `Set<string>` of registered event IDs for O(1) lookups
+- Pass `registeredEventIds` to EventCard components
+- Display `event.displayLabel` badge on each card
+- Display `RegistrationBadge` on each card
+- **Performance**: Eliminated N+1 query problem with Set-based approach
+
+**Dashboard Page** ([web/src/app/(dashboard)/dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx)):
+- Created memoized `Set<string>` of registered event IDs
+- Updated all `EventsList` instances to pass `registeredEventIds` prop
+- Applied to all user role variants (Admin, EventOrganizer, Community Member)
+
+**Event Detail Page** ([web/src/app/events/[id]/page.tsx](../web/src/app/events/[id]/page.tsx)):
+- Display `event.displayLabel` badge under event title
+- Display `RegistrationBadge` under event title
+- Integrated with existing `isUserRegistered` logic
+
+**EventsList Component** ([EventsList.tsx](../web/src/presentation/components/features/dashboard/EventsList.tsx)):
+- Added `registeredEventIds?: Set<string>` prop
+- Pass `isRegistered` to RegistrationBadge component
+- Display lifecycle label and registration badge for each event
+
+**TypeScript Interface**:
+- Updated `EventDto` interface with `displayLabel: string` property
+
+**Testing**:
+- Backend build: ✅ 0 errors, 0 warnings
+- Frontend build: ✅ 0 errors, 0 warnings
+- TypeScript compilation: ✅ Passed
+- Next.js static generation: ✅ 17 routes built
+
+**Build Status**: ✅ Backend: 0 errors | Frontend: 0 errors
+
+**Commits**:
+- [e38ca62e] feat(phase-6a46): Add event lifecycle labels and PublishedAt timestamp (Backend - Part 1)
+- [8d68425c] feat(phase-6a46): Add event lifecycle labels and registration badges (Frontend - Part 2)
+
+---
 
 ### Session 48: Phase 6A.39/6A.40 Event Publication Email Fixes - COMPLETE - 2025-12-22
 

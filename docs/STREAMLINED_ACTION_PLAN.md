@@ -7,7 +7,45 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 48: PHASE 6A.39/6A.40 EVENT PUBLICATION EMAIL FIXES (2025-12-22)
+## ✅ CURRENT STATUS - SESSION 49: PHASE 6A.46 EVENT LIFECYCLE LABELS & REGISTRATION BADGES (2025-12-23)
+**Date**: 2025-12-23 (Session 49)
+**Session**: Event Lifecycle Labels & Registration Badges
+**Status**: ✅ COMPLETE - Backend + Frontend implemented, tested, committed
+**Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors | Frontend: 0 errors
+**Commits**:
+- `e38ca62e` - feat(phase-6a46): Add event lifecycle labels and PublishedAt timestamp (Backend - Part 1)
+- `8d68425c` - feat(phase-6a46): Add event lifecycle labels and registration badges (Frontend - Part 2)
+
+### SESSION 49: PHASE 6A.46 EVENT LIFECYCLE LABELS & REGISTRATION BADGES (2025-12-23)
+**Goal**: Implement time-based event status labels and registration badges to improve user experience
+
+**Features Delivered**:
+
+#### Part 1: Backend (Commit: e38ca62e)
+- **Database**: Added `PublishedAt` (nullable DateTime) to Events table with backfill migration
+- **Domain**: Updated `Event.Publish()`, `Unpublish()`, `Approve()` to manage PublishedAt timestamp
+- **Application**: Created `EventExtensions.GetDisplayLabel()` with priority-based label calculation
+- **DTO**: Added `EventDto.DisplayLabel` with AutoMapper integration
+
+**Label Priority Logic**:
+1. Cancelled > 2. Completed > 3. Inactive (7 days post-event) > 4. New (7 days post-publish) > 5. Upcoming (7 days pre-event) > 6. Default (Status)
+
+#### Part 2: Frontend (Commit: 8d68425c)
+- **Component**: Created `RegistrationBadge.tsx` with green checkmark and "You are registered" text
+- **Events Listing**: Bulk RSVP fetch (1 API call) + Set-based O(1) lookups for registration status
+- **Dashboard**: Updated all EventsList instances across all user roles
+- **Event Detail**: Display lifecycle label + registration badge under event title
+- **Performance**: Eliminated N+1 query problem with Set-based approach
+
+**Files Modified**:
+- Backend: Event.cs, EventConfiguration.cs, EventDto.cs, EventExtensions.cs (NEW), EventMappingProfile.cs
+- Frontend: events.types.ts, RegistrationBadge.tsx (NEW), EventsList.tsx, page.tsx (events, dashboard, [id])
+
+**Testing**: ✅ Backend: 0 errors | Frontend: 0 errors, TypeScript passed, 17 Next.js routes built
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 48: PHASE 6A.39/6A.40 EVENT PUBLICATION EMAIL FIXES (2025-12-22)
 **Date**: 2025-12-22 (Session 48)
 **Session**: Event Publication Email Fixes
 **Status**: ✅ COMPLETE - Both issues fixed and deployed

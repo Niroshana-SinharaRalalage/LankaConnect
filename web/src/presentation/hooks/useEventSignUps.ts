@@ -29,6 +29,7 @@ import type {
   CommitToSignUpItemRequest,
   // Phase 6A.27: Open Sign-Up Items
   AddOpenSignUpItemRequest,
+  AddOpenSignUpItemAnonymousRequest,
   UpdateOpenSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
 
@@ -640,6 +641,51 @@ export function useAddOpenSignUpItem() {
       signupId: string;
     } & AddOpenSignUpItemRequest) =>
       eventsRepository.addOpenSignUpItem(eventId, signupId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useAddOpenSignUpItemAnonymous Hook
+ *
+ * Phase 6A.44: Mutation hook for anonymous users to add Open sign-up items
+ * Anonymous users must be registered for the event and provide contact info
+ *
+ * Features:
+ * - Creates user-submitted item with auto-commitment for anonymous users
+ * - Returns the newly created item ID
+ * - Automatic cache invalidation
+ *
+ * @example
+ * ```tsx
+ * const addOpenItemAnonymous = useAddOpenSignUpItemAnonymous();
+ *
+ * const itemId = await addOpenItemAnonymous.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   contactEmail: 'user@example.com',
+ *   itemName: 'Homemade Cookies',
+ *   quantity: 24,
+ *   notes: 'Chocolate chip cookies',
+ *   contactName: 'John Doe'
+ * });
+ * ```
+ */
+export function useAddOpenSignUpItemAnonymous() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+    } & AddOpenSignUpItemAnonymousRequest) =>
+      eventsRepository.addOpenSignUpItemAnonymous(eventId, signupId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
     },

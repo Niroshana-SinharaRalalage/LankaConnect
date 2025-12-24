@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace LankaConnect.Application.Events.Queries.CheckEventRegistration;
@@ -46,8 +47,10 @@ public class CheckEventRegistrationQueryHandler
         // Step 2: Check if email is registered for this event
         // Note: RegistrationContact.Email is a plain string, but AttendeeInfo.Email is a Value Object
         // Must use .Value for AttendeeInfo.Email to enable EF Core translation
+        // Phase 6A.44 FIX: Only count active registrations (exclude cancelled/refunded)
         var registration = await _context.Registrations
             .Where(r => r.EventId == request.EventId)
+            .Where(r => r.Status != RegistrationStatus.Cancelled && r.Status != RegistrationStatus.Refunded)
             .Where(r =>
                 (r.Contact != null && r.Contact.Email == emailToCheck) ||
                 (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == emailToCheck))

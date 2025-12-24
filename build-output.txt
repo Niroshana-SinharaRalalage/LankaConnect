@@ -1,13 +1,27 @@
-  LankaConnect.Domain -> C:\Work\LankaConnect\src\LankaConnect.Domain\bin\Release\net8.0\LankaConnect.Domain.dll
-  LankaConnect.Application -> C:\Work\LankaConnect\src\LankaConnect.Application\bin\Release\net8.0\LankaConnect.Application.dll
-  LankaConnect.Infrastructure -> C:\Work\LankaConnect\src\LankaConnect.Infrastructure\bin\Release\net8.0\LankaConnect.Infrastructure.dll
-  LankaConnect.TestUtilities -> C:\Work\LankaConnect\tests\LankaConnect.TestUtilities\bin\Debug\net8.0\LankaConnect.TestUtilities.dll
-  LankaConnect.API -> C:\Work\LankaConnect\src\LankaConnect.API\bin\Release\net8.0\LankaConnect.API.dll
-  LankaConnect.Application.Tests -> C:\Work\LankaConnect\tests\LankaConnect.Application.Tests\bin\Release\net8.0\LankaConnect.Application.Tests.dll
-  LankaConnect.IntegrationTests -> C:\Work\LankaConnect\tests\LankaConnect.IntegrationTests\bin\Release\net8.0\LankaConnect.IntegrationTests.dll
+  Determining projects to restore...
+  Restored c:\Work\LankaConnect\src\LankaConnect.Domain\LankaConnect.Domain.csproj (in 458 ms).
+  Restored c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj (in 2.31 sec).
+  Restored C:\Work\LankaConnect\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj (in 2.67 sec).
+  Restored c:\Work\LankaConnect\src\LankaConnect.API\LankaConnect.API.csproj (in 2.67 sec).
+  LankaConnect.Domain -> c:\Work\LankaConnect\src\LankaConnect.Domain\bin\Debug\net8.0\LankaConnect.Domain.dll
+  LankaConnect.Application -> C:\Work\LankaConnect\src\LankaConnect.Application\bin\Debug\net8.0\LankaConnect.Application.dll
+  LankaConnect.Infrastructure -> c:\Work\LankaConnect\src\LankaConnect.Infrastructure\bin\Debug\net8.0\LankaConnect.Infrastructure.dll
+  LankaConnect.API -> C:\Work\LankaConnect\src\LankaConnect.API\bin\Debug\net8.0\LankaConnect.API.dll
 
 Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:01:18.65
+Time Elapsed 00:01:01.40
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LankaConnect.Domain -> c:\Work\LankaConnect\src\LankaConnect.Domain\bin\Debug\net8.0\LankaConnect.Domain.dll
+  LankaConnect.Application -> C:\Work\LankaConnect\src\LankaConnect.Application\bin\Debug\net8.0\LankaConnect.Application.dll
+  LankaConnect.Infrastructure -> c:\Work\LankaConnect\src\LankaConnect.Infrastructure\bin\Debug\net8.0\LankaConnect.Infrastructure.dll
+  LankaConnect.API -> C:\Work\LankaConnect\src\LankaConnect.API\bin\Debug\net8.0\LankaConnect.API.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:31.19

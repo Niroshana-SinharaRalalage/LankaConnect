@@ -589,6 +589,27 @@ export class EventsRepository {
   }
 
   /**
+   * Add an Open sign-up item (anonymous user version)
+   * Phase 6A.44: Anonymous users can add Open items if registered for the event
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/open-items-anonymous
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param request - Open item details with contact info
+   * @returns Created item ID
+   */
+  async addOpenSignUpItemAnonymous(
+    eventId: string,
+    signupId: string,
+    request: AddOpenSignUpItemAnonymousRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items-anonymous`,
+      request
+    );
+  }
+
+  /**
    * Update an Open sign-up item
    * Phase 6A.27: Only the user who created the item can update it
    * Maps to backend PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}

@@ -31,6 +31,7 @@ import {
   useCommitToSignUpItem,
   // Phase 6A.27: Open Sign-Up Items
   useAddOpenSignUpItem,
+  useAddOpenSignUpItemAnonymous,
   useUpdateOpenSignUpItem,
   useCancelOpenSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
@@ -106,6 +107,7 @@ export function SignUpManagementSection({
 
   // Phase 6A.27: Open sign-up item mutations
   const addOpenSignUpItem = useAddOpenSignUpItem();
+  const addOpenSignUpItemAnonymous = useAddOpenSignUpItemAnonymous();
   const updateOpenSignUpItem = useUpdateOpenSignUpItem();
   const cancelOpenSignUpItem = useCancelOpenSignUpItem();
 
@@ -353,7 +355,7 @@ export function SignUpManagementSection({
     }
 
     if (editingOpenItem) {
-      // Update existing Open item
+      // Update existing Open item (only authenticated users can update)
       await updateOpenSignUpItem.mutateAsync({
         eventId,
         signupId: openItemSignUpListId,
@@ -366,17 +368,32 @@ export function SignUpManagementSection({
         contactPhone: data.contactPhone,
       });
     } else {
-      // Add new Open item
-      await addOpenSignUpItem.mutateAsync({
-        eventId,
-        signupId: openItemSignUpListId,
-        itemName: data.itemName,
-        quantity: data.quantity,
-        notes: data.notes,
-        contactName: data.contactName,
-        contactEmail: data.contactEmail,
-        contactPhone: data.contactPhone,
-      });
+      // Add new Open item - use appropriate endpoint based on auth status
+      if (userId) {
+        // Authenticated user
+        await addOpenSignUpItem.mutateAsync({
+          eventId,
+          signupId: openItemSignUpListId,
+          itemName: data.itemName,
+          quantity: data.quantity,
+          notes: data.notes,
+          contactName: data.contactName,
+          contactEmail: data.contactEmail,
+          contactPhone: data.contactPhone,
+        });
+      } else {
+        // Anonymous user - use anonymous endpoint
+        await addOpenSignUpItemAnonymous.mutateAsync({
+          eventId,
+          signupId: openItemSignUpListId,
+          contactEmail: data.contactEmail!, // Required for anonymous users
+          itemName: data.itemName,
+          quantity: data.quantity,
+          notes: data.notes,
+          contactName: data.contactName,
+          contactPhone: data.contactPhone,
+        });
+      }
     }
   };
 

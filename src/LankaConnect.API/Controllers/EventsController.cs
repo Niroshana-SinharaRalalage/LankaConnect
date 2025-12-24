@@ -61,6 +61,7 @@ using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
 using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
+using LankaConnect.Application.Events.Commands.AddOpenSignUpItemAnonymous;
 using LankaConnect.Application.Events.Commands.UpdateOpenSignUpItem;
 using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
@@ -1691,6 +1692,39 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Add a user-submitted Open item to a sign-up list for anonymous users
+    /// Phase 6A.44: Allows anonymous users (registered for event) to add Open items
+    /// The user who creates the item is automatically committed to bringing it
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/open-items-anonymous")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddOpenSignUpItemAnonymous(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] AddOpenSignUpItemAnonymousRequest request)
+    {
+        Logger.LogInformation("Anonymous user with email {Email} adding Open item '{ItemName}' to sign-up list {SignUpId} for event {EventId}",
+            request.ContactEmail, request.ItemName, signupId, eventId);
+
+        var command = new AddOpenSignUpItemAnonymousCommand(
+            eventId,
+            signupId,
+            request.ContactEmail,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Update a user-submitted Open item
     /// Phase 6A.27: Allows users to update their own Open items
     /// </summary>
@@ -2043,6 +2077,18 @@ public record AddOpenSignUpItemRequest(
     string? Notes = null,
     string? ContactName = null,
     string? ContactEmail = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request to add a user-submitted Open item to a sign-up list for anonymous users
+/// Phase 6A.44: Anonymous users can add Open items if registered for the event
+/// </summary>
+public record AddOpenSignUpItemAnonymousRequest(
+    string ContactEmail,
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
     string? ContactPhone = null);
 
 /// <summary>

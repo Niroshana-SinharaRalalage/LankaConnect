@@ -746,6 +746,25 @@ export interface AddOpenSignUpItemRequest {
 }
 
 /**
+ * Phase 6A.44: Add an Open sign-up item (anonymous user version)
+ * POST /api/events/{eventId}/signups/{signupId}/open-items-anonymous
+ */
+export interface AddOpenSignUpItemAnonymousRequest {
+  /** Contact email (required for anonymous users) */
+  contactEmail: string;
+  /** Name of the item the user will bring */
+  itemName: string;
+  /** Number of items */
+  quantity: number;
+  /** Optional notes/description */
+  notes?: string | null;
+  /** Optional contact name */
+  contactName?: string | null;
+  /** Optional contact phone */
+  contactPhone?: string | null;
+}
+
+/**
  * Phase 6A.27: Update an Open sign-up item
  * PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
  * Only the user who created the item can update it

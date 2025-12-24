@@ -42,7 +42,9 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
             .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos))
             // Phase 6A.25: Badge Management System
-            .ForMember(dest => dest.Badges, opt => opt.MapFrom(src => src.Badges));
+            .ForMember(dest => dest.Badges, opt => opt.MapFrom(src => src.Badges))
+            // Phase 6A.46: Display label based on lifecycle
+            .ForMember(dest => dest.DisplayLabel, opt => opt.MapFrom(src => src.GetDisplayLabel()));
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();

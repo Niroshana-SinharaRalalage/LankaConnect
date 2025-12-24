@@ -31,6 +31,7 @@ public class Event : BaseEntity
     public int Capacity { get; private set; }
     public EventStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
@@ -126,8 +127,9 @@ public class Event : BaseEntity
             return Result.Failure("Only draft events can be published");
 
         Status = EventStatus.Published;
+        PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp for "New" label
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventPublishedEvent(Id, DateTime.UtcNow, OrganizerId));
 
@@ -148,6 +150,7 @@ public class Event : BaseEntity
             return Result.Failure("Only published events can be unpublished");
 
         Status = EventStatus.Draft;
+        PublishedAt = null; // Phase 6A.46: Clear publish timestamp when unpublishing
         MarkAsUpdated();
 
         // Raise domain event (for potential notification/logging)
@@ -526,6 +529,7 @@ public class Event : BaseEntity
             return Result.Failure("Admin ID is required");
 
         Status = EventStatus.Published;
+        PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp when approved
         MarkAsUpdated();
 
         // Raise domain event

@@ -19,6 +19,13 @@ public record EventDto
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 
+    /// <summary>
+    /// Phase 6A.46: User-facing display label based on event lifecycle
+    /// Computed based on PublishedAt, StartDate, EndDate, and Status
+    /// Values: "New", "Upcoming", "Cancelled", "Completed", "Inactive", or status name
+    /// </summary>
+    public string DisplayLabel { get; init; } = string.Empty;
+
     // Location information (nullable - not all events have physical locations)
     public string? Address { get; init; }
     public string? City { get; init; }

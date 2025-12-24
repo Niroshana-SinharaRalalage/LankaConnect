@@ -59,6 +59,11 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CancellationReason)
             .HasMaxLength(500);
 
+        // Phase 6A.46: PublishedAt timestamp for "New" label calculation
+        builder.Property(e => e.PublishedAt)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false); // Nullable for draft events
+
         // Configure Category enum (Epic 2 Phase 2)
         builder.Property(e => e.Category)
             .HasConversion<string>()

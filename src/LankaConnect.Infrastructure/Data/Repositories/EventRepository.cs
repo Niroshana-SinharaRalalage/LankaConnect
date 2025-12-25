@@ -60,6 +60,9 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         _repoLogger.LogInformation("[DIAG-R1] EventRepository.GetByIdAsync START - EventId: {EventId}", id);
 
+        // Phase 6A.41 FIX: Load entity with AsNoTracking() to avoid change tracking corruption
+        // ISSUE: Syncing email group IDs while entity is tracked corrupts change tracking
+        // SOLUTION: Load untracked, sync while detached, then attach in clean state
         var eventEntity = await _dbSet
             .Include(e => e.Images)
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
@@ -68,6 +71,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.SignUpLists)
                 .ThenInclude(s => s.Items)
                     .ThenInclude(i => i.Commitments)
+            .AsNoTracking()  // Phase 6A.41: Load without tracking first
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
         if (eventEntity == null)
@@ -76,19 +80,14 @@ public class EventRepository : Repository<Event>, IEventRepository
             return null;
         }
 
-        // DIAGNOSTIC: Log entity tracking state immediately after query
-        var entryAfterQuery = _context.Entry(eventEntity);
         _repoLogger.LogInformation(
-            "[DIAG-R3] Event loaded - Id: {EventId}, Status: {Status}, State AFTER query: {State}, DomainEvents: {DomainEventCount}",
+            "[DIAG-R3] Event loaded (untracked) - Id: {EventId}, Status: {Status}, DomainEvents: {DomainEventCount}",
             eventEntity.Id,
             eventEntity.Status,
-            entryAfterQuery.State,
             eventEntity.DomainEvents.Count);
 
-        // Phase 6A.33 FIX: Sync loaded shadow navigation entities to domain's email group ID list
-        // This bridges the gap between EF Core's entity references and domain's business logic IDs
-        // Pattern mirrors UserRepository.GetByIdAsync per ADR-009
-        // Access the shadow navigation using EF Core's Entry API
+        // Phase 6A.33 FIX: Sync email group IDs WHILE ENTITY IS DETACHED
+        // This prevents change tracking corruption that blocks domain event dispatch
         var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
         var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
 
@@ -97,24 +96,22 @@ public class EventRepository : Repository<Event>, IEventRepository
             // Extract IDs and sync to domain's _emailGroupIds list
             var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
 
-            // CRITICAL FIX Phase 6A.34: Sync email group IDs from shadow navigation to domain list
-            // This is infrastructure hydration for read operations
-            // IMPORTANT: Do NOT reset entity state after sync - it breaks domain event detection
-            // The state reset was preventing ChangeTracker.DetectChanges() from finding modified Event entities
-            // in AppDbContext.CommitAsync(), which blocked RegistrationConfirmedEvent dispatch
-            // Pattern: Unlike Phase 6A.33 approach, we let EF Core maintain proper change tracking state
+            // Sync while detached - this won't corrupt change tracking
             eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
 
             _repoLogger.LogInformation(
-                "[DIAG-R4] Synced {EmailGroupCount} email group IDs to domain entity",
+                "[DIAG-R4] Synced {EmailGroupCount} email group IDs to domain entity (while detached)",
                 emailGroupIds.Count);
         }
 
-        // DIAGNOSTIC: Log entity tracking state after sync
-        var entryAfterSync = _context.Entry(eventEntity);
+        // Phase 6A.41: NOW attach to change tracker in clean state
+        // Subsequent modifications (like event.Publish()) will be properly tracked
+        _context.Attach(eventEntity);
+
+        var entryAfterAttach = _context.Entry(eventEntity);
         _repoLogger.LogInformation(
-            "[DIAG-R5] Event state AFTER sync - State: {State}, DomainEvents: {DomainEventCount}",
-            entryAfterSync.State,
+            "[DIAG-R5] Event state AFTER attach - State: {State}, DomainEvents: {DomainEventCount}",
+            entryAfterAttach.State,
             eventEntity.DomainEvents.Count);
 
         _repoLogger.LogInformation("[DIAG-R6] EventRepository.GetByIdAsync COMPLETE - EventId: {EventId}", id);

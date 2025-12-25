@@ -32,10 +32,11 @@ public record RegistrationDetailsDto
 
 /// <summary>
 /// Individual attendee details with age category and optional gender
+/// Phase 6A.48: Made AgeCategory nullable to handle legacy/corrupted JSONB data
 /// </summary>
 public record AttendeeDetailsDto
 {
     public string Name { get; init; } = string.Empty;
-    public AgeCategory AgeCategory { get; init; }
+    public AgeCategory? AgeCategory { get; init; } // Nullable to handle data integrity issues
     public Gender? Gender { get; init; }
 }

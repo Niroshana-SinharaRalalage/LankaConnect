@@ -43,7 +43,7 @@ public class GetUserRegistrationForEventQueryHandler
 
                 // Map attendees (Session 21 multi-attendee feature)
                 // Phase 6A.43: Updated to use AgeCategory instead of Age
-                // Fix: Handle null Attendees for legacy registrations
+                // Phase 6A.48: AgeCategory now nullable in DTO to handle corrupted JSONB data
                 Attendees = r.Attendees != null ? r.Attendees.Select(a => new AttendeeDetailsDto
                 {
                     Name = a.Name,

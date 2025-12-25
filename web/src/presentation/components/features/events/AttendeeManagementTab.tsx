@@ -81,64 +81,64 @@ function getPaymentStatusColor(status: PaymentStatus): string {
 /**
  * Helper: Get display label for registration status
  */
-function getRegistrationStatusLabel(status: RegistrationStatus): string {
-  // Handle numeric enum values (backend sends numbers, not strings)
-  const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
+function getRegistrationStatusLabel(status: RegistrationStatus | number): string {
+  // Convert to number if needed
+  const statusNum = Number(status);
+
+  // If NaN, return the original value as string
+  if (isNaN(statusNum)) {
+    console.warn('Invalid registration status:', status, typeof status);
+    return String(status);
+  }
 
   switch (statusNum) {
-    case 0: // RegistrationStatus.Pending
-    case RegistrationStatus.Pending:
+    case 0:
       return 'Pending';
-    case 1: // RegistrationStatus.Confirmed
-    case RegistrationStatus.Confirmed:
+    case 1:
       return 'Confirmed';
-    case 2: // RegistrationStatus.Waitlisted
-    case RegistrationStatus.Waitlisted:
+    case 2:
       return 'Waitlisted';
-    case 3: // RegistrationStatus.CheckedIn
-    case RegistrationStatus.CheckedIn:
+    case 3:
       return 'Checked In';
-    case 4: // RegistrationStatus.Completed
-    case RegistrationStatus.Completed:
+    case 4:
       return 'Completed';
-    case 5: // RegistrationStatus.Cancelled
-    case RegistrationStatus.Cancelled:
+    case 5:
       return 'Cancelled';
-    case 6: // RegistrationStatus.Refunded
-    case RegistrationStatus.Refunded:
+    case 6:
       return 'Refunded';
     default:
-      console.warn('Unknown registration status:', status, typeof status);
-      return `Unknown (${status})`;
+      console.warn('Unknown registration status value:', statusNum);
+      return 'Unknown';
   }
 }
 
 /**
  * Helper: Get display label for payment status
  */
-function getPaymentStatusLabel(status: PaymentStatus): string {
-  // Handle numeric enum values (backend sends numbers, not strings)
-  const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
+function getPaymentStatusLabel(status: PaymentStatus | number): string {
+  // Convert to number if needed
+  const statusNum = Number(status);
+
+  // If NaN, return the original value as string
+  if (isNaN(statusNum)) {
+    console.warn('Invalid payment status:', status, typeof status);
+    return String(status);
+  }
 
   switch (statusNum) {
-    case 0: // PaymentStatus.Pending
-    case PaymentStatus.Pending:
+    case 0:
       return 'Pending';
-    case 1: // PaymentStatus.Completed
-    case PaymentStatus.Completed:
+    case 1:
       return 'Completed';
-    case 2: // PaymentStatus.Failed
-    case PaymentStatus.Failed:
+    case 2:
       return 'Failed';
-    case 3: // PaymentStatus.Refunded
-    case PaymentStatus.Refunded:
+    case 3:
       return 'Refunded';
-    case 4: // PaymentStatus.NotRequired
-    case PaymentStatus.NotRequired:
+    case 4:
       return 'N/A';
     default:
-      console.warn('Unknown payment status:', status, typeof status);
-      return `Unknown (${status})`;
+      console.warn('Unknown payment status value:', statusNum);
+      return 'Unknown';
   }
 }
 
@@ -348,7 +348,19 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                             </button>
                           </td>
                           <td className="p-3 text-sm text-neutral-900 font-medium">{attendee.mainAttendeeName}</td>
-                          <td className="p-3 text-sm text-neutral-600">{attendee.additionalAttendees}</td>
+                          <td className="p-3 text-sm text-neutral-600">
+                            {attendee.additionalAttendees ? (
+                              <div className="max-w-xs">
+                                {attendee.additionalAttendees.split(', ').map((name, idx) => (
+                                  <div key={idx} className="truncate" title={name}>
+                                    • {name}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
                           <td className="p-3 text-sm text-neutral-900 font-medium">{attendee.totalAttendees}</td>
                           <td className="p-3 text-sm text-neutral-600">
                             {attendee.adultCount}A / {attendee.childCount}C

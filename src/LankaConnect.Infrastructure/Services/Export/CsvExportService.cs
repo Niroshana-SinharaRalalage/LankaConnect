@@ -16,16 +16,21 @@ public class CsvExportService : ICsvExportService
     public byte[] ExportEventAttendees(EventAttendeesResponse attendees)
     {
         using var memoryStream = new MemoryStream();
-        using var writer = new StreamWriter(memoryStream, Encoding.UTF8);
+
+        // Phase 6A.48B: Write UTF-8 BOM for Excel compatibility
+        var utf8WithBom = new UTF8Encoding(true); // true = include BOM
+        using var writer = new StreamWriter(memoryStream, utf8WithBom);
+
         using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord = true
+            HasHeaderRecord = true,
+            ShouldQuote = args => true  // Force quote all fields (handles phone numbers)
         });
 
         // Define flattened records for CSV export
         var records = attendees.Attendees.Select(a => new
         {
-            RegistrationId = a.RegistrationId,
+            RegistrationId = a.RegistrationId.ToString(),
             MainAttendee = a.MainAttendeeName,
             AdditionalAttendees = a.AdditionalAttendees,
             TotalAttendees = a.TotalAttendees,
@@ -33,13 +38,13 @@ public class CsvExportService : ICsvExportService
             Children = a.ChildCount,
             GenderDistribution = a.GenderDistribution,
             Email = a.ContactEmail,
-            Phone = a.ContactPhone,
-            Address = a.ContactAddress ?? "—",
+            Phone = FormatPhoneNumber(a.ContactPhone),  // Format as string with prefix
+            Address = a.ContactAddress ?? string.Empty,  // Use empty string instead of em dash
             PaymentStatus = a.PaymentStatus.ToString(),
-            TotalAmount = a.TotalAmount?.ToString("F2") ?? "—",
-            Currency = a.Currency ?? "—",
-            TicketCode = a.TicketCode ?? "—",
-            QRCode = a.QrCodeData ?? "—",
+            TotalAmount = a.TotalAmount?.ToString("F2") ?? string.Empty,
+            Currency = a.Currency ?? string.Empty,
+            TicketCode = a.TicketCode ?? string.Empty,
+            QRCode = a.QrCodeData ?? string.Empty,
             RegistrationDate = a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
             Status = a.Status.ToString()
         });
@@ -51,5 +56,17 @@ public class CsvExportService : ICsvExportService
         writer.Flush();
 
         return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Format phone number as string to prevent Excel scientific notation
+    /// </summary>
+    private static string FormatPhoneNumber(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return string.Empty;
+
+        // Prepend with single quote to force Excel to treat as text
+        return "'" + phone;
     }
 }

@@ -32,16 +32,50 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       return;
     }
 
-    // Build CSV content
-    let csvContent = 'Category,Item Description,User ID,Quantity,Committed At\n';
+    // Build CSV content with UTF-8 BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    let csvContent = BOM + 'Category,Item Description,User ID,Quantity,Committed At\n';
+
+    let rowCount = 0;
 
     signUpLists.forEach((list) => {
-      (list.commitments || []).forEach((commitment) => {
-        csvContent += `"${list.category}","${commitment.itemDescription}","${commitment.userId}",${commitment.quantity},"${commitment.committedAt}"\n`;
+      // Phase 6A.48A: Iterate through Items[], then nested Commitments[]
+      (list.items || []).forEach((item) => {
+        (item.commitments || []).forEach((commitment) => {
+          // Format data properly for CSV
+          const userId = commitment.userId || '';
+          const quantity = commitment.quantity || 0;
+          const committedAt = commitment.committedAt
+            ? new Date(commitment.committedAt).toLocaleString()
+            : '';
+
+          csvContent += `"${list.category}","${item.itemDescription}","${userId}",${quantity},"${committedAt}"\n`;
+          rowCount++;
+        });
       });
+
+      // Backward compatibility: Also check legacy commitments[] if Items[] is empty
+      if ((list.items || []).length === 0 && (list.commitments || []).length > 0) {
+        (list.commitments || []).forEach((commitment) => {
+          const userId = commitment.userId || '';
+          const quantity = commitment.quantity || 0;
+          const committedAt = commitment.committedAt
+            ? new Date(commitment.committedAt).toLocaleString()
+            : '';
+
+          csvContent += `"${list.category}","${commitment.itemDescription}","${userId}",${quantity},"${committedAt}"\n`;
+          rowCount++;
+        });
+      }
     });
 
-    // Create download link
+    // Validate data exists before download
+    if (rowCount === 0) {
+      alert('No commitments found to export');
+      return;
+    }
+
+    // Create download link with proper MIME type
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);

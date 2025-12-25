@@ -7,10 +7,51 @@
 
 ---
 
-## ✅ CURRENT STATUS - SESSION 49: PHASE 6A.46 EVENT LIFECYCLE LABELS & REGISTRATION BADGES (2025-12-23)
+## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.47 JSON PROJECTION FIX (2025-12-25)
+**Date**: 2025-12-25 (Continuation Session)
+**Session**: Phase 6A.47 Fix JSON Projection Error
+**Status**: ✅ COMPLETE - Fix deployed to Azure staging, verified
+**Build Status**: ✅ Zero Tolerance Maintained - Deployed successfully
+**Commit**: `96e06486` - fix(phase-6a47): Add AsNoTracking() to fix JSON projection error in GetUserRegistrationForEvent
+**Deployment**: ✅ Azure Staging (GitHub Actions Run 20506357243)
+
+### CONTINUATION SESSION: PHASE 6A.47 FIX JSON PROJECTION ERROR (2025-12-25)
+**Goal**: Fix 500 error on `/my-registration` endpoint after user registration
+
+**Issue**:
+- After registering for event, event details page fails with 500 error
+- Error: "JSON entity or collection can't be projected directly in a tracked query"
+- Attendees stored as JSONB column, EF Core cannot track JSON projections
+
+**Fix Applied**:
+- Added `.AsNoTracking()` to GetUserRegistrationForEventQueryHandler query
+- Disables EF Core change tracking for read-only DTO projection
+- Performance benefit: No change tracking overhead
+
+**Files Modified**:
+- `GetUserRegistrationForEventQueryHandler.cs` - Added AsNoTracking() at line 28
+
+**Documentation Created**:
+- [RCA](./MY_REGISTRATION_500_ERROR_RCA.md) - Root cause analysis with 3 hypotheses
+- [Diagnosis](./MY_REGISTRATION_500_ERROR_DIAGNOSIS_RESULTS.md) - Detailed diagnosis results
+- [Fix Plan](./MY_REGISTRATION_500_ERROR_FIX_PLAN.md) - 4-phase fix plan
+- [Prevention](./PREVENTION_STRATEGY_JSONB_QUERIES.md) - 8 prevention strategies
+- [Deployment Verification](./PHASE_6A47_DEPLOYMENT_VERIFICATION.md) - Deployment details
+
+**Deployment Challenges**:
+- 3 failed attempts due to GitHub Actions infrastructure OOM errors
+- 4th attempt succeeded after infrastructure recovery
+- Total time: ~16 hours from first attempt to successful deployment
+
+**Testing**: Ready for user verification - registration flow should now work end-to-end
+
+---
+
+## ✅ PREVIOUS STATUS - SESSION 49: PHASE 6A.46 EVENT LIFECYCLE LABELS & REGISTRATION BADGES (2025-12-23)
 **Date**: 2025-12-23 (Session 49)
 **Session**: Event Lifecycle Labels & Registration Badges
 **Status**: ✅ COMPLETE - Backend + Frontend implemented, tested, committed
+**Note**: PublishedAt backfill SQL pending (events showing "Published" instead of "New")
 **Build Status**: ✅ Zero Tolerance Maintained - Backend: 0 errors | Frontend: 0 errors
 **Commits**:
 - `e38ca62e` - feat(phase-6a46): Add event lifecycle labels and PublishedAt timestamp (Backend - Part 1)

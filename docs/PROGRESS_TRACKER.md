@@ -1,13 +1,63 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-23 (Current Session) - Session 49: Phase 6A.46 Event Lifecycle Labels & Registration Badges ✅*
+*Last Updated: 2025-12-25 (Continuation Session) - Phase 6A.47: Fix JSON Projection Error ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Session 49: Event Lifecycle Labels & Registration Badges ✅
+## 🎯 Current Session Status - Continuation: Phase 6A.47 JSON Projection Fix ✅
+
+### Continuation Session: Phase 6A.47 Fix JSON Projection Error - COMPLETE - 2025-12-25
+
+**Status**: ✅ **COMPLETE** (Fix deployed to Azure staging, verified)
+
+**Summary**: Fixed 500 Internal Server Error on `/my-registration` endpoint caused by EF Core InvalidOperationException when projecting JSONB collections in tracked queries. Added `.AsNoTracking()` to GetUserRegistrationForEventQueryHandler.
+
+**Root Cause**:
+- Attendees stored as JSONB column in PostgreSQL
+- EF Core cannot project JSON collections in tracked queries
+- Error: "JSON entity or collection can't be projected directly in a tracked query"
+
+**The Fix**:
+- Added `.AsNoTracking()` to query in GetUserRegistrationForEventQueryHandler.cs
+- Query now disables change tracking since we're projecting to DTO (read-only)
+- Performance benefit: No change tracking overhead
+
+**Code Change**:
+```csharp
+var registration = await _context.Registrations
+    .AsNoTracking()  // ← FIX: Disable tracking for JSON projection
+    .Where(r => r.EventId == request.EventId && ...)
+    .Select(r => new RegistrationDetailsDto { ... })
+    .FirstOrDefaultAsync(cancellationToken);
+```
+
+**Files Modified**:
+- [GetUserRegistrationForEventQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetUserRegistrationForEvent/GetUserRegistrationForEventQueryHandler.cs) - Added AsNoTracking() at line 28
+
+**Testing**:
+- Root cause analysis completed with system-architect agent
+- Deployment verified: Commit 96e06486 deployed successfully
+- GitHub Actions Run: 20506357243 (success after 3 failed attempts due to infrastructure OOM errors)
+
+**Documentation**:
+- [RCA Document](./MY_REGISTRATION_500_ERROR_RCA.md)
+- [Diagnosis Results](./MY_REGISTRATION_500_ERROR_DIAGNOSIS_RESULTS.md)
+- [Fix Plan](./MY_REGISTRATION_500_ERROR_FIX_PLAN.md)
+- [Prevention Strategy](./PREVENTION_STRATEGY_JSONB_QUERIES.md)
+- [Deployment Verification](./PHASE_6A47_DEPLOYMENT_VERIFICATION.md)
+
+**Build Status**: ✅ Deployed to Azure Staging
+
+**Commit**:
+- [96e06486] fix(phase-6a47): Add AsNoTracking() to fix JSON projection error in GetUserRegistrationForEvent
+
+**Deployment**: ✅ Azure Staging (Run 20506357243) - 2025-12-25
+
+---
 
 ### Session 49: Phase 6A.46 Event Lifecycle Labels & Registration Badges - COMPLETE - 2025-12-23
 
 **Status**: ✅ **COMPLETE** (Backend + Frontend implemented, tested, and committed)
+**Note**: PublishedAt backfill SQL pending (events showing "Published" instead of "New")
 
 **Summary**: Implemented time-based event status labels and registration badges to improve user experience by showing lifecycle information (New, Upcoming, Inactive) and registration status across all event displays.
 

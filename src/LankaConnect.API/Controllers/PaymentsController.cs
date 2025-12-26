@@ -343,19 +343,25 @@ public class PaymentsController : ControllerBase
                 eventId,
                 registrationId);
 
-            // Get event with registrations
-            var @event = await _eventRepository.GetByIdAsync(eventId);
-            if (@event == null)
+            // Phase 6A.49 FIX: Load Registration DIRECTLY with tracking enabled
+            // Previously: Loaded via @event.Registrations navigation property (not tracked)
+            // Now: Load directly via repository which uses tracking by default (override in RegistrationRepository)
+            // This ensures PaymentCompletedEvent is collected by ChangeTracker and dispatched
+            var registration = await _registrationRepository.GetByIdAsync(registrationId);
+            if (registration == null)
             {
-                _logger.LogError("Event {EventId} not found for checkout session {SessionId}", eventId, session.Id);
+                _logger.LogError("Registration {RegistrationId} not found for checkout session {SessionId}", registrationId, session.Id);
                 return;
             }
 
-            // Find the registration
-            var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
-            if (registration == null)
+            // Verify registration belongs to the expected event (security check)
+            if (registration.EventId != eventId)
             {
-                _logger.LogError("Registration {RegistrationId} not found in Event {EventId}", registrationId, eventId);
+                _logger.LogError(
+                    "Registration {RegistrationId} belongs to Event {ActualEventId}, expected {ExpectedEventId}",
+                    registrationId,
+                    registration.EventId,
+                    eventId);
                 return;
             }
 
@@ -372,10 +378,8 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
-            // Phase 6A.24 FIX: Explicitly mark Registration as Modified to ensure domain events are collected
-            // Without this, EF Core won't track the entity loaded via navigation property (@event.Registrations)
-            // This ensures PaymentCompletedEvent is dispatched by AppDbContext.CommitAsync()
-            _registrationRepository.Update(registration);
+            // Phase 6A.49: No need to call Update() - entity is already tracked via GetByIdAsync()
+            // Domain events will be automatically collected from ChangeTracker.Entries<BaseEntity>()
 
             // Save changes
             await _unitOfWork.CommitAsync();

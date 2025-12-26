@@ -1,9 +1,99 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-26 (Continuation Session) - Phase 0: Email System Configuration Infrastructure ✅ COMPLETE*
+*Last Updated: 2025-12-26 (Continuation Session) - Phase 6A.49: Fix Paid Event Email Silence ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 0: Email System Configuration Infrastructure ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.49: Fix Paid Event Email Silence ✅ COMPLETE
+
+### Continuation Session: Phase 6A.49 Fix Paid Event Email - COMPLETE - 2025-12-26
+
+**Status**: ✅ **COMPLETE** (Zero compilation errors, ready for staging deployment)
+
+**Summary**: Fixed critical production bug where paid event confirmation emails were not being sent after successful Stripe payment. Root cause: EF Core ChangeTracker not tracking entities loaded via AsNoTracking() or navigation properties, preventing PaymentCompletedEvent domain events from being dispatched.
+
+**Work Completed**:
+1. ✅ Added GetByIdAsync() override in RegistrationRepository with tracking enabled
+2. ✅ Updated PaymentsController.HandleCheckoutSessionCompletedAsync() to load Registration directly
+3. ✅ Added security check to verify registration belongs to expected event
+4. ✅ Removed obsolete Update() workaround (no longer needed with tracked entity)
+5. ✅ Build verification: 0 Errors, 0 Warnings
+
+**Root Cause Analysis**:
+- **Problem**: PaymentCompletedEvent domain events not dispatched after payment
+- **Cause**: Registration entity loaded via @event.Registrations navigation property (not tracked)
+- **Impact**: PaymentCompletedEventHandler never invoked, no confirmation email sent
+- **Solution**: Load Registration directly via repository with tracking enabled
+
+**Files Modified**:
+- [RegistrationRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs:20-26) - Added tracked GetByIdAsync() override
+- [PaymentsController.cs](../src/LankaConnect.API/Controllers/PaymentsController.cs:346-382) - Direct Registration loading with security check
+
+**Technical Details**:
+
+**Before (Broken)**:
+```csharp
+// Load event (uses AsNoTracking by default)
+var @event = await _eventRepository.GetByIdAsync(eventId);
+
+// Access registration via navigation property (NOT TRACKED)
+var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
+
+// Domain event raised but NOT in ChangeTracker
+registration.CompletePayment(paymentIntentId);
+
+// Workaround: Manually call Update() to attach to tracker
+_registrationRepository.Update(registration); // ❌ BAND-AID FIX
+
+await _unitOfWork.CommitAsync(); // ChangeTracker collects events
+```
+
+**After (Fixed)**:
+```csharp
+// Load Registration DIRECTLY with tracking enabled
+var registration = await _registrationRepository.GetByIdAsync(registrationId);
+
+// Security check: Verify registration belongs to expected event
+if (registration.EventId != eventId) { /* error */ }
+
+// Domain event raised and entity IS in ChangeTracker
+registration.CompletePayment(paymentIntentId);
+
+// No Update() needed - entity already tracked
+await _unitOfWork.CommitAsync(); // ✅ Events collected automatically
+```
+
+**RegistrationRepository GetByIdAsync() Override**:
+```csharp
+/// <summary>
+/// Override GetByIdAsync to enable tracking for scenarios where the entity will be modified
+/// and needs domain event dispatch (e.g., payment completion via Stripe webhook).
+/// Uses tracking (NOT AsNoTracking) so that when CompletePayment() raises PaymentCompletedEvent,
+/// the event is dispatched via AppDbContext.CommitAsync() → ChangeTracker.Entries<BaseEntity>().
+/// </summary>
+public override async Task<Registration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+{
+    return await _dbSet
+        .Include(r => r.Attendees)
+        .Include(r => r.Contact)
+        .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+}
+```
+
+**Build Status**: ✅ Zero Errors, Zero Warnings
+
+**Next Steps**:
+- Deploy to Azure staging and test paid event registration flow
+- Verify PaymentCompletedEvent is dispatched via logs
+- Verify confirmation email is sent with ticket PDF attachment
+- Write unit tests for domain event tracking (post-deploy validation)
+
+**Related Documents**:
+- [PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md](./PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md) - Root cause analysis with 8 hypotheses
+- [EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md](./EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md) - Architect-approved implementation plan
+
+---
+
+## 🎯 Previous Session Status - Phase 0: Email System Configuration Infrastructure ✅ COMPLETE
 
 ### Continuation Session: Phase 0 Email System Configuration Infrastructure - COMPLETE - 2025-12-26
 

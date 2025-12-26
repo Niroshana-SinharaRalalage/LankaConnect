@@ -10,6 +10,21 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
     {
     }
 
+    /// <summary>
+    /// Override GetByIdAsync to enable tracking for scenarios where the entity will be modified
+    /// and needs domain event dispatch (e.g., payment completion via Stripe webhook).
+    /// Phase 6A.49: Fix for paid event email - ensures domain events are collected from ChangeTracker.
+    /// Uses tracking (NOT AsNoTracking) so that when CompletePayment() raises PaymentCompletedEvent,
+    /// the event is dispatched via AppDbContext.CommitAsync() → ChangeTracker.Entries&lt;BaseEntity&gt;().
+    /// </summary>
+    public override async Task<Registration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(r => r.Attendees)
+            .Include(r => r.Contact)
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Registration>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         return await _dbSet

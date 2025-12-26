@@ -4,6 +4,7 @@ using MediatR;
 using FluentValidation;
 using LankaConnect.Application.Common.Behaviors;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.ReferenceData.Services;
 
 namespace LankaConnect.Application;
 
@@ -28,6 +29,10 @@ public static class DependencyInjection
 
         // Add AutoMapper
         services.AddAutoMapper(assembly);
+
+        // Register application services
+        // Phase 6A.47: Reference data service with caching
+        services.AddScoped<IReferenceDataService, ReferenceDataService>();
 
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer

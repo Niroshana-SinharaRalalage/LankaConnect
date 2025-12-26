@@ -15,6 +15,7 @@ using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.ReferenceData.Interfaces;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
@@ -156,6 +157,9 @@ public static class DependencyInjection
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
+
+        // Add Reference Data Repository (Phase 6A.47)
+        services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
 
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
         // Note: EmailSettings is configured below with SimpleEmailService

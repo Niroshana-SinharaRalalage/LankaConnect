@@ -10,8 +10,10 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
 using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Badges;
+using LankaConnect.Domain.ReferenceData.Entities;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
+using LankaConnect.Infrastructure.Data.Configurations.ReferenceData;
 using LankaConnect.Infrastructure.Payments.Entities;
 using LankaConnect.Infrastructure.Payments.Configurations;
 using LankaConnect.Infrastructure.Data.Seeders;
@@ -89,6 +91,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Stripe Webhook Event Entity Set (Phase 6A.24)
     public DbSet<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent> StripeWebhookEvents => Set<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent>(); // Phase 6A.24: Webhook idempotency tracking
 
+    // Reference Data Entity Sets - Phase 6A.47
+    public DbSet<EventCategoryRef> EventCategories => Set<EventCategoryRef>();
+    public DbSet<EventStatusRef> EventStatuses => Set<EventStatusRef>();
+    public DbSet<UserRoleRef> UserRoles => Set<UserRoleRef>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -144,6 +151,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Stripe Webhook Event configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new StripeWebhookEventConfiguration());
+
+        // Reference Data entity configurations (Phase 6A.47)
+        modelBuilder.ApplyConfiguration(new EventCategoryRefConfiguration());
+        modelBuilder.ApplyConfiguration(new EventStatusRefConfiguration());
+        modelBuilder.ApplyConfiguration(new UserRoleRefConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -238,7 +250,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventBadge), // Phase 6A.25
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
-            typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent) // Phase 6A.24: Webhook idempotency tracking
+            typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
+            typeof(EventCategoryRef), // Phase 6A.47: Reference Data Migration
+            typeof(EventStatusRef), // Phase 6A.47: Reference Data Migration
+            typeof(UserRoleRef) // Phase 6A.47: Reference Data Migration
         };
 
         // Get all types from Domain assembly that aren't in our configured list

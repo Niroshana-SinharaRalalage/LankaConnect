@@ -13,6 +13,7 @@ using LankaConnect.Domain.Common.Security;
 using LankaConnect.Domain.Common.Recovery;
 using LankaConnect.Domain.Common.Database;
 using LankaConnect.Domain.Common.Enums;
+using LankaConnect.Domain.ReferenceData.Entities;
 using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
 
 namespace LankaConnect.Application.Common.Interfaces;
@@ -39,6 +40,11 @@ public interface IApplicationDbContext
     DbSet<EmailMessage> EmailMessages { get; }
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
+
+    // Reference Data Domain - Phase 6A.47
+    DbSet<EventCategoryRef> EventCategories { get; }
+    DbSet<EventStatusRef> EventStatuses { get; }
+    DbSet<UserRoleRef> UserRoles { get; }
 
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
 }

@@ -204,6 +204,10 @@ public static class DependencyInjection
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
 
+        // Phase 0 (Email System): Register new configuration options
+        services.Configure<ApplicationUrlsOptions>(configuration.GetSection(ApplicationUrlsOptions.SectionName));
+        services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.SectionName));
+
         // Phase 6A.43 Fix: Register AzureEmailService for both IEmailService and IEmailTemplateService
         // This ensures all emails (free and paid) use database-stored templates consistently
         // Previously: IEmailTemplateService → RazorEmailTemplateService (filesystem templates)

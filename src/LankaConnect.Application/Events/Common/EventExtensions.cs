@@ -41,4 +41,33 @@ public static class EventExtensions
         // Default: Use status as-is (Draft, Published, Active, Postponed, Archived, UnderReview)
         return @event.Status.ToString();
     }
+
+    /// <summary>
+    /// Phase 0 (Email System): Safely extracts event location string with defensive null handling.
+    /// Eliminates duplicate GetEventLocationString methods across 4+ event handlers.
+    /// Handles data inconsistency where has_location=true but address fields are null.
+    /// </summary>
+    /// <param name="event">The event entity</param>
+    /// <returns>Formatted location string or "Online Event" if no physical location</returns>
+    public static string GetLocationDisplayString(this Event @event)
+    {
+        // Check if Location or Address is null (defensive against data inconsistency)
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        // Handle case where address fields exist but are empty
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
+    }
 }

@@ -31,10 +31,11 @@ public record TicketDto
 
 /// <summary>
 /// Phase 6A.24: Attendee information for ticket display with age category and gender
+/// Phase 6A.48: Made AgeCategory nullable to handle legacy/corrupted JSONB data
 /// </summary>
 public record TicketAttendeeDto
 {
     public string Name { get; init; } = string.Empty;
-    public AgeCategory AgeCategory { get; init; }
+    public AgeCategory? AgeCategory { get; init; } // Nullable to handle data integrity issues
     public Gender? Gender { get; init; }
 }

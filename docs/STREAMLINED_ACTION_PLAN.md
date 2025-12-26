@@ -7,7 +7,46 @@
 
 ---
 
-## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.47 JSON PROJECTION FIX (2025-12-25)
+## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.48 NULLABLE AGECATEGORY FIX (2025-12-25)
+**Date**: 2025-12-25 (Continuation Session)
+**Session**: Phase 6A.48 Fix Nullable AgeCategory Error
+**Status**: ✅ COMPLETE - Fix deployed to Azure staging, verified with 5 successful tests
+**Build Status**: ✅ Zero Tolerance Maintained - Deployed successfully
+**Commit**: `0daa9168` - fix(phase-6a48): Make AgeCategory nullable in AttendeeDetailsDto to handle corrupt JSONB data
+**Deployment**: ✅ Azure Staging (GitHub Actions Run 20511646897)
+
+### CONTINUATION SESSION: PHASE 6A.48 FIX NULLABLE AGECATEGORY ERROR (2025-12-25)
+**Goal**: Fix intermittent registration state "flipping" caused by corrupt JSONB data
+
+**Issue**:
+- Users reported registration state randomly flipping between registered/not registered
+- Intermittent 500 errors on `/my-registration` endpoint
+- Error: "Nullable object must have a value" during EF Core materialization
+- Root cause: JSONB column contains null AgeCategory values in some registrations
+- Non-nullable `AttendeeDetailsDto.AgeCategory` enum couldn't accept null
+
+**Fix Applied**:
+- Made `AttendeeDetailsDto.AgeCategory` nullable: `AgeCategory?`
+- Code now handles corrupt/legacy JSONB data gracefully
+- DTO allows null values to pass through without crashing
+- Frontend can handle null age categories
+
+**Files Modified**:
+- [RegistrationDetailsDto.cs](../src/LankaConnect.Application/Events/Common/RegistrationDetailsDto.cs:13-17) - Made AgeCategory nullable
+- [GetUserRegistrationForEventQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetUserRegistrationForEvent/GetUserRegistrationForEventQueryHandler.cs:27) - Updated comment
+
+**Testing**:
+- API tested 5 times consecutively - all returned 200 OK
+- No more intermittent 500 errors
+- Registration data loads consistently
+
+**Next Steps**:
+- User to verify UI no longer shows registration "flipping"
+- Future: Data cleanup script to fix corrupted JSONB records (separate task)
+
+---
+
+## ✅ PREVIOUS STATUS - CONTINUATION SESSION: PHASE 6A.47 JSON PROJECTION FIX (2025-12-25)
 **Date**: 2025-12-25 (Continuation Session)
 **Session**: Phase 6A.47 Fix JSON Projection Error
 **Status**: ✅ COMPLETE - Fix deployed to Azure staging, verified

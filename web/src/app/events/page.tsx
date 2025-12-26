@@ -19,6 +19,7 @@ import { RegistrationBadge } from '@/presentation/components/features/events/Reg
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
+import { getEventCategoryOptions, getEventCategoryLabel } from '@/lib/enum-utils';
 
 /**
  * Events Listing Page
@@ -146,18 +147,6 @@ export default function EventsPage() {
 
   const hasActiveFilters = selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
 
-  // Category labels
-  const categoryLabels: Record<EventCategory, string> = {
-    [EventCategory.Religious]: 'Religious',
-    [EventCategory.Cultural]: 'Cultural',
-    [EventCategory.Community]: 'Community',
-    [EventCategory.Educational]: 'Educational',
-    [EventCategory.Social]: 'Social',
-    [EventCategory.Business]: 'Business',
-    [EventCategory.Charity]: 'Charity',
-    [EventCategory.Entertainment]: 'Entertainment',
-  };
-
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
   // Check if user can create events (EventOrganizer, Admin, or AdminManager)
@@ -249,9 +238,9 @@ export default function EventsPage() {
                   disabled={isLoading}
                 >
                   <option value="">All Types</option>
-                  {Object.entries(categoryLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                  {getEventCategoryOptions().map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
                     </option>
                   ))}
                 </select>

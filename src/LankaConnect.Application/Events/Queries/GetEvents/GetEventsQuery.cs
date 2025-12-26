@@ -10,6 +10,7 @@ namespace LankaConnect.Application.Events.Queries.GetEvents;
 /// - For authenticated users with preferred metro areas: Sort by those metros
 /// - For authenticated users without preferences: Sort by user's location
 /// - For anonymous users: Sort by provided coordinates
+/// Phase 6A.47: Added SearchTerm for full-text search integration
 /// </summary>
 public record GetEventsQuery(
     EventStatus? Status = null,
@@ -22,5 +23,6 @@ public record GetEventsQuery(
     Guid? UserId = null,
     decimal? Latitude = null,
     decimal? Longitude = null,
-    List<Guid>? MetroAreaIds = null
+    List<Guid>? MetroAreaIds = null,
+    string? SearchTerm = null
 ) : IQuery<IReadOnlyList<EventDto>>;

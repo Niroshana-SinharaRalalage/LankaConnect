@@ -37,8 +37,25 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     {
         var now = DateTime.UtcNow;
 
-        // Step 1: Get base event list with traditional filtering
-        IReadOnlyList<Event> events = await GetFilteredEventsAsync(request, cancellationToken);
+        // Phase 6A.47: If SearchTerm provided, use full-text search first
+        IReadOnlyList<Event> events;
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            // Step 1a: Apply full-text search with filters
+            (events, _) = await _eventRepository.SearchAsync(
+                request.SearchTerm,
+                limit: 1000, // Large limit for search
+                offset: 0,
+                request.Category,
+                request.IsFreeOnly,
+                request.StartDateFrom,
+                cancellationToken);
+        }
+        else
+        {
+            // Step 1b: Get base event list with traditional filtering
+            events = await GetFilteredEventsAsync(request, cancellationToken);
+        }
 
         // Step 2: Apply location-based sorting if location parameters provided
         if (ShouldApplyLocationSorting(request))

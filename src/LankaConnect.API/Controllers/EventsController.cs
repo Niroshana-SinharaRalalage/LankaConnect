@@ -84,6 +84,7 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Get all events with optional filtering and location-based sorting
+    /// Phase 6A.47: Added searchTerm parameter for text-based search
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
@@ -99,11 +100,12 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] Guid? userId = null,
         [FromQuery] decimal? latitude = null,
         [FromQuery] decimal? longitude = null,
-        [FromQuery] List<Guid>? metroAreaIds = null)
+        [FromQuery] List<Guid>? metroAreaIds = null,
+        [FromQuery] string? searchTerm = null)
     {
         Logger.LogInformation(
-            "Getting events with filters: status={Status}, category={Category}, city={City}, state={State}, userId={UserId}",
-            status, category, city, state, userId);
+            "Getting events with filters: status={Status}, category={Category}, city={City}, state={State}, userId={UserId}, searchTerm={SearchTerm}",
+            status, category, city, state, userId, searchTerm);
 
         var query = new GetEventsQuery(
             status,
@@ -116,7 +118,8 @@ public class EventsController : BaseController<EventsController>
             userId,
             latitude,
             longitude,
-            metroAreaIds);
+            metroAreaIds,
+            searchTerm);
 
         var result = await Mediator.Send(query);
 
@@ -745,18 +748,33 @@ public class EventsController : BaseController<EventsController>
     /// <summary>
     /// Get events created by current user (Authenticated Event Organizers/Admins)
     /// Epic 1: Dashboard my-events endpoint
+    /// Phase 6A.47: Added filters (searchTerm, category, date range, location) for Event Management tab
     /// </summary>
     [HttpGet("my-events")]
     [Authorize]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyEvents()
+    public async Task<IActionResult> GetMyEvents(
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] string? state = null,
+        [FromQuery] List<Guid>? metroAreaIds = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting events created by user: {UserId}", userId);
+        Logger.LogInformation("Getting events created by user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}",
+            userId, searchTerm, category, state);
 
-        var query = new GetEventsByOrganizerQuery(userId);
+        var query = new GetEventsByOrganizerQuery(
+            userId,
+            searchTerm,
+            category,
+            startDateFrom,
+            startDateTo,
+            state,
+            metroAreaIds);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -765,18 +783,33 @@ public class EventsController : BaseController<EventsController>
     /// <summary>
     /// Get events user has registered for (Authenticated users)
     /// Epic 1: Returns full EventDto instead of RsvpDto for better dashboard UX
+    /// Phase 6A.47: Added filters (searchTerm, category, date range, location) for My Registered Events tab
     /// </summary>
     [HttpGet("my-rsvps")]
     [Authorize]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyRsvps()
+    public async Task<IActionResult> GetMyRsvps(
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] string? state = null,
+        [FromQuery] List<Guid>? metroAreaIds = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting registered events for user: {UserId}", userId);
+        Logger.LogInformation("Getting registered events for user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}",
+            userId, searchTerm, category, state);
 
-        var query = new GetMyRegisteredEventsQuery(userId);
+        var query = new GetMyRegisteredEventsQuery(
+            userId,
+            searchTerm,
+            category,
+            startDateFrom,
+            startDateTo,
+            state,
+            metroAreaIds);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

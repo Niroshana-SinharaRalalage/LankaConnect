@@ -21,10 +21,12 @@ public class CsvExportService : ICsvExportService
         var utf8WithBom = new UTF8Encoding(true); // true = include BOM
         using var writer = new StreamWriter(memoryStream, utf8WithBom);
 
+        // Phase 6A.49: Removed ShouldQuote to fix double-escaping issue
+        // CsvHelper will intelligently quote fields containing commas, quotes, or newlines
+        // Uses RFC 4180 standard: "" for quote escaping (not \")
         using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord = true,
-            ShouldQuote = args => true  // Force quote all fields (handles phone numbers)
+            HasHeaderRecord = true
         });
 
         // Define flattened records for CSV export

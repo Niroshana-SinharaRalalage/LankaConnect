@@ -181,15 +181,17 @@ public class ExcelExportService : IExcelExportService
     {
         var sheet = workbook.Worksheets.Add(sheetName);
 
-        // Define headers
+        // Phase 6A.49: Updated headers to include user contact fields
         var headers = new[]
         {
             "Signup List",
             "Item Description",
             "Requested Quantity",
-            "Committed Quantity",
-            "Remaining Quantity",
-            "Commitments"
+            "User Name",
+            "Phone",
+            "Email",
+            "Quantity Committed",
+            "Remaining"
         };
 
         // Write headers
@@ -204,30 +206,47 @@ public class ExcelExportService : IExcelExportService
         headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
         headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-        // Write data rows
+        // Phase 6A.49: Expand rows - each commitment gets its own row
         int row = 2;
         foreach (var (list, item) in items)
         {
-            int col = 1;
+            if (!item.Commitments.Any())
+            {
+                // No commitments yet - show item with empty user fields
+                int col = 1;
+                sheet.Cell(row, col++).Value = list.Category;
+                sheet.Cell(row, col++).Value = item.ItemDescription;
+                sheet.Cell(row, col++).Value = item.Quantity;
+                sheet.Cell(row, col++).Value = "—"; // No user name
+                sheet.Cell(row, col++).Value = "—"; // No phone
+                sheet.Cell(row, col++).Value = "—"; // No email
+                sheet.Cell(row, col++).Value = 0;   // Nothing committed
+                sheet.Cell(row, col++).Value = item.RemainingQuantity;
+                row++;
+            }
+            else
+            {
+                // Each commitment gets its own row
+                foreach (var commitment in item.Commitments)
+                {
+                    int col = 1;
+                    sheet.Cell(row, col++).Value = list.Category;
+                    sheet.Cell(row, col++).Value = item.ItemDescription;
+                    sheet.Cell(row, col++).Value = item.Quantity;
+                    sheet.Cell(row, col++).Value = commitment.ContactName ?? "Anonymous";
 
-            sheet.Cell(row, col++).Value = list.Category;
-            sheet.Cell(row, col++).Value = item.ItemDescription;
-            sheet.Cell(row, col++).Value = item.Quantity;
+                    // Format phone with apostrophe prefix (same as CSV)
+                    var phoneValue = string.IsNullOrWhiteSpace(commitment.ContactPhone)
+                        ? "—"
+                        : "'" + commitment.ContactPhone;
+                    sheet.Cell(row, col++).Value = phoneValue;
 
-            var committedQty = item.Quantity - item.RemainingQuantity;
-            sheet.Cell(row, col++).Value = committedQty;
-            sheet.Cell(row, col++).Value = item.RemainingQuantity;
-
-            // Format commitment details
-            var commitmentDetails = item.Commitments
-                .Select(c => $"{c.ContactName ?? "Anonymous"} ({c.Quantity}) - {c.ContactEmail ?? c.ContactPhone ?? "N/A"}")
-                .ToList();
-
-            sheet.Cell(row, col++).Value = commitmentDetails.Any()
-                ? string.Join("; ", commitmentDetails)
-                : "No commitments yet";
-
-            row++;
+                    sheet.Cell(row, col++).Value = commitment.ContactEmail ?? "—";
+                    sheet.Cell(row, col++).Value = commitment.Quantity;
+                    sheet.Cell(row, col++).Value = item.RemainingQuantity;
+                    row++;
+                }
+            }
         }
 
         // Auto-fit columns

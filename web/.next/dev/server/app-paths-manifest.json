@@ -4,6 +4,6 @@
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
   "/events/[id]/page": "app/events/[id]/page.js",
-  "/events/page": "app/events/page.js",
+  "/events/[id]/signup-lists/[signupId]/page": "app/events/[id]/signup-lists/[signupId]/page.js",
   "/page": "app/page.js"
 }

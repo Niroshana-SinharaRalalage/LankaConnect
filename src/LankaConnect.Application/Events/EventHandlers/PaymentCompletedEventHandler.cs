@@ -240,6 +240,26 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 "[Phase 6A.52] [PaymentEmail-13] Template parameters - CorrelationId: {CorrelationId}, Parameters: {Parameters}",
                 correlationId, string.Join(", ", parameters.Keys));
 
+            // Phase 6A.54: Diagnostic - Log parameter types to detect Result objects
+            foreach (var param in parameters)
+            {
+                var paramType = param.Value?.GetType().FullName ?? "null";
+                var paramValue = param.Value?.ToString() ?? "null";
+                var valuePreview = paramValue.Length > 100 ? paramValue.Substring(0, 100) + "..." : paramValue;
+
+                _logger.LogDebug(
+                    "[Phase 6A.54] [PaymentEmail-Debug] Parameter inspection - CorrelationId: {CorrelationId}, Key: {Key}, Type: {Type}, Value: {Value}",
+                    correlationId, param.Key, paramType, valuePreview);
+
+                // Phase 6A.54: Detect Result<T> objects and log error
+                if (param.Value != null && paramType.Contains("Result"))
+                {
+                    _logger.LogError(
+                        "[Phase 6A.54] [PaymentEmail-CRITICAL] Result object found in template parameters - CorrelationId: {CorrelationId}, Key: {Key}, Type: {Type}",
+                        correlationId, param.Key, paramType);
+                }
+            }
+
             var renderResult = await _emailTemplateService.RenderTemplateAsync(
                 "ticket-confirmation",
                 parameters,

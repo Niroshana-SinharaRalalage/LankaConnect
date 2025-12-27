@@ -231,6 +231,18 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
 
         var result = template;
 
+        // Phase 6A.54: Validate parameters before processing to prevent Result<T> objects
+        foreach (var param in parameters)
+        {
+            if (param.Value != null && param.Value.GetType().FullName?.Contains("Result") == true)
+            {
+                throw new InvalidOperationException(
+                    $"Template parameter '{param.Key}' contains a Result<T> object (Type: {param.Value.GetType().FullName}). " +
+                    "All parameters must be unwrapped to primitive values before template rendering. " +
+                    "Use .Value property to extract the value from Result<T> objects.");
+            }
+        }
+
         // Process conditional sections first: {{#HasEventImage}}...{{/HasEventImage}}
         foreach (var param in parameters)
         {

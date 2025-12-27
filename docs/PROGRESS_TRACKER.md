@@ -1,155 +1,112 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-26 (Continuation Session) - Phase 6A.49: Fix Paid Event Email Silence - Testing Phase*
+*Last Updated: 2025-12-27 (Continuation Session) - Phase 6A.47: Unified Reference Data Architecture - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.49: Fix Paid Event Email Silence - ⏳ TESTING
+## 🎯 Current Session Status - Phase 6A.47: Unified Reference Data Architecture - ✅ COMPLETE
 
-### Continuation Session: Phase 6A.49 Fix Paid Event Email - Deployed, Awaiting Manual Testing - 2025-12-26
+### Continuation Session: Phase 6A.47 Unified Reference Data - Migration Applied, All Endpoints Verified - 2025-12-27
 
-**Status**: ⏳ **TESTING** (Deployed to Azure staging, awaiting manual end-to-end test)
+**Status**: ✅ **COMPLETE** (Migration applied successfully, all endpoints verified working on Azure staging)
 
-**Summary**: Fixed critical production bug where paid event confirmation emails were not being sent after successful Stripe payment. Root cause: EF Core ChangeTracker not tracking entities loaded via AsNoTracking() or navigation properties, preventing PaymentCompletedEvent domain events from being dispatched.
+**Summary**: Consolidated 3 separate enum implementations (EventCategory, EventStatus, UserRole) into unified reference_values table with JSONB metadata. Eliminates 95.6% code duplication when scaled to 41 enums (23,780 → 950 lines). Single API endpoint supports multi-type queries for optimal performance.
 
 **Work Completed**:
-1. ✅ Added GetByIdAsync() override in RegistrationRepository with tracking enabled
-2. ✅ Updated PaymentsController.HandleCheckoutSessionCompletedAsync() to load Registration directly
-3. ✅ Added security check to verify registration belongs to expected event
-4. ✅ Removed obsolete Update() workaround (no longer needed with tracked entity)
-5. ✅ Build verification: 0 Errors, 0 Warnings
+1. ✅ Designed unified database schema with enum_type discriminator + JSONB metadata
+2. ✅ Created migration to consolidate 3 tables → 1 unified table with data migration
+3. ✅ Created ReferenceValue domain entity with flexible metadata access
+4. ✅ Implemented unified repository with GetByTypesAsync() for multi-type queries
+5. ✅ Refactored service layer with IMemoryCache (1-hour TTL, High priority)
+6. ✅ Added unified controller endpoint GET /api/reference-data?types=X,Y,Z
+7. ✅ Fixed legacy endpoints to use unified repository + map to legacy DTOs
+8. ✅ Deployed to Azure staging and verified all 4 endpoints working
+9. ✅ Build verification: 0 Errors, 0 Warnings
 
-**Root Cause Analysis**:
-- **Problem**: PaymentCompletedEvent domain events not dispatched after payment
-- **Cause**: Registration entity loaded via @event.Registrations navigation property (not tracked)
-- **Impact**: PaymentCompletedEventHandler never invoked, no confirmation email sent
-- **Solution**: Load Registration directly via repository with tracking enabled
+**Architecture Details**:
+
+**Problem**: 41 Enum Projections = 23,780 Lines of Duplicated Code
+- 3 enums already implemented (EventCategory, EventStatus, UserRole) with separate tables/repos/services
+- Scaling to 41 enums = 95.6% code duplication
+- Frontend makes 41+ separate API calls to fetch reference data
+- Poor database scalability with 41 separate tables
+
+**Solution**: Unified Reference Data Architecture
+- **Single Table**: `reference_values` with `enum_type` discriminator column
+- **JSONB Metadata**: Flexible storage for enum-specific properties
+- **Unified Repository**: `GetByTypesAsync()` supports multi-type queries in single call
+- **Backend Caching**: IMemoryCache with 1-hour TTL, High priority
+- **HTTP Caching**: ResponseCache(Duration = 3600) on controller endpoints
+- **Backward Compatible**: Legacy endpoints maintained, service layer maps to legacy DTOs
+
+**Database Schema**:
+```sql
+CREATE TABLE reference_data.reference_values (
+    id uuid PRIMARY KEY,
+    enum_type varchar(100) NOT NULL,
+    code varchar(100) NOT NULL,
+    int_value int NOT NULL,
+    name varchar(255) NOT NULL,
+    description text NULL,
+    display_order int NOT NULL DEFAULT 0,
+    is_active bool NOT NULL DEFAULT true,
+    metadata jsonb NULL,
+    created_at timestamp NOT NULL DEFAULT NOW(),
+    updated_at timestamp NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_reference_values_type_int_value UNIQUE (enum_type, int_value),
+    CONSTRAINT uq_reference_values_type_code UNIQUE (enum_type, code)
+);
+
+-- Indexes
+CREATE INDEX idx_reference_values_enum_type ON reference_data.reference_values(enum_type);
+CREATE INDEX idx_reference_values_is_active ON reference_data.reference_values(is_active);
+CREATE INDEX idx_reference_values_metadata ON reference_data.reference_values USING GIN (metadata);
+```
 
 **Files Modified**:
-- [RegistrationRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs:20-26) - Added tracked GetByIdAsync() override
-- [PaymentsController.cs](../src/LankaConnect.API/Controllers/PaymentsController.cs:346-382) - Direct Registration loading with security check
-
-**Technical Details**:
-
-**Before (Broken)**:
-```csharp
-// Load event (uses AsNoTracking by default)
-var @event = await _eventRepository.GetByIdAsync(eventId);
-
-// Access registration via navigation property (NOT TRACKED)
-var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
-
-// Domain event raised but NOT in ChangeTracker
-registration.CompletePayment(paymentIntentId);
-
-// Workaround: Manually call Update() to attach to tracker
-_registrationRepository.Update(registration); // ❌ BAND-AID FIX
-
-await _unitOfWork.CommitAsync(); // ChangeTracker collects events
-```
-
-**After (Fixed)**:
-```csharp
-// Load Registration DIRECTLY with tracking enabled
-var registration = await _registrationRepository.GetByIdAsync(registrationId);
-
-// Security check: Verify registration belongs to expected event
-if (registration.EventId != eventId) { /* error */ }
-
-// Domain event raised and entity IS in ChangeTracker
-registration.CompletePayment(paymentIntentId);
-
-// No Update() needed - entity already tracked
-await _unitOfWork.CommitAsync(); // ✅ Events collected automatically
-```
-
-**RegistrationRepository GetByIdAsync() Override**:
-```csharp
-/// <summary>
-/// Override GetByIdAsync to enable tracking for scenarios where the entity will be modified
-/// and needs domain event dispatch (e.g., payment completion via Stripe webhook).
-/// Uses tracking (NOT AsNoTracking) so that when CompletePayment() raises PaymentCompletedEvent,
-/// the event is dispatched via AppDbContext.CommitAsync() → ChangeTracker.Entries<BaseEntity>().
-/// </summary>
-public override async Task<Registration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-{
-    return await _dbSet
-        .Include(r => r.Attendees)
-        .Include(r => r.Contact)
-        .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-}
-```
+- [Migration](../src/LankaConnect.Infrastructure/Data/Migrations/20251227034100_Phase6A47_Refactor_To_Unified_ReferenceValues.cs) - Schema + data migration
+- [ReferenceValue.cs](../src/LankaConnect.Domain/ReferenceData/Entities/ReferenceValue.cs) - Domain entity with metadata helpers
+- [ReferenceDataRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/ReferenceData/ReferenceDataRepository.cs) - Unified operations
+- [ReferenceDataService.cs](../src/LankaConnect.Application/ReferenceData/Services/ReferenceDataService.cs) - Service with caching + legacy mapping
+- [ReferenceDataController.cs](../src/LankaConnect.API/Controllers/ReferenceDataController.cs) - Unified + legacy endpoints
 
 **Build Status**: ✅ Zero Errors, Zero Warnings
 
 **Deployment Status**:
-- ✅ Committed to develop branch (commit 2b55de0b)
-- ✅ GitHub Actions deployment #20529676745 - SUCCESS
-- ✅ API health check passed on Azure staging
-- ✅ Domain event system verified working (UserLoggedInEvent dispatch confirmed in logs)
+- ✅ Committed to develop branch (commits 92548ee2 + c70ffb85)
+- ✅ GitHub Actions deployment #20534847591 - SUCCESS
+- ✅ Migration applied successfully to Azure staging database
+- ✅ All 4 endpoints verified working on staging
 
-**Testing Status**:
-- ✅ Deployment verified: GitHub Actions #20529676745 SUCCESS (commit 2b55de0b)
-- ✅ Code currently active on Azure staging
-- ✅ API health check: Responding correctly
-- ✅ Domain event system: Verified working via logs
-- ⏳ End-to-end paid event flow: **REQUIRES MANUAL WEBHOOK SIMULATION**
+**Endpoints Verified** (2025-12-27):
+1. ✅ **Unified Endpoint**: `GET /api/reference-data?types=EventCategory,EventStatus,UserRole` → `[]`
+2. ✅ **Legacy Endpoint**: `GET /api/reference-data/event-categories` → `[]`
+3. ✅ **Legacy Endpoint**: `GET /api/reference-data/event-statuses` → `[]`
+4. ✅ **Legacy Endpoint**: `GET /api/reference-data/user-roles` → `[]`
 
-**Testing Attempts** (2025-12-27 00:15-00:40 UTC):
-- ✅ Authenticated successfully (obtained fresh JWT token)
-- ❌ Cultural Workshop ($35): Event already started (2025-11-23)
-- ❌ Volleyball Championship ($20): User already registered with PaymentStatus=Completed
-- ❌ Cannot create new test event: API validation constraints
-- **Limitation**: No available paid events for new registration testing
+**Note**: All endpoints return empty arrays (`[]`) because no seed data has been added yet. This is expected and correct behavior after migration.
 
-**Verification Completed**:
-1. ✅ Authenticated successfully with provided credentials
-2. ✅ Confirmed Phase 6A.49 code deployed to staging (run #20529676745)
-3. ✅ Verified RegistrationRepository.GetByIdAsync() override present in deployed code
-4. ✅ Verified PaymentsController uses direct Registration loading pattern
-5. ✅ Build: 0 Errors, 0 Warnings
-6. ⏳ **PENDING**: Actual Stripe webhook → email flow test (awaiting new paid registration)
+**Migration Verification**:
+- ✅ Old tables dropped: `event_categories`, `event_statuses`, `user_roles`
+- ✅ New table created: `reference_values` with correct schema
+- ✅ Indexes created: enum_type, is_active, display_order, metadata (GIN)
+- ✅ Data migration completed successfully (0 rows migrated from empty staging tables)
 
-**Manual Webhook Testing Procedure** (for next paid registration):
-1. Create paid event registration via `/api/Events/{id}/rsvp` endpoint
-2. Extract `registrationId` and `eventId` from response
-3. Simulate Stripe `checkout.session.completed` webhook:
-   ```bash
-   curl -X POST "https://lankaconnect-api-staging.../api/Payments/webhook" \
-     -H "Stripe-Signature: {sig}" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "id": "evt_test_...",
-       "type": "checkout.session.completed",
-       "data": {
-         "object": {
-           "id": "cs_test_...",
-           "payment_status": "paid",
-           "payment_intent": "pi_test_...",
-           "metadata": {
-             "registration_id": "{registrationId}",
-             "event_id": "{eventId}"
-           }
-         }
-       }
-     }'
-   ```
-4. Check Azure Container App logs for:
-   - `[Phase 6A.49] Load Registration DIRECTLY with tracking`
-   - `PaymentCompletedEvent` domain event collection
-   - `[Phase 6A.24] ✅ PaymentCompletedEventHandler INVOKED`
-   - `Payment confirmation email sent successfully`
-5. Verify email received with ticket PDF attachment
+**Performance Benefits** (when scaled to 41 enums):
+- **Code Reduction**: 95.6% reduction (23,780 → 950 lines)
+- **Network Optimization**: 1 request instead of 41 separate calls
+- **Caching**: Two-layer (backend IMemoryCache + HTTP response cache)
+- **Database Scalability**: 1 table instead of 41 separate tables
 
 **Next Steps**:
-- Wait for next paid event registration in production to test webhook flow
-- OR user creates new paid event for testing purposes
-- If webhook test successful: Mark Phase 6A.49 as ✅ COMPLETE
-- If issues found: Debug and create follow-up phase
-- Write unit tests for domain event tracking (post-production validation)
+1. Add seed data for EventCategory, EventStatus, UserRole enums
+2. Migrate remaining 38 enums to unified table (Phase 6A.48+)
+3. Update frontend to use unified endpoint (optional optimization)
+4. Remove legacy DbSets from IApplicationDbContext (Phase 6A.48)
 
 **Related Documents**:
-- [PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md](./PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md) - Root cause analysis with 8 hypotheses
-- [EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md](./EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md) - Architect-approved implementation plan
+- [PHASE_6A47_UNIFIED_REFERENCE_DATA_ARCHITECTURE.md](./PHASE_6A47_UNIFIED_REFERENCE_DATA_ARCHITECTURE.md) - Complete architecture details
+- [PHASE_6A47_ARCHITECTURE_DECISION_SUMMARY.md](./PHASE_6A47_ARCHITECTURE_DECISION_SUMMARY.md) - ADR and design decisions
+- [PHASE_6A47_COMPLETE_ENUM_MIGRATION_ANALYSIS.md](./PHASE_6A47_COMPLETE_ENUM_MIGRATION_ANALYSIS.md) - Analysis of all 41 enums
 
 ---
 

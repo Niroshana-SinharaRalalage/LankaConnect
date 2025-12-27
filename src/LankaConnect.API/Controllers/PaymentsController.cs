@@ -391,8 +391,12 @@ public class PaymentsController : ControllerBase
                 registration.DomainEvents.Count,
                 string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
 
-            // Phase 6A.49: No need to call Update() - entity is already tracked via GetByIdAsync()
-            // Domain events will be automatically collected from ChangeTracker.Entries<BaseEntity>()
+            // Phase 6A.51 FIX: Restore Phase 6A.24 fix that Phase 6A.49 incorrectly removed
+            // ROOT CAUSE: Even though entity is tracked (GetByIdAsync with tracking), EF Core marks it as Unchanged
+            // Calling CompletePayment() modifies properties but doesn't auto-change EntityState to Modified
+            // Without Update(), ChangeTracker won't detect it as modified and won't collect domain events
+            // This is the CRITICAL line that makes PaymentCompletedEvent dispatch work (originally added in commit 238d3c93)
+            _registrationRepository.Update(registration);
 
             // Phase 6A.50: Log BEFORE CommitAsync
             _logger.LogInformation(

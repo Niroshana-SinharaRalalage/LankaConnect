@@ -253,9 +253,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
             typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
-            typeof(EventCategoryRef), // Phase 6A.47: Reference Data Migration (deprecated)
-            typeof(EventStatusRef), // Phase 6A.47: Reference Data Migration (deprecated)
-            typeof(UserRoleRef), // Phase 6A.47: Reference Data Migration (deprecated)
             typeof(ReferenceValue) // Phase 6A.47: Unified Reference Data
         };
 

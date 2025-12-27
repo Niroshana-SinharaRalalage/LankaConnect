@@ -203,6 +203,8 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
+I hope you can test what you fixed in the APIs first. Once you confirm everthing is working from the API level, I will test them in the UI. Use this to get a Token.
+
 curl -X 'POST' \
   'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
   -H 'accept: application/json' \
@@ -219,7 +221,9 @@ Please proceed and make sure to stick to the plan don't miss any TODO items. If 
 ---------------------------------------------
 Please rivew this plan with system-architect and show me the system-architect approved final plan,
 ----------------------------------------------
-Please consult systeme-architect do a comprehensive and systematic analysis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
+Please consult systeme-architect create a comprehensive plan
+----------------------------------------------
+Please consult systeme-architect do a comprehensive, systematic and Deep root cause analysis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
 ---------------------------------------------
 Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
 
@@ -624,3 +628,127 @@ Why This Solution?
 ✅ Production maintains full security
 
 ===================================================================
+
+Excellent question! You're absolutely right - I need a more comprehensive tracking system to ensure I don't miss anything or deviate from the plan. Let me create a complete TODO structure that maps directly to the implementation plan.
+Update Todos
+
+PHASE 0: Create ApplicationUrlsOptions.cs
+
+PHASE 0: Create BrandingOptions.cs
+
+PHASE 0: Update EmailSettings.cs with nested classes
+
+PHASE 0: Create EmailTemplateNames.cs constants
+
+PHASE 0: Create EmailRecipientType.cs enum
+
+PHASE 0: Create EventExtensions.cs with GetLocationDisplayString
+
+PHASE 0: Update appsettings.json with all config sections
+
+PHASE 0: Create appsettings.Development.json
+
+PHASE 0: Update DependencyInjection.cs
+
+PHASE 0: Build and verify zero errors
+
+PHASE 6A.54: Create base email template with parameters
+
+PHASE 6A.54: Create migration for email templates
+
+PHASE 6A.54: Seed all 6 email templates
+
+PHASE 6A.54: Create EMAIL_TEMPLATE_VARIABLES.md docs
+
+PHASE 6A.49: Add RegistrationRepository.GetByIdAsync override
+
+PHASE 6A.49: Fix PaymentsController to load Registration directly
+
+PHASE 6A.49: Add configuration injection to RegistrationConfirmedEventHandler
+
+PHASE 6A.49: Write unit tests for domain event tracking
+
+PHASE 6A.49: Deploy to staging and test paid event email
+
+PHASE 6A.53: Create database migration for email verification
+
+PHASE 6A.53: Update User.cs with GenerateEmailVerificationToken
+
+PHASE 6A.53: Create MemberVerificationRequestedEvent
+
+PHASE 6A.53: Create MemberVerificationRequestedEventHandler
+
+PHASE 6A.53: Create VerifyMemberEmailCommand and handler
+
+PHASE 6A.53: Add API endpoint for email verification
+
+PHASE 6A.53: Create frontend verification page
+
+PHASE 6A.51: Create SignupCommitmentConfirmedEvent
+
+PHASE 6A.51: Update SignUp.cs to raise event
+
+PHASE 6A.51: Create SignupCommitmentConfirmedEventHandler
+
+PHASE 6A.52: Create RegistrationCancelledEvent
+
+PHASE 6A.52: Update Registration.cs to raise cancellation event
+
+PHASE 6A.52: Create RegistrationCancelledEventHandler
+
+PHASE 6A.50: Create SendOrganizerEventEmailCommand
+
+PHASE 6A.50: Create command handler with IEventNotificationRecipientService
+
+PHASE 6A.50: Create GetEmailRecipientsQuery
+
+PHASE 6A.50: Add API endpoints to EventsController
+
+PHASE 6A.50: Create SendEmailModal frontend component
+
+PHASE 6A.50: Update AttendeeManagementTab with Send Email button
+
+FINAL: Update PROGRESS_TRACKER.md
+
+FINAL: Update STREAMLINED_ACTION_PLAN.md
+
+FINAL: Commit all changes with descriptive messages
+Perfect! Now I have a comprehensive 41-item TODO list that maps exactly to the implementation plan. Here's how I'll ensure I don't miss anything:
+My Tracking Strategy
+1. Todo List as Single Source of Truth
+I've created 41 specific TODO items covering all phases
+Each phase clearly labeled (PHASE 0, PHASE 6A.54, etc.)
+Items ordered sequentially to match the plan
+I'll mark each "in_progress" when starting, "completed" when done
+2. Before Moving to Next Phase
+I'll verify:
+✅ All TODOs for current phase marked "completed"
+✅ Build has 0 errors/warnings
+✅ Tests pass (if applicable)
+✅ Changes committed to git
+3. Cross-Reference with Plan Document
+Before each phase, I'll:
+Re-read the phase requirements from EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md
+Verify my TODOs match the acceptance criteria
+Consult architect if anything is unclear
+4. Incremental Commits
+I'll commit after completing each phase:
+Phase 0: "feat(email): Add configuration infrastructure for email system"
+Phase 6A.54: "feat(email): Create base email templates with parameterization"
+Phase 6A.49: "fix(email): Fix paid event registration email tracking issue"
+etc.
+5. Documentation Updates
+The last 3 TODOs ensure I:
+Update PROGRESS_TRACKER.md with session summary
+Update STREAMLINED_ACTION_PLAN.md with completion status
+Follow TASK_SYNCHRONIZATION_STRATEGY.md guidelines
+6. If Issues Arise
+I will:
+Stop immediately
+Consult system-architect agent for RCA
+Get approved fix plan
+Update TODOs if needed
+Resume with fix
+Would you like me to proceed with PHASE 0, Task 1: Create ApplicationUrlsOptions.cs? I'll work through each TODO systematically, marking progress as I go.
+
+===============================================

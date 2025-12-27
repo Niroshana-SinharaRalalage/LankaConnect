@@ -41,10 +41,7 @@ public interface IApplicationDbContext
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
 
-    // Reference Data Domain - Phase 6A.47
-    DbSet<EventCategoryRef> EventCategories { get; }
-    DbSet<EventStatusRef> EventStatuses { get; }
-    DbSet<UserRoleRef> UserRoles { get; }
+    // Reference Data Domain - Phase 6A.47 (Unified)
     DbSet<ReferenceValue> ReferenceValues { get; } // Phase 6A.47: Unified Reference Data
 
     Task<int> CommitAsync(CancellationToken cancellationToken = default);

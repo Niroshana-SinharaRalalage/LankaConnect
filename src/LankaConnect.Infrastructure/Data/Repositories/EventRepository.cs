@@ -104,14 +104,15 @@ public class EventRepository : Repository<Event>, IEventRepository
                 emailGroupIds.Count);
         }
 
-        // Phase 6A.41: NOW attach to change tracker in clean state
-        // Subsequent modifications (like event.Publish()) will be properly tracked
-        _context.Attach(eventEntity);
+        // Phase 6A.53: DO NOT attach when loaded with AsNoTracking
+        // ISSUE: Attaching defeats the purpose of AsNoTracking and causes tracking conflicts
+        // when the event's registrations collection contains registrations already tracked by the same DbContext
+        // SOLUTION: Return the entity untracked - callers that need to modify it should explicitly attach
+        // For read-only scenarios (like PaymentCompletedEventHandler), untracked entities work fine
 
-        var entryAfterAttach = _context.Entry(eventEntity);
         _repoLogger.LogInformation(
-            "[DIAG-R5] Event state AFTER attach - State: {State}, DomainEvents: {DomainEventCount}",
-            entryAfterAttach.State,
+            "[DIAG-R5] Event loaded (untracked, not attached) - EventId: {EventId}, DomainEvents: {DomainEventCount}",
+            eventEntity.Id,
             eventEntity.DomainEvents.Count);
 
         _repoLogger.LogInformation("[DIAG-R6] EventRepository.GetByIdAsync COMPLETE - EventId: {EventId}", id);

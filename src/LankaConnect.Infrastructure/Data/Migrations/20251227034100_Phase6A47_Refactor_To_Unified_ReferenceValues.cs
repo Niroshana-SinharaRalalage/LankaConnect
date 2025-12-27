@@ -71,104 +71,156 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 ON reference_data.reference_values USING GIN (metadata);
             ");
 
-            // Step 3: Migrate data from event_categories
+            // Step 3: Migrate data from event_categories (or seed defaults if table doesn't exist)
             migrationBuilder.Sql(@"
-                INSERT INTO reference_data.reference_values
-                    (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
-                SELECT
-                    id,
-                    'EventCategory' as enum_type,
-                    code,
-                    -- Map code to int_value based on enum definition
-                    CASE code
-                        WHEN 'Religious' THEN 0
-                        WHEN 'Cultural' THEN 1
-                        WHEN 'Community' THEN 2
-                        WHEN 'Educational' THEN 3
-                        WHEN 'Social' THEN 4
-                        WHEN 'Business' THEN 5
-                        WHEN 'Charity' THEN 6
-                        WHEN 'Entertainment' THEN 7
-                        ELSE 0
-                    END as int_value,
-                    name,
-                    description,
-                    display_order,
-                    is_active,
-                    jsonb_build_object('iconUrl', icon_url) as metadata,
-                    created_at,
-                    updated_at
-                FROM reference_data.event_categories;
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'reference_data' AND table_name = 'event_categories') THEN
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        SELECT
+                            id,
+                            'EventCategory' as enum_type,
+                            code,
+                            CASE code
+                                WHEN 'Religious' THEN 0
+                                WHEN 'Cultural' THEN 1
+                                WHEN 'Community' THEN 2
+                                WHEN 'Educational' THEN 3
+                                WHEN 'Social' THEN 4
+                                WHEN 'Business' THEN 5
+                                WHEN 'Charity' THEN 6
+                                WHEN 'Entertainment' THEN 7
+                                ELSE 0
+                            END as int_value,
+                            name,
+                            description,
+                            display_order,
+                            is_active,
+                            jsonb_build_object('iconUrl', icon_url) as metadata,
+                            created_at,
+                            updated_at
+                        FROM reference_data.event_categories;
+                    ELSE
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        VALUES
+                            (gen_random_uuid(), 'EventCategory', 'Religious', 0, 'Religious', 'Religious ceremony events', 1, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Cultural', 1, 'Cultural', 'Cultural celebration events', 2, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Community', 2, 'Community', 'Community gathering events', 3, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Educational', 3, 'Educational', 'Educational and learning events', 4, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Social', 4, 'Social', 'Social networking events', 5, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Business', 5, 'Business', 'Business and professional events', 6, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Charity', 6, 'Charity', 'Charity and fundraising events', 7, true, '{}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventCategory', 'Entertainment', 7, 'Entertainment', 'Entertainment events', 8, true, '{}'::jsonb, NOW(), NOW());
+                    END IF;
+                END $$;
             ");
 
-            // Step 4: Migrate data from event_statuses
+            // Step 4: Migrate data from event_statuses (or seed defaults if table doesn't exist)
             migrationBuilder.Sql(@"
-                INSERT INTO reference_data.reference_values
-                    (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
-                SELECT
-                    id,
-                    'EventStatus' as enum_type,
-                    code,
-                    -- Map code to int_value based on enum definition
-                    CASE code
-                        WHEN 'Draft' THEN 0
-                        WHEN 'Published' THEN 1
-                        WHEN 'Active' THEN 2
-                        WHEN 'Postponed' THEN 3
-                        WHEN 'Cancelled' THEN 4
-                        WHEN 'Completed' THEN 5
-                        WHEN 'Archived' THEN 6
-                        WHEN 'UnderReview' THEN 7
-                        ELSE 0
-                    END as int_value,
-                    name,
-                    description,
-                    display_order,
-                    is_active,
-                    jsonb_build_object(
-                        'allowsRegistration', allows_registration,
-                        'isFinalState', is_final_state
-                    ) as metadata,
-                    created_at,
-                    updated_at
-                FROM reference_data.event_statuses;
+                DO $
+                BEGIN
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'reference_data' AND table_name = 'event_statuses') THEN
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        SELECT
+                            id,
+                            'EventStatus' as enum_type,
+                            code,
+                            CASE code
+                                WHEN 'Draft' THEN 0
+                                WHEN 'Published' THEN 1
+                                WHEN 'Active' THEN 2
+                                WHEN 'Postponed' THEN 3
+                                WHEN 'Cancelled' THEN 4
+                                WHEN 'Completed' THEN 5
+                                WHEN 'Archived' THEN 6
+                                WHEN 'UnderReview' THEN 7
+                                ELSE 0
+                            END as int_value,
+                            name,
+                            description,
+                            display_order,
+                            is_active,
+                            jsonb_build_object(
+                                'allowsRegistration', allows_registration,
+                                'isFinalState', is_final_state
+                            ) as metadata,
+                            created_at,
+                            updated_at
+                        FROM reference_data.event_statuses;
+                    ELSE
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        VALUES
+                            (gen_random_uuid(), 'EventStatus', 'Draft', 0, 'Draft', 'Event is in draft status', 1, true, '{""allowsRegistration"": false, ""isFinalState"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Published', 1, 'Published', 'Event is published', 2, true, '{""allowsRegistration"": true, ""isFinalState"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Active', 2, 'Active', 'Event is active', 3, true, '{""allowsRegistration"": true, ""isFinalState"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Postponed', 3, 'Postponed', 'Event has been postponed', 4, true, '{""allowsRegistration"": false, ""isFinalState"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Cancelled', 4, 'Cancelled', 'Event has been cancelled', 5, true, '{""allowsRegistration"": false, ""isFinalState"": true}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Completed', 5, 'Completed', 'Event has been completed', 6, true, '{""allowsRegistration"": false, ""isFinalState"": true}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'Archived', 6, 'Archived', 'Event has been archived', 7, true, '{""allowsRegistration"": false, ""isFinalState"": true}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'EventStatus', 'UnderReview', 7, 'Under Review', 'Event is under review', 8, true, '{""allowsRegistration"": false, ""isFinalState"": false}'::jsonb, NOW(), NOW());
+                    END IF;
+                END $;
             ");
 
-            // Step 5: Migrate data from user_roles
+            // Step 5: Migrate data from user_roles (or seed defaults if table doesn't exist)
             migrationBuilder.Sql(@"
-                INSERT INTO reference_data.reference_values
-                    (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
-                SELECT
-                    id,
-                    'UserRole' as enum_type,
-                    code,
-                    -- Map code to int_value based on enum definition
-                    CASE code
-                        WHEN 'GeneralUser' THEN 1
-                        WHEN 'BusinessOwner' THEN 2
-                        WHEN 'EventOrganizer' THEN 3
-                        WHEN 'EventOrganizerAndBusinessOwner' THEN 4
-                        WHEN 'Admin' THEN 5
-                        WHEN 'AdminManager' THEN 6
-                        ELSE 1
-                    END as int_value,
-                    name,
-                    description,
-                    display_order,
-                    is_active,
-                    jsonb_build_object(
-                        'canManageUsers', can_manage_users,
-                        'canCreateEvents', can_create_events,
-                        'canModerateContent', can_moderate_content,
-                        'requiresSubscription', requires_subscription,
-                        'canCreateBusinessProfile', can_create_business_profile,
-                        'canCreatePosts', can_create_posts,
-                        'monthlySubscriptionPrice', monthly_price,
-                        'requiresApproval', requires_approval
-                    ) as metadata,
-                    created_at,
-                    updated_at
-                FROM reference_data.user_roles;
+                DO $
+                BEGIN
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'reference_data' AND table_name = 'user_roles') THEN
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        SELECT
+                            id,
+                            'UserRole' as enum_type,
+                            code,
+                            CASE code
+                                WHEN 'GeneralUser' THEN 1
+                                WHEN 'BusinessOwner' THEN 2
+                                WHEN 'EventOrganizer' THEN 3
+                                WHEN 'EventOrganizerAndBusinessOwner' THEN 4
+                                WHEN 'Admin' THEN 5
+                                WHEN 'AdminManager' THEN 6
+                                ELSE 1
+                            END as int_value,
+                            name,
+                            description,
+                            display_order,
+                            is_active,
+                            jsonb_build_object(
+                                'canManageUsers', can_manage_users,
+                                'canCreateEvents', can_create_events,
+                                'canModerateContent', can_moderate_content,
+                                'requiresSubscription', requires_subscription,
+                                'canCreateBusinessProfile', can_create_business_profile,
+                                'canCreatePosts', can_create_posts,
+                                'monthlySubscriptionPrice', monthly_price,
+                                'requiresApproval', requires_approval
+                            ) as metadata,
+                            created_at,
+                            updated_at
+                        FROM reference_data.user_roles;
+                    ELSE
+                        INSERT INTO reference_data.reference_values
+                            (id, enum_type, code, int_value, name, description, display_order, is_active, metadata, created_at, updated_at)
+                        VALUES
+                            (gen_random_uuid(), 'UserRole', 'GeneralUser', 1, 'General User', 'Standard user with basic access', 1, true,
+                                '{""canManageUsers"": false, ""canCreateEvents"": false, ""canModerateContent"": false, ""requiresSubscription"": false, ""canCreateBusinessProfile"": false, ""canCreatePosts"": false, ""monthlySubscriptionPrice"": 0.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'UserRole', 'BusinessOwner', 2, 'Business Owner', 'Business owner with profile management', 2, true,
+                                '{""canManageUsers"": false, ""canCreateEvents"": false, ""canModerateContent"": false, ""requiresSubscription"": true, ""canCreateBusinessProfile"": true, ""canCreatePosts"": false, ""monthlySubscriptionPrice"": 10.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'UserRole', 'EventOrganizer', 3, 'Event Organizer', 'Event organizer with event creation', 3, true,
+                                '{""canManageUsers"": false, ""canCreateEvents"": true, ""canModerateContent"": false, ""requiresSubscription"": true, ""canCreateBusinessProfile"": false, ""canCreatePosts"": true, ""monthlySubscriptionPrice"": 10.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'UserRole', 'EventOrganizerAndBusinessOwner', 4, 'Event Organizer + Business Owner', 'Combined event and business management', 4, true,
+                                '{""canManageUsers"": false, ""canCreateEvents"": true, ""canModerateContent"": false, ""requiresSubscription"": true, ""canCreateBusinessProfile"": true, ""canCreatePosts"": true, ""monthlySubscriptionPrice"": 15.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'UserRole', 'Admin', 5, 'Administrator', 'Administrator with full access', 5, true,
+                                '{""canManageUsers"": true, ""canCreateEvents"": true, ""canModerateContent"": true, ""requiresSubscription"": false, ""canCreateBusinessProfile"": true, ""canCreatePosts"": true, ""monthlySubscriptionPrice"": 0.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW()),
+                            (gen_random_uuid(), 'UserRole', 'AdminManager', 6, 'Admin Manager', 'Admin manager with elevated privileges', 6, true,
+                                '{""canManageUsers"": true, ""canCreateEvents"": true, ""canModerateContent"": true, ""requiresSubscription"": false, ""canCreateBusinessProfile"": true, ""canCreatePosts"": true, ""monthlySubscriptionPrice"": 0.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW());
+                    END IF;
+                END $;
             ");
 
             // Step 5b: Seed remaining enum types (Tier 1-4 critical enums)

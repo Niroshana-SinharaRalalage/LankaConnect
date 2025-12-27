@@ -150,12 +150,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         'canManageUsers', can_manage_users,
                         'canCreateEvents', can_create_events,
                         'canModerateContent', can_moderate_content,
-                        'isEventOrganizer', is_event_organizer,
-                        'isAdmin', is_admin,
                         'requiresSubscription', requires_subscription,
                         'canCreateBusinessProfile', can_create_business_profile,
                         'canCreatePosts', can_create_posts,
-                        'monthlySubscriptionPrice', monthly_price
+                        'monthlySubscriptionPrice', monthly_price,
+                        'requiresApproval', requires_approval
                     ) as metadata,
                     created_at,
                     updated_at
@@ -239,12 +238,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     can_manage_users = table.Column<bool>(nullable: false),
                     can_create_events = table.Column<bool>(nullable: false),
                     can_moderate_content = table.Column<bool>(nullable: false),
-                    is_event_organizer = table.Column<bool>(nullable: false),
-                    is_admin = table.Column<bool>(nullable: false),
                     requires_subscription = table.Column<bool>(nullable: false),
                     can_create_business_profile = table.Column<bool>(nullable: false),
                     can_create_posts = table.Column<bool>(nullable: false),
                     monthly_price = table.Column<decimal>(nullable: false, defaultValue: 0),
+                    requires_approval = table.Column<bool>(nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(nullable: false, defaultValueSql: "NOW()"),
                     updated_at = table.Column<DateTime>(nullable: false, defaultValueSql: "NOW()")
                 },
@@ -295,8 +293,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             migrationBuilder.Sql(@"
                 INSERT INTO reference_data.user_roles
                     (id, code, name, description, display_order, is_active, can_manage_users, can_create_events,
-                     can_moderate_content, is_event_organizer, is_admin, requires_subscription,
-                     can_create_business_profile, can_create_posts, monthly_price, created_at, updated_at)
+                     can_moderate_content, requires_subscription, can_create_business_profile, can_create_posts,
+                     monthly_price, requires_approval, created_at, updated_at)
                 SELECT
                     id,
                     code,
@@ -307,12 +305,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     (metadata->>'canManageUsers')::boolean as can_manage_users,
                     (metadata->>'canCreateEvents')::boolean as can_create_events,
                     (metadata->>'canModerateContent')::boolean as can_moderate_content,
-                    (metadata->>'isEventOrganizer')::boolean as is_event_organizer,
-                    (metadata->>'isAdmin')::boolean as is_admin,
                     (metadata->>'requiresSubscription')::boolean as requires_subscription,
                     (metadata->>'canCreateBusinessProfile')::boolean as can_create_business_profile,
                     (metadata->>'canCreatePosts')::boolean as can_create_posts,
                     (metadata->>'monthlySubscriptionPrice')::decimal as monthly_price,
+                    (metadata->>'requiresApproval')::boolean as requires_approval,
                     created_at,
                     updated_at
                 FROM reference_data.reference_values

@@ -62,6 +62,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
         // Session 21: Configure Attendees as JSONB array for multi-attendee registration
         // Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
+        // Phase 6A.55: Fixed shadow property issue for JSONB collections
         builder.OwnsMany(r => r.Attendees, attendeesBuilder =>
         {
             attendeesBuilder.ToJson("attendees");

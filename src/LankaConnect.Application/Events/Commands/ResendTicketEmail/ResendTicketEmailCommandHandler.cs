@@ -5,6 +5,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace LankaConnect.Application.Events.Commands.ResendTicketEmail;
 
@@ -176,7 +177,8 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage },
                 // Payment details
-                { "AmountPaid", registration.TotalPrice?.Amount.ToString("C") ?? "$0.00" },
+                // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
+                { "AmountPaid", registration.TotalPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "$0.00" },
                 { "PaymentIntentId", registration.StripePaymentIntentId ?? "" },
                 { "PaymentDate", registration.UpdatedAt?.ToString("MMMM dd, yyyy h:mm tt") ?? DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
                 // Ticket details

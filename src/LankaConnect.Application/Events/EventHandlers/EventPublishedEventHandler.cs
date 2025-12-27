@@ -5,6 +5,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -74,7 +75,8 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 
             // Prepare template parameters
             var isFree = @event.IsFree();
-            var ticketPriceText = isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C") ?? "TBA";
+            // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
+            var ticketPriceText = isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "TBA";
 
             var parameters = new Dictionary<string, object>
             {

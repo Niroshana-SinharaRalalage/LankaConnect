@@ -302,24 +302,30 @@ public class PaymentsController : ControllerBase
     /// </summary>
     private async Task HandleCheckoutSessionCompletedAsync(Stripe.Event stripeEvent)
     {
+        // Phase 6A.52: Generate correlation ID for end-to-end tracing
+        var correlationId = Guid.NewGuid();
+
         try
         {
             var session = stripeEvent.Data.Object as Session;
             if (session == null)
             {
-                _logger.LogWarning("Checkout session data is null for event {EventId}", stripeEvent.Id);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [Webhook-ERROR] Checkout session data is null - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                    correlationId, stripeEvent.Id);
                 return;
             }
 
             _logger.LogInformation(
-                "Processing checkout.session.completed for session {SessionId}, payment status {PaymentStatus}",
-                session.Id,
-                session.PaymentStatus);
+                "[Phase 6A.52] [Webhook-1] Processing checkout.session.completed - CorrelationId: {CorrelationId}, SessionId: {SessionId}, PaymentStatus: {PaymentStatus}, StripeEventId: {StripeEventId}",
+                correlationId, session.Id, session.PaymentStatus, stripeEvent.Id);
 
             // Only process successful payments
             if (session.PaymentStatus != "paid")
             {
-                _logger.LogWarning("Checkout session {SessionId} not paid (status: {Status}), skipping", session.Id, session.PaymentStatus);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [Webhook-WARN] Payment not completed - CorrelationId: {CorrelationId}, SessionId: {SessionId}, Status: {Status}",
+                    correlationId, session.Id, session.PaymentStatus);
                 return;
             }
 
@@ -327,49 +333,57 @@ public class PaymentsController : ControllerBase
             if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
                 !Guid.TryParse(registrationIdStr, out var registrationId))
             {
-                _logger.LogWarning("Checkout session {SessionId} missing registration_id in metadata", session.Id);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [Webhook-ERROR] Missing registration_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
                 return;
             }
 
             if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
                 !Guid.TryParse(eventIdStr, out var eventId))
             {
-                _logger.LogWarning("Checkout session {SessionId} missing event_id in metadata", session.Id);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [Webhook-ERROR] Missing event_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
                 return;
             }
 
             _logger.LogInformation(
-                "Completing payment for Event {EventId}, Registration {RegistrationId}",
-                eventId,
-                registrationId);
+                "[Phase 6A.52] [Webhook-2] Metadata extracted - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}",
+                correlationId, eventId, registrationId);
+
+            // Phase 6A.52: Log before loading registration
+            _logger.LogInformation(
+                "[Phase 6A.52] [Webhook-3] Loading registration - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                correlationId, registrationId);
 
             // Phase 6A.49 FIX: Load Registration DIRECTLY with tracking enabled
-            // Previously: Loaded via @event.Registrations navigation property (not tracked)
-            // Now: Load directly via repository which uses tracking by default (override in RegistrationRepository)
-            // This ensures PaymentCompletedEvent is collected by ChangeTracker and dispatched
             var registration = await _registrationRepository.GetByIdAsync(registrationId);
             if (registration == null)
             {
-                _logger.LogError("Registration {RegistrationId} not found for checkout session {SessionId}", registrationId, session.Id);
+                _logger.LogError(
+                    "[Phase 6A.52] [Webhook-ERROR] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, SessionId: {SessionId}",
+                    correlationId, registrationId, session.Id);
                 return;
             }
+
+            _logger.LogInformation(
+                "[Phase 6A.52] [Webhook-4] Registration loaded - CorrelationId: {CorrelationId}, PaymentStatus: {PaymentStatus}, CurrentStripePaymentIntentId: {StripePaymentIntentId}",
+                correlationId, registration.PaymentStatus, registration.StripePaymentIntentId);
 
             // Verify registration belongs to the expected event (security check)
             if (registration.EventId != eventId)
             {
                 _logger.LogError(
-                    "Registration {RegistrationId} belongs to Event {ActualEventId}, expected {ExpectedEventId}",
-                    registrationId,
-                    registration.EventId,
-                    eventId);
+                    "[Phase 6A.52] [Webhook-ERROR] Event mismatch - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, ActualEventId: {ActualEventId}, ExpectedEventId: {ExpectedEventId}",
+                    correlationId, registrationId, registration.EventId, eventId);
                 return;
             }
 
-            // Phase 6A.50: Log domain events BEFORE CompletePayment()
+            // Phase 6A.52: Log domain events BEFORE CompletePayment (with correlation ID)
             _logger.LogInformation(
-                "[Phase 6A.50] Registration {RegistrationId} BEFORE CompletePayment - DomainEvents.Count: {Count}",
-                registrationId,
-                registration.DomainEvents.Count);
+                "[Phase 6A.52] [Webhook-5] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
+                correlationId, registrationId, registration.DomainEvents.Count);
 
             // Complete payment on registration domain entity
             var paymentIntentId = session.PaymentIntentId ?? session.Id;
@@ -378,45 +392,35 @@ public class PaymentsController : ControllerBase
             if (completeResult.IsFailure)
             {
                 _logger.LogError(
-                    "Failed to complete payment for Registration {RegistrationId}: {Error}",
-                    registrationId,
-                    completeResult.Error);
+                    "[Phase 6A.52] [Webhook-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
+                    correlationId, registrationId, completeResult.Error);
                 return;
             }
 
-            // Phase 6A.50: Log domain events AFTER CompletePayment()
+            // Phase 6A.52: Log domain events AFTER CompletePayment
             _logger.LogInformation(
-                "[Phase 6A.50] Registration {RegistrationId} AFTER CompletePayment - DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
-                registrationId,
-                registration.DomainEvents.Count,
-                string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
+                "[Phase 6A.52] [Webhook-6] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
+                correlationId, registrationId, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
 
-            // Phase 6A.51 FIX: Restore Phase 6A.24 fix that Phase 6A.49 incorrectly removed
-            // ROOT CAUSE: Even though entity is tracked (GetByIdAsync with tracking), EF Core marks it as Unchanged
-            // Calling CompletePayment() modifies properties but doesn't auto-change EntityState to Modified
-            // Without Update(), ChangeTracker won't detect it as modified and won't collect domain events
-            // This is the CRITICAL line that makes PaymentCompletedEvent dispatch work (originally added in commit 238d3c93)
+            // Phase 6A.51 FIX: Restore Update() call (critical for domain event dispatch)
             _registrationRepository.Update(registration);
 
-            // Phase 6A.50: Log BEFORE CommitAsync
+            // Phase 6A.52: Log BEFORE CommitAsync
             _logger.LogInformation(
-                "[Phase 6A.50] About to call CommitAsync - Registration {RegistrationId} has {Count} domain events",
-                registrationId,
-                registration.DomainEvents.Count);
+                "[Phase 6A.52] [Webhook-7] Before CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count}",
+                correlationId, registrationId, registration.DomainEvents.Count);
 
-            // Save changes
+            // Save changes and dispatch domain events
             await _unitOfWork.CommitAsync();
 
-            // Phase 6A.50: Log AFTER CommitAsync
+            // Phase 6A.52: Log AFTER CommitAsync
             _logger.LogInformation(
-                "[Phase 6A.50] After CommitAsync - Registration {RegistrationId} has {Count} domain events (should be cleared)",
-                registrationId,
-                registration.DomainEvents.Count);
+                "[Phase 6A.52] [Webhook-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count} (should be cleared)",
+                correlationId, registrationId, registration.DomainEvents.Count);
 
             _logger.LogInformation(
-                "Successfully completed payment for Event {EventId}, Registration {RegistrationId}",
-                eventId,
-                registrationId);
+                "[Phase 6A.52] [Webhook-SUCCESS] Payment completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, eventId, registrationId, paymentIntentId);
         }
         catch (Exception ex)
         {

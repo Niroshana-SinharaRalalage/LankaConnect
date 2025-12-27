@@ -404,8 +404,22 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 if (notification != null)
                 {
                     _logger.LogInformation("[DIAG-18] Publishing notification for: {EventType}", eventType.Name);
-                    await _publisher.Publish(notification, cancellationToken);
-                    _logger.LogInformation("[Phase 6A.24] Successfully dispatched domain event: {EventType}", eventType.Name);
+
+                    // Phase 6A.52: Wrap MediatR.Publish in try-catch to prevent handler exceptions from bubbling up
+                    // This ensures one handler's failure doesn't prevent other handlers from executing
+                    try
+                    {
+                        await _publisher.Publish(notification, cancellationToken);
+                        _logger.LogInformation("[Phase 6A.24] Successfully dispatched domain event: {EventType}", eventType.Name);
+                    }
+                    catch (Exception handlerException)
+                    {
+                        // Phase 6A.52: Log handler exceptions but don't re-throw
+                        // This prevents handler failures from causing transaction rollback
+                        _logger.LogError(handlerException,
+                            "[Phase 6A.52] [HANDLER-EXCEPTION] Domain event handler failed - EventType: {EventType}, ExceptionType: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                            eventType.Name, handlerException.GetType().FullName, handlerException.Message, handlerException.StackTrace);
+                    }
                 }
                 else
                 {

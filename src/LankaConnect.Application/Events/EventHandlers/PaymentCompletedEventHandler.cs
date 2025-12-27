@@ -43,33 +43,58 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     public async Task Handle(DomainEventNotification<PaymentCompletedEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
+        var correlationId = Guid.NewGuid(); // Phase 6A.52: Correlation ID for end-to-end tracing
 
         _logger.LogInformation(
-            "[Phase 6A.24] ✅ PaymentCompletedEventHandler INVOKED - Event {EventId}, Registration {RegistrationId}, Amount {Amount}, Email {Email}",
-            domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid, domainEvent.ContactEmail);
+            "[Phase 6A.52] [PaymentEmail-START] PaymentCompletedEventHandler invoked - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, Amount: {Amount}, Email: {Email}, PaymentIntent: {PaymentIntent}",
+            correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid, domainEvent.ContactEmail, domainEvent.PaymentIntentId);
 
         try
         {
-            // Retrieve event data
+            // Phase 6A.52: Step 1 - Retrieve event data
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-1] Loading event - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                correlationId, domainEvent.EventId);
+
             var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
             if (@event == null)
             {
-                _logger.LogWarning("Event {EventId} not found for PaymentCompletedEvent", domainEvent.EventId);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [PaymentEmail-ERROR] Event not found - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                    correlationId, domainEvent.EventId);
                 return;
             }
 
-            // Find the registration within the event
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-2] Event loaded successfully - CorrelationId: {CorrelationId}, EventTitle: {EventTitle}, Registrations: {RegistrationCount}",
+                correlationId, @event.Title.Value, @event.Registrations.Count);
+
+            // Phase 6A.52: Step 2 - Find registration
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-3] Looking for registration in event - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                correlationId, domainEvent.RegistrationId);
+
             var registration = @event.Registrations.FirstOrDefault(r => r.Id == domainEvent.RegistrationId);
             if (registration == null)
             {
-                _logger.LogWarning("Registration {RegistrationId} not found in Event {EventId}",
-                    domainEvent.RegistrationId, domainEvent.EventId);
+                _logger.LogWarning(
+                    "[Phase 6A.52] [PaymentEmail-ERROR] Registration not found in event - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
+                    correlationId, domainEvent.RegistrationId, domainEvent.EventId);
                 return;
             }
+
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-4] Registration found - CorrelationId: {CorrelationId}, AttendeeCount: {AttendeeCount}, HasDetailedAttendees: {HasDetailedAttendees}",
+                correlationId, registration.Attendees.Count, registration.HasDetailedAttendees());
 
             // Determine recipient name and email
             string recipientName;
             string recipientEmail = domainEvent.ContactEmail;
+
+            // Phase 6A.52: Step 3 - Determine recipient
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-5] Determining recipient - CorrelationId: {CorrelationId}, HasUserId: {HasUserId}, ContactEmail: {ContactEmail}",
+                correlationId, domainEvent.UserId.HasValue, domainEvent.ContactEmail);
 
             if (domainEvent.UserId.HasValue)
             {
@@ -79,12 +104,18 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 {
                     recipientName = $"{user.FirstName} {user.LastName}";
                     recipientEmail = user.Email.Value;
+                    _logger.LogInformation(
+                        "[Phase 6A.52] [PaymentEmail-6] User found - CorrelationId: {CorrelationId}, RecipientName: {RecipientName}, RecipientEmail: {RecipientEmail}",
+                        correlationId, recipientName, recipientEmail);
                 }
                 else
                 {
                     recipientName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                         ? registration.Attendees.First().Name
                         : "Guest";
+                    _logger.LogWarning(
+                        "[Phase 6A.52] [PaymentEmail-WARN] User not found, using fallback name - CorrelationId: {CorrelationId}, UserId: {UserId}, FallbackName: {RecipientName}",
+                        correlationId, domainEvent.UserId.Value, recipientName);
                 }
             }
             else
@@ -93,6 +124,9 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 recipientName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                     ? registration.Attendees.First().Name
                     : "Guest";
+                _logger.LogInformation(
+                    "[Phase 6A.52] [PaymentEmail-7] Anonymous user - CorrelationId: {CorrelationId}, RecipientName: {RecipientName}",
+                    correlationId, recipientName);
             }
 
             // Phase 6A.43: Format attendee details - names only (no age) to match free event template
@@ -149,7 +183,11 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 parameters["HasContactInfo"] = false;
             }
 
-            // Phase 6A.24: Generate ticket with QR code
+            // Phase 6A.52: Step 4 - Generate ticket with QR code
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-8] Starting ticket generation - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
+                correlationId, registration.Id, @event.Id);
+
             var ticketResult = await _ticketService.GenerateTicketAsync(
                 registration.Id,
                 @event.Id,
@@ -158,33 +196,50 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             byte[]? pdfAttachment = null;
             if (ticketResult.IsSuccess)
             {
-                _logger.LogInformation("Ticket generated successfully: {TicketCode}", ticketResult.Value.TicketCode);
+                _logger.LogInformation(
+                    "[Phase 6A.52] [PaymentEmail-9] Ticket generated successfully - CorrelationId: {CorrelationId}, TicketCode: {TicketCode}, TicketId: {TicketId}",
+                    correlationId, ticketResult.Value.TicketCode, ticketResult.Value.TicketId);
 
                 parameters["HasTicket"] = true;
                 parameters["TicketCode"] = ticketResult.Value.TicketCode;
                 parameters["TicketExpiryDate"] = @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy");
 
                 // Get PDF bytes for email attachment
+                _logger.LogInformation(
+                    "[Phase 6A.52] [PaymentEmail-10] Retrieving ticket PDF - CorrelationId: {CorrelationId}, TicketId: {TicketId}",
+                    correlationId, ticketResult.Value.TicketId);
+
                 var pdfResult = await _ticketService.GetTicketPdfAsync(ticketResult.Value.TicketId, cancellationToken);
                 if (pdfResult.IsSuccess)
                 {
                     pdfAttachment = pdfResult.Value;
-                    _logger.LogInformation("Ticket PDF retrieved successfully, size: {Size} bytes", pdfAttachment.Length);
+                    _logger.LogInformation(
+                        "[Phase 6A.52] [PaymentEmail-11] Ticket PDF retrieved successfully - CorrelationId: {CorrelationId}, Size: {Size} bytes",
+                        correlationId, pdfAttachment.Length);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to retrieve ticket PDF: {Error}", string.Join(", ", pdfResult.Errors));
+                    _logger.LogWarning(
+                        "[Phase 6A.52] [PaymentEmail-WARN] Failed to retrieve ticket PDF - CorrelationId: {CorrelationId}, Errors: {Errors}",
+                        correlationId, string.Join(", ", pdfResult.Errors));
                 }
             }
             else
             {
-                _logger.LogWarning("Failed to generate ticket: {Error}", string.Join(", ", ticketResult.Errors));
+                _logger.LogWarning(
+                    "[Phase 6A.52] [PaymentEmail-WARN] Failed to generate ticket - CorrelationId: {CorrelationId}, Errors: {Errors}",
+                    correlationId, string.Join(", ", ticketResult.Errors));
                 parameters["HasTicket"] = false;
             }
 
-            // Phase 6A.24 FIX: Call RenderTemplateAsync with single template name "ticket-confirmation"
-            // The service will automatically find: ticket-confirmation-subject.txt, ticket-confirmation-html.html, ticket-confirmation-text.txt
-            // Previous code incorrectly passed "ticket-confirmation-subject" which looked for "ticket-confirmation-subject-subject.txt"
+            // Phase 6A.52: Step 5 - Render email template
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-12] Starting template rendering - CorrelationId: {CorrelationId}, TemplateName: ticket-confirmation, ParameterCount: {ParameterCount}",
+                correlationId, parameters.Count);
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-13] Template parameters - CorrelationId: {CorrelationId}, Parameters: {Parameters}",
+                correlationId, string.Join(", ", parameters.Keys));
+
             var renderResult = await _emailTemplateService.RenderTemplateAsync(
                 "ticket-confirmation",
                 parameters,
@@ -192,17 +247,23 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
 
             if (renderResult.IsFailure)
             {
-                _logger.LogError("Failed to render email template 'ticket-confirmation': {Error}", renderResult.Error);
+                _logger.LogError(
+                    "[Phase 6A.52] [PaymentEmail-ERROR] Template rendering failed - CorrelationId: {CorrelationId}, TemplateName: ticket-confirmation, Error: {Error}",
+                    correlationId, renderResult.Error);
                 return;
             }
+
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-14] Template rendered successfully - CorrelationId: {CorrelationId}, SubjectLength: {SubjectLength}, HtmlBodyLength: {HtmlBodyLength}, PlainTextLength: {PlainTextLength}",
+                correlationId, renderResult.Value.Subject?.Length ?? 0, renderResult.Value.HtmlBody?.Length ?? 0, renderResult.Value.PlainTextBody?.Length ?? 0);
 
             // Build email message with attachment
             var emailMessage = new EmailMessageDto
             {
                 ToEmail = recipientEmail,
                 ToName = recipientName,
-                Subject = renderResult.Value.Subject,
-                HtmlBody = renderResult.Value.HtmlBody,
+                Subject = renderResult.Value.Subject ?? "Event Registration Confirmation",
+                HtmlBody = renderResult.Value.HtmlBody ?? string.Empty,
                 PlainTextBody = renderResult.Value.PlainTextBody,
                 Attachments = pdfAttachment != null
                     ? new List<EmailAttachment>
@@ -217,28 +278,32 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     : null
             };
 
-            // Send email with attachment
+            // Phase 6A.52: Step 6 - Send email with attachment
+            _logger.LogInformation(
+                "[Phase 6A.52] [PaymentEmail-15] Sending email - CorrelationId: {CorrelationId}, To: {RecipientEmail}, Subject: {Subject}, HasAttachment: {HasAttachment}",
+                correlationId, recipientEmail, emailMessage.Subject, pdfAttachment != null);
+
             var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
 
             if (result.IsFailure)
             {
                 _logger.LogError(
-                    "Failed to send payment confirmation email to {Email}: {Errors}",
-                    recipientEmail, string.Join(", ", result.Errors));
+                    "[Phase 6A.52] [PaymentEmail-ERROR] Failed to send email - CorrelationId: {CorrelationId}, RecipientEmail: {Email}, Errors: {Errors}",
+                    correlationId, recipientEmail, string.Join(", ", result.Errors));
             }
             else
             {
                 _logger.LogInformation(
-                    "Payment confirmation email sent successfully to {Email} for Registration {RegistrationId} with {AttendeeCount} attendees, HasTicket: {HasTicket}",
-                    recipientEmail, domainEvent.RegistrationId, registration.Attendees.Count, parameters["HasTicket"]);
+                    "[Phase 6A.52] [PaymentEmail-SUCCESS] Email sent successfully - CorrelationId: {CorrelationId}, RecipientEmail: {Email}, RegistrationId: {RegistrationId}, AttendeeCount: {AttendeeCount}, HasTicket: {HasTicket}",
+                    correlationId, recipientEmail, domainEvent.RegistrationId, registration.Attendees.Count, parameters["HasTicket"]);
             }
         }
         catch (Exception ex)
         {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+            // Phase 6A.52: Enhanced exception logging with full context
             _logger.LogError(ex,
-                "Error handling PaymentCompletedEvent for Event {EventId}, Registration {RegistrationId}",
-                domainEvent.EventId, domainEvent.RegistrationId);
+                "[Phase 6A.52] [PaymentEmail-EXCEPTION] Unhandled exception in PaymentCompletedEventHandler - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, Email: {Email}, ExceptionType: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.ContactEmail, ex.GetType().FullName, ex.Message, ex.StackTrace);
         }
     }
 

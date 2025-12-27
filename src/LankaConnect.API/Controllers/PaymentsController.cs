@@ -365,6 +365,12 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
+            // Phase 6A.50: Log domain events BEFORE CompletePayment()
+            _logger.LogInformation(
+                "[Phase 6A.50] Registration {RegistrationId} BEFORE CompletePayment - DomainEvents.Count: {Count}",
+                registrationId,
+                registration.DomainEvents.Count);
+
             // Complete payment on registration domain entity
             var paymentIntentId = session.PaymentIntentId ?? session.Id;
             var completeResult = registration.CompletePayment(paymentIntentId);
@@ -378,11 +384,30 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
+            // Phase 6A.50: Log domain events AFTER CompletePayment()
+            _logger.LogInformation(
+                "[Phase 6A.50] Registration {RegistrationId} AFTER CompletePayment - DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
+                registrationId,
+                registration.DomainEvents.Count,
+                string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
+
             // Phase 6A.49: No need to call Update() - entity is already tracked via GetByIdAsync()
             // Domain events will be automatically collected from ChangeTracker.Entries<BaseEntity>()
 
+            // Phase 6A.50: Log BEFORE CommitAsync
+            _logger.LogInformation(
+                "[Phase 6A.50] About to call CommitAsync - Registration {RegistrationId} has {Count} domain events",
+                registrationId,
+                registration.DomainEvents.Count);
+
             // Save changes
             await _unitOfWork.CommitAsync();
+
+            // Phase 6A.50: Log AFTER CommitAsync
+            _logger.LogInformation(
+                "[Phase 6A.50] After CommitAsync - Registration {RegistrationId} has {Count} domain events (should be cleared)",
+                registrationId,
+                registration.DomainEvents.Count);
 
             _logger.LogInformation(
                 "Successfully completed payment for Event {EventId}, Registration {RegistrationId}",

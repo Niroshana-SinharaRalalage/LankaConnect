@@ -5,6 +5,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -164,7 +165,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage },
                 // Payment details
-                { "AmountPaid", domainEvent.AmountPaid.ToString("C") },
+                // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
+                { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
                 { "PaymentIntentId", domainEvent.PaymentIntentId },
                 { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") }
             };

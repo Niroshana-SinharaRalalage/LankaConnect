@@ -7,13 +7,50 @@
 
 ---
 
-## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 0 EMAIL SYSTEM CONFIGURATION INFRASTRUCTURE (2025-12-26)
+## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.49 FIX PAID EVENT EMAIL (2025-12-26)
 **Date**: 2025-12-26 (Continuation Session)
-**Session**: Phase 0 - Email System Configuration Infrastructure
-**Status**: ✅ COMPLETE - Zero compilation errors, committed to develop branch
+**Session**: Phase 6A.49 - Fix Paid Event Email Silence (Critical Production Bug)
+**Status**: ✅ COMPLETE - Zero compilation errors, deployed to Azure staging
 **Build Status**: ✅ Zero Tolerance Maintained - 0 Errors, 0 Warnings
-**Commit**: `085e9b1b` - feat(phase-0): Add email system configuration infrastructure
-**Next Phase**: Phase 6A.54 - Email Templates (database-stored parameterized templates)
+**Commit**: `2b55de0b` - fix(phase-6a49): Fix paid event email silence by enabling EF Core tracking
+**Deployment**: 🚀 Deploying to Azure Staging via GitHub Actions (automatic on develop branch push)
+**Next Phase**: Validation testing on staging, then Phase 6A.54 - Email Templates
+
+### CONTINUATION SESSION: PHASE 6A.49 FIX PAID EVENT EMAIL SILENCE (2025-12-26)
+**Goal**: Fix critical production bug where paid event confirmation emails not sent after Stripe payment
+
+**Problem**:
+- PaymentCompletedEvent domain events not dispatched after successful payment
+- Registration entities loaded via navigation property (@event.Registrations) NOT tracked by EF Core
+- ChangeTracker.Entries<BaseEntity>() doesn't include untracked entities
+- PaymentCompletedEventHandler never invoked → No confirmation email sent
+
+**Solution**:
+1. ✅ Added GetByIdAsync() override in RegistrationRepository with tracking enabled
+2. ✅ Updated PaymentsController to load Registration DIRECTLY (not via navigation)
+3. ✅ Added security check to verify registration belongs to expected event
+4. ✅ Removed obsolete Update() workaround (entity already tracked)
+
+**Files Modified**:
+- [RegistrationRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs:20-26) - Tracked GetByIdAsync() override
+- [PaymentsController.cs](../src/LankaConnect.API/Controllers/PaymentsController.cs:346-382) - Direct Registration loading + security check
+- [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Documentation
+
+**Technical Details**:
+- **Before**: Event loaded → Registration via navigation → NOT TRACKED → Event raised but not dispatched
+- **After**: Registration loaded directly WITH TRACKING → Event raised and IS in ChangeTracker → Event dispatched ✅
+
+**Testing Plan** (Post-Deployment):
+1. Create paid event in staging
+2. Complete payment via Stripe test webhook
+3. Verify PaymentCompletedEvent dispatched in container logs
+4. Verify confirmation email sent with ticket PDF attachment
+5. Write unit tests for domain event tracking
+
+**Build Status**: ✅ 0 Errors, 0 Warnings
+**Deployment**: GitHub Actions deploying to Azure staging automatically
+
+---
 
 ### CONTINUATION SESSION: PHASE 0 EMAIL SYSTEM CONFIGURATION INFRASTRUCTURE (2025-12-26)
 **Goal**: Create foundational configuration infrastructure to eliminate hardcoding in email system

@@ -82,6 +82,7 @@ public class ReferenceDataService : IReferenceDataService
     }
 
     // DEPRECATED: Legacy methods for backward compatibility
+    // Phase 6A.47: Updated to use unified reference_values table
     #pragma warning disable CS0618 // Type or member is obsolete
     public async Task<IReadOnlyList<EventCategoryRefDto>> GetEventCategoriesAsync(
         bool activeOnly = true,
@@ -97,7 +98,8 @@ public class ReferenceDataService : IReferenceDataService
 
         _logger.LogDebug("Cache MISS for EventCategories (activeOnly={ActiveOnly})", activeOnly);
 
-        var entities = await _repository.GetEventCategoriesAsync(activeOnly, cancellationToken);
+        // Use unified repository method and map to legacy DTO
+        var entities = await _repository.GetByTypeAsync("EventCategory", activeOnly, cancellationToken);
 
         var dtos = entities.Select(e => new EventCategoryRefDto
         {
@@ -105,7 +107,7 @@ public class ReferenceDataService : IReferenceDataService
             Code = e.Code,
             Name = e.Name,
             Description = e.Description,
-            IconUrl = e.IconUrl,
+            IconUrl = e.GetMetadataValue<string>("iconUrl"),
             DisplayOrder = e.DisplayOrder,
             IsActive = e.IsActive
         }).ToList();
@@ -131,7 +133,8 @@ public class ReferenceDataService : IReferenceDataService
 
         _logger.LogDebug("Cache MISS for EventStatuses (activeOnly={ActiveOnly})", activeOnly);
 
-        var entities = await _repository.GetEventStatusesAsync(activeOnly, cancellationToken);
+        // Use unified repository method and map to legacy DTO
+        var entities = await _repository.GetByTypeAsync("EventStatus", activeOnly, cancellationToken);
 
         var dtos = entities.Select(e => new EventStatusRefDto
         {
@@ -141,8 +144,8 @@ public class ReferenceDataService : IReferenceDataService
             Description = e.Description,
             DisplayOrder = e.DisplayOrder,
             IsActive = e.IsActive,
-            AllowsRegistration = e.AllowsRegistration,
-            IsFinalState = e.IsFinalState
+            AllowsRegistration = e.GetMetadataFlag("allowsRegistration"),
+            IsFinalState = e.GetMetadataFlag("isFinalState")
         }).ToList();
 
         _cache.Set(cacheKey, dtos, CacheOptions);
@@ -166,7 +169,8 @@ public class ReferenceDataService : IReferenceDataService
 
         _logger.LogDebug("Cache MISS for UserRoles (activeOnly={ActiveOnly})", activeOnly);
 
-        var entities = await _repository.GetUserRolesAsync(activeOnly, cancellationToken);
+        // Use unified repository method and map to legacy DTO
+        var entities = await _repository.GetByTypeAsync("UserRole", activeOnly, cancellationToken);
 
         var dtos = entities.Select(e => new UserRoleRefDto
         {
@@ -176,14 +180,14 @@ public class ReferenceDataService : IReferenceDataService
             Description = e.Description,
             DisplayOrder = e.DisplayOrder,
             IsActive = e.IsActive,
-            CanManageUsers = e.CanManageUsers,
-            CanCreateEvents = e.CanCreateEvents,
-            CanModerateContent = e.CanModerateContent,
-            CanCreateBusinessProfile = e.CanCreateBusinessProfile,
-            CanCreatePosts = e.CanCreatePosts,
-            RequiresSubscription = e.RequiresSubscription,
-            MonthlyPrice = e.MonthlyPrice,
-            RequiresApproval = e.RequiresApproval
+            CanManageUsers = e.GetMetadataFlag("canManageUsers"),
+            CanCreateEvents = e.GetMetadataFlag("canCreateEvents"),
+            CanModerateContent = e.GetMetadataFlag("canModerateContent"),
+            CanCreateBusinessProfile = e.GetMetadataFlag("canCreateBusinessProfile"),
+            CanCreatePosts = e.GetMetadataFlag("canCreatePosts"),
+            RequiresSubscription = e.GetMetadataFlag("requiresSubscription"),
+            MonthlyPrice = e.GetMetadataDecimal("monthlySubscriptionPrice"),
+            RequiresApproval = e.GetMetadataFlag("requiresApproval")
         }).ToList();
 
         _cache.Set(cacheKey, dtos, CacheOptions);

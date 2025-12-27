@@ -1,13 +1,13 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-26 (Continuation Session) - Phase 6A.49: Fix Paid Event Email Silence ✅ COMPLETE*
+*Last Updated: 2025-12-26 (Continuation Session) - Phase 6A.49: Fix Paid Event Email Silence - Testing Phase*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.49: Fix Paid Event Email Silence ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.49: Fix Paid Event Email Silence - ⏳ TESTING
 
-### Continuation Session: Phase 6A.49 Fix Paid Event Email - COMPLETE - 2025-12-26
+### Continuation Session: Phase 6A.49 Fix Paid Event Email - Deployed, Awaiting Manual Testing - 2025-12-26
 
-**Status**: ✅ **COMPLETE** (Zero compilation errors, ready for staging deployment)
+**Status**: ⏳ **TESTING** (Deployed to Azure staging, awaiting manual end-to-end test)
 
 **Summary**: Fixed critical production bug where paid event confirmation emails were not being sent after successful Stripe payment. Root cause: EF Core ChangeTracker not tracking entities loaded via AsNoTracking() or navigation properties, preventing PaymentCompletedEvent domain events from being dispatched.
 
@@ -81,11 +81,71 @@ public override async Task<Registration?> GetByIdAsync(Guid id, CancellationToke
 
 **Build Status**: ✅ Zero Errors, Zero Warnings
 
+**Deployment Status**:
+- ✅ Committed to develop branch (commit 2b55de0b)
+- ✅ GitHub Actions deployment #20529676745 - SUCCESS
+- ✅ API health check passed on Azure staging
+- ✅ Domain event system verified working (UserLoggedInEvent dispatch confirmed in logs)
+
+**Testing Status**:
+- ✅ Deployment verified: GitHub Actions #20529676745 SUCCESS (commit 2b55de0b)
+- ✅ Code currently active on Azure staging
+- ✅ API health check: Responding correctly
+- ✅ Domain event system: Verified working via logs
+- ⏳ End-to-end paid event flow: **REQUIRES MANUAL WEBHOOK SIMULATION**
+
+**Testing Attempts** (2025-12-27 00:15-00:40 UTC):
+- ✅ Authenticated successfully (obtained fresh JWT token)
+- ❌ Cultural Workshop ($35): Event already started (2025-11-23)
+- ❌ Volleyball Championship ($20): User already registered with PaymentStatus=Completed
+- ❌ Cannot create new test event: API validation constraints
+- **Limitation**: No available paid events for new registration testing
+
+**Verification Completed**:
+1. ✅ Authenticated successfully with provided credentials
+2. ✅ Confirmed Phase 6A.49 code deployed to staging (run #20529676745)
+3. ✅ Verified RegistrationRepository.GetByIdAsync() override present in deployed code
+4. ✅ Verified PaymentsController uses direct Registration loading pattern
+5. ✅ Build: 0 Errors, 0 Warnings
+6. ⏳ **PENDING**: Actual Stripe webhook → email flow test (awaiting new paid registration)
+
+**Manual Webhook Testing Procedure** (for next paid registration):
+1. Create paid event registration via `/api/Events/{id}/rsvp` endpoint
+2. Extract `registrationId` and `eventId` from response
+3. Simulate Stripe `checkout.session.completed` webhook:
+   ```bash
+   curl -X POST "https://lankaconnect-api-staging.../api/Payments/webhook" \
+     -H "Stripe-Signature: {sig}" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "id": "evt_test_...",
+       "type": "checkout.session.completed",
+       "data": {
+         "object": {
+           "id": "cs_test_...",
+           "payment_status": "paid",
+           "payment_intent": "pi_test_...",
+           "metadata": {
+             "registration_id": "{registrationId}",
+             "event_id": "{eventId}"
+           }
+         }
+       }
+     }'
+   ```
+4. Check Azure Container App logs for:
+   - `[Phase 6A.49] Load Registration DIRECTLY with tracking`
+   - `PaymentCompletedEvent` domain event collection
+   - `[Phase 6A.24] ✅ PaymentCompletedEventHandler INVOKED`
+   - `Payment confirmation email sent successfully`
+5. Verify email received with ticket PDF attachment
+
 **Next Steps**:
-- Deploy to Azure staging and test paid event registration flow
-- Verify PaymentCompletedEvent is dispatched via logs
-- Verify confirmation email is sent with ticket PDF attachment
-- Write unit tests for domain event tracking (post-deploy validation)
+- Wait for next paid event registration in production to test webhook flow
+- OR user creates new paid event for testing purposes
+- If webhook test successful: Mark Phase 6A.49 as ✅ COMPLETE
+- If issues found: Debug and create follow-up phase
+- Write unit tests for domain event tracking (post-production validation)
 
 **Related Documents**:
 - [PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md](./PHASE_6A49_PAID_EVENT_EMAIL_SILENCE_RCA.md) - Root cause analysis with 8 hypotheses

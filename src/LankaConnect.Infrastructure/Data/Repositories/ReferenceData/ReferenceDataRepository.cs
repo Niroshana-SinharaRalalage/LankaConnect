@@ -91,113 +91,70 @@ public class ReferenceDataRepository : IReferenceDataRepository
     }
 
     // DEPRECATED: Legacy methods for backward compatibility
+    // NOTE: These methods are no longer implemented because the old tables (event_categories, event_statuses, user_roles) were dropped
+    // The service layer now uses GetByTypeAsync("EventCategory"/"EventStatus"/"UserRole") and maps to legacy DTOs
     #pragma warning disable CS0618 // Type or member is obsolete
-    public async Task<IReadOnlyList<EventCategoryRef>> GetEventCategoriesAsync(
+    public Task<IReadOnlyList<EventCategoryRef>> GetEventCategoriesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.EventCategories.AsQueryable();
-
-        if (activeOnly)
-        {
-            query = query.Where(c => c.IsActive);
-        }
-
-        return await query
-            .OrderBy(c => c.DisplayOrder)
-            .ThenBy(c => c.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<EventCategoryRef?> GetEventCategoryByIdAsync(
+    public Task<EventCategoryRef?> GetEventCategoryByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await _context.EventCategories
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<EventCategoryRef?> GetEventCategoryByCodeAsync(
+    public Task<EventCategoryRef?> GetEventCategoryByCodeAsync(
         string code,
         CancellationToken cancellationToken = default)
     {
-        return await _context.EventCategories
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Code == code, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<IReadOnlyList<EventStatusRef>> GetEventStatusesAsync(
+    public Task<IReadOnlyList<EventStatusRef>> GetEventStatusesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.EventStatuses.AsQueryable();
-
-        if (activeOnly)
-        {
-            query = query.Where(s => s.IsActive);
-        }
-
-        return await query
-            .OrderBy(s => s.DisplayOrder)
-            .ThenBy(s => s.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<EventStatusRef?> GetEventStatusByIdAsync(
+    public Task<EventStatusRef?> GetEventStatusByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await _context.EventStatuses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<EventStatusRef?> GetEventStatusByCodeAsync(
+    public Task<EventStatusRef?> GetEventStatusByCodeAsync(
         string code,
         CancellationToken cancellationToken = default)
     {
-        return await _context.EventStatuses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Code == code, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<IReadOnlyList<UserRoleRef>> GetUserRolesAsync(
+    public Task<IReadOnlyList<UserRoleRef>> GetUserRolesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.UserRoles.AsQueryable();
-
-        if (activeOnly)
-        {
-            query = query.Where(r => r.IsActive);
-        }
-
-        return await query
-            .OrderBy(r => r.DisplayOrder)
-            .ThenBy(r => r.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<UserRoleRef?> GetUserRoleByIdAsync(
+    public Task<UserRoleRef?> GetUserRoleByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await _context.UserRoles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
 
-    public async Task<UserRoleRef?> GetUserRoleByCodeAsync(
+    public Task<UserRoleRef?> GetUserRoleByCodeAsync(
         string code,
         CancellationToken cancellationToken = default)
     {
-        return await _context.UserRoles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Code == code, cancellationToken);
+        throw new NotSupportedException("Legacy repository methods are no longer supported. Old tables were dropped in Phase 6A.47. Use service layer instead.");
     }
     #pragma warning restore CS0618 // Type or member is obsolete
 }

@@ -149,6 +149,15 @@ export default function EventsPage() {
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
+  // Create category labels map from enum options
+  const categoryLabels = useMemo(() => {
+    const labels: Record<EventCategory, string> = {} as Record<EventCategory, string>;
+    getEventCategoryOptions().forEach(option => {
+      labels[option.value as EventCategory] = option.label;
+    });
+    return labels;
+  }, []);
+
   // Check if user can create events (EventOrganizer, Admin, or AdminManager)
   const canUserCreateEvents = user && (
     user.role === UserRole.EventOrganizer ||

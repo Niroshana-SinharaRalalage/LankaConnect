@@ -26,7 +26,74 @@ public class ReferenceDataController : ControllerBase
     }
 
     /// <summary>
+    /// Get reference values by enum type(s) - UNIFIED ENDPOINT
+    /// Supports multiple enum types in a single request for optimal performance
+    /// Examples: ?types=EventCategory,EventStatus,UserRole
+    /// </summary>
+    /// <param name="types">Comma-separated list of enum types (e.g., EventCategory,EventStatus,UserRole)</param>
+    /// <param name="activeOnly">Return only active values (default: true)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of reference values grouped by enum type</returns>
+    /// <response code="200">Returns reference values for requested types</response>
+    /// <response code="400">Invalid or missing types parameter</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet]
+    [ResponseCache(Duration = 3600)] // Cache for 1 hour (matches service cache TTL)
+    [ProducesResponseType(typeof(IReadOnlyList<ReferenceValueDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetReferenceData(
+        [FromQuery] string? types = null,
+        [FromQuery] bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(types))
+            {
+                _logger.LogWarning("GET /api/reference-data - Missing types parameter");
+                return BadRequest(new
+                {
+                    error = "MISSING_TYPES",
+                    message = "The 'types' query parameter is required. Example: ?types=EventCategory,EventStatus,UserRole"
+                });
+            }
+
+            var enumTypes = types.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (enumTypes.Length == 0)
+            {
+                _logger.LogWarning("GET /api/reference-data - Empty types parameter");
+                return BadRequest(new
+                {
+                    error = "EMPTY_TYPES",
+                    message = "The 'types' parameter cannot be empty. Example: ?types=EventCategory,EventStatus,UserRole"
+                });
+            }
+
+            _logger.LogInformation("GET /api/reference-data - Types: {Types}, ActiveOnly: {ActiveOnly}",
+                string.Join(",", enumTypes), activeOnly);
+
+            var referenceData = await _referenceDataService.GetByTypesAsync(enumTypes, activeOnly, cancellationToken);
+
+            _logger.LogInformation("Successfully fetched {Count} reference values for {TypeCount} types",
+                referenceData.Count, enumTypes.Length);
+
+            return Ok(referenceData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching reference data");
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                error = "INTERNAL_ERROR",
+                message = "An unexpected error occurred while fetching reference data"
+            });
+        }
+    }
+
+    /// <summary>
     /// Get all event categories
+    /// LEGACY ENDPOINT - Use GET /api/reference-data?types=EventCategory instead
     /// </summary>
     /// <param name="activeOnly">Return only active categories (default: true)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -62,6 +129,7 @@ public class ReferenceDataController : ControllerBase
 
     /// <summary>
     /// Get all event statuses
+    /// LEGACY ENDPOINT - Use GET /api/reference-data?types=EventStatus instead
     /// </summary>
     /// <param name="activeOnly">Return only active statuses (default: true)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -97,6 +165,7 @@ public class ReferenceDataController : ControllerBase
 
     /// <summary>
     /// Get all user roles
+    /// LEGACY ENDPOINT - Use GET /api/reference-data?types=UserRole instead
     /// </summary>
     /// <param name="activeOnly">Return only active roles (default: true)</param>
     /// <param name="cancellationToken">Cancellation token</param>

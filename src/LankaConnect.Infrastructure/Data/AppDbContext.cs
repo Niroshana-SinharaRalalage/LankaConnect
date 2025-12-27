@@ -95,6 +95,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<EventCategoryRef> EventCategories => Set<EventCategoryRef>();
     public DbSet<EventStatusRef> EventStatuses => Set<EventStatusRef>();
     public DbSet<UserRoleRef> UserRoles => Set<UserRoleRef>();
+    public DbSet<ReferenceValue> ReferenceValues => Set<ReferenceValue>(); // Phase 6A.47: Unified Reference Data
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -156,6 +157,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EventCategoryRefConfiguration());
         modelBuilder.ApplyConfiguration(new EventStatusRefConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleRefConfiguration());
+        modelBuilder.ApplyConfiguration(new ReferenceValueConfiguration()); // Phase 6A.47: Unified Reference Data
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -251,9 +253,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
             typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
-            typeof(EventCategoryRef), // Phase 6A.47: Reference Data Migration
-            typeof(EventStatusRef), // Phase 6A.47: Reference Data Migration
-            typeof(UserRoleRef) // Phase 6A.47: Reference Data Migration
+            typeof(EventCategoryRef), // Phase 6A.47: Reference Data Migration (deprecated)
+            typeof(EventStatusRef), // Phase 6A.47: Reference Data Migration (deprecated)
+            typeof(UserRoleRef), // Phase 6A.47: Reference Data Migration (deprecated)
+            typeof(ReferenceValue) // Phase 6A.47: Unified Reference Data
         };
 
         // Get all types from Domain assembly that aren't in our configured list

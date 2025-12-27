@@ -3,11 +3,20 @@ using LankaConnect.Application.ReferenceData.DTOs;
 namespace LankaConnect.Application.ReferenceData.Services;
 
 /// <summary>
-/// Service interface for accessing reference data with caching
-/// Phase 6A.47: Centralized reference data access layer
+/// Service interface for accessing unified reference data with caching
+/// Phase 6A.47: Unified Reference Data Architecture
 /// </summary>
 public interface IReferenceDataService
 {
+    /// <summary>
+    /// Get reference values by enum type(s) - unified approach (cached for 1 hour)
+    /// Supports multiple enum types in a single call
+    /// </summary>
+    Task<IReadOnlyList<ReferenceValueDto>> GetByTypesAsync(
+        IEnumerable<string> enumTypes,
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Get all event categories (cached for 1 hour)
     /// </summary>

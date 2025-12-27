@@ -45,6 +45,7 @@ public interface IApplicationDbContext
     DbSet<EventCategoryRef> EventCategories { get; }
     DbSet<EventStatusRef> EventStatuses { get; }
     DbSet<UserRoleRef> UserRoles { get; }
+    DbSet<ReferenceValue> ReferenceValues { get; } // Phase 6A.47: Unified Reference Data
 
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
 }

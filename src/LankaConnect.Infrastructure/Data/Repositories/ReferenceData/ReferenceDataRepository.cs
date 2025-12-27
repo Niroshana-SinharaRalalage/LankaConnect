@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace LankaConnect.Infrastructure.Data.Repositories.ReferenceData;
 
 /// <summary>
-/// Repository implementation for reference data entities
-/// Phase 6A.47: Database-driven reference data access
+/// Repository implementation for unified reference data
+/// Phase 6A.47: Unified Reference Data Architecture
 /// </summary>
 public class ReferenceDataRepository : IReferenceDataRepository
 {
@@ -18,7 +18,80 @@ public class ReferenceDataRepository : IReferenceDataRepository
         _context = context;
     }
 
-    // EventCategory operations
+    // Unified operations
+    public async Task<IReadOnlyList<ReferenceValue>> GetByTypeAsync(
+        string enumType,
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.ReferenceValues
+            .Where(rv => rv.EnumType == enumType);
+
+        if (activeOnly)
+        {
+            query = query.Where(rv => rv.IsActive);
+        }
+
+        return await query
+            .OrderBy(rv => rv.DisplayOrder)
+            .ThenBy(rv => rv.Name)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ReferenceValue>> GetByTypesAsync(
+        IEnumerable<string> enumTypes,
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        var typeList = enumTypes.ToList();
+        var query = _context.ReferenceValues
+            .Where(rv => typeList.Contains(rv.EnumType));
+
+        if (activeOnly)
+        {
+            query = query.Where(rv => rv.IsActive);
+        }
+
+        return await query
+            .OrderBy(rv => rv.EnumType)
+            .ThenBy(rv => rv.DisplayOrder)
+            .ThenBy(rv => rv.Name)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ReferenceValue?> GetByTypeAndCodeAsync(
+        string enumType,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ReferenceValues
+            .AsNoTracking()
+            .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.Code == code, cancellationToken);
+    }
+
+    public async Task<ReferenceValue?> GetByTypeAndIntValueAsync(
+        string enumType,
+        int intValue,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ReferenceValues
+            .AsNoTracking()
+            .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.IntValue == intValue, cancellationToken);
+    }
+
+    public async Task<ReferenceValue?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ReferenceValues
+            .AsNoTracking()
+            .FirstOrDefaultAsync(rv => rv.Id == id, cancellationToken);
+    }
+
+    // DEPRECATED: Legacy methods for backward compatibility
+    #pragma warning disable CS0618 // Type or member is obsolete
     public async Task<IReadOnlyList<EventCategoryRef>> GetEventCategoriesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
@@ -55,7 +128,6 @@ public class ReferenceDataRepository : IReferenceDataRepository
             .FirstOrDefaultAsync(c => c.Code == code, cancellationToken);
     }
 
-    // EventStatus operations
     public async Task<IReadOnlyList<EventStatusRef>> GetEventStatusesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
@@ -92,7 +164,6 @@ public class ReferenceDataRepository : IReferenceDataRepository
             .FirstOrDefaultAsync(s => s.Code == code, cancellationToken);
     }
 
-    // UserRole operations
     public async Task<IReadOnlyList<UserRoleRef>> GetUserRolesAsync(
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
@@ -128,4 +199,5 @@ public class ReferenceDataRepository : IReferenceDataRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Code == code, cancellationToken);
     }
+    #pragma warning restore CS0618 // Type or member is obsolete
 }

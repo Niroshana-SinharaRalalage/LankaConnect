@@ -113,10 +113,11 @@ jobs:
           echo "Applying pending migrations to staging database..."
           cd src/LankaConnect.API
 
-          # Use dotnet ef with explicit .NET 8.0 version
+          # Use dotnet ef with explicit .NET 8.0 version and AppDbContext
           dotnet ef database update \
             --connection "$DB_CONNECTION" \
             --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
+            --context AppDbContext \
             --verbose
 
           echo "✅ Migrations completed successfully"

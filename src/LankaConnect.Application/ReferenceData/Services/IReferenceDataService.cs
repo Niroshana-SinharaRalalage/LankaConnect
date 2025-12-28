@@ -18,34 +18,6 @@ public interface IReferenceDataService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get all event categories (cached for 1 hour)
-    /// </summary>
-    Task<IReadOnlyList<EventCategoryRefDto>> GetEventCategoriesAsync(
-        bool activeOnly = true,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Get all event statuses (cached for 1 hour)
-    /// </summary>
-    Task<IReadOnlyList<EventStatusRefDto>> GetEventStatusesAsync(
-        bool activeOnly = true,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Get all user roles (cached for 1 hour)
-    /// </summary>
-    Task<IReadOnlyList<UserRoleRefDto>> GetUserRolesAsync(
-        bool activeOnly = true,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Get all cultural interests (value objects, not database) - cached for 1 hour
-    /// Phase 6A.47: Exposes CulturalInterest.All via API
-    /// </summary>
-    Task<IReadOnlyList<CulturalInterestDto>> GetCulturalInterestsAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Invalidate cache for specific reference type
     /// </summary>
     Task InvalidateCacheAsync(string referenceType, CancellationToken cancellationToken = default);

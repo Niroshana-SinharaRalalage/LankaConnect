@@ -33,7 +33,7 @@ export function useReferenceData(
     queryKey: referenceDataKeys.byTypes(types, activeOnly),
     queryFn: () => getReferenceDataByTypes(types, activeOnly),
     staleTime: 1000 * 60 * 60, // 1 hour (matches backend cache)
-    cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
   });
 }
 
@@ -49,6 +49,6 @@ export function useEventInterests() {
     queryKey: referenceDataKeys.eventInterests(),
     queryFn: getEventInterests,
     staleTime: 1000 * 60 * 60, // 1 hour (matches backend cache)
-    cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
   });
 }

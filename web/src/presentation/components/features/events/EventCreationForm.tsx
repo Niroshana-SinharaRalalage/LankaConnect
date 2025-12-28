@@ -13,6 +13,7 @@ import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/
 import { useCreateEvent } from '@/presentation/hooks/useEvents';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useEventInterests } from '@/infrastructure/api/hooks/useReferenceData';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
@@ -37,6 +38,9 @@ export function EventCreationForm() {
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
+
+  // Phase 6A.47: Fetch event categories from reference data API
+  const { data: eventInterests, isLoading: isLoadingEventInterests } = useEventInterests();
 
   const {
     register,
@@ -243,8 +247,24 @@ export function EventCreationForm() {
     }
   }, onValidationError);  // Session 33: Add validation error callback
 
-  // Category labels
-  const categoryOptions = [
+  // Phase 6A.47: Map event interests to category options
+  // Use EventCategory enum values from backend for proper type mapping
+  const categoryCodeToEnumValue: Record<string, EventCategory> = {
+    'Religious': EventCategory.Religious,
+    'Cultural': EventCategory.Cultural,
+    'Community': EventCategory.Community,
+    'Educational': EventCategory.Educational,
+    'Social': EventCategory.Social,
+    'Business': EventCategory.Business,
+    'Charity': EventCategory.Charity,
+    'Entertainment': EventCategory.Entertainment,
+  };
+
+  const categoryOptions = eventInterests?.map(interest => ({
+    value: categoryCodeToEnumValue[interest.code] ?? EventCategory.Community,
+    label: interest.name,
+  })) ?? [
+    // Fallback to hardcoded values if API hasn't loaded yet
     { value: EventCategory.Religious, label: 'Religious' },
     { value: EventCategory.Cultural, label: 'Cultural' },
     { value: EventCategory.Community, label: 'Community' },

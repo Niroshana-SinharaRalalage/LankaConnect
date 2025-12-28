@@ -41,7 +41,7 @@ export async function getReferenceDataByTypes(
   activeOnly: boolean = true
 ): Promise<ReferenceValue[]> {
   const typesParam = types.join(',');
-  const { data } = await apiClient.get<ReferenceValue[]>(
+  const data = await apiClient.get<ReferenceValue[]>(
     `/reference-data?types=${typesParam}&activeOnly=${activeOnly}`
   );
   return data;

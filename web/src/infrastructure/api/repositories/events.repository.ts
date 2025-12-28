@@ -34,6 +34,7 @@ import type {
   TicketDto,
   // Phase 6A.27: Open Sign-Up Items
   AddOpenSignUpItemRequest,
+  AddOpenSignUpItemAnonymousRequest,
   UpdateOpenSignUpItemRequest,
   // Phase 6A.45: Attendee Management
   EventAttendeesResponse,

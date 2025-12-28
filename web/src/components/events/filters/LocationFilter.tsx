@@ -27,7 +27,7 @@ export function LocationFilter({
   onMetroAreasChange,
   className = '',
 }: LocationFilterProps) {
-  const { data: metroAreas = [], isLoading } = useMetroAreas();
+  const { metroAreas, isLoading } = useMetroAreas();
 
   // Transform metro areas API data into TreeNode structure
   const treeNodes: TreeNode[] = metroAreas.reduce((acc: TreeNode[], metroArea) => {

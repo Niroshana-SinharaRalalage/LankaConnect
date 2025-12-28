@@ -1,8 +1,9 @@
 'use client';
 
-import { Tag } from 'lucide-react';
+import { Tag, Loader2 } from 'lucide-react';
 import { EventCategory } from '@/infrastructure/api/types/events.types';
-import { getEventCategoryOptions } from '@/lib/enum-utils';
+import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
+import { toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 interface CategoryFilterProps {
   value: EventCategory | null;
@@ -15,19 +16,20 @@ interface CategoryFilterProps {
  * Phase 6A.47: Filter events by category type
  *
  * Features:
- * - Dropdown with all event categories from backend enum
+ * - Dropdown with all event categories from database API
  * - "All Categories" option to clear filter
  * - Category icon indicator
- * - Dynamically loads categories from EventCategory enum (no hardcoding)
+ * - Loading state while fetching from API
  *
- * Design Note: Uses enum-utils to stay in sync with backend
+ * Design Note: Uses useEventCategories() hook to fetch from reference_values table
  */
 export function CategoryFilter({
   value,
   onChange,
   className = '',
 }: CategoryFilterProps) {
-  const categories = getEventCategoryOptions();
+  const { data: categoriesData, isLoading } = useEventCategories();
+  const categories = toDropdownOptions(categoriesData);
 
   return (
     <div className={`relative ${className}`}>
@@ -35,7 +37,11 @@ export function CategoryFilter({
         Filter by category
       </label>
       <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <Tag className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 text-gray-400 animate-spin" aria-hidden="true" />
+        ) : (
+          <Tag className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        )}
       </div>
       <select
         id="category-filter"
@@ -43,13 +49,15 @@ export function CategoryFilter({
         onChange={(e) =>
           onChange(e.target.value !== '' ? parseInt(e.target.value, 10) as EventCategory : null)
         }
+        disabled={isLoading}
         className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                    text-sm
                    transition-colors duration-200
-                   appearance-none bg-white cursor-pointer"
+                   appearance-none bg-white cursor-pointer
+                   disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <option value="">All Categories</option>
+        <option value="">{isLoading ? 'Loading...' : 'All Categories'}</option>
         {categories.map((category) => (
           <option key={category.value} value={category.value}>
             {category.label}

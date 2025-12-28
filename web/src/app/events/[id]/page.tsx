@@ -59,7 +59,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
@@ -81,14 +81,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Check if user is already registered for this event
   // Only enable after hydration to prevent race condition with token restoration
   const { data: userRsvp, isLoading: isLoadingRsvp } = useUserRsvpForEvent(
-    (user?.userId && isHydrated) ? id : undefined
+    (user?.userId && _hasHydrated) ? id : undefined
   );
 
   // Fetch full registration details with attendee information
   // Only fetch when auth is ready (after hydration)
   // Fix: Always fetch if userRsvp exists so we can check the status
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    (user?.userId && isHydrated) ? id : undefined,
+    (user?.userId && _hasHydrated) ? id : undefined,
     !!userRsvp // Fetch details whenever userRsvp exists (even if cancelled)
   );
 
@@ -908,7 +908,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
         {/* Wait for auth hydration before rendering to ensure token is available for API calls */}
-        {isHydrated && isUserRegistered && event && !event.isFree && (
+        {_hasHydrated && isUserRegistered && event && !event.isFree && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
           </div>
@@ -916,7 +916,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Sign-Up Management Section */}
         {/* Wait for auth hydration before rendering to ensure userId is available */}
-        {isHydrated && (
+        {_hasHydrated && (
           <div className="mt-8">
             <SignUpManagementSection
               eventId={id}

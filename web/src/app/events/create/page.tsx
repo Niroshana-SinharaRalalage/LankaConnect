@@ -22,10 +22,16 @@ import { UserRole } from '@/infrastructure/api/types/auth.types';
  */
 export default function CreateEventPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
 
   // Redirect to login if not authenticated, or to dashboard if unauthorized
+  // IMPORTANT: Wait for hydration to complete before checking auth
   useEffect(() => {
+    // Don't check auth until hydration is complete
+    if (!_hasHydrated) {
+      return;
+    }
+
     if (!isAuthenticated || !user?.userId) {
       router.push('/login?redirect=' + encodeURIComponent('/events/create'));
       return;
@@ -40,10 +46,10 @@ export default function CreateEventPage() {
       // Redirect unauthorized users to dashboard
       router.push('/dashboard');
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, _hasHydrated]);
 
-  // Don't render form until authentication is confirmed
-  if (!isAuthenticated || !user?.userId) {
+  // Don't render form until hydration is complete and authentication is confirmed
+  if (!_hasHydrated || !isAuthenticated || !user?.userId) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />

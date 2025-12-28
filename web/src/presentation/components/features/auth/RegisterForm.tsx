@@ -57,8 +57,8 @@ export function RegisterForm() {
         preferredMetroAreaIds: data.preferredMetroAreaIds,
       });
 
-      // Phase 6A.53: Redirect immediately to login page without success message
-      router.push('/login');
+      // Phase 6A.53: Redirect to login page with info message about email verification
+      router.push('/login?registered=true');
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.message);

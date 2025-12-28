@@ -263,17 +263,7 @@ export function EventCreationForm() {
   const categoryOptions = eventInterests?.map(interest => ({
     value: categoryCodeToEnumValue[interest.code] ?? EventCategory.Community,
     label: interest.name,
-  })) ?? [
-    // Fallback to hardcoded values if API hasn't loaded yet
-    { value: EventCategory.Religious, label: 'Religious' },
-    { value: EventCategory.Cultural, label: 'Cultural' },
-    { value: EventCategory.Community, label: 'Community' },
-    { value: EventCategory.Educational, label: 'Educational' },
-    { value: EventCategory.Social, label: 'Social' },
-    { value: EventCategory.Business, label: 'Business' },
-    { value: EventCategory.Charity, label: 'Charity' },
-    { value: EventCategory.Entertainment, label: 'Entertainment' },
-  ];
+  })) ?? [];
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">

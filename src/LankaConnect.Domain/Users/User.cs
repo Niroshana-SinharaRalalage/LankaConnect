@@ -560,18 +560,14 @@ public class User : BaseEntity
     }
 
     /// <summary>
-    /// Updates user's cultural interests (0-10 allowed)
+    /// Updates user's cultural interests (unlimited)
     /// Empty collection clears all interests (privacy choice)
     /// </summary>
     public Result UpdateCulturalInterests(IEnumerable<CulturalInterest>? interests)
     {
         var interestList = interests?.ToList() ?? new List<CulturalInterest>();
 
-        // Validate max 10 interests
-        if (interestList.Count > 10)
-        {
-            return Result.Failure("Cannot have more than 10 cultural interests");
-        }
+        // No max limit - users can select as many interests as they want
 
         // Clear and add interests (removes duplicates automatically via Distinct)
         _culturalInterests.Clear();

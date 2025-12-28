@@ -101,7 +101,7 @@ export const PROFILE_CONSTRAINTS = {
   },
   culturalInterests: {
     min: 0, // Optional
-    max: 10, // Maximum 10 interests
+    // No max property - unlimited interests allowed
   },
   languages: {
     min: 1, // At least 1 language required

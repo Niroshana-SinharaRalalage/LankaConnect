@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,22 +17,18 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Wait for Zustand store to hydrate from localStorage
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const hasHydrated = useHasHydrated();
 
   useEffect(() => {
     // Only redirect after hydration is complete
-    if (isHydrated && !isLoading && !isAuthenticated) {
+    if (hasHydrated && !isLoading && !isAuthenticated) {
+      console.log('🔍 [PROTECTED ROUTE] Redirecting to login - hasHydrated:', hasHydrated, 'isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, isHydrated, router]);
+  }, [isAuthenticated, isLoading, hasHydrated, router]);
 
   // Show loading state while hydrating or checking authentication
-  if (!isHydrated || isLoading) {
+  if (!hasHydrated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7fafc' }}>
         <div className="text-center">

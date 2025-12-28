@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import { loginSchema, type LoginFormData } from '@/presentation/lib/validators/auth.schemas';
@@ -16,13 +16,27 @@ import type { AuthTokens } from '@/infrastructure/api/types/auth.types';
  * LoginForm Component
  * User login form with validation and error handling
  * Matches the design from 01-Login-Web.html mockup
+ * Phase 6A.53: Shows email verification reminder when redirected from registration
  */
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
   const [apiError, setApiError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showRegistrationInfo, setShowRegistrationInfo] = useState(false);
+
+  // Phase 6A.53: Check if user just registered
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setShowRegistrationInfo(true);
+      // Remove query parameter from URL after showing message
+      const url = new URL(window.location.href);
+      url.searchParams.delete('registered');
+      window.history.replaceState({}, '', url.pathname);
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -71,6 +85,31 @@ export function LoginForm() {
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* Phase 6A.53: Registration Success Info */}
+        {showRegistrationInfo && (
+          <div className="mb-6 p-4 text-sm bg-blue-50 border border-blue-200 rounded-[10px]">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium text-blue-900 mb-1">Registration Successful!</p>
+                <p className="text-blue-700">We've sent a verification email to your inbox. Please check your email and click the verification link to activate your account before logging in.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRegistrationInfo(false)}
+                className="text-blue-400 hover:text-blue-600"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* API Error */}
         {apiError && (
           <div className="mb-6 p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-[10px]">

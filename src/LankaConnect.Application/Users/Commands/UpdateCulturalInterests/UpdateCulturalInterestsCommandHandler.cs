@@ -33,20 +33,21 @@ public class UpdateCulturalInterestsCommandHandler : ICommandHandler<UpdateCultu
             return Result.Failure("User not found");
         }
 
+        // Phase 6A.47: Accept EventCategory codes from database (dynamic) + legacy hardcoded codes
         // Convert interest codes to CulturalInterest value objects
         var interests = new List<CulturalInterest>();
 
         foreach (var code in command.InterestCodes)
         {
-            var interest = CulturalInterest.All.FirstOrDefault(i => i.Code == code);
-            if (interest == null)
+            var interestResult = CulturalInterest.FromCode(code);
+            if (!interestResult.IsSuccess)
             {
-                return Result.Failure($"Invalid cultural interest code: {code}");
+                return Result.Failure($"Invalid interest code: {code}");
             }
-            interests.Add(interest);
+            interests.Add(interestResult.Value);
         }
 
-        // Update user's cultural interests (domain will validate 0-10 rule)
+        // Update user's cultural interests (unlimited)
         var updateResult = user.UpdateCulturalInterests(interests);
         if (!updateResult.IsSuccess)
         {

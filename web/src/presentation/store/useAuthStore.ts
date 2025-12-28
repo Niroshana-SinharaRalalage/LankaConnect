@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { UserDto, AuthTokens } from '@/infrastructure/api/types/auth.types';
 import { LocalStorageService } from '@/infrastructure/storage/localStorage';
 import { apiClient } from '@/infrastructure/api/client/api-client';
@@ -11,13 +11,16 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isHydrated: boolean; // Track if Zustand has finished rehydrating from localStorage
+  _hasHydrated: boolean;
+  isHydrated: boolean; // Public getter for _hasHydrated
 
   // Actions
   setAuth: (user: UserDto, tokens: AuthTokens) => void;
+  updateAccessToken: (accessToken: string) => void;
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
   updateUser: (user: Partial<UserDto>) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 /**
@@ -34,7 +37,12 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
-        isHydrated: false, // Will be set to true after rehydration completes
+        _hasHydrated: false,
+
+        // Public getter for hydration state
+        get isHydrated() {
+          return get()._hasHydrated;
+        },
 
         // Set authentication (after login/register)
         setAuth: (user, tokens) => {
@@ -52,24 +60,36 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: tokens.refreshToken,
             isAuthenticated: true,
             isLoading: false,
-            isHydrated: true, // Mark as hydrated for fresh logins (token already set in API client)
+            _hasHydrated: true,
+          });
+        },
+
+        // Update only access token (for token refresh)
+        // Does not touch refreshToken since it's in HttpOnly cookie
+        updateAccessToken: (accessToken) => {
+          // Store new access token in localStorage
+          LocalStorageService.setAccessToken(accessToken);
+
+          // Update auth token in API client
+          apiClient.setAuthToken(accessToken);
+
+          // Update state - preserve existing refreshToken
+          set({
+            accessToken,
+            _hasHydrated: true,
           });
         },
 
         // Clear authentication (logout)
         clearAuth: () => {
           console.log('🔍 [AUTH STORE] clearAuth() called');
-          console.trace('🔍 [AUTH STORE] Stack trace:');
 
           // Clear localStorage
-          console.log('🔍 [AUTH STORE] Clearing localStorage');
           LocalStorageService.clearAuth();
 
           // Clear auth token from API client
-          console.log('🔍 [AUTH STORE] Clearing API client auth token');
           apiClient.clearAuthToken();
 
-          console.log('🔍 [AUTH STORE] Setting state to unauthenticated');
           set({
             user: null,
             accessToken: null,
@@ -77,8 +97,6 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
           });
-
-          console.log('🔍 [AUTH STORE] clearAuth() completed');
         },
 
         // Set loading state
@@ -96,9 +114,15 @@ export const useAuthStore = create<AuthState>()(
 
           set({ user: updatedUser });
         },
+
+        // Set hydration state
+        setHasHydrated: (state) => {
+          set({ _hasHydrated: state });
+        },
       }),
       {
         name: 'auth-storage',
+        storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           user: state.user,
           accessToken: state.accessToken,
@@ -106,19 +130,22 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: state.isAuthenticated,
         }),
         onRehydrateStorage: () => (state) => {
-          // Restore auth token to API client on app load
+          console.log('🔄 [AUTH STORE] Rehydration complete');
+
+          // Restore auth token to API client
           if (state?.accessToken) {
-            console.log('🔄 [AUTH STORE] Rehydrating: Setting auth token in API client');
+            console.log('✅ [AUTH STORE] Restoring auth token to API client');
             apiClient.setAuthToken(state.accessToken);
           }
-          // Mark hydration as complete
-          if (state) {
-            console.log('✅ [AUTH STORE] Rehydration complete, marking isHydrated=true');
-            state.isHydrated = true;
-          }
+
+          // Mark as hydrated
+          state?.setHasHydrated(true);
         },
       }
     ),
     { name: 'AuthStore' }
   )
 );
+
+// Selector to check if store has hydrated
+export const useHasHydrated = () => useAuthStore((state) => state._hasHydrated);

@@ -65,13 +65,7 @@ export function CulturalInterestsSection() {
         // Remove
         return prev.filter((c) => c !== code);
       } else {
-        // Add (check max limit)
-        if (prev.length >= PROFILE_CONSTRAINTS.culturalInterests.max) {
-          setValidationError(
-            `You can select up to ${PROFILE_CONSTRAINTS.culturalInterests.max} interests`
-          );
-          return prev;
-        }
+        // Add - no max limit validation
         setValidationError('');
         return [...prev, code];
       }
@@ -82,13 +76,7 @@ export function CulturalInterestsSection() {
    * Handle form submission
    */
   const handleSave = async () => {
-    // Validate (0-10 allowed)
-    if (selectedInterests.length > PROFILE_CONSTRAINTS.culturalInterests.max) {
-      setValidationError(
-        `Maximum ${PROFILE_CONSTRAINTS.culturalInterests.max} interests allowed`
-      );
-      return;
-    }
+    // No max validation - unlimited interests allowed
 
     try {
       await updateCulturalInterests(user.userId, {
@@ -124,7 +112,7 @@ export function CulturalInterestsSection() {
             )}
           </div>
           <CardDescription>
-            Select event categories that interest you (choose 0-{PROFILE_CONSTRAINTS.culturalInterests.max} interests)
+            Select event categories that interest you
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -204,10 +192,7 @@ export function CulturalInterestsSection() {
                 })}
               </div>
 
-              {/* Selected count */}
-              <p className="text-sm text-muted-foreground">
-                {selectedInterests.length} of {PROFILE_CONSTRAINTS.culturalInterests.max} selected
-              </p>
+              {/* Counter removed - no limit display */}
 
               {/* Validation error */}
               {validationError && (

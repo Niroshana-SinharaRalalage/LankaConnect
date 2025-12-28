@@ -52,3 +52,35 @@ export function useEventInterests() {
     gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
   });
 }
+
+/**
+ * Hook to fetch Event Categories for dropdowns
+ * Returns category options with code, name, and intValue
+ *
+ * @example
+ * const { data: categories, isLoading } = useEventCategories();
+ */
+export function useEventCategories() {
+  return useQuery<ReferenceValue[], Error>({
+    queryKey: referenceDataKeys.byTypes(['EventCategory'], true),
+    queryFn: () => getReferenceDataByTypes(['EventCategory'], true),
+    staleTime: 1000 * 60 * 60, // 1 hour (matches backend cache)
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
+  });
+}
+
+/**
+ * Hook to fetch Event Statuses for dropdowns
+ * Returns status options with code, name, and intValue
+ *
+ * @example
+ * const { data: statuses, isLoading } = useEventStatuses();
+ */
+export function useEventStatuses() {
+  return useQuery<ReferenceValue[], Error>({
+    queryKey: referenceDataKeys.byTypes(['EventStatus'], true),
+    queryFn: () => getReferenceDataByTypes(['EventStatus'], true),
+    staleTime: 1000 * 60 * 60, // 1 hour (matches backend cache)
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
+  });
+}

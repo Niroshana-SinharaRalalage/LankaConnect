@@ -27,12 +27,11 @@ export const locationSchema = z.object({
 
 /**
  * Cultural Interests Schema
- * 0-10 items, each max 50 characters
+ * Unlimited items, each max 50 characters
  * Matches backend UpdateCulturalInterestsRequest validation
  */
 export const culturalInterestsSchema = z
   .array(z.string().min(1).max(50))
-  .max(10, 'Maximum 10 interests allowed')
   .optional();
 
 /**
@@ -91,7 +90,7 @@ export const userProfileSchema = z.object({
 export const updateLocationRequestSchema = locationSchema;
 
 export const updateCulturalInterestsRequestSchema = z.object({
-  culturalInterests: z.array(z.string().min(1).max(50)).max(10),
+  culturalInterests: z.array(z.string().min(1).max(50)),
 });
 
 export const updateLanguagesRequestSchema = z.object({

@@ -4,7 +4,7 @@
  * Phase 6A.47: Replace hardcoded constants with database-driven reference data
  */
 
-import { apiClient } from '../client';
+import { apiClient } from '../client/api-client';
 
 /**
  * Reference value from database (unified structure)

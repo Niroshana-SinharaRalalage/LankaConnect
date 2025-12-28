@@ -36,6 +36,15 @@
 | 6A.31 | Live Badges on Home/Detail Pages | ⏳ Planned | TBD | Not started |
 | 6A.40-47 | Event Registration & Email Fixes | ✅ Complete | See PROGRESS_TRACKER.md Sessions 53-57 | 2025-12-23 to 2025-12-24 |
 | 6A.48 | CSV Export Fixes | ✅ Complete | [PHASE_6A48_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A48_CSV_EXPORT_FIX_SUMMARY.md) | 2025-12-25 |
+| 6A.49 | Fix Paid Event Email | ✅ Complete | PROGRESS_TRACKER.md Session 57 | 2025-12-24 |
+| 6A.50 | Manual Organizer Email Sending | ⏳ Planned | TBD | Not started |
+| 6A.51 | Signup Commitment Emails | ⏳ Blocked | TBD | Feature doesn't exist yet |
+| 6A.52 | Registration Cancellation Emails | ✅ Complete | PROGRESS_TRACKER.md Session 56 | 2025-12-24 |
+| 6A.53 | Member Email Verification System | ✅ Complete | [PHASE_6A53_MEMBER_EMAIL_VERIFICATION_SUMMARY.md](./PHASE_6A53_MEMBER_EMAIL_VERIFICATION_SUMMARY.md) | 2025-12-28 |
+| 6A.54 | Email Template Consolidation | ✅ Complete | PROGRESS_TRACKER.md Session 55 | 2025-12-23 |
+| 6A.55 | Organizer Event Creation Email | ✅ Complete | PROGRESS_TRACKER.md Session 54 | 2025-12-23 |
+| 6A.56 | Fix Test-Only Email Verification | ✅ Complete | PROGRESS_TRACKER.md Session 56 | 2025-12-24 |
+| 6A.57 | Event Reminder Improvements | ✅ Complete | PROGRESS_TRACKER.md Session 58 | 2025-12-28 |
 
 ---
 

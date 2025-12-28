@@ -48,7 +48,7 @@ export function RegisterForm() {
       setApiError(null);
       setSuccessMessage(null);
 
-      const response = await authRepository.register({
+      await authRepository.register({
         email: data.email,
         password: data.password,
         firstName: data.firstName,
@@ -57,20 +57,8 @@ export function RegisterForm() {
         preferredMetroAreaIds: data.preferredMetroAreaIds,
       });
 
-      if (data.selectedRole === 'EventOrganizer') {
-        setSuccessMessage(
-          'Registration successful! Your Event Organizer request is pending admin approval. Please check your email to verify your account.'
-        );
-      } else {
-        setSuccessMessage(
-          response.message || 'Registration successful! Please check your email to verify your account.'
-        );
-      }
-
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        router.push('/login');
-      }, 3000);
+      // Phase 6A.53: Redirect immediately to login page without success message
+      router.push('/login');
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.message);

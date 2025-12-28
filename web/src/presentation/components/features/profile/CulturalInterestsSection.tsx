@@ -5,23 +5,24 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { CULTURAL_INTERESTS, PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
-import { Check, Heart, X } from 'lucide-react';
+import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
+import { useEventInterests } from '@/infrastructure/api/hooks/useReferenceData';
+import { Check, Heart, X, Loader2 } from 'lucide-react';
 
 /**
- * CulturalInterestsSection Component
+ * Event Interests Section (formerly Cultural Interests)
+ * Phase 6A.47: Uses database-driven EventCategory instead of hardcoded constants
  *
- * Manages user's cultural interests (0-10 from predefined list)
+ * Manages user's event interests (0-10 from EventCategory)
  * - View mode: Display selected interests as badges
  * - Edit mode: Multi-select checkboxes
  * - Integrates with useProfileStore for state and API calls
  * - Shows loading/success/error states
- *
- * Follows ProfilePhotoSection pattern for consistency
  */
 export function CulturalInterestsSection() {
   const { user, isAuthenticated } = useAuthStore();
   const { profile, error, sectionStates, updateCulturalInterests } = useProfileStore();
+  const { data: eventInterests, isLoading: isLoadingInterests } = useEventInterests();
 
   const [isEditing, setIsEditing] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
@@ -108,7 +109,7 @@ export function CulturalInterestsSection() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5" style={{ color: '#FF7900' }} />
-              <CardTitle id="cultural-interests-heading" style={{ color: '#8B1538' }}>Cultural Interests</CardTitle>
+              <CardTitle id="cultural-interests-heading" style={{ color: '#8B1538' }}>Event Interests</CardTitle>
             </div>
             {!isEditing && (
               <Button
@@ -123,17 +124,23 @@ export function CulturalInterestsSection() {
             )}
           </div>
           <CardDescription>
-            Share your cultural interests to connect with others (select 0-{PROFILE_CONSTRAINTS.culturalInterests.max})
+            Select event categories that interest you (choose 0-{PROFILE_CONSTRAINTS.culturalInterests.max} interests)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isEditing ? (
+          {isLoadingInterests ? (
+            // Loading state for interests
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading event interests...</span>
+            </div>
+          ) : !isEditing ? (
             // View Mode
             <div className="space-y-2">
               {currentInterests.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {currentInterests.map((code) => {
-                    const interest = CULTURAL_INTERESTS.find((i) => i.code === code);
+                    const interest = eventInterests?.find((i) => i.code === code);
                     return interest ? (
                       <span
                         key={code}
@@ -147,7 +154,7 @@ export function CulturalInterestsSection() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
-                  No interests selected - Click Edit to add your cultural interests
+                  No interests selected - Click Edit to add your event interests
                 </p>
               )}
 
@@ -155,7 +162,7 @@ export function CulturalInterestsSection() {
               {isSuccess && (
                 <div className="flex items-center gap-2 text-sm" style={{ color: '#006400' }}>
                   <Check className="h-4 w-4" />
-                  <span>Cultural interests saved successfully!</span>
+                  <span>Event interests saved successfully!</span>
                 </div>
               )}
 
@@ -170,7 +177,7 @@ export function CulturalInterestsSection() {
             // Edit Mode
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {CULTURAL_INTERESTS.map((interest) => {
+                {eventInterests?.map((interest) => {
                   const isSelected = selectedInterests.includes(interest.code);
                   return (
                     <label

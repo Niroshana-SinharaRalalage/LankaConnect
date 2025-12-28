@@ -67,52 +67,19 @@ public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVeri
                 }
             }
 
-            // Generate new verification token
-            var verificationToken = Guid.NewGuid().ToString("N");
-            var tokenExpiresAt = DateTime.UtcNow.AddHours(24);
+            // Phase 6A.53: Generate new verification token (triggers MemberVerificationRequestedEvent)
+            user.GenerateEmailVerificationToken();
 
-            // Set the token on user
-            var setTokenResult = user.SetEmailVerificationToken(verificationToken, tokenExpiresAt);
-            if (!setTokenResult.IsSuccess)
-            {
-                return Result<SendEmailVerificationResponse>.Failure(setTokenResult.Error);
-            }
-
-            // Prepare template parameters
-            var templateParameters = new Dictionary<string, object>
-            {
-                { "UserName", user.FullName },
-                { "UserEmail", targetEmail },
-                { "VerificationToken", verificationToken },
-                { "VerificationLink", $"https://lankaconnect.com/verify-email?token={verificationToken}" },
-                { "ExpiresAt", tokenExpiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC") },
-                { "CompanyName", "LankaConnect" }
-            };
-
-            // Send verification email
-            var sendResult = await _emailService.SendTemplatedEmailAsync(
-                "email-verification",
-                targetEmail,
-                templateParameters,
-                cancellationToken);
-
-            if (!sendResult.IsSuccess)
-            {
-                _logger.LogError("Failed to send verification email to {Email}: {Error}", 
-                    targetEmail, sendResult.Error);
-                return Result<SendEmailVerificationResponse>.Failure("Failed to send verification email");
-            }
-
-            // Save user with new token
+            // Save user with new token (domain event will be dispatched and email sent automatically)
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            _logger.LogInformation("Verification email sent successfully to {Email} for user {UserId}", 
-                targetEmail, user.Id);
+            _logger.LogInformation("Verification token generated for user {UserId}, email will be sent via event handler",
+                user.Id);
 
             var successResponse = new SendEmailVerificationResponse(
                 user.Id,
                 targetEmail,
-                tokenExpiresAt);
+                user.EmailVerificationTokenExpiresAt ?? DateTime.UtcNow.AddHours(24));
 
             return Result<SendEmailVerificationResponse>.Success(successResponse);
         }

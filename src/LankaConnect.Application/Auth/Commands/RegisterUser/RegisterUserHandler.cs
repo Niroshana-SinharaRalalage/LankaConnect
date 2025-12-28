@@ -95,15 +95,8 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                 return Result<RegisterUserResponse>.Failure(setPasswordResult.Error);
             }
 
-            // Generate email verification token
-            var verificationToken = Guid.NewGuid().ToString("N");
-            var tokenExpiresAt = DateTime.UtcNow.AddHours(24);
-            
-            var setTokenResult = user.SetEmailVerificationToken(verificationToken, tokenExpiresAt);
-            if (!setTokenResult.IsSuccess)
-            {
-                return Result<RegisterUserResponse>.Failure(setTokenResult.Error);
-            }
+            // Phase 6A.53: Generate email verification token (already done in User.Create())
+            // No need to call SetEmailVerificationToken - User.Create() now calls GenerateEmailVerificationToken()
 
             // Set preferred metro areas if provided (Phase 5A: Optional)
             if (request.PreferredMetroAreaIds != null && request.PreferredMetroAreaIds.Any())

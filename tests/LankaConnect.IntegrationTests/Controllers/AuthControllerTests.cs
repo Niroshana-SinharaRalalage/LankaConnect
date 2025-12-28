@@ -611,7 +611,7 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
         var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
 
         // Set a new verification token for testing
-        user.SetEmailVerificationToken(Guid.NewGuid().ToString(), DateTime.UtcNow.AddHours(24));
+        user.GenerateEmailVerificationToken();
         await DbContext.SaveChangesAsync();
 
         var verifyRequest = new
@@ -642,7 +642,8 @@ public class AuthControllerTests : DockerComposeWebApiTestBase
 
         // Manually verify email in database for testing
         var user = await DbContext.Users.FirstAsync(u => u.Email.Value == email);
-        user.VerifyEmail();
+        user.GenerateEmailVerificationToken();
+        user.VerifyEmail(user.EmailVerificationToken!);
         await DbContext.SaveChangesAsync();
     }
 

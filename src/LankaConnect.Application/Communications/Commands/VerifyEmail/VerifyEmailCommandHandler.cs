@@ -54,17 +54,11 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
                 return Result<VerifyEmailResponse>.Success(alreadyVerifiedResponse);
             }
 
-            // Validate token
-            if (!user.IsEmailVerificationTokenValid(request.Token))
-            {
-                _logger.LogWarning("Invalid or expired verification token provided for user {UserId}", request.UserId);
-                return Result<VerifyEmailResponse>.Failure("Invalid or expired verification token");
-            }
-
-            // Verify email
-            var verifyResult = user.VerifyEmail();
+            // Phase 6A.53: Verify email with token validation (moved into VerifyEmail method)
+            var verifyResult = user.VerifyEmail(request.Token);
             if (!verifyResult.IsSuccess)
             {
+                _logger.LogWarning("Email verification failed for user {UserId}: {Error}", request.UserId, verifyResult.Error);
                 return Result<VerifyEmailResponse>.Failure(verifyResult.Error);
             }
 

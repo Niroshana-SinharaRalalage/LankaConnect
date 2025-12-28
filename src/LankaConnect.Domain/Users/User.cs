@@ -107,6 +107,9 @@ public class User : BaseEntity
         // Raise domain event
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id, email.Value, user.FullName));
 
+        // Phase 6A.53: Generate email verification token for new local users
+        user.GenerateEmailVerificationToken();
+
         return Result<User>.Success(user);
     }
 
@@ -255,20 +258,92 @@ public class User : BaseEntity
         return Result.Success();
     }
 
-    public Result VerifyEmail()
+    /// <summary>
+    /// Phase 6A.53: Generates email verification token and raises domain event to send verification email.
+    /// Uses GUID-based token (32 hex characters) for unpredictability.
+    /// Token expires after 24 hours.
+    /// </summary>
+    public void GenerateEmailVerificationToken()
+    {
+        // GUID for unpredictable tokens (ARCHITECT-APPROVED)
+        EmailVerificationToken = Guid.NewGuid().ToString("N");  // 32 hex chars
+        EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new DomainEvents.MemberVerificationRequestedEvent(
+            Id,
+            Email.Value,
+            EmailVerificationToken,
+            DateTimeOffset.UtcNow
+        ));
+    }
+
+    /// <summary>
+    /// Phase 6A.53: Verifies email address using token.
+    /// Token is one-time use and must not be expired.
+    /// </summary>
+    public Result VerifyEmail(string token)
     {
         if (IsEmailVerified)
-            return Result.Failure("Email is already verified");
+            return Result.Failure("Email already verified");
+
+        if (string.IsNullOrWhiteSpace(token))
+            return Result.Failure("Verification token is required");
+
+        if (EmailVerificationToken != token)
+            return Result.Failure("Invalid verification token");
+
+        if (!EmailVerificationTokenExpiresAt.HasValue || EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+            return Result.Failure("Token expired. Please request a new verification email.");
 
         IsEmailVerified = true;
-        EmailVerificationToken = null;
+        EmailVerificationToken = null;  // One-time use
         EmailVerificationTokenExpiresAt = null;
         MarkAsUpdated();
-        
+
         RaiseDomainEvent(new UserEmailVerifiedEvent(Id, Email.Value));
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.53: Marks email as verified without token validation.
+    /// ONLY for use in seed data, migrations, or admin operations.
+    /// </summary>
+    public void MarkEmailAsVerified()
+    {
+        if (!IsEmailVerified)
+        {
+            IsEmailVerified = true;
+            EmailVerificationToken = null;
+            EmailVerificationTokenExpiresAt = null;
+            MarkAsUpdated();
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.53: Regenerates email verification token with 1-hour cooldown to prevent spam.
+    /// </summary>
+    public Result RegenerateEmailVerificationToken()
+    {
+        if (IsEmailVerified)
+            return Result.Failure("Email already verified");
+
+        // Prevent spam: Check if token was generated recently (1-hour cooldown)
+        if (EmailVerificationTokenExpiresAt.HasValue &&
+            EmailVerificationTokenExpiresAt.Value > DateTime.UtcNow.AddHours(23))
+        {
+            return Result.Failure("Please wait before requesting a new verification email");
+        }
+
+        GenerateEmailVerificationToken();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// DEPRECATED: Use GenerateEmailVerificationToken() instead.
+    /// Kept for backwards compatibility.
+    /// </summary>
+    [Obsolete("Use GenerateEmailVerificationToken() instead")]
     public Result SetEmailVerificationToken(string token, DateTime expiresAt)
     {
         if (string.IsNullOrWhiteSpace(token))

@@ -91,7 +91,9 @@ public static class UserSeeder
                     {
                         System.Console.WriteLine("[UserSeeder] Password hashed, setting on user and adding to list");
                         user.SetPassword(passwordHash.Value);
-                        user.VerifyEmail(); // Auto-verify admin accounts
+                        // Auto-verify admin accounts by generating token and verifying
+                        user.GenerateEmailVerificationToken();
+                        user.VerifyEmail(user.EmailVerificationToken!);
                         users.Add(user);
                         System.Console.WriteLine("[UserSeeder] Admin Manager added successfully");
                     }
@@ -118,7 +120,9 @@ public static class UserSeeder
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);
-                        user.VerifyEmail(); // Auto-verify admin accounts
+                        // Auto-verify admin accounts
+                        user.GenerateEmailVerificationToken();
+                        user.VerifyEmail(user.EmailVerificationToken!);
                         users.Add(user);
                     }
                 }
@@ -144,7 +148,9 @@ public static class UserSeeder
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);
-                        user.VerifyEmail();
+                        // Auto-verify organizer accounts
+                        user.GenerateEmailVerificationToken();
+                        user.VerifyEmail(user.EmailVerificationToken!);
                         users.Add(user);
                     }
                 }
@@ -170,7 +176,9 @@ public static class UserSeeder
                     if (passwordHash.IsSuccess)
                     {
                         user.SetPassword(passwordHash.Value);
-                        user.VerifyEmail();
+                        // Auto-verify user accounts
+                        user.GenerateEmailVerificationToken();
+                        user.VerifyEmail(user.EmailVerificationToken!);
                         users.Add(user);
                     }
                 }

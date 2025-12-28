@@ -566,7 +566,9 @@ public class AuthController : ControllerBase
             }
 
             // Verify email without token validation (test-only)
-            var result = user.VerifyEmail();
+            // Generate and immediately verify to bypass validation
+            user.GenerateEmailVerificationToken();
+            var result = user.VerifyEmail(user.EmailVerificationToken!);
             if (!result.IsSuccess)
             {
                 _logger.LogWarning("Test verify user failed: {Error}", result.Error);

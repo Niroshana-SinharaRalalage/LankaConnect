@@ -48,7 +48,9 @@ public class LoginUserHandlerTests
         var email = Email.Create("test@example.com").Value;
         _testUser = User.Create(email, "John", "Doe", UserRole.GeneralUser).Value;
         _testUser.SetPassword("hashedpassword123");
-        _testUser.VerifyEmail(); // Make user email verified
+        // Make user email verified
+        _testUser.GenerateEmailVerificationToken();
+        _testUser.VerifyEmail(_testUser.EmailVerificationToken!);
     }
 
     [Fact]
@@ -225,7 +227,8 @@ public class LoginUserHandlerTests
         var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
         var userWithoutPassword = User.Create(email, "Jane", "Doe").Value;
-        userWithoutPassword.VerifyEmail();
+        userWithoutPassword.GenerateEmailVerificationToken();
+        userWithoutPassword.VerifyEmail(userWithoutPassword.EmailVerificationToken!);
         // Don't set password hash
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))

@@ -8,36 +8,15 @@
 import type { ProficiencyLevel } from '../models/UserProfile';
 
 /**
- * Cultural Interests (20 predefined interests)
- * Code matches backend CulturalInterest.Code
+ * Event Interests (replaced with EventCategory from database)
+ * Phase 6A.47: Removed hardcoded CULTURAL_INTERESTS constant
+ *
+ * Use useEventInterests() hook from @/infrastructure/api/hooks/useReferenceData
+ * to fetch EventCategory from database via unified API endpoint:
+ * GET /api/reference-data?types=EventCategory
+ *
+ * @deprecated Use useEventInterests() hook instead
  */
-export interface CulturalInterestOption {
-  code: string;
-  name: string;
-}
-
-export const CULTURAL_INTERESTS: readonly CulturalInterestOption[] = [
-  { code: 'SL_CUISINE', name: 'Sri Lankan Cuisine' },
-  { code: 'BUDDHIST_FEST', name: 'Buddhist Festivals & Traditions' },
-  { code: 'HINDU_FEST', name: 'Hindu Festivals & Traditions' },
-  { code: 'ISLAMIC_FEST', name: 'Islamic Festivals & Traditions' },
-  { code: 'CHRISTIAN_FEST', name: 'Christian Festivals & Traditions' },
-  { code: 'TRAD_DANCE', name: 'Traditional Dance (Kandyan, Sabaragamuwa, Low Country)' },
-  { code: 'CRICKET', name: 'Cricket & Sports' },
-  { code: 'AYURVEDA', name: 'Ayurvedic Medicine & Wellness' },
-  { code: 'SINHALA_MUSIC', name: 'Sinhala Music & Arts' },
-  { code: 'TAMIL_MUSIC', name: 'Tamil Music & Arts' },
-  { code: 'VESAK', name: 'Vesak & Poson Celebrations' },
-  { code: 'SINHALA_NY', name: 'Sinhala & Tamil New Year (Aluth Avurudda)' },
-  { code: 'TEA_CULTURE', name: 'Ceylon Tea Culture' },
-  { code: 'TRAD_ARTS', name: 'Traditional Arts & Crafts (Masks, Batik, Pottery)' },
-  { code: 'SL_WEDDINGS', name: 'Sri Lankan Wedding Traditions' },
-  { code: 'TEMPLE_ARCH', name: 'Temple Architecture & Heritage Sites' },
-  { code: 'SL_LITERATURE', name: 'Sinhala/Tamil Literature & Poetry' },
-  { code: 'TRAD_GAMES', name: 'Traditional Games (Elle, Ankeliya)' },
-  { code: 'SL_FASHION', name: 'Traditional Dress & Fashion (Saree, Sarong)' },
-  { code: 'DIASPORA_NET', name: 'Diaspora Community & Networking' },
-] as const;
 
 /**
  * Supported Languages (20 languages with ISO 639 codes)

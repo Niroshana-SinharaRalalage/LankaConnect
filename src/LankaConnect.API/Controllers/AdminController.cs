@@ -297,7 +297,8 @@ public class AdminController : BaseController<AdminController>
                         // Ensure email is verified so login works
                         if (!user.IsEmailVerified)
                         {
-                            user.VerifyEmail();
+                            user.GenerateEmailVerificationToken();
+                            user.VerifyEmail(user.EmailVerificationToken!);
                             Logger.LogWarning("Email verification enabled for {Email}", email);
                         }
                         updated++;

@@ -42,9 +42,12 @@ public class VerifyEmailCommandHandlerTests
         var token = "valid-verification-token";
         var command = new VerifyEmailCommand(userId, token);
         var user = CreateTestUser("test@example.com");
-        
+
         // Set up the user to not be verified initially and have valid token
-        user.SetEmailVerificationToken(token, DateTime.UtcNow.AddHours(1));
+        user.GenerateEmailVerificationToken();
+        // Override with specific token for testing
+        var tokenField = typeof(User).GetField("_emailVerificationToken", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        tokenField!.SetValue(user, token);
         
         // Mock user retrieval
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
@@ -83,7 +86,7 @@ public class VerifyEmailCommandHandlerTests
         var user = CreateTestUser("test@example.com");
         
         // Set up user with different token
-        user.SetEmailVerificationToken("different-token", DateTime.UtcNow.AddHours(1));
+        user.GenerateEmailVerificationToken();
         
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -127,11 +130,15 @@ public class VerifyEmailCommandHandlerTests
         var token = "valid-token";
         var command = new VerifyEmailCommand(userId, token);
         var user = CreateTestUser("test@example.com");
-        
-        // Set user as already verified - first set a token, then verify, then set the test token
-        user.SetEmailVerificationToken("temp-token", DateTime.UtcNow.AddHours(1));
-        user.VerifyEmail(); // This will set IsEmailVerified to true
-        user.SetEmailVerificationToken(token, DateTime.UtcNow.AddHours(1)); // Set test token
+
+        // Set user as already verified - generate token, verify, then override token for test
+        user.GenerateEmailVerificationToken();
+        var tempToken = user.EmailVerificationToken!;
+        user.VerifyEmail(tempToken); // This will set IsEmailVerified to true and clear token
+
+        // Override token using reflection for test
+        var tokenField = typeof(User).GetField("_emailVerificationToken", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        tokenField!.SetValue(user, token);
         
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);

@@ -84,31 +84,40 @@ public class ReferenceDataService : IReferenceDataService
 
     public Task InvalidateCacheAsync(string referenceType, CancellationToken cancellationToken = default)
     {
-        var cacheKey = referenceType.ToLowerInvariant() switch
-        {
-            "eventcategories" or "eventcategory" => CACHE_KEY_EVENT_CATEGORIES,
-            "eventstatuses" or "eventstatus" => CACHE_KEY_EVENT_STATUSES,
-            "userroles" or "userrole" => CACHE_KEY_USER_ROLES,
-            _ => throw new ArgumentException($"Unknown reference type: {referenceType}", nameof(referenceType))
-        };
+        // Invalidate all cache entries containing this reference type
+        // Since we use unified cache keys like "RefData:Unified:EventCategory:True"
+        // We need to remove all combinations
+        var normalizedType = NormalizeReferenceType(referenceType);
 
-        // Remove both active-only and all-items cache entries
-        _cache.Remove($"{cacheKey}:True");
-        _cache.Remove($"{cacheKey}:False");
+        // Remove unified cache entries (single type)
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:{normalizedType}:True");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:{normalizedType}:False");
 
         _logger.LogInformation("Invalidated cache for {ReferenceType}", referenceType);
 
         return Task.CompletedTask;
     }
 
+    private static string NormalizeReferenceType(string referenceType)
+    {
+        return referenceType.ToLowerInvariant() switch
+        {
+            "eventcategories" or "eventcategory" => "EventCategory",
+            "eventstatuses" or "eventstatus" => "EventStatus",
+            "userroles" or "userrole" => "UserRole",
+            _ => referenceType
+        };
+    }
+
     public Task InvalidateAllCachesAsync(CancellationToken cancellationToken = default)
     {
-        _cache.Remove($"{CACHE_KEY_EVENT_CATEGORIES}:True");
-        _cache.Remove($"{CACHE_KEY_EVENT_CATEGORIES}:False");
-        _cache.Remove($"{CACHE_KEY_EVENT_STATUSES}:True");
-        _cache.Remove($"{CACHE_KEY_EVENT_STATUSES}:False");
-        _cache.Remove($"{CACHE_KEY_USER_ROLES}:True");
-        _cache.Remove($"{CACHE_KEY_USER_ROLES}:False");
+        // Invalidate unified cache entries for all common types
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:EventCategory:True");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:EventCategory:False");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:EventStatus:True");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:EventStatus:False");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:UserRole:True");
+        _cache.Remove($"{CACHE_KEY_PREFIX}:Unified:UserRole:False");
 
         _logger.LogInformation("Invalidated all reference data caches");
 

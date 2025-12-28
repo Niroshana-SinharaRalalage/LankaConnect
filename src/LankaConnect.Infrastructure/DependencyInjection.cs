@@ -165,6 +165,9 @@ public static class DependencyInjection
         // Note: EmailSettings is configured below with SimpleEmailService
         services.AddScoped<IEmailService, AzureEmailService>();
 
+        // Phase 6A.47/6A.53: Add ApplicationUrlsService for email verification URLs
+        services.AddScoped<IApplicationUrlsService, ApplicationUrlsService>();
+
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
         

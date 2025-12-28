@@ -200,6 +200,39 @@ public class ReferenceDataController : ControllerBase
     }
 
     /// <summary>
+    /// Get all cultural interests
+    /// Phase 6A.47: Exposes CulturalInterest.All value objects via API
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of cultural interests (20 predefined values)</returns>
+    /// <response code="200">Returns list of cultural interests</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("cultural-interests")]
+    [ResponseCache(Duration = 3600)] // Cache for 1 hour (matches service cache TTL)
+    [ProducesResponseType(typeof(IReadOnlyList<CulturalInterestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCulturalInterests(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("GET /api/reference-data/cultural-interests");
+
+            var interests = await _referenceDataService.GetCulturalInterestsAsync(cancellationToken);
+
+            _logger.LogInformation("Successfully fetched {Count} cultural interests", interests.Count);
+            return Ok(interests);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching cultural interests");
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                error = "INTERNAL_ERROR",
+                message = "An unexpected error occurred while fetching cultural interests"
+            });
+        }
+    }
+
+    /// <summary>
     /// Invalidate cache for specific reference type
     /// Admin-only endpoint for cache management
     /// </summary>

@@ -198,6 +198,38 @@ public class ReferenceDataService : IReferenceDataService
     }
     #pragma warning restore CS0618 // Type or member is obsolete
 
+    // NEW: Cultural Interests (Value Object, not database)
+    // Phase 6A.47: Expose CulturalInterest.All via API with caching
+    public Task<IReadOnlyList<CulturalInterestDto>> GetCulturalInterestsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string cacheKey = "RefData:CulturalInterests";
+
+        if (_cache.TryGetValue<IReadOnlyList<CulturalInterestDto>>(cacheKey, out var cached))
+        {
+            _logger.LogDebug("Cache HIT for CulturalInterests");
+            return Task.FromResult(cached!);
+        }
+
+        _logger.LogDebug("Cache MISS for CulturalInterests");
+
+        // Map from Domain value object to DTO
+        var dtos = Domain.Users.ValueObjects.CulturalInterest.All
+            .Select(ci => new CulturalInterestDto
+            {
+                Code = ci.Code,
+                Name = ci.Name
+            })
+            .ToList()
+            .AsReadOnly();
+
+        _cache.Set(cacheKey, dtos, CacheOptions);
+
+        _logger.LogInformation("Loaded {Count} cultural interests into cache", dtos.Count);
+
+        return Task.FromResult<IReadOnlyList<CulturalInterestDto>>(dtos);
+    }
+
     public Task InvalidateCacheAsync(string referenceType, CancellationToken cancellationToken = default)
     {
         var cacheKey = referenceType.ToLowerInvariant() switch

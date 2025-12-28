@@ -66,11 +66,11 @@ public sealed class EmailTemplateCategory : ValueObject
     {
         return emailType switch
         {
-            EmailType.EmailVerification or EmailType.PasswordReset => Authentication,
-            EmailType.BusinessNotification => Business,
+            EmailType.EmailVerification or EmailType.PasswordReset or EmailType.MemberEmailVerification => Authentication,
+            EmailType.BusinessNotification or EmailType.OrganizerCustomMessage => Business,
             EmailType.Marketing or EmailType.Newsletter => Marketing,
-            EmailType.Welcome => Notification,
-            EmailType.EventNotification => Notification,
+            EmailType.Welcome or EmailType.EventNotification or EmailType.EventReminder => Notification,
+            EmailType.SignupCommitmentConfirmation or EmailType.RegistrationCancellationConfirmation => Notification,
             EmailType.Transactional => System,
             _ => System
         };

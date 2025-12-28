@@ -14,5 +14,6 @@ public enum EmailType
     MemberEmailVerification = 10,
     SignupCommitmentConfirmation = 11,
     RegistrationCancellationConfirmation = 12,
-    OrganizerCustomMessage = 13
+    OrganizerCustomMessage = 13,
+    EventReminder = 14
 }

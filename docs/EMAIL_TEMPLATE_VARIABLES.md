@@ -140,6 +140,37 @@ Sent when a user registers for a free event.
 
 ---
 
+### 7. Event Reminder (`event-reminder`)
+
+**Type**: `EventReminder`
+**Category**: `Notification`
+
+Sent 7 days, 2 days, and 1 day before event starts to remind attendees.
+
+| Variable | Type | Description | Example |
+|----------|------|-------------|---------|
+| `{{AttendeeName}}` | string | Recipient's name | "Jane Doe" |
+| `{{EventTitle}}` | string | Event name | "Community Potluck Dinner" |
+| `{{EventStartDate}}` | string | Event date (formatted) | "January 20, 2025" |
+| `{{EventStartTime}}` | string | Event start time | "6:00 PM" |
+| `{{Location}}` | string | Event location with address | "Community Center, 123 Main St, Colombo" |
+| `{{Quantity}}` | number | Number of tickets/attendees | "2" |
+| `{{HoursUntilEvent}}` | number | Precise hours until event starts | "168.0" (7 days), "48.0" (2 days), "24.0" (1 day) |
+| `{{ReminderTimeframe}}` | string | Human-readable timeframe | "in 1 week", "in 2 days", "tomorrow" |
+| `{{ReminderMessage}}` | string | Urgency message based on timeframe | "Your event is coming up next week. Mark your calendar!" |
+| `{{EventDetailsUrl}}` | string | URL to event page | "https://lankaconnect.com/events/abc-123" |
+
+**Background Job**: `EventReminderJob` (runs hourly via Hangfire)
+
+**Reminder Schedule**:
+- **7-day reminder**: Events starting in 167-169 hours
+- **2-day reminder**: Events starting in 47-49 hours
+- **1-day reminder**: Events starting in 23-25 hours
+
+**Time Windows**: 2-hour windows prevent duplicate reminders (job runs hourly)
+
+---
+
 ## Common Formatting Patterns
 
 ### Date/Time Formatting
@@ -214,6 +245,7 @@ All dates use **Pacific Time (PT)** for consistency.
 | 2025-12-19 | Phase 6A.34 | `registration-confirmation` | Initial free event registration template |
 | 2025-12-24 | Phase 6A.45 | `ticket-confirmation` | Paid event ticket with PDF attachment |
 | 2025-12-27 | Phase 6A.54 | `member-email-verification`<br/>`signup-commitment-confirmation`<br/>`registration-cancellation`<br/>`organizer-custom-message` | Complete email system templates |
+| 2025-12-28 | Phase 6A.57 | `event-reminder` | Professional HTML template, 3 reminder types (7d, 2d, 1d) |
 
 ---
 
@@ -222,8 +254,10 @@ All dates use **Pacific Time (PT)** for consistency.
 - [EMAIL_SYSTEM_IMPLEMENTATION_PLAN_ARCHITECT_APPROVED.md](./EMAIL_SYSTEM_IMPLEMENTATION_PLAN_ARCHITECT_APPROVED.md) - Full implementation plan
 - [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Development progress
 - [Master Requirements Specification.md](./Master%20Requirements%20Specification.md) - Feature requirements
+- [PHASE_6A_EMAIL_SYSTEM_MASTER_PLAN.md](./PHASE_6A_EMAIL_SYSTEM_MASTER_PLAN.md) - Email system master plan
+- [PHASE_6A_ORIGINAL_REQUIREMENTS_GAP_ANALYSIS.md](./PHASE_6A_ORIGINAL_REQUIREMENTS_GAP_ANALYSIS.md) - Requirements gap analysis
 
 ---
 
-**Last Updated**: December 27, 2025
-**Phase**: 6A.54 - Email Template Consolidation
+**Last Updated**: December 28, 2025
+**Phase**: 6A.57 - Event Reminder Improvements

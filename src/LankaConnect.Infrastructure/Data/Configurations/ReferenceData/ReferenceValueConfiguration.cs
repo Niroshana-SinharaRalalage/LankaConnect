@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using LankaConnect.Domain.ReferenceData.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -106,14 +108,14 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
     {
         var categories = new[]
         {
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Religious", 0, "Religious", 1, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Cultural", 1, "Cultural", 2, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Community", 2, "Community", 3, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Educational", 3, "Educational", 4, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Social", 4, "Social", 5, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Business", 5, "Business", 6, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Charity", 6, "Charity", 7, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventCategory", "Entertainment", 7, "Entertainment", 8, metadata: new Dictionary<string, object> { ["iconUrl"] = "" })
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Religious"), "EventCategory", "Religious", 0, "Religious", 1, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Cultural"), "EventCategory", "Cultural", 1, "Cultural", 2, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Community"), "EventCategory", "Community", 2, "Community", 3, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Educational"), "EventCategory", "Educational", 3, "Educational", 4, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Social"), "EventCategory", "Social", 4, "Social", 5, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Business"), "EventCategory", "Business", 5, "Business", 6, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Charity"), "EventCategory", "Charity", 6, "Charity", 7, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Entertainment"), "EventCategory", "Entertainment", 7, "Entertainment", 8, metadata: new Dictionary<string, object> { ["iconUrl"] = "" })
         };
 
         builder.HasData(categories);
@@ -123,14 +125,14 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
     {
         var statuses = new[]
         {
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Draft", 0, "Draft", 1, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Published", 1, "Published", 2, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Active", 2, "Active", 3, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Postponed", 3, "Postponed", 4, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Cancelled", 4, "Cancelled", 5, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Completed", 5, "Completed", 6, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "Archived", 6, "Archived", 7, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(Guid.NewGuid(), "EventStatus", "UnderReview", 7, "Under Review", 8, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false })
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Draft"), "EventStatus", "Draft", 0, "Draft", 1, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Published"), "EventStatus", "Published", 1, "Published", 2, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Active"), "EventStatus", "Active", 2, "Active", 3, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Postponed"), "EventStatus", "Postponed", 3, "Postponed", 4, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Cancelled"), "EventStatus", "Cancelled", 4, "Cancelled", 5, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Completed"), "EventStatus", "Completed", 5, "Completed", 6, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Archived"), "EventStatus", "Archived", 6, "Archived", 7, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "UnderReview"), "EventStatus", "UnderReview", 7, "Under Review", 8, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false })
         };
 
         builder.HasData(statuses);
@@ -140,7 +142,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
     {
         var roles = new[]
         {
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "GeneralUser", 1, "General User", 1, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "GeneralUser"), "UserRole", "GeneralUser", 1, "General User", 1, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = false,
                 ["canCreateEvents"] = false,
@@ -152,7 +154,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
                 ["canCreatePosts"] = false,
                 ["monthlySubscriptionPrice"] = 0.00m
             }),
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "BusinessOwner", 2, "Business Owner", 2, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "BusinessOwner"), "UserRole", "BusinessOwner", 2, "Business Owner", 2, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = false,
                 ["canCreateEvents"] = false,
@@ -164,7 +166,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
                 ["canCreatePosts"] = false,
                 ["monthlySubscriptionPrice"] = 10.00m
             }),
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "EventOrganizer", 3, "Event Organizer", 3, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "EventOrganizer"), "UserRole", "EventOrganizer", 3, "Event Organizer", 3, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = false,
                 ["canCreateEvents"] = true,
@@ -176,7 +178,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
                 ["canCreatePosts"] = true,
                 ["monthlySubscriptionPrice"] = 10.00m
             }),
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "EventOrganizerAndBusinessOwner", 4, "Event Organizer + Business Owner", 4, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "EventOrganizerAndBusinessOwner"), "UserRole", "EventOrganizerAndBusinessOwner", 4, "Event Organizer + Business Owner", 4, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = false,
                 ["canCreateEvents"] = true,
@@ -188,7 +190,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
                 ["canCreatePosts"] = true,
                 ["monthlySubscriptionPrice"] = 15.00m
             }),
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "Admin", 5, "Administrator", 5, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "Admin"), "UserRole", "Admin", 5, "Administrator", 5, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = true,
                 ["canCreateEvents"] = true,
@@ -200,7 +202,7 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
                 ["canCreatePosts"] = true,
                 ["monthlySubscriptionPrice"] = 0.00m
             }),
-            ReferenceValue.Create(Guid.NewGuid(), "UserRole", "AdminManager", 6, "Admin Manager", 6, metadata: new Dictionary<string, object>
+            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "AdminManager"), "UserRole", "AdminManager", 6, "Admin Manager", 6, metadata: new Dictionary<string, object>
             {
                 ["canManageUsers"] = true,
                 ["canCreateEvents"] = true,
@@ -215,5 +217,17 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
         };
 
         builder.HasData(roles);
+    }
+
+    /// <summary>
+    /// Generates a deterministic GUID based on enum type and code
+    /// This ensures seed data GUIDs remain stable across migrations
+    /// Phase 6A.47: Fix for EF Core GUID regeneration issue
+    /// </summary>
+    private static Guid GenerateDeterministicGuid(string enumType, string code)
+    {
+        var input = $"LankaConnect.ReferenceData.{enumType}.{code}";
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes(input));
+        return new Guid(hash);
     }
 }

@@ -7,14 +7,80 @@
 
 ---
 
-## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.53 MEMBER EMAIL VERIFICATION (2025-12-28)
+## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.47 PARTS 1-2 COMPLETE (2025-12-29)
+**Date**: 2025-12-29 (Continuation Session)
+**Session**: Phase 6A.47 - Hybrid Enum to Reference Data Migration (Parts 1-2: Backend Database Changes)
+**Status**: ✅ COMPLETE - EventCategory expanded to 12 values, EventStatus/UserRole removed from reference_values
+**Build Status**: ✅ Zero Tolerance Maintained - 0 Errors, 0 Warnings
+**Test Results**: ✅ All tests passing
+**Deployment**: ✅ Azure Staging verified (runs #20582149376, #20582784097)
+**Next Phase**: Phase 6A.47 Part 4 - Documentation updates
+
+### PHASE 6A.47 PARTS 1-2: BACKEND DATABASE CHANGES (2025-12-29)
+**Goal**: Execute backend database migrations for hybrid enum strategy - expand EventCategory, remove code enums from reference_values
+
+**Work Completed**:
+
+**Part 1: EventCategory Expansion** ✅
+1. ✅ Added 4 new EventCategory values to ReferenceValueConfiguration.cs (Workshop, Festival, Ceremony, Celebration)
+2. ✅ Created migration 20251229203039_Phase6A47_Part1_ExpandEventCategory
+3. ✅ Deployed to staging (run #20582149376)
+4. ✅ Verified API returns 12 EventCategory values (was 8, now 12)
+
+**Part 2: Database Cleanup - Remove Code Enums** ✅
+1. ✅ Removed SeedEventStatuses() and SeedUserRoles() from ReferenceValueConfiguration.cs
+2. ✅ Created migration 20251229204450_Phase6A47_Part2_RemoveCodeEnumsFromReferenceData (FAILED - GUID mismatch)
+3. ✅ Root cause analysis: Migration targeted deterministic GUIDs, database had random GUIDs
+4. ✅ Created fix migration 20251229210820_Phase6A47_Part2Fix_DeleteByEnumType using SQL DELETE
+5. ✅ Deployed to staging (run #20582784097)
+6. ✅ Verified API returns empty arrays for EventStatus and UserRole (code enums removed from database)
+
+**Files Modified**:
+- [ReferenceValueConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/ReferenceData/ReferenceValueConfiguration.cs) - Added 4 EventCategory values, removed EventStatus/UserRole seed data
+- [20251229203039_Phase6A47_Part1_ExpandEventCategory.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251229203039_Phase6A47_Part1_ExpandEventCategory.cs) - INSERT 4 new values
+- [20251229210820_Phase6A47_Part2Fix_DeleteByEnumType.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251229210820_Phase6A47_Part2Fix_DeleteByEnumType.cs) - SQL DELETE by enum_type
+- [Phase6A47_Part2_Manual_SQL.sql](../docs/Phase6A47_Part2_Manual_SQL.sql) - Manual backup script
+
+**API Verification Results**:
+```bash
+# Part 1 Verification
+curl "https://lankaconnect-api-staging.../api/reference-data?types=EventCategory" | grep -c EventCategory
+# Result: 12 ✅ (was 8, added Workshop, Festival, Ceremony, Celebration)
+
+# Part 2 Verification
+curl "https://lankaconnect-api-staging.../api/reference-data?types=EventStatus"
+# Result: [] ✅ (removed from reference_values, kept in code as enum)
+
+curl "https://lankaconnect-api-staging.../api/reference-data?types=UserRole"
+# Result: [] ✅ (removed from reference_values, kept in code as enum)
+```
+
+**Commits**:
+- `52717e3b` - feat(phase-6a47): Part 1 - Expand EventCategory with 4 new values
+- `6ef494fe` - feat(phase-6a47): Part 2 - Remove EventStatus/UserRole seed data (migration failed - GUID mismatch)
+- `31998d9b` - fix(phase-6a47): Part 2 Fix - Delete EventStatus/UserRole by enum_type using SQL
+
+**Deployment**: ✅ Azure Staging verified
+- Run #20582149376: Part 1 SUCCESS
+- Run #20582364483: Part 2 SUCCESS (but migration didn't delete records)
+- Run #20582784097: Part 2 Fix SUCCESS (records deleted)
+
+**Phase 6A.47 Overall Status**:
+- ✅ Part 0: Pre-migration validation COMPLETE
+- ✅ Part 1: EventCategory expansion COMPLETE (12 values)
+- ✅ Part 2: Database cleanup COMPLETE (EventStatus/UserRole removed from reference_values)
+- ✅ Part 3: Frontend cleanup COMPLETE (19 locations, commit 4ee8dd13 from prior session)
+- ⏳ Part 4: Verification and documentation updates - IN PROGRESS
+
+---
+
+## ✅ PREVIOUS STATUS - CONTINUATION SESSION: PHASE 6A.53 MEMBER EMAIL VERIFICATION (2025-12-28)
 **Date**: 2025-12-28 (Continuation Session)
 **Session**: Phase 6A.53 - Member Email Verification System
 **Status**: ✅ COMPLETE - Domain events, automatic email sending, verification tokens, deployed to staging
 **Build Status**: ✅ Zero Tolerance Maintained - 0 Errors, 0 Warnings
 **Test Results**: ✅ 1141 passed, 0 failed, 1 skipped (99.9% pass rate)
 **Deployment**: ✅ Azure Staging verified (run #20555808762 SUCCESS)
-**Next Phase**: Phase 6A.50 - Manual Organizer Email Sending (P1 High Value, 11-13 hours)
 
 ### PHASE 6A.57: EVENT REMINDER IMPROVEMENTS (2025-12-28)
 **Goal**: Improve event reminder emails with professional HTML template and multiple reminder types

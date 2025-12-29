@@ -3,7 +3,76 @@
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.47 (UI Fix): Event Interests Unlimited - Remove UI Limit Display - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.47 Parts 1-2: Backend Database Changes - ✅ COMPLETE
+
+### Phase 6A.47 Parts 1-2: Backend Database Changes - 2025-12-29
+
+**Status**: ✅ **COMPLETE** (EventCategory expanded to 12 values, EventStatus/UserRole removed from reference_values, all deployments verified)
+
+**Summary**: Executed Phase 6A.47 Parts 1 and 2 backend database migrations as part of hybrid enum to reference data migration strategy. Part 1 expanded EventCategory enum from 8 to 12 values by adding Workshop, Festival, Ceremony, and Celebration from deprecated EventType enum. Part 2 removed EventStatus and UserRole from reference_values table (these remain as code enums for type safety). All changes deployed to Azure staging and verified via API testing.
+
+**Work Completed**:
+
+**Part 1: EventCategory Expansion** ✅
+1. ✅ Updated ReferenceValueConfiguration.cs with 4 new EventCategory seed values
+2. ✅ Created EF Core migration with deterministic GUIDs
+3. ✅ Deployed to Azure staging (GitHub Actions run #20582149376)
+4. ✅ Verified API endpoint returns 12 EventCategory values
+
+**Part 2: Database Cleanup - Remove Code Enums** ✅
+1. ✅ Removed SeedEventStatuses() and SeedUserRoles() from ReferenceValueConfiguration.cs
+2. ✅ Initial migration failed: DELETE targeted deterministic GUIDs not in database
+3. ✅ Root cause analysis: Database had random GUIDs from initial seed
+4. ✅ Created fix migration using SQL DELETE WHERE enum_type = 'EventStatus'/'UserRole'
+5. ✅ Deployed fix to Azure staging (GitHub Actions run #20582784097)
+6. ✅ Verified API returns empty arrays for both EventStatus and UserRole
+
+**Technical Details**:
+- **EventCategory Values Added**: Workshop (intValue: 8), Festival (9), Ceremony (10), Celebration (11)
+- **Code Enums Removed from Database**: EventStatus (8 values), UserRole (6 values)
+- **Rationale**: EventStatus and UserRole are state machines and authorization enums - must stay in code for type safety
+- **Migration Strategy**: Deterministic GUID generation via MD5 hash of enum_type + code
+
+**Files Modified**:
+- [ReferenceValueConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/ReferenceData/ReferenceValueConfiguration.cs) - Seed data changes
+- [20251229203039_Phase6A47_Part1_ExpandEventCategory.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251229203039_Phase6A47_Part1_ExpandEventCategory.cs) - Part 1 migration
+- [20251229204450_Phase6A47_Part2_RemoveCodeEnumsFromReferenceData.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251229204450_Phase6A47_Part2_RemoveCodeEnumsFromReferenceData.cs) - Part 2 migration (failed)
+- [20251229210820_Phase6A47_Part2Fix_DeleteByEnumType.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20251229210820_Phase6A47_Part2Fix_DeleteByEnumType.cs) - Part 2 fix using SQL
+- [Phase6A47_Part2_Manual_SQL.sql](../docs/Phase6A47_Part2_Manual_SQL.sql) - Manual backup script
+
+**API Verification**:
+```bash
+# EventCategory expansion verified
+GET /api/reference-data?types=EventCategory
+# Response: 12 items (Religious, Cultural, Community, Educational, Social, Business, Charity, Entertainment, Workshop, Festival, Ceremony, Celebration)
+
+# EventStatus removal verified
+GET /api/reference-data?types=EventStatus
+# Response: [] (empty - removed from database, kept in code)
+
+# UserRole removal verified
+GET /api/reference-data?types=UserRole
+# Response: [] (empty - removed from database, kept in code)
+```
+
+**Commits**:
+- `52717e3b` - feat(phase-6a47): Part 1 - Expand EventCategory with 4 new values from EventType
+- `6ef494fe` - feat(phase-6a47): Part 2 - Remove EventStatus/UserRole seed data (migration failed)
+- `31998d9b` - fix(phase-6a47): Part 2 Fix - SQL DELETE by enum_type instead of GUID
+
+**Deployment Status**:
+- ✅ Run #20582149376: Part 1 deployed successfully
+- ✅ Run #20582364483: Part 2 deployed (migration applied but didn't delete - GUID mismatch)
+- ✅ Run #20582784097: Part 2 Fix deployed successfully (SQL DELETE worked)
+
+**Phase 6A.47 Overall Progress**:
+- ✅ Part 0: Pre-migration validation COMPLETE
+- ✅ Part 1: EventCategory expansion COMPLETE
+- ✅ Part 2: Database cleanup COMPLETE
+- ✅ Part 3: Frontend cleanup COMPLETE (19 locations, commit 4ee8dd13)
+- ⏳ Part 4: Verification and documentation - IN PROGRESS
+
+---
 
 ### Phase 6A.47 (UI Fix): Event Interests Unlimited - Remove UI Limit Display - 2025-12-28
 

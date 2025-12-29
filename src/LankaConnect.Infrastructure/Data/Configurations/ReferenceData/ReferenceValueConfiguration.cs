@@ -115,7 +115,12 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
             ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Social"), "EventCategory", "Social", 4, "Social", 5, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
             ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Business"), "EventCategory", "Business", 5, "Business", 6, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
             ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Charity"), "EventCategory", "Charity", 6, "Charity", 7, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Entertainment"), "EventCategory", "Entertainment", 7, "Entertainment", 8, metadata: new Dictionary<string, object> { ["iconUrl"] = "" })
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Entertainment"), "EventCategory", "Entertainment", 7, "Entertainment", 8, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            // Phase 6A.47 Part 1: Add 4 new EventCategory values from EventType
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Workshop"), "EventCategory", "Workshop", 8, "Workshop", 9, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Festival"), "EventCategory", "Festival", 9, "Festival", 10, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Ceremony"), "EventCategory", "Ceremony", 10, "Ceremony", 11, metadata: new Dictionary<string, object> { ["iconUrl"] = "" }),
+            ReferenceValue.Create(GenerateDeterministicGuid("EventCategory", "Celebration"), "EventCategory", "Celebration", 11, "Celebration", 12, metadata: new Dictionary<string, object> { ["iconUrl"] = "" })
         };
 
         builder.HasData(categories);

@@ -117,11 +117,11 @@ public class UserUpdateCulturalInterestsTests
     }
 
     [Fact]
-    public void UpdateCulturalInterests_Should_Fail_When_More_Than_10_Interests()
+    public void UpdateCulturalInterests_Should_Accept_More_Than_10_Interests()
     {
-        // Arrange
+        // Arrange - Phase 6A.47: Removed 10-interest limit, now unlimited
         var user = CreateTestUser().Value;
-        var tooManyInterests = new List<CulturalInterest>
+        var manyInterests = new List<CulturalInterest>
         {
             CulturalInterest.SriLankanCuisine,
             CulturalInterest.BuddhistFestivals,
@@ -133,16 +133,17 @@ public class UserUpdateCulturalInterestsTests
             CulturalInterest.AyurvedicWellness,
             CulturalInterest.SinhalaMusic,
             CulturalInterest.TamilMusic,
-            CulturalInterest.VesakCelebrations // 11th interest
+            CulturalInterest.VesakCelebrations, // 11th interest - should be allowed
+            CulturalInterest.FromCode("Business").Value, // 12th - dynamic code
+            CulturalInterest.FromCode("Cultural").Value  // 13th - dynamic code
         };
 
         // Act
-        var result = user.UpdateCulturalInterests(tooManyInterests);
+        var result = user.UpdateCulturalInterests(manyInterests);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("10");
-        result.Error.Should().Contain("cultural interest");
+        // Assert - Should succeed with 13 interests
+        result.IsSuccess.Should().BeTrue();
+        user.CulturalInterests.Should().HaveCount(13);
     }
 
     [Fact]

@@ -98,10 +98,10 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
             .IsUnique()
             .HasDatabaseName("uq_reference_values_type_code");
 
-        // Seed data for existing 3 enums
+        // Phase 6A.47 Part 2: Only seed configurable reference data
+        // Code enums (EventStatus, UserRole) are kept in code for type safety
         SeedEventCategories(builder);
-        SeedEventStatuses(builder);
-        SeedUserRoles(builder);
+        // EventStatus and UserRole removed - kept as code enums only
     }
 
     private void SeedEventCategories(EntityTypeBuilder<ReferenceValue> builder)
@@ -126,103 +126,9 @@ public class ReferenceValueConfiguration : IEntityTypeConfiguration<ReferenceVal
         builder.HasData(categories);
     }
 
-    private void SeedEventStatuses(EntityTypeBuilder<ReferenceValue> builder)
-    {
-        var statuses = new[]
-        {
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Draft"), "EventStatus", "Draft", 0, "Draft", 1, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Published"), "EventStatus", "Published", 1, "Published", 2, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Active"), "EventStatus", "Active", 2, "Active", 3, metadata: new Dictionary<string, object> { ["allowsRegistration"] = true, ["isFinalState"] = false }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Postponed"), "EventStatus", "Postponed", 3, "Postponed", 4, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Cancelled"), "EventStatus", "Cancelled", 4, "Cancelled", 5, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Completed"), "EventStatus", "Completed", 5, "Completed", 6, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "Archived"), "EventStatus", "Archived", 6, "Archived", 7, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = true }),
-            ReferenceValue.Create(GenerateDeterministicGuid("EventStatus", "UnderReview"), "EventStatus", "UnderReview", 7, "Under Review", 8, metadata: new Dictionary<string, object> { ["allowsRegistration"] = false, ["isFinalState"] = false })
-        };
-
-        builder.HasData(statuses);
-    }
-
-    private void SeedUserRoles(EntityTypeBuilder<ReferenceValue> builder)
-    {
-        var roles = new[]
-        {
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "GeneralUser"), "UserRole", "GeneralUser", 1, "General User", 1, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = false,
-                ["canCreateEvents"] = false,
-                ["canModerateContent"] = false,
-                ["isEventOrganizer"] = false,
-                ["isAdmin"] = false,
-                ["requiresSubscription"] = false,
-                ["canCreateBusinessProfile"] = false,
-                ["canCreatePosts"] = false,
-                ["monthlySubscriptionPrice"] = 0.00m
-            }),
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "BusinessOwner"), "UserRole", "BusinessOwner", 2, "Business Owner", 2, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = false,
-                ["canCreateEvents"] = false,
-                ["canModerateContent"] = false,
-                ["isEventOrganizer"] = false,
-                ["isAdmin"] = false,
-                ["requiresSubscription"] = true,
-                ["canCreateBusinessProfile"] = true,
-                ["canCreatePosts"] = false,
-                ["monthlySubscriptionPrice"] = 10.00m
-            }),
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "EventOrganizer"), "UserRole", "EventOrganizer", 3, "Event Organizer", 3, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = false,
-                ["canCreateEvents"] = true,
-                ["canModerateContent"] = false,
-                ["isEventOrganizer"] = true,
-                ["isAdmin"] = false,
-                ["requiresSubscription"] = true,
-                ["canCreateBusinessProfile"] = false,
-                ["canCreatePosts"] = true,
-                ["monthlySubscriptionPrice"] = 10.00m
-            }),
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "EventOrganizerAndBusinessOwner"), "UserRole", "EventOrganizerAndBusinessOwner", 4, "Event Organizer + Business Owner", 4, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = false,
-                ["canCreateEvents"] = true,
-                ["canModerateContent"] = false,
-                ["isEventOrganizer"] = false,
-                ["isAdmin"] = false,
-                ["requiresSubscription"] = true,
-                ["canCreateBusinessProfile"] = true,
-                ["canCreatePosts"] = true,
-                ["monthlySubscriptionPrice"] = 15.00m
-            }),
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "Admin"), "UserRole", "Admin", 5, "Administrator", 5, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = true,
-                ["canCreateEvents"] = true,
-                ["canModerateContent"] = true,
-                ["isEventOrganizer"] = false,
-                ["isAdmin"] = true,
-                ["requiresSubscription"] = false,
-                ["canCreateBusinessProfile"] = true,
-                ["canCreatePosts"] = true,
-                ["monthlySubscriptionPrice"] = 0.00m
-            }),
-            ReferenceValue.Create(GenerateDeterministicGuid("UserRole", "AdminManager"), "UserRole", "AdminManager", 6, "Admin Manager", 6, metadata: new Dictionary<string, object>
-            {
-                ["canManageUsers"] = true,
-                ["canCreateEvents"] = true,
-                ["canModerateContent"] = true,
-                ["isEventOrganizer"] = false,
-                ["isAdmin"] = true,
-                ["requiresSubscription"] = false,
-                ["canCreateBusinessProfile"] = true,
-                ["canCreatePosts"] = true,
-                ["monthlySubscriptionPrice"] = 0.00m
-            })
-        };
-
-        builder.HasData(roles);
-    }
+    // Phase 6A.47 Part 2: EventStatus and UserRole removed from seed data
+    // These enums are kept in code for type safety (state machines, authorization)
+    // Frontend should NOT use these in dropdowns - they are backend-only enums
 
     /// <summary>
     /// Generates a deterministic GUID based on enum type and code

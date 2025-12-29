@@ -84,7 +84,7 @@ export class EventsRepository {
     if (filters.isFreeOnly !== undefined) params.append('isFreeOnly', String(filters.isFreeOnly));
     if (filters.city) params.append('city', filters.city);
 
-    // NEW: Location-based sorting parameters
+    // Location-based sorting parameters
     if (filters.state) params.append('state', filters.state);
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.latitude !== undefined) params.append('latitude', String(filters.latitude));
@@ -93,6 +93,9 @@ export class EventsRepository {
       // Add each metro area ID as a separate query parameter
       filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
     }
+
+    // Phase 6A.58: Text search filter
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
 
     const queryString = params.toString();
     const url = queryString ? `${this.basePath}?${queryString}` : this.basePath;
@@ -306,9 +309,29 @@ export class EventsRepository {
    * Get current user's RSVPs
    * Epic 1: Backend now returns full EventDto[] instead of RsvpDto[] for better UX
    * Returns all events user has registered for
+   * Phase 6A.58: Added optional filters for category, date range, location, and text search
    */
-  async getUserRsvps(): Promise<EventDto[]> {
-    return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
+  async getUserRsvps(filters?: GetEventsRequest): Promise<EventDto[]> {
+    if (!filters) {
+      return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
+    }
+
+    const params = new URLSearchParams();
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters.category !== undefined) params.append('category', String(filters.category));
+    if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/my-rsvps?${queryString}`
+      : `${this.basePath}/my-rsvps`;
+
+    return await apiClient.get<EventDto[]>(url);
   }
 
   /**
@@ -393,9 +416,29 @@ export class EventsRepository {
   /**
    * Get events created by current user
    * Returns all events user has created as organizer
+   * Phase 6A.58: Added optional filters for category, date range, location, and text search
    */
-  async getUserCreatedEvents(): Promise<EventDto[]> {
-    return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+  async getUserCreatedEvents(filters?: GetEventsRequest): Promise<EventDto[]> {
+    if (!filters) {
+      return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+    }
+
+    const params = new URLSearchParams();
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters.category !== undefined) params.append('category', String(filters.category));
+    if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/my-events?${queryString}`
+      : `${this.basePath}/my-events`;
+
+    return await apiClient.get<EventDto[]>(url);
   }
 
   // ==================== WAITING LIST ====================

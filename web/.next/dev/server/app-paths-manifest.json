@@ -3,5 +3,6 @@
   "/(auth)/register/page": "app/(auth)/register/page.js",
   "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
+  "/events/page": "app/events/page.js",
   "/page": "app/page.js"
 }

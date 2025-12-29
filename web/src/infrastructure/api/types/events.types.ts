@@ -366,6 +366,7 @@ export interface GetEventsRequest {
   latitude?: number; // NEW: Latitude for anonymous user location-based sorting
   longitude?: number; // NEW: Longitude for anonymous user location-based sorting
   metroAreaIds?: string[]; // NEW: Specific metro area IDs filter
+  searchTerm?: string; // Phase 6A.58: Text-based search filter
 }
 
 /**

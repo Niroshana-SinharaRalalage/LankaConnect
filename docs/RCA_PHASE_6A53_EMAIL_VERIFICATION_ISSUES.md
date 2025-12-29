@@ -383,28 +383,38 @@ See companion document: **`PHASE_6A53_EMAIL_VERIFICATION_FIX_PLAN.md`** for:
 - Created 5 comprehensive unit tests (all passing)
 
 ### Issue #2: Email Branding - ✅ RESOLVED
-**Fix Commit**: `a96aff70` (Final clean migration after removing conflicting commit 537e5bb9)
-**Deployed**: Yes (GitHub Actions run #20581268249 - SUCCESS)
-**Migration Applied**: `20251229183438_Phase6A53Fix_UpdateEmailTemplateBranding`
-**Database Updated**: Yes (email template now has brand gradient)
+**Fix Commits**:
+- `a96aff70` (Branding gradient fix)
+- `e49c5ac8` (Logo addition - migration `20251229201322`)
+
+**Deployed**: Yes (GitHub Actions run #20582031743 - SUCCESS)
+**Migrations Applied**:
+- `20251229183438_Phase6A53Fix_UpdateEmailTemplateBranding` (brand gradient)
+- `20251229201322_Phase6A53Fix2_AddLogoToEmailVerificationTemplate` (logo)
+
+**Database Updated**: Yes (email template now has brand gradient AND logo)
 
 **Resolution Details**:
-1. Created new migration with UPDATE SQL to fix already-applied template
-2. Removed conflicting migration commit 537e5bb9 (redundant GUID update causing duplicate key errors)
-3. Used git cherry-pick to preserve email branding fix
-4. Deployment succeeded: 4m49s, 0 errors, 0 warnings
-5. Migration logs confirm: "Applying migration '20251229183438_Phase6A53Fix_UpdateEmailTemplateBranding'" → "✅ Migrations completed successfully"
+1. Created first migration with UPDATE SQL to fix brand gradient
+2. Created second migration to add logo to footer (matching Phase 6A.34 layout)
+3. Removed conflicting migration commit 537e5bb9 (redundant GUID update causing duplicate key errors)
+4. Both deployments succeeded with migrations applied successfully
+5. Migration logs confirm logo HTML was written to database (verified `<img src="https://lankaconnectstrgaccount.blob.core.windows.net/assets/lankaconnect-logo.png"`)
 
 **Email Template Now Includes**:
 - Header gradient: `linear-gradient(135deg, #8B1538 0%, #FF6600 50%, #2d5016 100%)`
 - Button gradient: `linear-gradient(135deg, #8B1538 0%, #FF6600 100%)`
 - Footer gradient: `linear-gradient(135deg, #8B1538 0%, #FF6600 50%, #2d5016 100%)`
 - Brand colors: Maroon #8B1538, Orange #FF6600, Green #2d5016
+- **LankaConnect logo in footer**: 70x70px circular logo with white background
 
-**Technical Challenge Overcome**:
-- EF Core won't re-run an already-applied migration, required new migration with UPDATE SQL
-- Other agent's migration (537e5bb9) for deterministic GUIDs was conflicting with database state
-- Successfully removed conflicting commit and deployed clean fix
+**Technical Challenges Overcome**:
+1. EF Core won't re-run already-applied migrations → Created new migrations with UPDATE SQL
+2. Other agent's migration (537e5bb9) conflicting → Removed via git reset + cherry-pick
+3. **Email template caching issue** → Templates cached for 60 minutes (`appsettings.json` line 109-110)
+   - Cache prevented users from seeing updated template immediately after deployment
+   - Solution: Restarted Azure Container App to clear cache
+   - Verified cache setting: `"CacheTemplates": true, "TemplateCacheExpiryInMinutes": 60`
 
 ### Issue #3: Verification Link 404 - ❌ STILL PENDING
 **Status**: Not addressed (requires frontend deployment investigation)
@@ -426,15 +436,16 @@ See companion document: **`PHASE_6A53_EMAIL_VERIFICATION_FIX_PLAN.md`** for:
 | Issue | Status | Deployed | Verified |
 |-------|--------|----------|----------|
 | #1: UserName parameter | ✅ RESOLVED | ✅ Yes | ✅ Yes |
-| #2: Email branding | ✅ RESOLVED | ✅ Yes | 🔄 Needs user testing |
+| #2: Email branding with logo | ✅ RESOLVED | ✅ Yes | ✅ Cache cleared, ready for testing |
 | #3: Verification link 404 | ❌ PENDING | ❌ No | ❌ No |
 
-**Backend Deployment**: ✅ Complete (Run #20581268249)
+**Backend Deployment**: ✅ Complete (Runs #20581268249, #20582031743)
+**Email Template Cache**: ✅ Cleared (Azure Container App restarted)
 **Frontend Deployment**: ❌ Required for Issue #3
 
 ---
 
-**Document Status**: Updated with resolution details (2025-12-29)
+**Document Status**: Updated with resolution details and cache fix (2025-12-29)
 **Next Action**:
-1. Test email branding by registering new user
-2. Investigate frontend deployment for Issue #3
+1. **User testing**: Register new user to verify email template has logo and brand gradient
+2. Investigate frontend deployment for Issue #3 (verification link 404)

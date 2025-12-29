@@ -43,16 +43,20 @@ public class MemberVerificationRequestedEventHandler
             // Generate verification URL
             var verificationUrl = _urlsService.GetEmailVerificationUrl(domainEvent.VerificationToken);
 
+            // Phase 6A.53 Fix: Build user name from FirstName and LastName
+            var userName = BuildUserName(domainEvent.FirstName, domainEvent.LastName);
+
             var parameters = new Dictionary<string, object>
             {
                 { "Email", domainEvent.Email },
                 { "VerificationUrl", verificationUrl },
-                { "ExpirationHours", 24 }
+                { "ExpirationHours", 24 },
+                { "UserName", userName }
             };
 
             _logger.LogInformation(
-                "[Phase 6A.53] Sending member-email-verification to {Email}, VerificationUrl: {VerificationUrl}",
-                domainEvent.Email, verificationUrl);
+                "[Phase 6A.53] Sending member-email-verification to {Email} ({UserName}), VerificationUrl: {VerificationUrl}",
+                domainEvent.Email, userName, verificationUrl);
 
             var result = await _emailService.SendTemplatedEmailAsync(
                 "member-email-verification",
@@ -82,5 +86,26 @@ public class MemberVerificationRequestedEventHandler
                 domainEvent.UserId);
             // Do NOT re-throw - prevents transaction rollback
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.53 Fix: Builds user name from first and last name
+    /// Falls back to "Friend" if both names are empty
+    /// </summary>
+    private static string BuildUserName(string firstName, string lastName)
+    {
+        var first = firstName?.Trim() ?? string.Empty;
+        var last = lastName?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(first) && !string.IsNullOrEmpty(last))
+            return $"{first} {last}";
+
+        if (!string.IsNullOrEmpty(first))
+            return first;
+
+        if (!string.IsNullOrEmpty(last))
+            return last;
+
+        return "Friend";
     }
 }

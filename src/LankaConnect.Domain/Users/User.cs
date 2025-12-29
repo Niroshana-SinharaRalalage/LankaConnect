@@ -262,6 +262,7 @@ public class User : BaseEntity
     /// Phase 6A.53: Generates email verification token and raises domain event to send verification email.
     /// Uses GUID-based token (32 hex characters) for unpredictability.
     /// Token expires after 24 hours.
+    /// Phase 6A.53 Fix: Now includes FirstName and LastName for personalized emails
     /// </summary>
     public void GenerateEmailVerificationToken()
     {
@@ -270,11 +271,14 @@ public class User : BaseEntity
         EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
         MarkAsUpdated();
 
+        // Phase 6A.53 Fix: Include FirstName and LastName for personalized emails
         RaiseDomainEvent(new DomainEvents.MemberVerificationRequestedEvent(
             Id,
             Email.Value,
             EmailVerificationToken,
-            DateTimeOffset.UtcNow
+            DateTimeOffset.UtcNow,
+            FirstName,
+            LastName
         ));
     }
 

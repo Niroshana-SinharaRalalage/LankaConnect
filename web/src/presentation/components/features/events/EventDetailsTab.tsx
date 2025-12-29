@@ -31,6 +31,8 @@ import { BadgeAssignment } from '@/presentation/components/features/badges';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { EventCategory, EventStatus, type EventDto } from '@/infrastructure/api/types/events.types';
 import type { EventBadgeDto } from '@/infrastructure/api/types/badges.types';
+import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
+import { getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
 
 interface EventDetailsTabProps {
   event: EventDto;
@@ -54,16 +56,8 @@ export function EventDetailsTab({
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
 
-  const categoryLabels: Record<EventCategory, string> = {
-    [EventCategory.Religious]: 'Religious',
-    [EventCategory.Cultural]: 'Cultural',
-    [EventCategory.Community]: 'Community',
-    [EventCategory.Educational]: 'Educational',
-    [EventCategory.Social]: 'Social',
-    [EventCategory.Business]: 'Business',
-    [EventCategory.Charity]: 'Charity',
-    [EventCategory.Entertainment]: 'Entertainment',
-  };
+  // Phase 6A.47: Fetch EventCategory reference data for labels
+  const { data: categories } = useEventCategories();
 
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
@@ -194,7 +188,9 @@ export function EventDetailsTab({
             {/* Category */}
             <div>
               <h4 className="text-sm font-semibold text-neutral-700 mb-2">Category</h4>
-              <Badge className="bg-gray-100 text-gray-700">{categoryLabels[event.category]}</Badge>
+              <Badge className="bg-gray-100 text-gray-700">
+                {getNameFromIntValue(categories, event.category) || 'Unknown'}
+              </Badge>
             </div>
 
             {/* Pricing */}

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Currency } from '@/infrastructure/api/types/events.types';
 import type { GroupPricingTierFormData } from '@/presentation/lib/validators/event.schemas';
+import { useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
+import { toDropdownOptions, getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
 
 /**
  * Group Pricing Tier Builder Component
@@ -32,6 +34,10 @@ export function GroupPricingTierBuilder({
   defaultCurrency,
   errors,
 }: GroupPricingTierBuilderProps) {
+  // Phase 6A.47: Fetch currencies from reference data API
+  const { data: currencies } = useCurrencies();
+  const currencyOptions = useMemo(() => toDropdownOptions(currencies), [currencies]);
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newTier, setNewTier] = useState<Partial<GroupPricingTierFormData>>({
@@ -187,7 +193,7 @@ export function GroupPricingTierBuilder({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-semibold text-orange-600">
-                    {tier.currency === Currency.USD ? '$' : 'Rs'} {tier.pricePerPerson.toFixed(2)}
+                    {getNameFromIntValue(currencies, tier.currency)} {tier.pricePerPerson.toFixed(2)}
                   </span>
                   <span className="text-xs text-neutral-500">per person</span>
                 </div>
@@ -274,8 +280,11 @@ export function GroupPricingTierBuilder({
                     setNewTier({ ...newTier, currency: parseInt(e.target.value) as Currency })
                   }
                 >
-                  <option value={Currency.USD}>USD ($)</option>
-                  <option value={Currency.LKR}>LKR (Rs)</option>
+                  {currencyOptions.map(curr => (
+                    <option key={curr.value} value={curr.value}>
+                      {curr.label}
+                    </option>
+                  ))}
                 </select>
                 <Input
                   type="number"

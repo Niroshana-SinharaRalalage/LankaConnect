@@ -84,3 +84,20 @@ export function useEventStatuses() {
     gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
   });
 }
+
+/**
+ * Hook to fetch Currency reference data for dropdowns
+ * Returns currency options with code, name, and intValue
+ * Phase 6A.47: Added to replace hardcoded Currency dropdowns
+ *
+ * @example
+ * const { data: currencies, isLoading } = useCurrencies();
+ */
+export function useCurrencies() {
+  return useQuery<ReferenceValue[], Error>({
+    queryKey: referenceDataKeys.byTypes(['Currency'], true),
+    queryFn: () => getReferenceDataByTypes(['Currency'], true),
+    staleTime: 1000 * 60 * 60, // 1 hour (matches backend cache)
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours (React Query v5: gcTime replaces cacheTime)
+  });
+}

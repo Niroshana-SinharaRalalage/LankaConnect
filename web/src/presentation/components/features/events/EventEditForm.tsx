@@ -17,6 +17,8 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { eventKeys } from '@/presentation/hooks/useEvents';
+import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
+import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 interface EventEditFormProps {
   event: EventDto;
@@ -45,51 +47,38 @@ export function EventEditForm({ event }: EventEditFormProps) {
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
 
+  // Phase 6A.47: Fetch EventCategory and Currency reference data from API
+  const { data: categories } = useEventCategories();
+  const { data: currencies } = useCurrencies();
+
   // Convert string enum to number (backend returns enums as strings due to JsonStringEnumConverter)
   // Wrapped in useCallback to prevent infinite re-renders in useEffect
   const convertCategoryToNumber = useCallback((category: any): number => {
     // If it's already a number, return it
     if (typeof category === 'number') return category;
 
-    // If it's a string, map it to the enum value
-    const categoryMap: Record<string, EventCategory> = {
-      'Religious': EventCategory.Religious,
-      'Cultural': EventCategory.Cultural,
-      'Community': EventCategory.Community,
-      'Educational': EventCategory.Educational,
-      'Social': EventCategory.Social,
-      'Business': EventCategory.Business,
-      'Charity': EventCategory.Charity,
-      'Entertainment': EventCategory.Entertainment,
-    };
-
+    // If it's a string, map it to the enum value using reference data
+    const categoryMap = buildCodeToIntMap<EventCategory>(categories);
     return categoryMap[category] ?? EventCategory.Community;
-  }, []);
+  }, [categories]);
 
   // Session 33 Fix: Convert currency string/number to Currency enum value
   // Backend may return "USD" (string) or 1 (number) depending on serialization
   const convertCurrencyToNumber = useCallback((currency: any): Currency => {
     // If it's already a valid Currency enum number, return it
-    if (typeof currency === 'number' && currency >= 1 && currency <= 6) {
+    if (typeof currency === 'number' && currency >= 0 && currency <= 5) {
       return currency as Currency;
     }
 
-    // If it's a string, map it to the enum value
+    // If it's a string, map it to the enum value using reference data
     if (typeof currency === 'string') {
-      const currencyMap: Record<string, Currency> = {
-        'USD': Currency.USD,
-        'LKR': Currency.LKR,
-        'GBP': Currency.GBP,
-        'EUR': Currency.EUR,
-        'CAD': Currency.CAD,
-        'AUD': Currency.AUD,
-      };
+      const currencyMap = buildCodeToIntMap<Currency>(currencies);
       return currencyMap[currency] ?? Currency.USD;
     }
 
     // Default to USD
     return Currency.USD;
-  }, []);
+  }, [currencies]);
 
   // Format dates for datetime-local input
   const formatDateForInput = (dateString: string | Date) => {
@@ -383,17 +372,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
     }
   });
 
-  // Category labels
-  const categoryOptions = [
-    { value: EventCategory.Religious, label: 'Religious' },
-    { value: EventCategory.Cultural, label: 'Cultural' },
-    { value: EventCategory.Community, label: 'Community' },
-    { value: EventCategory.Educational, label: 'Educational' },
-    { value: EventCategory.Social, label: 'Social' },
-    { value: EventCategory.Business, label: 'Business' },
-    { value: EventCategory.Charity, label: 'Charity' },
-    { value: EventCategory.Entertainment, label: 'Entertainment' },
-  ];
+  // Phase 6A.47: Convert reference data to dropdown options
+  const categoryOptions = toDropdownOptions(categories);
+  const currencyOptions = toDropdownOptions(currencies);
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -762,8 +743,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       defaultValue={Currency.USD}
                       {...register('ticketPriceCurrency', { valueAsNumber: true })}
                     >
-                      <option value={Currency.USD}>USD ($)</option>
-                      <option value={Currency.LKR}>LKR (Rs)</option>
+                      {currencyOptions.map(curr => (
+                        <option key={curr.value} value={curr.value}>
+                          {curr.label}
+                        </option>
+                      ))}
                     </select>
                     {errors.ticketPriceCurrency && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
@@ -817,8 +801,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         defaultValue={Currency.USD}
                         {...register('adultPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.adultPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceCurrency.message}</p>
@@ -868,8 +855,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         defaultValue={Currency.USD}
                         {...register('childPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.childPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceCurrency.message}</p>
@@ -1014,8 +1004,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
                                     className="px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                                     {...register(`groupPricingTiers.${index}.currency`, { valueAsNumber: true })}
                                   >
-                                    <option value={Currency.USD}>USD ($)</option>
-                                    <option value={Currency.LKR}>LKR (Rs)</option>
+                                    {currencyOptions.map(curr => (
+                                      <option key={curr.value} value={curr.value}>
+                                        {curr.label}
+                                      </option>
+                                    ))}
                                   </select>
                                   <Input
                                     type="number"

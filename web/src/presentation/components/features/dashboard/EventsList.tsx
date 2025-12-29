@@ -4,6 +4,8 @@ import * as React from 'react';
 import { Calendar, MapPin, Users } from 'lucide-react';
 import { EventDto, EventStatus, EventCategory } from '@/infrastructure/api/types/events.types';
 import { RegistrationBadge } from '../events/RegistrationBadge';
+import { useEventCategories, useEventStatuses } from '@/infrastructure/api/hooks/useReferenceData';
+import { getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
 
 export interface EventsListProps {
   events: EventDto[];
@@ -28,6 +30,10 @@ export function EventsList({
   onCancelClick,
   registeredEventIds,
 }: EventsListProps) {
+  // Phase 6A.47: Fetch reference data for labels
+  const { data: categories } = useEventCategories();
+  const { data: statuses } = useEventStatuses();
+
   const [cancellingEventId, setCancellingEventId] = React.useState<string | null>(null);
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -68,55 +74,13 @@ export function EventsList({
     }
   };
 
+  // Phase 6A.47: Use reference data for status and category labels
   const getStatusLabel = (status: EventStatus): string => {
-    // Debug logging to identify the issue
-    console.log('Event status value:', status, 'Type:', typeof status);
-
-    switch (status) {
-      case EventStatus.Published:
-        return 'Published';
-      case EventStatus.Active:
-        return 'Active';
-      case EventStatus.Draft:
-        return 'Draft';
-      case EventStatus.Postponed:
-        return 'Postponed';
-      case EventStatus.Cancelled:
-        return 'Cancelled';
-      case EventStatus.Completed:
-        return 'Completed';
-      case EventStatus.UnderReview:
-        return 'Under Review';
-      case EventStatus.Archived:
-        return 'Archived';
-      default:
-        // Additional debug info
-        console.warn(`Unknown status value: ${status}, Type: ${typeof status}, EventStatus.Draft=${EventStatus.Draft}`);
-        return `Unknown (${status})`;
-    }
+    return getNameFromIntValue(statuses, status) || `Unknown (${status})`;
   };
 
   const getCategoryLabel = (category: EventCategory): string => {
-    switch (category) {
-      case EventCategory.Religious:
-        return 'Religious';
-      case EventCategory.Cultural:
-        return 'Cultural';
-      case EventCategory.Community:
-        return 'Community';
-      case EventCategory.Educational:
-        return 'Educational';
-      case EventCategory.Social:
-        return 'Social';
-      case EventCategory.Business:
-        return 'Business';
-      case EventCategory.Charity:
-        return 'Charity';
-      case EventCategory.Entertainment:
-        return 'Entertainment';
-      default:
-        return 'Other';
-    }
+    return getNameFromIntValue(categories, category) || 'Other';
   };
 
   const handleCancelClick = async (eventId: string, e: React.MouseEvent) => {

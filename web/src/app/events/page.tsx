@@ -19,7 +19,8 @@ import { RegistrationBadge } from '@/presentation/components/features/events/Reg
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
-import { getEventCategoryOptions, getEventCategoryLabel } from '@/lib/enum-utils';
+import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
+import { toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 /**
  * Events Listing Page
@@ -48,6 +49,9 @@ export default function EventsPage() {
     stateLevelMetros,
     isLoading: metrosLoading,
   } = useMetroAreas();
+
+  // Phase 6A.47: Fetch EventCategory reference data from API
+  const { data: categories } = useEventCategories();
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | undefined>(undefined);
@@ -149,14 +153,18 @@ export default function EventsPage() {
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
-  // Create category labels map from enum options
+  // Phase 6A.47: Convert reference data to dropdown options
+  const categoryOptions = useMemo(() => toDropdownOptions(categories), [categories]);
+
+  // Create category labels map from reference data
   const categoryLabels = useMemo(() => {
+    if (!categories) return {} as Record<EventCategory, string>;
     const labels: Record<EventCategory, string> = {} as Record<EventCategory, string>;
-    getEventCategoryOptions().forEach(option => {
-      labels[option.value as EventCategory] = option.label;
+    categories.forEach(cat => {
+      labels[cat.intValue as EventCategory] = cat.name;
     });
     return labels;
-  }, []);
+  }, [categories]);
 
   // Check if user can create events (EventOrganizer, Admin, or AdminManager)
   const canUserCreateEvents = user && (
@@ -247,7 +255,7 @@ export default function EventsPage() {
                   disabled={isLoading}
                 >
                   <option value="">All Types</option>
-                  {getEventCategoryOptions().map((category) => (
+                  {categoryOptions.map((category) => (
                     <option key={category.value} value={category.value}>
                       {category.label}
                     </option>

@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -13,10 +13,11 @@ import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/
 import { useCreateEvent } from '@/presentation/hooks/useEvents';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { useEventInterests } from '@/infrastructure/api/hooks/useReferenceData';
+import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
+import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 /**
  * Event Creation Form Component
@@ -39,8 +40,9 @@ export function EventCreationForm() {
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
 
-  // Phase 6A.47: Fetch event categories from reference data API
-  const { data: eventInterests, isLoading: isLoadingEventInterests } = useEventInterests();
+  // Phase 6A.47: Fetch event categories and currencies from reference data API
+  const { data: categories, isLoading: isLoadingEventInterests } = useEventCategories();
+  const { data: currencies } = useCurrencies();
 
   const {
     register,
@@ -247,23 +249,19 @@ export function EventCreationForm() {
     }
   }, onValidationError);  // Session 33: Add validation error callback
 
-  // Phase 6A.47: Map event interests to category options
-  // Use EventCategory enum values from backend for proper type mapping
-  const categoryCodeToEnumValue: Record<string, EventCategory> = {
-    'Religious': EventCategory.Religious,
-    'Cultural': EventCategory.Cultural,
-    'Community': EventCategory.Community,
-    'Educational': EventCategory.Educational,
-    'Social': EventCategory.Social,
-    'Business': EventCategory.Business,
-    'Charity': EventCategory.Charity,
-    'Entertainment': EventCategory.Entertainment,
-  };
+  // Phase 6A.47: Map categories to category options using buildCodeToIntMap utility
+  const categoryCodeToEnumValue = useMemo(
+    () => buildCodeToIntMap<EventCategory>(categories),
+    [categories]
+  );
 
-  const categoryOptions = eventInterests?.map(interest => ({
-    value: categoryCodeToEnumValue[interest.code] ?? EventCategory.Community,
-    label: interest.name,
+  const categoryOptions = categories?.map(cat => ({
+    value: categoryCodeToEnumValue[cat.code] ?? EventCategory.Community,
+    label: cat.name,
   })) ?? [];
+
+  // Phase 6A.47: Convert currencies to dropdown options
+  const currencyOptions = useMemo(() => toDropdownOptions(currencies), [currencies]);
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -665,8 +663,11 @@ export function EventCreationForm() {
                       defaultValue={Currency.USD}
                       {...register('ticketPriceCurrency', { valueAsNumber: true })}
                     >
-                      <option value={Currency.USD}>USD ($)</option>
-                      <option value={Currency.LKR}>LKR (Rs)</option>
+                      {currencyOptions.map(curr => (
+                        <option key={curr.value} value={curr.value}>
+                          {curr.label}
+                        </option>
+                      ))}
                     </select>
                     {errors.ticketPriceCurrency && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
@@ -732,8 +733,11 @@ export function EventCreationForm() {
                         defaultValue={Currency.USD}
                         {...register('adultPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.adultPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceCurrency.message}</p>
@@ -783,8 +787,11 @@ export function EventCreationForm() {
                         defaultValue={Currency.USD}
                         {...register('childPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.childPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceCurrency.message}</p>

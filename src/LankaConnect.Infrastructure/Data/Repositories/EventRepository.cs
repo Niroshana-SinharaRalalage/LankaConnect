@@ -323,7 +323,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Query for events with ranking
         var eventsSql = $@"
             SELECT e.*
-            FROM events e
+            FROM events.events e
             WHERE {whereClause}
             ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
             LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
@@ -341,7 +341,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Count query (same filters, no ranking needed)
         var countSql = $@"
             SELECT COUNT(*)
-            FROM events e
+            FROM events.events e
             WHERE {whereClause}";
 
         // Remove limit and offset parameters for count query

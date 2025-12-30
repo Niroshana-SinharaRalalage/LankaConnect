@@ -286,10 +286,11 @@ public class EventRepository : Repository<Event>, IEventRepository
         CancellationToken cancellationToken = default)
     {
         // Build the WHERE clause dynamically based on filters
+        // Phase 6A.58 FIX: Use quoted PascalCase column names for PostgreSQL case sensitivity
         var whereConditions = new List<string>
         {
-            "e.search_vector @@ websearch_to_tsquery('english', {0})",
-            "e.status = {1}" // Only search Published events
+            @"e.""SearchVector"" @@ websearch_to_tsquery('english', {0})",
+            @"e.""Status"" = {1}" // Only search Published events
         };
 
         var parameters = new List<object>
@@ -301,20 +302,21 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Add category filter if provided
         if (category.HasValue)
         {
-            whereConditions.Add($"e.category = {{{parameters.Count}}}");
+            whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
             parameters.Add((int)category.Value);
         }
 
         // Add free-only filter if provided
         if (isFreeOnly.HasValue && isFreeOnly.Value)
         {
-            whereConditions.Add("e.ticket_price_amount = 0");
+            // ticket_price is JSONB column, access Amount property
+            whereConditions.Add(@"(e.ticket_price->>'Amount')::numeric = 0");
         }
 
         // Add start date filter if provided
         if (startDateFrom.HasValue)
         {
-            whereConditions.Add($"e.start_date >= {{{parameters.Count}}}");
+            whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}");
             parameters.Add(startDateFrom.Value);
         }
 
@@ -325,7 +327,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             SELECT e.*
             FROM events.events e
             WHERE {whereClause}
-            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
+            ORDER BY ts_rank(e.""SearchVector"", websearch_to_tsquery('english', {{0}})) DESC, e.""StartDate"" ASC
             LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
 
         parameters.Add(limit);

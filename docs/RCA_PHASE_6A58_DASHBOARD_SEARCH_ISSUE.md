@@ -2,8 +2,9 @@
 
 **Phase**: 6A.58 - Dashboard Event Filtration
 **Date**: 2025-12-30
-**Status**: RESOLVED - Root Cause Identified
+**Status**: ✅ RESOLVED - Fixed and Deployed
 **Severity**: High - Feature completely non-functional
+**Fix Deployed**: 2025-12-30 17:52 UTC (Commit 1a9d7825)
 
 ---
 
@@ -561,6 +562,76 @@ The dashboard search feature fails due to a **missing dependency array in EventF
 
 ---
 
-**Analysis Completed**: 2025-12-30
-**Next Steps**: Apply fix, test, and deploy to production
+## UPDATE: Additional Critical Bug Discovered and Fixed
+
+**Discovery Date**: 2025-12-30 17:45 UTC
+**Issue Type**: Backend SQL Schema Prefix Missing
+
+### Problem Discovered
+While testing the stale closure fix in production, search functionality **still** failed with 500 Internal Server Error.
+
+**Error Message**:
+```
+relation "events" does not exist
+PostgreSQL Error: 42P01
+Position: 879
+```
+
+### Root Cause #2: Missing Schema Prefix in SQL Queries
+
+**File**: `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+**Method**: `SearchAsync()` (lines 279-355)
+
+**Problem**: Two raw SQL queries used `FROM events e` instead of `FROM events.events e`
+
+PostgreSQL requires schema prefix when accessing tables. Without the schema prefix (`events.`), PostgreSQL looked for a table named `events` in the default `public` schema instead of the `events` schema.
+
+**Affected Queries**:
+1. Line 326: Event search query (SELECT with ranking)
+2. Line 344: Total count query (COUNT)
+
+### Fix Applied
+
+**Commit**: `1a9d7825`
+**Date**: 2025-12-30 17:47 UTC
+
+**Changes**:
+```diff
+- FROM events e
++ FROM events.events e
+```
+
+**Files Modified**: 1 file, 2 lines changed
+
+### Testing Results
+
+**Build Status**: ✅ PASSED
+- 0 compilation errors
+- 0 warnings
+- 1147 unit tests passed
+
+**Deployment Status**: ✅ SUCCESS
+- Run: #20602497894
+- Duration: 5m15s
+- Environment: Azure Staging
+- All smoke tests passed
+
+### Combined Fix Summary
+
+**Two Separate Issues Fixed**:
+1. ✅ Frontend: Stale closure in EventFilters.tsx (Commit 52e9eee6)
+2. ✅ Backend: Missing SQL schema prefix in EventRepository.cs (Commit 1a9d7825)
+
+**Impact**: Text search now works end-to-end:
+- ✅ Frontend correctly debounces and propagates search term
+- ✅ Backend correctly queries PostgreSQL events table
+- ✅ Search functional on /events page
+- ✅ Search functional on Dashboard "My Registered Events" tab
+- ✅ Search functional on Dashboard "Event Management" tab
+
+---
+
+**Analysis Completed**: 2025-12-30 17:45 UTC
+**Fix Applied**: 2025-12-30 17:52 UTC
+**Status**: ✅ RESOLVED AND DEPLOYED
 **Document Owner**: System Architecture Designer

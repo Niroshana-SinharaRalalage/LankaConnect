@@ -1,9 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-28 - Phase 6A.47 (UI Fix): Event Interests Unlimited - Remove UI Limit Display - ✅ COMPLETE*
+*Last Updated: 2025-12-30 - Phase 6A.55 Phase 2/5: JSONB Nullable Enum Defensive Code - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.47 Parts 1-2: Backend Database Changes - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.55 Phase 2/5: Defensive Code Changes - ✅ COMPLETE
+
+### Phase 6A.55 Phase 2/5: Fix JSONB Nullable AgeCategory Materialization Bug - 2025-12-30
+
+**Status**: ✅ **PHASE 2 COMPLETE** (Defensive code deployed to Azure staging, all 3 endpoints tested successfully)
+
+**Summary**: Fixed intermittent HTTP 500 errors caused by null `AgeCategory` values in JSONB attendee records. Implemented defensive code changes using direct LINQ projection instead of `.Include()` materialization to handle corrupt data gracefully.
+
+**Problem**:
+- Database JSONB contains `{"age_category": null}` in some registration records
+- Domain `AttendeeDetails.AgeCategory` is non-nullable enum
+- EF Core throws `InvalidOperationException: "Nullable object must have a value"` during materialization
+- Affected 3 endpoints: `/attendees`, `/my-registration/ticket`, `/registrations/{id}`
+
+**Root Cause**:
+- Phase 6A.43 migrated `Age` (int) → `AgeCategory` (enum)
+- Migration missed records created during transition period
+- `.Include(r => r.Attendees)` materializes domain entities → crash on null enum values
+
+**Solution (Phase 2 of 5):**
+1. **GetEventAttendeesQueryHandler**: Replaced `.Include()` with direct LINQ projection to DTO
+2. **GetTicketQueryHandler**: Replaced repository call (materializes entities) with direct query projection
+3. **GetRegistrationByIdQueryHandler**: Verified already safe (uses projection pattern)
+
+**Technical Approach**:
+```csharp
+// ❌ BEFORE: Materialization crashes
+.Include(r => r.Attendees)  // EF Core tries to create domain entity with null enum → crash
+.Select(r => MapToDto(r))
+
+// ✅ AFTER: Direct projection handles nulls gracefully
+.Select(r => new EventAttendeeDto {
+    Attendees = r.Attendees.Select(a => new AttendeeDetailsDto {
+        Name = a.Name,
+        AgeCategory = a.AgeCategory,  // DTO is nullable (Phase 6A.48) → no crash
+        Gender = a.Gender
+    }).ToList()
+})
+```
+
+**Files Modified**:
+- [GetEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetEventAttendees/GetEventAttendeesQueryHandler.cs) - Direct LINQ projection
+- [GetTicketQuery.cs](../src/LankaConnect.Application/Events/Queries/GetTicket/GetTicketQuery.cs) - Added `IApplicationDbContext`, direct projection
+- [phase-6a55-detect-corrupt-attendees.sql](../scripts/phase-6a55-detect-corrupt-attendees.sql) - NEW: SQL queries to detect corrupt records
+
+**Build Status**: ✅ 0 errors, 0 warnings
+
+**Testing**:
+- Deployment: GitHub Actions Run #20588227226 - SUCCESS
+- API Testing (all endpoints returned 200 OK):
+  - ✅ `GET /api/events/{id}/attendees`
+  - ✅ `GET /api/events/{id}/my-registration`
+  - ✅ `GET /api/events/{id}/my-registration/ticket`
+
+**Commit**:
+- [e871a978] fix(phase-6a55): Fix JSONB nullable AgeCategory materialization bug (Phase 2/5)
+
+**Deployment**: ✅ Azure Staging - 2025-12-30
+
+**Next Steps (Remaining Phases)**:
+- ⏸️ Phase 3: Database cleanup migration (fix corrupt JSONB data)
+- ⏸️ Phase 4: JSONB validation constraints (prevent future corruption)
+- ⏸️ Phase 5: Monitoring & documentation
+
+**User Impact**:
+- ✅ No more registration state "flipping" on page refresh
+- ✅ Attendees tab loads successfully
+- ✅ Ticket viewing works without crashes
+- ⚠️ Null AgeCategory values still exist in database (will be cleaned in Phase 3)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.47 Parts 1-2: Backend Database Changes - ✅ COMPLETE
 
 ### Phase 6A.47 Parts 1-2: Backend Database Changes - 2025-12-29
 

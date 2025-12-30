@@ -110,20 +110,15 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
 
             // Save user
             await _userRepository.AddAsync(user, cancellationToken);
+
+            // Phase 6A.53: Email verification is sent automatically via domain event
+            // When CommitAsync() is called, it dispatches MemberVerificationRequestedEvent
+            // which triggers MemberVerificationRequestedEventHandler to send the email
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            // Send verification email automatically
-            var sendEmailCommand = new SendEmailVerificationCommand(user.Id);
-            var sendEmailResult = await _mediator.Send(sendEmailCommand, cancellationToken);
-
-            if (!sendEmailResult.IsSuccess)
-            {
-                _logger.LogWarning(
-                    "User {UserId} registered successfully, but failed to send verification email: {Error}",
-                    user.Id, sendEmailResult.Error);
-            }
-
-            _logger.LogInformation("User registered successfully: {Email}", request.Email);
+            _logger.LogInformation(
+                "User registered successfully: {Email}. Verification email will be sent via domain event handler.",
+                request.Email);
 
             var response = new RegisterUserResponse(
                 user.Id,

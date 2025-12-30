@@ -23,6 +23,10 @@ public class DeleteEventCommandHandler : ICommandHandler<DeleteEventCommand>
         if (@event == null)
             return Result.Failure("Event not found");
 
+        // Phase 6A.59: Security fix - verify event owner
+        if (@event.OrganizerId != request.UserId)
+            return Result.Failure("Only the event organizer can delete this event");
+
         // Business rule: Only draft or cancelled events can be deleted
         if (@event.Status != EventStatus.Draft && @event.Status != EventStatus.Cancelled)
             return Result.Failure("Only draft or cancelled events can be deleted");

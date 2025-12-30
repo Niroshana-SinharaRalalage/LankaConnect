@@ -161,8 +161,9 @@ public class Event : BaseEntity
 
     public Result Cancel(string reason)
     {
-        if (Status != EventStatus.Published)
-            return Result.Failure("Only published events can be cancelled");
+        // Phase 6A.59: Allow cancelling Draft events too (organizer changes mind before publishing)
+        if (Status != EventStatus.Published && Status != EventStatus.Draft)
+            return Result.Failure("Only published or draft events can be cancelled");
 
         if (string.IsNullOrWhiteSpace(reason))
             return Result.Failure("Cancellation reason is required");
@@ -170,10 +171,10 @@ public class Event : BaseEntity
         Status = EventStatus.Cancelled;
         CancellationReason = reason.Trim();
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventCancelledEvent(Id, reason.Trim(), DateTime.UtcNow));
-        
+
         return Result.Success();
     }
 

@@ -344,9 +344,10 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEvent(Guid id)
     {
-        Logger.LogInformation("Deleting event: {EventId}", id);
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} deleting event: {EventId}", userId, id);
 
-        var command = new DeleteEventCommand(id);
+        var command = new DeleteEventCommand(id, userId);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);

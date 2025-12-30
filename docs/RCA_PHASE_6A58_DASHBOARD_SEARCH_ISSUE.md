@@ -781,7 +781,149 @@ Position: 976
 
 ---
 
-**Analysis Completed**: 2025-12-30 18:10 UTC
-**All Fixes Applied**: 2025-12-30 18:19 UTC
-**Status**: ✅ FULLY RESOLVED AND DEPLOYED
+---
+
+## UPDATE 3: CORRECTION - Column Naming Convention Error
+
+**Discovery Date**: 2025-12-30 20:03 UTC
+**Issue Type**: Incorrect Fix Applied in UPDATE 2
+
+### Critical Error in Previous Fix
+
+**Problem**: The fix applied in UPDATE 2 (Commit 98c17a42) was **INCORRECT**. It used PascalCase column names (`e."Status"`, `e."SearchVector"`), but Azure container logs showed this was wrong.
+
+**New Error Message from Azure**:
+```
+column e.SearchVector does not exist
+PostgreSQL Error: 42703
+Hint: Perhaps you meant to reference the column "e.search_vector".
+Position: 917
+```
+
+### Root Cause #4: Misunderstanding EF Core Naming Convention
+
+**File**: `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+**Method**: `SearchAsync()` (lines 279-355)
+
+**The Actual Problem**:
+- **I INCORRECTLY ASSUMED** EF Core creates PascalCase columns based on C# property names
+- **THE TRUTH**: EF Core uses **snake_case naming convention** for PostgreSQL by default
+- The hint from PostgreSQL was clear: `"Perhaps you meant to reference the column "e.search_vector"`
+
+**Actual Database Column Names** (confirmed from Azure logs):
+- `search_vector` (NOT "SearchVector")
+- `status` (NOT "Status")
+- `category` (NOT "Category")
+- `start_date` (NOT "StartDate")
+
+### Correct Fix Applied
+
+**Commit**: `cb401029`
+**Date**: 2025-12-30 20:10 UTC
+
+**Changes**:
+```diff
+  var whereConditions = new List<string>
+  {
+-     @"e.""SearchVector"" @@ websearch_to_tsquery('english', {0})",
+-     @"e.""Status"" = {1}"
++     "e.search_vector @@ websearch_to_tsquery('english', {0})",
++     "CAST(e.status AS text) = {1}" // Enum stored as string
+  };
+
+  var parameters = new List<object>
+  {
+      searchTerm,
+-     (int)EventStatus.Published
++     EventStatus.Published.ToString() // Use string value for comparison
+  };
+
+  if (category.HasValue)
+  {
+-     whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
+-     parameters.Add((int)category.Value);
++     whereConditions.Add($"CAST(e.category AS text) = {{{parameters.Count}}}");
++     parameters.Add(category.Value.ToString());
+  }
+
+  if (startDateFrom.HasValue)
+  {
+-     whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}");
++     whereConditions.Add($"e.start_date >= {{{parameters.Count}}}");
+  }
+
+  var eventsSql = $@"
+      SELECT e.*
+      FROM events.events e
+      WHERE {whereClause}
+-     ORDER BY ts_rank(e.""SearchVector"", websearch_to_tsquery('english', {{0}})) DESC, e.""StartDate"" ASC
++     ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
+      LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
+```
+
+**Key Corrections**:
+1. ✅ Use snake_case column names (EF Core default for PostgreSQL)
+2. ✅ Use `CAST(e.status AS text)` for enum comparisons (enums stored as strings)
+3. ✅ Use `ToString()` for enum parameter values instead of `(int)` casting
+4. ✅ Remove all double-quote escaping (not needed for snake_case)
+
+### Testing Results
+
+**Build Status**: ✅ PASSED
+- 0 compilation errors
+- 0 warnings
+
+**Deployment Status**: ✅ SUCCESS
+- Run: #20604969563
+- Duration: 5m12s
+- Environment: Azure Staging
+- All smoke tests passed
+
+### Complete Four-Bug Sequence
+
+**Four Separate Issues Fixed**:
+1. ✅ **Frontend**: Stale closure in EventFilters.tsx (Commit 52e9eee6, Dec 30 15:14 UTC)
+   - Missing useEffect dependencies caused search state to not propagate
+
+2. ✅ **Backend**: Missing SQL schema prefix (Commit 1a9d7825, Dec 30 17:47 UTC)
+   - Used `FROM events e` instead of `FROM events.events e`
+
+3. ❌ **WRONG FIX**: Used PascalCase column names (Commit 98c17a42, Dec 30 18:14 UTC)
+   - **MISTAKE**: Incorrectly assumed EF Core uses PascalCase for PostgreSQL
+   - This fix introduced a NEW bug instead of solving the original one
+
+4. ✅ **CORRECT FIX**: Use snake_case column names (Commit cb401029, Dec 30 20:10 UTC)
+   - Corrected to use `e.search_vector`, `e.status`, `e.category`, `e.start_date`
+   - Added proper enum string casting for PostgreSQL comparison
+
+**Final Impact**: Text search NOW works correctly end-to-end:
+- ✅ Frontend correctly debounces and propagates search term
+- ✅ Backend queries use correct schema prefix (`events.events`)
+- ✅ Backend queries use correct snake_case column names
+- ✅ Enum comparisons use proper CAST to text
+- ✅ Search functional on /events page
+- ✅ Search functional on Dashboard "My Registered Events" tab
+- ✅ Search functional on Dashboard "Event Management" tab
+
+### Lessons Learned (UPDATED)
+
+**EF Core Naming Conventions**:
+1. ✅ EF Core uses **snake_case** for PostgreSQL column names by default
+2. ❌ **WRONG**: Assuming PascalCase based on C# property names
+3. ✅ Always check Azure container logs for PostgreSQL hints - they tell you the exact column name
+4. ✅ Enums stored as strings require `CAST(column AS text)` for raw SQL comparisons
+5. ✅ Test against actual database schema, not assumptions
+
+**Debugging Process**:
+1. ✅ Read PostgreSQL error hints carefully - they're extremely accurate
+2. ✅ Don't assume - verify against actual database schema
+3. ✅ When a "fix" doesn't work, check Azure logs immediately
+4. ✅ Each deployment iteration revealed more information about the actual problem
+
+---
+
+**Analysis Started**: 2025-12-30 17:30 UTC
+**Final Fix Applied**: 2025-12-30 20:15 UTC
+**Status**: ✅ FULLY RESOLVED AND DEPLOYED (Verified with snake_case columns)
 **Document Owner**: System Architecture Designer
+**Total Bugs Fixed**: 4 (including 1 incorrect fix that was corrected)

@@ -1,9 +1,94 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-30 - Phase 6A.55 Phase 2/5: JSONB Nullable Enum Defensive Code - ✅ COMPLETE*
+*Last Updated: 2025-12-30 - Phase 6A.56: Auth Hydration Fix - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.55 Phase 2/5: Defensive Code Changes - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.56: Auth Hydration Causing Registration Status Flip - ✅ COMPLETE
+
+### Phase 6A.56: Fix Authentication State Inconsistency Between Pages - 2025-12-30
+
+**Status**: ✅ **COMPLETE** (UI fix deployed, no backend changes needed)
+
+**Summary**: Fixed critical UX bug where users appeared logged out on event detail page despite being logged in, causing registration status to "flip" between pages. Root cause was Zustand auth store not properly restoring `isAuthenticated` flag during hydration.
+
+**Problem**:
+- User shows as logged in on events list page (`/events`)
+- Same user appears logged out on event detail page (`/events/{id}`)
+- Header shows "Login/Sign Up" buttons instead of user menu
+- Registration status "flips" on navigation/refresh
+- Users confused about registration state
+
+**Root Cause**:
+1. **Auth Store Hydration Bug**: `onRehydrateStorage` callback did not explicitly restore `isAuthenticated` flag
+2. **Header Logic**: Uses `isAuthenticated && user` check to show user menu vs login buttons
+3. **Event Detail Race Condition**: Queries waited for `_hasHydrated` flag, causing delayed auth check
+4. Result: During hydration window (50-200ms), `isAuthenticated = false` despite valid `user` + `accessToken`
+
+**Technical Analysis**:
+```typescript
+// BEFORE (buggy hydration):
+onRehydrateStorage: () => (state) => {
+  if (state?.accessToken) {
+    apiClient.setAuthToken(state.accessToken);
+  }
+  state?.setHasHydrated(true);  // ⚠️ isAuthenticated not explicitly set
+}
+
+// AFTER (fixed hydration):
+onRehydrateStorage: () => (state) => {
+  if (state?.user && state?.accessToken) {
+    apiClient.setAuthToken(state.accessToken);
+    if (!state.isAuthenticated) {
+      state.isAuthenticated = true;  // ✅ Force correct state
+    }
+  }
+  state?.setHasHydrated(true);
+}
+```
+
+**Solution**:
+1. **Auth Store Fix** ([useAuthStore.ts](../web/src/presentation/store/useAuthStore.ts)):
+   - Added explicit `isAuthenticated` restoration logic in `onRehydrateStorage`
+   - If `user` + `accessToken` exist → ensure `isAuthenticated = true`
+   - If either missing → ensure `isAuthenticated = false`
+   - Added comprehensive console logging for debugging
+
+2. **Event Detail Page Fix** ([events/[id]/page.tsx](../web/src/app/events/[id]/page.tsx)):
+   - Removed `_hasHydrated` dependency from `useUserRsvpForEvent` call
+   - Removed `_hasHydrated` dependency from `useUserRegistrationDetails` call
+   - Pattern now matches working events list page
+   - Queries execute immediately if `user` exists (token already in API client)
+
+**Files Modified**:
+- [useAuthStore.ts](../web/src/presentation/store/useAuthStore.ts) - Fixed hydration logic
+- [events/[id]/page.tsx](../web/src/app/events/[id]/page.tsx) - Removed race condition
+- [RCA_PHASE_6A56_AUTH_HYDRATION_ISSUE.md](./RCA_PHASE_6A56_AUTH_HYDRATION_ISSUE.md) - NEW: Complete root cause analysis
+
+**TypeScript**: ✅ 0 errors in changed files
+
+**Testing Plan** (User to verify):
+1. Navigate from `/events` to `/events/{id}` → Should show "You're Registered!" immediately
+2. Refresh page on `/events/{id}` → No "flipping" between states
+3. Header should show user menu, not Login/Sign Up buttons
+4. Test on slow network (3G throttle) to verify timing
+
+**Commit**:
+- [b3979e76] fix(phase-6a56): Fix auth hydration causing registration status flip
+
+**User Impact**:
+- ✅ Header correctly shows user menu when logged in
+- ✅ Registration status displays correctly on first load
+- ✅ No more "flipping" on page navigation
+- ✅ No more "flipping" on page refresh
+- ✅ Consistent auth state across all pages
+
+**Category**: UI + Auth Issue (NOT Backend, NOT Database)
+
+**See Full Analysis**: [RCA_PHASE_6A56_AUTH_HYDRATION_ISSUE.md](./RCA_PHASE_6A56_AUTH_HYDRATION_ISSUE.md)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.55 Phase 2/5: Defensive Code Changes - ✅ COMPLETE
 
 ### Phase 6A.55 Phase 2/5: Fix JSONB Nullable AgeCategory Materialization Bug - 2025-12-30
 

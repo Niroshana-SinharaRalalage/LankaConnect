@@ -132,14 +132,36 @@ export const useAuthStore = create<AuthState>()(
         onRehydrateStorage: () => (state) => {
           console.log('🔄 [AUTH STORE] Rehydration complete');
 
-          // Restore auth token to API client
-          if (state?.accessToken) {
+          // Phase 6A.56 FIX: Ensure isAuthenticated flag is correctly restored
+          // If we have user + accessToken, we should be authenticated
+          if (state?.user && state?.accessToken) {
             console.log('✅ [AUTH STORE] Restoring auth token to API client');
             apiClient.setAuthToken(state.accessToken);
+
+            // CRITICAL FIX: Explicitly set isAuthenticated to true
+            // The partialize config saves isAuthenticated, but we ensure it matches reality
+            if (!state.isAuthenticated) {
+              console.log('⚠️ [AUTH STORE] isAuthenticated was false despite having user+token, correcting...');
+              // Directly mutate state during hydration (safe in this callback)
+              (state as any).isAuthenticated = true;
+            }
+          } else if (!state?.user || !state?.accessToken) {
+            // No user or token → ensure isAuthenticated is false
+            if (state && state.isAuthenticated) {
+              console.log('⚠️ [AUTH STORE] isAuthenticated was true despite missing user/token, correcting...');
+              (state as any).isAuthenticated = false;
+            }
           }
 
           // Mark as hydrated
           state?.setHasHydrated(true);
+
+          console.log('📊 [AUTH STORE] Final state after hydration:', {
+            hasUser: !!state?.user,
+            hasToken: !!state?.accessToken,
+            isAuthenticated: state?.isAuthenticated,
+            _hasHydrated: true
+          });
         },
       }
     ),

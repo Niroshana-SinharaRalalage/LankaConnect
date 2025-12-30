@@ -78,18 +78,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
-  // Check if user is already registered for this event
-  // Only enable after hydration to prevent race condition with token restoration
+  // Phase 6A.56 FIX: Remove _hasHydrated dependency - causes registration status "flipping"
+  // The auth store now correctly restores isAuthenticated during hydration
+  // React Query hooks can execute immediately if user exists (token is already in API client)
   const { data: userRsvp, isLoading: isLoadingRsvp } = useUserRsvpForEvent(
-    (user?.userId && _hasHydrated) ? id : undefined
+    user?.userId ? id : undefined
   );
 
   // Fetch full registration details with attendee information
-  // Only fetch when auth is ready (after hydration)
-  // Fix: Always fetch if userRsvp exists so we can check the status
+  // Fetch details whenever userRsvp exists (even if cancelled status)
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
-    (user?.userId && _hasHydrated) ? id : undefined,
-    !!userRsvp // Fetch details whenever userRsvp exists (even if cancelled)
+    user?.userId ? id : undefined,
+    !!userRsvp
   );
 
   // Fix: Check registration status - user is only "registered" if status is NOT "Cancelled"

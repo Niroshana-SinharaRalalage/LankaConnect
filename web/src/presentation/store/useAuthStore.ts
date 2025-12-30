@@ -130,7 +130,73 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: state.isAuthenticated,
         }),
         onRehydrateStorage: () => (state) => {
-          console.log('🔄 [AUTH STORE] Rehydration complete');
+          console.log('🔄 [AUTH STORE] Rehydration starting...');
+          console.log('🔄 [AUTH STORE] Raw state from storage:', state);
+          console.log('🔄 [AUTH STORE] State type:', typeof state);
+          console.log('🔄 [AUTH STORE] State.user exists:', !!state?.user);
+          console.log('🔄 [AUTH STORE] State.accessToken exists:', !!state?.accessToken);
+
+          // Phase 6A.56 CRITICAL FIX: Zustand persist failing to deserialize
+          // Manually read from localStorage as fallback if:
+          // 1. State is undefined/null, OR
+          // 2. State exists but has no user/accessToken (deserialization failed)
+          const needsManualRestore = !state || (!state.user && !state.accessToken);
+
+          if (needsManualRestore) {
+            console.warn('⚠️ [AUTH STORE] Zustand deserialization failed, reading localStorage manually...');
+            try {
+              const rawData = localStorage.getItem('auth-storage');
+              console.log('🔍 [AUTH STORE] Raw localStorage data:', rawData?.substring(0, 100) + '...');
+
+              if (rawData) {
+                const parsed = JSON.parse(rawData);
+                console.log('🔍 [AUTH STORE] Parsed data:', { hasState: !!parsed.state, keys: Object.keys(parsed.state || {}) });
+
+                // Manually restore the state
+                if (parsed.state) {
+                  const { user, accessToken, refreshToken, isAuthenticated } = parsed.state;
+
+                  if (user && accessToken) {
+                    console.log('✅ [AUTH STORE] Manually restoring auth from localStorage');
+
+                    // Defer apiClient.setAuthToken() to avoid circular dependency
+                    // Set it after current call stack completes
+                    setTimeout(() => {
+                      try {
+                        apiClient.setAuthToken(accessToken);
+                        console.log('✅ [AUTH STORE] API client token set after initialization');
+                      } catch (error) {
+                        console.error('❌ [AUTH STORE] Failed to set API client token:', error);
+                      }
+                    }, 0);
+
+                    // Manually update the store immediately
+                    const currentState = useAuthStore.getState();
+                    currentState.user = user;
+                    currentState.accessToken = accessToken;
+                    currentState.refreshToken = refreshToken;
+                    currentState.isAuthenticated = true;
+                    currentState._hasHydrated = true;
+
+                    console.log('✅ [AUTH STORE] Manual restoration complete');
+                    console.log('📊 [AUTH STORE] Final state after manual restoration:', {
+                      hasUser: !!user,
+                      hasToken: !!accessToken,
+                      isAuthenticated: true,
+                      _hasHydrated: true
+                    });
+                    return;
+                  } else {
+                    console.log('⚠️ [AUTH STORE] localStorage has no user/token - user not logged in');
+                  }
+                }
+              } else {
+                console.log('⚠️ [AUTH STORE] localStorage is empty - user not logged in');
+              }
+            } catch (error) {
+              console.error('❌ [AUTH STORE] Failed to manually restore from localStorage:', error);
+            }
+          }
 
           // Phase 6A.56 FIX: Ensure isAuthenticated flag is correctly restored
           // If we have user + accessToken, we should be authenticated

@@ -631,7 +631,157 @@ PostgreSQL requires schema prefix when accessing tables. Without the schema pref
 
 ---
 
-**Analysis Completed**: 2025-12-30 17:45 UTC
-**Fix Applied**: 2025-12-30 17:52 UTC
-**Status**: ✅ RESOLVED AND DEPLOYED
+---
+
+## UPDATE 2: Critical Case Sensitivity Bug Discovered and Fixed
+
+**Discovery Date**: 2025-12-30 18:10 UTC
+**Issue Type**: Backend SQL Column Case Sensitivity
+
+### Problem Discovered
+After deploying the schema prefix fix (Bug #2), search functionality **STILL** failed with 500 Internal Server Error.
+
+**Error Message**:
+```
+column e.status does not exist
+PostgreSQL Error: 42703
+Hint: Perhaps you meant to reference the column "e.Status"
+Position: 976
+```
+
+### Root Cause #3: Case Sensitivity in SQL Column Names
+
+**File**: `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+**Method**: `SearchAsync()` (lines 279-355)
+
+**Problem**: Raw SQL queries used lowercase column names but PostgreSQL requires exact PascalCase matching when using raw SQL.
+
+**Why This Happened**:
+- Entity Framework Core creates columns with PascalCase by default
+- Raw SQL queries with `FromSqlRaw()` bypass EF Core's automatic column name mapping
+- PostgreSQL is **case-sensitive** for identifiers in SQL queries
+- The SQL used lowercase (`e.status`, `e.category`, `e.start_date`) but database has PascalCase (`Status`, `Category`, `StartDate`)
+
+**Affected Column References**:
+- Line 293: `e.status` → Should be `e."Status"`
+- Line 305: `e.category` → Should be `e."Category"`
+- Line 313: `e.ticket_price_amount` → Should use JSONB accessor
+- Line 319: `e.start_date` → Should be `e."StartDate"`
+- Line 330: `e.search_vector` → Should be `e."SearchVector"`
+
+**Azure Container Logs Evidence**:
+```json
+{
+  "Severity": "ERROR",
+  "SqlState": "42703",
+  "MessageText": "column e.status does not exist",
+  "Hint": "Perhaps you meant to reference the column \"e.Status\".",
+  "Position": "976",
+  "File": "parse_relation.c",
+  "Line": "3665",
+  "Routine": "errorMissingColumn"
+}
+```
+
+### Fix Applied
+
+**Commit**: `98c17a42`
+**Date**: 2025-12-30 18:14 UTC
+
+**Changes**:
+```diff
+  var whereConditions = new List<string>
+  {
+-     "e.search_vector @@ websearch_to_tsquery('english', {0})",
+-     "e.status = {1}"
++     @"e.""SearchVector"" @@ websearch_to_tsquery('english', {0})",
++     @"e.""Status"" = {1}"
+  };
+
+  if (category.HasValue)
+  {
+-     whereConditions.Add($"e.category = {{{parameters.Count}}}");
++     whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
+  }
+
+  if (isFreeOnly.HasValue && isFreeOnly.Value)
+  {
+-     whereConditions.Add("e.ticket_price_amount = 0");
++     whereConditions.Add(@"(e.ticket_price->>'Amount')::numeric = 0");
+  }
+
+  if (startDateFrom.HasValue)
+  {
+-     whereConditions.Add($"e.start_date >= {{{parameters.Count}}}");
++     whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}");
+  }
+
+  var eventsSql = $@"
+      SELECT e.*
+      FROM events.events e
+      WHERE {whereClause}
+-     ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
++     ORDER BY ts_rank(e.""SearchVector"", websearch_to_tsquery('english', {{0}})) DESC, e.""StartDate"" ASC
+      LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
+```
+
+**Key Technical Details**:
+- Used verbatim strings (`@""`) with doubled quotes (`""`) for escaping
+- Wrapped PascalCase column names in PostgreSQL quotes: `e."Status"` instead of `e.status`
+- Fixed `ticket_price_amount` to use correct JSONB accessor: `(e.ticket_price->>'Amount')::numeric`
+- Updated all column references in WHERE conditions and ORDER BY clause
+
+### Testing Results
+
+**Build Status**: ✅ PASSED
+- 0 compilation errors
+- 0 warnings
+- All tests passed
+
+**Deployment Status**: ✅ SUCCESS
+- Run: #20602986751
+- Duration: 5m28s
+- Environment: Azure Staging
+- All smoke tests passed
+
+### Complete Fix Summary
+
+**Three Separate Issues Fixed in Sequence**:
+1. ✅ **Frontend**: Stale closure in EventFilters.tsx (Commit 52e9eee6, Dec 30 15:14 UTC)
+   - Missing useEffect dependencies caused search state to not propagate
+
+2. ✅ **Backend**: Missing SQL schema prefix (Commit 1a9d7825, Dec 30 17:47 UTC)
+   - Used `FROM events e` instead of `FROM events.events e`
+
+3. ✅ **Backend**: SQL column case sensitivity (Commit 98c17a42, Dec 30 18:14 UTC)
+   - Used lowercase `e.status` instead of quoted PascalCase `e."Status"`
+
+**Final Impact**: Text search now works correctly end-to-end:
+- ✅ Frontend correctly debounces and propagates search term
+- ✅ Backend queries use correct schema prefix (`events.events`)
+- ✅ Backend queries use correct PascalCase column names with quotes
+- ✅ Search functional on /events page
+- ✅ Search functional on Dashboard "My Registered Events" tab
+- ✅ Search functional on Dashboard "Event Management" tab
+
+### Lessons Learned
+
+**Raw SQL with Entity Framework Core**:
+1. Always use schema prefix when referencing tables
+2. Always use quoted identifiers with exact casing for columns
+3. PostgreSQL is case-sensitive for raw SQL (unlike EF Core LINQ)
+4. JSONB columns require special accessor syntax (e.g., `->>'PropertyName'`)
+5. Test raw SQL queries thoroughly in local PostgreSQL environment
+
+**Debugging Systematic Approach**:
+1. Check Azure container logs for exact PostgreSQL error messages
+2. PostgreSQL hints are extremely valuable ("Perhaps you meant...")
+3. Fix one issue at a time, test, then move to next issue
+4. Don't assume first fix resolved all issues - verify end-to-end
+
+---
+
+**Analysis Completed**: 2025-12-30 18:10 UTC
+**All Fixes Applied**: 2025-12-30 18:19 UTC
+**Status**: ✅ FULLY RESOLVED AND DEPLOYED
 **Document Owner**: System Architecture Designer

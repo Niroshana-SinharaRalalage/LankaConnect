@@ -286,37 +286,37 @@ public class EventRepository : Repository<Event>, IEventRepository
         CancellationToken cancellationToken = default)
     {
         // Build the WHERE clause dynamically based on filters
-        // Phase 6A.58 FIX: Use quoted PascalCase column names for PostgreSQL case sensitivity
+        // Phase 6A.58 FIX: Use snake_case column names (EF Core default naming convention for PostgreSQL)
         var whereConditions = new List<string>
         {
-            @"e.""SearchVector"" @@ websearch_to_tsquery('english', {0})",
-            @"e.""Status"" = {1}" // Only search Published events
+            "e.search_vector @@ websearch_to_tsquery('english', {0})",
+            "CAST(e.status AS text) = {1}" // Only search Published events (cast enum stored as string to text)
         };
 
         var parameters = new List<object>
         {
             searchTerm,
-            (int)EventStatus.Published
+            EventStatus.Published.ToString() // Use string value for enum comparison
         };
 
         // Add category filter if provided
         if (category.HasValue)
         {
-            whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
-            parameters.Add((int)category.Value);
+            whereConditions.Add($"CAST(e.category AS text) = {{{parameters.Count}}}");
+            parameters.Add(category.Value.ToString());
         }
 
         // Add free-only filter if provided
         if (isFreeOnly.HasValue && isFreeOnly.Value)
         {
             // ticket_price is JSONB column, access Amount property
-            whereConditions.Add(@"(e.ticket_price->>'Amount')::numeric = 0");
+            whereConditions.Add("(e.ticket_price->>'Amount')::numeric = 0");
         }
 
         // Add start date filter if provided
         if (startDateFrom.HasValue)
         {
-            whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}");
+            whereConditions.Add($"e.start_date >= {{{parameters.Count}}}");
             parameters.Add(startDateFrom.Value);
         }
 
@@ -327,7 +327,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             SELECT e.*
             FROM events.events e
             WHERE {whereClause}
-            ORDER BY ts_rank(e.""SearchVector"", websearch_to_tsquery('english', {{0}})) DESC, e.""StartDate"" ASC
+            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.start_date ASC
             LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
 
         parameters.Add(limit);

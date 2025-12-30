@@ -58,11 +58,13 @@ export default function EventsPage() {
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
   const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
+  const [searchTerm, setSearchTerm] = useState<string>(''); // Phase 6A.58: Text search filter
 
   // Build filters for useEvents hook
   const filters = useMemo(() => {
     const dateRange = getDateRangeForOption(dateRangeOption);
     return {
+      searchTerm: searchTerm || undefined, // Phase 6A.58: Text search
       category: selectedCategory,
       userId: user?.userId,
       latitude: isAnonymous ? latitude ?? undefined : undefined,
@@ -71,7 +73,7 @@ export default function EventsPage() {
       state: selectedState,
       ...dateRange, // Spread startDateFrom and startDateTo from date range
     };
-  }, [selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
+  }, [searchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
@@ -143,13 +145,14 @@ export default function EventsPage() {
   };
 
   const clearFilters = () => {
+    setSearchTerm(''); // Phase 6A.58: Clear search term
     setSelectedCategory(undefined);
     setSelectedMetroIds([]);
     setSelectedState(undefined);
     setDateRangeOption('upcoming');
   };
 
-  const hasActiveFilters = selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
+  const hasActiveFilters = searchTerm !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
@@ -242,6 +245,21 @@ export default function EventsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Phase 6A.58: Search Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Search Events
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by event name, description..."
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                disabled={isLoading}
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Event Type Filter */}
               <div>

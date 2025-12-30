@@ -1,9 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-30 - Phase 6A.56: Zustand Persist Deserialization Fix - ✅ COMPLETE*
+*Last Updated: 2025-12-30 - Phase 6A.53: Registration 400 Error Fix - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.56: Fix Zustand Persist Deserialization Failure - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.53: Fix Registration 400 Error (Duplicate Email Verification) - ✅ COMPLETE
+
+### Phase 6A.53: Fix Member Email Verification System Registration 400 Error - 2025-12-30
+
+**Status**: ✅ **COMPLETE** (Backend fix deployed, API tested, migration applied)
+
+**Summary**: Fixed critical registration bug where new users got 400 Bad Request error during registration. Root cause was duplicate email verification token generation causing EF Core entity tracking conflict. User was created in database but no verification email sent.
+
+**Problem**:
+- User registration returns 400 Bad Request
+- User IS created in database with verification token
+- NO verification email sent to user
+- Frontend shows error but backend silently fails
+- Users unable to complete registration flow
+
+**Root Cause** ([RCA Analysis](../diagnostics/RCA_EXECUTIVE_SUMMARY.md)):
+1. **Double Token Generation**: `User.Create()` generates token automatically (Phase 6A.53 feature)
+2. **First CommitAsync()**: Succeeds → user saved + `MemberVerificationRequestedEvent` dispatched
+3. **Redundant SendEmailVerificationCommand**: `RegisterUserHandler` explicitly called command AFTER save
+4. **Second CommitAsync()**: Attempted on already-tracked entity → EF Core tracking conflict
+5. **Exception Caught**: Returns 400 to frontend, but user already in database
+
+**Solution**:
+1. **Removed Redundant Code** ([RegisterUserHandler.cs:111-121](../src/LankaConnect.Application/Auth/Commands/RegisterUser/RegisterUserHandler.cs#L111-L121)):
+   - Deleted explicit `SendEmailVerificationCommand` call (lines 115-124)
+   - Email now sent ONLY via domain event handler automatically
+   - Single `CommitAsync()` call → dispatches domain events correctly
+
+2. **Updated Tests** ([RegisterUserHandlerTests.cs](../tests/LankaConnect.Application.Tests/Auth/RegisterUserHandlerTests.cs)):
+   - Fixed 2 tests to verify NEW domain event-based flow
+   - Tests now verify `CommitAsync()` called (triggers events)
+   - Removed verification of explicit MediatR `SendEmailVerificationCommand`
+
+3. **Email Template Migration** ([20251229231742](../src/LankaConnect.Infrastructure/Data/Migrations/20251229231742_Phase6A53Fix3_RevertToCorrectTemplateNoLogo.cs)):
+   - Applied clean email template (no decorative stars ✦, no logo)
+   - Matches event registration email layout exactly
+   - Verified in staging database
+
+**Files Modified**:
+- [RegisterUserHandler.cs:111-121](../src/LankaConnect.Application/Auth/Commands/RegisterUser/RegisterUserHandler.cs#L111-L121) - Removed duplicate send
+- [RegisterUserHandlerTests.cs:398-456](../tests/LankaConnect.Application.Tests/Auth/RegisterUserHandlerTests.cs#L398-L456) - Updated 2 tests
+- [Migration 20251229231742](../src/LankaConnect.Infrastructure/Data/Migrations/20251229231742_Phase6A53Fix3_RevertToCorrectTemplateNoLogo.cs) - Clean email template
+
+**Build & Tests**: ✅ All 1147 tests passing, 0 compilation errors
+
+**API Testing Results** ✅:
+1. ✅ **Registration API**: HTTP 201 Created (not 400 Bad Request)
+   ```bash
+   POST /api/auth/register
+   Response: {"userId":"3cb86d46-7c54-47e2-b1b5-f803e4aca509","emailVerificationRequired":true}
+   ```
+2. ✅ **User Created**: Verified in database with verification token
+3. ✅ **Email Verification Enforced**: Login blocked until email verified (correct behavior)
+4. ✅ **Migration Applied**: `20251229231742_Phase6A53Fix3_RevertToCorrectTemplateNoLogo` in database
+
+**Deployment**:
+- **Commit**: dbfb0f9c - "fix(phase-6a53): Update RegisterUserHandlerTests for domain event-based email sending"
+- **Deployed**: 2025-12-30 15:19 UTC
+- **Status**: ✅ SUCCESS on Azure staging
+
+**Commits**:
+1. f122da76 - "fix(phase-6a53): Remove duplicate email verification send causing 400 error"
+2. dbfb0f9c - "fix(phase-6a53): Update RegisterUserHandlerTests for domain event-based email sending"
+3. 41e989d1 - "chore: Retry deployment for Phase 6A.53 registration fix"
+
+**Next Steps for User**:
+- ✅ Backend fix deployed and API tested
+- ⏳ **UI Testing Required**: Test registration flow in browser (localhost:3000 → Azure staging API)
+- ⏳ **Email Verification**: Check if verification emails are sent and use correct template
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.56: Fix Zustand Persist Deserialization Failure - ✅ COMPLETE
 
 ### Phase 6A.56: Fix Zustand Persist Deserialization Causing Auth State Loss - 2025-12-30
 

@@ -4,6 +4,7 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Repositories;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Queries.GetTicket;
@@ -19,6 +20,7 @@ public record GetTicketQuery(Guid EventId, Guid RegistrationId, Guid UserId) : I
 /// </summary>
 public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<TicketDto>>
 {
+    private readonly IApplicationDbContext _context;
     private readonly ITicketRepository _ticketRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventRepository _eventRepository;
@@ -27,6 +29,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
     private readonly ILogger<GetTicketQueryHandler> _logger;
 
     public GetTicketQueryHandler(
+        IApplicationDbContext context,
         ITicketRepository ticketRepository,
         IRegistrationRepository registrationRepository,
         IEventRepository eventRepository,
@@ -34,6 +37,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
         ITicketService ticketService,
         ILogger<GetTicketQueryHandler> logger)
     {
+        _context = context;
         _ticketRepository = ticketRepository;
         _registrationRepository = registrationRepository;
         _eventRepository = eventRepository;
@@ -47,16 +51,35 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
         _logger.LogInformation("Getting ticket for registration {RegistrationId}, event {EventId}, user {UserId}",
             request.RegistrationId, request.EventId, request.UserId);
 
-        // Get registration and verify ownership
-        var registration = await _registrationRepository.GetByIdAsync(request.RegistrationId, cancellationToken);
-        if (registration == null)
+        // Phase 6A.55: Query registration without materializing Attendees (avoid null AgeCategory crash)
+        // Use direct query to get only what we need for authorization check
+        var registrationInfo = await _context.Registrations
+            .AsNoTracking()
+            .Where(r => r.Id == request.RegistrationId)
+            .Select(r => new
+            {
+                r.UserId,
+                r.PaymentStatus,
+                AttendeeCount = r.Attendees.Count(),
+                HasDetailedAttendees = r.Attendees.Any(),
+                // Phase 6A.55: Project attendees to nullable DTO to avoid materialization crash
+                Attendees = r.Attendees.Select(a => new TicketAttendeeDto
+                {
+                    Name = a.Name,
+                    AgeCategory = a.AgeCategory, // DTO is nullable (Phase 6A.48)
+                    Gender = a.Gender
+                }).ToList()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (registrationInfo == null)
         {
             _logger.LogWarning("Registration {RegistrationId} not found", request.RegistrationId);
             return Result<TicketDto>.Failure("Registration not found");
         }
 
         // Verify the user owns this registration
-        if (registration.UserId != request.UserId)
+        if (registrationInfo.UserId != request.UserId)
         {
             _logger.LogWarning("User {UserId} does not own registration {RegistrationId}",
                 request.UserId, request.RegistrationId);
@@ -72,7 +95,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
                 request.RegistrationId);
 
             // Check if payment is complete before generating
-            if (registration.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
+            if (registrationInfo.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
             {
                 _logger.LogWarning("Cannot generate ticket - payment not completed for registration {RegistrationId}",
                     request.RegistrationId);
@@ -111,14 +134,9 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
         var qrCodeBytes = _qrCodeService.GenerateQrCode(ticket.QrCodeData);
         var qrCodeBase64 = Convert.ToBase64String(qrCodeBytes);
 
-        // Map attendees
-        var attendees = registration.HasDetailedAttendees()
-            ? registration.Attendees.Select(a => new TicketAttendeeDto
-            {
-                Name = a.Name,
-                AgeCategory = a.AgeCategory,
-                Gender = a.Gender
-            }).ToList()
+        // Phase 6A.55: Attendees already projected to DTO (safe from null AgeCategory)
+        var attendees = registrationInfo.HasDetailedAttendees
+            ? registrationInfo.Attendees
             : null;
 
         var ticketDto = new TicketDto
@@ -139,7 +157,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
             EventLocation = @event?.Location != null
                 ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}"
                 : "Online Event",
-            AttendeeCount = registration.GetAttendeeCount(),
+            AttendeeCount = registrationInfo.AttendeeCount,
             Attendees = attendees
         };
 

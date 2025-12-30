@@ -36,6 +36,7 @@ import { approvalsRepository } from '@/infrastructure/api/repositories/approvals
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
 import { BadgeManagement } from '@/presentation/components/features/badges';
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
+import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 
@@ -52,6 +53,21 @@ export default function DashboardPage() {
   const [createdEvents, setCreatedEvents] = useState<EventDto[]>([]);
   const [loadingRegistered, setLoadingRegistered] = useState(false);
   const [loadingCreated, setLoadingCreated] = useState(false);
+
+  // Phase 6A.58: Filter state for both tabs
+  const [registeredFilters, setRegisteredFilters] = useState<EventFiltersState>({
+    searchTerm: '',
+    category: null,
+    dateRange: 'upcoming',
+    metroAreaIds: [],
+  });
+
+  const [createdFilters, setCreatedFilters] = useState<EventFiltersState>({
+    searchTerm: '',
+    category: null,
+    dateRange: 'all',
+    metroAreaIds: [],
+  });
 
   // State for admin approvals
   const [pendingApprovals, setPendingApprovals] = useState<PendingRoleUpgradeDto[]>([]);
@@ -83,13 +99,15 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load registered events
+  // Phase 6A.58: Load registered events with filters
   useEffect(() => {
     const loadRegisteredEvents = async () => {
       try {
         setLoadingRegistered(true);
         // Epic 1: Backend now returns full EventDto[] instead of RsvpDto[]
-        const events = await eventsRepository.getUserRsvps();
+        // Phase 6A.58: Pass filters to getUserRsvps
+        const apiParams = filtersToApiParams(registeredFilters);
+        const events = await eventsRepository.getUserRsvps(apiParams);
         setRegisteredEvents(events);
       } catch (error) {
         console.error('Error loading registered events:', error);
@@ -101,14 +119,16 @@ export default function DashboardPage() {
     if (user) {
       loadRegisteredEvents();
     }
-  }, [user]);
+  }, [user, registeredFilters]); // Phase 6A.58: Re-fetch when filters change
 
-  // Load created events (for Event Organizers and Admins)
+  // Phase 6A.58: Load created events (for Event Organizers and Admins) with filters
   useEffect(() => {
     const loadCreatedEvents = async () => {
       try {
         setLoadingCreated(true);
-        const events = await eventsRepository.getUserCreatedEvents();
+        // Phase 6A.58: Pass filters to getUserCreatedEvents
+        const apiParams = filtersToApiParams(createdFilters);
+        const events = await eventsRepository.getUserCreatedEvents(apiParams);
         setCreatedEvents(events);
       } catch (error) {
         console.error('Error loading created events:', error);
@@ -120,7 +140,7 @@ export default function DashboardPage() {
     if (user && (user.role === UserRole.EventOrganizer || isAdmin(user.role as UserRole))) {
       loadCreatedEvents();
     }
-  }, [user]);
+  }, [user, createdFilters]); // Phase 6A.58: Re-fetch when filters change
 
   // Load pending approvals (for Admins only)
   useEffect(() => {
@@ -367,28 +387,54 @@ export default function DashboardPage() {
                         label: 'My Registered Events',
                         icon: Users,
                         content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                            registeredEventIds={registeredEventIds}
-                          />
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={registeredEvents}
+                              isLoading={loadingRegistered}
+                              emptyMessage="You haven't registered for any events yet"
+                              onEventClick={handleEventClick}
+                              onCancelClick={handleCancelRegistration}
+                              registeredEventIds={registeredEventIds}
+                            />
+                          </div>
                         ),
                       },
                       {
                         id: 'created',
-                        label: 'My Created Events',
+                        label: 'Event Management',
                         icon: FolderOpen,
                         content: (
-                          <EventsList
-                            events={createdEvents}
-                            isLoading={loadingCreated}
-                            emptyMessage="You haven't created any events yet"
-                            onEventClick={handleManageEventClick}
-                            registeredEventIds={registeredEventIds}
-                          />
+                          <div>
+                            {/* Phase 6A.58: Event Filters for Event Management */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={createdFilters}
+                                onFiltersChange={setCreatedFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={createdEvents}
+                              isLoading={loadingCreated}
+                              emptyMessage="You haven't created any events yet"
+                              onEventClick={handleManageEventClick}
+                              registeredEventIds={registeredEventIds}
+                            />
+                          </div>
                         ),
                       },
                       {
@@ -444,28 +490,54 @@ export default function DashboardPage() {
                         label: 'My Registered Events',
                         icon: Users,
                         content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                            registeredEventIds={registeredEventIds}
-                          />
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={registeredEvents}
+                              isLoading={loadingRegistered}
+                              emptyMessage="You haven't registered for any events yet"
+                              onEventClick={handleEventClick}
+                              onCancelClick={handleCancelRegistration}
+                              registeredEventIds={registeredEventIds}
+                            />
+                          </div>
                         ),
                       },
                       {
                         id: 'created',
-                        label: 'My Created Events',
+                        label: 'Event Management',
                         icon: FolderOpen,
                         content: (
-                          <EventsList
-                            events={createdEvents}
-                            isLoading={loadingCreated}
-                            emptyMessage="You haven't created any events yet"
-                            onEventClick={handleManageEventClick}
-                            registeredEventIds={registeredEventIds}
-                          />
+                          <div>
+                            {/* Phase 6A.58: Event Filters for Event Management */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={createdFilters}
+                                onFiltersChange={setCreatedFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={createdEvents}
+                              isLoading={loadingCreated}
+                              emptyMessage="You haven't created any events yet"
+                              onEventClick={handleManageEventClick}
+                              registeredEventIds={registeredEventIds}
+                            />
+                          </div>
                         ),
                       },
                       {
@@ -503,14 +575,27 @@ export default function DashboardPage() {
                         label: 'My Registered Events',
                         icon: Users,
                         content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet. Browse events to join!"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                            registeredEventIds={registeredEventIds}
-                          />
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={registeredEvents}
+                              isLoading={loadingRegistered}
+                              emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                              onEventClick={handleEventClick}
+                              onCancelClick={handleCancelRegistration}
+                              registeredEventIds={registeredEventIds}
+                            />
+                          </div>
                         ),
                       },
                       {

@@ -33,21 +33,60 @@ public class GetEventAttendeesQueryHandler
             return Result<EventAttendeesResponse>.Failure("Event not found");
         }
 
-        // Single query with eager loading to avoid N+1
-        var registrations = await _context.Registrations
+        // Phase 6A.55: Use direct LINQ projection to avoid materializing JSONB with null AgeCategory
+        // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
+        // This pattern projects directly to DTO, allowing nullable AgeCategory to be handled gracefully
+        var attendeeDtos = await _context.Registrations
             .AsNoTracking()
-            .Include(r => r.Attendees)
-            .Include(r => r.Contact)
-            .Include(r => r.TotalPrice)
             .Where(r => r.EventId == request.EventId)
             .Where(r => r.Status != RegistrationStatus.Cancelled &&
                        r.Status != RegistrationStatus.Refunded)
             .OrderBy(r => r.CreatedAt)
-            .ToListAsync(cancellationToken);
+            .Select(r => new EventAttendeeDto
+            {
+                RegistrationId = r.Id,
+                UserId = r.UserId,
+                Status = r.Status,
+                PaymentStatus = r.PaymentStatus,
+                CreatedAt = r.CreatedAt,
 
-        // Get ticket information separately (if Ticket entity exists)
-        // For now, we'll extract from QR codes if available
-        var attendeeDtos = registrations.Select(r => MapToDto(r)).ToList();
+                ContactEmail = r.Contact != null ? r.Contact.Email : string.Empty,
+                ContactPhone = r.Contact != null ? r.Contact.PhoneNumber : string.Empty,
+                ContactAddress = r.Contact != null ? r.Contact.Address : null,
+
+                // Phase 6A.55: Direct LINQ projection handles null AgeCategory gracefully
+                // DTO has nullable AgeCategory (Phase 6A.48), so null values don't crash
+                Attendees = r.Attendees.Select(a => new AttendeeDetailsDto
+                {
+                    Name = a.Name,
+                    AgeCategory = a.AgeCategory, // DTO is nullable (Phase 6A.48)
+                    Gender = a.Gender
+                }).ToList(),
+
+                TotalAttendees = r.Attendees.Count(),
+
+                // Phase 6A.55: Count only non-null Adult/Child values
+                // Null values are excluded from counts (safer than guessing)
+                AdultCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult),
+                ChildCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Child),
+
+                // Gender distribution with full names (Phase 6A.45 fix - avoid Excel formula interpretation)
+                GenderDistribution = string.Join(", ",
+                    r.Attendees
+                        .Where(a => a.Gender.HasValue)
+                        .GroupBy(a => a.Gender!.Value)
+                        .Select(g => $"{g.Count()} {g.Key}")
+                ),
+
+                TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
+                Currency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
+
+                // Ticket info - will be enhanced when Ticket entity integration is complete
+                TicketCode = null,
+                QrCodeData = null,
+                HasTicket = false
+            })
+            .ToListAsync(cancellationToken);
 
         return Result<EventAttendeesResponse>.Success(new EventAttendeesResponse
         {
@@ -60,9 +99,12 @@ public class GetEventAttendeesQueryHandler
         });
     }
 
-    private EventAttendeeDto MapToDto(Registration registration)
+    // Phase 6A.55 NOTE: MapToDto method removed and replaced with direct LINQ projection above
+    // This avoids materializing domain entities with null AgeCategory values
+    private EventAttendeeDto MapToDto_REMOVED_PHASE_6A55(Registration registration)
     {
-        // Calculate adult/child counts
+        // Phase 6A.55: This method caused crashes when AgeCategory was null in JSONB
+        // Lines below would throw InvalidOperationException during .Include() materialization
         var adultCount = registration.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult);
         var childCount = registration.Attendees.Count(a => a.AgeCategory == AgeCategory.Child);
 

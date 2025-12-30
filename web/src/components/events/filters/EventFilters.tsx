@@ -81,14 +81,14 @@ export function EventFilters({
     if (debouncedSearchTerm !== filters.searchTerm) {
       onFiltersChange({ ...filters, searchTerm: debouncedSearchTerm });
     }
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, filters, onFiltersChange]); // Phase 6A.58 Fix: Add all dependencies to prevent stale closure
 
   // Sync local search input with external filter changes
   useEffect(() => {
     if (filters.searchTerm !== searchInput && filters.searchTerm !== debouncedSearchTerm) {
       setSearchInput(filters.searchTerm);
     }
-  }, [filters.searchTerm]);
+  }, [filters.searchTerm, searchInput, debouncedSearchTerm]); // Phase 6A.58 Fix: Add all dependencies to prevent stale closure
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);

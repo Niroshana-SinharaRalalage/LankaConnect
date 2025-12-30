@@ -1,6 +1,7 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/(auth)/register/page": "app/(auth)/register/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
   "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/events/page": "app/events/page.js",

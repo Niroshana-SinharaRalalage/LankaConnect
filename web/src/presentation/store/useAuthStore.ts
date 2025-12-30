@@ -159,32 +159,34 @@ export const useAuthStore = create<AuthState>()(
                   if (user && accessToken) {
                     console.log('✅ [AUTH STORE] Manually restoring auth from localStorage');
 
-                    // Defer apiClient.setAuthToken() to avoid circular dependency
-                    // Set it after current call stack completes
+                    // Defer both apiClient.setAuthToken() AND store update to avoid circular dependency
+                    // Must wait for store initialization to complete before calling setState
                     setTimeout(() => {
                       try {
                         apiClient.setAuthToken(accessToken);
                         console.log('✅ [AUTH STORE] API client token set after initialization');
+
+                        // Now update the store state
+                        useAuthStore.setState({
+                          user,
+                          accessToken,
+                          refreshToken,
+                          isAuthenticated: true,
+                          _hasHydrated: true,
+                        });
+
+                        console.log('✅ [AUTH STORE] Manual restoration complete');
+                        console.log('📊 [AUTH STORE] Final state after manual restoration:', {
+                          hasUser: !!user,
+                          hasToken: !!accessToken,
+                          isAuthenticated: true,
+                          _hasHydrated: true
+                        });
                       } catch (error) {
-                        console.error('❌ [AUTH STORE] Failed to set API client token:', error);
+                        console.error('❌ [AUTH STORE] Failed to manually restore:', error);
                       }
                     }, 0);
 
-                    // Manually update the store immediately
-                    const currentState = useAuthStore.getState();
-                    currentState.user = user;
-                    currentState.accessToken = accessToken;
-                    currentState.refreshToken = refreshToken;
-                    currentState.isAuthenticated = true;
-                    currentState._hasHydrated = true;
-
-                    console.log('✅ [AUTH STORE] Manual restoration complete');
-                    console.log('📊 [AUTH STORE] Final state after manual restoration:', {
-                      hasUser: !!user,
-                      hasToken: !!accessToken,
-                      isAuthenticated: true,
-                      _hasHydrated: true
-                    });
                     return;
                   } else {
                     console.log('⚠️ [AUTH STORE] localStorage has no user/token - user not logged in');

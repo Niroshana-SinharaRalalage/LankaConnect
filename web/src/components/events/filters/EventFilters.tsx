@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SearchInput } from './SearchInput';
 import { CategoryFilter } from './CategoryFilter';
@@ -76,19 +76,27 @@ export function EventFilters({
   // Debounce search term to avoid excessive API calls
   const debouncedSearchTerm = useDebounce(searchInput, 300);
 
+  // Ref to track previous search term to avoid unnecessary updates
+  const prevSearchTermRef = useRef(filters.searchTerm);
+
   // Update parent when debounced search term changes
+  // Phase 6A.58 FLICKERING FIX: Only depend on debouncedSearchTerm to avoid re-render loop
   useEffect(() => {
-    if (debouncedSearchTerm !== filters.searchTerm) {
+    // Only update if debounced term actually changed from what parent has
+    if (debouncedSearchTerm !== prevSearchTermRef.current) {
+      prevSearchTermRef.current = debouncedSearchTerm;
       onFiltersChange({ ...filters, searchTerm: debouncedSearchTerm });
     }
-  }, [debouncedSearchTerm, filters, onFiltersChange]); // Phase 6A.58 Fix: Add all dependencies to prevent stale closure
+  }, [debouncedSearchTerm]); // ✅ ONLY depend on debouncedSearchTerm
 
   // Sync local search input with external filter changes
+  // Phase 6A.58 FLICKERING FIX: Only update when external change differs from local state
   useEffect(() => {
     if (filters.searchTerm !== searchInput && filters.searchTerm !== debouncedSearchTerm) {
       setSearchInput(filters.searchTerm);
+      prevSearchTermRef.current = filters.searchTerm;
     }
-  }, [filters.searchTerm, searchInput, debouncedSearchTerm]); // Phase 6A.58 Fix: Add all dependencies to prevent stale closure
+  }, [filters.searchTerm]); // ✅ ONLY depend on filters.searchTerm
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);

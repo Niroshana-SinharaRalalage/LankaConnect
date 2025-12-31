@@ -172,6 +172,19 @@ export function EventsList({
     );
   }
 
+  // Phase 6A.59: Debug logging for event status
+  React.useEffect(() => {
+    if (showManagementActions && events.length > 0) {
+      console.log('🔍 [EventsList] Event statuses:', events.map(e => ({
+        title: e.title,
+        status: e.status,
+        statusName: Object.keys(EventStatus).find(key => EventStatus[key as keyof typeof EventStatus] === e.status),
+        currentRegistrations: e.currentRegistrations,
+        displayLabel: e.displayLabel
+      })));
+    }
+  }, [events, showManagementActions]);
+
   return (
     <div className="space-y-4">
       {events.map((event) => (
@@ -306,8 +319,8 @@ export function EventsList({
                   </Button>
                 )}
 
-                {/* Publish Event - Only for Draft events */}
-                {event.status === EventStatus.Draft && onPublishEvent && (
+                {/* Publish Event - Only for unpublished events (Draft, Archived) */}
+                {(event.status === EventStatus.Draft || event.status === EventStatus.Archived) && onPublishEvent && (
                   <Button
                     onClick={(e) => handlePublishClick(event.id, e)}
                     disabled={publishingEventId === event.id}
@@ -319,8 +332,11 @@ export function EventsList({
                   </Button>
                 )}
 
-                {/* Cancel Event - For Draft or Published events */}
-                {(event.status === EventStatus.Draft || event.status === EventStatus.Published) && onCancelEvent && (
+                {/* Cancel Event - For Draft, Archived, or Published events */}
+                {(event.status === EventStatus.Draft ||
+                  event.status === EventStatus.Archived ||
+                  event.status === EventStatus.Published ||
+                  event.status === EventStatus.Active) && onCancelEvent && (
                   <Button
                     onClick={(e) => handleCancelEventClick(event.id, e)}
                     disabled={cancellingMgmtEventId === event.id}
@@ -332,8 +348,10 @@ export function EventsList({
                   </Button>
                 )}
 
-                {/* Delete Event - For Draft or Cancelled events with 0 registrations */}
-                {(event.status === EventStatus.Draft || event.status === EventStatus.Cancelled) &&
+                {/* Delete Event - For Draft, Archived, or Cancelled events with 0 registrations */}
+                {(event.status === EventStatus.Draft ||
+                  event.status === EventStatus.Archived ||
+                  event.status === EventStatus.Cancelled) &&
                   event.currentRegistrations === 0 &&
                   onDeleteEvent && (
                     <Button

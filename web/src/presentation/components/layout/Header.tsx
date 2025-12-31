@@ -31,6 +31,7 @@ export function Header({ className = '' }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState(''); // Phase 6A.59: Search input state
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
@@ -138,6 +139,16 @@ export function Header({ className = '' }: HeaderProps) {
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
                   <input
                     type="text"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchValue.trim()) {
+                        // Phase 6A.59: Navigate to search page with query
+                        router.push(`/search?q=${encodeURIComponent(searchValue.trim())}&type=events`);
+                        setSearchOpen(false);
+                        setSearchValue('');
+                      }
+                    }}
                     placeholder="Search events, forums, businesses..."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
                     autoFocus

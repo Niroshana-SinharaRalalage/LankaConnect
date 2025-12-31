@@ -23,6 +23,7 @@
   "/events/payment/cancel/page": "app/events/payment/cancel/page.js",
   "/events/payment/success/page": "app/events/payment/success/page.js",
   "/page": "app/page.js",
+  "/search/page": "app/search/page.js",
   "/templates/page": "app/templates/page.js",
   "/test-events/page": "app/test-events/page.js",
   "/test-simple/page": "app/test-simple/page.js"

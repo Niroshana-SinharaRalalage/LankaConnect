@@ -33,3 +33,17 @@ export interface ApiResponse<T> {
   success: boolean;
   message?: string;
 }
+
+/**
+ * Generic paginated list container (C# PaginatedList<T> format)
+ * Matches backend PaginatedList<T> from LankaConnect.Application.Common.Models
+ * Used by Business search and other paginated endpoints
+ */
+export interface PaginatedList<T> {
+  items: readonly T[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}

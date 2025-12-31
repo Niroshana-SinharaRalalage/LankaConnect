@@ -109,8 +109,10 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByEmailVerificationTokenAsync(string token, CancellationToken cancellationToken = default)
     {
+        // Phase 6A.53: Remove AsNoTracking to enable email verification updates
+        // Email verification endpoint needs to update IsEmailVerified flag
+        // AsNoTracking prevents EF Core from tracking these changes
         return await _dbSet
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, cancellationToken);
     }
 

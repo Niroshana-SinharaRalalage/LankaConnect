@@ -1,9 +1,122 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-30 - Phase 6A.53: Registration 400 Error Fix - ✅ COMPLETE*
+*Last Updated: 2025-12-30 - Phase 6A.59: Event Cancel/Delete Buttons - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.53: Fix Registration 400 Error (Duplicate Email Verification) - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.59: Event Cancel and Delete Buttons - ✅ COMPLETE
+
+### Phase 6A.59: Add Cancel and Delete Event Functionality to Event Management Page - 2025-12-30
+
+**Status**: ✅ **COMPLETE** (Backend security fix + frontend UI implemented, builds passing)
+
+**Summary**: Added Cancel and Delete event buttons to the event management page (`/events/{id}/manage`) with proper business rules, security checks, and professional UX. Cancel allows organizers to notify attendees with a reason (email sent automatically), while Delete permanently removes Draft or Cancelled events with 0 registrations.
+
+**Features Delivered**:
+
+1. **Backend Security Enhancement**:
+   - ✅ Fixed security vulnerability: Delete endpoint now verifies event owner (CRITICAL)
+   - ✅ Expanded Cancel business rule: Now allows cancelling Draft events (organizer changes mind)
+   - ✅ Delete command updated to accept UserId parameter
+   - ✅ Owner verification: `if (@event.OrganizerId != request.UserId)` returns failure
+
+2. **Frontend Cancel Event Button**:
+   - ✅ Professional modal with amber warning theme (#F59E0B)
+   - ✅ Required cancellation reason (min 10 chars, max 500 chars)
+   - ✅ Character counter with real-time validation
+   - ✅ Shows registration count for context
+   - ✅ Calls `POST /api/events/{id}/cancel` → sends email to all attendees
+   - ✅ Visibility: Available for Draft OR Published events (not Cancelled)
+
+3. **Frontend Delete Event Button**:
+   - ✅ Red destructive variant for clear danger signal
+   - ✅ Double-confirmation workflow using window.confirm
+   - ✅ First confirmation shows event title + permanent deletion warning
+   - ✅ Second confirmation is final chance to cancel
+   - ✅ Calls `DELETE /api/events/{id}` → permanent database removal
+   - ✅ Redirects to /dashboard after successful deletion
+   - ✅ Visibility: Available for Draft OR Cancelled events with 0 registrations
+
+**Business Rules Enforced**:
+- **Cancel**:
+  - Allowed for: Published OR Draft events (Phase 6A.59 enhancement)
+  - Not allowed for: Cancelled, Completed, or Archived events
+  - Requires: Cancellation reason (min 10 characters)
+  - Side effect: Sends email to all registered attendees
+
+- **Delete**:
+  - Allowed for: Draft OR Cancelled events with 0 registrations
+  - Not allowed for: Published, Completed, or Archived events
+  - Not allowed if: Event has any registrations (currentRegistrations > 0)
+  - Requires: Event owner verification (Phase 6A.59 security fix)
+  - Side effect: Permanent database removal (cascade delete sign-up lists)
+
+**Files Modified**:
+
+Backend (Commit a4a398e5):
+- [DeleteEventCommand.cs](../src/LankaConnect.Application/Events/Commands/DeleteEvent/DeleteEventCommand.cs) - Added UserId parameter
+- [DeleteEventCommandHandler.cs:26-28](../src/LankaConnect.Application/Events/Commands/DeleteEvent/DeleteEventCommandHandler.cs#L26-L28) - Owner verification
+- [EventsController.cs:345-354](../src/LankaConnect.API/Controllers/EventsController.cs#L345-L354) - Extract authenticated user
+- [Event.cs:162-179](../src/LankaConnect.Domain/Events/Event.cs#L162-L179) - Allow cancelling Draft events
+
+Frontend (Commit c64f0e83):
+- [page.tsx](../web/src/app/events/[id]/manage/page.tsx) - Cancel/Delete buttons + modal + handlers
+
+**Build & Tests**: ✅ Frontend build passing (0 TypeScript errors), backend builds successfully
+
+**UX Details**:
+- Cancel button: Amber color (#F59E0B) - warning severity, not destructive
+- Delete button: Red destructive variant - clear danger signal
+- Modal validation: Disabled submit until 10+ character reason entered
+- Loading states: `isCancelling`, `isDeleting` prevent double-clicks
+- Error handling: User-friendly error messages displayed below buttons
+- Character counter: Real-time feedback (e.g., "47/500 characters")
+- Registration count display: "This will cancel the event and notify all 12 registered attendees"
+
+**API Integration**:
+- `POST /api/events/{id}/cancel` - Already implemented with EventCancelledEventHandler
+- `DELETE /api/events/{id}` - Now includes owner verification (Phase 6A.59)
+- Email template: Uses existing "event-cancelled" template from database
+- Repository methods: `eventsRepository.cancelEvent(id, reason)` and `eventsRepository.deleteEvent(id)`
+
+**Security Fix**:
+Before Phase 6A.59, the Delete endpoint had NO owner verification:
+```csharp
+// ❌ BEFORE: Anyone could delete any Draft/Cancelled event
+public record DeleteEventCommand(Guid EventId) : ICommand;
+```
+
+After Phase 6A.59:
+```csharp
+// ✅ AFTER: Only event owner can delete
+public record DeleteEventCommand(Guid EventId, Guid UserId) : ICommand;
+
+// Handler checks ownership:
+if (@event.OrganizerId != request.UserId)
+    return Result.Failure("Only the event organizer can delete this event");
+```
+
+**Deployment**:
+- **Backend Commit**: a4a398e5 - "feat(phase-6a59): Add owner verification to delete event + allow cancelling draft events"
+- **Frontend Commit**: c64f0e83 - "feat(phase-6a59): Add Cancel and Delete event buttons to event management UI"
+- **Status**: ✅ Builds passing, ready for deployment
+
+**Testing Checklist** (For User):
+- [ ] Cancel Draft event → Status changes to Cancelled, no emails sent (0 registrations)
+- [ ] Cancel Published event → Status changes to Cancelled, emails sent to all attendees
+- [ ] Delete Draft event with 0 registrations → Event removed, redirect to dashboard
+- [ ] Delete Cancelled event with 0 registrations → Event removed
+- [ ] Delete button hidden when registrations > 0
+- [ ] Cancel button validation (< 10 chars shows error)
+- [ ] Double confirmation for Delete works correctly
+
+**Known Limitations**:
+- Email template for cancellation uses existing database template (may need styling review)
+- No undo functionality for Delete (permanent action)
+- No bulk cancel/delete (must be done one at a time)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.53: Fix Registration 400 Error (Duplicate Email Verification) - ✅ COMPLETE
 
 ### Phase 6A.53: Fix Member Email Verification System Registration 400 Error - 2025-12-30
 

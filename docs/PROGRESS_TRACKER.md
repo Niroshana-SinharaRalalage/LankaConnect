@@ -1,11 +1,119 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2025-12-30 - Phase 6A.53: Token-Only Email Verification - ✅ COMPLETE*
+*Last Updated: 2025-12-31 - Phase 6A.59: Landing Page Unified Search - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.53: Token-Only Email Verification System - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.59: Landing Page Unified Search - ✅ COMPLETE
 
-### Phase 6A.53: Member Email Verification System - Token-Only Implementation - 2025-12-30
+### Phase 6A.59: Landing Page Unified Search Implementation - 2025-12-31
+
+**Status**: ✅ **COMPLETE** (Header search wired, search page with tabs, Business API integration, build verified, pushed to develop)
+
+**Summary**: Implemented unified search functionality accessible from the Header that searches across Events and Business entities with a tabbed results interface. Events tab shows real search results using PostgreSQL full-text search, Business tab displays results from Business API, while Forums and Marketplace tabs show "Coming Soon" placeholders for future implementation.
+
+**Features Delivered**:
+
+1. **Business TypeScript Types & Repository**:
+   - ✅ Created complete Business TypeScript types matching backend DTOs
+   - ✅ BusinessCategory enum (16 values: Restaurant, Grocery, Services, etc.)
+   - ✅ BusinessStatus enum (Active, Inactive, Suspended, PendingApproval)
+   - ✅ BusinessDto interface with all fields (name, description, contact, location, rating, etc.)
+   - ✅ SearchBusinessesRequest interface for API calls
+   - ✅ BusinessesRepository with search() method
+   - ✅ PaginatedList common type added for C# pagination format
+
+2. **Header Search Integration**:
+   - ✅ Wired existing search dropdown to functional search
+   - ✅ Added searchValue state management
+   - ✅ Enter key triggers navigation to `/search?q={term}&type=events`
+   - ✅ Dropdown closes and input clears after search
+
+3. **Unified Search Page** (/search):
+   - ✅ Tab-based interface (Events | Business | Forums | Marketplace)
+   - ✅ URL-based state management (q, type, page parameters)
+   - ✅ EventCard component for event results (with badges, registration status)
+   - ✅ BusinessCard component for business results (with ratings, verification badge)
+   - ✅ Coming Soon placeholders for Forums/Marketplace
+   - ✅ Professional pagination controls (prev/next/numbered pages)
+   - ✅ Loading skeleton grids, empty states, error handling
+   - ✅ Suspense wrapper for useSearchParams
+
+4. **Unified Search Hook** (useUnifiedSearch):
+   - ✅ Single hook for all search types
+   - ✅ Calls eventsRepository.searchEvents() for Events
+   - ✅ Calls businessesRepository.search() for Business
+   - ✅ Returns empty result for Forums/Marketplace
+   - ✅ React Query caching with 30s staleTime
+   - ✅ Type-safe union: EventSearchResultDto | BusinessDto
+
+5. **Search Flow**:
+   - ✅ User clicks search icon in Header
+   - ✅ Types query in dropdown input
+   - ✅ Presses Enter → navigates to search page
+   - ✅ Tab switching updates URL and triggers new search
+   - ✅ Pagination updates URL with page parameter
+   - ✅ Each tab maintains independent pagination state
+
+**Files Created**:
+- [web/src/app/search/page.tsx](../web/src/app/search/page.tsx) - Search results page with tabs (624 lines)
+- [web/src/presentation/hooks/useUnifiedSearch.ts](../web/src/presentation/hooks/useUnifiedSearch.ts) - Unified search hook
+- [web/src/infrastructure/api/repositories/businesses.repository.ts](../web/src/infrastructure/api/repositories/businesses.repository.ts) - Business repository
+- [web/src/infrastructure/api/types/business.types.ts](../web/src/infrastructure/api/types/business.types.ts) - Business types
+
+**Files Modified**:
+- [web/src/presentation/components/layout/Header.tsx:34,140-155](../web/src/presentation/components/layout/Header.tsx#L34,L140-L155) - Search wiring
+- [web/src/infrastructure/api/types/common.types.ts:37-49](../web/src/infrastructure/api/types/common.types.ts#L37-L49) - PaginatedList type
+
+**Backend APIs Used**:
+- ✅ `GET /api/events/search` - Events search (PostgreSQL FTS)
+- ✅ `GET /api/businesses/search` - Business search (tested with curl)
+- ⏳ Forums search - Not implemented (shows Coming Soon)
+- ⏳ Marketplace search - Not implemented (shows Coming Soon)
+
+**Build & Testing**:
+- ✅ `npm run build` - SUCCESS (0 errors)
+- ✅ `/search` route generated and included in build
+- ✅ TypeScript types verified
+- ✅ Business API endpoint tested (returns proper structure)
+- ✅ Commit 5c594288 pushed to develop
+
+**Features Deferred** (per user decision):
+- Forums Application layer implementation (70% ready - needs Commands/Queries/Handlers)
+- Marketplace feature implementation (0% ready - only documentation exists)
+- Advanced search filters (location, price range, date filters)
+- Search autocomplete/suggestions
+- Search history tracking
+
+**User Flow Example**:
+1. User clicks search icon → dropdown appears
+2. Types "yoga" → Enter
+3. Navigates to `/search?q=yoga&type=events`
+4. Events tab active → shows yoga event results
+5. Click Business tab → URL updates to `type=business` → shows yoga-related businesses
+6. Click page 2 → URL updates to `page=2` → loads next 20 results
+7. Click Forums tab → shows "Forums Search Coming Soon" message
+
+**Technical Highlights**:
+- ✅ Proper TypeScript types matching backend C# DTOs
+- ✅ Enum values aligned between frontend/backend
+- ✅ React Query caching prevents redundant API calls
+- ✅ URL-based state enables shareable search links
+- ✅ Suspense boundary for proper Next.js 13+ SSR
+- ✅ Reused existing EventCard component (0 duplication)
+- ✅ Pagination with ellipsis for large page counts
+
+**Next Steps** (Future Phases):
+- Implement Forums search (requires Application layer)
+- Implement Marketplace feature and search
+- Add advanced filters to search UI
+- Add search autocomplete dropdown
+- Track and display search history
+
+---
+
+## 📋 Previous Sessions
+
+### Phase 6A.53: Token-Only Email Verification System - 2025-12-30
 
 **Status**: ✅ **COMPLETE** (Backend deployed, email template cache cleared, UI layout fixed, all tests passing)
 

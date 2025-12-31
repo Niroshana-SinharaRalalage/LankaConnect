@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users, Eye, Edit, Upload, Ban, Trash2 } from 'lucide-react';
 import { EventDto, EventStatus, EventCategory } from '@/infrastructure/api/types/events.types';
 import { RegistrationBadge } from '../events/RegistrationBadge';
 import { useEventCategories, useEventStatuses } from '@/infrastructure/api/hooks/useReferenceData';
 import { getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
+import { Button } from '@/presentation/components/ui/Button';
 
 export interface EventsListProps {
   events: EventDto[];
@@ -15,6 +16,12 @@ export interface EventsListProps {
   onCancelClick?: (eventId: string) => Promise<void>;
   /** Phase 6A.46: Set of event IDs for which user is registered (for bulk registration badge display) */
   registeredEventIds?: Set<string>;
+  /** Phase 6A.59: Management mode shows action buttons for event organizers */
+  showManagementActions?: boolean;
+  onEditEvent?: (eventId: string) => void;
+  onPublishEvent?: (eventId: string) => Promise<void>;
+  onCancelEvent?: (eventId: string) => Promise<void>;
+  onDeleteEvent?: (eventId: string) => Promise<void>;
 }
 
 /**
@@ -29,12 +36,21 @@ export function EventsList({
   onEventClick,
   onCancelClick,
   registeredEventIds,
+  showManagementActions = false,
+  onEditEvent,
+  onPublishEvent,
+  onCancelEvent,
+  onDeleteEvent,
 }: EventsListProps) {
   // Phase 6A.47: Fetch reference data for labels
   const { data: categories } = useEventCategories();
   const { data: statuses } = useEventStatuses();
 
   const [cancellingEventId, setCancellingEventId] = React.useState<string | null>(null);
+  // Phase 6A.59: Loading states for management actions
+  const [publishingEventId, setPublishingEventId] = React.useState<string | null>(null);
+  const [cancellingMgmtEventId, setCancellingMgmtEventId] = React.useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = React.useState<string | null>(null);
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -93,6 +109,43 @@ export function EventsList({
       await onCancelClick(eventId);
     } finally {
       setCancellingEventId(null);
+    }
+  };
+
+  // Phase 6A.59: Management action handlers
+  const handlePublishClick = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onPublishEvent || publishingEventId) return;
+
+    setPublishingEventId(eventId);
+    try {
+      await onPublishEvent(eventId);
+    } finally {
+      setPublishingEventId(null);
+    }
+  };
+
+  const handleCancelEventClick = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onCancelEvent || cancellingMgmtEventId) return;
+
+    setCancellingMgmtEventId(eventId);
+    try {
+      await onCancelEvent(eventId);
+    } finally {
+      setCancellingMgmtEventId(null);
+    }
+  };
+
+  const handleDeleteClick = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDeleteEvent || deletingEventId) return;
+
+    setDeletingEventId(eventId);
+    try {
+      await onDeleteEvent(eventId);
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -220,16 +273,93 @@ export function EventsList({
               )}
             </div>
 
-            {/* Cancel Registration Button - Session 30 */}
-            {onCancelClick && (
-              <button
-                onClick={(e) => handleCancelClick(event.id, e)}
-                disabled={cancellingEventId === event.id}
-                className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Cancel registration"
-              >
-                {cancellingEventId === event.id ? 'Cancelling...' : 'Cancel Registration'}
-              </button>
+            {/* Phase 6A.59: Management Actions for Event Organizers */}
+            {showManagementActions ? (
+              <div className="flex flex-wrap gap-2">
+                {/* View/Manage Event - Always visible */}
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick?.(event.id);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                >
+                  <Eye className="w-3 h-3 mr-1" />
+                  Manage
+                </Button>
+
+                {/* Edit Event - Always visible */}
+                {onEditEvent && (
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditEvent(event.id);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    <Edit className="w-3 h-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+
+                {/* Publish Event - Only for Draft events */}
+                {event.status === EventStatus.Draft && onPublishEvent && (
+                  <Button
+                    onClick={(e) => handlePublishClick(event.id, e)}
+                    disabled={publishingEventId === event.id}
+                    size="sm"
+                    className="text-xs bg-[#FF7900] hover:bg-[#E66D00] text-white"
+                  >
+                    <Upload className="w-3 h-3 mr-1" />
+                    {publishingEventId === event.id ? 'Publishing...' : 'Publish'}
+                  </Button>
+                )}
+
+                {/* Cancel Event - For Draft or Published events */}
+                {(event.status === EventStatus.Draft || event.status === EventStatus.Published) && onCancelEvent && (
+                  <Button
+                    onClick={(e) => handleCancelEventClick(event.id, e)}
+                    disabled={cancellingMgmtEventId === event.id}
+                    size="sm"
+                    className="text-xs bg-[#F59E0B] hover:bg-[#D97706] text-white"
+                  >
+                    <Ban className="w-3 h-3 mr-1" />
+                    {cancellingMgmtEventId === event.id ? 'Cancelling...' : 'Cancel'}
+                  </Button>
+                )}
+
+                {/* Delete Event - For Draft or Cancelled events with 0 registrations */}
+                {(event.status === EventStatus.Draft || event.status === EventStatus.Cancelled) &&
+                  event.currentRegistrations === 0 &&
+                  onDeleteEvent && (
+                    <Button
+                      onClick={(e) => handleDeleteClick(event.id, e)}
+                      disabled={deletingEventId === event.id}
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      {deletingEventId === event.id ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  )}
+              </div>
+            ) : (
+              /* Cancel Registration Button - Session 30 */
+              onCancelClick && (
+                <button
+                  onClick={(e) => handleCancelClick(event.id, e)}
+                  disabled={cancellingEventId === event.id}
+                  className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Cancel registration"
+                >
+                  {cancellingEventId === event.id ? 'Cancelling...' : 'Cancel Registration'}
+                </button>
+              )
             )}
           </div>
         </div>

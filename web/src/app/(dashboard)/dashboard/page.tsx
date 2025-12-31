@@ -201,6 +201,74 @@ export default function DashboardPage() {
     router.push(`/events/${eventId}/manage`);
   };
 
+  // Phase 6A.59: Event management action handlers
+  const handleEditEvent = (eventId: string) => {
+    router.push(`/events/${eventId}/edit`);
+  };
+
+  const handlePublishEvent = async (eventId: string): Promise<void> => {
+    try {
+      await eventsRepository.publishEvent(eventId);
+      // Reload created events after successful publish
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
+    } catch (error) {
+      console.error('Error publishing event:', error);
+      throw error;
+    }
+  };
+
+  const handleCancelEventManagement = async (eventId: string): Promise<void> => {
+    const reason = window.prompt('Please provide a reason for cancelling this event (min. 10 characters):');
+
+    if (!reason) {
+      // User cancelled the prompt
+      return;
+    }
+
+    if (reason.trim().length < 10) {
+      alert('Cancellation reason must be at least 10 characters');
+      throw new Error('Cancellation reason too short');
+    }
+
+    try {
+      await eventsRepository.cancelEvent(eventId, reason.trim());
+      // Reload created events after successful cancellation
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
+    } catch (error) {
+      console.error('Error cancelling event:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string): Promise<void> => {
+    const confirmed = window.confirm(
+      `⚠️ CRITICAL WARNING ⚠️\n\nThis action CANNOT be undone.\n\nThe event will be PERMANENTLY DELETED from the database.\n\nAre you absolutely sure you want to delete this event?`
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirmed = window.confirm(
+      'This is your final confirmation.\n\nClick OK to permanently delete this event, or Cancel to go back.'
+    );
+
+    if (!doubleConfirmed) return;
+
+    try {
+      await eventsRepository.deleteEvent(eventId);
+      // Reload created events after successful deletion
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      throw error;
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await authRepository.logout();
@@ -433,6 +501,11 @@ export default function DashboardPage() {
                               emptyMessage="You haven't created any events yet"
                               onEventClick={handleManageEventClick}
                               registeredEventIds={registeredEventIds}
+                              showManagementActions={true}
+                              onEditEvent={handleEditEvent}
+                              onPublishEvent={handlePublishEvent}
+                              onCancelEvent={handleCancelEventManagement}
+                              onDeleteEvent={handleDeleteEvent}
                             />
                           </div>
                         ),
@@ -536,6 +609,11 @@ export default function DashboardPage() {
                               emptyMessage="You haven't created any events yet"
                               onEventClick={handleManageEventClick}
                               registeredEventIds={registeredEventIds}
+                              showManagementActions={true}
+                              onEditEvent={handleEditEvent}
+                              onPublishEvent={handlePublishEvent}
+                              onCancelEvent={handleCancelEventManagement}
+                              onDeleteEvent={handleDeleteEvent}
                             />
                           </div>
                         ),

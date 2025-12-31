@@ -51,6 +51,7 @@ export function EventsList({
   const [publishingEventId, setPublishingEventId] = React.useState<string | null>(null);
   const [cancellingMgmtEventId, setCancellingMgmtEventId] = React.useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = React.useState<string | null>(null);
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -171,19 +172,6 @@ export function EventsList({
       </div>
     );
   }
-
-  // Phase 6A.59: Debug logging for event status
-  React.useEffect(() => {
-    if (showManagementActions && events.length > 0) {
-      console.log('🔍 [EventsList] Event statuses:', events.map(e => ({
-        title: e.title,
-        status: e.status,
-        statusName: Object.keys(EventStatus).find(key => EventStatus[key as keyof typeof EventStatus] === e.status),
-        currentRegistrations: e.currentRegistrations,
-        displayLabel: e.displayLabel
-      })));
-    }
-  }, [events, showManagementActions]);
 
   return (
     <div className="space-y-4">
@@ -320,7 +308,8 @@ export function EventsList({
                 )}
 
                 {/* Publish Event - Only for unpublished events (Draft, Archived) */}
-                {(event.status === EventStatus.Draft || event.status === EventStatus.Archived) && onPublishEvent && (
+                {/* Phase 6A.59: API returns status as string, not enum number */}
+                {((event.status as any) === 'Draft' || (event.status as any) === 'Archived') && onPublishEvent && (
                   <Button
                     onClick={(e) => handlePublishClick(event.id, e)}
                     disabled={publishingEventId === event.id}
@@ -333,10 +322,11 @@ export function EventsList({
                 )}
 
                 {/* Cancel Event - For Draft, Archived, or Published events */}
-                {(event.status === EventStatus.Draft ||
-                  event.status === EventStatus.Archived ||
-                  event.status === EventStatus.Published ||
-                  event.status === EventStatus.Active) && onCancelEvent && (
+                {/* Phase 6A.59: API returns status as string, not enum number */}
+                {((event.status as any) === 'Draft' ||
+                  (event.status as any) === 'Archived' ||
+                  (event.status as any) === 'Published' ||
+                  (event.status as any) === 'Active') && onCancelEvent && (
                   <Button
                     onClick={(e) => handleCancelEventClick(event.id, e)}
                     disabled={cancellingMgmtEventId === event.id}
@@ -349,9 +339,10 @@ export function EventsList({
                 )}
 
                 {/* Delete Event - For Draft, Archived, or Cancelled events with 0 registrations */}
-                {(event.status === EventStatus.Draft ||
-                  event.status === EventStatus.Archived ||
-                  event.status === EventStatus.Cancelled) &&
+                {/* Phase 6A.59: API returns status as string, not enum number */}
+                {((event.status as any) === 'Draft' ||
+                  (event.status as any) === 'Archived' ||
+                  (event.status as any) === 'Cancelled') &&
                   event.currentRegistrations === 0 &&
                   onDeleteEvent && (
                     <Button

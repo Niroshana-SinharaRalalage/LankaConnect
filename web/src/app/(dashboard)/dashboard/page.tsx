@@ -39,6 +39,7 @@ import { EmailGroupsTab } from '@/presentation/components/features/email-groups'
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
+import { CancelEventModal } from '@/presentation/components/features/events/CancelEventModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -47,6 +48,10 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Phase 6A.59: Cancel event modal state
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [cancellingEvent, setCancellingEvent] = useState<{ id: string; title: string } | null>(null);
 
   // State for events
   const [registeredEvents, setRegisteredEvents] = useState<EventDto[]>([]);
@@ -220,24 +225,27 @@ export default function DashboardPage() {
   };
 
   const handleCancelEventManagement = async (eventId: string): Promise<void> => {
-    const reason = window.prompt('Please provide a reason for cancelling this event (min. 10 characters):');
+    // Phase 6A.59: Find event title and show modal
+    const event = createdEvents.find(e => e.id === eventId);
+    if (!event) return;
 
-    if (!reason) {
-      // User cancelled the prompt
-      return;
-    }
+    setCancellingEvent({ id: eventId, title: event.title });
+    setShowCancelModal(true);
+  };
 
-    if (reason.trim().length < 10) {
-      alert('Cancellation reason must be at least 10 characters');
-      throw new Error('Cancellation reason too short');
-    }
+  const handleConfirmCancelEvent = async (reason: string): Promise<void> => {
+    if (!cancellingEvent) return;
 
     try {
-      await eventsRepository.cancelEvent(eventId, reason.trim());
+      await eventsRepository.cancelEvent(cancellingEvent.id, reason);
       // Reload created events after successful cancellation
       const apiParams = filtersToApiParams(createdFilters);
       const events = await eventsRepository.getUserCreatedEvents(apiParams);
       setCreatedEvents(events);
+
+      // Close modal and reset state
+      setShowCancelModal(false);
+      setCancellingEvent(null);
     } catch (error) {
       console.error('Error cancelling event:', error);
       throw error;
@@ -494,6 +502,25 @@ export default function DashboardPage() {
                                 showDateRange={true}
                                 showLocation={true}
                               />
+
+                              {/* Phase 6A.59: Show Cancelled Events Toggle */}
+                              <div className="mt-4 flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="show-cancelled"
+                                  checked={createdFilters.status === 'Cancelled'}
+                                  onChange={(e) => {
+                                    setCreatedFilters({
+                                      ...createdFilters,
+                                      status: e.target.checked ? 'Cancelled' : undefined,
+                                    });
+                                  }}
+                                  className="w-4 h-4 text-[#FF7900] border-gray-300 rounded focus:ring-[#FF7900]"
+                                />
+                                <label htmlFor="show-cancelled" className="text-sm text-gray-700 cursor-pointer">
+                                  Show only cancelled events
+                                </label>
+                              </div>
                             </div>
                             <EventsList
                               events={createdEvents}
@@ -602,6 +629,25 @@ export default function DashboardPage() {
                                 showDateRange={true}
                                 showLocation={true}
                               />
+
+                              {/* Phase 6A.59: Show Cancelled Events Toggle */}
+                              <div className="mt-4 flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="show-cancelled"
+                                  checked={createdFilters.status === 'Cancelled'}
+                                  onChange={(e) => {
+                                    setCreatedFilters({
+                                      ...createdFilters,
+                                      status: e.target.checked ? 'Cancelled' : undefined,
+                                    });
+                                  }}
+                                  className="w-4 h-4 text-[#FF7900] border-gray-300 rounded focus:ring-[#FF7900]"
+                                />
+                                <label htmlFor="show-cancelled" className="text-sm text-gray-700 cursor-pointer">
+                                  Show only cancelled events
+                                </label>
+                              </div>
                             </div>
                             <EventsList
                               events={createdEvents}
@@ -701,6 +747,17 @@ export default function DashboardPage() {
 
         {/* Phase 6A.7: Upgrade Modal */}
         <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+
+        {/* Phase 6A.59: Cancel Event Modal */}
+        <CancelEventModal
+          isOpen={showCancelModal}
+          eventTitle={cancellingEvent?.title || ''}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setCancellingEvent(null);
+          }}
+          onConfirm={handleConfirmCancelEvent}
+        />
       </div>
     </ProtectedRoute>
   );

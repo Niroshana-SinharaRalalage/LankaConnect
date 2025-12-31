@@ -922,8 +922,128 @@ Position: 917
 
 ---
 
+## UPDATE 4: FINAL RESOLUTION - Mixed Naming Convention + Comprehensive Logging
+
+**Discovery Date**: 2025-12-31 02:38 UTC
+**Issue Type**: COUNT query error + Need for comprehensive logging
+
+### Critical Discovery: The ACTUAL Database Schema
+
+After multiple failed attempts, I added comprehensive logging to diagnose the exact issue. The Azure logs revealed:
+
+**Actual Database Schema** (confirmed from successful deployment):
+- **snake_case**: `search_vector` (has explicit `HasColumnName` configuration)
+- **PascalCase with quotes**: `"Status"`, `"Category"`, `"StartDate"` (EF Core defaults)
+
+### Root Cause #5: SqlQueryRaw for COUNT Query
+
+**File**: `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+**Method**: `SearchAsync()` (lines 279-389)
+
+**The Actual Problem**:
+- The main events query was CORRECT with mixed naming convention
+- The COUNT query had a separate issue: `SqlQueryRaw<int>` requires column alias `AS "Value"`
+- Without comprehensive logging, we couldn't diagnose the exact failure point
+
+### Final Fix Applied
+
+**Commit**: `144a4e34`
+**Date**: 2025-12-31 02:36 UTC
+
+**Changes**:
+1. ✅ Added 10 comprehensive log points throughout SearchAsync method
+2. ✅ Fixed COUNT query to include column alias: `COUNT(*)::int AS "Value"`
+3. ✅ Maintained mixed naming convention from previous fix
+
+```diff
++ // Phase 6A.58: Comprehensive logging for diagnosis
++ _repoLogger.LogInformation("[SEARCH-1] SearchAsync START - Term: {SearchTerm}, ...")
++ _repoLogger.LogInformation("[SEARCH-6] Events SQL Query:\n{EventsSql}\nParameters: {Parameters}")
++ _repoLogger.LogError(ex, "[SEARCH-ERROR] SearchAsync FAILED - Error: {ErrorMessage}")
+
+  var countSql = $@"
+-     SELECT COUNT(*)
++     SELECT COUNT(*)::int AS ""Value""
+      FROM events.events e
+      WHERE {whereClause}";
+```
+
+### Testing Results
+
+**Build Status**: ✅ PASSED
+- 0 compilation errors
+- 0 warnings
+
+**Deployment Status**: ✅ SUCCESS
+- Run: #20610582496
+- Duration: 4m52s
+- Environment: Azure Staging
+- All smoke tests passed
+
+**API Test**: ✅ SUCCESS
+- Endpoint: `GET /api/events?searchTerm=M&startDateFrom=2025-12-30T21:00:00Z`
+- Response: HTTP 200 OK (previously 500 Internal Server Error)
+- Result: `[]` (empty array - valid result, no events match criteria)
+
+**Azure Container Logs** (confirmed working):
+```
+[SEARCH-1] SearchAsync START - Term: M, Limit: 1000, Offset: 0
+[SEARCH-2] Initial WHERE conditions: e.search_vector @@ ... AND CAST(e."Status" AS text) = {1}
+[SEARCH-5] Added start date filter: 12/30/2025 21:00:00
+[SEARCH-6] Events SQL Query: SELECT e.* FROM events.events e WHERE ...
+[SEARCH-7] Events query succeeded - Found 0 events
+[SEARCH-8] Count SQL Query: SELECT COUNT(*)::int AS "Value" FROM events.events e
+[SEARCH-9] Count query succeeded - Total: 0
+[SEARCH-10] SearchAsync COMPLETE - Returning 0 events, Total: 0
+```
+
+### Complete Five-Issue Sequence
+
+**Five Separate Issues Fixed**:
+1. ✅ **Frontend**: Stale closure in EventFilters.tsx (Commit 52e9eee6, Dec 30 15:14 UTC)
+   - Missing useEffect dependencies caused search state to not propagate
+
+2. ✅ **Backend**: Missing SQL schema prefix (Commit 1a9d7825, Dec 30 17:47 UTC)
+   - Used `FROM events e` instead of `FROM events.events e`
+
+3. ❌ **WRONG FIX**: Used PascalCase for ALL columns (Commit 98c17a42, Dec 30 18:14 UTC)
+   - **MISTAKE**: Assumed all columns use PascalCase, but actually MIXED
+
+4. ❌ **WRONG FIX**: Used snake_case for ALL columns (Commit cb401029, Dec 30 20:10 UTC)
+   - **MISTAKE**: Assumed all columns use snake_case, but actually MIXED
+
+5. ✅ **CORRECT FIX**: Mixed naming + Logging + COUNT fix (Commit 144a4e34, Dec 31 02:36 UTC)
+   - **CORRECT**: `search_vector` (snake_case) + `"Status"`, `"Category"`, `"StartDate"` (PascalCase)
+   - Added comprehensive logging to enable diagnosis
+   - Fixed COUNT query to use `AS "Value"` column alias
+
+### Lessons Learned (FINAL)
+
+**Database Schema Investigation**:
+1. ✅ **NEVER ASSUME** naming conventions - always verify against actual database
+2. ✅ EF Core uses MIXED conventions: snake_case for explicit `HasColumnName`, PascalCase otherwise
+3. ✅ PostgreSQL error hints are accurate BUT may reference OLD code if deployment didn't take effect
+4. ✅ Use `powershell.exe scripts/VerifyPhase6A58.ps1` to query actual database schema
+5. ✅ `SqlQueryRaw<int>` requires column alias `AS "Value"` for scalar results
+
+**Comprehensive Logging**:
+1. ✅ **USER WAS RIGHT**: "If you dont have logs why don't you add enough logs?"
+2. ✅ Add 10+ log points for complex queries: entry, SQL construction, execution, results, errors
+3. ✅ Log full SQL queries and parameters for comparison with database schema
+4. ✅ Structured logging with named parameters enables easy Azure log filtering
+5. ✅ Try-catch with comprehensive error logging captures full stack traces
+
+**Deployment Verification**:
+1. ✅ **ALWAYS TEST VIA API** after deployment - don't just rely on build success
+2. ✅ Check Azure logs immediately after failed API test to see if new code deployed
+3. ✅ Azure Container Apps may cache old code - verify by checking log timestamps
+4. ✅ Use curl commands with auth tokens to test protected endpoints
+5. ✅ Empty result `[]` with HTTP 200 is SUCCESS (vs 500 Internal Server Error)
+
+---
+
 **Analysis Started**: 2025-12-30 17:30 UTC
-**Final Fix Applied**: 2025-12-30 20:15 UTC
-**Status**: ✅ FULLY RESOLVED AND DEPLOYED (Verified with snake_case columns)
+**Final Fix Applied**: 2025-12-31 02:38 UTC
+**Status**: ✅ FULLY RESOLVED AND DEPLOYED (Verified with API test - HTTP 200 OK)
 **Document Owner**: System Architecture Designer
-**Total Bugs Fixed**: 4 (including 1 incorrect fix that was corrected)
+**Total Bugs Fixed**: 5 (including 2 incorrect fixes that were corrected)

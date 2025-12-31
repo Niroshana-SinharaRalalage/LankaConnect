@@ -34,12 +34,13 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
         {
             // Check for cancellation at the start
             cancellationToken.ThrowIfCancellationRequested();
-            
-            // Get user
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+
+            // Phase 6A.53: Get user by verification token (token-only lookup)
+            // Aligns with password reset pattern (GetByPasswordResetTokenAsync)
+            var user = await _userRepository.GetByEmailVerificationTokenAsync(request.Token, cancellationToken);
             if (user == null)
             {
-                return Result<VerifyEmailResponse>.Failure("User not found");
+                return Result<VerifyEmailResponse>.Failure("Invalid or expired verification token");
             }
 
             // Check if already verified
@@ -58,7 +59,7 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
             var verifyResult = user.VerifyEmail(request.Token);
             if (!verifyResult.IsSuccess)
             {
-                _logger.LogWarning("Email verification failed for user {UserId}: {Error}", request.UserId, verifyResult.Error);
+                _logger.LogWarning("Email verification failed for user {UserId}: {Error}", user.Id, verifyResult.Error);
                 return Result<VerifyEmailResponse>.Failure(verifyResult.Error);
             }
 
@@ -108,7 +109,8 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verifying email for user {UserId}", request.UserId);
+            // Phase 6A.53: Token-only, no userId in request
+            _logger.LogError(ex, "Error verifying email with token {Token}", request.Token);
             return Result<VerifyEmailResponse>.Failure("An error occurred while verifying email");
         }
     }

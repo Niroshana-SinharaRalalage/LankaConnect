@@ -285,6 +285,9 @@ public class EventRepository : Repository<Event>, IEventRepository
         DateTime? startDateFrom = null,
         CancellationToken cancellationToken = default)
     {
+        _repoLogger.LogInformation("[SEARCH-1] SearchAsync START - Term: {SearchTerm}, Limit: {Limit}, Offset: {Offset}, Category: {Category}, IsFreeOnly: {IsFreeOnly}, StartDateFrom: {StartDateFrom}",
+            searchTerm, limit, offset, category, isFreeOnly, startDateFrom);
+
         // Build the WHERE clause dynamically based on filters
         // Phase 6A.58 FIX: Use QUOTED PascalCase for enum/date columns (confirmed from PostgreSQL hints)
         // search_vector is snake_case (has explicit HasColumnName), Status/Category/StartDate are PascalCase (EF defaults)
@@ -300,11 +303,15 @@ public class EventRepository : Repository<Event>, IEventRepository
             EventStatus.Published.ToString() // Use string "Published", not integer
         };
 
+        _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",
+            string.Join(" AND ", whereConditions), string.Join(", ", parameters));
+
         // Add category filter if provided
         if (category.HasValue)
         {
             whereConditions.Add($@"CAST(e.""Category"" AS text) = {{{parameters.Count}}}");
             parameters.Add(category.Value.ToString()); // Use string "Cultural", "Community", etc.
+            _repoLogger.LogInformation("[SEARCH-3] Added category filter: {Category}", category.Value.ToString());
         }
 
         // Add free-only filter if provided
@@ -312,6 +319,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         {
             // ticket_price is JSONB column, access Amount property
             whereConditions.Add("(e.ticket_price->>'Amount')::numeric = 0");
+            _repoLogger.LogInformation("[SEARCH-4] Added free-only filter");
         }
 
         // Add start date filter if provided
@@ -319,6 +327,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         {
             whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}"); // PascalCase with quotes
             parameters.Add(startDateFrom.Value);
+            _repoLogger.LogInformation("[SEARCH-5] Added start date filter: {StartDateFrom}", startDateFrom.Value);
         }
 
         var whereClause = string.Join(" AND ", whereConditions);
@@ -334,27 +343,49 @@ public class EventRepository : Repository<Event>, IEventRepository
         parameters.Add(limit);
         parameters.Add(offset);
 
-        var events = await _dbSet
-            .FromSqlRaw(eventsSql, parameters.ToArray())
-            .AsNoTracking()
-            .Include(e => e.Images)
-            .Include(e => e.Videos)
-            .ToListAsync(cancellationToken);
+        _repoLogger.LogInformation("[SEARCH-6] Events SQL Query:\n{EventsSql}\nParameters: {Parameters}",
+            eventsSql, string.Join(", ", parameters));
 
-        // Count query (same filters, no ranking needed)
-        var countSql = $@"
-            SELECT COUNT(*)
-            FROM events.events e
-            WHERE {whereClause}";
+        try
+        {
+            var events = await _dbSet
+                .FromSqlRaw(eventsSql, parameters.ToArray())
+                .AsNoTracking()
+                .Include(e => e.Images)
+                .Include(e => e.Videos)
+                .ToListAsync(cancellationToken);
 
-        // Remove limit and offset parameters for count query
-        var countParameters = parameters.Take(parameters.Count - 2).ToArray();
+            _repoLogger.LogInformation("[SEARCH-7] Events query succeeded - Found {EventCount} events", events.Count);
 
-        var totalCount = await _context.Database
-            .SqlQueryRaw<int>(countSql, countParameters)
-            .FirstOrDefaultAsync(cancellationToken);
+            // Count query (same filters, no ranking needed)
+            // Phase 6A.58 FIX: Use FormattableString for SqlQuery (EF Core 8+ requirement)
+            var countSql = $@"
+                SELECT COUNT(*)::int AS ""Value""
+                FROM events.events e
+                WHERE {whereClause}";
 
-        return (events, totalCount);
+            // Remove limit and offset parameters for count query
+            var countParameters = parameters.Take(parameters.Count - 2).ToArray();
+
+            _repoLogger.LogInformation("[SEARCH-8] Count SQL Query:\n{CountSql}\nParameters: {Parameters}",
+                countSql, string.Join(", ", countParameters));
+
+            var totalCount = await _context.Database
+                .SqlQueryRaw<int>(countSql, countParameters)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            _repoLogger.LogInformation("[SEARCH-9] Count query succeeded - Total: {TotalCount}", totalCount);
+            _repoLogger.LogInformation("[SEARCH-10] SearchAsync COMPLETE - Returning {EventCount} events, Total: {TotalCount}",
+                events.Count, totalCount);
+
+            return (events, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _repoLogger.LogError(ex, "[SEARCH-ERROR] SearchAsync FAILED - Term: {SearchTerm}, Error: {ErrorMessage}, StackTrace: {StackTrace}",
+                searchTerm, ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     /// <summary>

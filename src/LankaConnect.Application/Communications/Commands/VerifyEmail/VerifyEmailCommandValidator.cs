@@ -9,10 +9,7 @@ public class VerifyEmailCommandValidator : AbstractValidator<VerifyEmailCommand>
 {
     public VerifyEmailCommandValidator()
     {
-        RuleFor(x => x.UserId)
-            .NotEmpty()
-            .WithMessage("User ID is required");
-
+        // Phase 6A.53: Removed UserId validation - token-only verification
         RuleFor(x => x.Token)
             .NotEmpty()
             .WithMessage("Verification token is required")

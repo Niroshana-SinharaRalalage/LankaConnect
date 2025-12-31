@@ -480,7 +480,8 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during email verification for user: {UserId}", request.UserId);
+            // Phase 6A.53: Token-only verification, no userId in request
+            _logger.LogError(ex, "Error during email verification with token: {Token}", request.Token);
             return StatusCode(500, new { error = "An error occurred while verifying your email" });
         }
     }

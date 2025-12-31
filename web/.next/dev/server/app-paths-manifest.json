@@ -5,8 +5,10 @@
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
   "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
+  "/events/[id]/edit/page": "app/events/[id]/edit/page.js",
   "/events/[id]/manage/page": "app/events/[id]/manage/page.js",
   "/events/[id]/page": "app/events/[id]/page.js",
+  "/events/create/page": "app/events/create/page.js",
   "/events/page": "app/events/page.js",
   "/page": "app/page.js"
 }

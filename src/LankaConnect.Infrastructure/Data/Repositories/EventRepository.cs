@@ -51,71 +51,71 @@ public class EventRepository : Repository<Event>, IEventRepository
         }
     }
 
-    // Override GetByIdAsync to eagerly load SignUpLists, Images, Videos, Registrations, and EmailGroups with all related data
+    // GetByIdAsync with eager loading for SignUpLists, Images, Videos, Registrations, and EmailGroups
     // This is required for GetEventSignUpLists query, media gallery display, correct DisplayOrder calculation,
     // registration management (cancel/update operations), and email group integration
     // Phase 6A.28: Removed duplicate .Include(SignUpLists).ThenInclude(Commitments) to fix EF Core change tracking bug
     // Phase 6A.33 FIX: After loading, sync shadow navigation entities to domain's email group ID list
-    public override async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    // Phase 6A.53 FIX: Add trackChanges parameter to support both command and query handlers
+    public async Task<Event?> GetByIdAsync(Guid id, bool trackChanges, CancellationToken cancellationToken = default)
     {
-        _repoLogger.LogInformation("[DIAG-R1] EventRepository.GetByIdAsync START - EventId: {EventId}", id);
+        _repoLogger.LogInformation("[DIAG-R1] EventRepository.GetByIdAsync START - EventId: {EventId}, TrackChanges: {TrackChanges}", id, trackChanges);
 
-        // Phase 6A.41 FIX: Load entity with AsNoTracking() to avoid change tracking corruption
-        // ISSUE: Syncing email group IDs while entity is tracked corrupts change tracking
-        // SOLUTION: Load untracked, sync while detached, then attach in clean state
-        var eventEntity = await _dbSet
+        // Build query with eager loading
+        IQueryable<Event> query = _dbSet
             .Include(e => e.Images)
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
             .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
             .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
             .Include(e => e.SignUpLists)
                 .ThenInclude(s => s.Items)
-                    .ThenInclude(i => i.Commitments)
-            .AsNoTracking()  // Phase 6A.41: Load without tracking first
-            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+                    .ThenInclude(i => i.Commitments);
+
+        // Phase 6A.53 FIX: Apply tracking behavior based on parameter
+        // Command handlers need tracked entities (trackChanges: true) for EF Core change detection
+        // Query handlers need untracked entities (trackChanges: false) for better performance
+        if (!trackChanges)
+        {
+            query = query.AsNoTracking();
+            _repoLogger.LogInformation("[DIAG-R2] Loading entity WITHOUT change tracking (read-only)");
+        }
+        else
+        {
+            _repoLogger.LogInformation("[DIAG-R2] Loading entity WITH change tracking (for modifications)");
+        }
+
+        var eventEntity = await query.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
         if (eventEntity == null)
         {
-            _repoLogger.LogWarning("[DIAG-R2] Event not found: {EventId}", id);
+            _repoLogger.LogWarning("[DIAG-R3] Event not found: {EventId}", id);
             return null;
         }
 
         _repoLogger.LogInformation(
-            "[DIAG-R3] Event loaded (untracked) - Id: {EventId}, Status: {Status}, DomainEvents: {DomainEventCount}",
+            "[DIAG-R4] Event loaded - Id: {EventId}, Status: {Status}, Tracked: {Tracked}",
             eventEntity.Id,
             eventEntity.Status,
-            eventEntity.DomainEvents.Count);
+            trackChanges);
 
-        // Phase 6A.33 FIX: Sync email group IDs WHILE ENTITY IS DETACHED
-        // This prevents change tracking corruption that blocks domain event dispatch
+        // Phase 6A.33 FIX: Sync email group IDs from shadow navigation to domain
         var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
         var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
 
         if (emailGroupEntities != null)
         {
-            // Extract IDs and sync to domain's _emailGroupIds list
             var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
-
-            // Sync while detached - this won't corrupt change tracking
             eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
 
             _repoLogger.LogInformation(
-                "[DIAG-R4] Synced {EmailGroupCount} email group IDs to domain entity (while detached)",
+                "[DIAG-R5] Synced {EmailGroupCount} email group IDs to domain entity",
                 emailGroupIds.Count);
         }
 
-        // Phase 6A.53: DO NOT attach when loaded with AsNoTracking
-        // ISSUE: Attaching defeats the purpose of AsNoTracking and causes tracking conflicts
-        // when the event's registrations collection contains registrations already tracked by the same DbContext
-        // SOLUTION: Return the entity untracked - callers that need to modify it should explicitly attach
-        // For read-only scenarios (like PaymentCompletedEventHandler), untracked entities work fine
-
         _repoLogger.LogInformation(
-            "[DIAG-R5] Event loaded (untracked, not attached) - EventId: {EventId}, DomainEvents: {DomainEventCount}",
+            "[DIAG-R6] EventRepository.GetByIdAsync COMPLETE - EventId: {EventId}, TrackChanges: {TrackChanges}",
             eventEntity.Id,
-            eventEntity.DomainEvents.Count);
-
-        _repoLogger.LogInformation("[DIAG-R6] EventRepository.GetByIdAsync COMPLETE - EventId: {EventId}", id);
+            trackChanges);
 
         return eventEntity;
     }

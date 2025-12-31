@@ -31,8 +31,9 @@ public class UnpublishEventCommandHandler : ICommandHandler<UnpublishEventComman
             "[Phase 6A.41] UnpublishEventCommandHandler.Handle START - EventId: {EventId}",
             request.EventId);
 
-        // Retrieve event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+        // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
+        // This is required for EF Core to detect changes when we modify the entity
+        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
         if (@event == null)
         {
             _logger.LogWarning("Event not found: {EventId}", request.EventId);

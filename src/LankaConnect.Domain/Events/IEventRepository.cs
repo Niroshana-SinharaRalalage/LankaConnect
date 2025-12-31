@@ -5,6 +5,10 @@ namespace LankaConnect.Domain.Events;
 
 public interface IEventRepository : IRepository<Event>
 {
+    // Phase 6A.53 FIX: Add overload of GetByIdAsync to support change tracking control
+    // Command handlers need trackChanges: true, Query handlers need trackChanges: false for performance
+    Task<Event?> GetByIdAsync(Guid id, bool trackChanges, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetUpcomingEventsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken cancellationToken = default);

@@ -27,8 +27,9 @@ public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
             "[DIAG-1] PublishEventCommandHandler.Handle START - EventId: {EventId}",
             request.EventId);
 
-        // Retrieve event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+        // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
+        // This is required for EF Core to detect changes when we modify the entity
+        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
         if (@event == null)
         {
             _logger.LogWarning("[DIAG-2] Event not found: {EventId}", request.EventId);

@@ -17,8 +17,9 @@ public class CancelEventCommandHandler : ICommandHandler<CancelEventCommand>
 
     public async Task<Result> Handle(CancelEventCommand request, CancellationToken cancellationToken)
     {
-        // Retrieve event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+        // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
+        // This is required for EF Core to detect changes when we modify the entity
+        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
         if (@event == null)
             return Result.Failure("Event not found");
 

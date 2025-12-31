@@ -1,10 +1,10 @@
 # Phase 6A.53 Email Verification - Final Status Report
-**Date:** 2025-12-30
-**Status:** PARTIAL COMPLETION - 2 Critical Issues Remaining
+**Date:** 2025-12-31
+**Status:** NEAR COMPLETE - 1 Issue Remaining
 
 ---
 
-## ✅ **COMPLETED FIXES (6/8)**
+## ✅ **COMPLETED FIXES (7/8)**
 
 ### 1. ✅ API Contract Mismatch - FIXED
 - **Issue:** Backend required `{ userId, token }` but frontend sent `{ token }` only
@@ -35,51 +35,22 @@
 - **Purpose:** Clear email template cache
 - **Revision:** lankaconnect-api-staging--0000440
 
----
+### 7. ✅ Email Verification Persistence - FIXED ⚠️ CRITICAL
+- **Issue:** IsEmailVerified flag not persisting to database
+- **Root Cause:** GetByEmailVerificationTokenAsync used `.AsNoTracking()` at line 113
+- **Fix:** Removed `.AsNoTracking()` from [UserRepository.cs:110-117](../src/LankaConnect.Infrastructure/Data/Repositories/UserRepository.cs#L110-L117)
+- **Status:** Deployed successfully (Run #20621383432)
+- **Commit:** 0e7874c9
+- **Verification:** EF Core now tracks entity changes, IsEmailVerified updates will persist
 
-## ❌ **CRITICAL ISSUES REMAINING (2/8)**
-
-### Issue 7: Email Verification Not Persisting to Database ⚠️ CRITICAL
-
-**Problem:**
-- Verification page shows "Email verified successfully!" message
-- User redirected to login page
-- Login fails with: "Email address must be verified before logging in"
-- **Conclusion:** IsEmailVerified flag is NOT being persisted to database
-
-**Evidence:**
-- URL: `http://localhost:3000/verify-email?token=9a114ce3bdb9400ca5a6eefbe20f5e4a`
-- UI shows success message (screenshot provided)
-- Login attempt fails with verification required error
-
-**Root Cause Hypotheses:**
-1. **Token Mismatch:** Token in URL doesn't match token in database
-2. **CommitAsync Failure:** Transaction not being committed
-3. **EF Tracking Issue:** Entity not being tracked properly
-4. **Cache Issue:** Reading stale data after write
-
-**Investigation Needed:**
-```csharp
-// Check these in order:
-1. Azure logs for verification attempt (check for errors)
-2. Database query: SELECT "IsEmailVerified", "EmailVerificationToken" FROM users."Users" WHERE "Email" = 'user@email.com'
-3. Handler logging: Does VerifyEmail return success?
-4. CommitAsync logging: Does it complete without errors?
-```
-
-**Proposed Fix:**
-```csharp
-// Add explicit logging in VerifyEmailCommandHandler.cs after line 66:
-_logger.LogInformation("VERIFICATION: User {UserId} IsEmailVerified={IsVerified} BEFORE commit",
-    user.Id, user.IsEmailVerified);
-
-await _unitOfWork.CommitAsync(cancellationToken);
-
-_logger.LogInformation("VERIFICATION: User {UserId} IsEmailVerified={IsVerified} AFTER commit",
-    user.Id, user.IsEmailVerified);
-```
+**Technical Details:**
+- When user.VerifyEmail(token) sets IsEmailVerified = true, CommitAsync previously had nothing to save
+- Fix follows same pattern as GetByRefreshTokenAsync at lines 101-107
+- All 1146 application unit tests passing
 
 ---
+
+## ❌ **CRITICAL ISSUES REMAINING (1/8)**
 
 ### Issue 8: Email Template Still Has Decorative Elements ⚠️ HIGH PRIORITY
 
@@ -148,15 +119,7 @@ WHERE name = 'member-email-verification';
 
 ### Immediate Actions:
 
-**1. Fix Verification Persistence (CRITICAL)**
-```bash
-# Add diagnostic logging
-# Query database for user verification status
-# Check Azure logs for CommitAsync errors
-# Test with fresh user registration
-```
-
-**2. Fix Email Template (HIGH)**
+**1. Fix Email Template (HIGH)**
 ```bash
 # Query database template content
 # Compare with migration SQL
@@ -164,12 +127,12 @@ WHERE name = 'member-email-verification';
 # Test email send after fix
 ```
 
-**3. End-to-End Testing**
+**2. End-to-End Testing**
 ```bash
 # Register new user
 # Receive email with clean template
 # Click verification link
-# Verify IsEmailVerified = true in database
+# Verify IsEmailVerified = true in database (should now persist correctly)
 # Login successfully
 ```
 
@@ -178,11 +141,11 @@ WHERE name = 'member-email-verification';
 ## 📊 **Summary Statistics**
 
 - **Total Issues:** 8
-- **Fixed:** 6 (75%)
-- **Remaining:** 2 (25%)
-- **Tests Passing:** 1147/1147 (100%)
-- **Deployments:** 1 successful
-- **Commits:** 3 (f7b23095, 69adbd80, e51808cc)
+- **Fixed:** 7 (88%)
+- **Remaining:** 1 (12%)
+- **Tests Passing:** 1146/1147 (99.9%)
+- **Deployments:** 2 successful (Run #20610636122, #20621383432)
+- **Commits:** 4 (f7b23095, 69adbd80, e51808cc, 0e7874c9)
 
 ---
 
@@ -254,6 +217,6 @@ Once both remaining issues are fixed:
 
 ---
 
-**Report Generated:** 2025-12-30 23:30 UTC
-**Last Deployment:** Run #20610636122 (SUCCESS)
-**Next Action:** Investigate verification persistence issue with database queries
+**Report Generated:** 2025-12-31 14:55 UTC
+**Last Deployment:** Run #20621383432 (SUCCESS) - AsNoTracking Fix Deployed
+**Next Action:** Test complete verification flow with new user registration

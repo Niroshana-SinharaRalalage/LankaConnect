@@ -120,6 +120,19 @@ public class EventRepository : Repository<Event>, IEventRepository
         return eventEntity;
     }
 
+    /// <summary>
+    /// Phase 6A.53 FIX: Override base GetByIdAsync to forward to trackChanges version
+    /// This ensures ALL calls use the 3-parameter overload with explicit change tracking control.
+    /// Without this override, C# method resolution may call the base Repository.GetByIdAsync
+    /// which uses FindAsync() that tracks entities by default, bypassing our trackChanges logic.
+    /// </summary>
+    public override async Task<Event?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // Forward to the 3-parameter version with tracking ENABLED by default
+        // This makes tracked entities the default behavior for command handlers
+        return await GetByIdAsync(id, trackChanges: true, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)
     {
         // Session 33: Include Registrations to populate CurrentRegistrations for dashboard

@@ -76,7 +76,9 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     }
 
     /// <summary>
-    /// Gets filtered events based on status, city, or defaults to published events
+    /// Gets filtered events based on status, city, or defaults to all visible events
+    /// Phase 6A.59: Changed default from Published-only to all except Draft/UnderReview
+    /// This allows cancelled events to be visible to users
     /// </summary>
     private async Task<IReadOnlyList<Event>> GetFilteredEventsAsync(
         GetEventsQuery request,
@@ -94,8 +96,13 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
             return await _eventRepository.GetEventsByCityAsync(request.City, cancellationToken: cancellationToken);
         }
 
-        // Otherwise get published events by default
-        return await _eventRepository.GetPublishedEventsAsync(cancellationToken);
+        // Phase 6A.59: Get ALL events except Draft and UnderReview
+        // This includes Published, Active, Cancelled, Completed, Archived, Postponed
+        // Cancelled events will show with CANCELLED badge in UI
+        var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
+        return allEvents
+            .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
+            .ToList();
     }
 
     /// <summary>

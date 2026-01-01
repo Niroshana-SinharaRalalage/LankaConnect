@@ -300,12 +300,20 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
               <p className="text-white/90">{event.title}</p>
             </div>
             <Badge
-              className="text-sm px-4 py-2"
+              className="text-sm px-4 py-2 font-bold"
               style={{
-                backgroundColor: event.status === EventStatus.Published ? '#10B981' : '#6B7280',
+                backgroundColor:
+                  (event.status as any) === 'Cancelled' || event.status === EventStatus.Cancelled
+                    ? '#DC2626' // Red for cancelled
+                    : event.status === EventStatus.Published
+                    ? '#10B981' // Green for published
+                    : '#6B7280', // Gray for others
+                color: '#FFFFFF',
               }}
             >
-              {statusLabels[event.status]}
+              {(event.status as any) === 'Cancelled' || event.status === EventStatus.Cancelled
+                ? 'CANCELLED'
+                : statusLabels[event.status]}
             </Badge>
           </div>
         </div>

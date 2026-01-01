@@ -37,8 +37,8 @@
 | 6A.40-47 | Event Registration & Email Fixes | ✅ Complete | See PROGRESS_TRACKER.md Sessions 53-57 | 2025-12-23 to 2025-12-24 |
 | 6A.48 | CSV Export Fixes | ✅ Complete | [PHASE_6A48_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A48_CSV_EXPORT_FIX_SUMMARY.md) | 2025-12-25 |
 | 6A.49 | Fix Paid Event Email | ✅ Complete | PROGRESS_TRACKER.md Session 57 | 2025-12-24 |
-| 6A.50 | Manual Organizer Email Sending | ⏳ Planned | TBD | Not started |
-| 6A.51 | Signup Commitment Emails | ⏳ Blocked | TBD | Feature doesn't exist yet |
+| 6A.50 | Manual Organizer Email Sending (Deprecated) | ❌ Deprecated | See 6A.61 | Renumbered to 6A.61 |
+| 6A.51 | Signup Commitment Emails (Deprecated) | ❌ Deprecated | See 6A.60 | Renumbered to 6A.60 |
 | 6A.52 | Registration Cancellation Emails | ✅ Complete | PROGRESS_TRACKER.md Session 56 | 2025-12-24 |
 | 6A.53 | Member Email Verification System | ✅ Complete | [PHASE_6A53_MEMBER_EMAIL_VERIFICATION_SUMMARY.md](./PHASE_6A53_MEMBER_EMAIL_VERIFICATION_SUMMARY.md) | 2025-12-28 |
 | 6A.54 | Email Template Consolidation | ✅ Complete | PROGRESS_TRACKER.md Session 55 | 2025-12-23 |
@@ -47,6 +47,10 @@
 | 6A.57 | Event Reminder Improvements | ✅ Complete | PROGRESS_TRACKER.md Session 58 | 2025-12-28 |
 | 6A.58 | Dashboard Event Filtration | ✅ Complete | [PHASE_6A58_DASHBOARD_FILTRATION_SUMMARY.md](./PHASE_6A58_DASHBOARD_FILTRATION_SUMMARY.md) | 2025-12-30 |
 | 6A.59 | Landing Page Unified Search | ✅ Complete | [PHASE_6A59_VERIFICATION.md](./PHASE_6A59_VERIFICATION.md) | 2025-12-31 |
+| 6A.60 | Signup Commitment Emails | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
+| 6A.61 | Manual Event Email Sending | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
+| 6A.62 | Fix Registration Cancellation Email | 🔧 In Progress | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Bug fix applied |
+| 6A.63 | Event Cancellation Email Template | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
 
 ---
 
@@ -124,6 +128,12 @@
 - All 6 enum values now supported in code
 - BusinessOwner UI options added (disabled state for Phase 2)
 - Master index created to prevent future numbering conflicts
+
+### Email System Renumbering (2025-12-31)
+- 6A.50 (Manual Organizer Email Sending) → Deprecated, renumbered to 6A.61
+- 6A.51 (Signup Commitment Emails) → Deprecated, renumbered to 6A.60
+- Reason: Original numbers conflicted with other features; comprehensive planning document created
+- Reference: [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md)
 
 ---
 

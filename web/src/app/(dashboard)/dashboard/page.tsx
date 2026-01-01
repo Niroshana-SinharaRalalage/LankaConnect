@@ -502,25 +502,6 @@ export default function DashboardPage() {
                                 showDateRange={true}
                                 showLocation={true}
                               />
-
-                              {/* Phase 6A.59: Show Cancelled Events Toggle */}
-                              <div className="mt-4 flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id="show-cancelled"
-                                  checked={createdFilters.status === 'Cancelled'}
-                                  onChange={(e) => {
-                                    setCreatedFilters({
-                                      ...createdFilters,
-                                      status: e.target.checked ? 'Cancelled' : undefined,
-                                    });
-                                  }}
-                                  className="w-4 h-4 text-[#FF7900] border-gray-300 rounded focus:ring-[#FF7900]"
-                                />
-                                <label htmlFor="show-cancelled" className="text-sm text-gray-700 cursor-pointer">
-                                  Show only cancelled events
-                                </label>
-                              </div>
                             </div>
                             <EventsList
                               events={createdEvents}
@@ -629,25 +610,6 @@ export default function DashboardPage() {
                                 showDateRange={true}
                                 showLocation={true}
                               />
-
-                              {/* Phase 6A.59: Show Cancelled Events Toggle */}
-                              <div className="mt-4 flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id="show-cancelled"
-                                  checked={createdFilters.status === 'Cancelled'}
-                                  onChange={(e) => {
-                                    setCreatedFilters({
-                                      ...createdFilters,
-                                      status: e.target.checked ? 'Cancelled' : undefined,
-                                    });
-                                  }}
-                                  className="w-4 h-4 text-[#FF7900] border-gray-300 rounded focus:ring-[#FF7900]"
-                                />
-                                <label htmlFor="show-cancelled" className="text-sm text-gray-700 cursor-pointer">
-                                  Show only cancelled events
-                                </label>
-                              </div>
                             </div>
                             <EventsList
                               events={createdEvents}

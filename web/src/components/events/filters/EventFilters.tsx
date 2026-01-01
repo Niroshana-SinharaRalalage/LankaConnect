@@ -14,8 +14,6 @@ export interface EventFiltersState {
   dateRange: DateRangePreset;
   metroAreaIds: string[];
   state?: string;
-  /** Phase 6A.59: Filter by event status (e.g., 'Cancelled') */
-  status?: string;
 }
 
 export interface EventFiltersProps {
@@ -175,14 +173,6 @@ export function EventFilters({
 export function filtersToApiParams(filters: EventFiltersState) {
   const dateRange = getDateRangeFromPreset(filters.dateRange);
 
-  // Phase 6A.59: Convert string status to EventStatus enum
-  let statusValue: EventStatus | undefined = undefined;
-  if (filters.status) {
-    // Map string to enum value (API returns strings but expects enum numbers)
-    const statusKey = filters.status as keyof typeof EventStatus;
-    statusValue = EventStatus[statusKey];
-  }
-
   return {
     searchTerm: filters.searchTerm || undefined,
     category: filters.category !== null ? filters.category : undefined,
@@ -190,6 +180,5 @@ export function filtersToApiParams(filters: EventFiltersState) {
     startDateTo: dateRange.startDateTo,
     state: filters.state,
     metroAreaIds: filters.metroAreaIds.length > 0 ? filters.metroAreaIds : undefined,
-    status: statusValue,
   };
 }

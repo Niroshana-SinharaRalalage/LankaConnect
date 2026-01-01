@@ -250,6 +250,13 @@ export function EventsList({
                 </span>
               )}
 
+              {/* Phase 6A.59: Cancelled Badge - Show prominently on all cancelled events */}
+              {(event.status as any) === 'Cancelled' && (
+                <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">
+                  CANCELLED
+                </span>
+              )}
+
               {/* Price - Session 23: Dual pricing, Session 33: Group pricing support */}
               {!event.isFree && (
                 <span className="px-2 py-1 bg-[#FFE8CC] text-[#8B1538] rounded text-xs font-medium">

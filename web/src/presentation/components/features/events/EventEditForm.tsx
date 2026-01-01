@@ -1081,7 +1081,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
               disabled: !group.isActive
             }))}
             value={watch('emailGroupIds') || []}
-            onChange={(ids) => setValue('emailGroupIds', ids)}
+            onChange={(ids) => setValue('emailGroupIds', ids, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
             placeholder="Select email groups to notify"
             isLoading={isLoadingEmailGroups}
             error={!!errors.emailGroupIds}

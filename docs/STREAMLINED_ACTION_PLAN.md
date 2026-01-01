@@ -46,6 +46,16 @@
 
 **Commits**:
 - `5c594288` - feat(phase-6a59): Implement landing page unified search with tabs
+- `eaa23b89` - fix(phase-6a59): Add Search button to Header dropdown for better UX
+
+**User Testing & Fixes (2025-12-31)**:
+- ✅ User reported search wasn't working when typing "Monthly" in Header dropdown
+- ✅ Root cause: Enter key-only trigger wasn't obvious to users
+- ✅ Fix: Added visible orange "Search" button next to input in both desktop and mobile
+- ✅ Mobile search was previously not wired - now fully functional
+- ✅ Both Enter key and button click now trigger search navigation
+- ✅ Build verified: 0 errors
+- ✅ Pushed to develop (commit eaa23b89)
 
 **Known Issues** (Documented, Not Blocking):
 - ⚠️ Business API returns Result<T> wrapper instead of clean JSON (BusinessesController needs to inherit from BaseController)

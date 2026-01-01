@@ -76,7 +76,7 @@ function SearchPageContent() {
   // Tab configuration
   const tabs = [
     { id: 'events', label: 'Events', comingSoon: false },
-    { id: 'business', label: 'Business', comingSoon: false },
+    { id: 'business', label: 'Business', comingSoon: true },
     { id: 'forums', label: 'Forums', comingSoon: true },
     { id: 'marketplace', label: 'Marketplace', comingSoon: true },
   ] as const;

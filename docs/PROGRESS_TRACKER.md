@@ -1,9 +1,52 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-01 - Phases 6A.64-6A.68: UI/UX Improvements - ✅ COMPLETE*
+*Last Updated: 2026-01-02 - Phase 6A.64: CSV Export Attendee Data Fix - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phases 6A.64-6A.68: UI/UX Improvements - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.64: CSV Export Attendee Data Fix - ✅ COMPLETE
+
+### Phase 6A.64: CSV Export Attendee Data Formatting Fix - 2026-01-02
+
+**Status**: ✅ **COMPLETE** (CSV export fixed, deployed to Azure staging)
+
+**Summary**: Fixed critical CSV export bug where attendee data was showing raw DTO structure instead of formatted data. CSV now properly displays main attendee, additional attendees, gender distribution, and phone numbers without quote prefixes.
+
+**Implementation**:
+- ✅ Refactored CSV export to compute AdditionalAttendees from Attendees collection
+- ✅ Added separate MaleCount and FemaleCount columns for better reporting
+- ✅ Created GetGenderDistribution() helper to generate readable strings (e.g., "2 Male, 1 Female")
+- ✅ Removed phone number prefix - let Excel handle formatting naturally
+- ✅ File modified: `src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs`
+
+**Build & Deployment**:
+- ✅ Backend build succeeded (0 errors, 0 warnings)
+- ✅ Commit: `828bd5e1` - "fix(phase-6a64): Fix CSV export attendee data formatting"
+- ✅ Pushed to origin/develop
+- ✅ Azure staging deployment: 20667281733 (success)
+- ✅ Deployed to: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/
+
+**CSV Column Structure After Fix**:
+- RegistrationId, MainAttendee, AdditionalAttendees
+- TotalAttendees, Adults, Children
+- MaleCount, FemaleCount, GenderDistribution
+- Email, Phone (no prefix), Address
+- PaymentStatus, TotalAmount, Currency
+- TicketCode, QRCode, RegistrationDate, Status
+
+**Documentation**:
+- ✅ Created: [docs/PHASE_6A64_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A64_CSV_EXPORT_FIX_SUMMARY.md)
+
+**Testing Required**:
+- Event organizers should test CSV export with real event data
+- Verify CSV opens correctly in Excel with proper attendee information
+
+**Next Steps**:
+- Phase 6A.65 (Pending): Fix Excel export error
+- Phase 6A.66 (Pending): Fix signup list CSV export issues
+
+---
+
+## 🎯 Previous Session - Phases 6A.64-6A.68: UI/UX Improvements - ✅ COMPLETE
 
 ### Phases 6A.64-6A.68: UI/UX Improvements - 2026-01-01
 

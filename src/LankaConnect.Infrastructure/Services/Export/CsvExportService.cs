@@ -30,18 +30,26 @@ public class CsvExportService : ICsvExportService
         });
 
         // Define flattened records for CSV export
+        // Phase 6A.63: Fixed CSV export to properly display attendee data
+        // - Compute AdditionalAttendees as comma-separated names
+        // - Compute GenderDistribution as readable string
+        // - Remove phone number prefix (Excel handles numbers better in CSV)
         var records = attendees.Attendees.Select(a => new
         {
             RegistrationId = a.RegistrationId.ToString(),
-            MainAttendee = a.MainAttendeeName,
-            AdditionalAttendees = a.AdditionalAttendees,
+            MainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown",
+            AdditionalAttendees = a.TotalAttendees > 1
+                ? string.Join(", ", a.Attendees.Skip(1).Select(att => att.Name))
+                : string.Empty,
             TotalAttendees = a.TotalAttendees,
             Adults = a.AdultCount,
             Children = a.ChildCount,
-            GenderDistribution = a.GenderDistribution,
+            MaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Male),
+            FemaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female),
+            GenderDistribution = GetGenderDistribution(a.Attendees),
             Email = a.ContactEmail,
-            Phone = FormatPhoneNumber(a.ContactPhone),  // Format as string with prefix
-            Address = a.ContactAddress ?? string.Empty,  // Use empty string instead of em dash
+            Phone = a.ContactPhone ?? string.Empty,  // No prefix, let Excel handle it
+            Address = a.ContactAddress ?? string.Empty,
             PaymentStatus = a.PaymentStatus.ToString(),
             TotalAmount = a.TotalAmount?.ToString("F2") ?? string.Empty,
             Currency = a.Currency ?? string.Empty,
@@ -61,14 +69,16 @@ public class CsvExportService : ICsvExportService
     }
 
     /// <summary>
-    /// Format phone number as string to prevent Excel scientific notation
+    /// Generate gender distribution string (e.g., "2 Male, 1 Female")
     /// </summary>
-    private static string FormatPhoneNumber(string? phone)
+    private static string GetGenderDistribution(List<AttendeeDetailsDto> attendees)
     {
-        if (string.IsNullOrWhiteSpace(phone))
-            return string.Empty;
+        var genderCounts = attendees
+            .Where(a => a.Gender.HasValue)
+            .GroupBy(a => a.Gender!.Value)
+            .Select(g => $"{g.Count()} {g.Key}")
+            .ToList();
 
-        // Prepend with single quote to force Excel to treat as text
-        return "'" + phone;
+        return genderCounts.Any() ? string.Join(", ", genderCounts) : string.Empty;
     }
 }

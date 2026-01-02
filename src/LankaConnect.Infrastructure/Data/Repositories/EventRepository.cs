@@ -374,8 +374,8 @@ public class EventRepository : Repository<Event>, IEventRepository
         parameters.Add(searchTerm); // Duplicate searchTerm for ORDER BY
 
         // Query for events with ranking
-        // Phase 6A.59 FIX 5: Use single braces for variable interpolation in SQL string
-        // searchTermIndexForOrderBy is a C# variable that holds the parameter index
+        // Phase 6A.59 FIX 6: Build parameter placeholders for LIMIT and OFFSET
+        // EF Core FromSqlRaw expects {0}, {1}, {2} format for parameters
         var limitIndex = parameters.Count;
         var offsetIndex = parameters.Count + 1;
 

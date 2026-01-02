@@ -104,7 +104,7 @@ public class ExportEventAttendeesQueryHandler
         {
             fileContent = _csvService.ExportEventAttendees(attendeesResponse);
             fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
-            contentType = "text/csv";
+            contentType = "text/csv; charset=utf-8";
         }
 
         return Result<ExportResult>.Success(new ExportResult

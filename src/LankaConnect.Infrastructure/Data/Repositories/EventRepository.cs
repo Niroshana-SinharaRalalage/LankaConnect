@@ -305,17 +305,18 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Phase 6A.58 FIX: Use QUOTED PascalCase for enum/date columns (confirmed from PostgreSQL hints)
         // search_vector is snake_case (has explicit HasColumnName), Status/Category/StartDate are PascalCase (EF defaults)
         // Phase 6A.59 FIX: Include Cancelled events in search results so users can see them
+        // Phase 6A.59 FIX 2: Use integer comparison for enum values (database stores as int, not string)
         var whereConditions = new List<string>
         {
             "e.search_vector @@ websearch_to_tsquery('english', {0})",
-            @"CAST(e.""Status"" AS text) IN ({1}, {2})" // Allow both Published and Cancelled
+            @"e.""Status"" IN ({1}, {2})" // Allow both Published (1) and Cancelled (4)
         };
 
         var parameters = new List<object>
         {
             searchTerm,
-            EventStatus.Published.ToString(), // Published events
-            EventStatus.Cancelled.ToString()  // Cancelled events (user wants to see these)
+            (int)EventStatus.Published,  // 1 - Published events
+            (int)EventStatus.Cancelled   // 4 - Cancelled events (user wants to see these)
         };
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",
@@ -324,9 +325,9 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Add category filter if provided
         if (category.HasValue)
         {
-            whereConditions.Add($@"CAST(e.""Category"" AS text) = {{{parameters.Count}}}");
-            parameters.Add(category.Value.ToString()); // Use string "Cultural", "Community", etc.
-            _repoLogger.LogInformation("[SEARCH-3] Added category filter: {Category}", category.Value.ToString());
+            whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
+            parameters.Add((int)category.Value); // Use integer enum value
+            _repoLogger.LogInformation("[SEARCH-3] Added category filter: {Category}", category.Value);
         }
 
         // Add free-only filter if provided

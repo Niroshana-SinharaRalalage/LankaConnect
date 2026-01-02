@@ -348,6 +348,10 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         var whereClause = string.Join(" AND ", whereConditions);
 
+        // Phase 6A.59 FIX 3: Save count of WHERE clause parameters BEFORE adding duplicates
+        // Count query needs all parameters used in WHERE clause
+        var whereClauseParameterCount = parameters.Count;
+
         // Phase 6A.59 FIX 3: Duplicate searchTerm parameter for ORDER BY clause
         // EF Core FromSqlRaw doesn't support using same parameter index twice
         var searchTermIndexForOrderBy = parameters.Count;
@@ -386,9 +390,9 @@ public class EventRepository : Repository<Event>, IEventRepository
                 WHERE {whereClause}";
 
             // Phase 6A.59 FIX 4: Remove searchTerm duplicate, limit, and offset from count parameters
-            // Count query only needs parameters used in WHERE clause (searchTerm, Published, Cancelled)
-            // Exclude: duplicate searchTerm (index 3), limit (index 4), offset (index 5)
-            var countParameters = parameters.Take(3).ToArray(); // Only 0,1,2: searchTerm, Published, Cancelled
+            // Count query needs ALL parameters used in WHERE clause (may include category, startDateFrom, etc.)
+            // Exclude: duplicate searchTerm, limit, offset (last 3 parameters)
+            var countParameters = parameters.Take(whereClauseParameterCount).ToArray();
 
             _repoLogger.LogInformation("[SEARCH-8] Count SQL Query:\n{CountSql}\nParameters: {Parameters}",
                 countSql, string.Join(", ", countParameters));

@@ -9,6 +9,7 @@ import { Sparkles, ArrowRight, Calendar, MapPin, Users, Clock, Store, MessageSqu
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
+import { useCommunityStats } from '@/presentation/hooks/useStats';
 
 export default function Home() {
   const { user } = useAuthStore();
@@ -23,6 +24,22 @@ export default function Home() {
     isAnonymous ? latitude ?? undefined : undefined,
     isAnonymous ? longitude ?? undefined : undefined
   );
+
+  // Phase 6A.69: Fetch real-time community statistics
+  const { data: stats, isLoading: statsLoading } = useCommunityStats();
+
+  // Format number for display (1234 → "1.2K+", 25678 → "25.6K+")
+  const formatCount = (count: number): string => {
+    if (count >= 1000) {
+      const k = Math.floor(count / 1000);
+      const remainder = count % 1000;
+      if (remainder >= 100) {
+        return `${k}.${Math.floor(remainder / 100)}K+`;
+      }
+      return `${k}K+`;
+    }
+    return count.toString();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -73,21 +90,38 @@ export default function Home() {
 
               {/* Removed News & Updates button per user request */}
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/20">
-                <div>
-                  <div className="text-3xl text-white mb-1">25K+</div>
-                  <div className="text-sm text-white/90">Members</div>
+              {/* Phase 6A.69: Real-time Community Statistics */}
+              {statsLoading ? (
+                <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/20">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i}>
+                      <div className="h-9 w-20 bg-white/20 rounded animate-pulse mb-1"></div>
+                      <div className="h-4 w-16 bg-white/10 rounded animate-pulse"></div>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <div className="text-3xl text-white mb-1">1.2K+</div>
-                  <div className="text-sm text-white/90">Events</div>
+              ) : stats && (stats.totalUsers > 0 || stats.totalEvents > 0 || stats.totalBusinesses > 0) ? (
+                <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/20">
+                  {stats.totalUsers > 0 && (
+                    <div>
+                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalUsers)}</div>
+                      <div className="text-sm text-white/90">Members</div>
+                    </div>
+                  )}
+                  {stats.totalEvents > 0 && (
+                    <div>
+                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalEvents)}</div>
+                      <div className="text-sm text-white/90">Events</div>
+                    </div>
+                  )}
+                  {stats.totalBusinesses > 0 && (
+                    <div>
+                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalBusinesses)}</div>
+                      <div className="text-sm text-white/90">Businesses</div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <div className="text-3xl text-white mb-1">500+</div>
-                  <div className="text-sm text-white/90">Businesses</div>
-                </div>
-              </div>
+              ) : null}
             </div>
 
             {/* Right - Featured Events Cards (from Database) */}

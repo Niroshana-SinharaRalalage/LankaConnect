@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -10,27 +11,35 @@ using Microsoft.Extensions.Logging;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles EventCancelledEvent to send bulk cancellation notifications to all registered attendees
+/// Phase 6A.63: Handles EventCancelledEvent to send cancellation notifications to ALL recipients.
+/// Sends email to consolidated list of:
+/// 1. Confirmed registrations
+/// 2. Event email groups
+/// 3. Location-matched newsletter subscribers (metro → state → all locations)
+/// Uses database-based template: event-cancelled-notification
 /// </summary>
 public class EventCancelledEventHandler : INotificationHandler<DomainEventNotification<EventCancelledEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEventNotificationRecipientService _recipientService;
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
     private readonly ILogger<EventCancelledEventHandler> _logger;
 
     public EventCancelledEventHandler(
-        IEmailService emailService,
-        IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEventNotificationRecipientService recipientService,
+        IUserRepository userRepository,
+        IEmailService emailService,
         ILogger<EventCancelledEventHandler> logger)
     {
-        _emailService = emailService;
-        _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _recipientService = recipientService;
+        _userRepository = userRepository;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -38,7 +47,8 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling EventCancelledEvent for Event {EventId}", domainEvent.EventId);
+        _logger.LogInformation("[Phase 6A.63] EventCancelledEventHandler INVOKED - Event {EventId}, Cancelled At {CancelledAt}",
+            domainEvent.EventId, domainEvent.CancelledAt);
 
         try
         {
@@ -50,28 +60,16 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
                 return;
             }
 
-            // Get all confirmed registrations for this event
+            // 1. Get confirmed registration emails
             var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
             var confirmedRegistrations = registrations
                 .Where(r => r.Status == RegistrationStatus.Confirmed)
                 .ToList();
 
-            if (!confirmedRegistrations.Any())
-            {
-                _logger.LogInformation("No confirmed registrations found for Event {EventId}, skipping email notifications",
-                    domainEvent.EventId);
-                return;
-            }
-
-            _logger.LogInformation("Found {Count} confirmed registrations for Event {EventId}, preparing bulk email",
-                confirmedRegistrations.Count, domainEvent.EventId);
-
-            // Prepare bulk email messages
-            var emailMessages = new List<EmailMessageDto>();
-
+            var registrationEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var registration in confirmedRegistrations)
             {
-                // Skip anonymous registrations - they don't have email in user repository
+                // Skip anonymous registrations
                 if (!registration.UserId.HasValue)
                 {
                     _logger.LogInformation("Skipping anonymous registration {RegistrationId} for cancelled event notification",
@@ -80,82 +78,118 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
                 }
 
                 var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
-                if (user == null)
+                if (user != null)
                 {
-                    _logger.LogWarning("User {UserId} not found for registration {RegistrationId}",
-                        registration.UserId.Value, registration.Id);
-                    continue;
+                    registrationEmails.Add(user.Email.Value);
                 }
-
-                var parameters = new Dictionary<string, object>
-                {
-                    { "UserName", $"{user.FirstName} {user.LastName}" },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                    { "Reason", domainEvent.Reason },
-                    { "CancelledAt", domainEvent.CancelledAt.ToString("MMMM dd, yyyy h:mm tt") }
-                };
-
-                // Note: Using templated email approach with parameters
-                // In production, you would generate HTML from template here
-                var emailMessage = new EmailMessageDto
-                {
-                    ToEmail = user.Email.Value,
-                    ToName = $"{user.FirstName} {user.LastName}",
-                    Subject = $"Event Cancelled: {@event.Title.Value}",
-                    HtmlBody = GenerateEventCancelledHtml(parameters),
-                    Priority = 1 // High priority
-                };
-
-                emailMessages.Add(emailMessage);
             }
 
-            if (!emailMessages.Any())
+            _logger.LogInformation("[Phase 6A.63] Found {Count} confirmed registrations for Event {EventId}",
+                registrationEmails.Count, domainEvent.EventId);
+
+            // 2. Get email groups + newsletter subscribers (reuse EventPublishedEventHandler pattern)
+            var notificationRecipients = await _recipientService.ResolveRecipientsAsync(
+                domainEvent.EventId,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.63] Resolved {Count} notification recipients for Event {EventId}. " +
+                "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+                notificationRecipients.EmailAddresses.Count, domainEvent.EventId,
+                notificationRecipients.Breakdown.EmailGroupCount,
+                notificationRecipients.Breakdown.MetroAreaSubscribers,
+                notificationRecipients.Breakdown.StateLevelSubscribers,
+                notificationRecipients.Breakdown.AllLocationsSubscribers);
+
+            // 3. Consolidate all recipients (deduplicated, case-insensitive)
+            var allRecipients = registrationEmails
+                .Concat(notificationRecipients.EmailAddresses)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (!allRecipients.Any())
             {
-                _logger.LogWarning("No email messages prepared for Event {EventId}", domainEvent.EventId);
+                _logger.LogInformation("[Phase 6A.63] No recipients found for Event {EventId}, skipping cancellation emails",
+                    domainEvent.EventId);
                 return;
             }
 
-            // Send bulk emails
-            var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
+            _logger.LogInformation(
+                "[Phase 6A.63] Sending cancellation emails to {TotalCount} unique recipients for Event {EventId}. " +
+                "Breakdown: Registrations={RegCount}, EmailGroups={EmailGroupCount}, Newsletter={NewsletterCount}",
+                allRecipients.Count, domainEvent.EventId,
+                registrationEmails.Count,
+                notificationRecipients.Breakdown.EmailGroupCount,
+                notificationRecipients.Breakdown.MetroAreaSubscribers +
+                notificationRecipients.Breakdown.StateLevelSubscribers +
+                notificationRecipients.Breakdown.AllLocationsSubscribers);
 
-            if (result.IsFailure)
+            // 4. Prepare template parameters
+            var parameters = new Dictionary<string, object>
             {
-                _logger.LogError("Failed to send event cancellation bulk emails for Event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
-            }
-            else
+                ["EventTitle"] = @event.Title.Value,
+                ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
+                ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
+                ["EventLocation"] = GetEventLocationString(@event),
+                ["CancellationReason"] = domainEvent.Reason
+            };
+
+            // 5. Send templated email to each recipient
+            var successCount = 0;
+            var failCount = 0;
+
+            foreach (var email in allRecipients)
             {
-                _logger.LogInformation(
-                    "Event cancellation bulk emails sent: {Successful} successful, {Failed} failed out of {Total} total",
-                    result.Value.SuccessfulSends, result.Value.FailedSends, result.Value.TotalEmails);
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    "event-cancelled-notification",
+                    email,
+                    parameters,
+                    cancellationToken);
+
+                if (result.IsSuccess)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    failCount++;
+                    _logger.LogWarning(
+                        "[Phase 6A.63] Failed to send event cancellation email to {Email} for event {EventId}: {Errors}",
+                        email, domainEvent.EventId, string.Join(", ", result.Errors));
+                }
             }
+
+            _logger.LogInformation(
+                "[Phase 6A.63] Event cancellation emails completed for event {EventId}. Success: {SuccessCount}, Failed: {FailCount}",
+                domainEvent.EventId, successCount, failCount);
         }
         catch (Exception ex)
         {
             // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling EventCancelledEvent for Event {EventId}", domainEvent.EventId);
+            _logger.LogError(ex, "[Phase 6A.63] Error handling EventCancelledEvent for Event {EventId}", domainEvent.EventId);
         }
     }
 
-    private string GenerateEventCancelledHtml(Dictionary<string, object> parameters)
+    /// <summary>
+    /// Safely extracts event location string with defensive null handling.
+    /// Copied from EventPublishedEventHandler for consistency.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
     {
-        // Simplified HTML generation - in production this would use Razor templates
-        return $@"
-            <html>
-            <body>
-                <h2>Event Cancelled</h2>
-                <p>Dear {parameters["UserName"]},</p>
-                <p>We regret to inform you that the following event has been cancelled:</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Original Date:</strong> {parameters["EventStartDate"]} at {parameters["EventStartTime"]}</li>
-                    <li><strong>Cancellation Reason:</strong> {parameters["Reason"]}</li>
-                </ul>
-                <p>We apologize for any inconvenience this may cause.</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+        var state = @event.Location.Address.State;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+        return string.Join(", ", parts);
     }
 }

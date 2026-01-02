@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [deletingEvent, setDeletingEvent] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // State for events
   const [registeredEvents, setRegisteredEvents] = useState<EventDto[]>([]);
@@ -272,6 +273,9 @@ export default function DashboardPage() {
   const handleDeleteEvent = async (): Promise<void> => {
     if (!deletingEvent) return;
 
+    setIsDeleting(true);
+    setDeleteError(null);
+
     try {
       await eventsRepository.deleteEvent(deletingEvent.id);
       setShowDeleteModal(false);
@@ -284,7 +288,9 @@ export default function DashboardPage() {
       console.error('Error deleting event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete event. Please try again.';
       setDeleteError(errorMessage);
-      throw error;
+      // Don't re-throw - error is already displayed in modal
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -743,7 +749,7 @@ export default function DashboardPage() {
             }
           }}
           onConfirm={handleDeleteEvent}
-          isDeleting={false}
+          isDeleting={isDeleting}
           eventTitle={deletingEvent?.title || ''}
           error={deleteError}
         />

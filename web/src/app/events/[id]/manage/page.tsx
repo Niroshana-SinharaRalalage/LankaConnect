@@ -28,6 +28,8 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import { AttendeeManagementTab } from '@/presentation/components/features/events/AttendeeManagementTab';
 import { EventDetailsTab } from '@/presentation/components/features/events/EventDetailsTab';
 import { SignUpListsTab } from '@/presentation/components/features/events/SignUpListsTab';
+import { UnpublishEventModal } from '@/presentation/components/features/events/UnpublishEventModal';
+import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
 /**
  * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete
@@ -48,9 +50,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError, refetch } = useEventById(id);
@@ -96,16 +101,11 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    const confirmed = window.confirm(
-      'Are you sure you want to unpublish this event? It will return to Draft status and will not be visible to the public until published again.'
-    );
-
-    if (!confirmed) return;
-
     try {
       setIsUnpublishing(true);
       setError(null);
       await eventsRepository.unpublishEvent(id);
+      setShowUnpublishModal(false);
       setIsUnpublishing(false);
       await refetch();
     } catch (err) {
@@ -152,29 +152,17 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    // Double confirmation for destructive action
-    const confirmed = window.confirm(
-      `⚠️ CRITICAL WARNING ⚠️\n\nThis action CANNOT be undone.\n\nThe event "${event.title}" will be PERMANENTLY DELETED from the database.\n\nAre you absolutely sure you want to delete this event?`
-    );
-
-    if (!confirmed) return;
-
-    // Second confirmation
-    const doubleConfirmed = window.confirm(
-      'This is your final confirmation.\n\nClick OK to permanently delete this event, or Cancel to go back.'
-    );
-
-    if (!doubleConfirmed) return;
-
     try {
       setIsDeleting(true);
-      setError(null);
+      setDeleteError(null);
       await eventsRepository.deleteEvent(id);
-      // On success, redirect to dashboard
+      // On success, close modal and redirect to dashboard
+      setShowDeleteModal(false);
       router.push('/dashboard');
     } catch (err) {
       console.error('Failed to delete event:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete event. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete event. Please try again.';
+      setDeleteError(errorMessage);
       setIsDeleting(false);
     }
   };
@@ -347,7 +335,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
             {/* Unpublish Button - Show for Published events */}
             {isPublished && (
               <Button
-                onClick={handleUnpublishEvent}
+                onClick={() => setShowUnpublishModal(true)}
                 disabled={isUnpublishing}
                 className="flex items-center gap-2 text-white"
                 style={{ background: '#EF4444', color: 'white' }}
@@ -372,7 +360,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
             {/* Phase 6A.59: Delete Event Button - Show ONLY for Draft/Cancelled with 0 registrations */}
             {canDelete && (
               <Button
-                onClick={handleDeleteEvent}
+                onClick={() => setShowDeleteModal(true)}
                 disabled={isDeleting}
                 variant="destructive"
                 className="flex items-center gap-2"
@@ -474,6 +462,28 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <TabPanel tabs={tabs} defaultTab="details" />
       </div>
+
+      {/* Unpublish Event Modal */}
+      <UnpublishEventModal
+        open={showUnpublishModal}
+        onOpenChange={setShowUnpublishModal}
+        onConfirm={handleUnpublishEvent}
+        isUnpublishing={isUnpublishing}
+        eventTitle={event?.title || ''}
+      />
+
+      {/* Delete Event Modal */}
+      <DeleteEventModal
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open);
+          if (!open) setDeleteError(null); // Clear error when closing
+        }}
+        onConfirm={handleDeleteEvent}
+        isDeleting={isDeleting}
+        eventTitle={event?.title || ''}
+        error={deleteError}
+      />
 
       <Footer />
     </div>

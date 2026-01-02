@@ -40,6 +40,7 @@ import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/comp
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 import { CancelEventModal } from '@/presentation/components/features/events/CancelEventModal';
+import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -52,6 +53,11 @@ export default function DashboardPage() {
   // Phase 6A.59: Cancel event modal state
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [cancellingEvent, setCancellingEvent] = useState<{ id: string; title: string } | null>(null);
+
+  // Delete event modal state
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [deletingEvent, setDeletingEvent] = useState<{ id: string; title: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // State for events
   const [registeredEvents, setRegisteredEvents] = useState<EventDto[]>([]);
@@ -252,27 +258,32 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string): Promise<void> => {
-    const confirmed = window.confirm(
-      `⚠️ CRITICAL WARNING ⚠️\n\nThis action CANNOT be undone.\n\nThe event will be PERMANENTLY DELETED from the database.\n\nAre you absolutely sure you want to delete this event?`
-    );
+  const handleDeleteEventClick = async (eventId: string): Promise<void> => {
+    // Find the event to get its title
+    const event = createdEvents.find(e => e.id === eventId);
+    if (!event) return;
 
-    if (!confirmed) return;
+    // Open the delete modal instead of using window.confirm
+    setDeletingEvent({ id: event.id, title: event.title });
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
 
-    const doubleConfirmed = window.confirm(
-      'This is your final confirmation.\n\nClick OK to permanently delete this event, or Cancel to go back.'
-    );
-
-    if (!doubleConfirmed) return;
+  const handleDeleteEvent = async (): Promise<void> => {
+    if (!deletingEvent) return;
 
     try {
-      await eventsRepository.deleteEvent(eventId);
+      await eventsRepository.deleteEvent(deletingEvent.id);
+      setShowDeleteModal(false);
+      setDeletingEvent(null);
       // Reload created events after successful deletion
       const apiParams = filtersToApiParams(createdFilters);
       const events = await eventsRepository.getUserCreatedEvents(apiParams);
       setCreatedEvents(events);
     } catch (error) {
       console.error('Error deleting event:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete event. Please try again.';
+      setDeleteError(errorMessage);
       throw error;
     }
   };
@@ -513,7 +524,7 @@ export default function DashboardPage() {
                               onEditEvent={handleEditEvent}
                               onPublishEvent={handlePublishEvent}
                               onCancelEvent={handleCancelEventManagement}
-                              onDeleteEvent={handleDeleteEvent}
+                              onDeleteEvent={handleDeleteEventClick}
                             />
                           </div>
                         ),
@@ -621,7 +632,7 @@ export default function DashboardPage() {
                               onEditEvent={handleEditEvent}
                               onPublishEvent={handlePublishEvent}
                               onCancelEvent={handleCancelEventManagement}
-                              onDeleteEvent={handleDeleteEvent}
+                              onDeleteEvent={handleDeleteEventClick}
                             />
                           </div>
                         ),
@@ -719,6 +730,22 @@ export default function DashboardPage() {
             setCancellingEvent(null);
           }}
           onConfirm={handleConfirmCancelEvent}
+        />
+
+        {/* Delete Event Modal */}
+        <DeleteEventModal
+          open={showDeleteModal}
+          onOpenChange={(open) => {
+            setShowDeleteModal(open);
+            if (!open) {
+              setDeletingEvent(null);
+              setDeleteError(null);
+            }
+          }}
+          onConfirm={handleDeleteEvent}
+          isDeleting={false}
+          eventTitle={deletingEvent?.title || ''}
+          error={deleteError}
         />
       </div>
     </ProtectedRoute>

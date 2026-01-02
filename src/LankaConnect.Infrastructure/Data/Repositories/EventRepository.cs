@@ -304,16 +304,18 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Build the WHERE clause dynamically based on filters
         // Phase 6A.58 FIX: Use QUOTED PascalCase for enum/date columns (confirmed from PostgreSQL hints)
         // search_vector is snake_case (has explicit HasColumnName), Status/Category/StartDate are PascalCase (EF defaults)
+        // Phase 6A.59 FIX: Include Cancelled events in search results so users can see them
         var whereConditions = new List<string>
         {
             "e.search_vector @@ websearch_to_tsquery('english', {0})",
-            @"CAST(e.""Status"" AS text) = {1}" // PascalCase with quotes, cast enum to text for string comparison
+            @"CAST(e.""Status"" AS text) IN ({1}, {2})" // Allow both Published and Cancelled
         };
 
         var parameters = new List<object>
         {
             searchTerm,
-            EventStatus.Published.ToString() // Use string "Published", not integer
+            EventStatus.Published.ToString(), // Published events
+            EventStatus.Cancelled.ToString()  // Cancelled events (user wants to see these)
         };
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",

@@ -190,7 +190,7 @@ export function EventsList({
                 <img
                   src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
                   alt={event.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   loading="lazy"
                 />
               ) : (

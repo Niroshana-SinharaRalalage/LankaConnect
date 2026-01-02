@@ -183,28 +183,47 @@ export function EventsList({
             onEventClick ? 'cursor-pointer' : ''
           }`}
         >
-          {/* Event Header */}
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="text-lg font-semibold text-[#8B1538] flex-1">{event.title}</h3>
-            <div className="flex gap-2 ml-4">
-              {/* Phase 6A.46: Display Label (computed lifecycle label from backend) */}
-              <span
-                className="px-2 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
-                style={{ backgroundColor: getStatusBadgeColor(event.displayLabel) }}
-              >
-                {event.displayLabel}
-              </span>
-
-              {/* Phase 6A.46: Registration Badge */}
-              <RegistrationBadge
-                isRegistered={registeredEventIds?.has(event.id) ?? false}
-                compact={false}
-              />
+          <div className="flex items-start gap-4">
+            {/* Phase 6A.67: Event Image Thumbnail (96x96px) */}
+            <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-500 to-rose-500">
+              {event.images && event.images.length > 0 ? (
+                <img
+                  src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
+                  alt={event.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-4xl text-white">
+                  🎉
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* Event Info */}
-          <div className="space-y-2">
+            {/* Event Details */}
+            <div className="flex-1 min-w-0">
+              {/* Event Header */}
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="text-lg font-semibold text-[#8B1538] flex-1 line-clamp-2">{event.title}</h3>
+                <div className="flex gap-2 ml-4">
+                  {/* Phase 6A.46: Display Label (computed lifecycle label from backend) */}
+                  <span
+                    className="px-2 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
+                    style={{ backgroundColor: getStatusBadgeColor(event.displayLabel) }}
+                  >
+                    {event.displayLabel}
+                  </span>
+
+                  {/* Phase 6A.46: Registration Badge */}
+                  <RegistrationBadge
+                    isRegistered={registeredEventIds?.has(event.id) ?? false}
+                    compact={false}
+                  />
+                </div>
+              </div>
+
+              {/* Event Info */}
+              <div className="space-y-2">
             {/* Date */}
             <div className="flex items-center text-sm text-gray-600">
               <Calendar className="w-4 h-4 mr-2 text-[#FF7900]" />
@@ -377,6 +396,8 @@ export function EventsList({
                 </button>
               )
             )}
+          </div>
+            </div>
           </div>
         </div>
       ))}

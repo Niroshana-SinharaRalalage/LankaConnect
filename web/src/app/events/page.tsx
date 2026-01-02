@@ -169,12 +169,9 @@ export default function EventsPage() {
     return labels;
   }, [categories]);
 
-  // Check if user can create events (EventOrganizer, Admin, or AdminManager)
-  const canUserCreateEvents = user && (
-    user.role === UserRole.EventOrganizer ||
-    user.role === UserRole.Admin ||
-    user.role === UserRole.AdminManager
-  );
+  // Phase 6A.63: Remove Create Event button from /events page for all users
+  // Users should create events only from Dashboard
+  const canUserCreateEvents = false;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">

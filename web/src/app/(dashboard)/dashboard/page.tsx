@@ -476,34 +476,6 @@ export default function DashboardPage() {
                   <TabPanel
                     tabs={[
                       {
-                        id: 'registered',
-                        label: 'My Registered Events',
-                        icon: Users,
-                        content: (
-                          <div>
-                            {/* Phase 6A.58: Event Filters for My Registered Events */}
-                            <div className="mb-6">
-                              <EventFilters
-                                filters={registeredFilters}
-                                onFiltersChange={setRegisteredFilters}
-                                showSearch={true}
-                                showCategory={true}
-                                showDateRange={true}
-                                showLocation={true}
-                              />
-                            </div>
-                            <EventsList
-                              events={registeredEvents}
-                              isLoading={loadingRegistered}
-                              emptyMessage="You haven't registered for any events yet"
-                              onEventClick={handleEventClick}
-                              onCancelClick={handleCancelRegistration}
-                              registeredEventIds={registeredEventIds}
-                            />
-                          </div>
-                        ),
-                      },
-                      {
                         id: 'created',
                         label: 'Event Management',
                         icon: FolderOpen,
@@ -531,6 +503,34 @@ export default function DashboardPage() {
                               onPublishEvent={handlePublishEvent}
                               onCancelEvent={handleCancelEventManagement}
                               onDeleteEvent={handleDeleteEventClick}
+                            />
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={registeredEvents}
+                              isLoading={loadingRegistered}
+                              emptyMessage="You haven't registered for any events yet"
+                              onEventClick={handleEventClick}
+                              onCancelClick={handleCancelRegistration}
+                              registeredEventIds={registeredEventIds}
                             />
                           </div>
                         ),
@@ -584,34 +584,6 @@ export default function DashboardPage() {
                   <TabPanel
                     tabs={[
                       {
-                        id: 'registered',
-                        label: 'My Registered Events',
-                        icon: Users,
-                        content: (
-                          <div>
-                            {/* Phase 6A.58: Event Filters for My Registered Events */}
-                            <div className="mb-6">
-                              <EventFilters
-                                filters={registeredFilters}
-                                onFiltersChange={setRegisteredFilters}
-                                showSearch={true}
-                                showCategory={true}
-                                showDateRange={true}
-                                showLocation={true}
-                              />
-                            </div>
-                            <EventsList
-                              events={registeredEvents}
-                              isLoading={loadingRegistered}
-                              emptyMessage="You haven't registered for any events yet"
-                              onEventClick={handleEventClick}
-                              onCancelClick={handleCancelRegistration}
-                              registeredEventIds={registeredEventIds}
-                            />
-                          </div>
-                        ),
-                      },
-                      {
                         id: 'created',
                         label: 'Event Management',
                         icon: FolderOpen,
@@ -639,6 +611,34 @@ export default function DashboardPage() {
                               onPublishEvent={handlePublishEvent}
                               onCancelEvent={handleCancelEventManagement}
                               onDeleteEvent={handleDeleteEventClick}
+                            />
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            <EventsList
+                              events={registeredEvents}
+                              isLoading={loadingRegistered}
+                              emptyMessage="You haven't registered for any events yet"
+                              onEventClick={handleEventClick}
+                              onCancelClick={handleCancelRegistration}
+                              registeredEventIds={registeredEventIds}
                             />
                           </div>
                         ),

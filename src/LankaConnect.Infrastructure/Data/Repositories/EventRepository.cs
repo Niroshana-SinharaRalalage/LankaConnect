@@ -348,12 +348,17 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         var whereClause = string.Join(" AND ", whereConditions);
 
+        // Phase 6A.59 FIX 3: Duplicate searchTerm parameter for ORDER BY clause
+        // EF Core FromSqlRaw doesn't support using same parameter index twice
+        var searchTermIndexForOrderBy = parameters.Count;
+        parameters.Add(searchTerm); // Duplicate searchTerm for ORDER BY
+
         // Query for events with ranking
         var eventsSql = $@"
             SELECT e.*
             FROM events.events e
             WHERE {whereClause}
-            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{0}})) DESC, e.""StartDate"" ASC
+            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{{searchTermIndexForOrderBy}}})) DESC, e.""StartDate"" ASC
             LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
 
         parameters.Add(limit);

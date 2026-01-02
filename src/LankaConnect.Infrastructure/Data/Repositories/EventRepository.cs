@@ -385,8 +385,10 @@ public class EventRepository : Repository<Event>, IEventRepository
                 FROM events.events e
                 WHERE {whereClause}";
 
-            // Remove limit and offset parameters for count query
-            var countParameters = parameters.Take(parameters.Count - 2).ToArray();
+            // Phase 6A.59 FIX 4: Remove searchTerm duplicate, limit, and offset from count parameters
+            // Count query only needs parameters used in WHERE clause (searchTerm, Published, Cancelled)
+            // Exclude: duplicate searchTerm (index 3), limit (index 4), offset (index 5)
+            var countParameters = parameters.Take(3).ToArray(); // Only 0,1,2: searchTerm, Published, Cancelled
 
             _repoLogger.LogInformation("[SEARCH-8] Count SQL Query:\n{CountSql}\nParameters: {Parameters}",
                 countSql, string.Join(", ", countParameters));

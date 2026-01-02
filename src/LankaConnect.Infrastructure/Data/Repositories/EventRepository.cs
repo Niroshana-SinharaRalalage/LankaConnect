@@ -133,11 +133,27 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await GetByIdAsync(id, trackChanges: true, cancellationToken);
     }
 
+    /// <summary>
+    /// Phase 6A.67 FIX: Override GetAllAsync to include Images for dashboard event cards
+    /// Base repository only loads the Event entity without related data
+    /// Dashboard needs Images to display event thumbnails
+    /// </summary>
+    public override async Task<IReadOnlyList<Event>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(e => e.Images)
+            .Include(e => e.Registrations)  // For CurrentRegistrations count
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)
     {
         // Session 33: Include Registrations to populate CurrentRegistrations for dashboard
+        // Phase 6A.67 FIX: Include Images for dashboard event thumbnails
         return await _dbSet
             .AsNoTracking()
+            .Include(e => e.Images)
             .Include(e => e.Registrations)
             .Where(e => e.OrganizerId == organizerId)
             .OrderByDescending(e => e.StartDate)

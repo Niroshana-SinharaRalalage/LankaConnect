@@ -184,8 +184,8 @@ export function EventsList({
           }`}
         >
           <div className="flex items-start gap-4">
-            {/* Phase 6A.67: Event Image Thumbnail (96x96px) */}
-            <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-500 to-rose-500">
+            {/* Phase 6A.67: Event Image Thumbnail (128x128px - increased from 96px for better visibility) */}
+            <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-500 to-rose-500">
               {event.images && event.images.length > 0 ? (
                 <img
                   src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}

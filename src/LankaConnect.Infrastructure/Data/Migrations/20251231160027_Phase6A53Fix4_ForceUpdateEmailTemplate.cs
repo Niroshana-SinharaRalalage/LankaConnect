@@ -19,7 +19,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                INSERT INTO communications.email_templates (id, name, type, description, subject, html_template, text_template, created_at, updated_at, category, version)
+                INSERT INTO communications.email_templates (""Id"", ""name"", ""type"", ""description"", ""subject_template"", ""html_template"", ""text_template"", ""created_at"", ""updated_at"", ""category"", ""is_active"")
                 VALUES (
                     gen_random_uuid(),
                     'member-email-verification',
@@ -104,8 +104,8 @@ Sri Lankan Community Hub
 © 2025 LankaConnect. All rights reserved.',
                     NOW(),
                     NOW(),
-                    'authentication',
-                    2
+                    'Authentication',
+                    true
                 );
             ");
 

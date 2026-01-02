@@ -374,12 +374,17 @@ public class EventRepository : Repository<Event>, IEventRepository
         parameters.Add(searchTerm); // Duplicate searchTerm for ORDER BY
 
         // Query for events with ranking
+        // Phase 6A.59 FIX 5: Use single braces for variable interpolation in SQL string
+        // searchTermIndexForOrderBy is a C# variable that holds the parameter index
+        var limitIndex = parameters.Count;
+        var offsetIndex = parameters.Count + 1;
+
         var eventsSql = $@"
             SELECT e.*
             FROM events.events e
             WHERE {whereClause}
             ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{{searchTermIndexForOrderBy}}})) DESC, e.""StartDate"" ASC
-            LIMIT {{{parameters.Count}}} OFFSET {{{parameters.Count + 1}}}";
+            LIMIT {{{limitIndex}}} OFFSET {{{offsetIndex}}}";
 
         parameters.Add(limit);
         parameters.Add(offset);

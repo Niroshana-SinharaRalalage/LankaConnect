@@ -28,7 +28,7 @@ public class PublicController : BaseController<PublicController>
     /// <returns>Total counts of active users, published events, and active businesses</returns>
     [HttpGet("stats")]
     [AllowAnonymous]
-    [ResponseCache(Duration = 300, VaryByQueryKeys = new string[] { })] // 5 minutes cache
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)] // 5 minutes cache
     [ProducesResponseType(typeof(CommunityStatsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCommunityStats()
     {

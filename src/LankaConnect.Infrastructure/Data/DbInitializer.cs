@@ -76,19 +76,19 @@ public class DbInitializer
     /// <summary>
     /// Seeds metro areas into the database
     /// Phase 5C: Metro Areas System
+    /// Phase 6A.70: Removed early return to allow incremental metro area additions
     /// </summary>
     private async Task SeedMetroAreasAsync()
     {
         var existingMetroAreasCount = await _context.MetroAreas.CountAsync();
-        if (existingMetroAreasCount > 0)
-        {
-            _logger.LogInformation("Database already contains {Count} metro areas. Skipping seed.", existingMetroAreasCount);
-            return;
-        }
+        _logger.LogInformation("Database currently contains {Count} metro areas. Checking for missing metros...", existingMetroAreasCount);
 
-        _logger.LogInformation("Seeding metro areas...");
+        // Phase 6A.70: Always call seeder - it handles incremental additions internally
         await MetroAreaSeeder.SeedAsync(_context);
-        _logger.LogInformation("Successfully seeded metro areas to the database.");
+
+        var finalCount = await _context.MetroAreas.CountAsync();
+        _logger.LogInformation("Metro area seeding complete. Total metros: {FinalCount} (added {Added})",
+            finalCount, finalCount - existingMetroAreasCount);
     }
 
     /// <summary>

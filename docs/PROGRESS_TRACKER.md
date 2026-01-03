@@ -1,9 +1,55 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-03 - Phase 6A.69: Real-Time Community Statistics - ✅ COMPLETE*
+*Last Updated: 2026-01-03 - Phase 6A.59: Event Search 500 Error Fix - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.69: Real-Time Community Statistics - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.59: Event Search 500 Error Fix - ✅ COMPLETE
+
+### Phase 6A.59: Event Management Search - Fix 500 Internal Server Error - 2026-01-03
+
+**Status**: ✅ **COMPLETE** (Root cause identified, fix deployed, tested via API)
+
+**Issue**: Searching for events in Event Management tab with `searchTerm` parameter returned HTTP 500 Internal Server Error.
+
+**Root Cause Analysis**:
+1. **Initial Hypothesis** (WRONG): Parameter interpolation with triple braces `{{{limitIndex}}}`
+   - System architect hypothesized PostgreSQL function compatibility issue
+   - This was disproven after checking PostgreSQL 15 supports `websearch_to_tsquery`
+
+2. **Actual Root Cause** (PostgreSQL Error 42883):
+   ```
+   operator does not exist: character varying = integer
+   Hint: No operator matches the given name and argument types. You might need to add explicit type casts.
+   ```
+   - **Status and Category columns**: Stored as `VARCHAR(20)` via `.HasConversion<string>()` in EF Core
+   - **SearchAsync parameters**: Passing `(int)EventStatus.Published` and `(int)category.Value`
+   - **Type mismatch**: PostgreSQL cannot compare VARCHAR column with INTEGER parameter without explicit cast
+
+**The Fix** (Commit dae9e144):
+- ❌ **Before**: `parameters.Add((int)EventStatus.Published)` → passes `1` (integer)
+- ✅ **After**: `parameters.Add(EventStatus.Published.ToString())` → passes `"Published"` (string)
+- ❌ **Before**: `parameters.Add((int)category.Value)` → passes integer enum value
+- ✅ **After**: `parameters.Add(category.Value.ToString())` → passes string enum name
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` (lines 334-335, 345)
+  - Changed Status parameter from `(int)EventStatus.Published/Cancelled` to `.ToString()`
+  - Changed Category parameter from `(int)category.Value` to `category.Value.ToString()`
+  - Updated comments to clarify enum storage as VARCHAR
+
+**Testing**:
+- ✅ Reproduced 500 error via curl before fix
+- ✅ Verified fix: Search with `searchTerm=Diagnostic+Test+Event+Dec+20` returns HTTP 200 with 1 event
+- ✅ Verified fix: Search with `searchTerm=Test` returns HTTP 200 with 17 events
+- ✅ Checked Azure logs: `[SEARCH-9] Count query succeeded - Total: 1`, no errors
+
+**Commits**:
+- `dae9e144` - Fix parameter interpolation in SearchAsync SQL query
+- `e733abd7` - Clarify parameter interpolation comment (investigation)
+
+**Deployment**: GitHub Actions run #20684125275 (SUCCESS)
+
+---
 
 ### Phase 6A.69: Real-Time Community Statistics for Landing Page - 2026-01-03
 

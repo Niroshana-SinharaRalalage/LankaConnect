@@ -1,9 +1,87 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-02 - Phase 6A.64: CSV Export Attendee Data Fix - ✅ COMPLETE*
+*Last Updated: 2026-01-03 - Phase 6A.69: Real-Time Community Statistics - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.64: CSV Export Attendee Data Fix - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.69: Real-Time Community Statistics - ✅ COMPLETE
+
+### Phase 6A.69: Real-Time Community Statistics for Landing Page - 2026-01-03
+
+**Status**: ✅ **COMPLETE** (API endpoint tested, frontend integrated, deployed to Azure staging)
+
+**Summary**: Implemented real-time community statistics for landing page hero section, replacing hardcoded values (25K+ Members, 1.2K+ Events, 500+ Businesses) with actual database queries. Public endpoint returns counts of active users, published/active events, and active businesses with 5-minute caching.
+
+**Implementation**:
+
+**Backend (Clean Architecture + CQRS)**:
+- ✅ Created `GetCommunityStatsQuery` and `CommunityStatsDto` in Application layer
+- ✅ Created `GetCommunityStatsQueryHandler` with database queries:
+  - Active users: `Users.CountAsync(u => u.IsActive)`
+  - Published/Active events: Count from EventRepository (Published + Active status)
+  - Active businesses: `Businesses.CountAsync(b => b.Status == Active)`
+- ✅ Created `PublicController` with `/api/public/stats` endpoint
+- ✅ Public endpoint with `[AllowAnonymous]` attribute
+- ✅ Response caching: `[ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]`
+- ✅ Files created:
+  - `src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQuery.cs`
+  - `src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQueryHandler.cs`
+  - `src/LankaConnect.API/Controllers/PublicController.cs`
+
+**Frontend (React Query + Repository Pattern)**:
+- ✅ Created `stats.repository.ts` for API calls to `/public/stats`
+- ✅ Created `useStats.ts` React Query hook with `useCommunityStats()`
+- ✅ 5-minute stale time matching backend cache
+- ✅ Updated landing page (`page.tsx`) to use real-time stats:
+  - Added `formatCount()` helper (1234 → "1.2K+", 25678 → "25.6K+")
+  - Loading skeleton while fetching data
+  - Only displays statistics if count > 0 (hides 0 values)
+  - Replaced hardcoded hero section numbers with dynamic values
+- ✅ Files created/modified:
+  - `web/src/infrastructure/api/repositories/stats.repository.ts`
+  - `web/src/presentation/hooks/useStats.ts`
+  - `web/src/app/page.tsx` (lines 93-124)
+
+**Issue Resolution (500 Error)**:
+- ❌ Initial deployment: HTTP 500 Internal Server Error
+- 🔍 **Root Cause**: `[ResponseCache(VaryByQueryKeys)]` requires Response Caching Middleware
+- ✅ **Diagnostic Process**:
+  1. Checked deployment status (workflow completed successfully)
+  2. Tested API endpoint (received 500 error)
+  3. Checked Azure container logs (found exception: `'VaryByQueryKeys' requires the response cache middleware`)
+  4. Identified VaryByQueryKeys parameter as problematic
+  5. Applied durable fix (removed parameter, used Location instead)
+- ✅ **Fix Applied**: Changed to `[ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]`
+- ✅ Re-deployed and verified endpoint works correctly
+
+**Build & Deployment**:
+- ✅ Backend build: 0 errors, 0 warnings
+- ✅ Frontend build: 0 errors, 0 warnings
+- ✅ Commit 1: `1ab2c165` - "feat(phase-6a69): Add real-time community statistics to landing page"
+- ✅ Commit 2: `42fd2459` - "fix(phase-6a69): Fix ResponseCache attribute causing 500 error"
+- ✅ Pushed to origin/develop
+- ✅ Azure staging deployment: 20683530220 (success)
+- ✅ Container revision: `lankaconnect-api-staging--0000466`
+- ✅ Deployed to: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/
+
+**API Testing Results**:
+- ✅ Endpoint: `GET /api/public/stats`
+- ✅ Response: HTTP 200 OK
+- ✅ Data: `{"totalUsers":24,"totalEvents":39,"totalBusinesses":0}`
+- ✅ Statistics breakdown:
+  - **24 active users** (IsActive = true)
+  - **39 published/active events** (Status = Published OR Active)
+  - **0 active businesses** (Status = Active) - will be hidden on frontend
+- ✅ Caching: 5-minute cache on both backend and frontend (synchronized)
+
+**Documentation**:
+- ✅ Created: [docs/PHASE_6A69_API_TEST_RESULTS.md](./PHASE_6A69_API_TEST_RESULTS.md)
+- ✅ Comprehensive test results with diagnostic process documentation
+
+**Next Steps**:
+- Phase 6A.70 (Pending): Implement metro areas for all 50 US states (Requirement #3 from user)
+- Update STREAMLINED_ACTION_PLAN.md with Phase 6A.69 completion
+
+---
 
 ### Phase 6A.64: CSV Export Attendee Data Formatting Fix - 2026-01-02
 

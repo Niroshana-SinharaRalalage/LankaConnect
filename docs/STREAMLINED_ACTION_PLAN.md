@@ -7,7 +7,71 @@
 
 ---
 
-## ✅ CURRENT STATUS - CONTINUATION SESSION: PHASE 6A.59 LANDING PAGE UNIFIED SEARCH (2025-12-31)
+## ✅ CURRENT STATUS - PHASE 6A.69: REAL-TIME COMMUNITY STATISTICS (2026-01-03)
+**Date**: 2026-01-03
+**Session**: Phase 6A.69 - Real-Time Community Statistics for Landing Page
+**Status**: ✅ COMPLETE - API endpoint tested, frontend integrated, deployed to Azure staging
+**Build Status**: ✅ Zero Tolerance Maintained - 0 Errors, 0 Warnings
+**Test Results**: ✅ Backend build SUCCESS, Frontend build SUCCESS
+**Deployment**: ✅ Azure Staging verified (run #20683530220 SUCCESS)
+**API Testing**: ✅ GET /api/public/stats returns HTTP 200 OK with real-time data
+**Documentation**: ✅ PHASE_6A69_API_TEST_RESULTS.md created, PROGRESS_TRACKER.md updated
+**Next Phase**: Phase 6A.70 - Metro Areas for all 50 US States
+
+### PHASE 6A.69: REAL-TIME COMMUNITY STATISTICS (2026-01-03)
+**Goal**: Replace hardcoded landing page hero statistics (25K+ Members, 1.2K+ Events, 500+ Businesses) with real-time database queries
+
+**Work Completed**:
+
+1. ✅ **Backend Implementation** - Clean Architecture + CQRS pattern
+   - Created GetCommunityStatsQuery and CommunityStatsDto
+   - Created GetCommunityStatsQueryHandler with database queries
+   - Created PublicController with /api/public/stats endpoint
+   - Public endpoint with [AllowAnonymous] attribute
+   - 5-minute response caching configured
+
+2. ✅ **Frontend Implementation** - React Query + Repository Pattern
+   - Created stats.repository.ts for API calls
+   - Created useStats.ts React Query hook with useCommunityStats()
+   - Updated landing page to use real-time statistics
+   - Added formatCount() helper (1234 → "1.2K+")
+   - Loading skeleton while fetching data
+   - Only displays statistics if count > 0
+
+3. ✅ **Issue Resolution** - 500 Error Fixed
+   - Root cause: VaryByQueryKeys requires Response Caching Middleware
+   - Fix: Changed to Location = ResponseCacheLocation.Any
+   - Diagnostic process documented in PHASE_6A69_API_TEST_RESULTS.md
+
+4. ✅ **API Testing** - Endpoint verified on staging
+   - Response: {"totalUsers":24,"totalEvents":39,"totalBusinesses":0}
+   - 24 active users (IsActive = true)
+   - 39 published/active events (Status = Published OR Active)
+   - 0 active businesses (Status = Active)
+
+**Files Created**:
+- [src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQuery.cs](../src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQuery.cs)
+- [src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQueryHandler.cs](../src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/GetCommunityStatsQueryHandler.cs)
+- [src/LankaConnect.API/Controllers/PublicController.cs](../src/LankaConnect.API/Controllers/PublicController.cs)
+- [web/src/infrastructure/api/repositories/stats.repository.ts](../web/src/infrastructure/api/repositories/stats.repository.ts)
+- [web/src/presentation/hooks/useStats.ts](../web/src/presentation/hooks/useStats.ts)
+- [docs/PHASE_6A69_API_TEST_RESULTS.md](./PHASE_6A69_API_TEST_RESULTS.md)
+
+**Files Modified**:
+- [web/src/app/page.tsx](../web/src/app/page.tsx) - Landing page hero section (lines 93-124)
+
+**Commits**:
+- `1ab2c165` - feat(phase-6a69): Add real-time community statistics to landing page
+- `42fd2459` - fix(phase-6a69): Fix ResponseCache attribute causing 500 error
+
+**Deployment**: ✅ Azure Staging verified
+- Run #20683530220: SUCCESS
+- Container revision: lankaconnect-api-staging--0000466
+- Deployed to: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/
+
+---
+
+## ✅ PREVIOUS STATUS - CONTINUATION SESSION: PHASE 6A.59 LANDING PAGE UNIFIED SEARCH (2025-12-31)
 **Date**: 2025-12-31 (Continuation Session)
 **Session**: Phase 6A.59 - Landing Page Unified Search
 **Status**: ✅ COMPLETE - Events search working, Business/Forums/Marketplace placeholder tabs, pushed to develop

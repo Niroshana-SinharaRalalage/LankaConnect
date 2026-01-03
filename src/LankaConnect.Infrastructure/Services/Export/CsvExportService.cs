@@ -24,9 +24,11 @@ public class CsvExportService : ICsvExportService
         // Phase 6A.49: Removed ShouldQuote to fix double-escaping issue
         // CsvHelper will intelligently quote fields containing commas, quotes, or newlines
         // Uses RFC 4180 standard: "" for quote escaping (not \")
+        // Phase 6A.XX: Set NewLine to CRLF for Excel compatibility on Windows
         using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord = true
+            HasHeaderRecord = true,
+            NewLine = "\r\n"  // Excel requires Windows line endings (CRLF)
         });
 
         // Define flattened records for CSV export

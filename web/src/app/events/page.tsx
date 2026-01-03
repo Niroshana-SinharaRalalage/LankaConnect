@@ -21,6 +21,7 @@ import { getDateRangeForOption, type DateRangeOption } from '@/presentation/util
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
 import { toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import { useDebounce } from '@/hooks/useDebounce';
 
 /**
  * Events Listing Page
@@ -58,13 +59,16 @@ export default function EventsPage() {
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
   const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
-  const [searchTerm, setSearchTerm] = useState<string>(''); // Phase 6A.58: Text search filter
+  const [searchInput, setSearchInput] = useState<string>(''); // Phase 6A.58: Immediate search input (local state)
+
+  // Phase 6A.59: Debounce search term to avoid excessive API calls (matches dashboard behavior)
+  const debouncedSearchTerm = useDebounce(searchInput, 300);
 
   // Build filters for useEvents hook
   const filters = useMemo(() => {
     const dateRange = getDateRangeForOption(dateRangeOption);
     return {
-      searchTerm: searchTerm || undefined, // Phase 6A.58: Text search
+      searchTerm: debouncedSearchTerm || undefined, // Phase 6A.59: Use debounced search term
       category: selectedCategory,
       userId: user?.userId,
       latitude: isAnonymous ? latitude ?? undefined : undefined,
@@ -73,7 +77,7 @@ export default function EventsPage() {
       state: selectedState,
       ...dateRange, // Spread startDateFrom and startDateTo from date range
     };
-  }, [searchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
+  }, [debouncedSearchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
@@ -145,14 +149,14 @@ export default function EventsPage() {
   };
 
   const clearFilters = () => {
-    setSearchTerm(''); // Phase 6A.58: Clear search term
+    setSearchInput(''); // Phase 6A.59: Clear search input (local state)
     setSelectedCategory(undefined);
     setSelectedMetroIds([]);
     setSelectedState(undefined);
     setDateRangeOption('upcoming');
   };
 
-  const hasActiveFilters = searchTerm !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
+  const hasActiveFilters = searchInput !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
@@ -242,15 +246,15 @@ export default function EventsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Phase 6A.58: Search Input */}
+            {/* Phase 6A.59: Search Input with debouncing (matches dashboard behavior) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Search Events
               </label>
               <input
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search by event name, description..."
                 className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 disabled={isLoading}

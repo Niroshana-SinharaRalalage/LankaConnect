@@ -321,18 +321,18 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Phase 6A.58 FIX: Use QUOTED PascalCase for enum/date columns (confirmed from PostgreSQL hints)
         // search_vector is snake_case (has explicit HasColumnName), Status/Category/StartDate are PascalCase (EF defaults)
         // Phase 6A.59 FIX: Include Cancelled events in search results so users can see them
-        // Phase 6A.59 FIX 2: Use integer comparison for enum values (database stores as int, not string)
+        // Phase 6A.59 FIX 7: Use string enum values (Status/Category stored as VARCHAR via HasConversion<string>())
         var whereConditions = new List<string>
         {
             "e.search_vector @@ websearch_to_tsquery('english', {0})",
-            @"e.""Status"" IN ({1}, {2})" // Allow both Published (1) and Cancelled (4)
+            @"e.""Status"" IN ({1}, {2})" // Allow both Published and Cancelled
         };
 
         var parameters = new List<object>
         {
             searchTerm,
-            (int)EventStatus.Published,  // 1 - Published events
-            (int)EventStatus.Cancelled   // 4 - Cancelled events (user wants to see these)
+            EventStatus.Published.ToString(),  // "Published" - string enum value
+            EventStatus.Cancelled.ToString()   // "Cancelled" - string enum value (user wants to see these)
         };
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",
@@ -342,7 +342,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         if (category.HasValue)
         {
             whereConditions.Add($@"e.""Category"" = {{{parameters.Count}}}");
-            parameters.Add((int)category.Value); // Use integer enum value
+            parameters.Add(category.Value.ToString()); // Use string enum value (stored as VARCHAR)
             _repoLogger.LogInformation("[SEARCH-3] Added category filter: {Category}", category.Value);
         }
 

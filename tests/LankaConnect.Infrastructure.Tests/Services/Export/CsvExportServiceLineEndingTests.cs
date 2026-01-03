@@ -2,6 +2,7 @@ using FluentAssertions;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Infrastructure.Services.Export;
+using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Services.Export;
 
@@ -37,7 +38,7 @@ public class CsvExportServiceLineEndingTests
                     ContactEmail = "test1@example.com",
                     ContactPhone = "+1234567890",
                     ContactAddress = "123 Test St",
-                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentStatus = PaymentStatus.Completed,
                     TotalAmount = 100.00m,
                     Currency = "USD",
                     TicketCode = "TICK-001",
@@ -50,15 +51,13 @@ public class CsvExportServiceLineEndingTests
                         {
                             Name = "John Doe",
                             Gender = Gender.Male,
-                            Age = 30,
-                            IsChild = false
+                            AgeCategory = AgeCategory.Adult
                         },
                         new AttendeeDetailsDto
                         {
                             Name = "Jane Doe",
                             Gender = Gender.Female,
-                            Age = 8,
-                            IsChild = true
+                            AgeCategory = AgeCategory.Child
                         }
                     }
                 },
@@ -84,8 +83,7 @@ public class CsvExportServiceLineEndingTests
                         {
                             Name = "Bob Smith",
                             Gender = Gender.Male,
-                            Age = 25,
-                            IsChild = false
+                            AgeCategory = AgeCategory.Adult
                         }
                     }
                 }
@@ -138,7 +136,7 @@ public class CsvExportServiceLineEndingTests
                     ChildCount = 0,
                     ContactEmail = "test@example.com",
                     ContactPhone = "+1234567890",
-                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentStatus = PaymentStatus.Completed,
                     TotalAmount = 100.00m,
                     Currency = "USD",
                     Status = RegistrationStatus.Confirmed,
@@ -149,8 +147,7 @@ public class CsvExportServiceLineEndingTests
                         {
                             Name = "Test User",
                             Gender = Gender.Male,
-                            Age = 30,
-                            IsChild = false
+                            AgeCategory = AgeCategory.Adult
                         }
                     }
                 }
@@ -185,7 +182,7 @@ public class CsvExportServiceLineEndingTests
                     ChildCount = 0,
                     ContactEmail = "test@example.com",
                     ContactPhone = "+1234567890",
-                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentStatus = PaymentStatus.Completed,
                     TotalAmount = 100.00m,
                     Currency = "USD",
                     Status = RegistrationStatus.Confirmed,
@@ -196,8 +193,7 @@ public class CsvExportServiceLineEndingTests
                         {
                             Name = "Test User",
                             Gender = Gender.Male,
-                            Age = 30,
-                            IsChild = false
+                            AgeCategory = AgeCategory.Adult
                         }
                     }
                 }
@@ -253,7 +249,7 @@ public class CsvExportServiceLineEndingTests
                 ChildCount = 0,
                 ContactEmail = $"test{i}@example.com",
                 ContactPhone = $"+123456789{i}",
-                PaymentStatus = PaymentStatus.Paid,
+                PaymentStatus = PaymentStatus.Completed,
                 TotalAmount = 100.00m * i,
                 Currency = "USD",
                 Status = RegistrationStatus.Confirmed,
@@ -264,8 +260,7 @@ public class CsvExportServiceLineEndingTests
                     {
                         Name = $"User {i}",
                         Gender = Gender.Male,
-                        Age = 20 + i,
-                        IsChild = false
+                        AgeCategory = AgeCategory.Adult
                     }
                 }
             }).ToList()

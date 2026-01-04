@@ -18,11 +18,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                INSERT INTO communications.email_templates (""Id"", ""name"", ""type"", ""description"", ""subject_template"", ""html_template"", ""text_template"", ""created_at"", ""updated_at"", ""category"", ""is_active"")
+                INSERT INTO communications.email_templates (""id"", ""name"", ""description"", ""subject_template"", ""text_template"", ""html_template"", ""category"", ""is_active"", ""created_at"", ""updated_at"")
                 VALUES (
                     gen_random_uuid(),
                     'event-cancelled-notification',
-                    'transactional',
                     'Event cancellation notification - Sent to all recipients (registrations, email groups, newsletter subscribers) when organizer cancels event',
                     'Event Cancelled: {{EventTitle}} - LankaConnect',
                     '<!DOCTYPE html>

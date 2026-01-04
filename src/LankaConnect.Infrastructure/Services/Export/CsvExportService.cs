@@ -19,12 +19,15 @@ public class CsvExportService : ICsvExportService
 
         // Phase 6A.48B: Write UTF-8 BOM for Excel compatibility
         var utf8WithBom = new UTF8Encoding(true); // true = include BOM
-        using var writer = new StreamWriter(memoryStream, utf8WithBom);
+        using var writer = new StreamWriter(memoryStream, utf8WithBom)
+        {
+            NewLine = "\r\n"  // CRITICAL: Set StreamWriter NewLine to CRLF
+        };
 
         // Phase 6A.49: Removed ShouldQuote to fix double-escaping issue
         // CsvHelper will intelligently quote fields containing commas, quotes, or newlines
         // Uses RFC 4180 standard: "" for quote escaping (not \")
-        // Phase 6A.XX: Set NewLine to CRLF for Excel compatibility on Windows
+        // Phase 6A.65: Set NewLine to CRLF for Excel compatibility on Windows
         using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             HasHeaderRecord = true,
@@ -64,7 +67,8 @@ public class CsvExportService : ICsvExportService
         // Write records
         csv.WriteRecords(records);
 
-        // Flush to ensure all data is written
+        // Phase 6A.65: Flush and dispose CsvWriter before accessing bytes
+        csv.Flush();
         writer.Flush();
 
         return memoryStream.ToArray();

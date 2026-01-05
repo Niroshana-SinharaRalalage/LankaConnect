@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260104000500_Phase6A63Fix2_ForceInsertEventCancelledTemplate")]
-    partial class Phase6A63Fix2_ForceInsertEventCancelledTemplate
+    [Migration("20260104032100_Phase6A63Fix3_SwapTextHtmlTemplates")]
+    partial class Phase6A63Fix3_SwapTextHtmlTemplates
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

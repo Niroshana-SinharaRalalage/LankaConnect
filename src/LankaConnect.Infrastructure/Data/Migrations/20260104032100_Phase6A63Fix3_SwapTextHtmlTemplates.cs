@@ -5,13 +5,16 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Phase6A63Fix2_ForceInsertEventCancelledTemplate : Migration
+    public partial class Phase6A63Fix3_SwapTextHtmlTemplates : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Phase 6A.63 FIX: Ensure event-cancelled-notification template exists
-            // Delete if exists, then insert (idempotent)
+            // Phase 6A.63 FIX 3: Fix text/HTML template swap in event-cancelled-notification
+            // The previous migration (Phase6A63Fix) inserted templates with text and HTML swapped
+            // This migration deletes the bad data and inserts with CORRECT column order:
+            // text_template = plain text version, html_template = HTML version
+
             migrationBuilder.Sql(@"
                 DELETE FROM communications.email_templates
                 WHERE name = 'event-cancelled-notification';
@@ -24,6 +27,33 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'event-cancelled-notification',
                     'Event cancellation notification - Sent to all recipients (registrations, email groups, newsletter subscribers) when organizer cancels event',
                     'Event Cancelled: {{EventTitle}} - LankaConnect',
+                    'EVENT CANCELLED - LankaConnect
+
+Dear LankaConnect Community,
+
+We regret to inform you that the following event has been CANCELLED:
+
+EVENT: {{EventTitle}}
+DATE: {{EventDate}}
+LOCATION: {{EventLocation}}
+
+REASON FOR CANCELLATION:
+{{CancellationReason}}
+
+We sincerely apologize for any inconvenience this may cause.
+
+REFUND INFORMATION:
+- If you paid for this event, you will receive a full refund within 5-7 business days
+- Please check your email for a separate refund confirmation
+- For questions, contact the organizer or our support team
+
+Browse other upcoming events: {{DashboardUrl}}
+
+Thank you for being part of the LankaConnect community!
+
+---
+LankaConnect - Connecting Sri Lankan Communities Worldwide
+Unsubscribe from event notifications: {{UnsubscribeUrl}}',
                     '<!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -118,37 +148,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     </table>
 </body>
 </html>',
-                    'EVENT CANCELLED - LankaConnect
-
-Dear LankaConnect Community,
-
-We regret to inform you that the following event has been CANCELLED:
-
-EVENT: {{EventTitle}}
-DATE: {{EventDate}}
-LOCATION: {{EventLocation}}
-
-REASON FOR CANCELLATION:
-{{CancellationReason}}
-
-We sincerely apologize for any inconvenience this may cause.
-
-REFUND INFORMATION:
-- If you paid for this event, you will receive a full refund within 5-7 business days
-- Please check your email for a separate refund confirmation
-- For questions, contact the organizer or our support team
-
-Browse other upcoming events: {{DashboardUrl}}
-
-Thank you for being part of the LankaConnect community!
-
----
-LankaConnect - Connecting Sri Lankan Communities Worldwide
-Unsubscribe from event notifications: {{UnsubscribeUrl}}',
-                    NOW(),
-                    NOW(),
                     'event',
-                    true
+                    true,
+                    NOW(),
+                    NOW()
                 );
             ");
         }

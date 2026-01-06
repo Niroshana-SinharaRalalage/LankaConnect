@@ -1,77 +1,72 @@
-using System.Globalization;
 using System.Text;
-using CsvHelper;
-using CsvHelper.Configuration;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 
 namespace LankaConnect.Infrastructure.Services.Export;
 
 /// <summary>
-/// CSV export service implementation using CsvHelper.
-/// Exports attendee data to simple CSV format.
+/// CSV export service implementation.
+/// Exports attendee data to simple CSV format with manual string building.
+/// Phase 6A.66: Replaced CsvHelper with manual CSV building to fix Excel line ending issues.
 /// </summary>
 public class CsvExportService : ICsvExportService
 {
     public byte[] ExportEventAttendees(EventAttendeesResponse attendees)
     {
-        using var memoryStream = new MemoryStream();
+        // Phase 6A.66: Build CSV manually like the working signup list export
+        // This guarantees CRLF line endings that Excel recognizes
+        var csv = new StringBuilder();
 
-        // Phase 6A.48B: Write UTF-8 BOM for Excel compatibility
-        var utf8WithBom = new UTF8Encoding(true); // true = include BOM
-        using var writer = new StreamWriter(memoryStream, utf8WithBom)
-        {
-            NewLine = "\r\n"  // CRITICAL: Set StreamWriter NewLine to CRLF
-        };
+        // UTF-8 BOM for Excel compatibility
+        csv.Append('\uFEFF');
 
-        // Phase 6A.49: Removed ShouldQuote to fix double-escaping issue
-        // CsvHelper will intelligently quote fields containing commas, quotes, or newlines
-        // Uses RFC 4180 standard: "" for quote escaping (not \")
-        // Phase 6A.65: Set NewLine to CRLF for Excel compatibility on Windows
-        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            HasHeaderRecord = true,
-            NewLine = "\r\n"  // Excel requires Windows line endings (CRLF)
-        });
+        // Header row with explicit CRLF
+        csv.Append("RegistrationId,MainAttendee,AdditionalAttendees,TotalAttendees,Adults,Children,MaleCount,FemaleCount,GenderDistribution,Email,Phone,Address,PaymentStatus,TotalAmount,Currency,TicketCode,QRCode,RegistrationDate,Status\r\n");
 
-        // Define flattened records for CSV export
-        // Phase 6A.63: Fixed CSV export to properly display attendee data
-        // - Compute AdditionalAttendees as comma-separated names
-        // - Compute GenderDistribution as readable string
-        // - Remove phone number prefix (Excel handles numbers better in CSV)
-        var records = attendees.Attendees.Select(a => new
+        // Data rows
+        foreach (var a in attendees.Attendees)
         {
-            RegistrationId = a.RegistrationId.ToString(),
-            MainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown",
-            AdditionalAttendees = a.TotalAttendees > 1
+            var mainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown";
+            var additionalAttendees = a.TotalAttendees > 1
                 ? string.Join(", ", a.Attendees.Skip(1).Select(att => att.Name))
-                : string.Empty,
-            TotalAttendees = a.TotalAttendees,
-            Adults = a.AdultCount,
-            Children = a.ChildCount,
-            MaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Male),
-            FemaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female),
-            GenderDistribution = GetGenderDistribution(a.Attendees),
-            Email = a.ContactEmail,
-            Phone = a.ContactPhone ?? string.Empty,  // No prefix, let Excel handle it
-            Address = a.ContactAddress ?? string.Empty,
-            PaymentStatus = a.PaymentStatus.ToString(),
-            TotalAmount = a.TotalAmount?.ToString("F2") ?? string.Empty,
-            Currency = a.Currency ?? string.Empty,
-            TicketCode = a.TicketCode ?? string.Empty,
-            QRCode = a.QrCodeData ?? string.Empty,
-            RegistrationDate = a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
-            Status = a.Status.ToString()
-        });
+                : string.Empty;
+            var maleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Male);
+            var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
+            var genderDistribution = GetGenderDistribution(a.Attendees);
 
-        // Write records
-        csv.WriteRecords(records);
+            // Escape fields that might contain commas or quotes
+            csv.Append($"\"{EscapeCsvField(a.RegistrationId.ToString())}\",");
+            csv.Append($"\"{EscapeCsvField(mainAttendee)}\",");
+            csv.Append($"\"{EscapeCsvField(additionalAttendees)}\",");
+            csv.Append($"{a.TotalAttendees},");
+            csv.Append($"{a.AdultCount},");
+            csv.Append($"{a.ChildCount},");
+            csv.Append($"{maleCount},");
+            csv.Append($"{femaleCount},");
+            csv.Append($"\"{EscapeCsvField(genderDistribution)}\",");
+            csv.Append($"\"{EscapeCsvField(a.ContactEmail)}\",");
+            csv.Append($"\"{EscapeCsvField(a.ContactPhone ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.ContactAddress ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.PaymentStatus.ToString())}\",");
+            csv.Append($"\"{EscapeCsvField(a.TotalAmount?.ToString("F2") ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.Currency ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.TicketCode ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.QrCodeData ?? string.Empty)}\",");
+            csv.Append($"\"{EscapeCsvField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))}\",");
+            csv.Append($"\"{EscapeCsvField(a.Status.ToString())}\"");
+            csv.Append("\r\n"); // Explicit CRLF
+        }
 
-        // Phase 6A.65: Flush and dispose CsvWriter before accessing bytes
-        csv.Flush();
-        writer.Flush();
+        // Convert to UTF-8 bytes with BOM
+        return Encoding.UTF8.GetBytes(csv.ToString());
+    }
 
-        return memoryStream.ToArray();
+    /// <summary>
+    /// Escape CSV field by replacing double quotes with two double quotes (RFC 4180)
+    /// </summary>
+    private static string EscapeCsvField(string field)
+    {
+        return field?.Replace("\"", "\"\"") ?? string.Empty;
     }
 
     /// <summary>

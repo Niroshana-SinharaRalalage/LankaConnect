@@ -13,14 +13,12 @@ public class CsvExportService : ICsvExportService
 {
     public byte[] ExportEventAttendees(EventAttendeesResponse attendees)
     {
-        // Phase 6A.66: Build CSV manually like the working signup list export
-        // This guarantees CRLF line endings that Excel recognizes
-        var csv = new StringBuilder();
-
+        // Phase 6A.66: Build CSV manually exactly like signup list export
         // UTF-8 BOM for Excel compatibility
+        var csv = new StringBuilder();
         csv.Append('\uFEFF');
 
-        // Header row with explicit CRLF
+        // Header row
         csv.Append("RegistrationId,MainAttendee,AdditionalAttendees,TotalAttendees,Adults,Children,MaleCount,FemaleCount,GenderDistribution,Email,Phone,Address,PaymentStatus,TotalAmount,Currency,TicketCode,QRCode,RegistrationDate,Status\r\n");
 
         // Data rows
@@ -29,44 +27,35 @@ public class CsvExportService : ICsvExportService
             var mainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown";
             var additionalAttendees = a.TotalAttendees > 1
                 ? string.Join(", ", a.Attendees.Skip(1).Select(att => att.Name))
-                : string.Empty;
+                : "";
             var maleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Male);
             var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
             var genderDistribution = GetGenderDistribution(a.Attendees);
 
-            // Escape fields that might contain commas or quotes
-            csv.Append($"\"{EscapeCsvField(a.RegistrationId.ToString())}\",");
-            csv.Append($"\"{EscapeCsvField(mainAttendee)}\",");
-            csv.Append($"\"{EscapeCsvField(additionalAttendees)}\",");
+            // Build row - quote fields that need it
+            csv.Append($"\"{a.RegistrationId}\",");
+            csv.Append($"\"{mainAttendee}\",");
+            csv.Append($"\"{additionalAttendees}\",");
             csv.Append($"{a.TotalAttendees},");
             csv.Append($"{a.AdultCount},");
             csv.Append($"{a.ChildCount},");
             csv.Append($"{maleCount},");
             csv.Append($"{femaleCount},");
-            csv.Append($"\"{EscapeCsvField(genderDistribution)}\",");
-            csv.Append($"\"{EscapeCsvField(a.ContactEmail)}\",");
-            csv.Append($"\"{EscapeCsvField(a.ContactPhone ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.ContactAddress ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.PaymentStatus.ToString())}\",");
-            csv.Append($"\"{EscapeCsvField(a.TotalAmount?.ToString("F2") ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.Currency ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.TicketCode ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.QrCodeData ?? string.Empty)}\",");
-            csv.Append($"\"{EscapeCsvField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))}\",");
-            csv.Append($"\"{EscapeCsvField(a.Status.ToString())}\"");
-            csv.Append("\r\n"); // Explicit CRLF
+            csv.Append($"\"{genderDistribution}\",");
+            csv.Append($"\"{a.ContactEmail}\",");
+            csv.Append($"\"{a.ContactPhone ?? ""}\",");
+            csv.Append($"\"{a.ContactAddress ?? ""}\",");
+            csv.Append($"\"{a.PaymentStatus}\",");
+            csv.Append($"\"{a.TotalAmount?.ToString("F2") ?? ""}\",");
+            csv.Append($"\"{a.Currency ?? ""}\",");
+            csv.Append($"\"{a.TicketCode ?? ""}\",");
+            csv.Append($"\"{a.QrCodeData ?? ""}\",");
+            csv.Append($"\"{a.CreatedAt:yyyy-MM-dd HH:mm:ss}\",");
+            csv.Append($"\"{a.Status}\"");
+            csv.Append("\r\n");
         }
 
-        // Convert to UTF-8 bytes with BOM
         return Encoding.UTF8.GetBytes(csv.ToString());
-    }
-
-    /// <summary>
-    /// Escape CSV field by replacing double quotes with two double quotes (RFC 4180)
-    /// </summary>
-    private static string EscapeCsvField(string field)
-    {
-        return field?.Replace("\"", "\"\"") ?? string.Empty;
     }
 
     /// <summary>
@@ -80,6 +69,6 @@ public class CsvExportService : ICsvExportService
             .Select(g => $"{g.Count()} {g.Key}")
             .ToList();
 
-        return genderCounts.Any() ? string.Join(", ", genderCounts) : string.Empty;
+        return genderCounts.Any() ? string.Join(", ", genderCounts) : "";
     }
 }

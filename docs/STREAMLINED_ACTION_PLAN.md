@@ -7,7 +7,73 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.69: REAL-TIME COMMUNITY STATISTICS (2026-01-03)
+## ✅ CURRENT STATUS - AZURE UI DEPLOYMENT TO STAGING (2026-01-06)
+**Date**: 2026-01-06
+**Session**: Azure UI Deployment to Azure Container Apps Staging
+**Status**: ✅ READY FOR DEPLOYMENT - All configuration complete, awaiting Container App creation
+**Architecture Score**: 8.5/10 (approved by system architect agent)
+**Cost Impact**: $0-5/month (within free tier, total infrastructure ~$40/month)
+**Files Created**: 5 new files (Dockerfile, health endpoint, .dockerignore, GitHub Actions workflow, deployment docs)
+**Files Modified**: 3 files (proxy route, next.config.js, .env.production)
+**Documentation**: ✅ PROGRESS_TRACKER.md, AZURE_UI_DEPLOYMENT.md, deployment plan created
+**Next Steps**: Create Azure Container App via CLI, push to develop branch to trigger deployment
+
+### AZURE UI DEPLOYMENT TO STAGING (2026-01-06)
+**Goal**: Deploy Next.js UI to Azure Container Apps staging environment for public access
+
+**Solution**: Azure Container Apps (same platform as backend)
+- **Cost**: $0-5/month (within free tier)
+- **Scaling**: 0-3 replicas (scale-to-zero enabled)
+- **Region**: East US 2
+
+**Work Completed**:
+
+1. ✅ **Phase 0: Critical Fixes** - Architecture requirements
+   - Updated API proxy route to use environment variable (BACKEND_API_URL)
+   - Created health endpoint for Container Apps probes (/api/health)
+   - Added environment variable validation in CI/CD workflow
+
+2. ✅ **Phase 1: Next.js Configuration** - Docker deployment setup
+   - Updated next.config.js with standalone output mode
+   - Created multi-stage Dockerfile (Alpine Linux, non-root user, ~50 MB)
+   - Created .dockerignore file for optimized build context
+   - Updated .env.production to use /api/proxy for same-origin cookies
+
+3. ✅ **Phase 2: CI/CD Workflow** - GitHub Actions automation
+   - Created deploy-ui-staging.yml workflow
+   - Triggered on push to develop branch (web/ changes)
+   - Steps: lint, type check, tests, build, Docker build/push, deploy, smoke tests
+   - Reuses existing Azure secrets (AZURE_CREDENTIALS_STAGING, ACR_*)
+
+4. ✅ **Phase 3: Documentation** - Comprehensive deployment guide
+   - Created AZURE_UI_DEPLOYMENT.md with all commands
+   - Documented Container App creation, monitoring, troubleshooting
+   - Rollback procedures (instant, canary, image redeploy)
+   - Testing checklist and common issues
+
+**Files Created**:
+- [web/src/app/api/health/route.ts](../web/src/app/api/health/route.ts) - Health check endpoint
+- [web/Dockerfile](../web/Dockerfile) - Multi-stage Docker build
+- [web/.dockerignore](../web/.dockerignore) - Build context exclusions
+- [.github/workflows/deploy-ui-staging.yml](../.github/workflows/deploy-ui-staging.yml) - CI/CD workflow
+- [docs/AZURE_UI_DEPLOYMENT.md](./AZURE_UI_DEPLOYMENT.md) - Deployment documentation
+
+**Files Modified**:
+- [web/src/app/api/proxy/[...path]/route.ts](../web/src/app/api/proxy/[...path]/route.ts) - Environment variable for backend URL
+- [web/next.config.js](../web/next.config.js) - Standalone output mode
+- [web/.env.production](../web/.env.production) - API URL changed to /api/proxy
+
+**Deployment Plan**: See [golden-munching-allen.md](../C:\Users\Niroshana\.claude\plans\golden-munching-allen.md)
+
+**Next Actions** (Manual Azure CLI):
+1. Create Azure Container App (one-time setup)
+2. Configure environment variables
+3. Push changes to develop branch (triggers GitHub Actions)
+4. Monitor deployment and test functionality
+
+---
+
+## ✅ PREVIOUS STATUS - PHASE 6A.69: REAL-TIME COMMUNITY STATISTICS (2026-01-03)
 **Date**: 2026-01-03
 **Session**: Phase 6A.69 - Real-Time Community Statistics for Landing Page
 **Status**: ✅ COMPLETE - API endpoint tested, frontend integrated, deployed to Azure staging
@@ -16,7 +82,6 @@
 **Deployment**: ✅ Azure Staging verified (run #20683530220 SUCCESS)
 **API Testing**: ✅ GET /api/public/stats returns HTTP 200 OK with real-time data
 **Documentation**: ✅ PHASE_6A69_API_TEST_RESULTS.md created, PROGRESS_TRACKER.md updated
-**Next Phase**: Phase 6A.70 - Metro Areas for all 50 US States
 
 ### PHASE 6A.69: REAL-TIME COMMUNITY STATISTICS (2026-01-03)
 **Goal**: Replace hardcoded landing page hero statistics (25K+ Members, 1.2K+ Events, 500+ Businesses) with real-time database queries

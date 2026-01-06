@@ -3,8 +3,65 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6D GROUP TIERED PRICING COMPLETE ✅
-**Date**: 2025-12-03 (Current Session - Session 24A)
+## 🎯 CURRENT SESSION STATUS - AZURE UI DEPLOYMENT TO STAGING ✅ READY FOR DEPLOYMENT
+**Date**: 2026-01-06 (Current Session)
+**Session**: Azure UI Deployment to Azure Container Apps Staging
+**Progress**: **✅ READY FOR DEPLOYMENT** - All configuration complete, awaiting Container App creation
+**MILESTONE**: **✅ NEXT.JS UI READY FOR AZURE CONTAINER APPS DEPLOYMENT**
+**Architecture Score**: 8.5/10 (approved by system architect agent)
+**Cost Impact**: $0-5/month (within free tier)
+
+### Azure UI Deployment Summary:
+**Goal**: Deploy Next.js UI to Azure Container Apps staging environment for public access
+
+**Implementation Phases**:
+1. ✅ **Phase 0**: Critical Fixes - Environment variables, health endpoint, CI/CD validation
+2. ✅ **Phase 1**: Next.js Configuration - Standalone output, Dockerfile, environment setup
+3. ✅ **Phase 2**: CI/CD Workflow - GitHub Actions automation with smoke tests
+4. ✅ **Phase 3**: Documentation - Comprehensive deployment guide and procedures
+
+**Solution Details**:
+- **Platform**: Azure Container Apps (same as backend)
+- **Scaling**: 0-3 replicas (scale-to-zero enabled)
+- **Cost**: $0-5/month (within free tier)
+- **Region**: East US 2
+- **Docker Image**: ~50 MB (Alpine Linux, multi-stage build)
+
+### Build & Test Results:
+- ✅ **Configuration**: Next.js standalone output configured
+- ✅ **Docker Build**: Multi-stage Dockerfile optimized
+- ✅ **CI/CD Workflow**: GitHub Actions workflow created
+- ✅ **Documentation**: AZURE_UI_DEPLOYMENT.md, PROGRESS_TRACKER.md updated
+
+### Files Created/Modified:
+**New Files**:
+- `web/src/app/api/health/route.ts` - Health check endpoint for Container Apps probes
+- `web/Dockerfile` - Multi-stage Docker build (deps, builder, runner)
+- `web/.dockerignore` - Build context exclusions
+- `.github/workflows/deploy-ui-staging.yml` - CI/CD workflow for UI deployment
+- `docs/AZURE_UI_DEPLOYMENT.md` - Comprehensive deployment documentation
+
+**Modified Files**:
+- `web/src/app/api/proxy/[...path]/route.ts` - Environment variable for backend URL
+- `web/next.config.js` - Added standalone output mode
+- `web/.env.production` - Changed API URL to /api/proxy for same-origin cookies
+
+**Next Steps** (Manual Azure CLI):
+1. Create Azure Container App (one-time setup via az containerapp create)
+2. Configure environment variables (BACKEND_API_URL, NEXT_PUBLIC_API_URL, etc.)
+3. Push changes to develop branch (triggers GitHub Actions deployment)
+4. Monitor deployment and test functionality
+
+**References**:
+- [Deployment Plan](../C:\Users\Niroshana\.claude\plans\golden-munching-allen.md)
+- [Deployment Documentation](./AZURE_UI_DEPLOYMENT.md)
+- [Progress Tracker](./PROGRESS_TRACKER.md)
+- [Action Plan](./STREAMLINED_ACTION_PLAN.md)
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - PHASE 6D GROUP TIERED PRICING COMPLETE ✅
+**Date**: 2025-12-03 (Session 24A)
 **Session**: PHASE 6D - Group Tiered Pricing for Events
 **Progress**: **✅ COMPLETE** - Backend + Frontend + Documentation
 **MILESTONE**: **✅ EVENTS NOW SUPPORT QUANTITY-BASED DISCOUNT PRICING TIERS**

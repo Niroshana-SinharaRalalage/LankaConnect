@@ -1,9 +1,154 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-03 - Phase 6A.59: Event Search 500 Error Fix - ✅ COMPLETE*
+*Last Updated: 2026-01-06 - Azure UI Deployment to Staging - ✅ READY FOR DEPLOYMENT*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.59: Event Search 500 Error Fix - ✅ COMPLETE
+## 🎯 Current Session Status - Azure UI Deployment to Staging - ✅ READY FOR DEPLOYMENT
+
+### Azure Staging UI Deployment - Next.js to Azure Container Apps - 2026-01-06
+
+**Status**: ✅ **READY FOR DEPLOYMENT** (All configuration complete, awaiting Container App creation and first deploy)
+
+**Objective**: Deploy Next.js UI to Azure Container Apps staging environment for public access
+
+**Solution**: Azure Container Apps (same platform as backend)
+- **Cost**: $0-5/month (within free tier)
+- **Scaling**: 0-3 replicas (scale-to-zero enabled)
+- **Architecture Score**: 8.5/10 (approved by system architect)
+
+**Implementation Complete**:
+
+**Phase 0: Critical Fixes**
+- ✅ Updated API proxy route to use environment variable (`BACKEND_API_URL`)
+  - Changed from hardcoded URL to `process.env.BACKEND_API_URL` with fallback
+  - Enables configuration per environment (staging, production)
+  - File: `web/src/app/api/proxy/[...path]/route.ts` (lines 23-31)
+
+- ✅ Created health endpoint for Container Apps probes
+  - Returns status, uptime, memory usage, environment info
+  - Endpoint: `/api/health`
+  - Used for liveness and readiness probes
+  - File: `web/src/app/api/health/route.ts` (new)
+
+**Phase 1: Next.js Configuration**
+- ✅ Updated `next.config.js` with standalone output mode
+  - Enables Docker deployment with minimal production build
+  - File: `web/next.config.js` (added `output: 'standalone'`)
+
+- ✅ Created multi-stage Dockerfile
+  - Stage 1 (deps): Install production dependencies
+  - Stage 2 (builder): Build Next.js application
+  - Stage 3 (runner): Minimal Alpine Linux runtime (~50 MB)
+  - Non-root user (nextjs:nodejs, UID 1001)
+  - Health check integrated
+  - File: `web/Dockerfile` (new)
+
+- ✅ Created .dockerignore file
+  - Reduces build context size
+  - Excludes node_modules, tests, .next, git, etc.
+  - File: `web/.dockerignore` (new)
+
+- ✅ Updated .env.production
+  - Changed `NEXT_PUBLIC_API_URL` from direct backend URL to `/api/proxy`
+  - Enables same-origin cookie handling in deployed environment
+  - File: `web/.env.production` (line 5)
+
+**Phase 2: CI/CD Workflow**
+- ✅ Created GitHub Actions workflow `deploy-ui-staging.yml`
+  - Triggered on push to `develop` branch (web/ changes)
+  - Steps: lint, type check, unit tests, build, Docker build/push, deploy
+  - Environment variable validation before deployment
+  - Smoke tests: health check, home page, API proxy connectivity
+  - Reuses existing Azure secrets (AZURE_CREDENTIALS_STAGING, ACR_*)
+  - File: `.github/workflows/deploy-ui-staging.yml` (new)
+
+**Phase 3: Documentation**
+- ✅ Created comprehensive Azure UI deployment documentation
+  - Initial Container App creation commands
+  - CI/CD deployment process
+  - Monitoring and troubleshooting guides
+  - Rollback procedures (instant, canary, image redeploy)
+  - Common issues and solutions
+  - Testing checklist
+  - File: `docs/AZURE_UI_DEPLOYMENT.md` (new)
+
+**Files Created**:
+1. `web/src/app/api/health/route.ts` - Health check endpoint
+2. `web/Dockerfile` - Multi-stage Docker build
+3. `web/.dockerignore` - Build context exclusions
+4. `.github/workflows/deploy-ui-staging.yml` - CI/CD workflow
+5. `docs/AZURE_UI_DEPLOYMENT.md` - Deployment documentation
+
+**Files Modified**:
+1. `web/src/app/api/proxy/[...path]/route.ts` - Environment variable for backend URL
+2. `web/next.config.js` - Standalone output mode
+3. `web/.env.production` - API URL changed to /api/proxy
+
+**Architecture Approval**:
+- Reviewed and approved by system architect agent
+- Architecture quality score: 8.5/10
+- Critical fixes addressed before deployment
+- High-priority enhancements identified for post-deployment
+
+**Next Steps** (Manual - requires Azure CLI):
+1. **Create Azure Container App** (one-time setup):
+   ```bash
+   az containerapp create \
+     --name lankaconnect-ui-staging \
+     --resource-group lankaconnect-staging \
+     --environment lankaconnect-staging \
+     --image mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
+     --target-port 3000 \
+     --ingress external \
+     --min-replicas 0 \
+     --max-replicas 3 \
+     --cpu 0.25 \
+     --memory 0.5Gi \
+     --system-assigned \
+     --health-probe-type http \
+     --health-probe-path /api/health \
+     --health-probe-interval 30 \
+     --health-probe-timeout 10 \
+     --health-probe-failure-threshold 3
+   ```
+
+2. **Configure environment variables**:
+   ```bash
+   az containerapp update \
+     --name lankaconnect-ui-staging \
+     --resource-group lankaconnect-staging \
+     --set-env-vars \
+       BACKEND_API_URL=https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api \
+       NEXT_PUBLIC_API_URL=/api/proxy \
+       NEXT_PUBLIC_ENV=staging \
+       NODE_ENV=production \
+       NEXT_TELEMETRY_DISABLED=1
+   ```
+
+3. **Trigger first deployment**:
+   - Push changes to `develop` branch
+   - GitHub Actions will build and deploy automatically
+   - Monitor workflow progress in Actions tab
+
+4. **Post-Deployment Testing**:
+   - Test health endpoint: `https://<ui-url>/api/health`
+   - Test login flow with HttpOnly cookies
+   - Verify API proxy forwards requests correctly
+   - Check event CRUD operations
+   - Monitor Container Apps logs for errors
+
+**Deployment Plan**: See [golden-munching-allen.md](../C:\Users\Niroshana\.claude\plans\golden-munching-allen.md) for full deployment plan
+
+**Cost Impact**: $0-5/month (within free tier), total infrastructure stays ~$40/month ✅
+
+**References**:
+- [AZURE_UI_DEPLOYMENT.md](./AZURE_UI_DEPLOYMENT.md) - Deployment commands and procedures
+- [STREAMLINED_ACTION_PLAN.md](./STREAMLINED_ACTION_PLAN.md) - Action items tracking
+- [TASK_SYNCHRONIZATION_STRATEGY.md](./TASK_SYNCHRONIZATION_STRATEGY.md) - Phase synchronization
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.59: Event Search 500 Error Fix - ✅ COMPLETE
 
 ### Phase 6A.59: Event Management Search - Fix 500 Internal Server Error - 2026-01-03
 

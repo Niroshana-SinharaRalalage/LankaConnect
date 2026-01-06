@@ -20,9 +20,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-// IMPORTANT: Use explicit staging URL, NOT NEXT_PUBLIC_API_URL (which points to /api/proxy)
-// Always use the staging backend URL (local development should still use Azure staging for API calls)
-const BACKEND_URL = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+// IMPORTANT: Use environment variable for backend URL
+// BACKEND_API_URL is set in Container App environment (Azure deployment)
+// For local development, it defaults to Azure staging backend
+// This ensures the proxy works in both local and deployed environments
+const BACKEND_URL = process.env.BACKEND_API_URL || (() => {
+  const fallbackUrl = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+  console.warn(`⚠️ [PROXY] BACKEND_API_URL not set, using fallback: ${fallbackUrl}`);
+  return fallbackUrl;
+})();
 
 export async function GET(
   request: NextRequest,

@@ -21,39 +21,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                INSERT INTO communications.email_templates (""id"", ""name"", ""description"", ""subject_template"", ""text_template"", ""html_template"", ""category"", ""is_active"", ""created_at"", ""updated_at"")
+                INSERT INTO communications.email_templates (""Id"", ""name"", ""type"", ""description"", ""subject_template"", ""html_template"", ""text_template"", ""created_at"", ""updated_at"", ""category"", ""is_active"")
                 VALUES (
                     gen_random_uuid(),
                     'event-cancelled-notification',
+                    'transactional',
                     'Event cancellation notification - Sent to all recipients (registrations, email groups, newsletter subscribers) when organizer cancels event',
                     'Event Cancelled: {{EventTitle}} - LankaConnect',
-                    'EVENT CANCELLED - LankaConnect
-
-Dear LankaConnect Community,
-
-We regret to inform you that the following event has been CANCELLED:
-
-EVENT: {{EventTitle}}
-DATE: {{EventDate}}
-LOCATION: {{EventLocation}}
-
-REASON FOR CANCELLATION:
-{{CancellationReason}}
-
-We sincerely apologize for any inconvenience this may cause.
-
-REFUND INFORMATION:
-- If you paid for this event, you will receive a full refund within 5-7 business days
-- Please check your email for a separate refund confirmation
-- For questions, contact the organizer or our support team
-
-Browse other upcoming events: {{DashboardUrl}}
-
-Thank you for being part of the LankaConnect community!
-
----
-LankaConnect - Connecting Sri Lankan Communities Worldwide
-Unsubscribe from event notifications: {{UnsubscribeUrl}}',
                     '<!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -148,10 +122,37 @@ Unsubscribe from event notifications: {{UnsubscribeUrl}}',
     </table>
 </body>
 </html>',
-                    'event',
-                    true,
+                    'EVENT CANCELLED - LankaConnect
+
+Dear LankaConnect Community,
+
+We regret to inform you that the following event has been CANCELLED:
+
+EVENT: {{EventTitle}}
+DATE: {{EventDate}}
+LOCATION: {{EventLocation}}
+
+REASON FOR CANCELLATION:
+{{CancellationReason}}
+
+We sincerely apologize for any inconvenience this may cause.
+
+REFUND INFORMATION:
+- If you paid for this event, you will receive a full refund within 5-7 business days
+- Please check your email for a separate refund confirmation
+- For questions, contact the organizer or our support team
+
+Browse other upcoming events: {{DashboardUrl}}
+
+Thank you for being part of the LankaConnect community!
+
+---
+LankaConnect - Connecting Sri Lankan Communities Worldwide
+Unsubscribe from event notifications: {{UnsubscribeUrl}}',
                     NOW(),
-                    NOW()
+                    NOW(),
+                    'event',
+                    true
                 );
             ");
         }

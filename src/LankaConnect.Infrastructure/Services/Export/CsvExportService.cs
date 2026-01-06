@@ -18,8 +18,8 @@ public class CsvExportService : ICsvExportService
         var csv = new StringBuilder();
         csv.Append('\uFEFF');
 
-        // Header row
-        csv.Append("RegistrationId,MainAttendee,AdditionalAttendees,TotalAttendees,Adults,Children,MaleCount,FemaleCount,GenderDistribution,Email,Phone,Address,PaymentStatus,TotalAmount,Currency,TicketCode,QRCode,RegistrationDate,Status\r\n");
+        // Header row - use LF only (like signup list client-side export that works)
+        csv.Append("RegistrationId,MainAttendee,AdditionalAttendees,TotalAttendees,Adults,Children,MaleCount,FemaleCount,GenderDistribution,Email,Phone,Address,PaymentStatus,TotalAmount,Currency,TicketCode,QRCode,RegistrationDate,Status\n");
 
         // Data rows
         foreach (var a in attendees.Attendees)
@@ -52,7 +52,7 @@ public class CsvExportService : ICsvExportService
             csv.Append($"\"{a.QrCodeData ?? ""}\",");
             csv.Append($"\"{a.CreatedAt:yyyy-MM-dd HH:mm:ss}\",");
             csv.Append($"\"{a.Status}\"");
-            csv.Append("\r\n");
+            csv.Append("\n");  // Use LF only (like signup list client-side export that works)
         }
 
         return Encoding.UTF8.GetBytes(csv.ToString());

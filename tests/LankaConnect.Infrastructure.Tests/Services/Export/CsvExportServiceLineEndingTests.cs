@@ -7,8 +7,9 @@ using Xunit;
 namespace LankaConnect.Infrastructure.Tests.Services.Export;
 
 /// <summary>
-/// Tests to verify CSV export uses correct line endings (CRLF) for Excel compatibility.
-/// Phase 6A.XX: Investigation showed CsvHelper was using Unix line endings (\n) instead of Windows (\r\n)
+/// Tests to verify CSV export uses correct line endings (LF only) for Excel compatibility.
+/// Phase 6A.67: Changed to LF only (\n) to match working signup list client-side export.
+/// CRLF (\r\n) was causing Excel to display all data in single row when served over HTTP.
 /// </summary>
 public class CsvExportServiceLineEndingTests
 {
@@ -20,7 +21,7 @@ public class CsvExportServiceLineEndingTests
     }
 
     [Fact]
-    public void ExportEventAttendees_Should_UseWindowsLineEndings_ForExcelCompatibility()
+    public void ExportEventAttendees_Should_UseUnixLineEndings_ForExcelCompatibility()
     {
         // Arrange
         var attendees = new EventAttendeesResponse
@@ -94,12 +95,13 @@ public class CsvExportServiceLineEndingTests
         var csvBytes = _service.ExportEventAttendees(attendees);
         var csvString = System.Text.Encoding.UTF8.GetString(csvBytes);
 
-        // Assert - Verify CRLF line endings
-        csvString.Should().Contain("\r\n", "CSV should use Windows line endings (CRLF) for Excel compatibility");
-        csvString.Should().NotContain("\n\r", "line endings should be CRLF, not LFCR");
+        // Assert - Verify LF line endings (matching signup list export that works)
+        csvString.Should().Contain("\n", "CSV should use Unix line endings (LF) to match working signup list export");
+        csvString.Should().NotContain("\r\n", "should NOT use CRLF - LF only like signup list");
+        csvString.Should().NotContain("\n\r", "line endings should be LF, not LFCR");
 
-        // Verify line count - should have header + 2 data rows + final CRLF
-        var lines = csvString.Split(new[] { "\r\n" }, StringSplitOptions.None);
+        // Verify line count - should have header + 2 data rows
+        var lines = csvString.Split('\n', StringSplitOptions.None);
         lines.Length.Should().BeGreaterThan(2, "should have header row and at least 2 data rows");
 
         // Verify header is on first line
@@ -109,13 +111,6 @@ public class CsvExportServiceLineEndingTests
         // Verify data rows exist
         lines[1].Should().Contain("John Doe", "first data row should contain first attendee");
         lines[2].Should().Contain("Bob Smith", "second data row should contain second attendee");
-
-        // Additional verification: Check that we don't have Unix line endings
-        var unixLineCount = csvString.Split('\n').Length - 1;
-        var windowsLineCount = csvString.Split(new[] { "\r\n" }, StringSplitOptions.None).Length - 1;
-
-        windowsLineCount.Should().Be(unixLineCount,
-            "every LF (\\n) should be part of a CRLF (\\r\\n), not standalone Unix line endings");
     }
 
     [Fact]
@@ -203,38 +198,31 @@ public class CsvExportServiceLineEndingTests
         // Act
         var csvBytes = _service.ExportEventAttendees(attendees);
 
-        // Assert - Find CRLF bytes (0x0D 0x0A) in the byte array
-        bool foundCrlf = false;
-        for (int i = 0; i < csvBytes.Length - 1; i++)
+        // Assert - Find LF bytes (0x0A) in the byte array (matching signup list export)
+        bool foundLf = false;
+        for (int i = 0; i < csvBytes.Length; i++)
         {
-            if (csvBytes[i] == 0x0D && csvBytes[i + 1] == 0x0A)
+            if (csvBytes[i] == 0x0A)
             {
-                foundCrlf = true;
+                foundLf = true;
                 break;
             }
         }
 
-        foundCrlf.Should().BeTrue("CSV should contain CRLF byte sequence (0x0D 0x0A)");
+        foundLf.Should().BeTrue("CSV should contain LF byte (0x0A) for line endings");
 
-        // Verify we don't have standalone LF (0x0A) without preceding CR (0x0D)
-        for (int i = 0; i < csvBytes.Length; i++)
+        // Verify we don't have CRLF (0x0D 0x0A) - should be LF only
+        for (int i = 0; i < csvBytes.Length - 1; i++)
         {
-            if (csvBytes[i] == 0x0A) // LF
+            if (csvBytes[i] == 0x0D && csvBytes[i + 1] == 0x0A)
             {
-                if (i == 0)
-                {
-                    Assert.Fail("Found LF at start of file without preceding CR");
-                }
-                else if (csvBytes[i - 1] != 0x0D) // Check if previous byte is CR
-                {
-                    Assert.Fail($"Found standalone LF at position {i} without preceding CR");
-                }
+                Assert.Fail($"Found CRLF at position {i} - should be LF only to match signup list export");
             }
         }
     }
 
     [Fact]
-    public void ExportEventAttendees_WithMultipleRows_Should_SeparateEachRowWithCrlf()
+    public void ExportEventAttendees_WithMultipleRows_Should_SeparateEachRowWithLf()
     {
         // Arrange - Create 5 attendees to ensure multiple rows
         var attendees = new EventAttendeesResponse
@@ -270,8 +258,8 @@ public class CsvExportServiceLineEndingTests
         var csvBytes = _service.ExportEventAttendees(attendees);
         var csvString = System.Text.Encoding.UTF8.GetString(csvBytes);
 
-        // Assert
-        var lines = csvString.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+        // Assert - Split by LF only (matching signup list export)
+        var lines = csvString.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         // Should have 1 header + 5 data rows = 6 lines
         lines.Length.Should().Be(6, "should have header row and 5 data rows");

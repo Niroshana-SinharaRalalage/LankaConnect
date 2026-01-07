@@ -1,27 +1,56 @@
+using System.Globalization;
 using System.Text;
+using CsvHelper;
+using CsvHelper.Configuration;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 
 namespace LankaConnect.Infrastructure.Services.Export;
 
 /// <summary>
-/// CSV export service implementation.
-/// Exports attendee data to simple CSV format with manual string building.
-/// Phase 6A.66: Replaced CsvHelper with manual CSV building to fix Excel line ending issues.
+/// CSV export service implementation using CsvHelper library.
+/// Phase 6A.68 (Option 2): Restored CsvHelper for RFC 4180 compliant CSV generation.
+/// This provides robust handling of special characters, quotes, and newlines.
 /// </summary>
 public class CsvExportService : ICsvExportService
 {
     public byte[] ExportEventAttendees(EventAttendeesResponse attendees)
     {
-        // Phase 6A.66: Build CSV manually exactly like signup list export
-        // UTF-8 BOM for Excel compatibility
-        var csv = new StringBuilder();
-        csv.Append('\uFEFF');
+        // Phase 6A.68: Use CsvHelper for RFC 4180 compliant CSV generation
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            // RFC 4180 compliant settings
+            NewLine = "\n",  // Use LF for cross-platform compatibility
+            ShouldQuote = args => true,  // Always quote fields for safety
+            TrimOptions = TrimOptions.Trim,
+            UseNewObjectForNullReferenceMembers = false
+        });
 
-        // Header row - use LF only (like signup list client-side export that works)
-        csv.Append("RegistrationId,MainAttendee,AdditionalAttendees,TotalAttendees,Adults,Children,MaleCount,FemaleCount,GenderDistribution,Email,Phone,Address,PaymentStatus,TotalAmount,Currency,TicketCode,QRCode,RegistrationDate,Status\n");
+        // Write header
+        csv.WriteField("RegistrationId");
+        csv.WriteField("MainAttendee");
+        csv.WriteField("AdditionalAttendees");
+        csv.WriteField("TotalAttendees");
+        csv.WriteField("Adults");
+        csv.WriteField("Children");
+        csv.WriteField("MaleCount");
+        csv.WriteField("FemaleCount");
+        csv.WriteField("GenderDistribution");
+        csv.WriteField("Email");
+        csv.WriteField("Phone");
+        csv.WriteField("Address");
+        csv.WriteField("PaymentStatus");
+        csv.WriteField("TotalAmount");
+        csv.WriteField("Currency");
+        csv.WriteField("TicketCode");
+        csv.WriteField("QRCode");
+        csv.WriteField("RegistrationDate");
+        csv.WriteField("Status");
+        csv.NextRecord();
 
-        // Data rows
+        // Write data rows
         foreach (var a in attendees.Attendees)
         {
             var mainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown";
@@ -32,30 +61,30 @@ public class CsvExportService : ICsvExportService
             var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
             var genderDistribution = GetGenderDistribution(a.Attendees);
 
-            // Build row - use helper to properly quote fields
-            csv.Append(QuoteField(a.RegistrationId.ToString()));
-            csv.Append(QuoteField(mainAttendee));
-            csv.Append(QuoteField(additionalAttendees));
-            csv.Append(a.TotalAttendees.ToString()).Append(',');
-            csv.Append(a.AdultCount.ToString()).Append(',');
-            csv.Append(a.ChildCount.ToString()).Append(',');
-            csv.Append(maleCount.ToString()).Append(',');
-            csv.Append(femaleCount.ToString()).Append(',');
-            csv.Append(QuoteField(genderDistribution));
-            csv.Append(QuoteField(a.ContactEmail));
-            csv.Append(QuoteField(a.ContactPhone ?? ""));
-            csv.Append(QuoteField(a.ContactAddress ?? ""));
-            csv.Append(QuoteField(a.PaymentStatus.ToString()));
-            csv.Append(QuoteField(a.TotalAmount?.ToString("F2") ?? ""));
-            csv.Append(QuoteField(a.Currency ?? ""));
-            csv.Append(QuoteField(a.TicketCode ?? ""));
-            csv.Append(QuoteField(a.QrCodeData ?? ""));
-            csv.Append(QuoteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")));
-            csv.Append(QuoteField(a.Status.ToString(), isLast: true));
-            csv.Append('\n');
+            csv.WriteField(a.RegistrationId.ToString());
+            csv.WriteField(mainAttendee);
+            csv.WriteField(additionalAttendees);
+            csv.WriteField(a.TotalAttendees);
+            csv.WriteField(a.AdultCount);
+            csv.WriteField(a.ChildCount);
+            csv.WriteField(maleCount);
+            csv.WriteField(femaleCount);
+            csv.WriteField(genderDistribution);
+            csv.WriteField(a.ContactEmail);
+            csv.WriteField(a.ContactPhone ?? "");
+            csv.WriteField(a.ContactAddress ?? "");
+            csv.WriteField(a.PaymentStatus.ToString());
+            csv.WriteField(a.TotalAmount?.ToString("F2") ?? "");
+            csv.WriteField(a.Currency ?? "");
+            csv.WriteField(a.TicketCode ?? "");
+            csv.WriteField(a.QrCodeData ?? "");
+            csv.WriteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+            csv.WriteField(a.Status.ToString());
+            csv.NextRecord();
         }
 
-        return Encoding.UTF8.GetBytes(csv.ToString());
+        writer.Flush();
+        return memoryStream.ToArray();
     }
 
     /// <summary>
@@ -70,28 +99,5 @@ public class CsvExportService : ICsvExportService
             .ToList();
 
         return genderCounts.Any() ? string.Join(", ", genderCounts) : "";
-    }
-
-    /// <summary>
-    /// Properly quote and escape a CSV field value.
-    /// RFC 4180 compliant: fields containing comma, quote, or newline must be quoted.
-    /// Quotes inside fields must be escaped as double quotes ("").
-    /// </summary>
-    private static string QuoteField(string value, bool isLast = false)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            // Empty field - just return comma (or nothing if last field)
-            return isLast ? "" : ",";
-        }
-
-        // Escape any quotes in the value by doubling them (RFC 4180)
-        var escaped = value.Replace("\"", "\"\"");
-
-        // Always quote string fields for consistency (safer than selective quoting)
-        var quoted = $"\"{escaped}\"";
-
-        // Add comma separator unless it's the last field
-        return isLast ? quoted : quoted + ",";
     }
 }

@@ -63,9 +63,11 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                 // For inactive subscribers, create a new subscription instead of reactivating
                 // This ensures a fresh confirmation token and follows the domain model
+                // Phase 6A.64: Convert single metro area ID to collection for new API
+                var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
                 var reactivateResult = NewsletterSubscriber.Create(
                     email,
-                    metroAreaId,
+                    metroAreaIds,
                     request.ReceiveAllLocations);
 
                 if (!reactivateResult.IsSuccess)
@@ -84,9 +86,11 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             else
             {
                 // Create new subscriber
+                // Phase 6A.64: Convert single metro area ID to collection for new API
+                var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
                 var createResult = NewsletterSubscriber.Create(
                     email,
-                    metroAreaId,
+                    metroAreaIds,
                     request.ReceiveAllLocations);
 
                 if (!createResult.IsSuccess)
@@ -139,7 +143,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             var response = new SubscribeToNewsletterResponse(
                 subscriber.Id,
                 subscriber.Email.Value,
-                subscriber.MetroAreaId,
+                subscriber.MetroAreaIds.FirstOrDefault(),  // Phase 6A.64: Use first metro area for backward compatibility
                 request.MetroAreaIds,
                 subscriber.ReceiveAllLocations,
                 subscriber.IsActive,

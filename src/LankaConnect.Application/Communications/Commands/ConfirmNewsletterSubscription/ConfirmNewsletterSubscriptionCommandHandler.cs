@@ -60,7 +60,7 @@ public class ConfirmNewsletterSubscriptionCommandHandler : IRequestHandler<Confi
             var response = new ConfirmNewsletterSubscriptionResponse(
                 subscriber.Id,
                 subscriber.Email.Value,
-                subscriber.MetroAreaId,
+                subscriber.MetroAreaIds.FirstOrDefault(),  // Phase 6A.64: Use first metro area for backward compatibility
                 subscriber.ReceiveAllLocations,
                 subscriber.ConfirmedAt!.Value);
 

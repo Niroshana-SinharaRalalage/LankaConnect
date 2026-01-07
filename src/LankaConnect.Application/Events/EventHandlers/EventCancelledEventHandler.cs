@@ -25,6 +25,7 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly IApplicationUrlsService _urlsService;
     private readonly ILogger<EventCancelledEventHandler> _logger;
 
     public EventCancelledEventHandler(
@@ -33,6 +34,7 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
         IEmailService emailService,
+        IApplicationUrlsService urlsService,
         ILogger<EventCancelledEventHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -40,6 +42,7 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
         _recipientService = recipientService;
         _userRepository = userRepository;
         _emailService = emailService;
+        _urlsService = urlsService;
         _logger = logger;
     }
 
@@ -129,7 +132,8 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
                 ["EventTitle"] = @event.Title.Value,
                 ["EventDate"] = FormatEventDateTimeRange(@event.StartDate, @event.EndDate), // Phase 6A.63 FIX: Match template parameter name
                 ["EventLocation"] = GetEventLocationString(@event),
-                ["CancellationReason"] = domainEvent.Reason
+                ["CancellationReason"] = domainEvent.Reason,
+                ["DashboardUrl"] = _urlsService.FrontendBaseUrl // Phase 6A.63 FIX 7: Add DashboardUrl for "Browse Other Events" button
             };
 
             // 5. Send templated email to each recipient

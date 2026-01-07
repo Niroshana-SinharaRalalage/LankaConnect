@@ -84,34 +84,44 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail, 
+    public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
         Dictionary<string, object> parameters, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("[EMAIL-SEND] ▶️ START SendTemplatedEmailAsync - Template: '{TemplateName}', Recipient: {RecipientEmail}",
+            templateName, recipientEmail);
+
         try
         {
-            _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail}", 
-                templateName, recipientEmail);
-
             // Validate template exists
+            _logger.LogInformation("[EMAIL-SEND] Step 1: Loading template '{TemplateName}' from repository", templateName);
             var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
+
             if (template == null)
             {
-                _logger.LogWarning("Email template '{TemplateName}' not found", templateName);
+                _logger.LogError("[EMAIL-SEND] ❌ FAILED: Email template '{TemplateName}' not found in database", templateName);
                 return Result.Failure($"Email template '{templateName}' not found");
             }
 
+            _logger.LogInformation("[EMAIL-SEND] ✅ Template loaded: Id={TemplateId}, IsActive={IsActive}, Category={Category}",
+                template.Id, template.IsActive, template.Category.Value);
+
             if (!template.IsActive)
             {
-                _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
+                _logger.LogError("[EMAIL-SEND] ❌ FAILED: Email template '{TemplateName}' is not active (IsActive=false)", templateName);
                 return Result.Failure($"Email template '{templateName}' is not active");
             }
 
             // Render template
+            _logger.LogInformation("[EMAIL-SEND] Step 2: Rendering template with {ParameterCount} parameters", parameters.Count);
             var renderResult = await _templateService.RenderTemplateAsync(templateName, parameters, cancellationToken);
+
             if (renderResult.IsFailure)
             {
+                _logger.LogError("[EMAIL-SEND] ❌ FAILED: Template rendering failed: {Error}", renderResult.Error);
                 return Result.Failure(renderResult.Error);
             }
+
+            _logger.LogInformation("[EMAIL-SEND] ✅ Template rendered successfully");
 
             // Create email message DTO
             var emailMessage = new EmailMessageDto
@@ -125,13 +135,27 @@ public class EmailService : IEmailService
                 Priority = 2 // Normal priority for templated emails
             };
 
+            _logger.LogInformation("[EMAIL-SEND] Step 3: Sending email - Subject: '{Subject}', From: {FromEmail}",
+                emailMessage.Subject, emailMessage.FromEmail);
+
             // Send the email
-            return await SendEmailAsync(emailMessage, cancellationToken);
+            var sendResult = await SendEmailAsync(emailMessage, cancellationToken);
+
+            if (sendResult.IsSuccess)
+            {
+                _logger.LogInformation("[EMAIL-SEND] ✅ SUCCESS: Email sent to {RecipientEmail}", recipientEmail);
+            }
+            else
+            {
+                _logger.LogError("[EMAIL-SEND] ❌ FAILED: Email send failed: {Errors}", string.Join(", ", sendResult.Errors));
+            }
+
+            return sendResult;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send templated email '{TemplateName}' to {RecipientEmail}", 
-                templateName, recipientEmail);
+            _logger.LogError(ex, "[EMAIL-SEND] ❌ EXCEPTION: Failed to send templated email '{TemplateName}' to {RecipientEmail}: {Message}, StackTrace: {StackTrace}",
+                templateName, recipientEmail, ex.Message, ex.StackTrace);
             return Result.Failure($"Failed to send templated email: {ex.Message}");
         }
     }

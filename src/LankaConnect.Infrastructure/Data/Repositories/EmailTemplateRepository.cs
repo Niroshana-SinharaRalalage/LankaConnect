@@ -138,27 +138,39 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
     public async Task<EmailTemplate?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
+        {
+            _logger.Warning("[TEMPLATE-LOAD] GetByNameAsync called with null/empty name");
             return null;
+        }
 
         using (LogContext.PushProperty("Operation", "GetByName"))
         using (LogContext.PushProperty("TemplateName", name))
         {
-            _logger.Debug("Getting template by name: {TemplateName}", name);
+            _logger.Information("[TEMPLATE-LOAD] Getting template by name: {TemplateName}", name);
 
-            var result = await _dbSet
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Name == name, cancellationToken);
-
-            if (result != null)
+            try
             {
-                _logger.Debug("Found template {TemplateId} with name {TemplateName}", result.Id, name);
-            }
-            else
-            {
-                _logger.Debug("No template found with name {TemplateName}", name);
-            }
+                var result = await _dbSet
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Name == name, cancellationToken);
 
-            return result;
+                if (result != null)
+                {
+                    _logger.Information("[TEMPLATE-LOAD] ✅ Found template {TemplateId} with name {TemplateName}, IsActive: {IsActive}, Category: {Category}",
+                        result.Id, name, result.IsActive, result.Category.Value);
+                }
+                else
+                {
+                    _logger.Warning("[TEMPLATE-LOAD] ❌ No template found with name {TemplateName}", name);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "[TEMPLATE-LOAD] ❌ Exception loading template {TemplateName}: {Message}", name, ex.Message);
+                throw;
+            }
         }
     }
 

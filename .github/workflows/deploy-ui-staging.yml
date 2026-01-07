@@ -79,6 +79,30 @@ jobs:
           NEXT_PUBLIC_ENV: staging
           NEXT_TELEMETRY_DISABLED: 1
 
+      - name: Verify standalone build output
+        run: |
+          echo "🔍 Verifying Next.js standalone build..."
+
+          # Check for server.js (monorepo structure: .next/standalone/web/server.js)
+          if [ ! -f ".next/standalone/web/server.js" ]; then
+            echo "❌ ERROR: server.js not found at .next/standalone/web/server.js"
+            echo "Contents of .next directory:"
+            ls -la .next/
+            echo "Contents of .next/standalone/:"
+            ls -la .next/standalone/ || echo "standalone directory missing"
+            exit 1
+          fi
+
+          # Check for static files
+          if [ ! -d ".next/static" ]; then
+            echo "❌ ERROR: .next/static directory not found"
+            exit 1
+          fi
+
+          echo "✅ Standalone build verified - server.js exists at .next/standalone/web/server.js"
+          echo "✅ Static files directory exists"
+        working-directory: ./web
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -97,6 +121,7 @@ jobs:
           context: ./web
           file: ./web/Dockerfile
           push: true
+          no-cache: true  # Force fresh build to avoid stale cached layers
           tags: |
             ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:staging

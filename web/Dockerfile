@@ -44,14 +44,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy public files (images, fonts, etc.)
-COPY --from=builder /app/public ./public
-
-# Copy standalone output (includes server and dependencies)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Copy standalone output (Next.js creates web/ subdirectory due to monorepo structure)
+# The standalone build is at .next/standalone/web/ not .next/standalone/
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/web ./
 
 # Copy static files (CSS, JS bundles)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy public files (images, fonts, etc.) if they exist
+COPY --from=builder /app/public ./public
 
 # Switch to non-root user
 USER nextjs

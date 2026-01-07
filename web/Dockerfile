@@ -44,9 +44,22 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone output (Next.js creates web/ subdirectory due to monorepo structure)
-# The standalone build is at .next/standalone/web/ not .next/standalone/
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/web ./
+# Smart COPY: Handle both monorepo and standalone structures
+# - Workflow build (monorepo detected): .next/standalone/web/server.js
+# - Docker build (isolated context): .next/standalone/server.js
+# This ensures the Dockerfile works in both environments
+RUN mkdir -p /tmp/standalone
+COPY --from=builder /app/.next/standalone /tmp/standalone/
+
+# Detect structure and copy to correct location
+RUN if [ -d "/tmp/standalone/web" ]; then \
+      echo "📦 Monorepo structure detected: copying from standalone/web/"; \
+      cp -r /tmp/standalone/web/* /app/; \
+    else \
+      echo "📦 Standalone structure detected: copying from standalone/"; \
+      cp -r /tmp/standalone/* /app/; \
+    fi && \
+    rm -rf /tmp/standalone
 
 # Copy static files (CSS, JS bundles)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

@@ -104,9 +104,9 @@ public class CsvExportServiceLineEndingTests
         var lines = csvString.Split('\n', StringSplitOptions.None);
         lines.Length.Should().BeGreaterThan(2, "should have header row and at least 2 data rows");
 
-        // Verify header is on first line
-        lines[0].Should().Contain("RegistrationId", "header should be on first line");
-        lines[0].Should().Contain("MainAttendee", "header should contain MainAttendee column");
+        // Verify header is on first line (Phase 6A.68: RegistrationId removed)
+        lines[0].Should().Contain("MainAttendee", "header should be on first line");
+        lines[0].Should().NotContain("RegistrationId", "RegistrationId should not be in header");
 
         // Verify data rows exist
         lines[1].Should().Contain("John Doe", "first data row should contain first attendee");
@@ -261,8 +261,8 @@ public class CsvExportServiceLineEndingTests
         // Assert - Split by LF only (matching signup list export)
         var lines = csvString.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        // Should have 1 header + 5 data rows = 6 lines
-        lines.Length.Should().Be(6, "should have header row and 5 data rows");
+        // Phase 6A.68: Should have 1 header + 5 data rows + 1 summary row = 7 lines
+        lines.Length.Should().Be(7, "should have header row, 5 data rows, and summary row");
 
         // Verify each expected user is in the output
         for (int i = 1; i <= 5; i++)

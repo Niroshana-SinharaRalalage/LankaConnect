@@ -28,8 +28,7 @@ public class CsvExportService : ICsvExportService
             UseNewObjectForNullReferenceMembers = false
         });
 
-        // Write header
-        csv.WriteField("RegistrationId");
+        // Write header (Phase 6A.68: Removed RegistrationId - not needed by organizers)
         csv.WriteField("MainAttendee");
         csv.WriteField("AdditionalAttendees");
         csv.WriteField("TotalAttendees");
@@ -50,6 +49,13 @@ public class CsvExportService : ICsvExportService
         csv.WriteField("Status");
         csv.NextRecord();
 
+        // Calculate totals for summary row
+        var totalAttendeeCount = attendees.Attendees.Sum(a => a.TotalAttendees);
+        var totalAmount = attendees.Attendees
+            .Where(a => a.TotalAmount.HasValue)
+            .Sum(a => a.TotalAmount!.Value);
+        var currency = attendees.Attendees.FirstOrDefault(a => !string.IsNullOrEmpty(a.Currency))?.Currency ?? "USD";
+
         // Write data rows
         foreach (var a in attendees.Attendees)
         {
@@ -61,7 +67,7 @@ public class CsvExportService : ICsvExportService
             var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
             var genderDistribution = GetGenderDistribution(a.Attendees);
 
-            csv.WriteField(a.RegistrationId.ToString());
+            // Phase 6A.68: Removed RegistrationId from export
             csv.WriteField(mainAttendee);
             csv.WriteField(additionalAttendees);
             csv.WriteField(a.TotalAttendees);
@@ -80,6 +86,34 @@ public class CsvExportService : ICsvExportService
             csv.WriteField(a.QrCodeData ?? "");
             csv.WriteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
             csv.WriteField(a.Status.ToString());
+            csv.NextRecord();
+        }
+
+        // Phase 6A.68: Add summary totals row at the bottom
+        if (attendees.Attendees.Any())
+        {
+            // Empty row for separation
+            csv.NextRecord();
+
+            // Summary row
+            csv.WriteField("TOTAL");
+            csv.WriteField("");  // AdditionalAttendees
+            csv.WriteField(totalAttendeeCount);  // Total attendees across all registrations
+            csv.WriteField("");  // Adults
+            csv.WriteField("");  // Children
+            csv.WriteField("");  // MaleCount
+            csv.WriteField("");  // FemaleCount
+            csv.WriteField("");  // GenderDistribution
+            csv.WriteField("");  // Email
+            csv.WriteField("");  // Phone
+            csv.WriteField("");  // Address
+            csv.WriteField("");  // PaymentStatus
+            csv.WriteField(totalAmount.ToString("F2"));  // Total amount collected
+            csv.WriteField(currency);  // Currency
+            csv.WriteField("");  // TicketCode
+            csv.WriteField("");  // QRCode
+            csv.WriteField("");  // RegistrationDate
+            csv.WriteField("");  // Status
             csv.NextRecord();
         }
 

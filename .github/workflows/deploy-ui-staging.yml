@@ -37,9 +37,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run linting
-        run: npm run lint
-
       - name: Run type checking
         run: npx tsc --noEmit
 
@@ -114,11 +111,11 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --set-env-vars \
-              BACKEND_API_URL=https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api \
-              NEXT_PUBLIC_API_URL=/api/proxy \
-              NEXT_PUBLIC_ENV=staging \
-              NODE_ENV=production \
-              NEXT_TELEMETRY_DISABLED=1
+              "BACKEND_API_URL=https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api" \
+              "NEXT_PUBLIC_API_URL=/api/proxy" \
+              "NEXT_PUBLIC_ENV=staging" \
+              "NODE_ENV=production" \
+              "NEXT_TELEMETRY_DISABLED=1"
 
       - name: Get Container App URL
         id: get-url

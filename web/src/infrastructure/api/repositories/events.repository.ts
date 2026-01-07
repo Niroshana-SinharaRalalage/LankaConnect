@@ -232,10 +232,15 @@ export class EventsRepository {
   /**
    * Cancel event with reason
    * Notifies all registered users
+   *
+   * Phase 6A.64: Background job implementation - instant API response
+   * Event cancellation completes immediately. Emails are sent asynchronously via Hangfire.
+   * Uses default 30s timeout (sufficient for instant response).
    */
   async cancelEvent(id: string, reason: string): Promise<void> {
     const request: CancelEventRequest = { reason };
     await apiClient.post<void>(`${this.basePath}/${id}/cancel`, request);
+    // Note: Emails are sent in background. Check Hangfire dashboard for email job status.
   }
 
   /**

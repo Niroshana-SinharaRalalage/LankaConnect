@@ -16,6 +16,7 @@
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.AspNetCore.Http" />
+    <PackageReference Include="Hangfire.AspNetCore" />
   </ItemGroup>
 
   <PropertyGroup>

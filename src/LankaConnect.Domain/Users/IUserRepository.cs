@@ -25,4 +25,10 @@ public interface IUserRepository : IRepository<User>
     /// Phase 6A.29: Get user full names by their IDs (for badge creator display)
     /// </summary>
     Task<Dictionary<Guid, string>> GetUserNamesAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.64: Get user emails by their IDs (bulk query to eliminate N+1 problem in event notifications)
+    /// Used by EventCancelledEventHandler to fetch all recipient emails in a single query
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetEmailsByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default);
 }

@@ -38,15 +38,16 @@ public class ExcelExportService : IExcelExportService
     {
         var sheet = workbook.Worksheets.Add("Registrations");
 
-        // Define headers
+        // Define headers (Phase 6A.68: Removed Registration ID - not needed by organizers)
         var headers = new[]
         {
-            "Registration ID",
             "Main Attendee",
             "Additional Attendees",
             "Total Attendees",
             "Adults",
             "Children",
+            "Male Count",
+            "Female Count",
             "Gender Distribution",
             "Email",
             "Phone",
@@ -77,12 +78,19 @@ public class ExcelExportService : IExcelExportService
         foreach (var attendee in data.Attendees)
         {
             int col = 1;
-            sheet.Cell(row, col++).Value = attendee.RegistrationId.ToString();
+            // Phase 6A.68: Removed RegistrationId, added Male/Female counts
             sheet.Cell(row, col++).Value = attendee.MainAttendeeName;
             sheet.Cell(row, col++).Value = attendee.AdditionalAttendees;
             sheet.Cell(row, col++).Value = attendee.TotalAttendees;
             sheet.Cell(row, col++).Value = attendee.AdultCount;
             sheet.Cell(row, col++).Value = attendee.ChildCount;
+
+            // Calculate male and female counts from attendees
+            var maleCount = attendee.Attendees?.Count(a => a.Gender == Gender.Male) ?? 0;
+            var femaleCount = attendee.Attendees?.Count(a => a.Gender == Gender.Female) ?? 0;
+            sheet.Cell(row, col++).Value = maleCount;
+            sheet.Cell(row, col++).Value = femaleCount;
+
             sheet.Cell(row, col++).Value = attendee.GenderDistribution;
             sheet.Cell(row, col++).Value = attendee.ContactEmail;
             sheet.Cell(row, col++).Value = attendee.ContactPhone;
@@ -115,18 +123,21 @@ public class ExcelExportService : IExcelExportService
             row++;
         }
 
-        // Add summary row
+        // Phase 6A.68: Add summary row (adjusted column numbers after removing RegistrationId)
         row++;
         sheet.Cell(row, 1).Value = "TOTALS";
         sheet.Cell(row, 1).Style.Font.Bold = true;
-        sheet.Cell(row, 4).Value = data.TotalAttendees;
-        sheet.Cell(row, 4).Style.Font.Bold = true;
 
+        // Total Attendees column (now column 3 instead of 4)
+        sheet.Cell(row, 3).Value = data.TotalAttendees;
+        sheet.Cell(row, 3).Style.Font.Bold = true;
+
+        // Total Amount column (now column 13 instead of 12)
         if (data.TotalRevenue.HasValue && data.TotalRevenue.Value > 0)
         {
-            sheet.Cell(row, 12).Value = data.TotalRevenue.Value;
-            sheet.Cell(row, 12).Style.NumberFormat.Format = "#,##0.00";
-            sheet.Cell(row, 12).Style.Font.Bold = true;
+            sheet.Cell(row, 13).Value = data.TotalRevenue.Value;
+            sheet.Cell(row, 13).Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(row, 13).Style.Font.Bold = true;
         }
 
         // Auto-fit columns

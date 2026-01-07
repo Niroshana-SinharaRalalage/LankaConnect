@@ -127,8 +127,7 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
             var parameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title.Value,
-                ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
-                ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
+                ["EventDate"] = FormatEventDateTimeRange(@event.StartDate, @event.EndDate), // Phase 6A.63 FIX: Match template parameter name
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = domainEvent.Reason
             };
@@ -191,5 +190,26 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
         if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
 
         return string.Join(", ", parts);
+    }
+
+    /// <summary>
+    /// Phase 6A.63 FIX: Formats event date/time range for display.
+    /// Copied from RegistrationConfirmedEventHandler for consistency.
+    /// Examples:
+    /// - Same day: "January 31, 2026 from 3:07 AM to 1:10 PM"
+    /// - Different days: "January 31, 2026 at 3:07 AM to February 2, 2026 at 1:10 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
+        {
+            // Same day event
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
+        }
     }
 }

@@ -105,9 +105,18 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
                 notificationRecipients.Breakdown.AllLocationsSubscribers);
 
             // 3. Consolidate all recipients (deduplicated, case-insensitive)
+            _logger.LogInformation(
+                "[Phase 6A.63 DEBUG] Before consolidation - Registration emails: [{RegEmails}], Notification emails: [{NotifEmails}]",
+                string.Join(", ", registrationEmails),
+                string.Join(", ", notificationRecipients.EmailAddresses));
+
             var allRecipients = registrationEmails
                 .Concat(notificationRecipients.EmailAddresses)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation(
+                "[Phase 6A.63 DEBUG] After consolidation - All unique recipients: [{AllEmails}]",
+                string.Join(", ", allRecipients));
 
             if (!allRecipients.Any())
             {
@@ -142,6 +151,8 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
 
             foreach (var email in allRecipients)
             {
+                _logger.LogInformation("[Phase 6A.63 DEBUG] Attempting to send cancellation email to: {Email}", email);
+
                 var result = await _emailService.SendTemplatedEmailAsync(
                     "event-cancelled-notification",
                     email,
@@ -151,6 +162,7 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
                 if (result.IsSuccess)
                 {
                     successCount++;
+                    _logger.LogInformation("[Phase 6A.63 DEBUG] Successfully sent cancellation email to: {Email}", email);
                 }
                 else
                 {

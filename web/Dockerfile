@@ -2,22 +2,22 @@
 # Optimized for Azure Container Apps deployment
 
 # Stage 1: Dependencies
-# Install production dependencies only
+# Install ALL dependencies (including devDependencies needed for build)
 FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies with clean install
-RUN npm ci --only=production --ignore-scripts
+# Install ALL dependencies (devDependencies needed for build: autoprefixer, tailwindcss, etc.)
+RUN npm ci --ignore-scripts
 
 # Stage 2: Builder
 # Build the Next.js application
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Copy ALL dependencies from deps stage (including devDependencies)
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy application source

@@ -104,7 +104,9 @@ public class ExportEventAttendeesQueryHandler
         {
             fileContent = _csvService.ExportEventAttendees(attendeesResponse);
             fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
-            contentType = "text/csv; charset=utf-8";
+            // Phase 6A.68 Fix: Use application/octet-stream to prevent HTTP middleware from treating CSV as text
+            // This prevents newline escaping (\n → literal \n) and ensures binary transfer to Excel
+            contentType = "application/octet-stream";
         }
 
         return Result<ExportResult>.Success(new ExportResult

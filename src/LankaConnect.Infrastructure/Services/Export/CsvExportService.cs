@@ -32,27 +32,27 @@ public class CsvExportService : ICsvExportService
             var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
             var genderDistribution = GetGenderDistribution(a.Attendees);
 
-            // Build row - quote fields that need it
-            csv.Append($"\"{a.RegistrationId}\",");
-            csv.Append($"\"{mainAttendee}\",");
-            csv.Append($"\"{additionalAttendees}\",");
-            csv.Append($"{a.TotalAttendees},");
-            csv.Append($"{a.AdultCount},");
-            csv.Append($"{a.ChildCount},");
-            csv.Append($"{maleCount},");
-            csv.Append($"{femaleCount},");
-            csv.Append($"\"{genderDistribution}\",");
-            csv.Append($"\"{a.ContactEmail}\",");
-            csv.Append($"\"{a.ContactPhone ?? ""}\",");
-            csv.Append($"\"{a.ContactAddress ?? ""}\",");
-            csv.Append($"\"{a.PaymentStatus}\",");
-            csv.Append($"\"{a.TotalAmount?.ToString("F2") ?? ""}\",");
-            csv.Append($"\"{a.Currency ?? ""}\",");
-            csv.Append($"\"{a.TicketCode ?? ""}\",");
-            csv.Append($"\"{a.QrCodeData ?? ""}\",");
-            csv.Append($"\"{a.CreatedAt:yyyy-MM-dd HH:mm:ss}\",");
-            csv.Append($"\"{a.Status}\"");
-            csv.Append("\n");  // Use LF only (like signup list client-side export that works)
+            // Build row - use helper to properly quote fields
+            csv.Append(QuoteField(a.RegistrationId.ToString()));
+            csv.Append(QuoteField(mainAttendee));
+            csv.Append(QuoteField(additionalAttendees));
+            csv.Append(a.TotalAttendees.ToString()).Append(',');
+            csv.Append(a.AdultCount.ToString()).Append(',');
+            csv.Append(a.ChildCount.ToString()).Append(',');
+            csv.Append(maleCount.ToString()).Append(',');
+            csv.Append(femaleCount.ToString()).Append(',');
+            csv.Append(QuoteField(genderDistribution));
+            csv.Append(QuoteField(a.ContactEmail));
+            csv.Append(QuoteField(a.ContactPhone ?? ""));
+            csv.Append(QuoteField(a.ContactAddress ?? ""));
+            csv.Append(QuoteField(a.PaymentStatus.ToString()));
+            csv.Append(QuoteField(a.TotalAmount?.ToString("F2") ?? ""));
+            csv.Append(QuoteField(a.Currency ?? ""));
+            csv.Append(QuoteField(a.TicketCode ?? ""));
+            csv.Append(QuoteField(a.QrCodeData ?? ""));
+            csv.Append(QuoteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")));
+            csv.Append(QuoteField(a.Status.ToString(), isLast: true));
+            csv.Append('\n');
         }
 
         return Encoding.UTF8.GetBytes(csv.ToString());
@@ -70,5 +70,28 @@ public class CsvExportService : ICsvExportService
             .ToList();
 
         return genderCounts.Any() ? string.Join(", ", genderCounts) : "";
+    }
+
+    /// <summary>
+    /// Properly quote and escape a CSV field value.
+    /// RFC 4180 compliant: fields containing comma, quote, or newline must be quoted.
+    /// Quotes inside fields must be escaped as double quotes ("").
+    /// </summary>
+    private static string QuoteField(string value, bool isLast = false)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            // Empty field - just return comma (or nothing if last field)
+            return isLast ? "" : ",";
+        }
+
+        // Escape any quotes in the value by doubling them (RFC 4180)
+        var escaped = value.Replace("\"", "\"\"");
+
+        // Always quote string fields for consistency (safer than selective quoting)
+        var quoted = $"\"{escaped}\"";
+
+        // Add comma separator unless it's the last field
+        return isLast ? quoted : quoted + ",";
     }
 }

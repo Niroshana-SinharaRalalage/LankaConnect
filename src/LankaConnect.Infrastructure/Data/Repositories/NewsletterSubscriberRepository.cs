@@ -70,16 +70,22 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         using (LogContext.PushProperty("Operation", "GetConfirmedSubscribersByMetroArea"))
         using (LogContext.PushProperty("MetroAreaId", metroAreaId))
         {
-            _logger.Debug("Getting confirmed subscribers for metro area {MetroAreaId}", metroAreaId);
+            _logger.Debug("[Phase 6A.64] Getting confirmed subscribers for metro area {MetroAreaId}", metroAreaId);
 
-            var result = await _dbSet
-                .Where(ns => ns.MetroAreaId == metroAreaId)
-                .Where(ns => ns.IsActive)
-                .Where(ns => ns.IsConfirmed)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
+            // Phase 6A.64: Join with junction table to find subscribers for this metro area
+            var result = await (
+                from ns in _dbSet
+                join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
+                    on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
+                where EF.Property<Guid>(nsma, "metro_area_id") == metroAreaId
+                    && ns.IsActive
+                    && ns.IsConfirmed
+                select ns
+            )
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-            _logger.Debug("Retrieved {Count} confirmed subscribers for metro area {MetroAreaId}",
+            _logger.Debug("[Phase 6A.64] Retrieved {Count} confirmed subscribers for metro area {MetroAreaId}",
                 result.Count, metroAreaId);
             return result;
         }
@@ -111,48 +117,58 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         using (LogContext.PushProperty("Operation", "GetConfirmedSubscribersByState"))
         using (LogContext.PushProperty("State", state))
         {
-            _logger.Debug("Getting confirmed subscribers for state-level areas in state {State}", state);
+            _logger.Debug("[Phase 6A.64] Getting confirmed subscribers for ALL metro areas in state {State}", state);
 
-            // Phase 6A Fix: Normalize state to abbreviation for matching
-            // Database stores 2-letter abbreviations (e.g., "CA"), but events may have full names (e.g., "California")
+            // Phase 6A.64: Get ALL metro areas in the state (not just state-level areas)
+            // This matches the UI behavior where selecting "Ohio" checkbox selects all 5 Ohio metro areas
             var stateAbbreviation = USStateHelper.NormalizeToAbbreviation(state);
 
-            _logger.Debug("Normalized state {State} to abbreviation {Abbreviation}", state, stateAbbreviation ?? "null");
+            _logger.Debug("[Phase 6A.64] Normalized state {State} to abbreviation {Abbreviation}",
+                state, stateAbbreviation ?? "null");
 
-            List<Guid> stateMetroAreaIds;
+            List<Guid> allStateMetroAreaIds;
 
             if (!string.IsNullOrEmpty(stateAbbreviation))
             {
-                // Match using normalized abbreviation
-                stateMetroAreaIds = await _context.MetroAreas
-                    .Where(m => m.State.ToLower() == stateAbbreviation.ToLower() && m.IsStateLevelArea)
+                // Match using normalized abbreviation - GET ALL metro areas, not just state-level
+                allStateMetroAreaIds = await _context.MetroAreas
+                    .Where(m => m.State.ToLower() == stateAbbreviation.ToLower())
                     .Select(m => m.Id)
                     .ToListAsync(cancellationToken);
             }
             else
             {
                 // Fallback: try exact match for non-US states
-                stateMetroAreaIds = await _context.MetroAreas
-                    .Where(m => m.State.ToLower() == state.ToLower() && m.IsStateLevelArea)
+                allStateMetroAreaIds = await _context.MetroAreas
+                    .Where(m => m.State.ToLower() == state.ToLower())
                     .Select(m => m.Id)
                     .ToListAsync(cancellationToken);
             }
 
-            if (!stateMetroAreaIds.Any())
+            if (!allStateMetroAreaIds.Any())
             {
-                _logger.Debug("No state-level metro areas found for state {State}", state);
+                _logger.Debug("[Phase 6A.64] No metro areas found for state {State}", state);
                 return new List<NewsletterSubscriber>();
             }
 
-            // Get subscribers for those state-level metro areas
-            var result = await _dbSet
-                .Where(ns => ns.MetroAreaId.HasValue && stateMetroAreaIds.Contains(ns.MetroAreaId.Value))
-                .Where(ns => ns.IsActive)
-                .Where(ns => ns.IsConfirmed)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
+            _logger.Debug("[Phase 6A.64] Found {Count} metro areas in state {State}: [{MetroAreaIds}]",
+                allStateMetroAreaIds.Count, state, string.Join(", ", allStateMetroAreaIds));
 
-            _logger.Debug("Retrieved {Count} confirmed subscribers for state-level areas in {State}",
+            // Phase 6A.64: Join with junction table to find subscribers with ANY of these metro areas
+            var result = await (
+                from ns in _dbSet
+                join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
+                    on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
+                where allStateMetroAreaIds.Contains(EF.Property<Guid>(nsma, "metro_area_id"))
+                    && ns.IsActive
+                    && ns.IsConfirmed
+                select ns
+            )
+            .Distinct()  // Remove duplicates (subscriber may have multiple metro areas in same state)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+            _logger.Debug("[Phase 6A.64] Retrieved {Count} confirmed subscribers for state {State}",
                 result.Count, state);
             return result;
         }
@@ -164,21 +180,34 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         using (LogContext.PushProperty("Email", email))
         using (LogContext.PushProperty("MetroAreaId", metroAreaId))
         {
-            _logger.Debug("Checking if email {Email} is subscribed for metro area {MetroAreaId}",
+            _logger.Debug("[Phase 6A.64] Checking if email {Email} is subscribed for metro area {MetroAreaId}",
                 email, metroAreaId);
 
-            var query = _dbSet
-                .Where(ns => ns.Email.Value == email)
-                .Where(ns => ns.IsActive);
+            bool result;
 
             if (metroAreaId.HasValue)
             {
-                query = query.Where(ns => ns.MetroAreaId == metroAreaId);
+                // Phase 6A.64: Check if subscriber has this specific metro area via junction table
+                result = await (
+                    from ns in _dbSet
+                    join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
+                        on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
+                    where ns.Email.Value == email
+                        && ns.IsActive
+                        && EF.Property<Guid>(nsma, "metro_area_id") == metroAreaId.Value
+                    select ns
+                ).AnyAsync(cancellationToken);
+            }
+            else
+            {
+                // No specific metro area - just check if email is subscribed to anything
+                result = await _dbSet
+                    .Where(ns => ns.Email.Value == email)
+                    .Where(ns => ns.IsActive)
+                    .AnyAsync(cancellationToken);
             }
 
-            var result = await query.AnyAsync(cancellationToken);
-
-            _logger.Debug("Email {Email} subscription status for metro area {MetroAreaId}: {IsSubscribed}",
+            _logger.Debug("[Phase 6A.64] Email {Email} subscription status for metro area {MetroAreaId}: {IsSubscribed}",
                 email, metroAreaId, result);
             return result;
         }

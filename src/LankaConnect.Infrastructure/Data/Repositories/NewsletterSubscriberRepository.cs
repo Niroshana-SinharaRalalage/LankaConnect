@@ -164,18 +164,27 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
         {
             _logger.Debug("[Phase 6A.64] Getting confirmed subscribers for metro area {MetroAreaId}", metroAreaId);
 
-            // Phase 6A.64: Join with junction table to find subscribers for this metro area
-            var result = await (
-                from ns in _dbSet
-                join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
-                    on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
-                where EF.Property<Guid>(nsma, "metro_area_id") == metroAreaId
-                    && ns.IsActive
-                    && ns.IsConfirmed
-                select ns
-            )
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            // Phase 6A.64 FIX: Use raw SQL to query junction table (avoiding EF Core shared-type entity error)
+            var subscriberIds = await _context.Database
+                .SqlQuery<Guid>($@"
+                    SELECT subscriber_id
+                    FROM communications.newsletter_subscriber_metro_areas
+                    WHERE metro_area_id = {metroAreaId}")
+                .ToListAsync(cancellationToken);
+
+            if (!subscriberIds.Any())
+            {
+                _logger.Debug("[Phase 6A.64] No subscribers found for metro area {MetroAreaId}", metroAreaId);
+                return new List<NewsletterSubscriber>();
+            }
+
+            // Now fetch the actual subscriber entities
+            var result = await _dbSet
+                .Where(ns => subscriberIds.Contains(ns.Id))
+                .Where(ns => ns.IsActive)
+                .Where(ns => ns.IsConfirmed)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
 
             _logger.Debug("[Phase 6A.64] Retrieved {Count} confirmed subscribers for metro area {MetroAreaId}",
                 result.Count, metroAreaId);
@@ -246,19 +255,30 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
             _logger.Debug("[Phase 6A.64] Found {Count} metro areas in state {State}: [{MetroAreaIds}]",
                 allStateMetroAreaIds.Count, state, string.Join(", ", allStateMetroAreaIds));
 
-            // Phase 6A.64: Join with junction table to find subscribers with ANY of these metro areas
-            var result = await (
-                from ns in _dbSet
-                join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
-                    on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
-                where allStateMetroAreaIds.Contains(EF.Property<Guid>(nsma, "metro_area_id"))
-                    && ns.IsActive
-                    && ns.IsConfirmed
-                select ns
-            )
-            .Distinct()  // Remove duplicates (subscriber may have multiple metro areas in same state)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            // Phase 6A.64 FIX: Use raw SQL to query junction table (avoiding EF Core shared-type entity error)
+            var subscriberIds = await _context.Database
+                .SqlQuery<Guid>($@"
+                    SELECT DISTINCT subscriber_id
+                    FROM communications.newsletter_subscriber_metro_areas
+                    WHERE metro_area_id = ANY({allStateMetroAreaIds})")
+                .ToListAsync(cancellationToken);
+
+            if (!subscriberIds.Any())
+            {
+                _logger.Debug("[Phase 6A.64] No subscribers found for state {State}", state);
+                return new List<NewsletterSubscriber>();
+            }
+
+            _logger.Debug("[Phase 6A.64] Found {Count} subscriber IDs for state {State}",
+                subscriberIds.Count, state);
+
+            // Now fetch the actual subscriber entities
+            var result = await _dbSet
+                .Where(ns => subscriberIds.Contains(ns.Id))
+                .Where(ns => ns.IsActive)
+                .Where(ns => ns.IsConfirmed)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
 
             _logger.Debug("[Phase 6A.64] Retrieved {Count} confirmed subscribers for state {State}",
                 result.Count, state);
@@ -279,16 +299,27 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
 
             if (metroAreaId.HasValue)
             {
-                // Phase 6A.64: Check if subscriber has this specific metro area via junction table
-                result = await (
-                    from ns in _dbSet
-                    join nsma in _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
-                        on ns.Id equals EF.Property<Guid>(nsma, "subscriber_id")
-                    where ns.Email.Value == email
-                        && ns.IsActive
-                        && EF.Property<Guid>(nsma, "metro_area_id") == metroAreaId.Value
-                    select ns
-                ).AnyAsync(cancellationToken);
+                // Phase 6A.64 FIX: Use raw SQL to query junction table (avoiding EF Core shared-type entity error)
+                var subscriberId = await _dbSet
+                    .Where(ns => ns.Email.Value == email && ns.IsActive)
+                    .Select(ns => ns.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (subscriberId == Guid.Empty)
+                {
+                    result = false;
+                }
+                else
+                {
+                    var count = await _context.Database
+                        .SqlQuery<int>($@"
+                            SELECT COUNT(*)::int
+                            FROM communications.newsletter_subscriber_metro_areas
+                            WHERE subscriber_id = {subscriberId} AND metro_area_id = {metroAreaId.Value}")
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    result = count > 0;
+                }
             }
             else
             {

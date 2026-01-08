@@ -33,25 +33,23 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
             // Add the subscriber entity
             await base.AddAsync(entity, cancellationToken);
 
-            // Phase 6A.64: Manually insert metro area IDs into junction table
+            // Phase 6A.64: Manually insert metro area IDs into junction table using raw SQL
             // We do this because we're not using navigation properties (only storing IDs)
+            // Cannot use AddAsync with Dictionary<string, object> for shared-type entity types
             if (entity.MetroAreaIds.Any())
             {
                 _logger.Debug("[Phase 6A.64] Inserting {Count} metro area IDs into junction table for subscriber {SubscriberId}",
                     entity.MetroAreaIds.Count, entity.Id);
 
-                foreach (var metroAreaId in entity.MetroAreaIds)
-                {
-                    var junctionEntry = new Dictionary<string, object>
-                    {
-                        ["subscriber_id"] = entity.Id,
-                        ["metro_area_id"] = metroAreaId,
-                        ["created_at"] = entity.CreatedAt
-                    };
+                // Build values for bulk insert
+                var values = string.Join(", ", entity.MetroAreaIds.Select((id, index) =>
+                    $"('{entity.Id}', '{id}', '{entity.CreatedAt:yyyy-MM-dd HH:mm:ss.ffffff}+00'::timestamptz)"));
 
-                    await _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
-                        .AddAsync(junctionEntry, cancellationToken);
-                }
+                var sql = $@"
+                    INSERT INTO communications.newsletter_subscriber_metro_areas (subscriber_id, metro_area_id, created_at)
+                    VALUES {values}";
+
+                await _context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
 
                 _logger.Information("[Phase 6A.64] Added {Count} junction table entries for subscriber {SubscriberId}",
                     entity.MetroAreaIds.Count, entity.Id);

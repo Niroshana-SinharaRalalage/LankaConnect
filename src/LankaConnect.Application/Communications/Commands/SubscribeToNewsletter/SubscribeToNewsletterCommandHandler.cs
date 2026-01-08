@@ -35,17 +35,26 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     {
         try
         {
+            _logger.LogInformation("[Phase 6A.64] Newsletter subscription START - Email: {Email}, MetroAreaCount: {Count}, ReceiveAll: {ReceiveAll}",
+                request.Email, request.MetroAreaIds?.Count ?? 0, request.ReceiveAllLocations);
+
             // Validate email
             var emailResult = Email.Create(request.Email);
             if (!emailResult.IsSuccess)
             {
+                _logger.LogWarning("[Phase 6A.64] Email validation FAILED - Email: {Email}, Error: {Error}",
+                    request.Email, emailResult.Error);
                 return Result<SubscribeToNewsletterResponse>.Failure($"Invalid email: {emailResult.Error}");
             }
 
             var email = emailResult.Value;
+            _logger.LogDebug("[Phase 6A.64] Email validation PASSED - Email: {Email}", request.Email);
 
             // Check for existing subscriber
+            _logger.LogDebug("[Phase 6A.64] Checking for existing subscriber - Email: {Email}", request.Email);
             var existingSubscriber = await _repository.GetByEmailAsync(request.Email, cancellationToken);
+            _logger.LogDebug("[Phase 6A.64] Existing subscriber check - Email: {Email}, Found: {Found}",
+                request.Email, existingSubscriber != null);
 
             NewsletterSubscriber subscriber;
 
@@ -58,13 +67,20 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 // If already active, return error
                 if (existingSubscriber.IsActive)
                 {
+                    _logger.LogWarning("[Phase 6A.64] Subscription REJECTED - Email already active: {Email}", request.Email);
                     return Result<SubscribeToNewsletterResponse>.Failure("Email is already subscribed to the newsletter");
                 }
+
+                _logger.LogInformation("[Phase 6A.64] Reactivating inactive subscriber - Email: {Email}", request.Email);
 
                 // For inactive subscribers, create a new subscription instead of reactivating
                 // This ensures a fresh confirmation token and follows the domain model
                 // Phase 6A.64: Convert single metro area ID to collection for new API
                 var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
+
+                _logger.LogDebug("[Phase 6A.64] Creating reactivation subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
+                    request.Email, string.Join(", ", metroAreaIds), request.ReceiveAllLocations);
+
                 var reactivateResult = NewsletterSubscriber.Create(
                     email,
                     metroAreaIds,
@@ -72,6 +88,8 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                 if (!reactivateResult.IsSuccess)
                 {
+                    _logger.LogError("[Phase 6A.64] Reactivation Create FAILED - Email: {Email}, Error: {Error}",
+                        request.Email, reactivateResult.Error);
                     return Result<SubscribeToNewsletterResponse>.Failure(reactivateResult.Error);
                 }
 
@@ -81,13 +99,20 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 _repository.Remove(existingSubscriber);
                 await _repository.AddAsync(subscriber, cancellationToken);
 
-                _logger.LogInformation("Reactivated newsletter subscription for {Email}", request.Email);
+                _logger.LogInformation("[Phase 6A.64] Reactivated newsletter subscription - Email: {Email}, MetroAreaCount: {Count}",
+                    request.Email, subscriber.MetroAreaIds.Count);
             }
             else
             {
                 // Create new subscriber
+                _logger.LogInformation("[Phase 6A.64] Creating NEW subscriber - Email: {Email}", request.Email);
+
                 // Phase 6A.64: Convert single metro area ID to collection for new API
                 var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
+
+                _logger.LogDebug("[Phase 6A.64] Creating new subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
+                    request.Email, string.Join(", ", metroAreaIds), request.ReceiveAllLocations);
+
                 var createResult = NewsletterSubscriber.Create(
                     email,
                     metroAreaIds,
@@ -95,16 +120,26 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                 if (!createResult.IsSuccess)
                 {
+                    _logger.LogError("[Phase 6A.64] Create FAILED - Email: {Email}, Error: {Error}",
+                        request.Email, createResult.Error);
                     return Result<SubscribeToNewsletterResponse>.Failure(createResult.Error);
                 }
 
                 subscriber = createResult.Value;
+
+                _logger.LogDebug("[Phase 6A.64] Domain entity created - Email: {Email}, SubscriberId: {SubscriberId}, MetroAreaCount: {Count}",
+                    request.Email, subscriber.Id, subscriber.MetroAreaIds.Count);
+
                 await _repository.AddAsync(subscriber, cancellationToken);
-                _logger.LogInformation("Created new newsletter subscription for {Email}", request.Email);
+                _logger.LogInformation("[Phase 6A.64] Added subscriber to repository - Email: {Email}, SubscriberId: {SubscriberId}",
+                    request.Email, subscriber.Id);
             }
 
             // Save changes
+            _logger.LogDebug("[Phase 6A.64] Committing changes to database - Email: {Email}", request.Email);
             await _unitOfWork.CommitAsync(cancellationToken);
+            _logger.LogInformation("[Phase 6A.64] Database commit SUCCESSFUL - Email: {Email}, SubscriberId: {SubscriberId}",
+                request.Email, subscriber.Id);
 
             // Send confirmation email
             var metroAreaDescription = request.ReceiveAllLocations
@@ -155,7 +190,22 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error subscribing {Email} to newsletter", request.Email);
+            _logger.LogError(ex, "[Phase 6A.64] EXCEPTION during newsletter subscription - Email: {Email}, MetroAreaCount: {Count}, ReceiveAll: {ReceiveAll}, ExceptionType: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                request.Email,
+                request.MetroAreaIds?.Count ?? 0,
+                request.ReceiveAllLocations,
+                ex.GetType().Name,
+                ex.Message,
+                ex.StackTrace);
+
+            // Log inner exception if exists
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("[Phase 6A.64] INNER EXCEPTION - Type: {InnerType}, Message: {InnerMessage}",
+                    ex.InnerException.GetType().Name,
+                    ex.InnerException.Message);
+            }
+
             return Result<SubscribeToNewsletterResponse>.Failure("An error occurred while processing your subscription");
         }
     }

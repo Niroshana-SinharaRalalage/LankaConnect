@@ -58,12 +58,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 column: "subscriber_id");
 
             // Step 3: Migrate existing data from newsletter_subscribers.metro_area_id to junction table
-            // Only migrate records where metro_area_id is NOT NULL
+            // Only migrate records where metro_area_id is NOT NULL AND exists in metro_areas table (to avoid FK violation)
             migrationBuilder.Sql(@"
                 INSERT INTO communications.newsletter_subscriber_metro_areas (subscriber_id, metro_area_id, created_at)
-                SELECT id, metro_area_id, created_at
-                FROM communications.newsletter_subscribers
-                WHERE metro_area_id IS NOT NULL;
+                SELECT ns.id, ns.metro_area_id, ns.created_at
+                FROM communications.newsletter_subscribers ns
+                INNER JOIN events.metro_areas ma ON ns.metro_area_id = ma.id
+                WHERE ns.metro_area_id IS NOT NULL;
             ");
 
             // Step 4: Drop the old metro_area_id column (no longer needed with junction table)

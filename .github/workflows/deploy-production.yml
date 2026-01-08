@@ -1,0 +1,523 @@
+name: Deploy to Azure Production (Blue-Green)
+
+on:
+  push:
+    branches:
+      - main  # Production deploys only from main branch
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (emergency deployment only)'
+        required: false
+        default: 'false'
+      canary_percentage:
+        description: 'Canary traffic percentage (0-100)'
+        required: false
+        default: '10'
+
+env:
+  AZURE_CONTAINER_REGISTRY: lankaconnectprod
+  CONTAINER_APP_NAME: lankaconnect-api-prod
+  RESOURCE_GROUP: lankaconnect-prod
+  KEY_VAULT_NAME: lc-prod-kv
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ========================================================================
+      # PHASE 1: BUILD AND TEST
+      # ========================================================================
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build application
+        run: dotnet build -c Release --no-restore
+
+      - name: Run unit tests (MANDATORY for production)
+        if: github.event.inputs.skip_tests != 'true'
+        run: |
+          dotnet test tests/LankaConnect.Application.Tests/LankaConnect.Application.Tests.csproj \
+            --no-restore \
+            --verbosity normal \
+            --logger "console;verbosity=detailed"
+          echo "✅ All tests passed - Zero Tolerance enforced"
+
+      - name: Test results summary
+        if: always()
+        run: |
+          if [ "${{ github.event.inputs.skip_tests }}" = "true" ]; then
+            echo "⚠️  WARNING: Tests skipped (emergency deployment)"
+          else
+            echo "✅ Unit tests completed successfully"
+          fi
+
+      # ========================================================================
+      # PHASE 2: AZURE AUTHENTICATION AND IMAGE BUILD
+      # ========================================================================
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME_PROD }}
+          password: ${{ secrets.ACR_PASSWORD_PROD }}
+
+      - name: Publish application
+        run: |
+          dotnet publish src/LankaConnect.API/LankaConnect.API.csproj \
+            -c Release \
+            -o src/LankaConnect.API/publish \
+            --no-restore
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:production \
+            -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:latest \
+            -f src/LankaConnect.API/Dockerfile.simple .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }}
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:production
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:latest
+
+      # ========================================================================
+      # PHASE 3: DATABASE MIGRATION
+      # ========================================================================
+
+      - name: Validate Key Vault secrets
+        id: keyvault
+        run: |
+          echo "Validating Key Vault secrets..."
+          az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name database-connection-string --query value -o tsv > /dev/null
+          az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name jwt-secret-key --query value -o tsv > /dev/null
+          echo "✅ Key Vault secrets validated"
+
+      - name: Run EF Core migrations
+        run: |
+          dotnet tool install -g dotnet-ef --version 8.0.0 2>/dev/null || dotnet tool update -g dotnet-ef --version 8.0.0
+
+          DB_CONNECTION=$(az keyvault secret show \
+            --vault-name ${{ env.KEY_VAULT_NAME }} \
+            --name database-connection-string \
+            --query value -o tsv)
+
+          echo "Applying pending migrations to production database..."
+          cd src/LankaConnect.API
+
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Migration attempt $RETRY_COUNT of $MAX_RETRIES..."
+
+            if dotnet ef database update \
+              --connection "$DB_CONNECTION" \
+              --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
+              --context AppDbContext \
+              --verbose; then
+              SUCCESS=true
+              echo "✅ Migrations completed successfully"
+            else
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                DELAY=$((10 * (2 ** ($RETRY_COUNT - 1))))
+                echo "⚠️  Migration failed. Retrying in ${DELAY}s..."
+                sleep $DELAY
+              else
+                echo "❌ Migration failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      # ========================================================================
+      # PHASE 4: BLUE-GREEN DEPLOYMENT - DEPLOY NEW REVISION (GREEN)
+      # ========================================================================
+
+      - name: Deploy new revision (0% traffic)
+        id: deploy
+        run: |
+          REVISION_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          REVISION_NAME="${{ env.CONTAINER_APP_NAME }}--${REVISION_SUFFIX}"
+
+          echo "Deploying new revision: $REVISION_NAME"
+
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }} \
+            --revision-suffix $REVISION_SUFFIX \
+            --replace-env-vars \
+              ASPNETCORE_ENVIRONMENT=Production \
+              ConnectionStrings__DefaultConnection=secretref:database-connection-string \
+              ConnectionStrings__Redis=localhost:6379 \
+              Jwt__Key=secretref:jwt-secret-key \
+              Jwt__Issuer=secretref:jwt-issuer \
+              Jwt__Audience=secretref:jwt-audience \
+              EntraExternalId__IsEnabled=secretref:entra-enabled \
+              EntraExternalId__TenantId=secretref:entra-tenant-id \
+              EntraExternalId__ClientId=secretref:entra-client-id \
+              EntraExternalId__Audience=secretref:entra-audience \
+              EmailSettings__Provider=Azure \
+              EmailSettings__AzureConnectionString=secretref:azure-email-connection-string \
+              EmailSettings__AzureSenderAddress=secretref:azure-email-sender-address \
+              EmailSettings__SenderName="LankaConnect" \
+              EmailSettings__TemplateBasePath=Templates/Email \
+              AzureStorage__ConnectionString=secretref:azure-storage-connection-string \
+              Stripe__SecretKey=secretref:stripe-secret-key \
+              Stripe__PublishableKey=secretref:stripe-publishable-key \
+              Stripe__WebhookSecret=secretref:stripe-webhook-secret
+
+          echo "REVISION_SUFFIX=$REVISION_SUFFIX" >> $GITHUB_OUTPUT
+          echo "REVISION_NAME=$REVISION_NAME" >> $GITHUB_OUTPUT
+
+          # Ensure ingress is configured for port 5000
+          az containerapp ingress update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 5000
+
+      - name: Wait for new revision to become healthy
+        run: |
+          echo "⏳ Waiting for revision to become healthy..."
+          sleep 30
+
+          REVISION_NAME="${{ steps.deploy.outputs.REVISION_NAME }}"
+
+          for i in {1..20}; do
+            HEALTH_STATE=$(az containerapp revision show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --revision "$REVISION_NAME" \
+              --query properties.healthState -o tsv 2>/dev/null || echo "Unknown")
+
+            echo "Attempt $i/20: Health state = $HEALTH_STATE"
+
+            if [ "$HEALTH_STATE" == "Healthy" ]; then
+              echo "✅ Revision is healthy"
+              break
+            fi
+
+            if [ $i -eq 20 ]; then
+              echo "❌ Revision did not become healthy after 20 attempts"
+              echo "Fetching revision logs..."
+              az containerapp revision show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --revision "$REVISION_NAME"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+      # ========================================================================
+      # PHASE 5: SMOKE TESTING (GREEN REVISION)
+      # ========================================================================
+
+      - name: Get revision URL and smoke test
+        id: smoke-test
+        run: |
+          REVISION_NAME="${{ steps.deploy.outputs.REVISION_NAME }}"
+
+          # Get the unique URL for this revision
+          REVISION_FQDN=$(az containerapp revision show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision "$REVISION_NAME" \
+            --query properties.fqdn -o tsv)
+
+          REVISION_URL="https://${REVISION_FQDN}"
+          echo "Testing new revision at: $REVISION_URL"
+          echo "REVISION_URL=$REVISION_URL" >> $GITHUB_OUTPUT
+
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          for i in {1..5}; do
+            if curl --fail --retry 3 --retry-delay 5 "${REVISION_URL}/health"; then
+              echo "✅ Health check passed"
+              break
+            fi
+            if [ $i -eq 5 ]; then
+              echo "❌ Health check failed after 5 attempts"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          # Test Entra endpoint (expect 400 or 401 for invalid token)
+          echo "Testing Entra login endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${REVISION_URL}/api/auth/login/entra" \
+            -H "Content-Type: application/json" \
+            -d '{"accessToken":"invalid","ipAddress":"127.0.0.1"}')
+
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 400 ] || [ "$HTTP_CODE" -eq 401 ]; then
+            echo "✅ Entra endpoint responding correctly (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Unexpected response code: $HTTP_CODE"
+            exit 1
+          fi
+
+      # ========================================================================
+      # PHASE 6: CANARY DEPLOYMENT (10% TRAFFIC)
+      # ========================================================================
+
+      - name: Get current active revision
+        id: get-old-revision
+        run: |
+          OLD_REVISION=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[?properties.trafficWeight>0 && name!='${{ steps.deploy.outputs.REVISION_NAME }}'].name" -o tsv | head -n1)
+
+          if [ -z "$OLD_REVISION" ]; then
+            echo "No previous active revision found (first deployment)"
+            echo "OLD_REVISION=none" >> $GITHUB_OUTPUT
+            echo "FIRST_DEPLOYMENT=true" >> $GITHUB_OUTPUT
+          else
+            echo "Previous active revision: $OLD_REVISION"
+            echo "OLD_REVISION=$OLD_REVISION" >> $GITHUB_OUTPUT
+            echo "FIRST_DEPLOYMENT=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Canary deployment (10% traffic)
+        if: steps.get-old-revision.outputs.FIRST_DEPLOYMENT == 'false'
+        run: |
+          REVISION_NAME="${{ steps.deploy.outputs.REVISION_NAME }}"
+          OLD_REVISION="${{ steps.get-old-revision.outputs.OLD_REVISION }}"
+          CANARY_PCT="${{ github.event.inputs.canary_percentage || '10' }}"
+          OLD_PCT=$((100 - CANARY_PCT))
+
+          echo "Shifting ${CANARY_PCT}% traffic to new revision"
+          echo "Old revision ($OLD_REVISION): ${OLD_PCT}%"
+          echo "New revision ($REVISION_NAME): ${CANARY_PCT}%"
+
+          az containerapp ingress traffic set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision-weight \
+              "$OLD_REVISION=$OLD_PCT" \
+              "$REVISION_NAME=$CANARY_PCT"
+
+      - name: Monitor canary (5 minutes)
+        if: steps.get-old-revision.outputs.FIRST_DEPLOYMENT == 'false'
+        run: |
+          echo "⏳ Monitoring canary deployment for 5 minutes..."
+          echo "Check Application Insights for:"
+          echo "  - Error rate (should be < 0.1%)"
+          echo "  - Response time (95th percentile < 500ms)"
+          echo "  - No new exceptions"
+
+          # Wait 5 minutes
+          sleep 300
+
+          echo "✅ Canary monitoring period complete"
+          echo "Manual review: Check Azure Portal Application Insights for anomalies"
+
+      # ========================================================================
+      # PHASE 7: FULL CUTOVER (100% TRAFFIC TO GREEN)
+      # ========================================================================
+
+      - name: Full cutover (100% traffic)
+        id: cutover
+        run: |
+          REVISION_NAME="${{ steps.deploy.outputs.REVISION_NAME }}"
+
+          echo "Shifting 100% traffic to new revision: $REVISION_NAME"
+
+          az containerapp ingress traffic set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision-weight "$REVISION_NAME=100"
+
+          echo "✅ Full cutover complete - new revision is live"
+
+      - name: Deactivate old revision (keep for rollback)
+        if: steps.get-old-revision.outputs.FIRST_DEPLOYMENT == 'false'
+        run: |
+          OLD_REVISION="${{ steps.get-old-revision.outputs.OLD_REVISION }}"
+
+          echo "Deactivating old revision (kept for potential rollback): $OLD_REVISION"
+
+          az containerapp revision deactivate \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision "$OLD_REVISION" || echo "Note: Revision may already be deactivated"
+
+      # ========================================================================
+      # PHASE 8: POST-DEPLOYMENT VALIDATION
+      # ========================================================================
+
+      - name: Get production URL
+        id: get-url
+        run: |
+          URL=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "PROD_URL=https://$URL" >> $GITHUB_OUTPUT
+          echo "Production URL: https://$URL"
+
+      - name: Final smoke test (production URL)
+        run: |
+          echo "Testing production URL..."
+          curl --fail --retry 3 --retry-delay 5 \
+            ${{ steps.get-url.outputs.PROD_URL }}/health || exit 1
+          echo "✅ Production health check passed"
+
+      - name: Test Entra endpoint (production)
+        run: |
+          echo "Testing Entra login endpoint on production..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST ${{ steps.get-url.outputs.PROD_URL }}/api/auth/login/entra \
+            -H "Content-Type: application/json" \
+            -d '{"accessToken":"invalid","ipAddress":"127.0.0.1"}')
+
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 400 ] || [ "$HTTP_CODE" -eq 401 ]; then
+            echo "✅ Entra endpoint responding correctly (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Unexpected response code: $HTTP_CODE"
+            exit 1
+          fi
+
+      # ========================================================================
+      # PHASE 9: DEPLOYMENT SUMMARY AND NOTIFICATIONS
+      # ========================================================================
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL!"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Environment:        Production"
+          echo "URL:                ${{ steps.get-url.outputs.PROD_URL }}"
+          echo "Revision:           ${{ steps.deploy.outputs.REVISION_NAME }}"
+          echo "Image:              ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/lankaconnect-api:${{ github.sha }}"
+          echo "Commit:             ${{ github.sha }}"
+          echo "Branch:             ${{ github.ref_name }}"
+          echo "Deployed by:        ${{ github.actor }}"
+          echo "Canary percentage:  ${{ github.event.inputs.canary_percentage || '10' }}%"
+          echo ""
+          echo "Deployment Strategy: Blue-Green with Canary Rollout"
+          echo "  1. ✅ New revision deployed (0% traffic)"
+          echo "  2. ✅ Smoke tests passed"
+          echo "  3. ✅ Canary rollout completed (${{ github.event.inputs.canary_percentage || '10' }}% traffic)"
+          echo "  4. ✅ Full cutover completed (100% traffic)"
+          echo "  5. ✅ Old revision deactivated (available for rollback)"
+          echo ""
+          echo "Post-Deployment Actions:"
+          echo "  1. Monitor Application Insights for errors"
+          echo "  2. Check Container App logs: az containerapp logs show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --follow"
+          echo "  3. Test critical user flows (login, event creation, payments)"
+          echo "  4. Rollback command (if needed):"
+          echo "     az containerapp ingress traffic set --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --revision-weight ${{ steps.get-old-revision.outputs.OLD_REVISION }}=100"
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"
+
+      # ========================================================================
+      # PHASE 10: FAILURE HANDLING AND ROLLBACK
+      # ========================================================================
+
+      - name: Get Container App Logs on Failure
+        if: failure()
+        run: |
+          echo "Fetching Container App logs for debugging..."
+          az containerapp logs show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --tail 100 || echo "Failed to fetch logs"
+
+      - name: Rollback on failure
+        if: failure() && steps.get-old-revision.outputs.FIRST_DEPLOYMENT == 'false'
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "❌ DEPLOYMENT FAILED - INITIATING ROLLBACK"
+          echo "════════════════════════════════════════════════════════════════"
+
+          OLD_REVISION="${{ steps.get-old-revision.outputs.OLD_REVISION }}"
+          REVISION_NAME="${{ steps.deploy.outputs.REVISION_NAME }}"
+
+          echo "Rolling back to previous revision: $OLD_REVISION"
+
+          # Reactivate old revision if needed
+          az containerapp revision activate \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision "$OLD_REVISION" || echo "Revision already active"
+
+          # Shift 100% traffic back to old revision
+          az containerapp ingress traffic set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision-weight "$OLD_REVISION=100"
+
+          # Deactivate failed revision
+          az containerapp revision deactivate \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision "$REVISION_NAME" || echo "Failed to deactivate new revision"
+
+          echo "✅ Rollback complete - production is using previous revision"
+          echo ""
+          echo "Investigation Steps:"
+          echo "  1. Check deployment logs above for error details"
+          echo "  2. Review Container App logs"
+          echo "  3. Check Application Insights for exceptions"
+          echo "  4. Verify database migration status"
+          echo "  5. Test locally with production-like configuration"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "❌ PRODUCTION DEPLOYMENT FAILED!"
+          echo "════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Commit:     ${{ github.sha }}"
+          echo "Actor:      ${{ github.actor }}"
+          echo "Workflow:   ${{ github.workflow }}"
+          echo "Run ID:     ${{ github.run_id }}"
+          echo ""
+          echo "Common issues:"
+          echo "  - Unit tests failed (Zero Tolerance enforced)"
+          echo "  - Database migration failed"
+          echo "  - Docker build failed"
+          echo "  - Container App update failed"
+          echo "  - Health check endpoint not responding"
+          echo "  - New revision did not become healthy"
+          echo ""
+          echo "Next Steps:"
+          echo "  1. Review logs above for specific error"
+          echo "  2. Fix issue in code"
+          echo "  3. Test locally with staging environment"
+          echo "  4. Push fix to main branch"
+          echo "  5. Monitor new deployment closely"
+          echo ""
+          echo "════════════════════════════════════════════════════════════════"

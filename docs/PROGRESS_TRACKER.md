@@ -48,10 +48,11 @@
   - ✅ Validation working (400 for events without signup lists)
 
 **Deployment**:
-- ✅ Committed: 1e22b492 (Phase 6A.69) + 59f0f8ca (CI retry fix)
-- ✅ Deployed to Azure Container Apps staging
-- ✅ GitHub Actions: deploy-staging.yml successful
+- ✅ Backend: 1e22b492 (Phase 6A.69) + 59f0f8ca (CI retry fix) - DEPLOYED
+- ✅ Frontend: 764c50ea (UI trigger) + 299e83fe (proxy fix) - DEPLOYED
+- ✅ GitHub Actions: deploy-staging.yml ✅ | deploy-ui-staging.yml ✅
 - ✅ Migration retry logic added (handles transient Azure DB errors)
+- ✅ Proxy binary response fix (application/zip handling)
 
 **User Benefits**:
 - Multiple CSV files (one per category) - easier navigation
@@ -60,12 +61,15 @@
 - Excel compatibility - proper formatting, BOM, phone prefixes
 
 **Files Modified**:
-- [ExportEventAttendeesQuery.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQuery.cs) - Added SignUpListsZip enum
-- [ICsvExportService.cs](../src/LankaConnect.Application/Common/Interfaces/ICsvExportService.cs) - Added method signature
-- [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) - Implemented ZIP export
-- [ExportEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs) - Added format handling
-- [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) - Updated format parsing
-- [SignUpListsTab.tsx](../web/src/presentation/components/features/events/SignUpListsTab.tsx) - Backend API integration
+- Backend (5 files):
+  - [ExportEventAttendeesQuery.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQuery.cs) - Added SignUpListsZip enum
+  - [ICsvExportService.cs](../src/LankaConnect.Application/Common/Interfaces/ICsvExportService.cs) - Added method signature
+  - [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) - Implemented ZIP export
+  - [ExportEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs) - Added format handling
+  - [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) - Updated format parsing
+- Frontend (2 files):
+  - [SignUpListsTab.tsx](../web/src/presentation/components/features/events/SignUpListsTab.tsx) - Backend API integration
+  - [route.ts](../web/src/app/api/proxy/[...path]/route.ts) - Added application/zip to binary response handling
 
 **API Usage**:
 ```

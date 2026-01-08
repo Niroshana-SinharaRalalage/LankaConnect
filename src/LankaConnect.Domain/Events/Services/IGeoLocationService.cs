@@ -3,6 +3,7 @@ namespace LankaConnect.Domain.Events.Services;
 /// <summary>
 /// Domain service for geographic distance calculations
 /// Used for location-based event sorting and filtering
+/// Phase 6A.70: Extended to support metro area radius matching for newsletter emails
 /// </summary>
 public interface IGeoLocationService
 {
@@ -21,4 +22,21 @@ public interface IGeoLocationService
     /// Suitable for featured events sorting where exact precision is not critical
     /// </remarks>
     double CalculateDistanceKm(decimal lat1, decimal lon1, decimal lat2, decimal lon2);
+
+    /// <summary>
+    /// Phase 6A.70: Checks if an event location is within a metro area's radius
+    /// Used for newsletter subscriber recipient matching
+    /// </summary>
+    /// <param name="eventLatitude">Event location latitude</param>
+    /// <param name="eventLongitude">Event location longitude</param>
+    /// <param name="metroLatitude">Metro area center latitude</param>
+    /// <param name="metroLongitude">Metro area center longitude</param>
+    /// <param name="radiusMiles">Metro area radius in miles</param>
+    /// <returns>True if event location is within metro area radius</returns>
+    bool IsWithinMetroRadius(
+        decimal eventLatitude,
+        decimal eventLongitude,
+        decimal metroLatitude,
+        decimal metroLongitude,
+        int radiusMiles);
 }

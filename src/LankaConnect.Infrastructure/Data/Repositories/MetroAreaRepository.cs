@@ -64,4 +64,48 @@ public class MetroAreaRepository : Repository<MetroArea>, IMetroAreaRepository
             return result;
         }
     }
+
+    /// <summary>
+    /// Phase 6A.70: Gets all active metro areas in a state for geo-spatial matching
+    /// </summary>
+    public async Task<IReadOnlyList<MetroArea>> GetMetroAreasInStateAsync(
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetMetroAreasInState"))
+        using (LogContext.PushProperty("State", state))
+        {
+            _logger.Debug("[Phase 6A.70] Getting all metro areas for state {State}", state);
+
+            // Normalize state to abbreviation for matching
+            var stateAbbreviation = USStateHelper.NormalizeToAbbreviation(state);
+
+            _logger.Debug("[Phase 6A.70] Normalized state {State} to abbreviation {Abbreviation}",
+                state, stateAbbreviation ?? "null");
+
+            IReadOnlyList<MetroArea> result;
+
+            if (!string.IsNullOrEmpty(stateAbbreviation))
+            {
+                // Match using normalized abbreviation
+                result = await _dbSet
+                    .AsNoTracking()
+                    .Where(m => m.State.ToLower() == stateAbbreviation.ToLower() && m.IsActive)
+                    .ToListAsync(cancellationToken);
+            }
+            else
+            {
+                // Fallback: try exact match if normalization failed (for non-US states)
+                result = await _dbSet
+                    .AsNoTracking()
+                    .Where(m => m.State.ToLower() == state.ToLower() && m.IsActive)
+                    .ToListAsync(cancellationToken);
+            }
+
+            _logger.Debug("[Phase 6A.70] Found {Count} active metro areas for state {State}",
+                result.Count, state);
+
+            return result;
+        }
+    }
 }

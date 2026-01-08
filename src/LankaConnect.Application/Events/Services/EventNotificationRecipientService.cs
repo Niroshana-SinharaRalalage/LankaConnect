@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Events;
@@ -11,6 +12,7 @@ namespace LankaConnect.Application.Events.Services;
 /// <summary>
 /// Domain service implementation for resolving email recipients for event notifications
 /// Implements 3-level location matching with parallel query execution for performance
+/// Phase 6A.70: Enhanced with geo-spatial metro area matching for newsletter subscribers
 /// </summary>
 public class EventNotificationRecipientService : IEventNotificationRecipientService
 {
@@ -18,6 +20,7 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
     private readonly IEmailGroupRepository _emailGroupRepository;
     private readonly INewsletterSubscriberRepository _subscriberRepository;
     private readonly IMetroAreaRepository _metroAreaRepository;
+    private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<EventNotificationRecipientService> _logger;
 
     public EventNotificationRecipientService(
@@ -25,12 +28,14 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         IEmailGroupRepository emailGroupRepository,
         INewsletterSubscriberRepository subscriberRepository,
         IMetroAreaRepository metroAreaRepository,
+        IGeoLocationService geoLocationService,
         ILogger<EventNotificationRecipientService> logger)
     {
         _eventRepository = eventRepository;
         _emailGroupRepository = emailGroupRepository;
         _subscriberRepository = subscriberRepository;
         _metroAreaRepository = metroAreaRepository;
+        _geoLocationService = geoLocationService;
         _logger = logger;
     }
 
@@ -200,8 +205,8 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         {
             _logger.LogInformation("[RCA-NL2] Starting subscriber queries...");
 
-            // Query 1: Metro area subscribers
-            metroSubscribers = await GetMetroAreaSubscribersAsync(city, state, cancellationToken);
+            // Query 1: Metro area subscribers (Phase 6A.70: Now uses geo-spatial matching)
+            metroSubscribers = await GetMetroAreaSubscribersAsync(city, state, location, cancellationToken);
 
             // Query 2: State-level subscribers
             stateSubscribers = await _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
@@ -239,19 +244,37 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
             AllLocationsCount: allLocationsSubscribers.Count);
     }
 
+    /// <summary>
+    /// Phase 6A.70: Gets metro area subscribers using geo-spatial matching
+    /// PRIORITY 1: If event has coordinates, use distance-based matching (Aurora → Cleveland)
+    /// FALLBACK: Use exact city match if no coordinates (backward compatible)
+    /// </summary>
     private async Task<IReadOnlyList<NewsletterSubscriber>> GetMetroAreaSubscribersAsync(
         string city,
         string state,
+        EventLocation? location,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[RCA-MA1] Finding metro area for {City}, {State}", city, state);
+        // PRIORITY 1: Geo-spatial matching if coordinates available
+        if (location?.Coordinates != null)
+        {
+            _logger.LogInformation(
+                "[RCA-MA1-GEO] Using geo-spatial matching for event at {City}, {State} ({Lat}, {Lon})",
+                city, state, location.Coordinates.Latitude, location.Coordinates.Longitude);
 
-        // Find metro area by city and state
+            return await GetSubscribersByGeoSpatialMatchingAsync(state, location.Coordinates, cancellationToken);
+        }
+
+        // FALLBACK: Exact city match (preserve existing behavior)
+        _logger.LogInformation(
+            "[RCA-MA1-EXACT] No coordinates available, using exact city match for {City}, {State}",
+            city, state);
+
         Domain.Events.MetroArea? metroArea;
         try
         {
             metroArea = await _metroAreaRepository.FindByLocationAsync(city, state, cancellationToken);
-            _logger.LogInformation("[RCA-MA2] Metro area lookup result: {Found}, Id: {MetroAreaId}",
+            _logger.LogInformation("[RCA-MA2-EXACT] Metro area lookup result: {Found}, Id: {MetroAreaId}",
                 metroArea != null, metroArea?.Id);
         }
         catch (Exception ex)
@@ -262,19 +285,18 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
 
         if (metroArea == null)
         {
-            _logger.LogInformation("[RCA-MA3] No metro area found for {City}, {State}", city, state);
+            _logger.LogInformation("[RCA-MA3-EXACT] No metro area found for {City}, {State}", city, state);
             return new List<NewsletterSubscriber>();
         }
 
-        // Get subscribers for this metro area
         IReadOnlyList<NewsletterSubscriber> subscribers;
         try
         {
-            _logger.LogInformation("[RCA-MA4] Fetching subscribers for metro area {MetroAreaId}", metroArea.Id);
+            _logger.LogInformation("[RCA-MA4-EXACT] Fetching subscribers for metro area {MetroAreaId}", metroArea.Id);
             subscribers = await _subscriberRepository.GetConfirmedSubscribersByMetroAreaAsync(
                 metroArea.Id,
                 cancellationToken);
-            _logger.LogInformation("[RCA-MA5] Found {Count} subscribers for metro area {MetroAreaId}",
+            _logger.LogInformation("[RCA-MA5-EXACT] Found {Count} subscribers for metro area {MetroAreaId}",
                 subscribers.Count, metroArea.Id);
         }
         catch (Exception ex)
@@ -284,6 +306,116 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         }
 
         return subscribers;
+    }
+
+    /// <summary>
+    /// Phase 6A.70: NEW - Gets newsletter subscribers using geo-spatial distance matching
+    /// Example: Event in Aurora, OH (41.3173°, -81.3460°) matches Cleveland metro subscribers
+    /// Cleveland metro center: (41.4993°, -81.6944°), radius: 50 miles → Aurora is ~20 miles away
+    /// </summary>
+    private async Task<IReadOnlyList<NewsletterSubscriber>> GetSubscribersByGeoSpatialMatchingAsync(
+        string state,
+        GeoCoordinate coordinates,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "[RCA-GEO1] Starting geo-spatial matching for state {State}, coordinates ({Lat}, {Lon})",
+            state, coordinates.Latitude, coordinates.Longitude);
+
+        // Step 1: Get all metro areas in the state
+        IReadOnlyList<MetroArea> stateMetros;
+        try
+        {
+            stateMetros = await _metroAreaRepository.GetMetroAreasInStateAsync(state, cancellationToken);
+            _logger.LogInformation("[RCA-GEO2] Retrieved {Count} metro areas in state {State}",
+                stateMetros.Count, state);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RCA-GEO-ERR] Failed to get metro areas for state {State}", state);
+            throw;
+        }
+
+        if (!stateMetros.Any())
+        {
+            _logger.LogInformation("[RCA-GEO3] No metro areas found for state {State}", state);
+            return new List<NewsletterSubscriber>();
+        }
+
+        // Step 2: Find metro areas within radius of event location
+        var matchingMetroIds = new List<Guid>();
+
+        foreach (var metro in stateMetros)
+        {
+            var isWithinRadius = _geoLocationService.IsWithinMetroRadius(
+                (decimal)coordinates.Latitude,
+                (decimal)coordinates.Longitude,
+                (decimal)metro.CenterLatitude,
+                (decimal)metro.CenterLongitude,
+                metro.RadiusMiles);
+
+            if (isWithinRadius)
+            {
+                var distanceKm = _geoLocationService.CalculateDistanceKm(
+                    (decimal)metro.CenterLatitude,
+                    (decimal)metro.CenterLongitude,
+                    (decimal)coordinates.Latitude,
+                    (decimal)coordinates.Longitude);
+
+                _logger.LogInformation(
+                    "[RCA-GEO4] Event within {MetroName} metro area radius: Distance={DistanceKm:F2}km, Radius={RadiusMiles}mi ({RadiusKm:F2}km)",
+                    metro.Name, distanceKm, metro.RadiusMiles, metro.RadiusMiles * 1.60934);
+
+                matchingMetroIds.Add(metro.Id);
+            }
+        }
+
+        if (!matchingMetroIds.Any())
+        {
+            _logger.LogInformation(
+                "[RCA-GEO5] Event location not within radius of any metro areas in state {State}",
+                state);
+            return new List<NewsletterSubscriber>();
+        }
+
+        _logger.LogInformation(
+            "[RCA-GEO6] Event matches {Count} metro areas: [{MetroIds}]",
+            matchingMetroIds.Count, string.Join(", ", matchingMetroIds));
+
+        // Step 3: Get subscribers for all matching metro areas
+        var allSubscribers = new List<NewsletterSubscriber>();
+
+        foreach (var metroId in matchingMetroIds)
+        {
+            try
+            {
+                var subscribers = await _subscriberRepository.GetConfirmedSubscribersByMetroAreaAsync(
+                    metroId,
+                    cancellationToken);
+
+                _logger.LogInformation(
+                    "[RCA-GEO7] Found {Count} subscribers for metro area {MetroId}",
+                    subscribers.Count, metroId);
+
+                allSubscribers.AddRange(subscribers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RCA-GEO-ERR] Failed to get subscribers for metro area {MetroId}", metroId);
+                // Continue with other metros instead of failing completely
+            }
+        }
+
+        // Deduplicate subscribers who may be subscribed to multiple matching metros
+        var uniqueSubscribers = allSubscribers
+            .DistinctBy(s => s.Id)
+            .ToList();
+
+        _logger.LogInformation(
+            "[RCA-GEO8] Geo-spatial matching complete: {TotalSubscribers} total, {UniqueSubscribers} unique",
+            allSubscribers.Count, uniqueSubscribers.Count);
+
+        return uniqueSubscribers;
     }
 
     private static EventNotificationRecipients CreateEmptyResult()

@@ -386,3 +386,61 @@ Update PROGRESS_TRACKER.md with Session 23 progress
 
  ============================================
  Stripe Webhook Signing secret: whsec_qZw6olWMHqxG8PibpWwXE2chKfVxyMge
+
+
+
+ =================================================================
+
+ I hope you can test what you fixed in the APIs first. Once you confirm everthing is working from the API level, I will test them in the UI. Use this to get a Token.
+
+curl -X 'POST' \
+  'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "niroshhh@gmail.com",
+  "password": "12!@qwASzx",
+  "rememberMe": true,
+  "ipAddress": "string"
+}'
+
+---------------------------------------------
+Please proceed and make sure to stick to the plan don't miss any TODO items. If you face any issues, consult the system-architect again for proper RCA and a fix plan. Repeat this process until all the issues are resolved.
+---------------------------------------------
+Please rivew this plan with system-architect and show me the system-architect approved final plan,
+----------------------------------------------
+Please consult systeme-architect create a comprehensive plan
+----------------------------------------------
+Please consult systeme-architect do a comprehensive, systematic and Deep root cause analysis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
+---------------------------------------------
+Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
+----------------------------------------------
+Think harder and smarter as a Senior Software Engineer. Handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches. And follow these best practices:
+
+1. Follow established UI/UX best practices at all times — clarity and usability matter.
+
+2. Use an incremental TDD process: write tests first, keep a zero-tolerance policy for compilation errors, and iterate in small, testable steps.
+
+3. Consult the architect whenever you’re unsure about design, scope, or system-level impact.
+
+4. Before making code changes, search the codebase for similar implementations and prefer reusable components over duplication.
+
+5. Ensure that no existing functionality is broken when updating or implementing new code. This is especially important on the UI side, where components can be very fragile—so please make changes carefully and thoughtfully.
+
+6. With the code implementation make sure to add enough logs and try catches for the observerbility and tracability 
+
+7. Make sure to commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+
+8. Use EF Core migrations for all database schema changes and data feeds. If migration issues occur, fix them before running migrations.
+
+9. We have the dababase, backend and the frontend deployed in Azure staging. 
+   - All the backend changes must push and deployed to azure staging using deploy-staging.yml.
+   - All the frontend changes must push and deployed to azure staging using deploy-ui-staging.yml.
+
+10. Make sure to test backend changes via relevent API(s) after pushind and deployed the changes including any database changes or any EF change or configuration.
+
+11. Be accurate and honest in status reports. 
+    - Check the changes are pushed and deployed correctly
+    - If DB migrations were there check whether they success by checking/querying the database
+    - If the changes related to backend, make sure to test them via API endpoints correctly
+    - Diagnose issues methodically — Check Azure container logs to determine whether the problem is a database/EF migration issue or something else.

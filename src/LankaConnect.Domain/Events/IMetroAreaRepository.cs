@@ -20,4 +20,15 @@ public interface IMetroAreaRepository : IRepository<MetroArea>
         string city,
         string state,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.70: Gets all active metro areas in a state with their coordinates and radius
+    /// Used for geo-spatial newsletter subscriber matching
+    /// </summary>
+    /// <param name="state">State name or abbreviation</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of metro areas with geo-spatial data</returns>
+    Task<IReadOnlyList<MetroArea>> GetMetroAreasInStateAsync(
+        string state,
+        CancellationToken cancellationToken = default);
 }

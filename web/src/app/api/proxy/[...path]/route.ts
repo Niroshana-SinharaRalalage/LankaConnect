@@ -193,11 +193,16 @@ async function forwardRequest(
       });
     }
 
-    // Phase 6A.24 FIX: Check if response is binary (PDF, images, etc.)
+    // Phase 6A.24 FIX: Check if response is binary (PDF, images, ZIP, Excel, etc.)
     // Binary responses must be streamed as-is, not parsed as text/JSON
+    // Phase 6A.69: Added application/zip for sign-up list exports, and Excel formats for attendee exports
     const responseContentType = response.headers.get('content-type') || '';
     const isBinaryResponse = responseContentType.includes('application/pdf') ||
                             responseContentType.includes('application/octet-stream') ||
+                            responseContentType.includes('application/zip') ||
+                            responseContentType.includes('application/vnd.openxmlformats') || // Excel (.xlsx)
+                            responseContentType.includes('application/vnd.ms-excel') || // Excel (.xls)
+                            responseContentType.includes('text/csv') || // CSV files
                             responseContentType.includes('image/') ||
                             responseContentType.includes('video/') ||
                             responseContentType.includes('audio/');

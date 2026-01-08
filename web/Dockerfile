@@ -45,40 +45,31 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # ===================================================================
-# CRITICAL: Copy files in order that preserves .next structure
+# CRITICAL: Next.js Standalone COPY Strategy
 # ===================================================================
-# The standalone build creates .next/standalone/[web/].next/ with server files
-# Static files are separate at .next/static/
-# We must copy standalone first, then ADD static files WITHOUT overwriting
+# ARCHITECTURE: .next/standalone does NOT contain .next/ subdirectory
+# server.js expects .next/ as SIBLING directory in runtime environment
+#
+# Required structure in /app/:
+#   /app/server.js           ← From .next/standalone/server.js
+#   /app/node_modules/       ← From .next/standalone/node_modules
+#   /app/package.json        ← From .next/standalone/package.json
+#   /app/.next/static/       ← From .next/static/ (BUILD OUTPUT)
+#   /app/public/             ← From public/ (STATIC ASSETS)
+#
+# See: docs/ARCHITECTURE_NEXTJS_STANDALONE_DOCKER_COPY_STRATEGY.md
 # ===================================================================
 
-# Step 1: Copy standalone build (contains server.js + .next server files)
-RUN mkdir -p /tmp/standalone
-COPY --from=builder /app/.next/standalone /tmp/standalone/
-
-# Step 2: Detect structure and copy to /app (preserves .next directory)
-# - Monorepo (GitHub Actions): .next/standalone/web/server.js
-# - Docker isolated: .next/standalone/server.js
-RUN if [ -d "/tmp/standalone/web" ]; then \
-      echo "📦 Monorepo structure detected: copying from standalone/web/"; \
-      cp -r /tmp/standalone/web/* /app/; \
-    else \
-      echo "📦 Standalone structure detected: copying from standalone/"; \
-      cp -r /tmp/standalone/* /app/; \
-    fi && \
-    rm -rf /tmp/standalone
-
-# Step 3: Ensure .next/static directory exists
-# This prevents COPY from replacing the entire .next directory
-RUN mkdir -p /app/.next/static
-
-# Step 4: Copy static files INTO .next/static (APPEND, not overwrite)
-# This preserves the .next directory structure from standalone build
-# Without this, we'd have server files but no CSS/JS bundles
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static /app/.next/static
-
-# Step 5: Copy public files (images, fonts, etc.) if they exist
+# Step 1: Copy public assets (images, fonts, etc.)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Step 2: Copy standalone output (server.js, node_modules, package.json)
+# This is the minimal server bundle created by output: 'standalone'
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+
+# Step 3: Copy static assets to .next/static
+# This creates /app/.next/static/ with all CSS/JS bundles and BUILD_ID
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user
 USER nextjs

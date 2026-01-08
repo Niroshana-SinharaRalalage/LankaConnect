@@ -91,6 +91,67 @@ public class ExportEventAttendeesQueryHandler
         string fileName;
         string contentType;
 
+        // Phase 6A.69: Handle SignUpListsZip format (ZIP archive with multiple CSVs)
+        if (request.Format == ExportFormat.SignUpListsZip)
+        {
+            // Get event with sign-up lists
+            var eventWithSignUps = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+
+            if (eventWithSignUps == null)
+            {
+                return Result<ExportResult>.Failure("Event not found");
+            }
+
+            if (!eventWithSignUps.SignUpLists.Any())
+            {
+                return Result<ExportResult>.Failure("No signup lists found for this event");
+            }
+
+            // Map domain entities to DTOs (reuse existing mapping pattern from lines 56-85)
+            var signUpListsForExport = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
+            {
+                Id = s.Id,
+                Category = s.Category,
+                Description = s.Description ?? string.Empty,
+                HasMandatoryItems = s.HasMandatoryItems,
+                HasPreferredItems = s.HasPreferredItems,
+                HasSuggestedItems = s.HasSuggestedItems,
+                HasOpenItems = s.HasOpenItems,
+                Items = s.Items.Select(i => new SignUpItemDto
+                {
+                    Id = i.Id,
+                    ItemDescription = i.ItemDescription,
+                    Quantity = i.Quantity,
+                    RemainingQuantity = i.RemainingQuantity,
+                    ItemCategory = i.ItemCategory,
+                    CreatedByUserId = i.CreatedByUserId,
+                    Commitments = i.Commitments.Select(c => new SignUpCommitmentDto
+                    {
+                        Id = c.Id,
+                        UserId = c.UserId,
+                        ItemDescription = c.ItemDescription ?? string.Empty,
+                        Quantity = c.Quantity,
+                        ContactName = c.ContactName,
+                        ContactEmail = c.ContactEmail,
+                        ContactPhone = c.ContactPhone,
+                        CommittedAt = c.CommittedAt
+                    }).ToList()
+                }).ToList()
+            }).ToList();
+
+            // Generate ZIP file
+            fileContent = _csvService.ExportSignUpListsToZip(signUpListsForExport, request.EventId);
+            fileName = $"event-{request.EventId}-signup-lists-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+            contentType = "application/zip";
+
+            return Result<ExportResult>.Success(new ExportResult
+            {
+                FileContent = fileContent,
+                FileName = fileName,
+                ContentType = contentType
+            });
+        }
+
         if (request.Format == ExportFormat.Excel)
         {
             fileContent = _excelService.ExportEventAttendees(

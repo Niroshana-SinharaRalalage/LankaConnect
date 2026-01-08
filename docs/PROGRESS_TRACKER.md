@@ -1,9 +1,135 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-07 - Phase 6A.64: Event Cancellation Fixes (Timeout + Junction Table) - ✅ COMPLETE*
+*Last Updated: 2026-01-07 - Phase 6A.69: Sign-Up List CSV Export (ZIP) - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.64: Event Cancellation Fixes - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.69: Sign-Up List CSV Export (ZIP Archive) - ✅ COMPLETE
+
+### Phase 6A.69 - Sign-Up List CSV Export (Backend Migration) - 2026-01-07
+
+**Status**: ✅ **COMPLETE** (Backend implemented, frontend integrated, 10/10 tests passed)
+
+**Documentation**: See [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md) for complete details
+
+**Problem**: Sign-up list download was client-side with limited functionality (5 columns, User IDs, single flat CSV)
+
+**Solution**: Backend ZIP export with multiple CSV files, contact information, and RFC 4180 compliance
+
+**Implementation**:
+- ✅ Extended `ExportFormat` enum with `SignUpListsZip` format
+- ✅ Added `ExportSignUpListsToZip()` method to `ICsvExportService` and `CsvExportService`
+- ✅ Implemented ZIP generation with `System.IO.Compression.ZipArchive`
+- ✅ Updated `ExportEventAttendeesQueryHandler` to handle new format
+- ✅ Updated `EventsController` format parsing (support `signuplistszip` query parameter)
+- ✅ Replaced frontend client-side CSV with backend API call in `SignUpListsTab.tsx`
+
+**CSV Structure**:
+- **One CSV per category**: `{SignUpListCategory}-{ItemCategory}.csv`
+- **Headers**: Sign-up List | Item Description | Requested Quantity | Contact Name | Contact Email | Contact Phone | Quantity Committed | Committed At | Remaining Quantity
+- **Row Expansion**: Each commitment = separate row
+- **Zero Commitments**: Single row with "—" placeholders
+- **Phone Format**: Apostrophe prefix prevents Excel scientific notation
+- **UTF-8 BOM**: Included for Excel compatibility
+
+**Testing Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Unit Tests: 10/10 passed ([CsvExportServiceSignUpListsTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/CsvExportServiceSignUpListsTests.cs))
+
+**User Benefits**:
+- Multiple CSV files (one per category) - easier navigation
+- Contact info (Name, Email, Phone) - no more User IDs
+- Zero-commitment items visible - know what needs volunteers
+- Excel compatibility - proper formatting, BOM, phone prefixes
+
+**Files Modified**:
+- [ExportEventAttendeesQuery.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQuery.cs) - Added SignUpListsZip enum
+- [ICsvExportService.cs](../src/LankaConnect.Application/Common/Interfaces/ICsvExportService.cs) - Added method signature
+- [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) - Implemented ZIP export
+- [ExportEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs) - Added format handling
+- [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) - Updated format parsing
+- [SignUpListsTab.tsx](../web/src/presentation/components/features/events/SignUpListsTab.tsx) - Backend API integration
+
+**API Usage**:
+```
+GET /api/events/{eventId}/export?format=signuplistszip
+Authorization: Bearer {token}
+```
+
+**Next Steps**: Deploy to staging, user acceptance testing
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.68: CSV Export Formatting Fix - ✅ COMPLETE & DEPLOYED
+
+### Phase 6A.68 - CSV Export Formatting Fix - 2026-01-07
+
+**Status**: ✅ **COMPLETE & DEPLOYED** (Azure staging deployment verified, API testing passed)
+
+**Deployment**: ✅ Live on Azure staging (run #20800415863) - https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Documentation**: See [PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md) for complete details
+
+**Problem**: CSV exports from event management page displayed incorrectly in Excel - all data compressed into cell A1 with literal `\n` characters instead of proper rows and columns.
+
+**Root Cause**: HTTP Content-Type `text/csv; charset=utf-8` triggered ASP.NET Core middleware text transformations:
+- JSON string serialization of byte array
+- Newline escaping (actual newline bytes → literal string `\n`)
+- Quote wrapping and tab delimiter changes
+
+**Solutions Implemented**:
+
+**Option 1 - Quick Win** (Commit: 2ef7b37e):
+- Changed Content-Type to `application/octet-stream` in [ExportEventAttendeesQueryHandler.cs:109](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs#L109)
+- Forces binary transfer, prevents middleware transformations
+- **Result**: Immediate fix with single line change
+
+**Option 2 - Robust Solution** (Commit: d18600a5):
+- Added CsvHelper v33.1.0 library to Infrastructure project
+- Refactored [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) for RFC 4180 compliance
+- Professional CSV generation with automatic quote escaping and special character handling
+- **Result**: Long-term solution with industry-standard library
+
+**Additional Improvements** (Commits: 603a2955, 2182eafb):
+- ✅ Removed RegistrationId from both CSV and Excel exports (internal GUID not needed by organizers)
+- ✅ Added Male Count and Female Count columns
+- ✅ Added summary totals row (total attendees, total amount collected)
+
+**Testing Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Unit Tests: 4/4 passed ([CsvExportServiceLineEndingTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/CsvExportServiceLineEndingTests.cs))
+- ✅ API Testing: Both Excel and CSV exports returning HTTP 200 OK
+- ✅ Content-Type Verification: CSV using `application/octet-stream` (fix confirmed)
+
+**Deployment Unblocking**:
+- Fixed 4 compilation errors in newsletter command handlers (Phase 6A.64 MetroAreaId → MetroAreaIds)
+- Temporarily disabled Phase 6A.64 junction table migration (blocking deployment)
+- Deployment succeeded after fixes
+
+**User Verification Pending**: User needs to verify exports in UI after hard refresh
+
+**Files Modified**:
+- [ExportEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs) - Content-Type fix
+- [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) - CsvHelper refactor
+- [ExcelExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/ExcelExportService.cs) - Removed RegistrationId, added summary
+- [ConfirmNewsletterSubscriptionCommandHandler.cs](../src/LankaConnect.Application/Communications/Commands/ConfirmNewsletterSubscription/ConfirmNewsletterSubscriptionCommandHandler.cs) - Fixed MetroAreaIds
+- [SubscribeToNewsletterCommandHandler.cs](../src/LankaConnect.Application/Communications/Commands/SubscribeToNewsletter/SubscribeToNewsletterCommandHandler.cs) - Fixed MetroAreaIds
+
+**Documentation Created**:
+- [CSV_EXPORT_FORMATTING_RCA_2026-01-06.md](./CSV_EXPORT_FORMATTING_RCA_2026-01-06.md) - 50-page technical RCA
+- [CSV_EXPORT_RCA_EXECUTIVE_SUMMARY.md](./CSV_EXPORT_RCA_EXECUTIVE_SUMMARY.md) - Executive summary
+- [PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md) - Implementation summary
+
+**Commits**:
+- 2ef7b37e - Option 1: Content-Type change to application/octet-stream
+- d18600a5 - Option 2: CsvHelper integration
+- 603a2955 - Remove RegistrationId and add summary totals
+- 2182eafb - Excel export improvements
+- 33216f54 - Newsletter command handler fixes
+- 80ae974a - Disable Phase 6A.64 migration
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.64: Event Cancellation Fixes - ✅ COMPLETE
 
 ### Phase 6A.64 - Event Cancellation Fixes (TWO Independent Implementations) - 2026-01-07
 

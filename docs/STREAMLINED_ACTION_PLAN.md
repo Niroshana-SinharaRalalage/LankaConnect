@@ -7,18 +7,21 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.64: EVENT CANCELLATION FIXES (2026-01-07)
+## ✅ CURRENT STATUS - PHASE 6A.69: SIGN-UP LIST CSV EXPORT (ZIP) (2026-01-07)
 **Date**: 2026-01-07
-**Session**: Phase 6A.64 - Event Cancellation Timeout Fix + Newsletter Junction Table Fix
-**Status**: ✅ COMPLETE - TWO independent fixes that work together perfectly
-**Build Status**: ✅ Domain builds successfully, Infrastructure has Hangfire package issue (non-blocking)
-**Commits**:
-- 34c7523a - Background job timeout fix (Part 1)
-- aec4b2d3 - Junction table recipient fix (Part 2)
-**Documentation**: ✅ Comprehensive RCA, C4 diagrams, implementation strategy, phase summaries for both fixes
-**Performance**: API response <1s (was 80-90s), unlimited scalability (was 50 recipients max)
-**Recipient Resolution**: ✅ Newsletter subscribers with multiple metro areas now receive emails correctly
-**Next Steps**: Run Phase6A64 junction table migration, test varunipw@gmail.com receives Ohio event emails
+**Session**: Phase 6A.69 - Sign-Up List CSV Export (Backend Migration with ZIP Archive)
+**Status**: ✅ COMPLETE - Backend implemented, frontend integrated, all tests passed
+**Build Status**: ✅ 0 errors, 0 warnings
+**Testing**: ✅ 10/10 unit tests passed ([CsvExportServiceSignUpListsTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/CsvExportServiceSignUpListsTests.cs))
+**Documentation**: ✅ Comprehensive summary ([PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md))
+**Implementation**:
+- Added SignUpListsZip format to ExportEventAttendeesQuery enum
+- Implemented ExportSignUpListsToZip() in CsvExportService (ZIP with multiple CSVs)
+- Updated query handler and API controller for new format
+- Replaced frontend client-side CSV with backend API call
+**User Benefits**: Multiple CSV files (one per category), contact info (Name/Email/Phone), zero-commitment items visible
+**API**: GET /api/events/{id}/export?format=signuplistszip
+**Next Steps**: Deploy to staging, user acceptance testing
 
 ### PHASE 6A.64: EVENT CANCELLATION TIMEOUT FIX (2026-01-07)
 **Goal**: Fix event cancellation timing out at 30 seconds when sending emails to confirmed registrants

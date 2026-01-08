@@ -51,6 +51,12 @@
 | 6A.61 | Manual Event Email Sending | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
 | 6A.62 | Fix Registration Cancellation Email | 🔧 In Progress | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Bug fix applied |
 | 6A.63 | Event Cancellation Email Template | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
+| 6A.64 | Event Cancellation Timeout Fix (2-Part) | ✅ Complete | [PHASE_6A64_JUNCTION_TABLE_SUMMARY.md](./PHASE_6A64_JUNCTION_TABLE_SUMMARY.md) | 2026-01-07 |
+| 6A.65 | Docker Monorepo Build Fix | ✅ Complete | [DOCKER_FIX_SUMMARY.md](./DOCKER_FIX_SUMMARY.md) | 2026-01-07 |
+| 6A.66 | CSV Export Line Ending Fix (Deprecated) | ❌ Superseded | See 6A.68 for proper fix | 2026-01-07 |
+| 6A.67 | CSV Export Improvements (Deprecated) | ❌ Superseded | See 6A.68 for proper fix | 2026-01-07 |
+| 6A.68 | CSV Export Formatting Fix | ✅ Complete | [PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md) | 2026-01-07 |
+| 6A.69 | Sign-Up List CSV Export (ZIP Archive) | ✅ Complete | [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md) | 2026-01-07 |
 
 ---
 

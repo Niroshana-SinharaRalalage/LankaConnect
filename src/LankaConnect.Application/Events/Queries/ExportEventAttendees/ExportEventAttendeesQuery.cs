@@ -16,7 +16,8 @@ public record ExportEventAttendeesQuery(
 public enum ExportFormat
 {
     Excel,
-    Csv
+    Csv,
+    SignUpListsZip  // Phase 6A.69: ZIP archive with multiple CSV files (one per signup list category)
 }
 
 /// <summary>

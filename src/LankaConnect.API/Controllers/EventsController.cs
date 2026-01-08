@@ -1913,10 +1913,13 @@ public class EventsController : BaseController<EventsController>
             return Forbid();
         }
 
-        // Parse format
-        var exportFormat = format.ToLower() == "csv"
-            ? LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv
-            : LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel;
+        // Phase 6A.69: Parse format (added signuplistszip support)
+        var exportFormat = format.ToLower() switch
+        {
+            "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
+            "signuplistszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
+            _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
+        };
 
         // Export attendees
         var query = new LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportEventAttendeesQuery(

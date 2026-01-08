@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -119,6 +120,141 @@ public class CsvExportService : ICsvExportService
 
         writer.Flush();
         return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Phase 6A.69: Exports event signup lists to ZIP archive containing multiple CSV files.
+    /// Each CSV represents one SignUpList-ItemCategory combination.
+    /// </summary>
+    public byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId)
+    {
+        if (signUpLists == null || !signUpLists.Any())
+            throw new ArgumentException("No signup lists to export", nameof(signUpLists));
+
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            // Group items by (SignUpList.Category, ItemCategory) combination
+            var groupedItems = signUpLists
+                .SelectMany(list => list.Items.Select(item => new
+                {
+                    SignUpList = list,
+                    Item = item
+                }))
+                .GroupBy(x => new
+                {
+                    SignUpListCategory = x.SignUpList.Category,
+                    ItemCategory = x.Item.ItemCategory
+                });
+
+            foreach (var group in groupedItems)
+            {
+                // Generate CSV filename: "Food-Drinks-Mandatory.csv"
+                var fileName = SanitizeFileName(
+                    $"{group.Key.SignUpListCategory}-{group.Key.ItemCategory}.csv"
+                );
+
+                // Create ZIP entry
+                var entry = archive.CreateEntry(fileName, CompressionLevel.Optimal);
+
+                using var entryStream = entry.Open();
+                using var writer = new StreamWriter(entryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+                using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    NewLine = "\n",  // LF for cross-platform compatibility
+                    ShouldQuote = args => true,  // Always quote for safety
+                    TrimOptions = TrimOptions.Trim,
+                    UseNewObjectForNullReferenceMembers = false
+                });
+
+                // Write CSV headers
+                csv.WriteField("Sign-up List");
+                csv.WriteField("Item Description");
+                csv.WriteField("Requested Quantity");
+                csv.WriteField("Contact Name");
+                csv.WriteField("Contact Email");
+                csv.WriteField("Contact Phone");
+                csv.WriteField("Quantity Committed");
+                csv.WriteField("Committed At");
+                csv.WriteField("Remaining Quantity");
+                csv.NextRecord();
+
+                // Write data rows
+                foreach (var itemData in group)
+                {
+                    var item = itemData.Item;
+                    var signUpList = itemData.SignUpList;
+
+                    if (!item.Commitments.Any())
+                    {
+                        // Zero commitments - single row with placeholders
+                        WriteCommitmentRow(csv, signUpList.Category, item, null);
+                    }
+                    else
+                    {
+                        // Each commitment = separate row (row expansion pattern)
+                        foreach (var commitment in item.Commitments)
+                        {
+                            WriteCommitmentRow(csv, signUpList.Category, item, commitment);
+                        }
+                    }
+                }
+
+                writer.Flush();
+            }
+        }
+
+        return zipStream.ToArray();
+    }
+
+    /// <summary>
+    /// Phase 6A.69: Write a single commitment row to CSV.
+    /// </summary>
+    private static void WriteCommitmentRow(
+        CsvWriter csv,
+        string signUpListCategory,
+        SignUpItemDto item,
+        SignUpCommitmentDto? commitment)
+    {
+        csv.WriteField(signUpListCategory);
+        csv.WriteField(item.ItemDescription);
+        csv.WriteField(item.Quantity);
+
+        // Contact information (use em dash for missing data)
+        csv.WriteField(commitment?.ContactName ?? "—");
+        csv.WriteField(commitment?.ContactEmail ?? "—");
+
+        // Phone number with apostrophe prefix (prevents Excel auto-formatting to scientific notation)
+        var phone = string.IsNullOrWhiteSpace(commitment?.ContactPhone)
+            ? "—"
+            : "'" + commitment.ContactPhone;
+        csv.WriteField(phone);
+
+        csv.WriteField(commitment?.Quantity ?? 0);
+
+        // Committed At timestamp (ISO 8601 format for sortability)
+        var committedAt = commitment?.CommittedAt != null
+            ? commitment.CommittedAt.ToString("yyyy-MM-dd HH:mm:ss")
+            : "—";
+        csv.WriteField(committedAt);
+
+        csv.WriteField(item.RemainingQuantity);
+        csv.NextRecord();
+    }
+
+    /// <summary>
+    /// Phase 6A.69: Sanitize filename for ZIP entry (remove invalid characters).
+    /// </summary>
+    private static string SanitizeFileName(string fileName)
+    {
+        // Remove invalid filename characters
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = string.Join("_", fileName.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+
+        // Replace spaces with hyphens for cleaner filenames
+        sanitized = sanitized.Replace(" ", "-");
+
+        return sanitized;
     }
 
     /// <summary>

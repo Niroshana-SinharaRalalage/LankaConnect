@@ -25,69 +25,64 @@ interface SignUpListsTabProps {
 export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
   const router = useRouter();
 
-  // Handle Download CSV
-  const handleDownloadCSV = () => {
+  // Phase 6A.69: Handle Download ZIP (backend-generated CSV files)
+  const handleDownloadCSV = async () => {
     if (!signUpLists || signUpLists.length === 0) {
       alert('No sign-up lists to download');
       return;
     }
 
-    // Build CSV content with UTF-8 BOM for Excel compatibility
-    const BOM = '\uFEFF';
-    let csvContent = BOM + 'Category,Item Description,User ID,Quantity,Committed At\n';
-
-    let rowCount = 0;
-
-    signUpLists.forEach((list) => {
-      // Phase 6A.48A: Iterate through Items[], then nested Commitments[]
-      (list.items || []).forEach((item) => {
-        (item.commitments || []).forEach((commitment) => {
-          // Format data properly for CSV
-          const userId = commitment.userId || '';
-          const quantity = commitment.quantity || 0;
-          const committedAt = commitment.committedAt
-            ? new Date(commitment.committedAt).toLocaleString()
-            : '';
-
-          csvContent += `"${list.category}","${item.itemDescription}","${userId}",${quantity},"${committedAt}"\n`;
-          rowCount++;
-        });
+    try {
+      // Call backend export endpoint (signuplistszip format)
+      const response = await fetch(`/api/events/${eventId}/export?format=signuplistszip`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for authentication
       });
 
-      // Backward compatibility: Also check legacy commitments[] if Items[] is empty
-      if ((list.items || []).length === 0 && (list.commitments || []).length > 0) {
-        (list.commitments || []).forEach((commitment) => {
-          const userId = commitment.userId || '';
-          const quantity = commitment.quantity || 0;
-          const committedAt = commitment.committedAt
-            ? new Date(commitment.committedAt).toLocaleString()
-            : '';
-
-          csvContent += `"${list.category}","${commitment.itemDescription}","${userId}",${quantity},"${committedAt}"\n`;
-          rowCount++;
-        });
+      if (!response.ok) {
+        if (response.status === 403) {
+          alert('You do not have permission to export sign-up lists');
+        } else if (response.status === 404) {
+          alert('Event not found');
+        } else if (response.status === 400) {
+          const errorText = await response.text();
+          alert(errorText || 'Failed to export sign-up lists');
+        } else {
+          alert('Failed to export sign-up lists');
+        }
+        return;
       }
-    });
 
-    // Validate data exists before download
-    if (rowCount === 0) {
-      alert('No commitments found to export');
-      return;
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `event-${eventId}-signup-lists.zip`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Download ZIP file
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading sign-up lists:', error);
+      alert('An error occurred while downloading sign-up lists');
     }
-
-    // Create download link with proper MIME type
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', `event-${eventId}-signups.csv`);
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   return (

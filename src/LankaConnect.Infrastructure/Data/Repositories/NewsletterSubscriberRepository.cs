@@ -10,11 +10,77 @@ namespace LankaConnect.Infrastructure.Data.Repositories;
 /// Repository implementation for NewsletterSubscriber aggregate root
 /// Follows TDD principles and integrates with base Repository pattern
 /// Phase 6A Event Notifications: Supports both full state names and abbreviations
+/// Phase 6A.64: Overrides AddAsync to handle junction table inserts for metro area IDs
 /// </summary>
 public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, INewsletterSubscriberRepository
 {
     public NewsletterSubscriberRepository(AppDbContext context) : base(context)
     {
+    }
+
+    /// <summary>
+    /// Phase 6A.64: Override AddAsync to manually insert metro area IDs into junction table
+    /// </summary>
+    public override async Task AddAsync(NewsletterSubscriber entity, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "Add"))
+        using (LogContext.PushProperty("EntityType", "NewsletterSubscriber"))
+        using (LogContext.PushProperty("EntityId", entity.Id))
+        {
+            _logger.Information("[Phase 6A.64] Adding newsletter subscriber {EntityId} with {Count} metro areas",
+                entity.Id, entity.MetroAreaIds.Count);
+
+            // Add the subscriber entity
+            await base.AddAsync(entity, cancellationToken);
+
+            // Phase 6A.64: Manually insert metro area IDs into junction table
+            // We do this because we're not using navigation properties (only storing IDs)
+            if (entity.MetroAreaIds.Any())
+            {
+                _logger.Debug("[Phase 6A.64] Inserting {Count} metro area IDs into junction table for subscriber {SubscriberId}",
+                    entity.MetroAreaIds.Count, entity.Id);
+
+                foreach (var metroAreaId in entity.MetroAreaIds)
+                {
+                    var junctionEntry = new Dictionary<string, object>
+                    {
+                        ["subscriber_id"] = entity.Id,
+                        ["metro_area_id"] = metroAreaId,
+                        ["created_at"] = entity.CreatedAt
+                    };
+
+                    await _context.Set<Dictionary<string, object>>("newsletter_subscriber_metro_areas")
+                        .AddAsync(junctionEntry, cancellationToken);
+                }
+
+                _logger.Information("[Phase 6A.64] Added {Count} junction table entries for subscriber {SubscriberId}",
+                    entity.MetroAreaIds.Count, entity.Id);
+            }
+            else
+            {
+                _logger.Debug("[Phase 6A.64] No metro area IDs to insert (ReceiveAllLocations: true)");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.64: Override Remove to manually delete metro area junction table entries
+    /// CASCADE DELETE should handle this automatically, but being explicit for clarity
+    /// </summary>
+    public override void Remove(NewsletterSubscriber entity)
+    {
+        using (LogContext.PushProperty("Operation", "Remove"))
+        using (LogContext.PushProperty("EntityType", "NewsletterSubscriber"))
+        using (LogContext.PushProperty("EntityId", entity.Id))
+        {
+            _logger.Information("[Phase 6A.64] Removing newsletter subscriber {EntityId}", entity.Id);
+
+            // Phase 6A.64: Junction table entries will be CASCADE deleted by FK constraint
+            // No manual deletion needed, but logging for visibility
+            _logger.Debug("[Phase 6A.64] Junction table entries will be CASCADE deleted by FK constraint");
+
+            base.Remove(entity);
+        }
     }
 
     public async Task<NewsletterSubscriber?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)

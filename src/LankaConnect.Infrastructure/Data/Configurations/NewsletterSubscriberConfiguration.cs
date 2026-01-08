@@ -28,40 +28,13 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
                 .IsRequired();
         });
 
-        // Phase 6A.64: Configure many-to-many relationship with MetroAreas via junction table
-        // Maps the private _metroAreaIds field to the newsletter_subscriber_metro_areas table
-        builder.HasMany<Domain.Events.MetroArea>()
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "newsletter_subscriber_metro_areas",
-                j => j
-                    .HasOne<Domain.Events.MetroArea>()
-                    .WithMany()
-                    .HasForeignKey("metro_area_id")
-                    .HasConstraintName("fk_newsletter_subscriber_metro_areas_metro_areas")
-                    .OnDelete(DeleteBehavior.Cascade),
-                j => j
-                    .HasOne<NewsletterSubscriber>()
-                    .WithMany()
-                    .HasForeignKey("subscriber_id")
-                    .HasConstraintName("fk_newsletter_subscriber_metro_areas_newsletter_subscribers")
-                    .OnDelete(DeleteBehavior.Cascade),
-                j =>
-                {
-                    j.ToTable("newsletter_subscriber_metro_areas", "communications");
-                    j.HasKey("subscriber_id", "metro_area_id");
-                    j.Property<DateTime>("created_at")
-                        .HasDefaultValueSql("NOW()");
-                    j.HasIndex("metro_area_id")
-                        .HasDatabaseName("ix_newsletter_subscriber_metro_areas_metro_area_id");
-                    j.HasIndex("subscriber_id")
-                        .HasDatabaseName("ix_newsletter_subscriber_metro_areas_subscriber_id");
-                });
+        // Phase 6A.64: The _metroAreaIds collection is managed in application code
+        // We don't map it to a database column - it's populated from the junction table
+        // by the repository when loading entities
+        // The junction table relationship is managed via raw SQL in the repository layer
 
-        // Map the private _metroAreaIds field for EF Core to populate
-        builder.Property<List<Guid>>("_metroAreaIds")
-            .HasField("_metroAreaIds")
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
+        // Ignore the _metroAreaIds field - it's not a database column
+        builder.Ignore(ns => ns.MetroAreaIds);
 
         // Configure flags
         builder.Property(ns => ns.ReceiveAllLocations)

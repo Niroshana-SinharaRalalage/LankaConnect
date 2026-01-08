@@ -1,15 +1,17 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-07 - Phase 6A.69: Sign-Up List CSV Export (ZIP) - ✅ COMPLETE*
+*Last Updated: 2026-01-08 - Phase 6A.69: Sign-Up List CSV Export (ZIP) - ✅ DEPLOYED & TESTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.69: Sign-Up List CSV Export (ZIP Archive) - ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.69: Sign-Up List CSV Export (ZIP Archive) - ✅ DEPLOYED & TESTED
 
-### Phase 6A.69 - Sign-Up List CSV Export (Backend Migration) - 2026-01-07
+### Phase 6A.69 - Sign-Up List CSV Export (Backend Migration) - 2026-01-07/08
 
-**Status**: ✅ **COMPLETE** (Backend implemented, frontend integrated, 10/10 tests passed)
+**Status**: ✅ **DEPLOYED & TESTED** (Backend deployed to Azure staging, API tested successfully, 7/7 API tests passed)
 
-**Documentation**: See [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md) for complete details
+**Documentation**:
+- Implementation: [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md)
+- API Testing: [PHASE_6A69_SIGNUP_LIST_ZIP_API_TEST_RESULTS.md](./PHASE_6A69_SIGNUP_LIST_ZIP_API_TEST_RESULTS.md)
 
 **Problem**: Sign-up list download was client-side with limited functionality (5 columns, User IDs, single flat CSV)
 
@@ -34,6 +36,22 @@
 **Testing Results**:
 - ✅ Build: 0 errors, 0 warnings
 - ✅ Unit Tests: 10/10 passed ([CsvExportServiceSignUpListsTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/CsvExportServiceSignUpListsTests.cs))
+- ✅ API Tests: 7/7 passed on Azure staging (see [API Test Results](./PHASE_6A69_SIGNUP_LIST_ZIP_API_TEST_RESULTS.md))
+  - ✅ Authentication working
+  - ✅ ZIP export returns HTTP 200 with `application/zip`
+  - ✅ ZIP contains 7 CSV files (2,421 bytes total)
+  - ✅ UTF-8 BOM present (EF BB BF)
+  - ✅ All 9 CSV headers correct
+  - ✅ Phone apostrophe prefix working (`'8609780124`)
+  - ✅ Zero commitment placeholders working (`—`)
+  - ✅ Row expansion working (multiple rows per item)
+  - ✅ Validation working (400 for events without signup lists)
+
+**Deployment**:
+- ✅ Committed: 1e22b492 (Phase 6A.69) + 59f0f8ca (CI retry fix)
+- ✅ Deployed to Azure Container Apps staging
+- ✅ GitHub Actions: deploy-staging.yml successful
+- ✅ Migration retry logic added (handles transient Azure DB errors)
 
 **User Benefits**:
 - Multiple CSV files (one per category) - easier navigation

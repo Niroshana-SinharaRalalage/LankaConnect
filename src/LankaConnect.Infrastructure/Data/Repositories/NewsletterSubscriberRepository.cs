@@ -18,8 +18,11 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
     {
     }
 
+    private readonly Dictionary<Guid, List<Guid>> _pendingJunctionInserts = new();
+
     /// <summary>
-    /// Phase 6A.64: Override AddAsync to manually insert metro area IDs into junction table
+    /// Phase 6A.64: Override AddAsync to stage metro area IDs for junction table insert
+    /// Junction table inserts happen AFTER subscriber is saved to database (see InsertPendingJunctionEntries)
     /// </summary>
     public override async Task AddAsync(NewsletterSubscriber entity, CancellationToken cancellationToken = default)
     {
@@ -30,35 +33,60 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
             _logger.Information("[Phase 6A.64] Adding newsletter subscriber {EntityId} with {Count} metro areas",
                 entity.Id, entity.MetroAreaIds.Count);
 
-            // Add the subscriber entity
+            // Add the subscriber entity to change tracker
             await base.AddAsync(entity, cancellationToken);
 
-            // Phase 6A.64: Manually insert metro area IDs into junction table using raw SQL
-            // We do this because we're not using navigation properties (only storing IDs)
-            // Cannot use AddAsync with Dictionary<string, object> for shared-type entity types
+            // Phase 6A.64: Stage metro area IDs for junction table insert AFTER SaveChanges
+            // We cannot insert now because subscriber doesn't exist in database yet (FK constraint)
             if (entity.MetroAreaIds.Any())
             {
-                _logger.Debug("[Phase 6A.64] Inserting {Count} metro area IDs into junction table for subscriber {SubscriberId}",
-                    entity.MetroAreaIds.Count, entity.Id);
+                _logger.Debug("[Phase 6A.64] Staging {Count} metro area IDs for junction table insert (will execute after SaveChanges)",
+                    entity.MetroAreaIds.Count);
 
-                // Build values for bulk insert
-                var values = string.Join(", ", entity.MetroAreaIds.Select((id, index) =>
-                    $"('{entity.Id}', '{id}', '{entity.CreatedAt:yyyy-MM-dd HH:mm:ss.ffffff}+00'::timestamptz)"));
-
-                var sql = $@"
-                    INSERT INTO communications.newsletter_subscriber_metro_areas (subscriber_id, metro_area_id, created_at)
-                    VALUES {values}";
-
-                await _context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
-
-                _logger.Information("[Phase 6A.64] Added {Count} junction table entries for subscriber {SubscriberId}",
-                    entity.MetroAreaIds.Count, entity.Id);
+                _pendingJunctionInserts[entity.Id] = entity.MetroAreaIds.ToList();
             }
             else
             {
-                _logger.Debug("[Phase 6A.64] No metro area IDs to insert (ReceiveAllLocations: true)");
+                _logger.Debug("[Phase 6A.64] No metro area IDs to stage (ReceiveAllLocations: true)");
             }
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.64: Insert pending junction table entries after entities are saved
+    /// Called by UnitOfWork after SaveChangesAsync completes successfully
+    /// </summary>
+    public async Task InsertPendingJunctionEntriesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_pendingJunctionInserts.Any())
+        {
+            _logger.Debug("[Phase 6A.64] No pending junction table inserts");
+            return;
+        }
+
+        _logger.Information("[Phase 6A.64] Inserting {Count} pending junction table entries", _pendingJunctionInserts.Count);
+
+        foreach (var (subscriberId, metroAreaIds) in _pendingJunctionInserts)
+        {
+            _logger.Debug("[Phase 6A.64] Inserting {Count} metro area IDs for subscriber {SubscriberId}",
+                metroAreaIds.Count, subscriberId);
+
+            var createdAt = DateTime.UtcNow;
+            var values = string.Join(", ", metroAreaIds.Select(id =>
+                $"('{subscriberId}', '{id}', '{createdAt:yyyy-MM-dd HH:mm:ss.ffffff}+00'::timestamptz)"));
+
+            var sql = $@"
+                INSERT INTO communications.newsletter_subscriber_metro_areas (subscriber_id, metro_area_id, created_at)
+                VALUES {values}";
+
+            await _context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+
+            _logger.Information("[Phase 6A.64] Inserted {Count} junction table entries for subscriber {SubscriberId}",
+                metroAreaIds.Count, subscriberId);
+        }
+
+        _pendingJunctionInserts.Clear();
+        _logger.Information("[Phase 6A.64] Cleared pending junction table inserts");
     }
 
     /// <summary>

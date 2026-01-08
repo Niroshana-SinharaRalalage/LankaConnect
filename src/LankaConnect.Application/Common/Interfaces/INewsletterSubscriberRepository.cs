@@ -52,4 +52,10 @@ public interface INewsletterSubscriberRepository : IRepository<NewsletterSubscri
     /// Checks if an email is already subscribed (active subscription exists)
     /// </summary>
     Task<bool> IsEmailSubscribedAsync(string email, Guid? metroAreaId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.64: Inserts pending junction table entries after entities are saved to database
+    /// This must be called AFTER UnitOfWork.CommitAsync() to avoid FK constraint violations
+    /// </summary>
+    Task InsertPendingJunctionEntriesAsync(CancellationToken cancellationToken = default);
 }

@@ -141,6 +141,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             _logger.LogInformation("[Phase 6A.64] Database commit SUCCESSFUL - Email: {Email}, SubscriberId: {SubscriberId}",
                 request.Email, subscriber.Id);
 
+            // Phase 6A.64: Insert junction table entries AFTER subscriber is saved
+            // This avoids FK constraint violation (subscriber_id must exist in newsletter_subscribers table first)
+            _logger.LogDebug("[Phase 6A.64] Inserting junction table entries - Email: {Email}", request.Email);
+            await _repository.InsertPendingJunctionEntriesAsync(cancellationToken);
+            _logger.LogInformation("[Phase 6A.64] Junction table entries inserted - Email: {Email}", request.Email);
+
             // Send confirmation email
             var metroAreaDescription = request.ReceiveAllLocations
                 ? "All Locations"

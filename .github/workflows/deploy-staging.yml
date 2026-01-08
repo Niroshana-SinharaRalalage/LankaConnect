@@ -109,18 +109,37 @@ jobs:
             --name DATABASE-CONNECTION-STRING \
             --query value -o tsv)
 
-          # Run pending migrations on staging database from the API project
+          # Run pending migrations with retry logic for transient Azure PostgreSQL connection failures
           echo "Applying pending migrations to staging database..."
           cd src/LankaConnect.API
 
-          # Use dotnet ef with explicit .NET 8.0 version and AppDbContext
-          dotnet ef database update \
-            --connection "$DB_CONNECTION" \
-            --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
-            --context AppDbContext \
-            --verbose
+          # Retry logic with exponential backoff (3 attempts: 0s, 10s, 30s delays)
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
 
-          echo "✅ Migrations completed successfully"
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Migration attempt $RETRY_COUNT of $MAX_RETRIES..."
+
+            if dotnet ef database update \
+              --connection "$DB_CONNECTION" \
+              --project ../LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj \
+              --context AppDbContext \
+              --verbose; then
+              SUCCESS=true
+              echo "✅ Migrations completed successfully"
+            else
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                DELAY=$((10 * (2 ** ($RETRY_COUNT - 1))))  # Exponential backoff: 10s, 20s
+                echo "⚠️  Migration failed. Retrying in ${DELAY}s..."
+                sleep $DELAY
+              else
+                echo "❌ Migration failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
 
       - name: Update Container App
         run: |

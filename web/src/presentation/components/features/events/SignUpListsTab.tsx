@@ -15,6 +15,7 @@ import { Upload, Download } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { SignUpListDto } from '@/infrastructure/api/types/events.types';
 
 interface SignUpListsTabProps {
@@ -26,6 +27,7 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
   const router = useRouter();
 
   // Phase 6A.69: Handle Download ZIP (backend-generated CSV files)
+  // FIX: Use eventsRepository for consistent API routing through proxy
   const handleDownloadCSV = async () => {
     if (!signUpLists || signUpLists.length === 0) {
       alert('No sign-up lists to download');
@@ -33,42 +35,14 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
     }
 
     try {
-      // Call backend export endpoint (signuplistszip format)
-      const response = await fetch(`/api/events/${eventId}/export?format=signuplistszip`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
-      });
+      // Use events repository for consistent API routing (goes through proxy)
+      const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistszip');
 
-      if (!response.ok) {
-        if (response.status === 403) {
-          alert('You do not have permission to export sign-up lists');
-        } else if (response.status === 404) {
-          alert('Event not found');
-        } else if (response.status === 400) {
-          const errorText = await response.text();
-          alert(errorText || 'Failed to export sign-up lists');
-        } else {
-          alert('Failed to export sign-up lists');
-        }
-        return;
-      }
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `event-${eventId}-signup-lists-${timestamp}.zip`;
 
-      // Get filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `event-${eventId}-signup-lists.zip`;
-
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-
-      // Download ZIP file
-      const blob = await response.blob();
+      // Trigger download
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -79,9 +53,19 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading sign-up lists:', error);
-      alert('An error occurred while downloading sign-up lists');
+
+      // Handle specific error cases
+      if (error.response?.status === 403) {
+        alert('You do not have permission to export sign-up lists');
+      } else if (error.response?.status === 404) {
+        alert('Event not found');
+      } else if (error.response?.status === 400) {
+        alert(error.response?.data?.message || 'Failed to export sign-up lists');
+      } else {
+        alert('An error occurred while downloading sign-up lists');
+      }
     }
   };
 

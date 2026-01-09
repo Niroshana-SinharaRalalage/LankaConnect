@@ -902,15 +902,19 @@ export class EventsRepository {
   }
 
   /**
-   * Export event attendees to Excel or CSV (organizer only)
+   * Export event attendees to Excel, CSV, or sign-up lists ZIP (organizer only)
    * Phase 6A.45: Returns file download with attendee data and signup lists
+   * Phase 6A.69: Added 'signuplistszip' format for ZIP archive with multiple CSV files
    * Maps to backend GET /api/events/{eventId}/export?format={format}
    *
    * @param eventId - Event ID (GUID)
-   * @param format - Export format ('excel' or 'csv')
-   * @returns Blob for file download
+   * @param format - Export format ('excel', 'csv', or 'signuplistszip')
+   * @returns Blob for file download (Excel .xlsx, CSV .csv, or ZIP with multiple CSVs)
    */
-  async exportEventAttendees(eventId: string, format: 'excel' | 'csv' = 'excel'): Promise<Blob> {
+  async exportEventAttendees(
+    eventId: string,
+    format: 'excel' | 'csv' | 'signuplistszip' = 'excel'
+  ): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/export?format=${format}`,
       { responseType: 'blob' }

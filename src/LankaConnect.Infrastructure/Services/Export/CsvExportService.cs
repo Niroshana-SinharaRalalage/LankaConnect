@@ -135,24 +135,45 @@ public class CsvExportService : ICsvExportService
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
         {
             // Group items by (SignUpList.Category, ItemCategory) combination
+            // Phase 6A.69 (Revised): Filter out "Preferred" category (deprecated, no longer in use)
+#pragma warning disable CS0618 // Type or member is obsolete
             var groupedItems = signUpLists
-                .SelectMany(list => list.Items.Select(item => new
-                {
-                    SignUpList = list,
-                    Item = item
-                }))
+                .SelectMany(list => list.Items
+                    .Where(item => item.ItemCategory != Domain.Events.Enums.SignUpItemCategory.Preferred)  // Exclude Preferred category
+                    .Select(item => new
+                    {
+                        SignUpList = list,
+                        Item = item
+                    }))
                 .GroupBy(x => new
                 {
                     SignUpListCategory = x.SignUpList.Category,
                     ItemCategory = x.Item.ItemCategory
                 });
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            // Track filenames to prevent duplicates (Excel error: "can't open two workbooks with same name")
+            var fileNameCounter = new Dictionary<string, int>();
 
             foreach (var group in groupedItems)
             {
                 // Generate CSV filename: "Food-Drinks-Mandatory.csv"
-                var fileName = SanitizeFileName(
-                    $"{group.Key.SignUpListCategory}-{group.Key.ItemCategory}.csv"
+                var baseFileName = SanitizeFileName(
+                    $"{group.Key.SignUpListCategory}-{group.Key.ItemCategory}"
                 );
+
+                // Ensure unique filenames by adding counter if duplicate exists
+                string fileName;
+                if (fileNameCounter.ContainsKey(baseFileName))
+                {
+                    fileNameCounter[baseFileName]++;
+                    fileName = $"{baseFileName}-{fileNameCounter[baseFileName]}.csv";
+                }
+                else
+                {
+                    fileNameCounter[baseFileName] = 1;
+                    fileName = $"{baseFileName}.csv";
+                }
 
                 // Create ZIP entry
                 var entry = archive.CreateEntry(fileName, CompressionLevel.Optimal);

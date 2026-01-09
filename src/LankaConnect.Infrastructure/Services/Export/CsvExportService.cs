@@ -167,35 +167,36 @@ public class CsvExportService : ICsvExportService
                     UseNewObjectForNullReferenceMembers = false
                 });
 
-                // Write CSV headers
-                csv.WriteField("Sign-up List");
+                // Phase 6A.69 - Revised CSV format: Grouped layout
+                // Write CSV headers (removed "Sign-up List" and "Committed At")
                 csv.WriteField("Item Description");
                 csv.WriteField("Requested Quantity");
+                csv.WriteField("Remaining Quantity");
                 csv.WriteField("Contact Name");
                 csv.WriteField("Contact Email");
                 csv.WriteField("Contact Phone");
                 csv.WriteField("Quantity Committed");
-                csv.WriteField("Committed At");
-                csv.WriteField("Remaining Quantity");
                 csv.NextRecord();
 
-                // Write data rows
+                // Write data rows - grouped by item
                 foreach (var itemData in group)
                 {
                     var item = itemData.Item;
-                    var signUpList = itemData.SignUpList;
 
                     if (!item.Commitments.Any())
                     {
                         // Zero commitments - single row with placeholders
-                        WriteCommitmentRow(csv, signUpList.Category, item, null);
+                        WriteItemRow(csv, item, null);
                     }
                     else
                     {
-                        // Each commitment = separate row (row expansion pattern)
-                        foreach (var commitment in item.Commitments)
+                        // First row: Item header with first commitment
+                        WriteItemRow(csv, item, item.Commitments.First());
+
+                        // Subsequent rows: Additional commitments (if any)
+                        foreach (var commitment in item.Commitments.Skip(1))
                         {
-                            WriteCommitmentRow(csv, signUpList.Category, item, commitment);
+                            WriteCommitmentOnlyRow(csv, commitment);
                         }
                     }
                 }
@@ -208,17 +209,18 @@ public class CsvExportService : ICsvExportService
     }
 
     /// <summary>
-    /// Phase 6A.69: Write a single commitment row to CSV.
+    /// Phase 6A.69 (Revised): Write item row with full details (item + optional commitment).
+    /// Format: Item Description | Requested Quantity | Remaining Quantity | Contact Name | Contact Email | Contact Phone | Quantity Committed
     /// </summary>
-    private static void WriteCommitmentRow(
+    private static void WriteItemRow(
         CsvWriter csv,
-        string signUpListCategory,
         SignUpItemDto item,
         SignUpCommitmentDto? commitment)
     {
-        csv.WriteField(signUpListCategory);
+        // Item information
         csv.WriteField(item.ItemDescription);
         csv.WriteField(item.Quantity);
+        csv.WriteField(item.RemainingQuantity);
 
         // Contact information (use em dash for missing data)
         csv.WriteField(commitment?.ContactName ?? "—");
@@ -231,14 +233,34 @@ public class CsvExportService : ICsvExportService
         csv.WriteField(phone);
 
         csv.WriteField(commitment?.Quantity ?? 0);
+        csv.NextRecord();
+    }
 
-        // Committed At timestamp (ISO 8601 format for sortability)
-        var committedAt = commitment?.CommittedAt != null
-            ? commitment.CommittedAt.ToString("yyyy-MM-dd HH:mm:ss")
-            : "—";
-        csv.WriteField(committedAt);
+    /// <summary>
+    /// Phase 6A.69 (Revised): Write commitment-only row (blank item columns, commitment data only).
+    /// Used for additional commitments after the first one.
+    /// Format: [blank] | [blank] | [blank] | Contact Name | Contact Email | Contact Phone | Quantity Committed
+    /// </summary>
+    private static void WriteCommitmentOnlyRow(
+        CsvWriter csv,
+        SignUpCommitmentDto commitment)
+    {
+        // Blank item columns (item already shown in previous row)
+        csv.WriteField("");  // Item Description
+        csv.WriteField("");  // Requested Quantity
+        csv.WriteField("");  // Remaining Quantity
 
-        csv.WriteField(item.RemainingQuantity);
+        // Contact information
+        csv.WriteField(commitment.ContactName);
+        csv.WriteField(commitment.ContactEmail);
+
+        // Phone number with apostrophe prefix
+        var phone = string.IsNullOrWhiteSpace(commitment.ContactPhone)
+            ? "—"
+            : "'" + commitment.ContactPhone;
+        csv.WriteField(phone);
+
+        csv.WriteField(commitment.Quantity);
         csv.NextRecord();
     }
 

@@ -93,6 +93,14 @@ export const PROFICIENCY_LEVELS: readonly ProficiencyLevelOption[] = [
  * Validation Constraints (matches backend validation)
  */
 export const PROFILE_CONSTRAINTS = {
+  basicInfo: {
+    firstNameMinLength: 1,
+    firstNameMaxLength: 50,
+    lastNameMinLength: 1,
+    lastNameMaxLength: 50,
+    phoneNumberMaxLength: 20,
+    bioMaxLength: 500,
+  },
   location: {
     cityMaxLength: 100,
     stateMaxLength: 100,

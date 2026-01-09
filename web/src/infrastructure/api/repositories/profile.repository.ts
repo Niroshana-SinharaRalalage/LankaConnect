@@ -7,6 +7,7 @@ import type {
   UpdateBasicInfoRequest,
   UpdatePreferredMetroAreasRequest,
   PhotoUploadResponse,
+  UpdateEmailResponse,
 } from '@/domain/models/UserProfile';
 
 /**
@@ -148,7 +149,8 @@ export class ProfileRepository {
   }
 
   /**
-   * Update basic user information
+   * Update basic user information (First Name, Last Name, Phone, Bio)
+   * Phase 6A.70: Profile Basic Info Section
    * @param userId User GUID
    * @param basicInfo First name, last name, phone, bio
    * @returns Promise resolving to updated UserProfile
@@ -157,12 +159,28 @@ export class ProfileRepository {
     userId: string,
     basicInfo: UpdateBasicInfoRequest
   ): Promise<UserProfile> {
-    // Note: This endpoint doesn't exist in backend yet
-    // Using PUT /api/users/{id} as a placeholder
-    // Backend team should add dedicated endpoint for basic info updates
     const response = await apiClient.put<UserProfile>(
-      `${this.basePath}/${userId}`,
+      `${this.basePath}/${userId}/basic-info`,
       basicInfo
+    );
+    return response;
+  }
+
+  /**
+   * Update user email address
+   * Phase 6A.70: Profile Basic Info Section with Email Verification
+   * Triggers email verification flow (reuses Phase 6A.53 infrastructure)
+   * @param userId User GUID
+   * @param email New email address
+   * @returns Promise resolving to UpdateEmailResponse with verification details
+   */
+  async updateEmail(
+    userId: string,
+    email: string
+  ): Promise<UpdateEmailResponse> {
+    const response = await apiClient.put<UpdateEmailResponse>(
+      `${this.basePath}/${userId}/email`,
+      { newEmail: email }
     );
     return response;
   }

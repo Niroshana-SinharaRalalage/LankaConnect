@@ -7,25 +7,30 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { PROFILE_CONSTRAINTS } from '@/domain/constants/profile.constants';
-import { Check, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Check, User, CheckCircle2, AlertCircle, Mail } from 'lucide-react';
+import { apiClient } from '@/infrastructure/api/client/api-client';
 
 /**
  * BasicInfoSection Component
- * Phase 6A.70: Profile Basic Info with Email/Phone Verification
+ * Phase 6A.70 + Enhancements: Profile Basic Info with Location & Email Verification
  *
- * Manages user basic information (First Name, Last Name, Email, Phone, Bio)
- * - View mode: Display current info with verification status
- * - Edit mode: Form with validation for all fields
- * - Email changes trigger verification flow (Phase 6A.53)
- * - Phone changes validated but no SMS verification (future Phase 6A.71+)
- * - Integrates with useProfileStore for state and API calls
- * - Shows loading/success/error states
+ * Manages user basic information and location in single form:
+ * - First Name, Last Name (required)
+ * - Email (editable with verification flow)
+ * - Phone Number (optional)
+ * - City, State, Zip Code, Country (location fields)
  *
- * Follows LocationSection pattern for consistency
+ * Features:
+ * - View/Edit mode toggle
+ * - Email verification status with resend button
+ * - Email editing triggers verification flow
+ * - Combined save for basic info + location
+ * - Client-side validation with error messages
+ * - Section-specific loading/success/error states
  */
 export function BasicInfoSection() {
   const { user, isAuthenticated } = useAuthStore();
-  const { profile, error, sectionStates, updateBasicInfo } = useProfileStore();
+  const { profile, error, sectionStates, updateBasicInfo, updateLocation, updateEmail } = useProfileStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,18 +38,23 @@ export function BasicInfoSection() {
     lastName: '',
     email: '',
     phoneNumber: '',
-    bio: '',
+    // Location fields (merged from LocationSection)
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   // Don't render if not authenticated
   if (!isAuthenticated || !user) {
     return null;
   }
 
-  const isLoading = sectionStates.basicInfo === 'saving';
+  const isLoading = sectionStates.basicInfo === 'saving' || sectionStates.location === 'saving';
   const isSuccess = sectionStates.basicInfo === 'success';
-  const isError = sectionStates.basicInfo === 'error';
+  const isError = sectionStates.basicInfo === 'error' || sectionStates.location === 'error';
 
   /**
    * Start editing mode
@@ -56,7 +66,10 @@ export function BasicInfoSection() {
       lastName: profile?.lastName || '',
       email: profile?.email || '',
       phoneNumber: profile?.phoneNumber || '',
-      bio: profile?.bio || '',
+      city: profile?.location?.city || '',
+      state: profile?.location?.state || '',
+      zipCode: profile?.location?.zipCode || '',
+      country: profile?.location?.country || '',
     });
     setValidationErrors({});
     setIsEditing(true);
@@ -69,6 +82,24 @@ export function BasicInfoSection() {
   const handleCancel = () => {
     setIsEditing(false);
     setValidationErrors({});
+  };
+
+  /**
+   * Resend email verification
+   */
+  const handleResendVerification = async () => {
+    if (!user?.userId || resendingVerification) return;
+
+    setResendingVerification(true);
+    try {
+      await apiClient.post('/communications/send-email-verification', { userId: user.userId });
+      alert('Verification email sent! Please check your inbox and spam folder.');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || error?.message || 'Failed to resend verification email';
+      alert(message);
+    } finally {
+      setResendingVerification(false);
+    }
   };
 
   /**
@@ -100,7 +131,6 @@ export function BasicInfoSection() {
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else {
-      // Basic email regex validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) {
         errors.email = 'Invalid email format';
@@ -112,16 +142,34 @@ export function BasicInfoSection() {
       if (formData.phoneNumber.length > PROFILE_CONSTRAINTS.basicInfo.phoneNumberMaxLength) {
         errors.phoneNumber = `Phone number cannot exceed ${PROFILE_CONSTRAINTS.basicInfo.phoneNumberMaxLength} characters`;
       }
-      // Basic phone validation: E.164 format or Sri Lankan local format
       const phoneRegex = /^(\+?[1-9]\d{1,14}|0\d{9})$/;
       if (!phoneRegex.test(formData.phoneNumber.trim())) {
         errors.phoneNumber = 'Invalid phone format. Use +94771234567 or 0771234567';
       }
     }
 
-    // Bio validation (optional)
-    if (formData.bio.trim() && formData.bio.length > PROFILE_CONSTRAINTS.basicInfo.bioMaxLength) {
-      errors.bio = `Bio cannot exceed ${PROFILE_CONSTRAINTS.basicInfo.bioMaxLength} characters`;
+    // Location validation (all fields required if any is filled)
+    const locationFilled = formData.city.trim() || formData.state.trim() ||
+                           formData.zipCode.trim() || formData.country.trim();
+
+    if (locationFilled) {
+      if (!formData.city.trim()) errors.city = 'City is required';
+      if (!formData.state.trim()) errors.state = 'State is required';
+      if (!formData.zipCode.trim()) errors.zipCode = 'Zip code is required';
+      if (!formData.country.trim()) errors.country = 'Country is required';
+
+      if (formData.city.length > PROFILE_CONSTRAINTS.location.cityMaxLength) {
+        errors.city = `City cannot exceed ${PROFILE_CONSTRAINTS.location.cityMaxLength} characters`;
+      }
+      if (formData.state.length > PROFILE_CONSTRAINTS.location.stateMaxLength) {
+        errors.state = `State cannot exceed ${PROFILE_CONSTRAINTS.location.stateMaxLength} characters`;
+      }
+      if (formData.zipCode.length > PROFILE_CONSTRAINTS.location.zipCodeMaxLength) {
+        errors.zipCode = `Zip code cannot exceed ${PROFILE_CONSTRAINTS.location.zipCodeMaxLength} characters`;
+      }
+      if (formData.country.length > PROFILE_CONSTRAINTS.location.countryMaxLength) {
+        errors.country = `Country cannot exceed ${PROFILE_CONSTRAINTS.location.countryMaxLength} characters`;
+      }
     }
 
     setValidationErrors(errors);
@@ -130,7 +178,7 @@ export function BasicInfoSection() {
 
   /**
    * Handle form submission
-   * Validate and call API
+   * Saves basic info and location (two API calls)
    */
   const handleSave = async () => {
     if (!validateForm()) {
@@ -138,13 +186,50 @@ export function BasicInfoSection() {
     }
 
     try {
+      const emailChanged = formData.email.trim() !== profile?.email;
+
+      // Step 1: Update basic info (name, phone)
       await updateBasicInfo(user.userId, {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         phoneNumber: formData.phoneNumber.trim() || null,
-        bio: formData.bio.trim() || null,
+        bio: null, // Bio removed per user request
       });
-      // Exit edit mode on success (store sets state to 'success')
+
+      // Step 2: Update location (city, state, zip, country)
+      const locationFilled = formData.city.trim() || formData.state.trim() ||
+                             formData.zipCode.trim() || formData.country.trim();
+
+      if (locationFilled) {
+        await updateLocation(user.userId, {
+          city: formData.city.trim() || null,
+          state: formData.state.trim() || null,
+          zipCode: formData.zipCode.trim() || null,
+          country: formData.country.trim() || null,
+        });
+      } else {
+        // Clear location if all fields empty
+        await updateLocation(user.userId, {
+          city: null,
+          state: null,
+          zipCode: null,
+          country: null,
+        });
+      }
+
+      // Step 3: Update email if changed (triggers verification)
+      if (emailChanged) {
+        try {
+          const result = await updateEmail(user.userId, formData.email.trim());
+          alert(result.message + '\n\nYou may need to log out and log back in to see the updated email.');
+        } catch (emailError: any) {
+          // Show email-specific error but don't block other updates
+          const emailErrorMsg = emailError?.response?.data?.detail || emailError?.message || 'Failed to update email';
+          alert(`Profile saved, but email update failed: ${emailErrorMsg}`);
+        }
+      }
+
+      // Success - exit edit mode
       setIsEditing(false);
     } catch (error) {
       // Error state is handled by the store
@@ -193,7 +278,7 @@ export function BasicInfoSection() {
             )}
           </div>
           <CardDescription>
-            Manage your personal information and contact details
+            Manage your personal information and location details
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -211,17 +296,32 @@ export function BasicInfoSection() {
               {/* Email with verification status */}
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground">{profile?.email}</p>
-                  {user.isEmailVerified ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span className="text-xs">Verified</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-amber-600">
-                      <AlertCircle className="h-4 w-4" />
-                      <span className="text-xs">Not verified</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground">{profile?.email}</p>
+                    {user.isEmailVerified ? (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-xs">Verified</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-xs">Not verified</span>
+                      </div>
+                    )}
+                  </div>
+                  {!user.isEmailVerified && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Please check your email inbox (and spam folder) for the verification link.</p>
+                      <button
+                        onClick={handleResendVerification}
+                        disabled={resendingVerification}
+                        className="text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        <Mail className="h-3 w-3" />
+                        {resendingVerification ? 'Sending...' : 'Resend verification email'}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -237,11 +337,14 @@ export function BasicInfoSection() {
                 </p>
               </div>
 
-              {/* Bio */}
-              {profile?.bio && (
+              {/* Location */}
+              {profile?.location && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Bio</p>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{profile.bio}</p>
+                  <p className="text-sm text-muted-foreground">Location</p>
+                  <p className="font-medium text-foreground">
+                    {profile.location.city}, {profile.location.state} {profile.location.zipCode}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{profile.location.country}</p>
                 </div>
               )}
 
@@ -249,7 +352,7 @@ export function BasicInfoSection() {
               {isSuccess && (
                 <div className="flex items-center gap-2 text-sm" style={{ color: '#006400' }}>
                   <Check className="h-4 w-4" />
-                  <span>Basic information saved successfully!</span>
+                  <span>Profile updated successfully!</span>
                 </div>
               )}
 
@@ -313,7 +416,7 @@ export function BasicInfoSection() {
                 )}
               </div>
 
-              {/* Email (Read-only in Phase 6A.70 - separate update flow needed) */}
+              {/* Email (now editable) */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
                   Email *
@@ -322,12 +425,21 @@ export function BasicInfoSection() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  disabled={true}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="e.g., john@example.com"
+                  disabled={isLoading}
+                  error={!!validationErrors.email}
                   aria-label="Email"
-                  className="bg-gray-50 cursor-not-allowed"
+                  aria-invalid={!!validationErrors.email}
+                  aria-describedby={validationErrors.email ? 'email-error' : undefined}
                 />
+                {validationErrors.email && (
+                  <p id="email-error" className="text-sm text-destructive mt-1" role="alert">
+                    {validationErrors.email}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
-                  Email changes require verification. Contact support to change your email.
+                  Changing your email will require verification. You may need to log out and log back in.
                 </p>
               </div>
 
@@ -359,40 +471,111 @@ export function BasicInfoSection() {
                 </p>
               </div>
 
-              {/* Bio */}
+              {/* Divider */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium mb-3" style={{ color: '#8B1538' }}>
+                  Location (Optional)
+                </h4>
+              </div>
+
+              {/* City */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-medium mb-1">
-                  Bio
+                <label htmlFor="city" className="block text-sm font-medium mb-1">
+                  City
                 </label>
-                <textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Tell us about yourself..."
+                <Input
+                  id="city"
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder="e.g., Toronto"
                   disabled={isLoading}
-                  aria-label="Bio"
-                  aria-invalid={!!validationErrors.bio}
-                  aria-describedby={validationErrors.bio ? 'bio-error' : undefined}
-                  maxLength={PROFILE_CONSTRAINTS.basicInfo.bioMaxLength}
-                  rows={4}
-                  className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    validationErrors.bio
-                      ? 'border-destructive focus:ring-destructive'
-                      : 'border-input focus:ring-ring'
-                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  error={!!validationErrors.city}
+                  aria-label="City"
+                  aria-invalid={!!validationErrors.city}
+                  aria-describedby={validationErrors.city ? 'city-error' : undefined}
+                  maxLength={PROFILE_CONSTRAINTS.location.cityMaxLength}
                 />
-                <div className="flex justify-between items-center mt-1">
-                  <div>
-                    {validationErrors.bio && (
-                      <p id="bio-error" className="text-sm text-destructive" role="alert">
-                        {validationErrors.bio}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formData.bio.length}/{PROFILE_CONSTRAINTS.basicInfo.bioMaxLength}
+                {validationErrors.city && (
+                  <p id="city-error" className="text-sm text-destructive mt-1" role="alert">
+                    {validationErrors.city}
                   </p>
-                </div>
+                )}
+              </div>
+
+              {/* State/Province */}
+              <div>
+                <label htmlFor="state" className="block text-sm font-medium mb-1">
+                  State/Province
+                </label>
+                <Input
+                  id="state"
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  placeholder="e.g., Ontario"
+                  disabled={isLoading}
+                  error={!!validationErrors.state}
+                  aria-label="State/Province"
+                  aria-invalid={!!validationErrors.state}
+                  aria-describedby={validationErrors.state ? 'state-error' : undefined}
+                  maxLength={PROFILE_CONSTRAINTS.location.stateMaxLength}
+                />
+                {validationErrors.state && (
+                  <p id="state-error" className="text-sm text-destructive mt-1" role="alert">
+                    {validationErrors.state}
+                  </p>
+                )}
+              </div>
+
+              {/* Zip/Postal Code */}
+              <div>
+                <label htmlFor="zipCode" className="block text-sm font-medium mb-1">
+                  Zip/Postal Code
+                </label>
+                <Input
+                  id="zipCode"
+                  type="text"
+                  value={formData.zipCode}
+                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                  placeholder="e.g., M5H 2N2"
+                  disabled={isLoading}
+                  error={!!validationErrors.zipCode}
+                  aria-label="Zip/Postal Code"
+                  aria-invalid={!!validationErrors.zipCode}
+                  aria-describedby={validationErrors.zipCode ? 'zipCode-error' : undefined}
+                  maxLength={PROFILE_CONSTRAINTS.location.zipCodeMaxLength}
+                />
+                {validationErrors.zipCode && (
+                  <p id="zipCode-error" className="text-sm text-destructive mt-1" role="alert">
+                    {validationErrors.zipCode}
+                  </p>
+                )}
+              </div>
+
+              {/* Country */}
+              <div>
+                <label htmlFor="country" className="block text-sm font-medium mb-1">
+                  Country
+                </label>
+                <Input
+                  id="country"
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  placeholder="e.g., Canada"
+                  disabled={isLoading}
+                  error={!!validationErrors.country}
+                  aria-label="Country"
+                  aria-invalid={!!validationErrors.country}
+                  aria-describedby={validationErrors.country ? 'country-error' : undefined}
+                  maxLength={PROFILE_CONSTRAINTS.location.countryMaxLength}
+                />
+                {validationErrors.country && (
+                  <p id="country-error" className="text-sm text-destructive mt-1" role="alert">
+                    {validationErrors.country}
+                  </p>
+                )}
               </div>
 
               {/* Error message */}

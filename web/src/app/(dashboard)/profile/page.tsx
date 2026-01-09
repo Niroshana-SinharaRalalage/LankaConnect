@@ -6,7 +6,6 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { ProfilePhotoSection } from '@/presentation/components/features/profile/ProfilePhotoSection';
 import { BasicInfoSection } from '@/presentation/components/features/profile/BasicInfoSection';
-import { LocationSection } from '@/presentation/components/features/profile/LocationSection';
 import { CulturalInterestsSection } from '@/presentation/components/features/profile/CulturalInterestsSection';
 import { PreferredMetroAreasSection } from '@/presentation/components/features/profile/PreferredMetroAreasSection';
 import { Button } from '@/presentation/components/ui/Button';
@@ -21,14 +20,10 @@ import Link from 'next/link';
  * Profile Page
  *
  * User profile management page with:
- * - Profile photo upload/delete
- * - Basic info editing (future)
- * - Location info editing (future)
- * - Cultural interests editing (future)
- * - Languages editing (future)
- *
- * Phase 1: Photo upload only
- * Future phases will add additional sections
+ * - Profile photo upload/delete (Phase 6A.64)
+ * - Basic info editing with location (Phase 6A.70)
+ * - Cultural interests editing
+ * - Preferred metro areas
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -118,11 +113,8 @@ export default function ProfilePage() {
             {/* Profile Photo Section */}
             <ProfilePhotoSection />
 
-            {/* Basic Info Section - Phase 6A.70 */}
+            {/* Basic Info Section - Phase 6A.70 (now includes Location fields) */}
             <BasicInfoSection />
-
-            {/* Location Section */}
-            <LocationSection />
 
             {/* Cultural Interests Section */}
             <CulturalInterestsSection />

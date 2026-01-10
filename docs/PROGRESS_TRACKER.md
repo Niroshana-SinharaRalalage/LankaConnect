@@ -1,9 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-08 - Phase 6A.69: Sign-Up List CSV Export (ZIP) - ✅ DEPLOYED & TESTED*
+*Last Updated: 2026-01-10 - Phase 6A.72: Events Page Search Performance Fix - ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.69: Sign-Up List CSV Export (ZIP Archive) - ✅ DEPLOYED & TESTED
+## 🎯 Current Session Status - Phase 6A.72: Events Page Search Performance Fix - ✅ DEPLOYED
+
+### Phase 6A.72 - Events Page Search Performance Optimization - 2026-01-10
+
+**Status**: ✅ **DEPLOYED** (Azure staging deployment completed, commit 07901de0)
+
+**Problem**: Search input on `/events` page was slow and triggering API calls on every keystroke instead of being smoothly debounced like Dashboard search.
+
+**Root Cause**:
+- `filters` object in `useMemo` was being recreated too frequently due to unstable dependencies
+- Debounce delay was too short (300ms)
+- Array references (metroAreaIds) were not stabilized, causing unnecessary re-renders
+- Date range was recalculated on every render
+- React Query treated each filter object change as a new query, triggering API calls
+
+**Solution**:
+- ✅ Increased debounce delay from 300ms to 500ms for smoother typing experience
+- ✅ Memoized date range separately to avoid unnecessary recalculations
+- ✅ Stabilized metroAreaIds array reference to prevent re-renders
+- ✅ Optimized `useMemo` dependencies to prevent unnecessary filter object recreation
+- ✅ Matches Dashboard EventFilters performance characteristics
+
+**Implementation**:
+```typescript
+// Before: filters recreated frequently
+const debouncedSearchTerm = useDebounce(searchInput, 300);
+const filters = useMemo(() => ({
+  searchTerm: debouncedSearchTerm,
+  ...getDateRangeForOption(dateRangeOption),
+  metroAreaIds: selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+  ...
+}), [debouncedSearchTerm, dateRangeOption, selectedMetroIds, ...]);
+
+// After: optimized with stable references
+const debouncedSearchTerm = useDebounce(searchInput, 500); // 300ms → 500ms
+const dateRange = useMemo(() => getDateRangeForOption(dateRangeOption), [dateRangeOption]);
+const stableMetroIds = useMemo(() =>
+  selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+  [selectedMetroIds.length, ...selectedMetroIds]
+);
+const filters = useMemo(() => ({
+  searchTerm: debouncedSearchTerm,
+  metroAreaIds: stableMetroIds,
+  ...dateRange,
+  ...
+}), [debouncedSearchTerm, stableMetroIds, dateRange, ...]);
+```
+
+**Testing**:
+- ✅ Build: 0 errors ([/web/src/app/events/page.tsx](../web/src/app/events/page.tsx))
+- ✅ TypeScript: Passed
+- ✅ Deployment: GitHub Actions successful (run #20880689622)
+
+**Deployment**:
+- ✅ Commit: 07901de0 - `perf(phase-6a72): Optimize Events page search performance`
+- ✅ Branch: develop → Azure staging
+- ✅ Workflow: deploy-ui-staging.yml ✅ SUCCESS
+- ✅ URL: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**User Benefits**:
+- Smoother typing experience in search input (no lag)
+- Reduced API calls (only after 500ms pause in typing)
+- Consistent performance with Dashboard search
+- Better UX for finding events
+
+**Files Modified**:
+- [page.tsx](../web/src/app/events/page.tsx) - Optimized search debouncing and memoization
+
+**Next Steps**: User acceptance testing on staging
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.69: Sign-Up List CSV Export (ZIP Archive) - ✅ DEPLOYED & TESTED
 
 ### Phase 6A.69 - Sign-Up List CSV Export (Backend Migration) - 2026-01-07/08
 

@@ -32,6 +32,26 @@ public class ExcelExportService : IExcelExportService
         return stream.ToArray();
     }
 
+    /// <summary>
+    /// Phase 6A.73: Exports signup lists only to Excel with category-based sheets.
+    /// Creates one Excel file with sheets for each category (Mandatory, Suggested, Open).
+    /// </summary>
+    public byte[] ExportSignUpListsToExcel(List<SignUpListDto> signUpLists)
+    {
+        if (signUpLists == null || !signUpLists.Any())
+            throw new ArgumentException("No signup lists to export", nameof(signUpLists));
+
+        using var workbook = new XLWorkbook();
+
+        // Create sheets by category (Mandatory, Suggested, Open)
+        CreateSignUpListSheets(workbook, signUpLists);
+
+        // Convert workbook to byte array
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
     private void CreateRegistrationsSheet(
         IXLWorkbook workbook,
         EventAttendeesResponse data)

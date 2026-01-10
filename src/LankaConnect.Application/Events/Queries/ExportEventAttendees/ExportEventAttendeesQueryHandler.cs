@@ -145,18 +145,21 @@ public class ExportEventAttendeesQueryHandler
                 }).ToList()
             }).ToList();
 
-            // Phase 6A.73: Generate Excel file for signup lists
+            // Phase 6A.73 (Revised): Both formats now return ZIP archives
+            // CSV: ZIP with multiple CSV files (one per signup list + category)
+            // Excel: ZIP with multiple Excel files (one per signup list, with category sheets)
             if (request.Format == ExportFormat.SignUpListsExcel)
             {
-                fileContent = _excelService.ExportSignUpListsToExcel(signUpListsForExport);
-                fileName = $"event-{request.EventId}-signup-lists-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
-                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                // Generate ZIP with Excel files (one Excel per signup list)
+                fileContent = _excelService.ExportSignUpListsToExcelZip(signUpListsForExport, request.EventId);
+                fileName = $"event-{request.EventId}-signup-lists-excel-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                contentType = "application/zip";
             }
-            else // SignUpListsZip
+            else // SignUpListsZip (CSV)
             {
-                // Generate ZIP file
+                // Generate ZIP with CSV files
                 fileContent = _csvService.ExportSignUpListsToZip(signUpListsForExport, request.EventId);
-                fileName = $"event-{request.EventId}-signup-lists-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                fileName = $"event-{request.EventId}-signup-lists-csv-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
                 contentType = "application/zip";
             }
 

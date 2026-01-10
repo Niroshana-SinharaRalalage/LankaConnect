@@ -487,6 +487,33 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                     );
                   })}
                 </tbody>
+
+                {/* Phase 6A.71: Table footer with totals - sticky at bottom */}
+                {attendees.length > 0 && (
+                  <tfoot className="sticky bottom-0 bg-neutral-100 border-t-2 border-neutral-300">
+                    <tr>
+                      <td colSpan={11} className="p-4">
+                        <div className="flex justify-end items-center gap-8">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-neutral-700">Total Registrations:</span>
+                            <span className="text-lg font-bold text-blue-900">{totalRegistrations}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-neutral-700">Total Attendees:</span>
+                            <span className="text-lg font-bold text-green-900">{totalAttendees}</span>
+                          </div>
+                          {!isFreeEvent && netRevenue > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-neutral-700">Net Revenue:</span>
+                              <span className="text-lg font-bold text-orange-900">${netRevenue.toFixed(2)}</span>
+                              <span className="text-xs text-neutral-500">(after 5% fee)</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}

@@ -59,6 +59,7 @@ public class JwtTokenService : IJwtTokenService
                 new("firstName", user.FirstName),
                 new("lastName", user.LastName),
                 new("isActive", user.IsActive.ToString().ToLower()),
+                new("isEmailVerified", user.IsEmailVerified.ToString().ToLower()), // FIX: Add email verification status to JWT
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(JwtRegisteredClaimNames.Iat,
                     new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(),

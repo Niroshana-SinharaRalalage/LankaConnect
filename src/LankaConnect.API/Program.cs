@@ -64,7 +64,7 @@ try
     builder.Services.AddHttpContextAccessor();
 
     // Add Application Layer
-    builder.Services.AddApplication();
+    builder.Services.AddApplication(builder.Configuration);
 
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);

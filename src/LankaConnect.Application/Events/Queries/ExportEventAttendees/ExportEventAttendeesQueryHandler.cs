@@ -1,10 +1,12 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace LankaConnect.Application.Events.Queries.ExportEventAttendees;
 
@@ -15,17 +17,20 @@ public class ExportEventAttendeesQueryHandler
     private readonly IEventRepository _eventRepository;
     private readonly IExcelExportService _excelService;
     private readonly ICsvExportService _csvService;
+    private readonly IOptions<CommissionSettings> _commissionSettings;
 
     public ExportEventAttendeesQueryHandler(
         IApplicationDbContext context,
         IEventRepository eventRepository,
         IExcelExportService excelService,
-        ICsvExportService csvService)
+        ICsvExportService csvService,
+        IOptions<CommissionSettings> commissionSettings)
     {
         _context = context;
         _eventRepository = eventRepository;
         _excelService = excelService;
         _csvService = csvService;
+        _commissionSettings = commissionSettings;
     }
 
     public async Task<Result<ExportResult>> Handle(
@@ -34,7 +39,7 @@ public class ExportEventAttendeesQueryHandler
     {
         // Get attendees data using existing query handler logic
         var attendeesQuery = new GetEventAttendeesQuery(request.EventId);
-        var attendeesHandler = new GetEventAttendeesQueryHandler(_context, _eventRepository);
+        var attendeesHandler = new GetEventAttendeesQueryHandler(_context, _eventRepository, _commissionSettings);
         var attendeesResult = await attendeesHandler.Handle(attendeesQuery, cancellationToken);
 
         if (!attendeesResult.IsSuccess)

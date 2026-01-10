@@ -86,13 +86,14 @@ export function BasicInfoSection() {
 
   /**
    * Resend email verification
+   * FIX: Correct endpoint is /auth/resend-verification, not /communications/send-email-verification
    */
   const handleResendVerification = async () => {
     if (!user?.userId || resendingVerification) return;
 
     setResendingVerification(true);
     try {
-      await apiClient.post('/communications/send-email-verification', { userId: user.userId });
+      await apiClient.post('/auth/resend-verification', { userId: user.userId });
       alert('Verification email sent! Please check your inbox and spam folder.');
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to resend verification email';

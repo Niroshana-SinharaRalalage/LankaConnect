@@ -1,9 +1,11 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace LankaConnect.Application.Events.Queries.GetEventAttendees;
 
@@ -12,13 +14,16 @@ public class GetEventAttendeesQueryHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IEventRepository _eventRepository;
+    private readonly CommissionSettings _commissionSettings;
 
     public GetEventAttendeesQueryHandler(
         IApplicationDbContext context,
-        IEventRepository eventRepository)
+        IEventRepository eventRepository,
+        IOptions<CommissionSettings> commissionSettings)
     {
         _context = context;
         _eventRepository = eventRepository;
+        _commissionSettings = commissionSettings.Value;
     }
 
     public async Task<Result<EventAttendeesResponse>> Handle(
@@ -88,6 +93,19 @@ public class GetEventAttendeesQueryHandler
             })
             .ToListAsync(cancellationToken);
 
+        // Phase 6A.71: Calculate revenue with commission
+        var grossRevenue = attendeeDtos.Sum(a => a.TotalAmount ?? 0);
+        var isFreeEvent = @event.IsFree() || grossRevenue == 0;
+
+        decimal commissionAmount = 0m;
+        decimal netRevenue = grossRevenue;
+
+        if (!isFreeEvent)
+        {
+            commissionAmount = grossRevenue * _commissionSettings.EventTicketCommissionRate;
+            netRevenue = grossRevenue - commissionAmount;
+        }
+
         return Result<EventAttendeesResponse>.Success(new EventAttendeesResponse
         {
             EventId = request.EventId,
@@ -95,7 +113,18 @@ public class GetEventAttendeesQueryHandler
             Attendees = attendeeDtos,
             TotalRegistrations = attendeeDtos.Count,
             TotalAttendees = attendeeDtos.Sum(a => a.TotalAttendees),
-            TotalRevenue = attendeeDtos.Sum(a => a.TotalAmount ?? 0)
+
+            // Phase 6A.71: Commission-aware revenue
+            GrossRevenue = grossRevenue,
+            CommissionAmount = commissionAmount,
+            NetRevenue = netRevenue,
+            CommissionRate = _commissionSettings.EventTicketCommissionRate,
+            IsFreeEvent = isFreeEvent,
+
+            // Deprecated (for backward compatibility)
+#pragma warning disable CS0618 // Type or member is obsolete
+            TotalRevenue = grossRevenue
+#pragma warning restore CS0618 // Type or member is obsolete
         });
     }
 

@@ -132,10 +132,10 @@ public class ExcelExportService : IExcelExportService
         sheet.Cell(row, 3).Value = data.TotalAttendees;
         sheet.Cell(row, 3).Style.Font.Bold = true;
 
-        // Total Amount column (now column 13 instead of 12)
-        if (data.TotalRevenue.HasValue && data.TotalRevenue.Value > 0)
+        // Phase 6A.71: Net Revenue column (organizer's payout after commission)
+        if (!data.IsFreeEvent && data.NetRevenue > 0)
         {
-            sheet.Cell(row, 13).Value = data.TotalRevenue.Value;
+            sheet.Cell(row, 13).Value = data.NetRevenue;
             sheet.Cell(row, 13).Style.NumberFormat.Format = "#,##0.00";
             sheet.Cell(row, 13).Style.Font.Bold = true;
         }

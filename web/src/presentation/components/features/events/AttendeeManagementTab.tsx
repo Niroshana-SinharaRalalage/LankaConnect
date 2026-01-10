@@ -216,7 +216,7 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
     );
   }
 
-  const { attendees, totalRegistrations, totalAttendees, totalRevenue } = attendeesData;
+  const { attendees, totalRegistrations, totalAttendees, grossRevenue, commissionAmount, netRevenue, commissionRate, isFreeEvent } = attendeesData;
 
   return (
     <div className="space-y-6">
@@ -248,16 +248,40 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
           </CardContent>
         </Card>
 
-        {/* Total Revenue */}
-        {totalRevenue !== null && totalRevenue !== undefined && totalRevenue > 0 && (
+        {/* Phase 6A.71: Net Revenue (after commission) */}
+        {!isFreeEvent && grossRevenue > 0 && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-600">Total Revenue</p>
-                  <p className="text-3xl font-bold text-neutral-900">${totalRevenue.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-neutral-600">Net Revenue</p>
+                  <p className="text-3xl font-bold text-neutral-900">
+                    ${netRevenue.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    After {(commissionRate * 100).toFixed(0)}% platform fee
+                  </p>
                 </div>
                 <DollarSign className="h-10 w-10 text-orange-600" />
+              </div>
+
+              {/* Commission Breakdown */}
+              <div className="mt-3 pt-3 border-t border-neutral-200">
+                <div className="flex justify-between text-xs text-neutral-600 mb-1">
+                  <span>Gross Revenue:</span>
+                  <span className="font-medium">${grossRevenue.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-red-600 mb-1">
+                  <span>Platform Fee ({(commissionRate * 100).toFixed(0)}%):</span>
+                  <span className="font-medium">-${commissionAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-green-700 font-semibold pt-1 border-t border-neutral-200">
+                  <span>Your Payout:</span>
+                  <span>${netRevenue.toFixed(2)}</span>
+                </div>
+                <p className="text-[10px] text-neutral-400 mt-2">
+                  * 5% platform fee includes both LankaConnect and Stripe processing fees
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -309,11 +333,11 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
               </p>
             </div>
           ) : (
-            /* Attendees Table */
-            <div className="overflow-x-auto">
+            /* Attendees Table - Phase 6A.71: Added vertical scrolling */
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto border rounded-lg">
               <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                <thead className="sticky top-0 z-10 bg-neutral-50">
+                  <tr className="border-b border-neutral-200">
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700 w-10"></th>
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Main Attendee</th>
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Additional</th>

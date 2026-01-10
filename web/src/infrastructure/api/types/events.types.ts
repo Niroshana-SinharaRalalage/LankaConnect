@@ -932,7 +932,7 @@ export interface EventAttendeeDto {
 }
 
 /**
- * Phase 6A.45: Event attendees response
+ * Phase 6A.45/6A.71: Event attendees response with commission-aware revenue
  * Matches backend EventAttendeesResponse
  */
 export interface EventAttendeesResponse {
@@ -941,6 +941,20 @@ export interface EventAttendeesResponse {
   attendees: EventAttendeeDto[];
   totalRegistrations: number;
   totalAttendees: number;
+
+  // Phase 6A.71: Commission-aware revenue properties
+  /** Total revenue before commission deduction */
+  grossRevenue: number;
+  /** Platform commission amount (LankaConnect + Stripe) */
+  commissionAmount: number;
+  /** Net revenue after commission deduction (organizer's payout) */
+  netRevenue: number;
+  /** Commission rate applied (e.g., 0.05 for 5%) */
+  commissionRate: number;
+  /** Whether this is a free event */
+  isFreeEvent: boolean;
+
+  /** @deprecated Use grossRevenue instead */
   totalRevenue?: number | null;
 }
 

@@ -73,7 +73,7 @@ export function EventDetailsTab({
             <CardDescription>Track your event's performance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Registrations */}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
@@ -93,39 +93,6 @@ export function EventDetailsTab({
                 <p className="text-sm text-green-700 font-medium">Spots Left</p>
                 <p className="text-xs text-green-600 mt-1">Total capacity: {event.capacity}</p>
               </div>
-
-              {/* Revenue (if paid event) */}
-              {!event.isFree && (event.ticketPriceAmount || event.hasDualPricing || event.hasGroupPricing) && (
-                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <DollarSign className="h-5 w-5 text-orange-600" />
-                    <span className="text-2xl font-bold text-orange-900">
-                      {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
-                        `$${(event.groupPricingTiers[0].pricePerPerson * event.currentRegistrations).toFixed(2)}`
-                      ) : event.hasDualPricing ? (
-                        `$${((event.adultPriceAmount ?? 0) * event.currentRegistrations).toFixed(2)}`
-                      ) : (
-                        `$${((event.ticketPriceAmount ?? 0) * event.currentRegistrations).toFixed(2)}`
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-sm text-orange-700 font-medium">Est. Revenue</p>
-                  <p className="text-xs text-orange-600 mt-1">
-                    {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
-                      (() => {
-                        const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
-                        const minPrice = Math.min(...prices);
-                        const maxPrice = Math.max(...prices);
-                        return minPrice === maxPrice ? `$${minPrice} range` : `$${minPrice}-$${maxPrice} range`;
-                      })()
-                    ) : event.hasDualPricing ? (
-                      <>Adult: ${event.adultPriceAmount} | Child: ${event.childPriceAmount}</>
-                    ) : (
-                      <>${event.ticketPriceAmount} per ticket</>
-                    )}
-                  </p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

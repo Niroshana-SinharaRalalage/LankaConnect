@@ -43,9 +43,19 @@ public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVeri
             }
 
             // Check if email is already verified
+            // FIX: Return SUCCESS (not failure) when email is already verified
+            // This prevents 400 Bad Request errors on the frontend
             if (user.IsEmailVerified && !request.ForceResend)
             {
-                return Result<SendEmailVerificationResponse>.Failure("Email is already verified");
+                _logger.LogInformation("Email is already verified for user {UserId}, returning success", user.Id);
+
+                var alreadyVerifiedResponse = new SendEmailVerificationResponse(
+                    user.Id,
+                    user.Email.Value,
+                    user.EmailVerificationTokenExpiresAt ?? DateTime.UtcNow,
+                    wasRecentlySent: false);
+
+                return Result<SendEmailVerificationResponse>.Success(alreadyVerifiedResponse);
             }
 
             // Use provided email or user's current email

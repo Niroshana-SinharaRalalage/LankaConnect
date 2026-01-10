@@ -132,7 +132,8 @@ public class AuthController : ControllerBase
                     result.Value.Email,
                     result.Value.FullName,
                     result.Value.Role,
-                    result.Value.PendingUpgradeRole, // Phase 6A.7: Include pending upgrade role for UI display
+                    result.Value.IsEmailVerified,     // FIX: Include email verification status for UI
+                    result.Value.PendingUpgradeRole,  // Phase 6A.7: Include pending upgrade role for UI display
                     result.Value.UpgradeRequestedAt,  // Phase 6A.7: Include when upgrade was requested
                     result.Value.ProfilePhotoUrl      // Include profile photo URL for header display
                 },

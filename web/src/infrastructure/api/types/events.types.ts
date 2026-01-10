@@ -962,10 +962,12 @@ export interface EventAttendeesResponse {
 }
 
 /**
- * Phase 6A.45: Export format enum
+ * Phase 6A.45/6A.73: Export format enum
  * Matches backend ExportFormat
  */
 export enum ExportFormat {
   Excel = 0,
   Csv = 1,
+  SignUpListsZip = 2,     // Phase 6A.69: ZIP archive with CSV files
+  SignUpListsExcel = 3,   // Phase 6A.73: Excel file with category sheets
 }

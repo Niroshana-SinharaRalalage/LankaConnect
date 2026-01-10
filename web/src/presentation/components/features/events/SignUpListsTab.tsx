@@ -26,16 +26,14 @@ interface SignUpListsTabProps {
 export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
   const router = useRouter();
 
-  // Phase 6A.69: Handle Download ZIP (backend-generated CSV files)
-  // FIX: Use eventsRepository for consistent API routing through proxy
-  const handleDownloadCSV = async () => {
+  // Phase 6A.69: Handle export CSV (ZIP with multiple CSV files)
+  const handleExportCSV = async () => {
     if (!signUpLists || signUpLists.length === 0) {
-      alert('No sign-up lists to download');
+      alert('No sign-up lists to export');
       return;
     }
 
     try {
-      // Use events repository for consistent API routing (goes through proxy)
       const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistszip');
 
       // Generate filename with timestamp
@@ -54,7 +52,7 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error('Error downloading sign-up lists:', error);
+      console.error('Error exporting sign-up lists to CSV:', error);
 
       // Handle specific error cases
       if (error.response?.status === 403) {
@@ -64,7 +62,48 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       } else if (error.response?.status === 400) {
         alert(error.response?.data?.message || 'Failed to export sign-up lists');
       } else {
-        alert('An error occurred while downloading sign-up lists');
+        alert('An error occurred while exporting sign-up lists');
+      }
+    }
+  };
+
+  // Phase 6A.73: Handle export Excel (Excel file with category sheets)
+  const handleExportExcel = async () => {
+    if (!signUpLists || signUpLists.length === 0) {
+      alert('No sign-up lists to export');
+      return;
+    }
+
+    try {
+      const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistsexcel');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `event-${eventId}-signup-lists-${timestamp}.xlsx`;
+
+      // Trigger download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error exporting sign-up lists to Excel:', error);
+
+      // Handle specific error cases
+      if (error.response?.status === 403) {
+        alert('You do not have permission to export sign-up lists');
+      } else if (error.response?.status === 404) {
+        alert('Event not found');
+      } else if (error.response?.status === 400) {
+        alert(error.response?.data?.message || 'Failed to export sign-up lists');
+      } else {
+        alert('An error occurred while exporting sign-up lists');
       }
     }
   };
@@ -79,14 +118,24 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
           </div>
           <div className="flex gap-3">
             {signUpLists && signUpLists.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleDownloadCSV}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download CSV
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </Button>
+              </>
             )}
             <Button
               onClick={() => router.push(`/events/${eventId}/manage/create-signup-list`)}

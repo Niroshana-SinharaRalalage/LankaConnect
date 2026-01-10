@@ -908,12 +908,12 @@ export class EventsRepository {
    * Maps to backend GET /api/events/{eventId}/export?format={format}
    *
    * @param eventId - Event ID (GUID)
-   * @param format - Export format ('excel', 'csv', or 'signuplistszip')
+   * @param format - Export format ('excel', 'csv', 'signuplistszip', or 'signuplistsexcel')
    * @returns Blob for file download (Excel .xlsx, CSV .csv, or ZIP with multiple CSVs)
    */
   async exportEventAttendees(
     eventId: string,
-    format: 'excel' | 'csv' | 'signuplistszip' = 'excel'
+    format: 'excel' | 'csv' | 'signuplistszip' | 'signuplistsexcel' = 'excel'
   ): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/export?format=${format}`,

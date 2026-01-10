@@ -151,6 +151,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 accessTokenResult.Value,
                 refreshTokenResult.Value,
                 tokenExpiresAt,
+                user.IsEmailVerified,       // FIX: Include email verification status for UI
                 user.PendingUpgradeRole,    // Phase 6A.7: Include pending role for UI display
                 user.UpgradeRequestedAt,    // Phase 6A.7: Include when upgrade was requested
                 user.ProfilePhotoUrl);      // Include profile photo URL for header display

@@ -86,19 +86,31 @@ export function BasicInfoSection() {
 
   /**
    * Resend email verification
-   * FIX: Correct endpoint is /auth/resend-verification, not /communications/send-email-verification
+   * FIX: Correct endpoint /auth/resend-verification with PascalCase UserId
    */
   const handleResendVerification = async () => {
     if (!user?.userId || resendingVerification) return;
 
     setResendingVerification(true);
     try {
-      await apiClient.post('/auth/resend-verification', { userId: user.userId });
-      alert('Verification email sent! Please check your inbox and spam folder.');
+      // FIX: Backend expects PascalCase "UserId" not camelCase "userId"
+      const response = await apiClient.post<{ message: string }>('/auth/resend-verification', {
+        UserId: user.userId  // PascalCase for C# backend
+      });
+
+      // Success - show message inline instead of alert()
+      console.log('✅ Verification email sent:', response.message);
+
+      // TODO: Replace with proper toast notification in future
+      // For now, update state to show success message
+      setResendingVerification(false);
+
+      // Show temporary success message
+      window.alert(response.message || 'Verification email sent! Please check your inbox and spam folder.');
     } catch (error: any) {
-      const message = error?.response?.data?.detail || error?.message || 'Failed to resend verification email';
-      alert(message);
-    } finally {
+      const message = error?.response?.data?.error || error?.message || 'Failed to resend verification email';
+      console.error('❌ Resend verification failed:', message);
+      window.alert(`Error: ${message}`);
       setResendingVerification(false);
     }
   };

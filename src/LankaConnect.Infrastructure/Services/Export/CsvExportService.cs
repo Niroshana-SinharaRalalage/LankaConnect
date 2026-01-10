@@ -50,11 +50,13 @@ public class CsvExportService : ICsvExportService
         csv.WriteField("Status");
         csv.NextRecord();
 
-        // Calculate totals for summary row
+        // Phase 6A.71: Calculate totals for summary row with NET revenue (after commission)
         var totalAttendeeCount = attendees.Attendees.Sum(a => a.TotalAttendees);
-        var totalAmount = attendees.Attendees
+        var grossRevenue = attendees.Attendees
             .Where(a => a.TotalAmount.HasValue)
             .Sum(a => a.TotalAmount!.Value);
+        var netRevenue = attendees.NetRevenue;  // Organizer's payout after 5% commission
+        var commissionAmount = attendees.CommissionAmount;
         var currency = attendees.Attendees.FirstOrDefault(a => !string.IsNullOrEmpty(a.Currency))?.Currency ?? "USD";
 
         // Write data rows
@@ -90,13 +92,13 @@ public class CsvExportService : ICsvExportService
             csv.NextRecord();
         }
 
-        // Phase 6A.68: Add summary totals row at the bottom
+        // Phase 6A.71: Add summary totals row with NET revenue (after commission)
         if (attendees.Attendees.Any())
         {
             // Empty row for separation
             csv.NextRecord();
 
-            // Summary row
+            // Summary row - NET Revenue (organizer's payout after 5% fee)
             csv.WriteField("TOTAL");
             csv.WriteField("");  // AdditionalAttendees
             csv.WriteField(totalAttendeeCount);  // Total attendees across all registrations
@@ -109,7 +111,9 @@ public class CsvExportService : ICsvExportService
             csv.WriteField("");  // Phone
             csv.WriteField("");  // Address
             csv.WriteField("");  // PaymentStatus
-            csv.WriteField(totalAmount.ToString("F2"));  // Total amount collected
+            csv.WriteField(!attendees.IsFreeEvent && netRevenue > 0
+                ? $"{netRevenue:F2} (after 5% fee)"
+                : grossRevenue.ToString("F2"));  // Show NET revenue with label, or GROSS if free event
             csv.WriteField(currency);  // Currency
             csv.WriteField("");  // TicketCode
             csv.WriteField("");  // QRCode

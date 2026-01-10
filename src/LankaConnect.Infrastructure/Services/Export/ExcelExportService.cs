@@ -39,6 +39,7 @@ public class ExcelExportService : IExcelExportService
         var sheet = workbook.Worksheets.Add("Registrations");
 
         // Define headers (Phase 6A.68: Removed Registration ID - not needed by organizers)
+        // Phase 6A.71: Updated "Total Amount" to clarify it shows NET revenue (after 5% commission)
         var headers = new[]
         {
             "Main Attendee",
@@ -53,7 +54,7 @@ public class ExcelExportService : IExcelExportService
             "Phone",
             "Address",
             "Payment Status",
-            "Total Amount",
+            "Net Amount (after 5% fee)",  // Phase 6A.71: Clarified as NET revenue
             "Currency",
             "Ticket Code",
             "QR Code",

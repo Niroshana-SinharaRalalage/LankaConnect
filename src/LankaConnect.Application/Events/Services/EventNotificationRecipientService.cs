@@ -143,6 +143,12 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
             breakdown.StateLevelSubscribers,
             breakdown.AllLocationsSubscribers);
 
+        // TEMP DIAGNOSTIC: Log recipient details for debugging
+        // TODO-REMOVE: Remove after Phase 6A.70 verification
+        _logger.LogInformation(
+            "[TEMP-DIAGNOSTIC] Newsletter subscriber emails resolved: {NewsletterEmails}",
+            string.Join(", ", newsletterAddresses.Emails.OrderBy(e => e)));
+
         return new EventNotificationRecipients(allEmails, breakdown);
     }
 
@@ -382,6 +388,16 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
             "[RCA-GEO6] Event matches {Count} metro areas: [{MetroIds}]",
             matchingMetroIds.Count, string.Join(", ", matchingMetroIds));
 
+        // TEMP DIAGNOSTIC: Log matched metro names for easier debugging
+        // TODO-REMOVE: Remove after Phase 6A.70 verification
+        var matchedMetroNames = stateMetros
+            .Where(m => matchingMetroIds.Contains(m.Id))
+            .Select(m => m.Name)
+            .ToList();
+        _logger.LogInformation(
+            "[TEMP-DIAGNOSTIC] Matched metro area names: {MetroNames}",
+            string.Join(", ", matchedMetroNames));
+
         // Step 3: Get subscribers for all matching metro areas
         var allSubscribers = new List<NewsletterSubscriber>();
 
@@ -414,6 +430,12 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         _logger.LogInformation(
             "[RCA-GEO8] Geo-spatial matching complete: {TotalSubscribers} total, {UniqueSubscribers} unique",
             allSubscribers.Count, uniqueSubscribers.Count);
+
+        // TEMP DIAGNOSTIC: Log subscriber emails found via geo-spatial matching
+        // TODO-REMOVE: Remove after Phase 6A.70 verification
+        _logger.LogInformation(
+            "[TEMP-DIAGNOSTIC] Geo-spatial subscribers found: {SubscriberEmails}",
+            string.Join(", ", uniqueSubscribers.Select(s => s.Email.Value).OrderBy(e => e)));
 
         return uniqueSubscribers;
     }

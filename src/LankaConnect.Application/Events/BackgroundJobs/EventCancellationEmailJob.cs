@@ -149,6 +149,12 @@ public class EventCancellationEmailJob
                 registrationEmails.Count,
                 notificationRecipients.EmailAddresses.Count);
 
+            // TEMP DIAGNOSTIC: Log all recipient email addresses
+            // TODO-REMOVE: Remove this verbose logging after Phase 6A.70 verification
+            _logger.LogInformation(
+                "[TEMP-DIAGNOSTIC] Event {EventId} cancellation email recipients: {Recipients}",
+                eventId, string.Join(", ", allRecipients.OrderBy(e => e)));
+
             // 5. Prepare template parameters
             var parameters = new Dictionary<string, object>
             {
@@ -184,7 +190,9 @@ public class EventCancellationEmailJob
                     if (result.IsSuccess)
                     {
                         successCount++;
-                        _logger.LogDebug("[Phase 6A.64] Sent cancellation email to {Email} in {ElapsedMs}ms",
+                        // TEMP DIAGNOSTIC: Change from Debug to Information to see in logs
+                        // TODO-REMOVE: Change back to LogDebug after Phase 6A.70 verification
+                        _logger.LogInformation("[TEMP-DIAGNOSTIC] Successfully sent cancellation email to {Email} in {ElapsedMs}ms",
                             email, singleEmailStopwatch.ElapsedMilliseconds);
                     }
                     else

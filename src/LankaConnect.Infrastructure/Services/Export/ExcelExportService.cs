@@ -38,9 +38,8 @@ public class ExcelExportService : IExcelExportService
     {
         var sheet = workbook.Worksheets.Add("Registrations");
 
-        // Define headers (Phase 6A.68: Removed Registration ID - not needed by organizers)
-        // Phase 6A.71: Updated "Total Amount" to clarify it shows NET revenue (after 5% commission)
-        var headers = new[]
+        // Phase 6A.71: Build headers dynamically based on event type (free vs paid)
+        var headersList = new List<string>
         {
             "Main Attendee",
             "Additional Attendees",
@@ -52,15 +51,26 @@ public class ExcelExportService : IExcelExportService
             "Gender Distribution",
             "Email",
             "Phone",
-            "Address",
-            "Payment Status",
-            "Net Amount (after 5% fee)",  // Phase 6A.71: Clarified as NET revenue
-            "Currency",
+            "Address"
+        };
+
+        // Phase 6A.71: Only include payment/amount columns for paid events
+        if (!data.IsFreeEvent)
+        {
+            headersList.Add("Payment Status");
+            headersList.Add("Net Amount (after 5% fee)");
+            headersList.Add("Currency");
+        }
+
+        headersList.AddRange(new[]
+        {
             "Ticket Code",
             "QR Code",
             "Registration Date",
             "Status"
-        };
+        });
+
+        var headers = headersList.ToArray();
 
         // Write headers
         for (int i = 0; i < headers.Length; i++)
@@ -96,21 +106,27 @@ public class ExcelExportService : IExcelExportService
             sheet.Cell(row, col++).Value = attendee.ContactEmail;
             sheet.Cell(row, col++).Value = attendee.ContactPhone;
             sheet.Cell(row, col++).Value = attendee.ContactAddress ?? "—";
-            sheet.Cell(row, col++).Value = attendee.PaymentStatus.ToString();
 
-            // Format currency values
-            if (attendee.TotalAmount.HasValue)
+            // Phase 6A.71: Conditionally write payment/amount columns for paid events only
+            if (!data.IsFreeEvent)
             {
-                sheet.Cell(row, col).Value = attendee.TotalAmount.Value;
-                sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
-            }
-            else
-            {
-                sheet.Cell(row, col).Value = "—";
-            }
-            col++;
+                sheet.Cell(row, col++).Value = attendee.PaymentStatus.ToString();
 
-            sheet.Cell(row, col++).Value = attendee.Currency ?? "—";
+                // Phase 6A.71: Show NET amount (after commission) instead of GROSS
+                if (attendee.NetAmount.HasValue)
+                {
+                    sheet.Cell(row, col).Value = attendee.NetAmount.Value;
+                    sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                }
+                else
+                {
+                    sheet.Cell(row, col).Value = "—";
+                }
+                col++;
+
+                sheet.Cell(row, col++).Value = attendee.Currency ?? "—";
+            }
+
             sheet.Cell(row, col++).Value = attendee.TicketCode ?? "—";
             sheet.Cell(row, col++).Value = attendee.QrCodeData ?? "—";
 
@@ -124,21 +140,24 @@ public class ExcelExportService : IExcelExportService
             row++;
         }
 
-        // Phase 6A.68: Add summary row (adjusted column numbers after removing RegistrationId)
+        // Phase 6A.71: Add summary row with dynamic column positioning
         row++;
         sheet.Cell(row, 1).Value = "TOTALS";
         sheet.Cell(row, 1).Style.Font.Bold = true;
 
-        // Total Attendees column (now column 3 instead of 4)
+        // Total Attendees column (column 3)
         sheet.Cell(row, 3).Value = data.TotalAttendees;
         sheet.Cell(row, 3).Style.Font.Bold = true;
 
-        // Phase 6A.71: Net Revenue column (organizer's payout after commission)
+        // Phase 6A.71: Net Revenue column (only for paid events)
+        // Column position: 11 (Address) + 1 (PaymentStatus) + 1 (NetAmount) = 13 for paid events
         if (!data.IsFreeEvent && data.NetRevenue > 0)
         {
-            sheet.Cell(row, 13).Value = data.NetRevenue;
-            sheet.Cell(row, 13).Style.NumberFormat.Format = "#,##0.00";
-            sheet.Cell(row, 13).Style.Font.Bold = true;
+            // Net Amount column is at position 13 (11 base columns + PaymentStatus + NetAmount)
+            var netAmountCol = 13;
+            sheet.Cell(row, netAmountCol).Value = data.NetRevenue;
+            sheet.Cell(row, netAmountCol).Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(row, netAmountCol).Style.Font.Bold = true;
         }
 
         // Auto-fit columns

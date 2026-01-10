@@ -84,6 +84,13 @@ public class GetEventAttendeesQueryHandler
                 ),
 
                 TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
+
+                // Phase 6A.71: Calculate NET amount per registration (organizer's payout after 5% commission)
+                // For free events or null amounts, NetAmount will be null
+                NetAmount = r.TotalPrice != null
+                    ? r.TotalPrice.Amount * (1 - _commissionSettings.EventTicketCommissionRate)
+                    : null,
+
                 Currency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
 
                 // Ticket info - will be enhanced when Ticket entity integration is complete

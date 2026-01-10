@@ -27,7 +27,18 @@ public class EventAttendeeDto
     public string GenderDistribution { get; init; } = string.Empty;
 
     // Payment Info
+    /// <summary>
+    /// Phase 6A.71: GROSS amount (what customer paid, before commission).
+    /// For organizer payout, use NetAmount instead.
+    /// </summary>
     public decimal? TotalAmount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.71: NET amount (organizer's payout after 5% platform commission).
+    /// Null for free events or registrations without payment.
+    /// </summary>
+    public decimal? NetAmount { get; init; }
+
     public string? Currency { get; init; }
 
     // Ticket Info

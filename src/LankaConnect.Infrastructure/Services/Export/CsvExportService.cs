@@ -41,9 +41,15 @@ public class CsvExportService : ICsvExportService
         csv.WriteField("Email");
         csv.WriteField("Phone");
         csv.WriteField("Address");
-        csv.WriteField("PaymentStatus");
-        csv.WriteField("TotalAmount");
-        csv.WriteField("Currency");
+
+        // Phase 6A.71: Conditionally include payment/amount columns only for paid events
+        if (!attendees.IsFreeEvent)
+        {
+            csv.WriteField("PaymentStatus");
+            csv.WriteField("NetAmount");
+            csv.WriteField("Currency");
+        }
+
         csv.WriteField("TicketCode");
         csv.WriteField("QRCode");
         csv.WriteField("RegistrationDate");
@@ -82,9 +88,16 @@ public class CsvExportService : ICsvExportService
             csv.WriteField(a.ContactEmail);
             csv.WriteField(a.ContactPhone ?? "");
             csv.WriteField(a.ContactAddress ?? "");
-            csv.WriteField(a.PaymentStatus.ToString());
-            csv.WriteField(a.TotalAmount?.ToString("F2") ?? "");
-            csv.WriteField(a.Currency ?? "");
+
+            // Phase 6A.71: Conditionally write payment/amount columns only for paid events
+            if (!attendees.IsFreeEvent)
+            {
+                csv.WriteField(a.PaymentStatus.ToString());
+                // Phase 6A.71: Show NET amount (after commission) instead of GROSS
+                csv.WriteField(a.NetAmount?.ToString("F2") ?? "");
+                csv.WriteField(a.Currency ?? "");
+            }
+
             csv.WriteField(a.TicketCode ?? "");
             csv.WriteField(a.QrCodeData ?? "");
             csv.WriteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -110,11 +123,17 @@ public class CsvExportService : ICsvExportService
             csv.WriteField("");  // Email
             csv.WriteField("");  // Phone
             csv.WriteField("");  // Address
-            csv.WriteField("");  // PaymentStatus
-            csv.WriteField(!attendees.IsFreeEvent && netRevenue > 0
-                ? $"{netRevenue:F2} (after 5% fee)"
-                : grossRevenue.ToString("F2"));  // Show NET revenue with label, or GROSS if free event
-            csv.WriteField(currency);  // Currency
+
+            // Phase 6A.71: Conditionally write payment/amount columns in summary row
+            if (!attendees.IsFreeEvent)
+            {
+                csv.WriteField("");  // PaymentStatus
+                csv.WriteField(netRevenue > 0
+                    ? $"{netRevenue:F2} (after 5% fee)"
+                    : "0.00");  // Show NET revenue with label
+                csv.WriteField(currency);  // Currency
+            }
+
             csv.WriteField("");  // TicketCode
             csv.WriteField("");  // QRCode
             csv.WriteField("");  // RegistrationDate

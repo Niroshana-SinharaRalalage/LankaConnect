@@ -918,7 +918,10 @@ export interface EventAttendeeDto {
   genderDistribution: string;
 
   // Payment Info
+  /** Phase 6A.71: GROSS amount (what customer paid, before commission) */
   totalAmount?: number | null;
+  /** Phase 6A.71: NET amount (organizer's payout after 5% platform commission) */
+  netAmount?: number | null;
   currency?: string | null;
 
   // Ticket Info

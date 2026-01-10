@@ -346,8 +346,13 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Gender</th>
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Email</th>
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Phone</th>
-                    <th className="text-left p-3 text-sm font-semibold text-neutral-700">Payment</th>
-                    <th className="text-left p-3 text-sm font-semibold text-neutral-700">Amount</th>
+                    {/* Phase 6A.71: Hide payment/amount columns for free events */}
+                    {!isFreeEvent && (
+                      <>
+                        <th className="text-left p-3 text-sm font-semibold text-neutral-700">Payment</th>
+                        <th className="text-left p-3 text-sm font-semibold text-neutral-700">Net Amount</th>
+                      </>
+                    )}
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Status</th>
                   </tr>
                 </thead>
@@ -392,18 +397,24 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                           <td className="p-3 text-sm text-neutral-600">{attendee.genderDistribution || '—'}</td>
                           <td className="p-3 text-sm text-neutral-600">{attendee.contactEmail || '—'}</td>
                           <td className="p-3 text-sm text-neutral-600">{attendee.contactPhone || '—'}</td>
-                          <td className="p-3">
-                            {attendee.paymentStatus === PaymentStatus.NotRequired ? (
-                              <span className="text-sm text-neutral-500">N/A</span>
-                            ) : (
-                              <Badge style={{ backgroundColor: getPaymentStatusColor(attendee.paymentStatus), color: 'white' }}>
-                                {getPaymentStatusLabel(attendee.paymentStatus)}
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-3 text-sm text-neutral-900 font-medium">
-                            {attendee.totalAmount ? `$${attendee.totalAmount.toFixed(2)}` : '—'}
-                          </td>
+                          {/* Phase 6A.71: Hide payment/amount columns for free events */}
+                          {!isFreeEvent && (
+                            <>
+                              <td className="p-3">
+                                {attendee.paymentStatus === PaymentStatus.NotRequired ? (
+                                  <span className="text-sm text-neutral-500">N/A</span>
+                                ) : (
+                                  <Badge style={{ backgroundColor: getPaymentStatusColor(attendee.paymentStatus), color: 'white' }}>
+                                    {getPaymentStatusLabel(attendee.paymentStatus)}
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-3 text-sm text-neutral-900 font-medium">
+                                {/* Phase 6A.71: Show NET amount (after commission) instead of GROSS */}
+                                {attendee.netAmount ? `$${attendee.netAmount.toFixed(2)}` : '—'}
+                              </td>
+                            </>
+                          )}
                           <td className="p-3">
                             <Badge style={{ backgroundColor: getStatusColor(attendee.status), color: 'white' }}>
                               {getRegistrationStatusLabel(attendee.status)}
@@ -414,7 +425,8 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                         {/* Expanded Row - Attendee Details */}
                         {isExpanded && (
                           <tr className="bg-neutral-50 border-b border-neutral-100">
-                            <td colSpan={11} className="p-6">
+                            {/* Phase 6A.71: Adjust colSpan for conditional columns (9 for free events, 11 for paid) */}
+                            <td colSpan={isFreeEvent ? 9 : 11} className="p-6">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Left Column - Attendee Details */}
                                 <div>
@@ -492,7 +504,8 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                 {attendees.length > 0 && (
                   <tfoot className="sticky bottom-0 bg-neutral-100 border-t-2 border-neutral-300">
                     <tr>
-                      <td colSpan={11} className="p-4">
+                      {/* Phase 6A.71: Adjust colSpan for conditional columns (9 for free events, 11 for paid) */}
+                      <td colSpan={isFreeEvent ? 9 : 11} className="p-4">
                         <div className="flex justify-end items-center gap-8">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-neutral-700">Total Registrations:</span>

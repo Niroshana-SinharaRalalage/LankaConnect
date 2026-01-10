@@ -61,23 +61,33 @@ export default function EventsPage() {
   const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
   const [searchInput, setSearchInput] = useState<string>(''); // Phase 6A.58: Immediate search input (local state)
 
-  // Phase 6A.59: Debounce search term to avoid excessive API calls (matches dashboard behavior)
-  const debouncedSearchTerm = useDebounce(searchInput, 300);
+  // Phase 6A.72: Debounce search term to avoid excessive API calls
+  // PERFORMANCE FIX: Use 500ms debounce for smoother typing experience (was 300ms)
+  const debouncedSearchTerm = useDebounce(searchInput, 500);
 
-  // Build filters for useEvents hook
+  // Phase 6A.72: Memoize date range separately to avoid unnecessary recalculations
+  const dateRange = useMemo(() => getDateRangeForOption(dateRangeOption), [dateRangeOption]);
+
+  // Phase 6A.72: Build filters for useEvents hook with optimized dependencies
+  // PERFORMANCE FIX: Stabilize metroAreaIds array reference to prevent unnecessary re-renders
+  const stableMetroIds = useMemo(() =>
+    selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedMetroIds.length, ...selectedMetroIds]
+  );
+
   const filters = useMemo(() => {
-    const dateRange = getDateRangeForOption(dateRangeOption);
     return {
-      searchTerm: debouncedSearchTerm || undefined, // Phase 6A.59: Use debounced search term
+      searchTerm: debouncedSearchTerm || undefined,
       category: selectedCategory,
       userId: user?.userId,
       latitude: isAnonymous ? latitude ?? undefined : undefined,
       longitude: isAnonymous ? longitude ?? undefined : undefined,
-      metroAreaIds: selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+      metroAreaIds: stableMetroIds,
       state: selectedState,
-      ...dateRange, // Spread startDateFrom and startDateTo from date range
+      ...dateRange,
     };
-  }, [debouncedSearchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
+  }, [debouncedSearchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);

@@ -38,7 +38,7 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `event-${eventId}-signup-lists-${timestamp}.zip`;
+      const filename = `event-${eventId}-signup-lists-csv-${timestamp}.zip`;
 
       // Trigger download
       const url = URL.createObjectURL(blob);
@@ -67,7 +67,7 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
     }
   };
 
-  // Phase 6A.73: Handle export Excel (Excel file with category sheets)
+  // Phase 6A.73 (Revised): Handle export Excel (ZIP with multiple Excel files - one per signup list)
   const handleExportExcel = async () => {
     if (!signUpLists || signUpLists.length === 0) {
       alert('No sign-up lists to export');
@@ -77,9 +77,9 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
     try {
       const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistsexcel');
 
-      // Generate filename with timestamp
+      // Generate filename with timestamp - now returns ZIP file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `event-${eventId}-signup-lists-${timestamp}.xlsx`;
+      const filename = `event-${eventId}-signup-lists-excel-${timestamp}.zip`;
 
       // Trigger download
       const url = URL.createObjectURL(blob);

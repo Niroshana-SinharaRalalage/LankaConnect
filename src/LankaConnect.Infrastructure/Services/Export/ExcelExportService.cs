@@ -93,8 +93,10 @@ public class ExcelExportService : IExcelExportService
                 var sanitizedFileName = SanitizeFileName(signUpList.Category);
                 var fileName = $"{sanitizedFileName}.xlsx";
 
-                // Create ZIP entry and write complete Excel file
-                var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.Optimal);
+                // Phase 6A.73 Fix: Use NoCompression for XLSX files (already ZIP archives internally)
+                // CRITICAL: XLSX files use Open XML format (pre-compressed ZIP)
+                // Using Optimal compression causes double-compression, exposing internal XML structure
+                var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.NoCompression);
                 using (var entryStream = entry.Open())
                 {
                     entryStream.Write(excelBytes, 0, excelBytes.Length);

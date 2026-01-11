@@ -81,15 +81,23 @@ public class ExcelExportService : IExcelExportService
                     }
                 }
 
+                // Save workbook to memory first, then add to ZIP as complete file
+                byte[] excelBytes;
+                using (var excelMemoryStream = new MemoryStream())
+                {
+                    workbook.SaveAs(excelMemoryStream);
+                    excelBytes = excelMemoryStream.ToArray();
+                }
+
                 // Generate filename: "Food-and-Drinks.xlsx"
                 var sanitizedFileName = SanitizeFileName(signUpList.Category);
                 var fileName = $"{sanitizedFileName}.xlsx";
 
-                // Create ZIP entry and write Excel file directly
+                // Create ZIP entry and write complete Excel file
                 var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.Optimal);
                 using (var entryStream = entry.Open())
                 {
-                    workbook.SaveAs(entryStream);
+                    entryStream.Write(excelBytes, 0, excelBytes.Length);
                 }
             }
         }

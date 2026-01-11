@@ -217,7 +217,7 @@ const Footer: React.FC = () => {
             )}
             {subscribeStatus === 'success' && (
               <p className="text-green-300 text-sm mt-2 text-center" role="alert">
-                Thank you for subscribing!
+                Thank you for subscribing! Please check your email to confirm your subscription.
               </p>
             )}
           </div>

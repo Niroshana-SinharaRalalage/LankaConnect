@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
@@ -16,17 +17,20 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
     private readonly ILogger<SubscribeToNewsletterCommandHandler> _logger;
+    private readonly IConfiguration _configuration;
 
     public SubscribeToNewsletterCommandHandler(
         INewsletterSubscriberRepository repository,
         IUnitOfWork unitOfWork,
         IEmailService emailService,
-        ILogger<SubscribeToNewsletterCommandHandler> logger)
+        ILogger<SubscribeToNewsletterCommandHandler> logger,
+        IConfiguration configuration)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _emailService = emailService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<Result<SubscribeToNewsletterResponse>> Handle(
@@ -152,12 +156,17 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 ? "All Locations"
                 : (request.MetroAreaIds?.Count > 0 ? $"{request.MetroAreaIds.Count} Location(s)" : "All Locations");
 
+            // Phase 6A.71: Build confirmation and unsubscribe URLs from configuration
+            var apiBaseUrl = _configuration["ApplicationUrls:ApiBaseUrl"] ?? "https://lankaconnect.com";
+            var confirmPath = _configuration["ApplicationUrls:NewsletterConfirmPath"] ?? "/newsletter/confirm";
+            var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
+
             var emailParameters = new Dictionary<string, object>
             {
                 { "Email", request.Email },
                 { "ConfirmationToken", subscriber.ConfirmationToken! },
-                { "ConfirmationLink", $"https://lankaconnect.com/newsletter/confirm?token={subscriber.ConfirmationToken}" },
-                { "UnsubscribeLink", $"https://lankaconnect.com/newsletter/unsubscribe?token={subscriber.UnsubscribeToken}" },
+                { "ConfirmationLink", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
+                { "UnsubscribeLink", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
                 { "MetroArea", metroAreaDescription },
                 { "CompanyName", "LankaConnect" },
                 { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }

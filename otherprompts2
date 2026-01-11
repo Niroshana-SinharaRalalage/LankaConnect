@@ -415,7 +415,7 @@ Please consult systeme-architect do a comprehensive, systematic and Deep root ca
 ---------------------------------------------
 Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
 ----------------------------------------------
-Think harder and smarter as a Senior Software Engineer. Handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches. And follow these best practices:
+Think as a Senior Software Engineer. Handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches. And follow these best practices:
 
 1. Follow established UI/UX best practices at all times — clarity and usability matter.
 

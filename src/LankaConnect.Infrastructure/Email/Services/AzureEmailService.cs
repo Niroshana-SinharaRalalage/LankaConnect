@@ -57,6 +57,10 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
     {
         try
         {
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] SendEmailAsync START - ToEmail: {ToEmail}, Subject: {Subject}",
+                emailMessage.ToEmail, emailMessage.Subject);
+
             _logger.LogInformation("Attempting to send email to {ToEmail} with subject '{Subject}'",
                 emailMessage.ToEmail, emailMessage.Subject);
 
@@ -64,33 +68,53 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             var validationResult = ValidateEmailMessage(emailMessage);
             if (validationResult.IsFailure)
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Validation FAILED - Error: {Error}", validationResult.Error);
                 _logger.LogWarning("Email validation failed: {Error}", validationResult.Error);
                 return validationResult;
             }
+
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Validation PASSED - Creating domain entity");
 
             // Create domain entity for tracking
             var domainEmailResult = await CreateDomainEmailMessage(emailMessage, cancellationToken);
             if (domainEmailResult.IsFailure)
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Domain entity creation FAILED - Error: {Error}", domainEmailResult.Error);
                 return Result.Failure(domainEmailResult.Error);
             }
+
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Domain entity CREATED - Provider: {Provider}", _emailSettings.Provider);
 
             // Send based on provider
             Result sendResult;
             if (_emailSettings.Provider.Equals("Azure", StringComparison.OrdinalIgnoreCase))
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Calling SendViaAzureAsync");
                 sendResult = await SendViaAzureAsync(emailMessage, cancellationToken);
             }
             else
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Calling SendViaSmtpAsync");
                 sendResult = await SendViaSmtpAsync(emailMessage, cancellationToken);
             }
+
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Provider send COMPLETED - Success: {Success}, Error: {Error}",
+                sendResult.IsSuccess, sendResult.Error ?? "None");
 
             if (sendResult.IsFailure)
             {
                 // Mark domain entity as failed
-                domainEmailResult.Value.MarkAsFailed(sendResult.Error);
+                domainEmailResult.Value.MarkAsFailed(sendResult.Error ?? "Unknown error");
                 _emailMessageRepository.Update(domainEmailResult.Value);
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Domain entity marked as FAILED");
                 return sendResult;
             }
 
@@ -98,11 +122,18 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             domainEmailResult.Value.MarkAsSent();
             _emailMessageRepository.Update(domainEmailResult.Value);
 
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Domain entity marked as SENT - SUCCESS");
+
             _logger.LogInformation("Email sent successfully to {ToEmail}", emailMessage.ToEmail);
             return Result.Success();
         }
         catch (Exception ex)
         {
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError(ex, "[DIAG-EMAIL] EXCEPTION in SendEmailAsync - ExceptionType: {ExceptionType}, Message: {Message}",
+                ex.GetType().Name, ex.Message);
+
             _logger.LogError(ex, "Failed to send email to {ToEmail}", emailMessage.ToEmail);
             return Result.Failure($"Failed to send email: {ex.Message}");
         }
@@ -113,6 +144,10 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
     {
         try
         {
+            // TODO-REMOVE: Diagnostic logging - using LogError to bypass log filtering in staging
+            _logger.LogError("[DIAG-EMAIL] SendTemplatedEmailAsync START - Template: {TemplateName}, Recipient: {RecipientEmail}, Provider: {Provider}, HasAzureClient: {HasClient}",
+                templateName, recipientEmail, _emailSettings.Provider, _azureEmailClient != null);
+
             _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail}",
                 templateName, recipientEmail);
 
@@ -120,12 +155,20 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
             if (template == null)
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Template NOT FOUND - TemplateName: {TemplateName}", templateName);
                 _logger.LogWarning("Email template '{TemplateName}' not found in database", templateName);
                 return Result.Failure($"Email template '{templateName}' not found");
             }
 
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Template FOUND - IsActive: {IsActive}, HasHtml: {HasHtml}, SubjectLength: {SubjectLen}",
+                template.IsActive, !string.IsNullOrEmpty(template.HtmlTemplate), template.SubjectTemplate.Value?.Length ?? 0);
+
             if (!template.IsActive)
             {
+                // TODO-REMOVE: Diagnostic logging
+                _logger.LogError("[DIAG-EMAIL] Template INACTIVE - TemplateName: {TemplateName}", templateName);
                 _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
                 return Result.Failure($"Email template '{templateName}' is not active");
             }
@@ -133,9 +176,13 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             // Phase 6A.34 Fix: Render template directly from database content
             // Previously used RazorEmailTemplateService which reads from filesystem files
             // This caused a mismatch: database template was validated but filesystem template was rendered
-            var subject = RenderTemplateContent(template.SubjectTemplate.Value, parameters);
+            var subject = RenderTemplateContent(template.SubjectTemplate.Value ?? string.Empty, parameters);
             var htmlBody = RenderTemplateContent(template.HtmlTemplate ?? string.Empty, parameters);
-            var textBody = RenderTemplateContent(template.TextTemplate, parameters);
+            var textBody = RenderTemplateContent(template.TextTemplate ?? string.Empty, parameters);
+
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Template RENDERED - SubjectLen: {SubjectLen}, HtmlLen: {HtmlLen}, TextLen: {TextLen}",
+                subject?.Length ?? 0, htmlBody?.Length ?? 0, textBody?.Length ?? 0);
 
             _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
@@ -143,19 +190,33 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             var emailMessage = new EmailMessageDto
             {
                 ToEmail = recipientEmail,
-                Subject = subject,
-                HtmlBody = htmlBody,
-                PlainTextBody = textBody,
+                Subject = subject ?? string.Empty,
+                HtmlBody = htmlBody ?? string.Empty,
+                PlainTextBody = textBody ?? string.Empty,
                 FromEmail = _emailSettings.FromEmail,
                 FromName = _emailSettings.FromName,
                 Priority = 2 // Normal priority for templated emails
             };
 
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] Calling SendEmailAsync - FromEmail: {FromEmail}, FromName: {FromName}, ToEmail: {ToEmail}",
+                _emailSettings.FromEmail, _emailSettings.FromName, recipientEmail);
+
             // Send the email
-            return await SendEmailAsync(emailMessage, cancellationToken);
+            var result = await SendEmailAsync(emailMessage, cancellationToken);
+
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError("[DIAG-EMAIL] SendEmailAsync COMPLETED - Success: {Success}, Error: {Error}",
+                result.IsSuccess, result.Error ?? "None");
+
+            return result;
         }
         catch (Exception ex)
         {
+            // TODO-REMOVE: Diagnostic logging
+            _logger.LogError(ex, "[DIAG-EMAIL] EXCEPTION in SendTemplatedEmailAsync - Template: {TemplateName}, Recipient: {RecipientEmail}, ExceptionType: {ExceptionType}, Message: {Message}",
+                templateName, recipientEmail, ex.GetType().Name, ex.Message);
+
             _logger.LogError(ex, "Failed to send templated email '{TemplateName}' to {RecipientEmail}",
                 templateName, recipientEmail);
             return Result.Failure($"Failed to send templated email: {ex.Message}");

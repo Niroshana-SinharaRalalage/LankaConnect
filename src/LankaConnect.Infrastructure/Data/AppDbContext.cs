@@ -62,7 +62,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
-    public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
+    // public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature - COMMENTED OUT (incomplete feature)
 
     // Analytics Entity Sets (Epic 2 Phase 3)
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
@@ -130,7 +130,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
-        modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
+        // modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature - COMMENTED OUT (incomplete feature)
 
         // Analytics entity configurations (Epic 2 Phase 3)
         modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());

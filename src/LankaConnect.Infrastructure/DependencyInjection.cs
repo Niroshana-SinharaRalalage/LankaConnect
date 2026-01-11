@@ -243,6 +243,13 @@ public static class DependencyInjection
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
 
+        // Phase 6A.74: Newsletter/News Alert Feature - COMMENTED OUT (incomplete feature)
+        // services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Application.Communications.Services.NewsletterRecipientService>();
+
+        // Phase 6A.74: Newsletter Background Jobs - COMMENTED OUT (incomplete feature)
+        // services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.SendNewsletterEmailJob>();
+        // services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.DeactivateExpiredNewslettersJob>();
+
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>
         {

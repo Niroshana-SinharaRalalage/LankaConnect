@@ -58,11 +58,13 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
             .IsRequired();
 
         // Configure EmailTemplateCategory value object (stores as string)
+        // Phase 6A.71 Fix: Use FromDatabase() to prevent "Cannot access value of a failed result" during query materialization
+        // When loading from database, if category value is invalid, FromDatabase() returns System category as fallback
         builder.Property(e => e.Category)
             .HasColumnName("category")
             .HasConversion(
                 category => category.Value, // Convert to string for database
-                value => LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory.FromValue(value).Value) // Convert from string
+                value => LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory.FromDatabase(value)) // Convert from string with fallback
             .HasMaxLength(50)
             .IsRequired();
 

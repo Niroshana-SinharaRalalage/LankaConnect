@@ -162,7 +162,12 @@ public class EventCancellationEmailJob
                 ["EventDate"] = FormatEventDateTimeRange(@event.StartDate, @event.EndDate),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
-                ["DashboardUrl"] = _urlsService.FrontendBaseUrl
+                ["DashboardUrl"] = _urlsService.FrontendBaseUrl,
+                // Phase 6A.X: Organizer Contact Details
+                ["HasOrganizerContact"] = @event.HasOrganizerContact(),
+                ["OrganizerContactName"] = @event.OrganizerContactName ?? "",
+                ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "",
+                ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? ""
             };
 
             // 6. Send templated email to each recipient

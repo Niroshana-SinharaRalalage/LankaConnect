@@ -32,7 +32,12 @@ public record CreateEventCommand(
     // Phase 6D: Group Tiered Pricing - optional
     List<GroupPricingTierRequest>? GroupPricingTiers = null,
     // Phase 6A.32: Email Groups - optional
-    List<Guid>? EmailGroupIds = null
+    List<Guid>? EmailGroupIds = null,
+    // Phase 6A.X: Organizer Contact Details - optional
+    bool? PublishOrganizerContact = false,
+    string? OrganizerContactName = null,
+    string? OrganizerContactPhone = null,
+    string? OrganizerContactEmail = null
 ) : ICommand<Guid>;
 
 /// <summary>

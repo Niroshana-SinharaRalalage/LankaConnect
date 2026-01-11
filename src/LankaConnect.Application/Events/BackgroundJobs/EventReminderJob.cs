@@ -157,7 +157,12 @@ public class EventReminderJob
                             { "HoursUntilEvent", hoursUntilEvent },
                             { "ReminderTimeframe", reminderTimeframe },
                             { "ReminderMessage", reminderMessage },
-                            { "EventDetailsUrl", $"https://lankaconnect.com/events/{@event.Id}" }
+                            { "EventDetailsUrl", $"https://lankaconnect.com/events/{@event.Id}" },
+                            // Phase 6A.X: Organizer Contact Details
+                            { "HasOrganizerContact", @event.HasOrganizerContact() },
+                            { "OrganizerContactName", @event.OrganizerContactName ?? "" },
+                            { "OrganizerContactEmail", @event.OrganizerContactEmail ?? "" },
+                            { "OrganizerContactPhone", @event.OrganizerContactPhone ?? "" }
                         };
 
                         var result = await _emailService.SendTemplatedEmailAsync(

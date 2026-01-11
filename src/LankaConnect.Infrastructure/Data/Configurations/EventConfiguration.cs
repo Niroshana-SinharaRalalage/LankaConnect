@@ -71,6 +71,23 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(EventCategory.Community);
 
+        // Phase 6A.X: Event Organizer Contact Details - Optional contact information for event inquiries
+        builder.Property(e => e.PublishOrganizerContact)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.OrganizerContactName)
+            .HasMaxLength(200)
+            .IsRequired(false); // Nullable - only set when PublishOrganizerContact is true
+
+        builder.Property(e => e.OrganizerContactPhone)
+            .HasMaxLength(20)
+            .IsRequired(false); // Nullable - optional if email provided
+
+        builder.Property(e => e.OrganizerContactEmail)
+            .HasMaxLength(255)
+            .IsRequired(false); // Nullable - optional if phone provided
+
         // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
         // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice
         builder.OwnsOne(e => e.TicketPrice, money =>

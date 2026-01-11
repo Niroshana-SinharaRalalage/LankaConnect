@@ -130,6 +130,12 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 parameters["HasContactInfo"] = false;
             }
 
+            // Phase 6A.X: Organizer Contact Details - for event inquiries
+            parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
+            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
+            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
+            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+
             // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
             var result = await _emailService.SendTemplatedEmailAsync(
                 "registration-confirmation",

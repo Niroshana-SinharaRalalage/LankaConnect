@@ -37,6 +37,12 @@ public class Event : BaseEntity
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
 
+    // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
+    public bool PublishOrganizerContact { get; private set; }
+    public string? OrganizerContactName { get; private set; }
+    public string? OrganizerContactPhone { get; private set; }
+    public string? OrganizerContactEmail { get; private set; }
+
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
@@ -1700,6 +1706,93 @@ public class Event : BaseEntity
     /// Phase 6A.32: Email Groups Integration
     /// </summary>
     public int EmailGroupCount() => _emailGroupIds.Count;
+
+    #endregion
+
+    #region Organizer Contact Management
+
+    /// <summary>
+    /// Sets organizer contact details for event inquiries
+    /// Business Rules:
+    /// - If publishContact is true, contactName is required
+    /// - If publishContact is true, at least one contact method (email or phone) is required
+    /// - Email format is validated if provided
+    /// - If publishContact is false, all contact fields are cleared (privacy)
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    /// <param name="publishContact">Whether to publish organizer contact information</param>
+    /// <param name="contactName">Organizer's display name</param>
+    /// <param name="contactPhone">Organizer's phone number (optional if email provided)</param>
+    /// <param name="contactEmail">Organizer's email address (optional if phone provided)</param>
+    public Result SetOrganizerContactDetails(
+        bool publishContact,
+        string? contactName,
+        string? contactPhone,
+        string? contactEmail)
+    {
+        // Business Rule 1: If publishing contact, name is required
+        if (publishContact)
+        {
+            if (string.IsNullOrWhiteSpace(contactName))
+                return Result.Failure("Contact name is required when publishing organizer contact");
+
+            // Business Rule 2: At least one contact method (email or phone) must be provided
+            var hasEmail = !string.IsNullOrWhiteSpace(contactEmail);
+            var hasPhone = !string.IsNullOrWhiteSpace(contactPhone);
+
+            if (!hasEmail && !hasPhone)
+                return Result.Failure("At least one contact method (email or phone) is required");
+
+            // Business Rule 3: Email validation if provided
+            if (hasEmail && !IsValidEmail(contactEmail!))
+                return Result.Failure("Invalid email format");
+
+            // Set contact details (trimmed and normalized)
+            PublishOrganizerContact = true;
+            OrganizerContactName = contactName.Trim();
+            OrganizerContactPhone = hasPhone ? contactPhone!.Trim() : null;
+            OrganizerContactEmail = hasEmail ? contactEmail!.Trim().ToLowerInvariant() : null;
+        }
+        else
+        {
+            // Privacy: Clear all contact details when unpublishing
+            PublishOrganizerContact = false;
+            OrganizerContactName = null;
+            OrganizerContactPhone = null;
+            OrganizerContactEmail = null;
+        }
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if organizer contact information is published and available
+    /// Returns true only if contact is published AND has a valid contact name
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    public bool HasOrganizerContact() =>
+        PublishOrganizerContact && !string.IsNullOrWhiteSpace(OrganizerContactName);
+
+    /// <summary>
+    /// Validates email format using the same regex pattern as Email value object
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    /// <param name="email">Email address to validate</param>
+    /// <returns>True if email format is valid, false otherwise</returns>
+    private static bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        // RFC 5322 compliant email regex (same pattern as Email value object)
+        // Supports formats like: user@example.com, DoNotReply@7689582e-73cc-4552-b2ff-8afd9d1a6814.azurecomm.net
+        var emailRegex = new System.Text.RegularExpressions.Regex(
+            @"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return emailRegex.IsMatch(email.Trim());
+    }
 
     #endregion
 }

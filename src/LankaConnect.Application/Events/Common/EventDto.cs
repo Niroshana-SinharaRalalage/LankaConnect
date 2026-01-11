@@ -94,6 +94,15 @@ public record EventDto
     /// Includes IsActive flag to detect soft-deleted groups
     /// </summary>
     public IReadOnlyList<EmailGroupSummaryDto> EmailGroups { get; init; } = Array.Empty<EmailGroupSummaryDto>();
+
+    /// <summary>
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// Optional contact information published by the event organizer
+    /// </summary>
+    public bool PublishOrganizerContact { get; init; }
+    public string? OrganizerContactName { get; init; }
+    public string? OrganizerContactPhone { get; init; }
+    public string? OrganizerContactEmail { get; init; }
 }
 
 /// <summary>

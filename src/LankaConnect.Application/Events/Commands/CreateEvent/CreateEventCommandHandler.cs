@@ -245,6 +245,19 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(assignResult.Error);
         }
 
+        // Phase 6A.X: Set organizer contact details if provided
+        if (request.PublishOrganizerContact.GetValueOrDefault())
+        {
+            var contactResult = eventResult.Value.SetOrganizerContactDetails(
+                publishContact: true, // Safe to use true since we're inside the GetValueOrDefault() check
+                request.OrganizerContactName,
+                request.OrganizerContactPhone,
+                request.OrganizerContactEmail);
+
+            if (contactResult.IsFailure)
+                return Result<Guid>.Failure(contactResult.Error);
+        }
+
         // Phase 6A.33 FIX: Repository.AddAsync now handles email group shadow navigation sync
         // No manual EF Core state manipulation needed - repository pattern handles it
         await _eventRepository.AddAsync(eventResult.Value, cancellationToken);

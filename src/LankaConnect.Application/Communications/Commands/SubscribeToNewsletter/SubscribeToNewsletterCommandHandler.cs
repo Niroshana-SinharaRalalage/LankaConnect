@@ -167,7 +167,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 { "ConfirmationToken", subscriber.ConfirmationToken! },
                 { "ConfirmationLink", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
                 { "UnsubscribeLink", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
-                { "MetroArea", metroAreaDescription },
+                { "MetroAreasText", metroAreaDescription },
                 { "CompanyName", "LankaConnect" },
                 { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }
             };

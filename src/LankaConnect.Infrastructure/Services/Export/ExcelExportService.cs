@@ -81,19 +81,16 @@ public class ExcelExportService : IExcelExportService
                     }
                 }
 
-                // Save workbook to memory stream
-                using var excelStream = new MemoryStream();
-                workbook.SaveAs(excelStream);
-                excelStream.Position = 0;
-
                 // Generate filename: "Food-and-Drinks.xlsx"
                 var sanitizedFileName = SanitizeFileName(signUpList.Category);
                 var fileName = $"{sanitizedFileName}.xlsx";
 
-                // Create ZIP entry
+                // Create ZIP entry and write Excel file directly
                 var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.Optimal);
-                using var entryStream = entry.Open();
-                excelStream.CopyTo(entryStream);
+                using (var entryStream = entry.Open())
+                {
+                    workbook.SaveAs(entryStream);
+                }
             }
         }
 

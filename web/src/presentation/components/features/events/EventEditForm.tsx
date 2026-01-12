@@ -227,6 +227,23 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const isFree = watch('isFree');
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
+  const publishOrganizerContact = watch('publishOrganizerContact');
+
+  // Phase 6A.X: Auto-populate organizer contact from user profile when checkbox is checked
+  useEffect(() => {
+    if (publishOrganizerContact && user) {
+      // Only auto-populate if fields are empty
+      const currentName = watch('organizerContactName');
+      const currentEmail = watch('organizerContactEmail');
+
+      if (!currentName) {
+        setValue('organizerContactName', user.fullName, { shouldDirty: true });
+      }
+      if (!currentEmail) {
+        setValue('organizerContactEmail', user.email, { shouldDirty: true });
+      }
+    }
+  }, [publishOrganizerContact, user, setValue, watch]);
 
   // Session 33: Use useFieldArray for dynamic group pricing tiers management
   const { fields, append, remove } = useFieldArray({

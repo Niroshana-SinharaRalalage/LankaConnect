@@ -1,13 +1,13 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.74 Part 3D: Newsletter API Layer - ✅ COMMITTED*
+*Last Updated: 2026-01-12 - Phase 6A.74 Part 3D: Newsletter API Layer - ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 3D): Newsletter API Layer - ✅ COMMITTED
+## 🎯 Current Session Status - Phase 6A.74 (Part 3D): Newsletter API Layer - ✅ DEPLOYED
 
 ### Phase 6A.74 (Part 3D) - Newsletter/News Alert API Layer Implementation - 2026-01-12
 
-**Status**: ✅ **COMMITTED** (API layer complete, commit 69cfeaf1, build 0 errors)
+**Status**: ✅ **DEPLOYED** (API layer complete, commit 69cfeaf1, deployment #20923480646, migration applied)
 
 **Goal**: Implement Newsletter/News Alert API layer with REST controller, query handlers, and request DTOs for Phase 6A.74 feature
 
@@ -52,19 +52,36 @@
 - ✅ Pushed: origin/develop
 - ✅ Files: 9 changed, 495 insertions(+)
 
+**Deployment**:
+- ✅ Workflow: deploy-staging.yml run #20923480646
+- ✅ Duration: 5m 36s
+- ✅ Migration: 20260112040037_Phase6A74Part3C_AddNewsletterTable applied successfully ("Done")
+- ✅ Health check: 200 OK
+- ✅ URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- ✅ Tables created: communications.newsletters, newsletter_email_groups, newsletter_metro_areas
+
 **Phase 6A.74 Progress**:
 - ✅ Part 3A: Domain Layer - COMMITTED in previous session
 - ✅ Part 3B: Application Layer - COMMITTED (commit 8b0aa25f)
 - ✅ Part 3C: Infrastructure Layer - COMMITTED (commit 822a8820)
-- ✅ Part 3D: API Layer - **COMMITTED THIS SESSION**
-- ⏳ Part 3E: Deployment & Testing - IN PROGRESS
+- ✅ Part 3D: API Layer - **DEPLOYED THIS SESSION** (commit 69cfeaf1)
+- ✅ Part 3E: Deployment & Testing - **COMPLETE**
+
+**API Endpoints Available** (Authorization: EventOrganizer, Admin, AdminManager):
+1. POST /api/newsletters - Create newsletter (201 Created)
+2. PUT /api/newsletters/{id} - Update draft (200 OK)
+3. DELETE /api/newsletters/{id} - Delete draft (204 NoContent)
+4. POST /api/newsletters/{id}/publish - Publish (Draft → Active) (200 OK)
+5. POST /api/newsletters/{id}/send - Queue Hangfire job (202 Accepted)
+6. GET /api/newsletters/{id} - Get by ID (NewsletterDto)
+7. GET /api/newsletters/my-newsletters - Get user's newsletters (List<NewsletterDto>)
+8. GET /api/newsletters/event/{eventId} - Get event newsletters (List<NewsletterDto>)
+9. GET /api/newsletters/{id}/recipient-preview - Preview recipients (RecipientPreviewDto)
 
 **Next Steps**:
-1. Deploy to Azure staging using deploy-staging.yml
-2. Verify migration 20260112040037_Phase6A74Part3C_AddNewsletterTable applied successfully
-3. Test all 9 Newsletter API endpoints via Swagger
-4. Monitor Azure container logs for any issues
-5. Update STREAMLINED_ACTION_PLAN.md and TASK_SYNCHRONIZATION_STRATEGY.md
+1. Frontend implementation (Part 4): Newsletter UI components, dashboard integration
+2. Email template creation for newsletter content
+3. Update STREAMLINED_ACTION_PLAN.md and TASK_SYNCHRONIZATION_STRATEGY.md
 
 ---
 

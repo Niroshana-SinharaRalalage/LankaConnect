@@ -1939,10 +1939,12 @@ public class EventsController : BaseController<EventsController>
         }
 
         // Phase 6A.69: Parse format (added signuplistszip support)
+        // Phase 6A.73: Added signuplistsexcel support
         var exportFormat = format.ToLower() switch
         {
             "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
             "signuplistszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
+            "signuplistsexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
             _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
         };
 

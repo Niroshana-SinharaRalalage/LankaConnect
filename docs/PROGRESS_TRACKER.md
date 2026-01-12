@@ -1,9 +1,74 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.73: Excel Export MemoryStream Fix - ✅ DEPLOYED*
+*Last Updated: 2026-01-12 - Phase 6A.74 Part 3D: Newsletter API Layer - ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.73: Excel Export MemoryStream Fix - ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.74 (Part 3D): Newsletter API Layer - ✅ COMMITTED
+
+### Phase 6A.74 (Part 3D) - Newsletter/News Alert API Layer Implementation - 2026-01-12
+
+**Status**: ✅ **COMMITTED** (API layer complete, commit 69cfeaf1, build 0 errors)
+
+**Goal**: Implement Newsletter/News Alert API layer with REST controller, query handlers, and request DTOs for Phase 6A.74 feature
+
+**Implementation**:
+- ✅ **NewslettersController Created** (9 endpoints):
+  * POST /api/newsletters - Create newsletter (returns 201 Created with ID)
+  * PUT /api/newsletters/{id} - Update draft newsletter (returns 200 OK)
+  * DELETE /api/newsletters/{id} - Delete draft newsletter (returns 204 NoContent)
+  * POST /api/newsletters/{id}/publish - Publish newsletter (Draft → Active) (returns 200 OK)
+  * POST /api/newsletters/{id}/send - Queue Hangfire email job (returns 202 Accepted)
+  * GET /api/newsletters/{id} - Get newsletter by ID (returns NewsletterDto)
+  * GET /api/newsletters/my-newsletters - Get current user's newsletters (returns List<NewsletterDto>)
+  * GET /api/newsletters/event/{eventId} - Get newsletters for event (returns List<NewsletterDto>)
+  * GET /api/newsletters/{id}/recipient-preview - Preview recipients (returns RecipientPreviewDto)
+
+- ✅ **Query Handlers Created** (6 files):
+  * GetNewsletterByIdQuery + Handler: Retrieves newsletter with authorization (creator or admin)
+  * GetNewslettersByCreatorQuery + Handler: Uses ICurrentUserService internally, no parameters needed
+  * GetRecipientPreviewQuery + Handler: Resolves recipients via INewsletterRecipientService
+
+- ✅ **Request DTOs Created** (2 files):
+  * CreateNewsletterRequest.cs: Title, Description, EmailGroupIds, IncludeNewsletterSubscribers, EventId, MetroAreaIds, TargetAllLocations
+  * UpdateNewsletterRequest.cs: Same properties as Create (for draft updates)
+
+**Authorization**:
+- ✅ Controller-level: [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+- ✅ Handler-level: Creator-only checks for GetById and RecipientPreview
+- ✅ Command handlers already enforce creator authorization (from Part 3B)
+
+**Pattern Compliance**:
+- ✅ Inherits BaseController<NewslettersController> (matches EventsController)
+- ✅ Uses IMediator for CQRS pattern
+- ✅ HandleResult() for consistent error responses
+- ✅ CreatedAtAction() for POST Create endpoint
+- ✅ Accepted() for async job queueing (Send endpoint)
+- ✅ NoContent() for DELETE endpoint
+- ✅ Logging with [Phase 6A.74] prefix
+
+**Build Status**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Commit: 69cfeaf1
+- ✅ Pushed: origin/develop
+- ✅ Files: 9 changed, 495 insertions(+)
+
+**Phase 6A.74 Progress**:
+- ✅ Part 3A: Domain Layer - COMMITTED in previous session
+- ✅ Part 3B: Application Layer - COMMITTED (commit 8b0aa25f)
+- ✅ Part 3C: Infrastructure Layer - COMMITTED (commit 822a8820)
+- ✅ Part 3D: API Layer - **COMMITTED THIS SESSION**
+- ⏳ Part 3E: Deployment & Testing - IN PROGRESS
+
+**Next Steps**:
+1. Deploy to Azure staging using deploy-staging.yml
+2. Verify migration 20260112040037_Phase6A74Part3C_AddNewsletterTable applied successfully
+3. Test all 9 Newsletter API endpoints via Swagger
+4. Monitor Azure container logs for any issues
+5. Update STREAMLINED_ACTION_PLAN.md and TASK_SYNCHRONIZATION_STRATEGY.md
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.73: Excel Export MemoryStream Fix - ✅ DEPLOYED
 
 ### Phase 6A.73 - Fix Excel Signup List Export MemoryStream Position Bug - 2026-01-12
 

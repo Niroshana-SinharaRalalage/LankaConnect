@@ -73,7 +73,14 @@
 
 ### Phase 6A.71 - Event Reminders with Idempotency Tracking - 2026-01-12
 
-**Status**: ✅ **DEPLOYED** (Commit 23faf8c1, Deployment #20924010324, migration applied)
+**Status**: ✅ **DEPLOYED** (Commit 23faf8c1 deployed via f0c55f3b, Revision 0000551, migration applied)
+
+**Deployment Notes**:
+- Direct deployment attempts failed due to concurrent operation conflicts
+- Code successfully deployed via subsequent commits (d163df2c → fe0260ba → f0c55f3b)
+- Migration applied successfully during Run #20924929348
+- Current revision: lankaconnect-api-staging--0000551
+- Hangfire confirmed active and responding
 
 **Goal**: Fix event reminders with configuration-based URLs, idempotency tracking, and enhanced observability
 

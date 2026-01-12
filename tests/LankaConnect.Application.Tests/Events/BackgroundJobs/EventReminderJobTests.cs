@@ -1,5 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -19,6 +21,8 @@ public class EventReminderJobTests
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
+    private readonly Mock<IEventReminderRepository> _eventReminderRepository;
     private readonly Mock<ILogger<EventReminderJob>> _logger;
     private readonly EventReminderJob _job;
 
@@ -27,12 +31,26 @@ public class EventReminderJobTests
         _eventRepository = new Mock<IEventRepository>();
         _userRepository = new Mock<IUserRepository>();
         _emailService = new Mock<IEmailService>();
+        _emailUrlHelper = new Mock<IEmailUrlHelper>();
+        _eventReminderRepository = new Mock<IEventReminderRepository>();
         _logger = new Mock<ILogger<EventReminderJob>>();
+
+        // Phase 6A.71: Setup IEmailUrlHelper mock to return test URL
+        _emailUrlHelper
+            .Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))
+            .Returns((Guid eventId) => $"https://test.lankaconnect.com/events/{eventId}");
+
+        // Phase 6A.71: Setup IEventReminderRepository mock to allow all sends by default
+        _eventReminderRepository
+            .Setup(x => x.IsReminderAlreadySentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         _job = new EventReminderJob(
             _eventRepository.Object,
             _userRepository.Object,
             _emailService.Object,
+            _emailUrlHelper.Object,
+            _eventReminderRepository.Object,
             _logger.Object);
     }
 

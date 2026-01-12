@@ -1,4 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
@@ -7,67 +9,84 @@ using Microsoft.Extensions.Logging;
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
 /// <summary>
-/// Background job that runs hourly to send reminder emails for events starting in 24 hours
+/// Phase 6A.71: Background job that runs hourly to send reminder emails for events
+/// with idempotency tracking to prevent duplicate reminders
 /// </summary>
 public class EventReminderJob
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly IEventReminderRepository _eventReminderRepository;
     private readonly ILogger<EventReminderJob> _logger;
 
     public EventReminderJob(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IEmailService emailService,
+        IEmailUrlHelper emailUrlHelper,
+        IEventReminderRepository eventReminderRepository,
         ILogger<EventReminderJob> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _emailService = emailService;
+        _emailUrlHelper = emailUrlHelper;
+        _eventReminderRepository = eventReminderRepository;
         _logger = logger;
     }
 
     public async Task ExecuteAsync()
     {
-        _logger.LogInformation("[Phase 6A.57] EventReminderJob: Starting execution at {Time}", DateTime.UtcNow);
+        var correlationId = Guid.NewGuid().ToString("N")[..8];
+        _logger.LogInformation(
+            "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Starting execution at {Time}",
+            correlationId, DateTime.UtcNow);
 
         try
         {
             var now = DateTime.UtcNow;
 
-            // Phase 6A.57: Send 3 types of reminders (7 days, 2 days, 1 day)
+            // Phase 6A.71: Send 3 types of reminders (7 days, 2 days, 1 day)
             // Use 2-hour windows to prevent duplicates while running hourly
-            await SendRemindersForWindowAsync(now, 167, 169, "in 1 week", "Your event is coming up next week. Mark your calendar!", CancellationToken.None);
-            await SendRemindersForWindowAsync(now, 47, 49, "in 2 days", "Your event is just 2 days away. Don't forget!", CancellationToken.None);
-            await SendRemindersForWindowAsync(now, 23, 25, "tomorrow", "Your event is tomorrow! We look forward to seeing you there.", CancellationToken.None);
+            await SendRemindersForWindowAsync(now, 167, 169, "7day", "in 1 week", "Your event is coming up next week. Mark your calendar!", correlationId, CancellationToken.None);
+            await SendRemindersForWindowAsync(now, 47, 49, "2day", "in 2 days", "Your event is just 2 days away. Don't forget!", correlationId, CancellationToken.None);
+            await SendRemindersForWindowAsync(now, 23, 25, "1day", "tomorrow", "Your event is tomorrow! We look forward to seeing you there.", correlationId, CancellationToken.None);
 
-            _logger.LogInformation("[Phase 6A.57] EventReminderJob: Completed execution at {Time}", DateTime.UtcNow);
+            _logger.LogInformation(
+                "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Completed execution at {Time}",
+                correlationId, DateTime.UtcNow);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.57] EventReminderJob: Fatal error during execution");
+            _logger.LogError(ex,
+                "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Fatal error during execution",
+                correlationId);
         }
     }
 
     /// <summary>
-    /// Phase 6A.57: Send reminders for events starting within a specific time window.
+    /// Phase 6A.71: Send reminders for events starting within a specific time window.
     /// Uses 2-hour windows to prevent duplicate reminders while job runs hourly.
+    /// Includes idempotency tracking via event_reminders_sent table.
     /// </summary>
     private async Task SendRemindersForWindowAsync(
         DateTime now,
         int startHours,
         int endHours,
+        string reminderType,
         string reminderTimeframe,
         string reminderMessage,
+        string correlationId,
         CancellationToken cancellationToken)
     {
         var windowStart = now.AddHours(startHours);
         var windowEnd = now.AddHours(endHours);
 
         _logger.LogInformation(
-            "[Phase 6A.57] EventReminderJob: Checking {Timeframe} reminder window ({Start} to {End})",
-            reminderTimeframe, windowStart, windowEnd);
+            "[Phase 6A.71] [{CorrelationId}] Checking {Timeframe} reminder window ({Start} to {End})",
+            correlationId, reminderTimeframe, windowStart, windowEnd);
 
         var upcomingEvents = await _eventRepository.GetEventsStartingInTimeWindowAsync(
             windowStart,
@@ -76,13 +95,15 @@ public class EventReminderJob
 
         if (upcomingEvents.Count == 0)
         {
-            _logger.LogInformation("[Phase 6A.57] No events found in {Timeframe} reminder window", reminderTimeframe);
+            _logger.LogInformation(
+                "[Phase 6A.71] [{CorrelationId}] No events found in {Timeframe} reminder window",
+                correlationId, reminderTimeframe);
             return;
         }
 
         _logger.LogInformation(
-            "[Phase 6A.57] Found {Count} events requiring {Timeframe} reminders",
-            upcomingEvents.Count, reminderTimeframe);
+            "[Phase 6A.71] [{CorrelationId}] Found {Count} events requiring {Timeframe} reminders",
+            correlationId, upcomingEvents.Count, reminderTimeframe);
 
         foreach (var @event in upcomingEvents)
         {
@@ -91,16 +112,30 @@ public class EventReminderJob
                 var registrations = @event.Registrations;
 
                 _logger.LogInformation(
-                    "[Phase 6A.57] Sending {Timeframe} reminders for event {EventId} ({Title}) to {Count} attendees",
-                    reminderTimeframe, @event.Id, @event.Title.Value, registrations.Count);
+                    "[Phase 6A.71] [{CorrelationId}] Sending {Timeframe} reminders for event {EventId} ({Title}) to {Count} attendees",
+                    correlationId, reminderTimeframe, @event.Id, @event.Title.Value, registrations.Count);
 
                 var successCount = 0;
                 var failCount = 0;
+                var skippedCount = 0;
 
                 foreach (var registration in registrations)
                 {
                     try
                     {
+                        // Phase 6A.71: Check idempotency before processing
+                        var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
+                            @event.Id, registration.Id, reminderType, cancellationToken);
+
+                        if (alreadySent)
+                        {
+                            skippedCount++;
+                            _logger.LogDebug(
+                                "[Phase 6A.71] [{CorrelationId}] Skipping duplicate {ReminderType} reminder for registration {RegistrationId}",
+                                correlationId, reminderType, registration.Id);
+                            continue;
+                        }
+
                         // Determine email recipient based on registration type
                         string? toEmail = null;
                         string toName = "Event Attendee";
@@ -116,8 +151,8 @@ public class EventReminderJob
                             else
                             {
                                 _logger.LogWarning(
-                                    "[Phase 6A.57] User {UserId} not found for registration {RegistrationId}, skipping",
-                                    registration.UserId, registration.Id);
+                                    "[Phase 6A.71] [{CorrelationId}] User {UserId} not found for registration {RegistrationId}, skipping",
+                                    correlationId, registration.UserId, registration.Id);
                                 continue;
                             }
                         }
@@ -139,12 +174,12 @@ public class EventReminderJob
                         if (string.IsNullOrWhiteSpace(toEmail))
                         {
                             _logger.LogWarning(
-                                "[Phase 6A.57] No email found for registration {RegistrationId}, skipping",
-                                registration.Id);
+                                "[Phase 6A.71] [{CorrelationId}] No email found for registration {RegistrationId}, skipping",
+                                correlationId, registration.Id);
                             continue;
                         }
 
-                        // Phase 6A.57: Use database template instead of inline HTML
+                        // Phase 6A.71: Use database template with configuration-based URLs
                         var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
                         var parameters = new Dictionary<string, object>
                         {
@@ -157,7 +192,7 @@ public class EventReminderJob
                             { "HoursUntilEvent", hoursUntilEvent },
                             { "ReminderTimeframe", reminderTimeframe },
                             { "ReminderMessage", reminderMessage },
-                            { "EventDetailsUrl", $"https://lankaconnect.com/events/{@event.Id}" },
+                            { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
                             // Phase 6A.X: Organizer Contact Details
                             { "HasOrganizerContact", @event.HasOrganizerContact() },
                             { "OrganizerContactName", @event.OrganizerContactName ?? "" },
@@ -174,35 +209,38 @@ public class EventReminderJob
                         if (result.IsSuccess)
                         {
                             successCount++;
+
+                            // Phase 6A.71: Record successful send for idempotency
+                            await _eventReminderRepository.RecordReminderSentAsync(
+                                @event.Id, registration.Id, reminderType, toEmail, cancellationToken);
                         }
                         else
                         {
                             failCount++;
                             _logger.LogWarning(
-                                "[Phase 6A.57] Failed to send {Timeframe} reminder to {Email} for event {EventId}: {Errors}",
-                                reminderTimeframe, toEmail, @event.Id, string.Join(", ", result.Errors));
+                                "[Phase 6A.71] [{CorrelationId}] Failed to send {Timeframe} reminder to {Email} for event {EventId}: {Errors}",
+                                correlationId, reminderTimeframe, toEmail, @event.Id, string.Join(", ", result.Errors));
                         }
                     }
                     catch (Exception ex)
                     {
                         failCount++;
                         _logger.LogError(ex,
-                            "[Phase 6A.57] Error sending {Timeframe} reminder for event {EventId} to registration {RegistrationId}",
-                            reminderTimeframe, @event.Id, registration.Id);
+                            "[Phase 6A.71] [{CorrelationId}] Error sending {Timeframe} reminder for event {EventId} to registration {RegistrationId}",
+                            correlationId, reminderTimeframe, @event.Id, registration.Id);
                     }
                 }
 
                 _logger.LogInformation(
-                    "[Phase 6A.57] {Timeframe} reminders for event {EventId}: Success={Success}, Failed={Failed}",
-                    reminderTimeframe, @event.Id, successCount, failCount);
+                    "[Phase 6A.71] [{CorrelationId}] {Timeframe} reminders for event {EventId}: Success={Success}, Failed={Failed}, Skipped={Skipped}",
+                    correlationId, reminderTimeframe, @event.Id, successCount, failCount, skippedCount);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "[Phase 6A.57] Error processing {Timeframe} reminders for event {EventId}",
-                    reminderTimeframe, @event.Id);
+                    "[Phase 6A.71] [{CorrelationId}] Error processing {Timeframe} reminders for event {EventId}",
+                    correlationId, reminderTimeframe, @event.Id);
             }
         }
     }
-
 }

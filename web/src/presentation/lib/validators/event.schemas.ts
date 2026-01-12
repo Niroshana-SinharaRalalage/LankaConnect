@@ -183,6 +183,29 @@ export const createEventSchema = z.object({
     .array(z.string().uuid('Invalid email group ID'))
     .optional()
     .nullable(),
+
+  // Phase 6A.X: Event Organizer Contact Details
+  publishOrganizerContact: z.boolean().default(false),
+
+  organizerContactName: z
+    .string()
+    .min(1, 'Contact name is required when publishing contact details')
+    .max(200, 'Contact name must be less than 200 characters')
+    .optional()
+    .nullable(),
+
+  organizerContactPhone: z
+    .string()
+    .max(20, 'Phone number must be less than 20 characters')
+    .optional()
+    .nullable(),
+
+  organizerContactEmail: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters')
+    .optional()
+    .nullable(),
 }).refine(
   (data) => {
     // Validate that end date is after start date
@@ -354,6 +377,38 @@ export const createEventSchema = z.object({
     message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
     path: ['enableGroupPricing'],
   }
+).refine(
+  (data) => {
+    // Phase 6A.X: If publishing organizer contact, name is required
+    if (data.publishOrganizerContact) {
+      return data.organizerContactName !== null &&
+             data.organizerContactName !== undefined &&
+             data.organizerContactName.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'Contact name is required when publishing organizer contact',
+    path: ['organizerContactName'],
+  }
+).refine(
+  (data) => {
+    // Phase 6A.X: If publishing organizer contact, at least one contact method (email or phone) is required
+    if (data.publishOrganizerContact) {
+      const hasEmail = data.organizerContactEmail !== null &&
+                      data.organizerContactEmail !== undefined &&
+                      data.organizerContactEmail.trim().length > 0;
+      const hasPhone = data.organizerContactPhone !== null &&
+                      data.organizerContactPhone !== undefined &&
+                      data.organizerContactPhone.trim().length > 0;
+      return hasEmail || hasPhone;
+    }
+    return true;
+  },
+  {
+    message: 'At least one contact method (email or phone) is required when publishing organizer contact',
+    path: ['organizerContactEmail'],
+  }
 );
 
 export type CreateEventFormData = z.infer<typeof createEventSchema>;
@@ -488,6 +543,29 @@ const baseEditEventSchema = z.object({
     .array(z.string().uuid('Invalid email group ID'))
     .optional()
     .nullable(),
+
+  // Phase 6A.X: Event Organizer Contact Details
+  publishOrganizerContact: z.boolean().default(false),
+
+  organizerContactName: z
+    .string()
+    .min(1, 'Contact name is required when publishing contact details')
+    .max(200, 'Contact name must be less than 200 characters')
+    .optional()
+    .nullable(),
+
+  organizerContactPhone: z
+    .string()
+    .max(20, 'Phone number must be less than 20 characters')
+    .optional()
+    .nullable(),
+
+  organizerContactEmail: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters')
+    .optional()
+    .nullable(),
 });
 
 /**
@@ -608,6 +686,38 @@ export const editEventSchema = baseEditEventSchema.refine(
   {
     message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
     path: ['enableGroupPricing'],
+  }
+).refine(
+  (data) => {
+    // Phase 6A.X: If publishing organizer contact, name is required
+    if (data.publishOrganizerContact) {
+      return data.organizerContactName !== null &&
+             data.organizerContactName !== undefined &&
+             data.organizerContactName.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'Contact name is required when publishing organizer contact',
+    path: ['organizerContactName'],
+  }
+).refine(
+  (data) => {
+    // Phase 6A.X: If publishing organizer contact, at least one contact method (email or phone) is required
+    if (data.publishOrganizerContact) {
+      const hasEmail = data.organizerContactEmail !== null &&
+                      data.organizerContactEmail !== undefined &&
+                      data.organizerContactEmail.trim().length > 0;
+      const hasPhone = data.organizerContactPhone !== null &&
+                      data.organizerContactPhone !== undefined &&
+                      data.organizerContactPhone.trim().length > 0;
+      return hasEmail || hasPhone;
+    }
+    return true;
+  },
+  {
+    message: 'At least one contact method (email or phone) is required when publishing organizer contact',
+    path: ['organizerContactEmail'],
   }
 );
 

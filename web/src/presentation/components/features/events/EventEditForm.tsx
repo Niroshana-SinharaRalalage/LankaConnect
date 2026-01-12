@@ -132,6 +132,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationCountry: event.country || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
+      // Phase 6A.X: Event Organizer Contact Details
+      publishOrganizerContact: event.publishOrganizerContact ?? false,
+      organizerContactName: event.organizerContactName || undefined,
+      organizerContactPhone: event.organizerContactPhone || undefined,
+      organizerContactEmail: event.organizerContactEmail || undefined,
     },
   });
 
@@ -210,6 +215,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationCountry: event.country || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
+      // Phase 6A.X: Event Organizer Contact Details
+      publishOrganizerContact: event.publishOrganizerContact ?? false,
+      organizerContactName: event.organizerContactName || undefined,
+      organizerContactPhone: event.organizerContactPhone || undefined,
+      organizerContactEmail: event.organizerContactEmail || undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id]); // Only reset when navigating to different event

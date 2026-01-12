@@ -206,6 +206,12 @@ export interface EventDto {
 
   // Phase 6A.32: Email Groups Integration
   emailGroupIds?: string[];
+
+  // Phase 6A.X: Event Organizer Contact Details
+  publishOrganizerContact: boolean;
+  organizerContactName?: string | null;
+  organizerContactPhone?: string | null;
+  organizerContactEmail?: string | null;
 }
 
 /**

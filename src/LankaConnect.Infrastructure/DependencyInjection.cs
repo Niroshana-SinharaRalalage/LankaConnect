@@ -157,6 +157,9 @@ public static class DependencyInjection
         // Add Metro Area Repository (Phase 6A Event Notifications)
         services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
 
+        // Phase 6A.71: Event Reminder Tracking Repository
+        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventReminderRepository, EventReminderRepository>();
+
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();

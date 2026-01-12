@@ -2,6 +2,7 @@ using ClosedXML.Excel;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Events.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Services.Export;
 
@@ -11,6 +12,12 @@ namespace LankaConnect.Infrastructure.Services.Export;
 /// </summary>
 public class ExcelExportService : IExcelExportService
 {
+    private readonly ILogger<ExcelExportService> _logger;
+
+    public ExcelExportService(ILogger<ExcelExportService> logger)
+    {
+        _logger = logger;
+    }
     public byte[] ExportEventAttendees(
         EventAttendeesResponse attendees,
         List<SignUpListDto>? signUpLists = null)
@@ -42,11 +49,18 @@ public class ExcelExportService : IExcelExportService
         if (signUpLists == null || !signUpLists.Any())
             throw new ArgumentException("No signup lists to export", nameof(signUpLists));
 
-        using var zipStream = new MemoryStream();
-        using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        _logger.LogInformation(
+            "Phase 6A.73: Starting Excel ZIP export for event {EventId} - {ListCount} signup lists",
+            eventId,
+            signUpLists.Count);
+
+        try
         {
-            // Create one Excel file per signup list
-            foreach (var signUpList in signUpLists)
+            using var zipStream = new MemoryStream();
+            using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                // Create one Excel file per signup list
+                foreach (var signUpList in signUpLists)
             {
                 // Create Excel workbook for this signup list
                 using var workbook = new XLWorkbook();
@@ -86,25 +100,55 @@ public class ExcelExportService : IExcelExportService
                 using (var excelMemoryStream = new MemoryStream())
                 {
                     workbook.SaveAs(excelMemoryStream);
+
+                    // CRITICAL: Reset stream position to beginning before reading
+                    // ClosedXML leaves the stream position at EOF after SaveAs()
+                    excelMemoryStream.Position = 0;
                     excelBytes = excelMemoryStream.ToArray();
+
+                    _logger.LogInformation(
+                        "Phase 6A.73: Saved Excel workbook for signup list '{Category}' - {ByteCount} bytes",
+                        signUpList.Category,
+                        excelBytes.Length);
                 }
 
                 // Generate filename: "Food-and-Drinks.xlsx"
                 var sanitizedFileName = SanitizeFileName(signUpList.Category);
                 var fileName = $"{sanitizedFileName}.xlsx";
 
-                // Phase 6A.73 Fix: Use NoCompression for XLSX files (already ZIP archives internally)
-                // CRITICAL: XLSX files use Open XML format (pre-compressed ZIP)
-                // Using Optimal compression causes double-compression, exposing internal XML structure
+                // Phase 6A.73 Fix: Write XLSX directly to ZIP entry without additional compression
+                // XLSX files are already ZIP-compressed internally (Open XML format)
+                // Store without compression to avoid double-compression issues
                 var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.NoCompression);
                 using (var entryStream = entry.Open())
                 {
                     entryStream.Write(excelBytes, 0, excelBytes.Length);
+                    entryStream.Flush();
+
+                    _logger.LogInformation(
+                        "Phase 6A.73: Added '{FileName}' to ZIP archive - {ByteCount} bytes",
+                        fileName,
+                        excelBytes.Length);
+                }
                 }
             }
-        }
 
-        return zipStream.ToArray();
+            var zipBytes = zipStream.ToArray();
+            _logger.LogInformation(
+                "Phase 6A.73: Successfully created Excel ZIP archive for event {EventId} - {ZipSize} bytes total",
+                eventId,
+                zipBytes.Length);
+
+            return zipBytes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Phase 6A.73: Failed to create Excel ZIP export for event {EventId}",
+                eventId);
+            throw;
+        }
     }
 
     /// <summary>

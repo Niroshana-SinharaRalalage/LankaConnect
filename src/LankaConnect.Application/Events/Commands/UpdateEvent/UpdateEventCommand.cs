@@ -33,5 +33,10 @@ public record UpdateEventCommand(
     // Session 33: Group Tiered Pricing - optional
     List<GroupPricingTierRequest>? GroupPricingTiers = null,
     // Phase 6A.32: Email Groups - optional
-    List<Guid>? EmailGroupIds = null
+    List<Guid>? EmailGroupIds = null,
+    // Phase 6A.X: Event Organizer Contact Details - optional
+    bool? PublishOrganizerContact = null,
+    string? OrganizerContactName = null,
+    string? OrganizerContactPhone = null,
+    string? OrganizerContactEmail = null
 ) : ICommand;

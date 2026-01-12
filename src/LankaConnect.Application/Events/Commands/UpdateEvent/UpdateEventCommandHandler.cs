@@ -314,6 +314,19 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         }
         // If null, don't modify existing email groups
 
+        // Phase 6A.X: Update organizer contact details if provided
+        if (request.PublishOrganizerContact.HasValue)
+        {
+            var contactResult = @event.SetOrganizerContactDetails(
+                request.PublishOrganizerContact.Value,
+                request.OrganizerContactName,
+                request.OrganizerContactPhone,
+                request.OrganizerContactEmail);
+
+            if (contactResult.IsFailure)
+                return contactResult;
+        }
+
         // Save changes (EF Core now detects changes via ChangeTracker)
         _eventRepository.Update(@event);
         await _unitOfWork.CommitAsync(cancellationToken);

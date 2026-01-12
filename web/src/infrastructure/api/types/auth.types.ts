@@ -29,6 +29,7 @@ export interface UserDto {
   userId: string;
   email: string;
   fullName: string; // Backend returns fullName, not firstName/lastName separately
+  phoneNumber?: string | null; // Phase 6A.X: Phone number for organizer contact auto-population
   role: UserRole;
   pendingUpgradeRole?: UserRole | null; // Phase 6A.7: Pending role upgrade (returned from login)
   upgradeRequestedAt?: string | null; // Phase 6A.7: When upgrade was requested (returned from login)

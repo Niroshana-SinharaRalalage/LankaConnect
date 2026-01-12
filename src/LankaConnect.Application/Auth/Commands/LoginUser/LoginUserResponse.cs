@@ -7,6 +7,7 @@ public record LoginUserResponse(
     Guid UserId,
     string Email,
     string FullName,
+    string? PhoneNumber,                  // Phase 6A.X: Phone number for organizer contact auto-population
     UserRole Role,
     string AccessToken,
     string RefreshToken,

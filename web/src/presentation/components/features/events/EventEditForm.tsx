@@ -235,12 +235,16 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Only auto-populate if fields are empty
       const currentName = watch('organizerContactName');
       const currentEmail = watch('organizerContactEmail');
+      const currentPhone = watch('organizerContactPhone');
 
       if (!currentName) {
         setValue('organizerContactName', user.fullName, { shouldDirty: true });
       }
       if (!currentEmail) {
         setValue('organizerContactEmail', user.email, { shouldDirty: true });
+      }
+      if (!currentPhone && user.phoneNumber) {
+        setValue('organizerContactPhone', user.phoneNumber, { shouldDirty: true });
       }
     }
   }, [publishOrganizerContact, user, setValue, watch]);

@@ -147,6 +147,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 user.Id,
                 user.Email.Value,
                 user.FullName,
+                user.PhoneNumber?.Value,    // Phase 6A.X: Include phone number for organizer contact auto-population
                 user.Role,
                 accessTokenResult.Value,
                 refreshTokenResult.Value,

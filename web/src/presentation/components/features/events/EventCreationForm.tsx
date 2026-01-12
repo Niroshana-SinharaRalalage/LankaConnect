@@ -83,12 +83,16 @@ export function EventCreationForm() {
       // Only auto-populate if fields are empty
       const currentName = watch('organizerContactName');
       const currentEmail = watch('organizerContactEmail');
+      const currentPhone = watch('organizerContactPhone');
 
       if (!currentName) {
         setValue('organizerContactName', user.fullName);
       }
       if (!currentEmail) {
         setValue('organizerContactEmail', user.email);
+      }
+      if (!currentPhone && user.phoneNumber) {
+        setValue('organizerContactPhone', user.phoneNumber);
       }
     }
   }, [publishOrganizerContact, user, setValue, watch]);

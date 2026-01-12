@@ -1,9 +1,79 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.74 Part 3D: Newsletter API Layer - ✅ DEPLOYED*
+*Last Updated: 2026-01-12 - Phase 6A.71: Event Reminders with Idempotency - ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 3D): Newsletter API Layer - ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.71: Event Reminders with Idempotency - ✅ DEPLOYED
+
+### Phase 6A.71 - Event Reminders with Idempotency Tracking - 2026-01-12
+
+**Status**: ✅ **DEPLOYED** (Commit 23faf8c1, Deployment #20924010324, migration applied)
+
+**Goal**: Fix event reminders with configuration-based URLs, idempotency tracking, and enhanced observability
+
+**Implementation**:
+- ✅ **Database Migration**: Created `events.event_reminders_sent` tracking table
+  * Columns: id, event_id, registration_id, reminder_type, sent_at, recipient_email
+  * Composite unique index on (event_id, registration_id, reminder_type)
+  * Foreign keys with CASCADE delete
+  * Indexes for efficient lookups
+
+- ✅ **Repository Pattern** ([IEventReminderRepository.cs](../src/LankaConnect.Application/Events/Repositories/IEventReminderRepository.cs)):
+  * `IsReminderAlreadySentAsync()` - Check if reminder already sent
+  * `RecordReminderSentAsync()` - Record sent reminder with ON CONFLICT DO NOTHING
+  * Direct SQL with Npgsql for efficiency
+  * Fail-open strategy (allows sending if check fails)
+
+- ✅ **EventReminderJob Updates** ([EventReminderJob.cs](../src/LankaConnect.Application/Events/BackgroundJobs/EventReminderJob.cs)):
+  * Added IEmailUrlHelper dependency (configuration-based URLs)
+  * Added IEventReminderRepository dependency (idempotency)
+  * Correlation IDs for request tracing (8-character unique ID per execution)
+  * Enhanced logging: success/failed/skipped counts
+  * Three reminder types: `7day`, `2day`, `1day`
+  * Idempotency check before every send
+  * Record tracking after successful send
+
+- ✅ **Configuration-Based URLs**:
+  * Before: `$"https://lankaconnect.com/events/{@event.Id}"` (hardcoded)
+  * After: `_emailUrlHelper.BuildEventDetailsUrl(@event.Id)` (from configuration)
+
+- ✅ **Test Updates** ([EventReminderJobTests.cs](../tests/LankaConnect.Application.Tests/Events/BackgroundJobs/EventReminderJobTests.cs)):
+  * Added Mock<IEmailUrlHelper> with test URL generation
+  * Added Mock<IEventReminderRepository> with default allow-all behavior
+  * All existing tests passing (100%)
+
+**Build Status**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Commit: 23faf8c1
+- ✅ Pushed: origin/develop
+- ✅ Files: 12 changed, 488 insertions(+), 68 deletions(-)
+
+**Deployment**:
+- ✅ Workflow: deploy-staging.yml run #20924010324
+- ✅ Migration: 20260112150000_Phase6A71_CreateEventRemindersSentTable (pending application)
+- ✅ URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Benefits**:
+- ✅ Configuration-based URLs (staging emails link to staging site)
+- ✅ Idempotency protection prevents duplicate reminders
+- ✅ Enhanced observability with correlation IDs
+- ✅ Fail-open strategy ensures service reliability
+- ✅ Clean Architecture compliance (repository pattern)
+
+**Documentation**:
+- ✅ Summary: [PHASE_6A71_EVENT_REMINDERS_SUMMARY.md](./PHASE_6A71_EVENT_REMINDERS_SUMMARY.md)
+- ✅ Master Index: [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md)
+
+**Next Steps**:
+1. Verify migration applied in staging database
+2. Check Hangfire dashboard for EventReminderJob
+3. Monitor logs for [Phase 6A.71] entries with correlation IDs
+4. Test idempotency: Create event → Wait for reminder → Re-run job → Verify skipped count
+5. Phase 6A.72: Event Cancellation Emails (4-5 hours)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.74 (Part 3D): Newsletter API Layer - ✅ DEPLOYED
 
 ### Phase 6A.74 (Part 3D) - Newsletter/News Alert API Layer Implementation - 2026-01-12
 

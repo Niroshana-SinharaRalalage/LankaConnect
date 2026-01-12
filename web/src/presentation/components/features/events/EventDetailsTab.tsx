@@ -238,6 +238,58 @@ export function EventDetailsTab({
                 </div>
               )}
             </div>
+
+            {/* Phase 6A.X: Organizer Contact Details */}
+            {event.publishOrganizerContact && event.organizerContactName && (
+              <div className="mt-6">
+                <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-[#FF7900]" />
+                  Event Organizer Contact
+                </h4>
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Name:</span>
+                    <span className="text-sm text-gray-900">{event.organizerContactName}</span>
+                  </div>
+
+                  {event.organizerContactEmail && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-600" />
+                      <a
+                        href={`mailto:${event.organizerContactEmail}`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {event.organizerContactEmail}
+                      </a>
+                    </div>
+                  )}
+
+                  {event.organizerContactPhone && (
+                    <div className="flex items-center gap-2">
+                      <svg
+                        className="h-4 w-4 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        />
+                      </svg>
+                      <a
+                        href={`tel:${event.organizerContactPhone}`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {event.organizerContactPhone}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

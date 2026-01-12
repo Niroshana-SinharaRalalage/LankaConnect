@@ -162,6 +162,11 @@ export function EventCreationForm() {
         category: data.category,
         // Phase 6A.32: Email Groups Integration
         emailGroupIds: data.emailGroupIds || [],
+        // Phase 6A.X: Event Organizer Contact Details
+        publishOrganizerContact: data.publishOrganizerContact || false,
+        organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
+        organizerContactPhone: data.publishOrganizerContact ? data.organizerContactPhone : null,
+        organizerContactEmail: data.publishOrganizerContact ? data.organizerContactEmail : null,
         // Only include location if we have at least address and city
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
@@ -860,6 +865,94 @@ export function EventCreationForm() {
             errorMessage={errors.emailGroupIds?.message}
             helperText="Select groups that should receive invitations for this event"
           />
+        </CardContent>
+      </Card>
+
+      {/* Phase 6A.X: Event Organizer Contact Details */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Publish your contact information with this event so attendees can reach you
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Publish Toggle Checkbox */}
+          <div className="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="publishOrganizerContact"
+              {...register('publishOrganizerContact')}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="publishOrganizerContact" className="text-sm font-medium text-gray-700">
+              Publish my contact information with this event
+            </label>
+          </div>
+
+          {/* Show contact fields only when checkbox is checked */}
+          {watch('publishOrganizerContact') && (
+            <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              {/* Contact Name */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactName" className="block text-sm font-medium text-gray-700">
+                  Contact Name *
+                </label>
+                <Input
+                  id="organizerContactName"
+                  type="text"
+                  placeholder="Your full name"
+                  error={!!errors.organizerContactName}
+                  {...register('organizerContactName')}
+                />
+                {errors.organizerContactName && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactName.message}</p>
+                )}
+              </div>
+
+              {/* Contact Email */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactEmail" className="block text-sm font-medium text-gray-700">
+                  Contact Email
+                </label>
+                <Input
+                  id="organizerContactEmail"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  error={!!errors.organizerContactEmail}
+                  {...register('organizerContactEmail')}
+                />
+                {errors.organizerContactEmail && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactEmail.message}</p>
+                )}
+              </div>
+
+              {/* Contact Phone */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactPhone" className="block text-sm font-medium text-gray-700">
+                  Contact Phone
+                </label>
+                <Input
+                  id="organizerContactPhone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  error={!!errors.organizerContactPhone}
+                  {...register('organizerContactPhone')}
+                />
+                {errors.organizerContactPhone && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactPhone.message}</p>
+                )}
+              </div>
+
+              {/* Help Text */}
+              <p className="text-sm text-gray-600 mt-2">
+                * At least one contact method (email or phone) is required
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

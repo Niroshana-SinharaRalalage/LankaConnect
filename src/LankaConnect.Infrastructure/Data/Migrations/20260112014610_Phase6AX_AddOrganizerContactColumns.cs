@@ -11,13 +11,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "newsletter_email_groups",
-                schema: "communications");
-
-            migrationBuilder.DropTable(
-                name: "newsletters",
-                schema: "communications");
+            // Phase 6AX: Drop newsletter tables if they exist (they may not exist if previous migrations failed)
+            migrationBuilder.Sql(@"
+                DROP TABLE IF EXISTS communications.newsletter_email_groups CASCADE;
+                DROP TABLE IF EXISTS communications.newsletters CASCADE;
+            ");
 
             migrationBuilder.RenameColumn(
                 name: "PublishOrganizerContact",

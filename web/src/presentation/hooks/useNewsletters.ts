@@ -38,6 +38,7 @@ export const newsletterKeys = {
   all: ['newsletters'] as const,
   lists: () => [...newsletterKeys.all, 'list'] as const,
   myNewsletters: () => [...newsletterKeys.lists(), 'my-newsletters'] as const,
+  published: () => [...newsletterKeys.lists(), 'published'] as const,
   details: () => [...newsletterKeys.all, 'detail'] as const,
   detail: (id: string) => [...newsletterKeys.details(), id] as const,
   byEvent: (eventId: string) => [...newsletterKeys.all, 'by-event', eventId] as const,
@@ -173,6 +174,38 @@ export function useRecipientPreview(
     enabled: !!id, // Only fetch when ID is provided
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: false, // Don't auto-refetch preview
+    ...options,
+  });
+}
+
+/**
+ * usePublishedNewsletters Hook
+ *
+ * Fetches all published (Active) newsletters for public landing page
+ * Phase 6A.74 Part 5B: Public newsletter display
+ *
+ * Features:
+ * - Public endpoint (no authentication required)
+ * - 5-minute stale time for landing page performance
+ * - Returns only Active newsletters sorted by publishedAt desc
+ * - Refetch on window focus for fresh content
+ *
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: newsletters, isLoading } = usePublishedNewsletters();
+ * ```
+ */
+export function usePublishedNewsletters(
+  options?: Omit<UseQueryOptions<NewsletterDto[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: newsletterKeys.published(),
+    queryFn: () => newslettersRepository.getPublishedNewsletters(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
     ...options,
   });
 }
@@ -403,6 +436,7 @@ export default {
   useMyNewsletters,
   useNewsletterById,
   useNewslettersByEvent,
+  usePublishedNewsletters,
   useRecipientPreview,
   useCreateNewsletter,
   useUpdateNewsletter,

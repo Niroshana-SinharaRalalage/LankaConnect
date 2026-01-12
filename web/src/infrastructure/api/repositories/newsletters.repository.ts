@@ -69,6 +69,18 @@ export class NewslettersRepository {
     return await apiClient.get<RecipientPreviewDto>(`${this.basePath}/${id}/recipient-preview`);
   }
 
+  /**
+   * Get all published (Active) newsletters for public landing page
+   * Maps to backend GetPublishedNewslettersQuery
+   * Phase 6A.74 Part 5B: Public newsletter display
+   *
+   * Returns only Active newsletters, sorted by publishedAt desc
+   * No authentication required (public endpoint)
+   */
+  async getPublishedNewsletters(): Promise<NewsletterDto[]> {
+    return await apiClient.get<NewsletterDto[]>(`${this.basePath}/published`);
+  }
+
   // ==================== MUTATIONS ====================
 
   /**

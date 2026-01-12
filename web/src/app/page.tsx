@@ -10,6 +10,7 @@ import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useCommunityStats } from '@/presentation/hooks/useStats';
+import { LandingPageNewsletters } from '@/presentation/components/features/newsletters/LandingPageNewsletters';
 
 export default function Home() {
   const { user } = useAuthStore();
@@ -734,6 +735,8 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Phase 6A.74 Part 5B: Latest Newsletters Section */}
+      <LandingPageNewsletters />
 
       <Footer />
     </div>

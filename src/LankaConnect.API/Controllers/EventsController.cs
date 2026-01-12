@@ -15,6 +15,7 @@ using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
+using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Queries.GetEventById;
@@ -321,6 +322,30 @@ public class EventsController : BaseController<EventsController>
     public async Task<IActionResult> UpdateEvent(Guid id, [FromBody] UpdateEventCommand command)
     {
         Logger.LogInformation("Updating event: {EventId}", id);
+
+        // Ensure ID in route matches command
+        if (id != command.EventId)
+        {
+            return BadRequest("Event ID mismatch");
+        }
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Update event organizer contact details (Owner only)
+    /// </summary>
+    [HttpPut("{id:guid}/organizer-contact")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateEventOrganizerContact(Guid id, [FromBody] UpdateEventOrganizerContactCommand command)
+    {
+        Logger.LogInformation("Updating organizer contact for event: {EventId}", id);
 
         // Ensure ID in route matches command
         if (id != command.EventId)

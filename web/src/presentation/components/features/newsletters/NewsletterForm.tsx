@@ -1,18 +1,37 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect } from 'react';
-import { Mail, FileText, Users, MapPin } from 'lucide-react';
+import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
+import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { createNewsletterSchema, type CreateNewsletterFormData } from '@/presentation/lib/validators/newsletter.schemas';
 import { useCreateNewsletter, useUpdateNewsletter, useNewsletterById } from '@/presentation/hooks/useNewsletters';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { useEvents } from '@/presentation/hooks/useEvents';
+import { useEvents, useEventById } from '@/presentation/hooks/useEvents';
+import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+
+/**
+ * Newsletter Form Component - Phase 6A.74 Part 5A (Restructured)
+ *
+ * Changes from Part 4:
+ * - Event selection moved to TOP of form
+ * - Auto-population when event selected (title, metadata)
+ * - Rich text editor replaces textarea
+ * - Event metadata card displays event info
+ * - Enhanced UX with event-first workflow
+ *
+ * Form Structure:
+ * 1. Event Linkage (Optional - TOP)
+ * 2. Basic Information (Title + Rich Text Content)
+ * 3. Recipients (Email Groups + Subscribers)
+ * 4. Location Targeting (Conditional)
+ */
 
 export interface NewsletterFormProps {
   newsletterId?: string;
@@ -33,7 +52,6 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     enabled: isEditMode,
   });
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
-  // Fetch events (TODO: Filter by organizer when API supports it)
   const { data: events = [], isLoading: isLoadingEvents } = useEvents({});
 
   const {
@@ -42,6 +60,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     watch,
     setValue,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateNewsletterFormData>({
     resolver: zodResolver(createNewsletterSchema),
@@ -56,13 +75,24 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     },
   });
 
-  // Watch fields for conditional rendering
+  // Watch fields for conditional rendering and auto-population
   const includeNewsletterSubscribers = watch('includeNewsletterSubscribers');
-  const eventId = watch('eventId');
+  const selectedEventId = watch('eventId');
   const targetAllLocations = watch('targetAllLocations');
+  const currentTitle = watch('title');
 
   // Show location targeting only if: includeNewsletterSubscribers && !eventId
-  const showLocationTargeting = includeNewsletterSubscribers && !eventId;
+  const showLocationTargeting = includeNewsletterSubscribers && !selectedEventId;
+
+  // Fetch selected event details for metadata display and auto-population
+  const { data: selectedEvent } = useEventById(selectedEventId || '', {
+    enabled: !!selectedEventId,
+  });
+
+  // Fetch sign-up lists for selected event
+  const { data: signUpLists = [] } = useEventSignUps(selectedEventId || '', {
+    enabled: !!selectedEventId,
+  });
 
   // Load newsletter data for edit mode
   useEffect(() => {
@@ -78,6 +108,16 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       });
     }
   }, [newsletter, isEditMode, reset]);
+
+  // Auto-populate title when event is selected (only if title is empty or was auto-generated)
+  useEffect(() => {
+    if (selectedEvent && !isEditMode) {
+      // Only auto-populate if title is empty or looks like a previous auto-population
+      if (!currentTitle || currentTitle.startsWith('Newsletter for ')) {
+        setValue('title', `Newsletter for ${selectedEvent.title}`);
+      }
+    }
+  }, [selectedEvent, isEditMode, currentTitle, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
     try {
@@ -109,7 +149,102 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
         </div>
       )}
 
-      {/* Basic Information */}
+      {/* 1. EVENT LINKAGE - MOVED TO TOP */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Event Linkage</CardTitle>
+          </div>
+          <CardDescription>
+            {isEditMode
+              ? 'Optionally link this newsletter to an event'
+              : 'Start by linking to an event (recommended) or create a standalone newsletter'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Event Selection Dropdown */}
+          <div>
+            <label htmlFor="eventId" className="block text-sm font-medium text-neutral-700 mb-2">
+              Select Event (Optional)
+            </label>
+            <select
+              id="eventId"
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.eventId ? 'border-destructive' : 'border-neutral-300'
+              }`}
+              {...register('eventId')}
+              disabled={isLoadingEvents}
+            >
+              <option value="">No event linkage</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
+            </select>
+            {errors.eventId && (
+              <p className="mt-1 text-sm text-destructive">{errors.eventId.message}</p>
+            )}
+            <p className="mt-1 text-xs text-neutral-500">
+              {isEditMode
+                ? 'Change the linked event or remove the linkage'
+                : 'Linking to an event will auto-populate the title and add event details to the email'
+              }
+            </p>
+          </div>
+
+          {/* Event Metadata Card - Show when event is selected */}
+          {selectedEvent && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-neutral-900 mb-2">{selectedEvent.title}</p>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {/* Location */}
+                    {(selectedEvent.city || selectedEvent.state) && (
+                      <div className="flex items-center gap-2 text-neutral-700">
+                        <MapPinIcon className="h-4 w-4 text-neutral-500" />
+                        <span>
+                          {[selectedEvent.city, selectedEvent.state].filter(Boolean).join(', ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    <div className="flex items-center gap-2 text-neutral-700">
+                      <Calendar className="h-4 w-4 text-neutral-500" />
+                      <span>{new Date(selectedEvent.startDate).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* Attendees */}
+                    <div className="flex items-center gap-2 text-neutral-700">
+                      <UserCheck className="h-4 w-4 text-neutral-500" />
+                      <span>{selectedEvent.currentRegistrations || 0} registered</span>
+                    </div>
+
+                    {/* Sign-up Lists */}
+                    <div className="flex items-center gap-2 text-neutral-700">
+                      <ListChecks className="h-4 w-4 text-neutral-500" />
+                      <span>{signUpLists.length} sign-up {signUpLists.length === 1 ? 'list' : 'lists'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-blue-300">
+                <p className="text-xs text-blue-800">
+                  <strong>Email will include:</strong> Event details, registration button, and sign-up list links
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. BASIC INFORMATION */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -136,30 +271,38 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
             {errors.title && (
               <p className="mt-1 text-sm text-destructive">{errors.title.message}</p>
             )}
+            {selectedEvent && (
+              <p className="mt-1 text-xs text-blue-600">
+                💡 Title auto-populated from event. Feel free to customize it!
+              </p>
+            )}
           </div>
 
-          {/* Description */}
+          {/* Rich Text Content - REPLACED TEXTAREA */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-neutral-700 mb-2">
               Newsletter Content *
             </label>
-            <textarea
-              id="description"
-              rows={6}
-              placeholder="Write your newsletter content here..."
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none ${
-                errors.description ? 'border-destructive' : 'border-neutral-300'
-              }`}
-              {...register('description')}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <RichTextEditor
+                  content={field.value}
+                  onChange={field.onChange}
+                  placeholder="Write your newsletter content here... Use the toolbar to format text, add links, and insert images."
+                  error={!!errors.description}
+                  errorMessage={errors.description?.message}
+                  minHeight={300}
+                  maxLength={50000}
+                />
+              )}
             />
-            {errors.description && (
-              <p className="mt-1 text-sm text-destructive">{errors.description.message}</p>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Recipients */}
+      {/* 3. RECIPIENTS */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -185,6 +328,11 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
               error={!!errors.emailGroupIds}
               errorMessage={errors.emailGroupIds?.message}
             />
+            {selectedEvent && (
+              <p className="mt-1 text-xs text-neutral-500">
+                Note: If event is linked, the email will also go to event-specific email groups automatically.
+              </p>
+            )}
           </div>
 
           {/* Include Newsletter Subscribers */}
@@ -199,35 +347,10 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
               Include Newsletter Subscribers
             </label>
           </div>
-
-          {/* Event Linkage */}
-          <div>
-            <label htmlFor="eventId" className="block text-sm font-medium text-neutral-700 mb-2">
-              Link to Event (Optional)
-            </label>
-            <select
-              id="eventId"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                errors.eventId ? 'border-destructive' : 'border-neutral-300'
-              }`}
-              {...register('eventId')}
-              disabled={isLoadingEvents}
-            >
-              <option value="">No event linkage</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
-            </select>
-            {errors.eventId && (
-              <p className="mt-1 text-sm text-destructive">{errors.eventId.message}</p>
-            )}
-          </div>
         </CardContent>
       </Card>
 
-      {/* Location Targeting (Conditional) */}
+      {/* 4. LOCATION TARGETING (Conditional - Only if not event-linked) */}
       {showLocationTargeting && (
         <Card>
           <CardHeader>
@@ -260,7 +383,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
                   Specific Metro Areas
                 </label>
                 <MultiSelect
-                  options={[]} // TODO: Fetch metro areas when API is ready
+                  options={[]} // TODO Part 5D: Fetch metro areas when API is ready
                   value={watch('metroAreaIds') || []}
                   onChange={(ids) => setValue('metroAreaIds', ids)}
                   placeholder="Select metro areas"

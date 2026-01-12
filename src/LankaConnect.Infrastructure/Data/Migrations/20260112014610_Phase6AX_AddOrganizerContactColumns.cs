@@ -54,25 +54,25 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     IF EXISTS (SELECT 1 FROM information_schema.columns
                              WHERE table_schema = 'events' AND table_name = 'events'
                              AND column_name = 'PublishOrganizerContact') THEN
-                        ALTER TABLE events.events RENAME COLUMN \"PublishOrganizerContact\" TO publish_organizer_contact;
+                        ALTER TABLE events.events RENAME COLUMN ""PublishOrganizerContact"" TO publish_organizer_contact;
                     END IF;
 
                     IF EXISTS (SELECT 1 FROM information_schema.columns
                              WHERE table_schema = 'events' AND table_name = 'events'
                              AND column_name = 'OrganizerContactName') THEN
-                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactName\" TO organizer_contact_name;
+                        ALTER TABLE events.events RENAME COLUMN ""OrganizerContactName"" TO organizer_contact_name;
                     END IF;
 
                     IF EXISTS (SELECT 1 FROM information_schema.columns
                              WHERE table_schema = 'events' AND table_name = 'events'
                              AND column_name = 'OrganizerContactPhone') THEN
-                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactPhone\" TO organizer_contact_phone;
+                        ALTER TABLE events.events RENAME COLUMN ""OrganizerContactPhone"" TO organizer_contact_phone;
                     END IF;
 
                     IF EXISTS (SELECT 1 FROM information_schema.columns
                              WHERE table_schema = 'events' AND table_name = 'events'
                              AND column_name = 'OrganizerContactEmail') THEN
-                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactEmail\" TO organizer_contact_email;
+                        ALTER TABLE events.events RENAME COLUMN ""OrganizerContactEmail"" TO organizer_contact_email;
                     END IF;
                 END $$;
             ");

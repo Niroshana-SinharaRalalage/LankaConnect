@@ -17,29 +17,65 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 DROP TABLE IF EXISTS communications.newsletters CASCADE;
             ");
 
-            migrationBuilder.RenameColumn(
-                name: "PublishOrganizerContact",
-                schema: "events",
-                table: "events",
-                newName: "publish_organizer_contact");
+            // Phase 6AX: Add organizer contact columns if they don't exist
+            // These columns may not exist if previous migrations failed, so we use raw SQL to add them conditionally
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    -- Add publish_organizer_contact column if it doesn't exist
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                 WHERE table_schema = 'events' AND table_name = 'events'
+                                 AND column_name = 'publish_organizer_contact') THEN
+                        ALTER TABLE events.events ADD COLUMN publish_organizer_contact boolean NOT NULL DEFAULT false;
+                    END IF;
 
-            migrationBuilder.RenameColumn(
-                name: "OrganizerContactPhone",
-                schema: "events",
-                table: "events",
-                newName: "organizer_contact_phone");
+                    -- Add organizer_contact_name column if it doesn't exist
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                 WHERE table_schema = 'events' AND table_name = 'events'
+                                 AND column_name = 'organizer_contact_name') THEN
+                        ALTER TABLE events.events ADD COLUMN organizer_contact_name character varying(200);
+                    END IF;
 
-            migrationBuilder.RenameColumn(
-                name: "OrganizerContactName",
-                schema: "events",
-                table: "events",
-                newName: "organizer_contact_name");
+                    -- Add organizer_contact_phone column if it doesn't exist
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                 WHERE table_schema = 'events' AND table_name = 'events'
+                                 AND column_name = 'organizer_contact_phone') THEN
+                        ALTER TABLE events.events ADD COLUMN organizer_contact_phone character varying(20);
+                    END IF;
 
-            migrationBuilder.RenameColumn(
-                name: "OrganizerContactEmail",
-                schema: "events",
-                table: "events",
-                newName: "organizer_contact_email");
+                    -- Add organizer_contact_email column if it doesn't exist
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                 WHERE table_schema = 'events' AND table_name = 'events'
+                                 AND column_name = 'organizer_contact_email') THEN
+                        ALTER TABLE events.events ADD COLUMN organizer_contact_email character varying(255);
+                    END IF;
+
+                    -- If columns exist with PascalCase names, rename them to snake_case
+                    IF EXISTS (SELECT 1 FROM information_schema.columns
+                             WHERE table_schema = 'events' AND table_name = 'events'
+                             AND column_name = 'PublishOrganizerContact') THEN
+                        ALTER TABLE events.events RENAME COLUMN \"PublishOrganizerContact\" TO publish_organizer_contact;
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.columns
+                             WHERE table_schema = 'events' AND table_name = 'events'
+                             AND column_name = 'OrganizerContactName') THEN
+                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactName\" TO organizer_contact_name;
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.columns
+                             WHERE table_schema = 'events' AND table_name = 'events'
+                             AND column_name = 'OrganizerContactPhone') THEN
+                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactPhone\" TO organizer_contact_phone;
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.columns
+                             WHERE table_schema = 'events' AND table_name = 'events'
+                             AND column_name = 'OrganizerContactEmail') THEN
+                        ALTER TABLE events.events RENAME COLUMN \"OrganizerContactEmail\" TO organizer_contact_email;
+                    END IF;
+                END $$;
+            ");
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",

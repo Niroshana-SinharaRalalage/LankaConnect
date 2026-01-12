@@ -17,6 +17,7 @@ using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.ReferenceData.Interfaces;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Infrastructure.Storage.Configuration;
@@ -26,6 +27,7 @@ using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Infrastructure.Services;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
@@ -168,6 +170,9 @@ public static class DependencyInjection
 
         // Phase 6A.47/6A.53: Add ApplicationUrlsService for email verification URLs
         services.AddScoped<IApplicationUrlsService, ApplicationUrlsService>();
+
+        // Phase 6A.70: Add EmailUrlHelper for centralized URL building in email templates
+        services.AddScoped<IEmailUrlHelper, EmailUrlHelper>();
 
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));

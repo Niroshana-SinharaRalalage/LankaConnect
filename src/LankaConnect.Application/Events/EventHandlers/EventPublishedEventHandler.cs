@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Services;
@@ -21,17 +22,20 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailService _emailService;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<EventPublishedEventHandler> _logger;
 
     public EventPublishedEventHandler(
         IEventNotificationRecipientService recipientService,
         IEventRepository eventRepository,
         IEmailService emailService,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<EventPublishedEventHandler> logger)
     {
         _recipientService = recipientService;
         _eventRepository = eventRepository;
         _emailService = emailService;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -90,7 +94,8 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 ["IsFree"] = isFree,
                 ["IsPaid"] = !isFree,
                 ["TicketPrice"] = ticketPriceText,
-                ["EventUrl"] = $"https://lankaconnect.com/events/{@event.Id}"
+                // Phase 6A.70: Use EmailUrlHelper instead of hardcoded URL
+                ["EventUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             };
 
             // Phase 6A.39: Send email to each recipient using database-based template

@@ -73,18 +73,22 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         // Phase 6A.X: Event Organizer Contact Details - Optional contact information for event inquiries
         builder.Property(e => e.PublishOrganizerContact)
+            .HasColumnName("publish_organizer_contact")
             .IsRequired()
             .HasDefaultValue(false);
 
         builder.Property(e => e.OrganizerContactName)
+            .HasColumnName("organizer_contact_name")
             .HasMaxLength(200)
             .IsRequired(false); // Nullable - only set when PublishOrganizerContact is true
 
         builder.Property(e => e.OrganizerContactPhone)
+            .HasColumnName("organizer_contact_phone")
             .HasMaxLength(20)
             .IsRequired(false); // Nullable - optional if email provided
 
         builder.Property(e => e.OrganizerContactEmail)
+            .HasColumnName("organizer_contact_email")
             .HasMaxLength(255)
             .IsRequired(false); // Nullable - optional if phone provided
 

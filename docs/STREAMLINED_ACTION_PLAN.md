@@ -7,7 +7,64 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.71: NEWSLETTER CONFIRMATION & UNSUBSCRIBE FRONTEND PAGES (2026-01-12)
+## ✅ CURRENT STATUS - PHASE 6A.74 PART 5: CRITICAL FEATURE ENHANCEMENTS (2026-01-12)
+**Date**: 2026-01-12
+**Session**: Phase 6A.74 (Part 5) - Critical Feature Enhancements (Rich Text, Landing Page, Email Templates, Metro Areas)
+**Status**: ✅ COMPLETE AND DEPLOYED TO STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ Backend deployed (run #20936879475), Frontend deployed (run #20936879483)
+**API Health**: ✅ Healthy (v1.0.0) - https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/health
+**Documentation**: ✅ Complete summary in [PHASE_6A74_PART_5_COMPLETION_SUMMARY.md](./PHASE_6A74_PART_5_COMPLETION_SUMMARY.md)
+
+**Implementation - 4 Parts Complete**:
+
+**Part 5A - Rich Text Editor & Backend HTML Support**:
+- ✅ Installed TipTap dependencies (@tiptap/react, starter-kit, extension-image, extension-link)
+- ✅ Created RichTextEditor component with image upload (400+ lines, base64 encoding, 2MB validation)
+- ✅ Restructured NewsletterForm with event-first UX (event selection moved to top, metadata card)
+- ✅ Added email template migration for HTML support (triple braces for unescaped HTML, CSS styles)
+- **Files**: [RichTextEditor.tsx](../web/src/presentation/components/ui/RichTextEditor.tsx), [NewsletterForm.tsx](../web/src/presentation/components/features/newsletters/NewsletterForm.tsx), Migration 20260112100000
+
+**Part 5B - Landing Page Newsletter Display**:
+- ✅ Added getPublishedNewsletters() repository method
+- ✅ Created usePublishedNewsletters() React Query hook with 5-minute caching
+- ✅ Created LandingPageNewsletters component (200+ lines, displays 3 most recent, responsive grid)
+- ✅ Integrated into homepage after Business section
+- **Files**: [newsletters.repository.ts](../web/src/infrastructure/api/repositories/newsletters.repository.ts), [useNewsletters.ts](../web/src/presentation/hooks/useNewsletters.ts), [LandingPageNewsletters.tsx](../web/src/presentation/components/features/newsletters/LandingPageNewsletters.tsx), [page.tsx](../web/src/app/page.tsx)
+
+**Part 5C - Email Template with Event Links**:
+- ✅ Already complete in Part 5A migration (event details section with conditional rendering)
+- ✅ Event action buttons: "View Event Details" + "View Sign-up Lists" (if applicable)
+- ✅ Both HTML and text template versions updated
+- **Files**: Migration 20260112100000 (integrated with Part 5A)
+
+**Part 5D - Metro Areas Integration**:
+- ✅ Integrated useMetroAreas hook into NewsletterForm
+- ✅ Populated MultiSelect dropdown with real metro area data
+- ✅ Label formatting: "All [State]" for state-level, "[City], [State]" for city-level
+- **Files**: [NewsletterForm.tsx](../web/src/presentation/components/features/newsletters/NewsletterForm.tsx)
+
+**Git Commits** (6 total):
+1. 65284a2d - Install TipTap dependencies
+2. 5119fd0b - Create RichTextEditor component
+3. bba99135 - Restructure NewsletterForm with rich text and event-first UX
+4. 572fbf78 - Add email template migration for HTML content and event links
+5. 094b0289 - Add landing page newsletter display
+6. 3652dbb1 - Integrate metro areas API into newsletter form
+
+**Lines Changed**: ~1000+ lines across 7 files (1 backend, 6 frontend)
+
+**User Benefits**:
+- Rich content creation with images and formatting
+- Professional newsletter display on landing page
+- Event-linked newsletters with actionable buttons
+- Location-targeted newsletters with real metro area data
+
+**Next Steps**: Manual QA testing in staging environment (see [Testing Checklist](./PHASE_6A74_PART_5_COMPLETION_SUMMARY.md#-testing-checklist))
+
+---
+
+## ✅ PREVIOUS STATUS - PHASE 6A.71: NEWSLETTER CONFIRMATION & UNSUBSCRIBE FRONTEND PAGES (2026-01-12)
 **Date**: 2026-01-12
 **Session**: Phase 6A.71 (Part 3) - Newsletter Confirmation & Unsubscribe Frontend Pages
 **Status**: ✅ COMPLETE - Frontend pages implemented, deployed to staging
@@ -29,7 +86,7 @@
 
 ---
 
-## ✅ PREVIOUS STATUS - PHASE 6A.69: SIGN-UP LIST CSV EXPORT (ZIP) (2026-01-07)
+## ✅ PHASE 6A.69: SIGN-UP LIST CSV EXPORT (ZIP) (2026-01-07)
 **Date**: 2026-01-07
 **Session**: Phase 6A.69 - Sign-Up List CSV Export (Backend Migration with ZIP Archive)
 **Status**: ✅ COMPLETE - Backend implemented, frontend integrated, all tests passed

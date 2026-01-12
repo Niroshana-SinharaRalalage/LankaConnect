@@ -15,6 +15,7 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useEvents, useEventById } from '@/presentation/hooks/useEvents';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 
 /**
  * Newsletter Form Component - Phase 6A.74 Part 5A (Restructured)
@@ -53,6 +54,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   });
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
   const { data: events = [], isLoading: isLoadingEvents } = useEvents({});
+  const { metroAreas, isLoading: isLoadingMetroAreas } = useMetroAreas();
 
   const {
     register,
@@ -383,10 +385,14 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
                   Specific Metro Areas
                 </label>
                 <MultiSelect
-                  options={[]} // TODO Part 5D: Fetch metro areas when API is ready
+                  options={metroAreas.map(m => ({
+                    id: m.id,
+                    label: m.isStateLevelArea ? `All ${m.state}` : `${m.name}, ${m.state}`
+                  }))}
                   value={watch('metroAreaIds') || []}
                   onChange={(ids) => setValue('metroAreaIds', ids)}
                   placeholder="Select metro areas"
+                  isLoading={isLoadingMetroAreas}
                   error={!!errors.metroAreaIds}
                   errorMessage={errors.metroAreaIds?.message}
                 />

@@ -61,75 +61,75 @@ public class ExcelExportService : IExcelExportService
             {
                 // Create one Excel file per signup list
                 foreach (var signUpList in signUpLists)
-            {
-                // Create Excel workbook for this signup list
-                using var workbook = new XLWorkbook();
-
-                // Group items by category within this signup list
-                var categorizedItems = new Dictionary<string, List<SignUpItemDto>>
                 {
-                    ["Mandatory"] = new(),
-                    ["Suggested"] = new(),
-                    ["Open"] = new()
-                };
+                    // Create Excel workbook for this signup list
+                    using var workbook = new XLWorkbook();
 
-                foreach (var item in signUpList.Items)
-                {
-                    var categoryName = item.ItemCategory switch
+                    // Group items by category within this signup list
+                    var categorizedItems = new Dictionary<string, List<SignUpItemDto>>
                     {
-                        SignUpItemCategory.Mandatory => "Mandatory",
-                        SignUpItemCategory.Suggested => "Suggested",
-                        SignUpItemCategory.Open => "Open",
-                        _ => "Open"
+                        ["Mandatory"] = new(),
+                        ["Suggested"] = new(),
+                        ["Open"] = new()
                     };
 
-                    categorizedItems[categoryName].Add(item);
-                }
-
-                // Create a sheet for each category that has items
-                foreach (var (categoryName, items) in categorizedItems)
-                {
-                    if (items.Any())
+                    foreach (var item in signUpList.Items)
                     {
-                        CreateGroupedSignUpSheet(workbook, $"{categoryName} Items", items);
+                        var categoryName = item.ItemCategory switch
+                        {
+                            SignUpItemCategory.Mandatory => "Mandatory",
+                            SignUpItemCategory.Suggested => "Suggested",
+                            SignUpItemCategory.Open => "Open",
+                            _ => "Open"
+                        };
+
+                        categorizedItems[categoryName].Add(item);
                     }
-                }
 
-                // Save workbook to memory first, then add to ZIP as complete file
-                byte[] excelBytes;
-                using (var excelMemoryStream = new MemoryStream())
-                {
-                    workbook.SaveAs(excelMemoryStream);
+                    // Create a sheet for each category that has items
+                    foreach (var (categoryName, items) in categorizedItems)
+                    {
+                        if (items.Any())
+                        {
+                            CreateGroupedSignUpSheet(workbook, $"{categoryName} Items", items);
+                        }
+                    }
 
-                    // CRITICAL: Reset stream position to beginning before reading
-                    // ClosedXML leaves the stream position at EOF after SaveAs()
-                    excelMemoryStream.Position = 0;
-                    excelBytes = excelMemoryStream.ToArray();
+                    // Save workbook to memory first, then add to ZIP as complete file
+                    byte[] excelBytes;
+                    using (var excelMemoryStream = new MemoryStream())
+                    {
+                        workbook.SaveAs(excelMemoryStream);
 
-                    _logger.LogInformation(
-                        "Phase 6A.73: Saved Excel workbook for signup list '{Category}' - {ByteCount} bytes",
-                        signUpList.Category,
-                        excelBytes.Length);
-                }
+                        // CRITICAL: Reset stream position to beginning before reading
+                        // ClosedXML leaves the stream position at EOF after SaveAs()
+                        excelMemoryStream.Position = 0;
+                        excelBytes = excelMemoryStream.ToArray();
 
-                // Generate filename: "Food-and-Drinks.xlsx"
-                var sanitizedFileName = SanitizeFileName(signUpList.Category);
-                var fileName = $"{sanitizedFileName}.xlsx";
+                        _logger.LogInformation(
+                            "Phase 6A.73: Saved Excel workbook for signup list '{Category}' - {ByteCount} bytes",
+                            signUpList.Category,
+                            excelBytes.Length);
+                    }
 
-                // Phase 6A.73 Fix: Write XLSX directly to ZIP entry without additional compression
-                // XLSX files are already ZIP-compressed internally (Open XML format)
-                // Store without compression to avoid double-compression issues
-                var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.NoCompression);
-                using (var entryStream = entry.Open())
-                {
-                    entryStream.Write(excelBytes, 0, excelBytes.Length);
-                    entryStream.Flush();
+                    // Generate filename: "Food-and-Drinks.xlsx"
+                    var sanitizedFileName = SanitizeFileName(signUpList.Category);
+                    var fileName = $"{sanitizedFileName}.xlsx";
 
-                    _logger.LogInformation(
-                        "Phase 6A.73: Added '{FileName}' to ZIP archive - {ByteCount} bytes",
-                        fileName,
-                        excelBytes.Length);
-                }
+                    // Phase 6A.73 Fix: Write XLSX directly to ZIP entry without additional compression
+                    // XLSX files are already ZIP-compressed internally (Open XML format)
+                    // Store without compression to avoid double-compression issues
+                    var entry = archive.CreateEntry(fileName, System.IO.Compression.CompressionLevel.NoCompression);
+                    using (var entryStream = entry.Open())
+                    {
+                        entryStream.Write(excelBytes, 0, excelBytes.Length);
+                        entryStream.Flush();
+
+                        _logger.LogInformation(
+                            "Phase 6A.73: Added '{FileName}' to ZIP archive - {ByteCount} bytes",
+                            fileName,
+                            excelBytes.Length);
+                    }
                 }
             }
 

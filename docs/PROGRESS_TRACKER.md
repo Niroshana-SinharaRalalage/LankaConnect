@@ -1,9 +1,79 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-11 - Phase 6A.74: Newsletter Application Layer - ✅ COMMITTED*
+*Last Updated: 2026-01-11 - Phase 6A.74: Newsletter Infrastructure Layer - ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 3B): Newsletter Application Layer - ✅ COMMITTED
+## 🎯 Current Session Status - Phase 6A.74 (Part 3C): Newsletter Infrastructure Layer - ✅ COMMITTED
+
+### Phase 6A.74 (Part 3C) - Newsletter/News Alert Infrastructure Layer Implementation - 2026-01-11
+
+**Status**: ✅ **COMMITTED** (Infrastructure layer complete, commit 822a8820, build 0 errors)
+
+**Goal**: Implement Newsletter/News Alert Infrastructure layer with repository, EF Core configuration, services, and database migration
+
+**Implementation**:
+- ✅ **Repository Created**:
+  * NewsletterRepository.cs: Implements INewsletterRepository with shadow navigation pattern
+  * Override AddAsync: Syncs EmailGroupIds → _emailGroupEntities, MetroAreaIds → _metroAreaEntities
+  * Override GetByIdAsync: Includes shadow navigation, syncs back to domain, supports trackChanges
+  * Implements: GetByCreatorAsync, GetByStatusAsync, GetByEventAsync, GetExpiredNewslettersAsync, GetPublishedNewslettersAsync
+  * Logging: [Phase 6A.74] prefix for observability
+
+- ✅ **EF Core Configuration Created**:
+  * NewsletterConfiguration.cs: Entity configuration for Newsletter aggregate
+  * Table: communications.newsletters
+  * Value objects: NewsletterTitle (max 200), NewsletterDescription (max 5000)
+  * Many-to-many: newsletter_email_groups, newsletter_metro_areas junction tables
+  * Indexes: created_by_user_id, event_id, status, expires_at, composite (status, published_at)
+  * Foreign keys: created_by_user_id → users, event_id → events (nullable, SetNull)
+  * Concurrency: version rowversion
+
+- ✅ **Service Implementation Created**:
+  * NewsletterRecipientService.cs: Implements INewsletterRecipientService
+  * Location targeting logic: EventId / TargetAllLocations / MetroAreaIds
+  * Email deduplication: HashSet with OrdinalIgnoreCase comparer
+  * Returns RecipientPreviewDto with breakdown
+  * Includes ILogger and try-catch for resilience
+
+- ✅ **EF Core Migration Created**:
+  * 20260112040037_Phase6A74Part3C_AddNewsletterTable.cs
+  * Creates communications.newsletters table
+  * Creates communications.newsletter_email_groups junction table
+  * Creates communications.newsletter_metro_areas junction table
+  * Migration NOT applied yet (will apply during deployment)
+
+- ✅ **Dependency Injection**:
+  * Registered INewsletterRepository → NewsletterRepository (Scoped)
+  * Registered INewsletterRecipientService → NewsletterRecipientService (Scoped)
+
+**Pattern Compliance**:
+- ✅ Shadow navigation pattern (matches EventRepository)
+- ✅ EF Core configuration pattern (matches EventConfiguration)
+- ✅ Service pattern (matches EventNotificationRecipientService)
+- ✅ Logging with [Phase 6A.74] prefix
+- ✅ Try-catch blocks for resilience
+
+**Build Status**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Commit: 822a8820
+- ✅ Files: 8 changed, 5516 insertions(+)
+
+**Phase 6A.74 Progress**:
+- ✅ Part 3A: Domain Layer - COMMITTED in previous session
+- ✅ Part 3B: Application Layer - COMMITTED (commit 8b0aa25f)
+- ✅ Part 3C: Infrastructure Layer - **COMMITTED THIS SESSION**
+- ⏳ Part 3D: API Layer (NewslettersController, query handlers) - PENDING
+- ⏳ Part 3E: Deployment & Testing - PENDING
+
+**Next Steps**:
+1. Push commits to origin
+2. Create Part 3D: API layer (NewslettersController, query handlers)
+3. Deploy to Azure staging with migration
+4. Test Newsletter API endpoints
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.74 (Part 3B): Newsletter Application Layer - ✅ COMMITTED
 
 ### Phase 6A.74 (Part 3B) - Newsletter/News Alert Application Layer Implementation - 2026-01-11
 

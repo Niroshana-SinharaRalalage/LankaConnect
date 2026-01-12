@@ -16,11 +16,12 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 export interface NewsletterFormProps {
   newsletterId?: string;
+  initialEventId?: string; // Pre-fill event ID for event-specific newsletters
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function NewsletterForm({ newsletterId, onSuccess, onCancel }: NewsletterFormProps) {
+export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCancel }: NewsletterFormProps) {
   const isEditMode = !!newsletterId;
   const createMutation = useCreateNewsletter();
   const updateMutation = useUpdateNewsletter();
@@ -49,7 +50,7 @@ export function NewsletterForm({ newsletterId, onSuccess, onCancel }: Newsletter
       description: '',
       emailGroupIds: undefined,
       includeNewsletterSubscribers: true,
-      eventId: undefined,
+      eventId: initialEventId || undefined,
       targetAllLocations: false,
       metroAreaIds: undefined,
     },

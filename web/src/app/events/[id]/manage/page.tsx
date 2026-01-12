@@ -11,6 +11,7 @@ import {
   Ban,
   Trash2,
   XCircle,
+  Mail,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -31,16 +32,21 @@ import { SignUpListsTab } from '@/presentation/components/features/events/SignUp
 import { UnpublishEventModal } from '@/presentation/components/features/events/UnpublishEventModal';
 import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
+// Phase 6A.74: Import EventNewslettersTab
+import { EventNewslettersTab } from '@/presentation/components/features/newsletters/EventNewslettersTab';
+
 /**
- * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete
+ * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
  * Organizer-only page with tabbed interface for managing events
  *
  * Tabs:
  * 1. Event Details - Event info, statistics, publish/edit buttons, media, badges
  * 2. Attendees - Phase 6A.45: Registration list with export functionality
  * 3. Signup Lists - Existing signup list management
+ * 4. Communications - Phase 6A.74: Event-specific newsletters
  *
  * Phase 6A.59: Added Cancel and Delete event buttons
+ * Phase 6A.74: Added Communications tab for event-specific newsletters
  */
 export default function EventManagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -272,6 +278,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Signup Lists',
       icon: ListChecks,
       content: <SignUpListsTab eventId={id} signUpLists={signUpLists || []} />,
+    },
+    {
+      id: 'communications',
+      label: 'Communications',
+      icon: Mail,
+      content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
     },
   ];
 

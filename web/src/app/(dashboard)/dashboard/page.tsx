@@ -36,6 +36,7 @@ import { approvalsRepository } from '@/infrastructure/api/repositories/approvals
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
 import { BadgeManagement } from '@/presentation/components/features/badges';
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
+import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
@@ -567,6 +568,12 @@ export default function DashboardPage() {
                         content: <EmailGroupsTab />,
                       },
                       {
+                        id: 'newsletters',
+                        label: 'Newsletters',
+                        icon: Mail,
+                        content: <NewslettersTab />,
+                      },
+                      {
                         id: 'notifications',
                         label: 'Notifications',
                         icon: Bell,
@@ -654,6 +661,12 @@ export default function DashboardPage() {
                         label: 'Email Groups',
                         icon: Mail,
                         content: <EmailGroupsTab />,
+                      },
+                      {
+                        id: 'newsletters',
+                        label: 'Newsletters',
+                        icon: Mail,
+                        content: <NewslettersTab />,
                       },
                       {
                         id: 'notifications',

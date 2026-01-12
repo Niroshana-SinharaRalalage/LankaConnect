@@ -1,9 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.74 Part 4C: Dashboard Integration - ✅ COMMITTED*
+*Last Updated: 2026-01-12 - Phase 6A.74 Part 4D: Event Management Integration - ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 4C): Dashboard Integration - ✅ COMMITTED
+## 🎯 Current Session Status - Phase 6A.74 (Part 4D): Event Management Integration - ✅ COMMITTED
+
+### Phase 6A.74 (Part 4D) - Event Management Integration - 2026-01-12
+
+**Status**: ✅ **COMMITTED** (Event-specific newsletters complete, commit 24bbb421, TypeScript 0 errors)
+
+**Goal**: Integrate event-specific newsletter functionality into event management page for Phase 6A.74 feature
+
+**Components Created**:
+- ✅ **EventNewslettersTab.tsx** (150 lines):
+  * Event-specific newsletter management component
+  * Header with "Send Newsletter" button
+  * Event title display with blue info banner
+  * NewsletterList integration filtered by eventId
+  * Modal form for create/edit with pre-filled eventId
+  * Action handlers: handleEdit, handlePublish, handleSend, handleDelete
+  * Uses React Query hooks: useNewslettersByEvent, usePublishNewsletter, useSendNewsletter, useDeleteNewsletter
+  * Props: eventId (string), eventTitle (optional string)
+  * Empty state message when no newsletters for event
+
+**Event Management Page Integration**:
+- ✅ **Communications Tab Added**: [events/[id]/manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx)
+  * Line 280-285: Communications tab added to tabs array
+  * Tab ID: 'communications'
+  * Label: 'Communications'
+  * Icon: Mail (lucide-react)
+  * Content: EventNewslettersTab component with eventId and eventTitle props
+
+**NewsletterForm Enhancement**:
+- ✅ **initialEventId Prop**: [NewsletterForm.tsx](../web/src/presentation/components/features/newsletters/NewsletterForm.tsx)
+  * Line 19: Added initialEventId?: string to NewsletterFormProps
+  * Line 24: Updated function signature to accept initialEventId
+  * Line 53: Pre-fill eventId in defaultValues when provided
+  * Allows event-specific newsletter creation from event management page
+
+**User Flow**:
+1. Event organizer navigates to event management page
+2. Clicks on "Communications" tab
+3. Sees list of newsletters linked to that event
+4. Clicks "Send Newsletter" button → Modal opens with NewsletterForm
+5. Event dropdown is pre-filled with current event
+6. Fills form: Title, Description, Email Groups, Newsletter Subscribers
+7. Saves as draft → Newsletter appears in list with "Draft" badge
+8. Can publish, send email, edit, or delete newsletter
+9. All newsletters created from this tab are automatically linked to the event
+
+**Features**:
+- ✅ Event-specific newsletter filtering (useNewslettersByEvent hook)
+- ✅ Pre-filled event dropdown in create form
+- ✅ Event title display in tab header
+- ✅ Blue info banner explaining event-specific newsletters
+- ✅ Reuses NewsletterList component for consistency
+- ✅ Modal form pattern matching NewslettersTab
+- ✅ Loading states and error handling
+- ✅ Empty state message
+
+**Build Status**:
+- ✅ TypeScript compilation: 0 errors
+- ✅ Next.js build: SUCCESS
+- ✅ All routes compiled successfully
+
+**Git Status**:
+- ✅ Commit: 24bbb421
+- ✅ Branch: develop
+- ✅ Message: feat(phase-6a74): Add event-specific newsletter functionality (Part 4D)
+
+**Next Steps**:
+1. Deploy frontend to Azure staging using deploy-ui-staging.yml
+2. Test event-specific newsletter creation in staging
+3. Verify eventId pre-filling works correctly
+4. Complete Phase 6A.74 with all parts integrated
+
+---
 
 ### Phase 6A.74 (Part 4C) - Dashboard Integration - 2026-01-12
 

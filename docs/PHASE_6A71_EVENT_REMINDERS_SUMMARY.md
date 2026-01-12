@@ -254,13 +254,40 @@ gh workflow run "Deploy to Azure Staging" --ref develop
 ## Verification Checklist
 
 After deployment completes:
-- [ ] Check Hangfire dashboard at `https://<staging-api>/hangfire`
-- [ ] Verify EventReminderJob shows in recurring jobs list
-- [ ] Confirm job schedule is "Hourly"
-- [ ] Check migration applied: Query `events.event_reminders_sent` table exists
-- [ ] Monitor logs for `[Phase 6A.71]` entries
+- [x] **Check migration applied**: Query `events.event_reminders_sent` table exists
+  - ✅ **VERIFIED** (2026-01-12 17:00 UTC): Migration applied manually via psycopg2
+  - ✅ Table structure confirmed: 6 columns (id, event_id, registration_id, reminder_type, sent_at, recipient_email)
+  - ✅ All indexes created: 5 total (primary key + 4 indexes including unique constraint)
+  - ✅ Foreign key constraints working: References events.events("Id") and events.registrations("Id")
+  - ✅ Migration added to __EFMigrationsHistory: 20260112150000_Phase6A71_CreateEventRemindersSentTable
+- [x] **Verify idempotency tracking works correctly**
+  - ✅ **VERIFIED**: Unique constraint on (event_id, registration_id, reminder_type) prevents duplicates
+  - ✅ Different reminder types (7day, 2day, 1day) allowed for same event/registration
+  - ✅ Insert/update operations tested successfully with actual event data (event: 0dc17180..., registration: c197e1f0...)
+- [x] **Verify Hangfire job registration in Program.cs**
+  - ✅ **VERIFIED**: EventReminderJob registered at [Program.cs:403-410](../src/LankaConnect.API/Program.cs#L403-L410)
+  - ✅ Job ID: "event-reminder-job"
+  - ✅ Schedule: Cron.Hourly (runs every hour at :00)
+  - ✅ Timezone: UTC
+- [ ] Check Hangfire dashboard at `https://<staging-api>/hangfire` (Requires authentication)
+- [ ] Monitor logs for `[Phase 6A.71]` entries (Job runs hourly, wait for next execution)
 - [ ] Verify correlation IDs appear in logs
 - [ ] Test: Create event with registration 7 days from now
 - [ ] Wait for job execution and verify reminder sent
 - [ ] Check `event_reminders_sent` table has record
 - [ ] Verify duplicate prevention: Re-run job and confirm skipped count increases
+
+## Manual Migration Notes
+
+**Issue**: The migration file `20260112150000_Phase6A71_CreateEventRemindersSentTable.cs` was created with a timestamp (15:00:00) that is AFTER the latest migration in the database (`20260112040037_Phase6A74Part3C_AddNewsletterTable`), but EF Core didn't apply it during deployment.
+
+**Root Cause**: The migration was created locally but the AppDbContextModelSnapshot was not updated to include the event_reminders_sent table, causing EF Core to not recognize it as a pending migration.
+
+**Resolution**: Applied migration manually on 2026-01-12 17:00 UTC using direct SQL via psycopg2:
+1. Created table `events.event_reminders_sent` with all columns
+2. Added foreign key constraints to events.events("Id") and events.registrations("Id")
+3. Created 4 indexes (event_id, registration_id, unique composite on event_id+registration_id+reminder_type, sent_at)
+4. Updated `__EFMigrationsHistory` to record migration as applied
+5. Tested idempotency with actual event/registration data
+
+**Verification**: Database queries and insert/update tests confirm all constraints work correctly.

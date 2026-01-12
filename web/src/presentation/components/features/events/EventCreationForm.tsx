@@ -75,6 +75,23 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const groupPricingTiers = watch('groupPricingTiers') || [];
+  const publishOrganizerContact = watch('publishOrganizerContact');
+
+  // Phase 6A.X: Auto-populate organizer contact from user profile when checkbox is checked
+  useEffect(() => {
+    if (publishOrganizerContact && user) {
+      // Only auto-populate if fields are empty
+      const currentName = watch('organizerContactName');
+      const currentEmail = watch('organizerContactEmail');
+
+      if (!currentName) {
+        setValue('organizerContactName', user.fullName);
+      }
+      if (!currentEmail) {
+        setValue('organizerContactEmail', user.email);
+      }
+    }
+  }, [publishOrganizerContact, user, setValue, watch]);
 
   // Session 33: Track validation errors for display
   const hasErrors = Object.keys(errors).length > 0;

@@ -1,9 +1,81 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.71: Newsletter Frontend Pages - ✅ DEPLOYED*
+*Last Updated: 2026-01-11 - Phase 6A.74: Newsletter Application Layer - ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.71: Newsletter Confirmation & Unsubscribe Frontend Pages - ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.74 (Part 3B): Newsletter Application Layer - ✅ COMMITTED
+
+### Phase 6A.74 (Part 3B) - Newsletter/News Alert Application Layer Implementation - 2026-01-11
+
+**Status**: ✅ **COMMITTED** (Application layer complete, commit 8b0aa25f, build 0 errors)
+
+**Goal**: Implement Newsletter/News Alert Application layer with CQRS commands, DTOs, and background jobs for Phase 6A.74 feature
+
+**Implementation**:
+- ✅ **Commands Created** (10 files):
+  * CreateNewsletterCommand + Handler: Create draft newsletters with location targeting
+  * UpdateNewsletterCommand + Handler: Update draft newsletters (authorization check)
+  * PublishNewsletterCommand + Handler: Publish Draft → Active (sets PublishedAt, ExpiresAt)
+  * SendNewsletterCommand + Handler: Queue Hangfire background job for email delivery
+  * DeleteNewsletterCommand + Handler: Delete Draft newsletters only
+
+- ✅ **DTOs Created** (3 files):
+  * NewsletterDto: Complete newsletter representation with EmailGroupSummaryDto, MetroAreaSummaryDto
+  * RecipientPreviewDto: Recipient preview with RecipientBreakdownDto (metro/state/all locations)
+  * INewsletterRecipientService: Service interface for recipient resolution
+
+- ✅ **Background Jobs** (1 file):
+  * NewsletterEmailJob: Hangfire job for async email sending with retry support
+
+**Key Features Implemented**:
+- ✅ Phase 6A.74 Enhancement 1: Location targeting (MetroAreaIds, TargetAllLocations)
+- ✅ Authorization: Creator or Admin only (via _currentUserService)
+- ✅ Value objects: NewsletterTitle, NewsletterDescription validation
+- ✅ Repository pattern: INewsletterRepository with Remove() method
+- ✅ UnitOfWork: CommitAsync for persistence
+- ✅ Logging: Comprehensive ILogger<T> with try-catch for observability
+- ✅ Result<T> pattern: Consistent error handling
+- ✅ Hangfire integration: Background job queueing for email delivery
+
+**Pattern Compliance**:
+- ✅ ICommand<TResult> with record types
+- ✅ ICommandHandler<TCommand, TResult> implementation
+- ✅ EventNotificationRecipientService pattern for recipient resolution
+- ✅ EventCancellationEmailJob pattern for background jobs
+
+**Build Status**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Commit: 8b0aa25f
+- ✅ Files: 14 changed, 901 insertions(+)
+
+**Files Created**:
+- [src/LankaConnect.Application/Communications/Commands/CreateNewsletter/](../src/LankaConnect.Application/Communications/Commands/CreateNewsletter/)
+- [src/LankaConnect.Application/Communications/Commands/UpdateNewsletter/](../src/LankaConnect.Application/Communications/Commands/UpdateNewsletter/)
+- [src/LankaConnect.Application/Communications/Commands/PublishNewsletter/](../src/LankaConnect.Application/Communications/Commands/PublishNewsletter/)
+- [src/LankaConnect.Application/Communications/Commands/SendNewsletter/](../src/LankaConnect.Application/Communications/Commands/SendNewsletter/)
+- [src/LankaConnect.Application/Communications/Commands/DeleteNewsletter/](../src/LankaConnect.Application/Communications/Commands/DeleteNewsletter/)
+- [src/LankaConnect.Application/Communications/Common/NewsletterDto.cs](../src/LankaConnect.Application/Communications/Common/NewsletterDto.cs)
+- [src/LankaConnect.Application/Communications/Common/RecipientPreviewDto.cs](../src/LankaConnect.Application/Communications/Common/RecipientPreviewDto.cs)
+- [src/LankaConnect.Application/Communications/Services/INewsletterRecipientService.cs](../src/LankaConnect.Application/Communications/Services/INewsletterRecipientService.cs)
+- [src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs](../src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs)
+
+**Phase 6A.74 Progress**:
+- ✅ Part 3A: Domain Layer (Newsletter entity, value objects, INewsletterRepository) - COMMITTED in previous session
+- ✅ Part 3B: Application Layer (Commands, DTOs, Background Jobs) - COMMITTED this session
+- ⏳ Part 3C: Infrastructure Layer (NewsletterRepository, configurations, migrations) - PENDING
+- ⏳ Part 3D: API Layer (NewslettersController, query handlers) - PENDING
+- ⏳ Part 3E: Deployment & Testing - PENDING
+
+**Next Steps**:
+1. Push commit to origin
+2. Create Part 3C: Infrastructure layer (NewsletterRepository, NewsletterConfiguration, migration)
+3. Create Part 3D: API layer (NewslettersController, query handlers)
+4. Deploy to Azure staging
+5. Test Newsletter API endpoints
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.71: Newsletter Confirmation & Unsubscribe Frontend Pages - ✅ DEPLOYED
 
 ### Phase 6A.71 (Part 3) - Frontend Pages for Newsletter Confirmation & Unsubscribe - 2026-01-12
 

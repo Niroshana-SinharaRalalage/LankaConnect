@@ -1960,9 +1960,15 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Successfully exported attendees for event {EventId} in {Format} format. File: {FileName}",
             eventId, format, result.Value!.FileName);
 
+        // Phase 6A.73: Force Content-Type to application/zip to prevent ASP.NET Core's
+        // automatic MIME type detection from overriding based on filename
+        var contentType = result.Value.ContentType == "application/zip"
+            ? "application/zip"
+            : result.Value.ContentType;
+
         return File(
             result.Value.FileContent,
-            result.Value.ContentType,
+            contentType,
             result.Value.FileName
         );
     }

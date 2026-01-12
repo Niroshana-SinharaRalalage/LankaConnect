@@ -150,9 +150,10 @@ public class ExportEventAttendeesQueryHandler
             // Excel: ZIP with multiple Excel files (one per signup list, with category sheets)
             if (request.Format == ExportFormat.SignUpListsExcel)
             {
-                // Generate ZIP with Excel files (one Excel per signup list)
+                // Phase 6A.73: Generate ZIP with Excel files (one Excel per signup list)
+                // Removed "excel" from filename to prevent ASP.NET Core MIME type auto-detection
                 fileContent = _excelService.ExportSignUpListsToExcelZip(signUpListsForExport, request.EventId);
-                fileName = $"event-{request.EventId}-signup-lists-excel-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                fileName = $"event-{request.EventId}-signup-lists-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
                 contentType = "application/zip";
             }
             else // SignUpListsZip (CSV)

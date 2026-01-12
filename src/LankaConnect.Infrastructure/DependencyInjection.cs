@@ -141,6 +141,7 @@ public static class DependencyInjection
         services.AddScoped<IUserEmailPreferencesRepository, UserEmailPreferencesRepository>();
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
+        services.AddScoped<INewsletterRepository, NewsletterRepository>(); // Phase 6A.74: Newsletter Management
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -243,8 +244,8 @@ public static class DependencyInjection
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
 
-        // Phase 6A.74: Newsletter/News Alert Feature - COMMENTED OUT (incomplete feature)
-        // services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Application.Communications.Services.NewsletterRecipientService>();
+        // Phase 6A.74: Newsletter Recipient Service
+        services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
 
         // Phase 6A.74: Newsletter Background Jobs - COMMENTED OUT (incomplete feature)
         // services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.SendNewsletterEmailJob>();

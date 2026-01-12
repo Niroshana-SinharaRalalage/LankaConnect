@@ -1,9 +1,85 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.74 Part 4B: Newsletter UI Components - ✅ COMMITTED*
+*Last Updated: 2026-01-12 - Phase 6A.74 Part 4C: Dashboard Integration - ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 4B): Newsletter UI Components - ✅ COMMITTED
+## 🎯 Current Session Status - Phase 6A.74 (Part 4C): Dashboard Integration - ✅ COMMITTED
+
+### Phase 6A.74 (Part 4C) - Dashboard Integration - 2026-01-12
+
+**Status**: ✅ **COMMITTED** (Dashboard integration complete, commit 98296e8e, TypeScript 0 errors)
+
+**Goal**: Integrate Newsletters tab into Admin and EventOrganizer dashboards for Phase 6A.74 feature
+
+**Components Created**:
+- ✅ **NewslettersTab.tsx** (150 lines):
+  * Dashboard tab component for newsletter management
+  * Header with "Create Newsletter" button
+  * NewsletterList integration with action handlers
+  * Modal form for create/edit (overlay with backdrop)
+  * State management: isFormOpen, editingId
+  * Action handlers: handleEdit, handlePublish, handleSend, handleDelete
+  * Confirmation dialog for delete action
+  * Uses React Query hooks: useMyNewsletters, usePublishNewsletter, useSendNewsletter, useDeleteNewsletter
+  * LankaConnect brand colors (Orange #FF7900, Rose #8B1538)
+
+**Dashboard Integration**:
+- ✅ **Admin Role**: Newsletters tab added after Email Groups tab
+  * Line 570-575 in [dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx#L570-L575)
+  * Tab ID: 'newsletters'
+  * Label: 'Newsletters'
+  * Icon: Mail (lucide-react)
+
+- ✅ **EventOrganizer Role**: Newsletters tab added after Email Groups tab
+  * Line 665-670 in [dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx#L665-L670)
+  * Tab ID: 'newsletters'
+  * Label: 'Newsletters'
+  * Icon: Mail (lucide-react)
+
+**User Flow**:
+1. User (Admin/EventOrganizer) logs into dashboard
+2. Navigates to "Newsletters" tab
+3. Sees list of their newsletters with status badges
+4. Clicks "Create Newsletter" button → Modal opens with NewsletterForm
+5. Fills form: Title, Description, Email Groups, Newsletter Subscribers, Event linkage, Location targeting
+6. Saves as draft → Newsletter appears in list with "Draft" badge
+7. Can edit draft, publish, send email, or delete
+8. Published newsletters show "Active" badge with expiry date
+9. Sent newsletters show "Sent" badge with sent date
+10. Confirmation prompt before delete action
+
+**Features**:
+- ✅ Create newsletter with modal form
+- ✅ Edit draft newsletters
+- ✅ Publish newsletters (Draft → Active)
+- ✅ Send email to recipients (Active → Sent)
+- ✅ Delete draft newsletters (with confirmation)
+- ✅ Loading states for all actions
+- ✅ Empty state message
+- ✅ Responsive design
+- ✅ Error handling via React Query
+
+**Build Status**:
+- ✅ TypeScript compilation: 0 errors
+- ✅ Next.js build: SUCCESS
+- ✅ All routes compiled successfully
+
+**Git Status**:
+- ✅ Commit: 98296e8e
+- ✅ Branch: develop
+- ✅ Pushed to: origin/develop
+
+**Next Steps**:
+1. Deploy frontend to Azure staging using deploy-ui-staging.yml
+2. Test end-to-end newsletter workflow in staging
+3. Verify API integration (create, update, publish, send, delete)
+4. Part 4D: Event Management Integration (Communications tab) - OPTIONAL
+
+---
+
+## 🎯 Previous Sessions
+
+### Phase 6A.74 (Part 4B): Newsletter UI Components - ✅ COMMITTED
 
 ### Phase 6A.74 (Part 4B) - Newsletter UI Components - 2026-01-12
 

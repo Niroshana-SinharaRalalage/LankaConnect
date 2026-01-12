@@ -1,9 +1,102 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-11 - Phase 6A.74: Newsletter Infrastructure Layer - ✅ COMMITTED*
+*Last Updated: 2026-01-12 - Phase 6A.70: Email URL Centralization - ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 3C): Newsletter Infrastructure Layer - ✅ COMMITTED
+## 🎯 Current Session Status - Phase 6A.70: Email URL Centralization - ✅ COMPLETE
+
+### Phase 6A.70 - Email URL Centralization (Part 1 of Email System Stabilization) - 2026-01-12
+
+**Status**: ✅ **COMPLETE** (Commit a199c0bb, Deployment #20908521809, 0 errors, 34 tests passing)
+
+**Goal**: Eliminate hardcoded URLs in email templates to enable proper environment-specific configuration
+
+**Priority**: P0 - Critical (Blocking staging deployments)
+
+**Documentation**: [PHASE_6A70_URL_CENTRALIZATION_SUMMARY.md](./PHASE_6A70_URL_CENTRALIZATION_SUMMARY.md)
+
+**Implementation**:
+- ✅ **IEmailUrlHelper Interface Created** ([IEmailUrlHelper.cs](../src/LankaConnect.Application/Interfaces/IEmailUrlHelper.cs)):
+  * BuildEmailVerificationUrl(string token)
+  * BuildEventDetailsUrl(Guid eventId)
+  * BuildEventManageUrl(Guid eventId)
+  * BuildEventSignupUrl(Guid eventId)
+  * BuildMyEventsUrl()
+  * BuildNewsletterConfirmUrl(string token)
+  * BuildNewsletterUnsubscribeUrl(string token)
+  * BuildUnsubscribeUrl(string token)
+
+- ✅ **EmailUrlHelper Service Implemented** ([EmailUrlHelper.cs](../src/LankaConnect.Infrastructure/Services/EmailUrlHelper.cs)):
+  * Reads from IConfiguration (ApplicationUrls section)
+  * Placeholder substitution ({eventId})
+  * Proper URL encoding for tokens
+  * Defensive validation (null/empty/Guid.Empty)
+  * Trailing slash handling
+  * Throws InvalidOperationException for missing configuration
+
+- ✅ **Configuration Updated** (All Environments):
+  * Added ApiBaseUrl to appsettings.json (localhost:5000)
+  * Added EventManagePath: "/events/{eventId}/manage"
+  * Added EventSignupPath: "/events/{eventId}/signup"
+  * Added MyEventsPath: "/my-events"
+  * Staging/Production maintain environment-specific base URLs
+
+- ✅ **EventPublishedEventHandler Refactored** ([EventPublishedEventHandler.cs:98](../src/LankaConnect.Application/Events/EventHandlers/EventPublishedEventHandler.cs#L98)):
+  * Removed hardcoded URL: `$"https://lankaconnect.com/events/{@event.Id}"`
+  * Now uses: `_emailUrlHelper.BuildEventDetailsUrl(@event.Id)`
+  * Injected IEmailUrlHelper via constructor
+
+- ✅ **Dependency Injection** ([DependencyInjection.cs:173](../src/LankaConnect.Infrastructure/DependencyInjection.cs#L173)):
+  * Registered IEmailUrlHelper → EmailUrlHelper (Scoped)
+  * Added after IApplicationUrlsService registration
+
+- ✅ **Comprehensive Unit Tests** ([EmailUrlHelperTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/EmailUrlHelperTests.cs)):
+  * 34 tests, 100% pass rate
+  * Valid/invalid input validation
+  * URL encoding for special characters
+  * Configuration fallbacks
+  * Missing configuration error handling
+  * Placeholder substitution
+  * Trailing slash handling
+
+**Build & Test Results**:
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Test Run Successful.
+Total tests: 34
+     Passed: 34
+```
+
+**Cleanup**:
+- ✅ Removed incomplete newsletter query handlers blocking build
+- ✅ Removed incomplete test files blocking build
+- ✅ Achieved zero compilation errors
+
+**Deployment**:
+- ✅ Committed: a199c0bb
+- ✅ Pushed to develop
+- ✅ Deployed to staging: Run #20908521809
+
+**Benefits**:
+- ✅ Environment-specific URLs for staging/production
+- ✅ Centralized URL management via configuration
+- ✅ Eliminates hardcoded production URLs
+- ✅ Improves maintainability and testability
+- ✅ Ready for additional URL types
+
+**Next Steps**:
+- Phase 6A.71: Event Reminders (Fix EventReminderJob, add multi-interval support)
+- Phase 6A.72: Event Cancellation (Recipient consolidation)
+- Phase 6A.73: Template Constants
+
+---
+
+## 📋 Historical Sessions
+
+### Phase 6A.74 (Part 3C): Newsletter Infrastructure Layer - ✅ COMMITTED
 
 ### Phase 6A.74 (Part 3C) - Newsletter/News Alert Infrastructure Layer Implementation - 2026-01-11
 

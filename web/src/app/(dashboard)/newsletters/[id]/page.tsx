@@ -10,6 +10,7 @@ import {
   usePublishNewsletter,
   useSendNewsletter,
   useDeleteNewsletter,
+  useReactivateNewsletter,
 } from '@/presentation/hooks/useNewsletters';
 import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
 
@@ -31,6 +32,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   const publishMutation = usePublishNewsletter();
   const sendMutation = useSendNewsletter();
   const deleteMutation = useDeleteNewsletter();
+  const reactivateMutation = useReactivateNewsletter();
 
   const handlePublish = async () => {
     try {
@@ -62,6 +64,14 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
       router.push('/dashboard?tab=newsletters'); // Dashboard navigation is correct
     } catch (error) {
       console.error('Failed to delete newsletter:', error);
+    }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      await reactivateMutation.mutateAsync(id);
+    } catch (error) {
+      console.error('Failed to reactivate newsletter:', error);
     }
   };
 
@@ -178,6 +188,18 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
             </>
           )}
 
+          {/* Inactive (not sent): Reactivate */}
+          {newsletter.status === NewsletterStatus.Inactive && !newsletter.sentAt && (
+            <Button
+              onClick={handleReactivate}
+              disabled={reactivateMutation.isPending}
+              className="bg-[#FF7900] hover:bg-[#E66D00] text-white"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {reactivateMutation.isPending ? 'Reactivating...' : 'Reactivate (Extend 1 Week)'}
+            </Button>
+          )}
+
           {/* Sent: View only */}
           {newsletter.status === NewsletterStatus.Sent && (
             <div className="text-sm text-gray-600 italic">
@@ -199,12 +221,6 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 <span className="text-sm">
                   {newsletter.emailGroups.length} Email {newsletter.emailGroups.length === 1 ? 'Group' : 'Groups'}
                 </span>
-              </div>
-            )}
-            {newsletter.includeNewsletterSubscribers && (
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-600" />
-                <span className="text-sm">Newsletter Subscribers</span>
               </div>
             )}
             {newsletter.targetAllLocations && (

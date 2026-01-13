@@ -430,6 +430,44 @@ export function useSendNewsletter() {
 }
 
 /**
+ * useReactivateNewsletter Hook
+ * Phase 6A.74 Hotfix: Reactivate inactive newsletters
+ *
+ * Mutation hook for reactivating inactive newsletters (Inactive → Active)
+ * Extends newsletter visibility by 7 days
+ * Only Inactive newsletters (not sent) can be reactivated
+ *
+ * Features:
+ * - Changes status from Inactive to Active
+ * - Extends ExpiresAt by 7 days
+ * - Automatic cache invalidation
+ * - Proper error handling
+ *
+ * @param options - Additional React Query mutation options
+ *
+ * @example
+ * ```tsx
+ * const reactivateNewsletter = useReactivateNewsletter();
+ *
+ * await reactivateNewsletter.mutateAsync('newsletter-123');
+ * // Newsletter reactivated and visible for another week
+ * ```
+ */
+export function useReactivateNewsletter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => newslettersRepository.reactivateNewsletter(id),
+    onSuccess: (_data, id) => {
+      // Invalidate affected queries
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.published() });
+    },
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -443,4 +481,5 @@ export default {
   useDeleteNewsletter,
   usePublishNewsletter,
   useSendNewsletter,
+  useReactivateNewsletter,
 };

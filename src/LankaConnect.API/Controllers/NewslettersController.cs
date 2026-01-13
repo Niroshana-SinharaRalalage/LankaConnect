@@ -7,6 +7,7 @@ using LankaConnect.Application.Communications.Commands.UpdateNewsletter;
 using LankaConnect.Application.Communications.Commands.DeleteNewsletter;
 using LankaConnect.Application.Communications.Commands.PublishNewsletter;
 using LankaConnect.Application.Communications.Commands.SendNewsletter;
+using LankaConnect.Application.Communications.Commands.ReactivateNewsletter;
 using LankaConnect.Application.Communications.Queries.GetNewsletterById;
 using LankaConnect.Application.Communications.Queries.GetNewslettersByCreator;
 using LankaConnect.Application.Communications.Queries.GetNewslettersByEvent;
@@ -116,6 +117,19 @@ public class NewslettersController : BaseController<NewslettersController>
         {
             return Accepted();
         }
+
+        return HandleResult(result);
+    }
+
+    [HttpPost("{id:guid}/reactivate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ReactivateNewsletter(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.74 Hotfix] Reactivating newsletter {Id}", id);
+
+        var command = new ReactivateNewsletterCommand(id);
+        var result = await Mediator.Send(command);
 
         return HandleResult(result);
     }

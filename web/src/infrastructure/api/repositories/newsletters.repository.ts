@@ -18,6 +18,7 @@ import type {
  * - DELETE /api/newsletters/{id} - Delete draft
  * - POST /api/newsletters/{id}/publish - Publish newsletter
  * - POST /api/newsletters/{id}/send - Queue email send job
+ * - POST /api/newsletters/{id}/reactivate - Reactivate inactive newsletter (Hotfix)
  * - GET /api/newsletters/{id} - Get newsletter by ID
  * - GET /api/newsletters/my-newsletters - Get current user's newsletters
  * - GET /api/newsletters/event/{eventId} - Get newsletters for specific event
@@ -138,6 +139,18 @@ export class NewslettersRepository {
    */
   async sendNewsletter(id: string): Promise<void> {
     await apiClient.post(`${this.basePath}/${id}/send`);
+  }
+
+  /**
+   * Reactivate an inactive newsletter (Inactive → Active)
+   * Maps to backend ReactivateNewsletterCommand
+   * Extends newsletter visibility by 7 days
+   * Only Inactive newsletters (not sent) can be reactivated
+   *
+   * @param id - Newsletter ID (GUID)
+   */
+  async reactivateNewsletter(id: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${id}/reactivate`);
   }
 }
 

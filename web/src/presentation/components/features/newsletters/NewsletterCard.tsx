@@ -88,11 +88,6 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
               {newsletter.emailGroups.length} Email {newsletter.emailGroups.length === 1 ? 'Group' : 'Groups'}
             </span>
           )}
-          {newsletter.includeNewsletterSubscribers && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-              Newsletter Subscribers
-            </span>
-          )}
           {newsletter.targetAllLocations && (
             <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
               All Locations

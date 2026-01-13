@@ -78,13 +78,12 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   });
 
   // Watch fields for conditional rendering and auto-population
-  const includeNewsletterSubscribers = watch('includeNewsletterSubscribers');
   const selectedEventId = watch('eventId');
   const targetAllLocations = watch('targetAllLocations');
   const currentTitle = watch('title');
 
-  // Show location targeting only if: includeNewsletterSubscribers && !eventId
-  const showLocationTargeting = includeNewsletterSubscribers && !selectedEventId;
+  // Show location targeting only if not event-linked (newsletter subscribers are always included by default)
+  const showLocationTargeting = !selectedEventId;
 
   // Fetch selected event details for metadata display and auto-population
   const { data: selectedEvent } = useEventById(selectedEventId || '', {
@@ -388,17 +387,11 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
             )}
           </div>
 
-          {/* Include Newsletter Subscribers */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="includeNewsletterSubscribers"
-              {...register('includeNewsletterSubscribers')}
-              className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-            />
-            <label htmlFor="includeNewsletterSubscribers" className="text-sm font-medium text-neutral-700">
-              Include Newsletter Subscribers
-            </label>
+          {/* Newsletter subscribers are always included by default */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Newsletter subscribers are automatically included as recipients.
+            </p>
           </div>
         </CardContent>
       </Card>

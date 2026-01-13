@@ -61,15 +61,15 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
 
   const handleSendReminderClick = () => {
     // Navigate to newsletter creation with event pre-linked
-    router.push(`/dashboard/newsletters/create?eventId=${eventId}`);
+    router.push(`/newsletters/create?eventId=${eventId}`);
   };
 
   const handleNewsletterClick = (newsletterId: string) => {
-    router.push(`/dashboard/newsletters/${newsletterId}`);
+    router.push(`/newsletters/${newsletterId}`);
   };
 
   const handleEditClick = (newsletterId: string) => {
-    router.push(`/dashboard/newsletters/${newsletterId}/edit`);
+    router.push(`/newsletters/${newsletterId}/edit`);
   };
 
   const handlePublish = async (newsletterId: string) => {

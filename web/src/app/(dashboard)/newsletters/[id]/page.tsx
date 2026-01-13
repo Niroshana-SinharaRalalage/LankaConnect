@@ -59,7 +59,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
 
     try {
       await deleteMutation.mutateAsync(id);
-      router.push('/dashboard?tab=newsletters');
+      router.push('/dashboard?tab=newsletters'); // Dashboard navigation is correct
     } catch (error) {
       console.error('Failed to delete newsletter:', error);
     }
@@ -132,7 +132,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           {newsletter.status === NewsletterStatus.Draft && (
             <>
               <Button
-                onClick={() => router.push(`/dashboard/newsletters/${id}/edit`)}
+                onClick={() => router.push(`/newsletters/${id}/edit`)}
                 variant="outline"
               >
                 <Edit className="w-4 h-4 mr-2" />
@@ -161,7 +161,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           {newsletter.status === NewsletterStatus.Active && !newsletter.sentAt && (
             <>
               <Button
-                onClick={() => router.push(`/dashboard/newsletters/${id}/edit`)}
+                onClick={() => router.push(`/newsletters/${id}/edit`)}
                 variant="outline"
               >
                 <Edit className="w-4 h-4 mr-2" />

@@ -1,9 +1,144 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.X: UI Layout Improvements for Event Management - ✅ COMPLETE AND DEPLOYED*
+*Last Updated: 2026-01-13 - Phase 6A.74 Part 6: Newsletter Bug Fixes & Route-Based UI - ✅ COMPLETE AND DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X: UI Layout Improvements - ✅ COMPLETE AND DEPLOYED
+## 🎯 Current Session Status - Phase 6A.74 Part 6: Newsletter Bug Fixes & Route-Based UI - ✅ COMPLETE AND DEPLOYED
+
+### Phase 6A.74 Part 6 - Newsletter Bug Fixes & Route-Based UI - 2026-01-13
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Commits 25dd2fb8 & 4e81619b, Build successful with 0 errors)
+
+**Goal**: Fix critical UX bugs and missing features from Phase 6A.74 Parts 1-5, implementing proper route-based navigation for newsletter feature
+
+**Implementation Summary**:
+
+**Phase 0 - Dependencies**:
+- ✅ Installed `@tiptap/extension-character-count` for proper character counting
+- ✅ Installed `dompurify` and `@types/dompurify` for XSS protection (future use)
+
+**Phase 1 - Critical Bug Fixes**:
+1. ✅ **Character Count with Images** (Issue #1)
+   - **Problem**: Base64 image data was being counted as characters, exceeding 5000 limit
+   - **Fix**: Added CharacterCount extension with `mode: 'textSize'` to RichTextEditor.tsx
+   - **Result**: Only visible text counted, images excluded from character limit
+
+2. ✅ **Status Badge "Unknown"** (Issue #2)
+   - **Problem**: NewsletterCard.tsx checking `status === 0` (Draft) instead of Active for expiration display
+   - **Fix**: Changed line 66 to `status === NewsletterStatus.Active`
+   - **Result**: Status badges now show correct status, no more "Unknown"
+
+3. ✅ **Title Format** (Issue #3)
+   - **Problem**: Auto-populated title was "Newsletter for [Event]" instead of "[UPDATE] on [Event]"
+   - **Fix**: Changed line 119 in NewsletterForm.tsx
+   - **Result**: Event newsletter titles now use "[UPDATE] on [Event Title]" format
+
+4. ✅ **Event Links Auto-Population** (Issue #4)
+   - **Problem**: When event selected, rich text editor remained empty - no event details or links
+   - **Fix**: Added useEffect (lines 124-173) in NewsletterForm.tsx that:
+     * Watches selectedEvent changes
+     * Checks if editor is empty (won't overwrite user content)
+     * Builds HTML template with event title, location, date
+     * Includes links to event details and sign-up lists
+     * Populates editor with `setValue('description', eventHtml)`
+   - **Result**: Event details and links now auto-populate when event is selected
+
+**Phase 2 - Route-Based UI**:
+1. ✅ **Full-Page Newsletter Creation** (Issue #5)
+   - **Created**: `web/src/app/(dashboard)/newsletters/create/page.tsx`
+   - **Features**:
+     * Supports `?eventId=xxx` query parameter for event pre-linking
+     * Breadcrumb navigation with "Back" button
+     * Navigates to details page after creation
+     * Wrapped in Suspense boundary for Next.js 15+ compatibility
+
+2. ✅ **Newsletter Details Page** (Issue #5)
+   - **Created**: `web/src/app/(dashboard)/newsletters/[id]/page.tsx`
+   - **Features**:
+     * Displays full newsletter content with HTML rendering
+     * Action buttons based on status:
+       - Draft: Edit, Publish, Delete
+       - Active (not sent): Edit, Send Email
+       - Sent: View only (shows sent date)
+     * Recipient information cards
+     * Event linkage display
+     * Status information with publish/sent/expires dates
+
+3. ✅ **Newsletter Edit Page** (Issue #5)
+   - **Created**: `web/src/app/(dashboard)/newsletters/[id]/edit/page.tsx`
+   - **Features**: Full-page editing experience, navigates to details after save
+
+4. ✅ **Updated Tab Components** (Issue #5, #6):
+   - **NewslettersTab.tsx** (Modified):
+     * Removed modal state management
+     * Changed handlers to use `router.push()` navigation
+     * Removed NewsletterForm rendering
+     * Added `onNewsletterClick` prop to NewsletterList
+
+   - **EventNewslettersTab.tsx** (Modified):
+     * Changed button text to "Send Reminder/Update" (Issue #7)
+     * Updated handler to navigate with `?eventId=xxx` query parameter
+     * Removed modal rendering
+     * Added `onNewsletterClick` handler
+
+**Phase 3 - Navigation & UX Enhancements**:
+- ✅ **Newsletter Form onSuccess Callback**:
+  * Changed signature from `() => void` to `(newsletterId?: string) => void`
+  * Returns newsletter ID after create/update
+  * Enables proper navigation to details page
+
+- ✅ **NewsletterList Component**:
+  * Added `onNewsletterClick` prop for clickable newsletter cards
+  * Cards navigate to details page when clicked
+
+**Issues Fixed**:
+1. ✅ Character count breaking with images (RichTextEditor.tsx)
+2. ✅ Status badge showing "Unknown" (NewsletterCard.tsx)
+3. ✅ Title format "[UPDATE] on" instead of "Newsletter for" (NewsletterForm.tsx)
+4. ✅ Event links not auto-populated (NewsletterForm.tsx)
+5. ✅ Modal popup instead of full-page experience (3 new route pages)
+6. ✅ Navigation to newsletter details not working (Updated tab components)
+7. ✅ Button text "Send Newsletter" → "Send Reminder/Update" (EventNewslettersTab.tsx)
+
+**Files Created** (Phase 2):
+1. `web/src/app/(dashboard)/newsletters/create/page.tsx`
+2. `web/src/app/(dashboard)/newsletters/[id]/page.tsx`
+3. `web/src/app/(dashboard)/newsletters/[id]/edit/page.tsx`
+
+**Files Modified** (Phases 0-2):
+1. `web/package.json` - Added dependencies
+2. `web/src/presentation/components/ui/RichTextEditor.tsx` - CharacterCount extension
+3. `web/src/presentation/components/features/newsletters/NewsletterCard.tsx` - Fixed status badge
+4. `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Title format, event links, onSuccess callback
+5. `web/src/presentation/components/features/newsletters/NewslettersTab.tsx` - Route-based navigation
+6. `web/src/presentation/components/features/newsletters/EventNewslettersTab.tsx` - Button text, route-based navigation
+
+**Build & Deployment**:
+- ✅ **Phase 1 Commit**: 25dd2fb8 - "fix(phase-6a74-part6): Fix critical newsletter bugs (Phase 1)"
+- ✅ **Phase 2 Commit**: 4e81619b - "feat(phase-6a74-part6): Replace modal with route-based UI (Phase 2)"
+- ✅ **TypeScript Compilation**: 0 errors
+- ✅ **Next.js Build**: Successful, 26 routes compiled
+- ✅ **Deployment**: Pushed to develop, Azure staging deployment triggered and completed
+- ✅ **Staging URL**: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Testing Checklist** (Ready for user verification in staging):
+1. ✅ Create newsletter from dashboard → Should be full-page, not modal
+2. ✅ Select event → Title should show "[UPDATE] on [Event Title]"
+3. ✅ Select event → Rich text editor should auto-populate with event details and links
+4. ✅ Add images to newsletter → Character count should not exceed limit
+5. ✅ View newsletter in list → Status badge should show correct status, not "Unknown"
+6. ✅ Click newsletter card → Should navigate to details page
+7. ✅ Create event newsletter → Button should say "Send Reminder/Update"
+
+**User Feedback Addressed**:
+- ✓ "Newsletter creation should be a page not a model popup" → **FIXED** with 3 route pages
+- ✓ "Event selection dropdown should come to the top and populate title and links" → **FIXED** with useEffect and auto-population
+- ✓ "Richtext area which can include images" → **ALREADY IMPLEMENTED**, fixed character count bug
+- ✓ Status badge showing "Unknown" → **FIXED** with correct status check
+- ✓ Navigation broken → **FIXED** with onNewsletterClick prop
+- ✓ Button text unclear → **FIXED** with "Send Reminder/Update"
+
+---
 
 ### Phase 6A.X - UI Layout Improvements and Bug Fixes - 2026-01-13
 

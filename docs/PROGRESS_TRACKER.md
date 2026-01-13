@@ -1,13 +1,63 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.74 Part 6: Newsletter Bug Fixes & Route-Based UI - ✅ COMPLETE AND DEPLOYED*
+*Last Updated: 2026-01-13 - Phase 6A.74 Part 6 Hotfix: Newsletter Navigation Fixes - ✅ COMPLETE AND DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 6: Newsletter Bug Fixes & Route-Based UI - ✅ COMPLETE AND DEPLOYED
+## 🎯 Current Session Status - Phase 6A.74 Part 6 Hotfix: Newsletter Navigation Fixes - ✅ COMPLETE AND DEPLOYED
+
+### Phase 6A.74 Part 6 Hotfix - Newsletter Navigation Fixes - 2026-01-13
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Commit 12c09c13, Build successful with 0 errors)
+
+**Goal**: Fix critical 404 errors on newsletter routes caused by incorrect navigation paths
+
+**Root Cause**: Next.js route groups `(dashboard)` don't affect URL structure - routes were served at `/newsletters/*` but navigation was trying `/dashboard/newsletters/*`
+
+**Fixes Applied**:
+1. ✅ **Fixed Newsletter Details Page 404** - Updated all `router.push(/dashboard/newsletters/${id})` to `router.push(/newsletters/${id})`
+2. ✅ **Fixed Newsletter Create Page 404** - Changed `/dashboard/newsletters/create` to `/newsletters/create`
+3. ✅ **Fixed Newsletter Edit Page 404** - Changed `/dashboard/newsletters/${id}/edit` to `/newsletters/${id}/edit`
+
+**Files Modified**:
+1. `web/src/presentation/components/features/newsletters/NewslettersTab.tsx` - Fixed create/view/edit navigation
+2. `web/src/presentation/components/features/newsletters/EventNewslettersTab.tsx` - Fixed event newsletter navigation
+3. `web/src/app/(dashboard)/newsletters/create/page.tsx` - Fixed onSuccess navigation
+4. `web/src/app/(dashboard)/newsletters/[id]/page.tsx` - Fixed edit button navigation
+5. `web/src/app/(dashboard)/newsletters/[id]/edit/page.tsx` - Fixed breadcrumb and cancel navigation
+
+**Build & Deployment**:
+- ✅ **Commit**: 12c09c13 - "fix(phase-6a74-part6): Fix newsletter navigation paths (remove /dashboard prefix)"
+- ✅ **TypeScript Compilation**: 0 errors
+- ✅ **Next.js Build**: Successful, routes correctly mapped
+- ✅ **Deployment**: Azure staging deployment completed successfully
+- ✅ **Staging URL**: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Route Mapping Verification**:
+```
+Created routes (from build output):
+├ ○ /newsletters/create ✅
+├ ƒ /newsletters/[id] ✅
+├ ƒ /newsletters/[id]/edit ✅
+```
+
+**Issues Resolved**:
+1. ✅ Newsletter details page now loads (was 404)
+2. ✅ Newsletter create page now loads (was 404)
+3. ✅ Newsletter edit page now loads (was 404)
+4. ✅ Navigation from dashboard tab works correctly
+5. ✅ Navigation from event management tab works correctly
+
+**Remaining Issue** (User Feedback Required):
+- ⚠️ "Newsletter Subscribers" badge display - User finds it confusing, purpose unclear
+  - Current behavior: Shows blue badge when `includeNewsletterSubscribers` is true
+  - Location: NewsletterCard.tsx line 91-95
+  - **Question for user**: Should this badge be removed, renamed, or kept as-is?
+
+---
 
 ### Phase 6A.74 Part 6 - Newsletter Bug Fixes & Route-Based UI - 2026-01-13
 
-**Status**: ✅ **DEPLOYED TO STAGING** (Commits 25dd2fb8 & 4e81619b, Build successful with 0 errors)
+**Status**: ✅ **DEPLOYED TO STAGING** (Commits 25dd2fb8 & 4e81619b, Build successful with 0 errors) ⚠️ **HOTFIX APPLIED** (Commit 12c09c13)
 
 **Goal**: Fix critical UX bugs and missing features from Phase 6A.74 Parts 1-5, implementing proper route-based navigation for newsletter feature
 

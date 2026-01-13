@@ -248,14 +248,21 @@ export enum NewsletterStatus {
 
 ## 📝 Implementation Checklist
 
-### Immediate Hotfix (Part 9A):
-- [ ] Add "Unknown" status fallback UI to `[id]/page.tsx`
-- [ ] Add warning message explaining temporary fix
-- [ ] Show Edit, Publish, Delete buttons for unknown status
-- [ ] Build frontend (0 errors)
-- [ ] Commit with message explaining temporary fix
-- [ ] Deploy to staging
+### Immediate Hotfix (Part 9A): ✅ COMPLETE
+- [x] Add "Unknown" status fallback UI to `[id]/page.tsx`
+- [x] Add warning message explaining temporary fix
+- [x] Show Edit, Publish, Delete buttons for unknown status
+- [x] Add Unpublish button for Active newsletters
+- [x] Create useUnpublishNewsletter hook
+- [x] Create UnpublishNewsletterCommand + Handler (backend)
+- [x] Add Unpublish() domain method to Newsletter entity
+- [x] Add /api/newsletters/{id}/unpublish endpoint
+- [x] Build frontend (0 errors) ✅
+- [x] Build backend (0 errors) ✅
+- [x] Commit with message explaining temporary fix ✅
+- [ ] Deploy to staging (NEXT)
 - [ ] Test: Verify buttons now appear for "Unknown" newsletters
+- [ ] Test: Verify Unpublish button works (Active → Draft)
 - [ ] User can click Publish → should change status to Active (2)
 
 ### Investigation (Part 9B):

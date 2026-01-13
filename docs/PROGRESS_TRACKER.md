@@ -1,9 +1,107 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.74 Part 7 Hotfix: Newsletter Reactivation & UI Cleanup - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-13 - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ READY TO DEPLOY*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 7 Hotfix: Newsletter Reactivation & UI Cleanup - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ READY TO DEPLOY
+
+### Phase 6A.74 Part 9A Hotfix - Unknown Status Bug Fix & Unpublish Button - 2026-01-13
+
+**Status**: ✅ **READY TO DEPLOY** (Commit 138a929e, Both builds: 0 errors)
+
+**Priority**: 🚨 **CRITICAL** - No buttons visible on newsletter manage page due to "Unknown" status
+
+**Goal**: Fix critical bug where newsletters with status=1 (undefined in enum) show "Unknown" badge with NO visible buttons, blocking all newsletter management functionality
+
+**Root Cause**: Database contains newsletters with `status=1` which is NOT defined in NewsletterStatus enum:
+```csharp
+public enum NewsletterStatus {
+    Draft = 0,
+    // (Missing = 1)  ← Database has this but enum doesn't!
+    Active = 2,
+    Inactive = 3,
+    Sent = 4,
+}
+```
+
+**Impact**: Button conditions in [id]/page.tsx (lines 142-208) check specific status values - when status=1, NONE match → NO buttons show!
+
+**User Feedback**: "Mostly I don't see any button in the newsletter manage page. newsletter manage page should be similar to Event manage page."
+
+**Implementation Summary**:
+
+**Frontend Changes** (React Query, TypeScript):
+1. ✅ **[id]/page.tsx:219-259** - Added "Unknown" status fallback UI:
+   - Yellow warning banner with AlertTriangle icon
+   - Explains issue: "invalid status value (likely database issue)"
+   - Shows Edit, Publish, Delete buttons (Draft actions) for unknown status
+   - Users can now manage newsletters even with invalid status
+2. ✅ **[id]/page.tsx:188-196** - Added Unpublish button for Active newsletters:
+   - Red outlined button with XCircle icon
+   - Confirmation dialog before unpublishing
+   - Loading state during mutation
+   - Mirrors Event manage page pattern (user requirement)
+3. ✅ **useNewsletters.ts:432-468** - Added `useUnpublishNewsletter()` hook:
+   - Calls `newslettersRepository.unpublishNewsletter(id)`
+   - Invalidates detail, myNewsletters, and published queries
+   - Proper error handling with Result pattern
+4. ✅ **newsletters.repository.ts:156-167** - Added `unpublishNewsletter()` method:
+   - POST to `/api/newsletters/${id}/unpublish`
+   - Proper TypeScript typing
+   - Async/await pattern
+
+**Backend Changes** (Clean Architecture, Domain-Driven Design):
+1. ✅ **Newsletter.cs:169-186** - Added `Unpublish()` domain method:
+   - Status validation: Only Active newsletters can be unpublished
+   - Cannot unpublish if already sent
+   - Clears PublishedAt and ExpiresAt
+   - Returns Result with proper error messages
+2. ✅ **UnpublishNewsletterCommand.cs** - CQRS command definition
+3. ✅ **UnpublishNewsletterCommandHandler.cs** - Application layer handler:
+   - Authorization check (only creator or Admin)
+   - Calls `newsletter.Unpublish()` domain method
+   - Proper logging with Phase 6A.74 Part 9A tags
+   - UnitOfWork pattern for persistence
+4. ✅ **NewslettersController.cs:107-118** - Added `POST /api/newsletters/{id}/unpublish` endpoint
+
+**Build & Verification**:
+- ✅ **Frontend Build**: 0 errors, Next.js 16.0.1 Turbopack, Compile: 37.7s
+- ✅ **Backend Build**: 0 errors, 0 warnings, Build time: 1m 5s
+- ✅ **Commit**: 138a929e - "fix(phase-6a74-part9a): Fix Unknown status bug with fallback UI and add Unpublish button"
+- ✅ **Files Changed**: 13 files (+3,236 insertions, -3 deletions)
+- ✅ **New Backend Files**:
+  - UnpublishNewsletterCommand.cs
+  - UnpublishNewsletterCommandHandler.cs
+
+**Next Steps** (Before Proper Fix):
+1. ⏳ Deploy to staging (both backend and frontend)
+2. ⏳ Test in staging: Verify buttons now visible for "Unknown" newsletters
+3. ⏳ Test Unpublish functionality: Active → Draft transition
+4. ⏳ User acceptance testing
+5. ⏳ Part 9B: Investigate database to count newsletters with status=1
+6. ⏳ Part 9C: Create proper migration to fix status values
+
+**Technical Details**:
+- **Unpublish Authorization**: Only creator or Admin (enforced at domain + application layers)
+- **Status Transition**: Active (2) → Draft (0), clears PublishedAt and ExpiresAt
+- **UI Conditions**: Unpublish button only shows for `status === Active && !sentAt`
+- **Cache Strategy**: Invalidates detail, myNewsletters, and published queries
+- **Fallback Logic**: Shows Draft actions for any status not in {Draft, Active, Inactive, Sent}
+
+**Issues Resolved**:
+1. ✅ CRITICAL: No buttons visible on newsletter manage page (status=1 bug)
+2. ✅ Missing Unpublish button (user requirement to match Event manage page)
+3. ✅ Users can now manage newsletters with invalid status
+
+**Issues Remaining** (Part 9B/9C):
+1. ⏳ Database still contains newsletters with status=1 (proper fix needed)
+2. ⏳ Need database migration to correct status values
+3. ⏳ Need constraint to prevent future invalid status
+4. ⏳ Remove temporary fallback UI after proper fix deployed
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.74 Part 7 Hotfix: Newsletter Reactivation & UI Cleanup - ✅ DEPLOYED TO STAGING
 
 ### Phase 6A.74 Part 7 Hotfix - Newsletter Reactivation & UI Cleanup - 2026-01-13
 

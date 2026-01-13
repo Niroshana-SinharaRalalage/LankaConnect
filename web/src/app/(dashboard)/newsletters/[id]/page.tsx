@@ -2,12 +2,13 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
 import {
   useNewsletterById,
   usePublishNewsletter,
+  useUnpublishNewsletter,
   useSendNewsletter,
   useDeleteNewsletter,
   useReactivateNewsletter,
@@ -30,6 +31,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
 
   const { data: newsletter, isLoading } = useNewsletterById(id);
   const publishMutation = usePublishNewsletter();
+  const unpublishMutation = useUnpublishNewsletter();
   const sendMutation = useSendNewsletter();
   const deleteMutation = useDeleteNewsletter();
   const reactivateMutation = useReactivateNewsletter();
@@ -39,6 +41,18 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
       await publishMutation.mutateAsync(id);
     } catch (error) {
       console.error('Failed to publish newsletter:', error);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!confirm('Are you sure you want to unpublish this newsletter? It will be reverted to Draft status.')) {
+      return;
+    }
+
+    try {
+      await unpublishMutation.mutateAsync(id);
+    } catch (error) {
+      console.error('Failed to unpublish newsletter:', error);
     }
   };
 
@@ -167,7 +181,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
             </>
           )}
 
-          {/* Active (not sent): Edit, Send Email */}
+          {/* Active (not sent): Edit, Send Email, Unpublish */}
           {newsletter.status === NewsletterStatus.Active && !newsletter.sentAt && (
             <>
               <Button
@@ -184,6 +198,15 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
               >
                 <Send className="w-4 h-4 mr-2" />
                 {sendMutation.isPending ? 'Sending...' : 'Send Email'}
+              </Button>
+              <Button
+                onClick={handleUnpublish}
+                disabled={unpublishMutation.isPending}
+                variant="outline"
+                className="border-red-600 text-red-600 hover:bg-red-50"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                {unpublishMutation.isPending ? 'Unpublishing...' : 'Unpublish'}
               </Button>
             </>
           )}
@@ -205,6 +228,48 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
             <div className="text-sm text-gray-600 italic">
               Email sent on {newsletter.sentAt && formatDate(newsletter.sentAt)}
             </div>
+          )}
+
+          {/* Unknown status: Fallback UI (TEMP FIX for status=1 bug) */}
+          {newsletter.status !== NewsletterStatus.Draft &&
+           newsletter.status !== NewsletterStatus.Active &&
+           newsletter.status !== NewsletterStatus.Inactive &&
+           newsletter.status !== NewsletterStatus.Sent && (
+            <>
+              <div className="w-full bg-yellow-50 border-2 border-yellow-400 text-yellow-900 px-4 py-3 rounded-lg flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Unknown Newsletter Status</p>
+                  <p className="text-sm mt-1">
+                    This newsletter has an invalid status value (likely database issue).
+                    Showing draft actions temporarily. Please publish or delete this newsletter.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => router.push(`/newsletters/${id}/edit`)}
+                variant="outline"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button
+                onClick={handlePublish}
+                disabled={publishMutation.isPending}
+                className="bg-[#FF7900] hover:bg-[#E66D00] text-white"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {publishMutation.isPending ? 'Publishing...' : 'Publish'}
+              </Button>
+              <Button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                variant="destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </>
           )}
         </div>
       </div>

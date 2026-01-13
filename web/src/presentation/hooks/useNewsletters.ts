@@ -430,6 +430,44 @@ export function useSendNewsletter() {
 }
 
 /**
+ * useUnpublishNewsletter Hook
+ * Phase 6A.74 Part 9A: Unpublish newsletters
+ *
+ * Mutation hook for unpublishing newsletters (Active → Draft)
+ * Reverts newsletter to draft status
+ * Only Active newsletters (not sent) can be unpublished
+ *
+ * Features:
+ * - Changes status from Active to Draft
+ * - Clears PublishedAt and ExpiresAt
+ * - Automatic cache invalidation
+ * - Proper error handling
+ *
+ * @param options - Additional React Query mutation options
+ *
+ * @example
+ * ```tsx
+ * const unpublishNewsletter = useUnpublishNewsletter();
+ *
+ * await unpublishNewsletter.mutateAsync('newsletter-123');
+ * // Newsletter reverted to Draft status
+ * ```
+ */
+export function useUnpublishNewsletter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => newslettersRepository.unpublishNewsletter(id),
+    onSuccess: (_data, id) => {
+      // Invalidate affected queries
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.published() });
+    },
+  });
+}
+
+/**
  * useReactivateNewsletter Hook
  * Phase 6A.74 Hotfix: Reactivate inactive newsletters
  *
@@ -480,6 +518,7 @@ export default {
   useUpdateNewsletter,
   useDeleteNewsletter,
   usePublishNewsletter,
+  useUnpublishNewsletter,
   useSendNewsletter,
   useReactivateNewsletter,
 };

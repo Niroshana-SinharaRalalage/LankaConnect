@@ -42,7 +42,8 @@ public class EventAttendeesResponse
 
     /// <summary>
     /// Legacy total revenue field (use GrossRevenue instead).
+    /// DEPRECATED: Use GrossRevenue for gross amount or NetRevenue for organizer payout.
+    /// This property will be removed in a future version.
     /// </summary>
-    [Obsolete("Use GrossRevenue instead. Will be removed in future version.")]
     public decimal? TotalRevenue { get; init; }
 }

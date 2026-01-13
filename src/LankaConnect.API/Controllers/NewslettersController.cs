@@ -6,6 +6,7 @@ using LankaConnect.Application.Communications.Commands.CreateNewsletter;
 using LankaConnect.Application.Communications.Commands.UpdateNewsletter;
 using LankaConnect.Application.Communications.Commands.DeleteNewsletter;
 using LankaConnect.Application.Communications.Commands.PublishNewsletter;
+using LankaConnect.Application.Communications.Commands.UnpublishNewsletter;
 using LankaConnect.Application.Communications.Commands.SendNewsletter;
 using LankaConnect.Application.Communications.Commands.ReactivateNewsletter;
 using LankaConnect.Application.Communications.Queries.GetNewsletterById;
@@ -98,6 +99,19 @@ public class NewslettersController : BaseController<NewslettersController>
         Logger.LogInformation("[Phase 6A.74] Publishing newsletter {Id}", id);
 
         var command = new PublishNewsletterCommand(id);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    [HttpPost("{id:guid}/unpublish")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UnpublishNewsletter(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.74 Part 9A] Unpublishing newsletter {Id}", id);
+
+        var command = new UnpublishNewsletterCommand(id);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);

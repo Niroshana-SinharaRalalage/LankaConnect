@@ -152,6 +152,19 @@ export class NewslettersRepository {
   async reactivateNewsletter(id: string): Promise<void> {
     await apiClient.post(`${this.basePath}/${id}/reactivate`);
   }
+
+  /**
+   * Unpublish a newsletter (Active → Draft)
+   * Maps to backend UnpublishNewsletterCommand
+   * Reverts newsletter to draft status
+   * Only Active newsletters (not sent) can be unpublished
+   * Phase 6A.74 Part 9A: Unpublish functionality
+   *
+   * @param id - Newsletter ID (GUID)
+   */
+  async unpublishNewsletter(id: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${id}/unpublish`);
+  }
 }
 
 /**

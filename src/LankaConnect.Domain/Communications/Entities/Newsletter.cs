@@ -166,6 +166,25 @@ public class Newsletter : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Unpublish newsletter (Active → Draft)
+    /// Phase 6A.74 Part 9A: Unpublish functionality
+    /// </summary>
+    public Result Unpublish()
+    {
+        if (Status != NewsletterStatus.Active)
+            return Result.Failure("Only active newsletters can be unpublished");
+
+        if (SentAt.HasValue)
+            return Result.Failure("Sent newsletters cannot be unpublished");
+
+        Status = NewsletterStatus.Draft;
+        PublishedAt = null;
+        ExpiresAt = null;
+
+        return Result.Success();
+    }
+
     public Result Update(
         NewsletterTitle title,
         NewsletterDescription description,

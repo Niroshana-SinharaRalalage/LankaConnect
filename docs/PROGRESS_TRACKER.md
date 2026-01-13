@@ -1,9 +1,88 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.74 Part 6 Hotfix: Newsletter Navigation Fixes - ✅ COMPLETE AND DEPLOYED*
+*Last Updated: 2026-01-13 - Phase 6A.74 Part 7 Hotfix: Newsletter Reactivation & UI Cleanup - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 6 Hotfix: Newsletter Navigation Fixes - ✅ COMPLETE AND DEPLOYED
+## 🎯 Current Session Status - Phase 6A.74 Part 7 Hotfix: Newsletter Reactivation & UI Cleanup - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.74 Part 7 Hotfix - Newsletter Reactivation & UI Cleanup - 2026-01-13
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Commits 1d5b2a60 & 11d4b5bd, Both workflows successful)
+
+**Goal**: Implement missing newsletter reactivation functionality and remove confusing UI elements per user requirements
+
+**Missing Features Identified** (from user requirements verification):
+1. ❌ **Reactivate Button** - User requirement: "Creators should be able to reactivate those newsletter if required and that will last for another week"
+2. ⚠️ **Newsletter Subscribers Badge/Checkbox** - User clarified: "I dont think we need a checkbox for includeNewsletterSubscribers, By default they are included"
+3. ⚠️ **Redundant Recipients Text** - "Newsletter Subscribers" text in Recipients card was confusing since they're always included
+
+**Implementation Summary**:
+
+**Backend Changes** (Clean Architecture, Domain-Driven Design):
+1. ✅ **ReactivateNewsletterCommand.cs** - Command definition following CQRS pattern
+2. ✅ **ReactivateNewsletterCommandHandler.cs** - Application layer handler with:
+   - Authorization check (only creator or admin can reactivate)
+   - Status validation (only Inactive newsletters, not sent)
+   - Calls `newsletter.Reactivate()` domain method
+   - Extends ExpiresAt by 7 days from current UTC time
+   - Comprehensive logging with Phase 6A.74 Hotfix tags
+   - Proper error handling and Result pattern
+3. ✅ **NewslettersController.cs:124-135** - Added `POST /api/newsletters/{id}/reactivate` endpoint
+
+**Frontend Changes** (React Query, TypeScript):
+1. ✅ **newsletters.repository.ts:143-153** - Added `reactivateNewsletter(id)` API method
+2. ✅ **useNewsletters.ts:432-468** - Added `useReactivateNewsletter()` React Query hook with:
+   - Optimistic updates via cache invalidation
+   - Invalidates both detail and list queries
+   - Proper error handling
+3. ✅ **newsletters/[id]/page.tsx** - Added complete reactivation UI:
+   - Imported `useReactivateNewsletter` hook (lines 8-13)
+   - Initialized mutation hook (line 35)
+   - Created `handleReactivate()` function with success/error toasts (lines 70-76)
+   - Added Reactivate button UI for Inactive newsletters (lines 191-201)
+   - Button label: "Reactivate (Extend 1 Week)" with loading state
+   - Orange brand color scheme matching LankaConnect design
+   - Removed redundant "Newsletter Subscribers" text from Recipients card (lines 218-225)
+4. ✅ **NewsletterCard.tsx:85-102** - Removed "Newsletter Subscribers" badge (was lines 91-95)
+5. ✅ **NewsletterForm.tsx** - Complete checkbox removal:
+   - Removed `includeNewsletterSubscribers` from watch (line 80)
+   - Updated `showLocationTargeting` logic to just check `!selectedEventId` (line 86)
+   - Removed checkbox UI (was lines 391-402)
+   - Added informational note: "Newsletter subscribers are automatically included as recipients" (lines 390-395)
+   - Default value remains `includeNewsletterSubscribers: true` (line 73)
+
+**Build & Verification**:
+- ✅ **Backend Build**: 0 errors, 0 warnings, Build time: 2m 47s
+- ✅ **Frontend Build**: 0 errors, Next.js 16.0.1 Turbopack, Compile: 26.1s, Static generation: 3.1s
+- ✅ **Primary Commit**: 1d5b2a60 - "feat(phase-6a74-hotfix): Add newsletter reactivation functionality and UI cleanup"
+- ✅ **Documentation Commit**: 11d4b5bd - "docs(phase-6a74-part7): Update tracking docs with reactivation deployment status"
+- ✅ **Files Changed**: 8 files (2 new backend files, 6 modified files)
+- ✅ **Lines Changed**: +174 insertions, -25 deletions
+
+**Deployment**:
+- ✅ **Backend Deployment**: Workflow #20962789027 - SUCCESS (6m 48s)
+- ✅ **Frontend Deployment**: Workflow #20962790849 - SUCCESS (3m 59s)
+- ✅ **API Health Check**: Healthy (v1.0.0) - https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/health
+- ✅ **Frontend URL**: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- ✅ **Staging Status**: Both services running and healthy
+
+**Technical Details**:
+- **Authorization**: Only creator or admin can reactivate (enforced at domain and application layers)
+- **Business Logic**: `newsletter.Reactivate()` changes status from Inactive → Active
+- **Expiration Extension**: `ExpiresAt = DateTime.UtcNow.AddDays(7)` (exactly 1 week from reactivation)
+- **UI Conditions**: Reactivate button only appears when `status === NewsletterStatus.Inactive && !sentAt`
+- **Cache Strategy**: Invalidates both `newsletterKeys.detail(id)` and `newsletterKeys.myNewsletters()` queries
+- **User Feedback**: Success toast with green checkmark, error toast with retry guidance
+- **Newsletter Subscribers**: Always included by default (no checkbox needed), informational note added to form
+
+**Issues Resolved**:
+1. ✅ Missing Reactivate functionality for Inactive newsletters (HIGH priority from requirements)
+2. ✅ Confusing "Newsletter Subscribers" badge removed from NewsletterCard
+3. ✅ Unnecessary checkbox removed from NewsletterForm
+4. ✅ Redundant "Newsletter Subscribers" text removed from Recipients card
+5. ✅ Clear informational note added explaining subscribers are always included
+
+---
 
 ### Phase 6A.74 Part 6 Hotfix - Newsletter Navigation Fixes - 2026-01-13
 

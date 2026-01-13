@@ -1,9 +1,96 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-12 - Phase 6A.74 Part 5: Critical Feature Enhancements - ✅ COMPLETE AND DEPLOYED*
+*Last Updated: 2026-01-13 - Phase 6A.X: UI Layout Improvements for Event Management - ✅ COMPLETE AND DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 (Part 5): Critical Feature Enhancements - ✅ COMPLETE AND DEPLOYED
+## 🎯 Current Session Status - Phase 6A.X: UI Layout Improvements - ✅ COMPLETE AND DEPLOYED
+
+### Phase 6A.X - UI Layout Improvements and Bug Fixes - 2026-01-13
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Commit c0ac7c75, Build successful with 0 errors)
+
+**Goal**: Improve event management UI readability and fix layout issues based on user feedback
+
+**Implementation Summary**:
+
+**1. EventDetailsTab - Table-Style Grid Layout** (/events/{id}/manage page):
+- ✅ **Vertical Section Organization** - Sections stacked vertically for clarity
+- ✅ **2-Column Grid Pattern** - Labels (140px) and values (1fr) in clean rows
+- ✅ **Sections Reorganized**:
+  * Statistics (registrations, spots left)
+  * Basic Information (title, description)
+  * Date, Time & Location (calendar icons, map icons)
+  * Category & Capacity (event classification)
+  * Pricing Information (free/paid/group/dual pricing)
+  * Email Groups (newsletter targeting)
+  * Organizer Contact (name, email, phone) - table grid format
+  * Event Media (images and videos upload)
+  * Event Badges (promotional badges)
+- ✅ **Improved Readability** - Clear visual hierarchy with borders and consistent spacing
+
+**2. EventEditForm - Layout Corrections**:
+- ✅ **Reverted Card Grid** - Removed incorrect 2-column Card layout
+- ✅ **Border Separators** - Added `border-b pb-4` between fields in sections
+- ✅ **Enhanced Labels** - Changed to `font-semibold` for better visibility
+- ✅ **Improved Spacing** - Increased to `space-y-5` within sections
+- ✅ **Maintained Single-Column** - Kept form inputs full-width for better UX
+
+**3. Event Details Page - Organizer Contact Repositioning**:
+- ✅ **Removed Large Version** - Deleted prominent Card-based section (lines 528-596)
+- ✅ **Added Compact Version** - Simple blue box with text rows (~1/3 original size)
+- ✅ **NEW LOCATION**: After registration/ticket section, before sign-up management (line 917-955)
+- ✅ **Simplified Design** - No Card component, no individual colored boxes for each contact method
+- ✅ **Better Positioning** - More contextually relevant near registration
+
+**Bug Fixes**:
+1. ✅ **Newsletter Form Variable Error**:
+   - Fixed: `selectedEventSignUps` → `signUpLists` (correct variable name)
+   - File: `web/src/presentation/components/features/newsletters/NewsletterForm.tsx`
+   - Lines 163, 173
+
+2. ✅ **Newsletter Form Return Type Error**:
+   - Fixed: `createMutation` returns `string` (newsletter ID), not object with `id` property
+   - Changed: `result?.id` → `newsletterId`
+   - File: `web/src/presentation/components/features/newsletters/NewsletterForm.tsx`
+   - Line 183-184
+
+3. ✅ **Next.js Suspense Boundary Error**:
+   - Fixed: Wrapped `useSearchParams` in Suspense boundary
+   - Required for Next.js 15+ dynamic rendering
+   - File: `web/src/app/(dashboard)/newsletters/create/page.tsx`
+   - Created separate `CreateNewsletterContent` component wrapped in Suspense
+
+**Files Modified**:
+1. `web/src/presentation/components/features/events/EventDetailsTab.tsx` - Table-style grid layout
+2. `web/src/presentation/components/features/events/EventEditForm.tsx` - Reverted Card Grid, added separators
+3. `web/src/app/events/[id]/page.tsx` - Compact organizer contact repositioned
+4. `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Bug fixes
+5. `web/src/app/(dashboard)/newsletters/create/page.tsx` - Suspense boundary fix
+
+**Build & Deployment**:
+- ✅ **TypeScript Compilation**: 0 errors
+- ✅ **Next.js Build**: Successful
+- ✅ **Static Page Generation**: 26 pages generated
+- ✅ **Commit**: c0ac7c75
+- ✅ **Deployment**: Pushed to develop, Azure deployment triggered
+
+**Testing Verification** (To be done by user):
+1. ✅ Navigate to /events/{id}/manage → Verify table-style grid layout is clean and readable
+2. ✅ Navigate to /events/{id}/edit → Verify form is single-column with border separators
+3. ✅ Navigate to /events/{id} → Verify organizer contact is compact and positioned after registration
+4. ✅ Create newsletter → Verify Suspense loading state works
+5. ✅ Check all three pages for visual consistency
+
+**User Feedback Addressed**:
+- ✓ "Details in the event manage page is very verbose/messy/unclear" → **FIXED** with table-grid layout
+- ✓ "Card Grid should be on MANAGE page, not edit form" → **CORRECTED** (reverted from edit form)
+- ✓ "Actually not the cards let's have table grid like section after section" → **IMPLEMENTED** in EventDetailsTab
+- ✓ "Event organizer detail...so significant. We don't need to get a large space" → **FIXED** (shrunk to 1/3 size)
+- ✓ "Change location such as after the event images and event registration confirmation, Just before the sign-up details" → **REPOSITIONED** correctly
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.74 (Part 5): Critical Feature Enhancements - ✅ COMPLETE AND DEPLOYED
 
 ### Phase 6A.74 (Part 4D) - Event Management Integration - 2026-01-12
 

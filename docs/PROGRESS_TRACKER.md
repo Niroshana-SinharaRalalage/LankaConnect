@@ -1,13 +1,13 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ READY TO DEPLOY*
+*Last Updated: 2026-01-13 - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ READY TO DEPLOY
+## 🎯 Current Session Status - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ DEPLOYED TO STAGING
 
 ### Phase 6A.74 Part 9A Hotfix - Unknown Status Bug Fix & Unpublish Button - 2026-01-13
 
-**Status**: ✅ **READY TO DEPLOY** (Commit 138a929e, Both builds: 0 errors)
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflows #20971032665 & #20971035732, Both successful)
 
 **Priority**: 🚨 **CRITICAL** - No buttons visible on newsletter manage page due to "Unknown" status
 
@@ -73,13 +73,26 @@ public enum NewsletterStatus {
   - UnpublishNewsletterCommand.cs
   - UnpublishNewsletterCommandHandler.cs
 
-**Next Steps** (Before Proper Fix):
-1. ⏳ Deploy to staging (both backend and frontend)
-2. ⏳ Test in staging: Verify buttons now visible for "Unknown" newsletters
-3. ⏳ Test Unpublish functionality: Active → Draft transition
-4. ⏳ User acceptance testing
-5. ⏳ Part 9B: Investigate database to count newsletters with status=1
-6. ⏳ Part 9C: Create proper migration to fix status values
+**Deployment Details**:
+- ✅ **Backend Deployment**: Workflow #20971032665 - SUCCESS (5m 42s)
+- ✅ **Frontend Deployment**: Workflow #20971035732 - SUCCESS (3m 55s)
+- ✅ **Deployed Commit**: 8bfff572 (includes all Part 9A changes from 138a929e + 9db2ebad)
+- ✅ **API Health**: Healthy (v1.0.0) - https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/health
+- ✅ **Frontend URL**: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- ✅ **Staging Status**: Both services running and healthy
+- ✅ **Deployment Verified**: API responds, frontend loads successfully
+
+**User Testing Required**:
+1. ⏳ **Test Unknown Status Fix**: Login to staging → Navigate to newsletter manage page → Verify buttons now appear for "Unknown" newsletters
+2. ⏳ **Test Unpublish Button**: Click Unpublish on Active newsletter → Confirm dialog → Should change status to Draft
+3. ⏳ **Test Publish Button**: Click Publish on Unknown newsletter → Should change status to Active (2)
+4. ⏳ **User Acceptance**: Verify all newsletter management functionality works as expected
+
+**Next Phase** (Part 9B/9C - After User Testing):
+5. ⏳ Part 9B: Investigate database to query `SELECT * FROM Newsletters WHERE Status = 1`
+6. ⏳ Part 9C: Create EF Core migration to fix status values based on PublishedAt/ExpiresAt/SentAt
+7. ⏳ Add database constraint: `CHECK (Status IN (0, 2, 3, 4))`
+8. ⏳ Remove temporary fallback UI after proper database fix deployed
 
 **Technical Details**:
 - **Unpublish Authorization**: Only creator or Admin (enforced at domain + application layers)

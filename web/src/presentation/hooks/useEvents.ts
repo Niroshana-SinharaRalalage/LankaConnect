@@ -785,6 +785,39 @@ export function useExportEventAttendees() {
   });
 }
 
+// ==================== Phase 6A.61: Event Notification ====================
+
+/**
+ * Hook to send event notification email to all attendees
+ */
+export function useSendEventNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (eventId: string) => eventsRepository.sendEventNotification(eventId),
+    onSuccess: (_data, eventId) => {
+      // Invalidate event detail and notification history
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ['eventNotificationHistory', eventId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to send event notification:', error);
+    }
+  });
+}
+
+/**
+ * Hook to fetch event notification history
+ */
+export function useEventNotificationHistory(eventId: string) {
+  return useQuery({
+    queryKey: ['eventNotificationHistory', eventId],
+    queryFn: () => eventsRepository.getEventNotificationHistory(eventId),
+    enabled: !!eventId,
+    refetchInterval: 30000 // Refresh every 30 seconds to show updated statistics
+  });
+}
+
 /**
  * Export all hooks
  */
@@ -805,4 +838,6 @@ export default {
   useUpdateRegistrationDetails,
   useEventAttendees,
   useExportEventAttendees,
+  useSendEventNotification,
+  useEventNotificationHistory,
 };

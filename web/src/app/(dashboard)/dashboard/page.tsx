@@ -22,7 +22,6 @@ import {
   ClipboardCheck,
   FolderOpen,
   Bell,
-  Award,
   Mail
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -34,7 +33,6 @@ import { NotificationsList } from '@/presentation/components/features/dashboard/
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
-import { BadgeManagement } from '@/presentation/components/features/badges';
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
 import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
@@ -556,12 +554,6 @@ export default function DashboardPage() {
                         ),
                       },
                       {
-                        id: 'badges',
-                        label: 'Badge Management',
-                        icon: Award,
-                        content: <BadgeManagement />,
-                      },
-                      {
                         id: 'email-groups',
                         label: 'Email Groups',
                         icon: Mail,
@@ -649,12 +641,6 @@ export default function DashboardPage() {
                             />
                           </div>
                         ),
-                      },
-                      {
-                        id: 'badges',
-                        label: 'Badge Management',
-                        icon: Award,
-                        content: <BadgeManagement />,
                       },
                       {
                         id: 'email-groups',

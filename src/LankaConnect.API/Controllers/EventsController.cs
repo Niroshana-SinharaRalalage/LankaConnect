@@ -18,6 +18,7 @@ using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
+using LankaConnect.Application.Events.Commands.SendEventNotification;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
@@ -31,6 +32,7 @@ using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
 using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
+using LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
@@ -1973,6 +1975,58 @@ public class EventsController : BaseController<EventsController>
             contentType,
             result.Value.FileName
         );
+    }
+
+    #endregion
+
+    #region Communication
+
+    /// <summary>
+    /// Phase 6A.61: Send event notification email to all attendees
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>Accepted with recipient count</returns>
+    [HttpPost("{id:guid}/send-notification")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendEventNotification(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.61] API: Sending event notification for event {EventId}", id);
+
+        var command = new SendEventNotificationCommand(id);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation("[Phase 6A.61] API: Event notification queued successfully for event {EventId}", id);
+            return Accepted(new { recipientCount = result.Value });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.61: Get email notification history for an event
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>List of notification history records</returns>
+    [HttpGet("{id:guid}/notification-history")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(List<EventNotificationHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEventNotificationHistory(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.61] API: Getting notification history for event {EventId}", id);
+
+        var query = new GetEventNotificationHistoryQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
     }
 
     #endregion

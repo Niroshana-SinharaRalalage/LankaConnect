@@ -20,7 +20,6 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
-import { useEventBadges } from '@/presentation/hooks/useBadges';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -66,9 +65,8 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   // Fetch event details
   const { data: event, isLoading, error: fetchError, refetch } = useEventById(id);
 
-  // Fetch sign-up lists and badges (needed for tab content)
+  // Fetch sign-up lists (needed for tab content)
   const { data: signUpLists } = useEventSignUps(id);
-  const { data: eventBadges, refetch: refetchBadges } = useEventBadges(id);
 
   // Status labels
   const statusLabels: Record<EventStatus, string> = {
@@ -255,9 +253,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       content: (
         <EventDetailsTab
           event={event}
-          eventBadges={eventBadges || []}
           onRefetch={refetch}
-          onRefetchBadges={refetchBadges}
           isDraft={isDraft}
           isPublished={isPublished}
           isPublishing={isPublishing}

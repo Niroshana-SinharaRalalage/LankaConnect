@@ -38,6 +38,8 @@ import type {
   UpdateOpenSignUpItemRequest,
   // Phase 6A.45: Attendee Management
   EventAttendeesResponse,
+  // Phase 6A.61: Event Notification
+  EventNotificationHistoryDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -918,6 +920,29 @@ export class EventsRepository {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/export?format=${format}`,
       { responseType: 'blob' }
+    );
+  }
+
+  /**
+   * Phase 6A.61: Send event notification email to all attendees
+   * @param eventId - Event ID (GUID)
+   * @returns Recipient count (placeholder, actual count from background job)
+   */
+  async sendEventNotification(eventId: string): Promise<{ recipientCount: number }> {
+    return await apiClient.post<{ recipientCount: number }>(
+      `${this.basePath}/${eventId}/send-notification`,
+      {} // Empty body - eventId is in URL
+    );
+  }
+
+  /**
+   * Phase 6A.61: Get event notification history
+   * @param eventId - Event ID (GUID)
+   * @returns List of notification history records
+   */
+  async getEventNotificationHistory(eventId: string): Promise<EventNotificationHistoryDto[]> {
+    return await apiClient.get<EventNotificationHistoryDto[]>(
+      `${this.basePath}/${eventId}/notification-history`
     );
   }
 }

@@ -30,15 +30,15 @@ export function NewslettersTab() {
 
   // Handlers
   const handleCreateClick = () => {
-    router.push('/dashboard/newsletters/create');
+    router.push('/newsletters/create');
   };
 
   const handleNewsletterClick = (newsletterId: string) => {
-    router.push(`/dashboard/newsletters/${newsletterId}`);
+    router.push(`/newsletters/${newsletterId}`);
   };
 
   const handleEditClick = (newsletterId: string) => {
-    router.push(`/dashboard/newsletters/${newsletterId}/edit`);
+    router.push(`/newsletters/${newsletterId}/edit`);
   };
 
   const handlePublish = async (newsletterId: string) => {

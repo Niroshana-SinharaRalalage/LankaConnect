@@ -2,7 +2,7 @@
  * EventDetailsTab Component
  *
  * Phase 6A.45: Event details tab for manage page
- * Displays event information, statistics, media galleries, and badges
+ * Displays event information, statistics, and media galleries
  *
  * Extracted from original manage page to support tabbed layout
  */
@@ -16,8 +16,6 @@ import {
   MapPin,
   DollarSign,
   Users,
-  Upload,
-  Award,
   Image as ImageIcon,
   Video as VideoIcon,
   Mail,
@@ -27,18 +25,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
-import { BadgeAssignment } from '@/presentation/components/features/badges';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { EventCategory, EventStatus, type EventDto } from '@/infrastructure/api/types/events.types';
-import type { EventBadgeDto } from '@/infrastructure/api/types/badges.types';
-import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
-import { getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
+import { type EventDto } from '@/infrastructure/api/types/events.types';
 
 interface EventDetailsTabProps {
   event: EventDto;
-  eventBadges: EventBadgeDto[];
   onRefetch: () => Promise<any>;
-  onRefetchBadges: () => Promise<any>;
   isDraft: boolean;
   isPublished: boolean;
   isPublishing: boolean;
@@ -49,15 +41,10 @@ interface EventDetailsTabProps {
 
 export function EventDetailsTab({
   event,
-  eventBadges,
   onRefetch,
-  onRefetchBadges,
 }: EventDetailsTabProps) {
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
-
-  // Phase 6A.47: Fetch EventCategory reference data for labels
-  const { data: categories } = useEventCategories();
 
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
@@ -94,34 +81,27 @@ export function EventDetailsTab({
         </CardContent>
       </Card>
 
-      {/* Basic Information Section - Table Grid */}
+      {/* Event Details Section - Combined */}
       <Card>
         <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Basic Information</CardTitle>
-          <CardDescription>Event title and description</CardDescription>
+          <CardTitle style={{ color: '#8B1538' }}>Event Details</CardTitle>
+          <CardDescription>Basic information, schedule, and location</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Event Title */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700">Event Title:</span>
               <span className="text-sm text-neutral-900 font-medium">{event.title}</span>
             </div>
-            <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+
+            {/* Description */}
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700">Description:</span>
               <span className="text-sm text-neutral-600">{event.description}</span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Date, Time & Location Section - Table Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Date, Time & Location</CardTitle>
-          <CardDescription>When and where the event takes place</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
+            {/* Start Date */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#FF7900]" />
@@ -134,6 +114,8 @@ export function EventDetailsTab({
                 })}
               </span>
             </div>
+
+            {/* End Date */}
             {event.endDate && (
               <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700">End Date:</span>
@@ -145,8 +127,10 @@ export function EventDetailsTab({
                 </span>
               </div>
             )}
+
+            {/* Location */}
             {event.city && (
-              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-[#FF7900]" />
                   Location:
@@ -157,24 +141,8 @@ export function EventDetailsTab({
                 </span>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Category & Capacity Section - Table Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Category & Capacity</CardTitle>
-          <CardDescription>Event classification and attendance limits</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
-              <span className="text-sm font-semibold text-neutral-700">Category:</span>
-              <Badge className="bg-gray-100 text-gray-700 w-fit">
-                {getNameFromIntValue(categories, event.category) || 'Unknown'}
-              </Badge>
-            </div>
+            {/* Capacity */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
               <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                 <Users className="h-4 w-4 text-[#FF7900]" />
@@ -377,27 +345,6 @@ export function EventDetailsTab({
         </CardContent>
       </Card>
 
-      {/* Badges Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Award className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Event Badges</CardTitle>
-          </div>
-          <CardDescription>Add promotional badges to your event</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BadgeAssignment
-            eventId={event.id}
-            existingBadges={eventBadges}
-            onAssignmentChange={async () => {
-              await onRefetchBadges();
-              await onRefetch();
-            }}
-            maxBadges={3}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

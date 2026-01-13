@@ -160,6 +160,9 @@ public static class DependencyInjection
         // Phase 6A.71: Event Reminder Tracking Repository
         services.AddScoped<LankaConnect.Application.Events.Repositories.IEventReminderRepository, EventReminderRepository>();
 
+        // Phase 6A.61: Event Notification History Repository
+        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventNotificationHistoryRepository, EventNotificationHistoryRepository>();
+
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();

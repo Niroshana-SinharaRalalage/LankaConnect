@@ -977,3 +977,16 @@ export enum ExportFormat {
   SignUpListsZip = 2,     // Phase 6A.69: ZIP archive with CSV files
   SignUpListsExcel = 3,   // Phase 6A.73: Excel file with category sheets
 }
+
+/**
+ * Phase 6A.61: Event notification history DTO
+ * Matches backend EventNotificationHistoryDto
+ */
+export interface EventNotificationHistoryDto {
+  id: string;
+  sentAt: string;
+  sentByUserName: string;
+  recipientCount: number;
+  successfulSends: number;
+  failedSends: number;
+}

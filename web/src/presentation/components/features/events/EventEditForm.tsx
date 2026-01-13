@@ -413,9 +413,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const currencyOptions = toDropdownOptions(currencies);
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Basic Information Section */}
-      <Card>
+    <form onSubmit={onSubmit} className="space-y-8">
+      {/* Phase 6A.X: Card Grid Layout for Better Organization */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Basic Information Section */}
+        <Card className="border-2" style={{ borderColor: '#3B82F6' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -490,8 +492,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </CardContent>
       </Card>
 
-      {/* Date & Time Section */}
-      <Card>
+        {/* Date & Time Section */}
+        <Card className="border-2" style={{ borderColor: '#10B981' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -537,9 +539,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
           </div>
         </CardContent>
       </Card>
+      </div>
 
-      {/* Location Section */}
-      <Card>
+      {/* Close first row, start second row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Location Section */}
+        <Card className="border-2" style={{ borderColor: '#8B5CF6' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -641,8 +646,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </CardContent>
       </Card>
 
-      {/* Capacity & Pricing Section */}
-      <Card>
+        {/* Capacity & Pricing Section */}
+        <Card className="border-2" style={{ borderColor: '#F59E0B' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -1097,9 +1102,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
           )}
         </CardContent>
       </Card>
+      </div>
 
-      {/* Phase 6A.32: Email Groups Section */}
-      <Card>
+      {/* Third row: Email Groups and Organizer Contact */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Phase 6A.32: Email Groups Section */}
+        <Card className="border-2" style={{ borderColor: '#6366F1' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -1127,8 +1135,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </CardContent>
       </Card>
 
-      {/* Phase 6A.X: Event Organizer Contact Details */}
-      <Card>
+        {/* Phase 6A.X: Event Organizer Contact Details */}
+        <Card className="border-2" style={{ borderColor: '#A855F7' }}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
@@ -1214,9 +1222,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
           )}
         </CardContent>
       </Card>
+      </div>
 
-      {/* Note about Media */}
-      <Card>
+      {/* Full-width note section */}
+      <Card className="border-2" style={{ borderColor: '#14B8A6' }}>
         <CardContent className="py-6">
           <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex-shrink-0">

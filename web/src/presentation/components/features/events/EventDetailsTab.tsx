@@ -63,112 +63,148 @@ export function EventDetailsTab({
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Column - Event Info & Stats */}
-      <div className="lg:col-span-2 space-y-6">
-        {/* Event Statistics */}
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Event Statistics</CardTitle>
-            <CardDescription>Track your event's performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Registrations */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <span className="text-2xl font-bold text-blue-900">{event.currentRegistrations}</span>
-                </div>
-                <p className="text-sm text-blue-700 font-medium">Registered</p>
-                <p className="text-xs text-blue-600 mt-1">{registrationPercentage.toFixed(0)}% of capacity</p>
+    <div className="space-y-6">
+      {/* Phase 6A.X: Table-Style Grid Layout for Better Readability */}
+
+      {/* Statistics Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Event Statistics</CardTitle>
+          <CardDescription>Track your event's performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                <span className="text-2xl font-bold text-blue-900">{event.currentRegistrations}</span>
               </div>
-
-              {/* Available Spots */}
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Users className="h-5 w-5 text-green-600" />
-                  <span className="text-2xl font-bold text-green-900">{spotsLeft}</span>
-                </div>
-                <p className="text-sm text-green-700 font-medium">Spots Left</p>
-                <p className="text-xs text-green-600 mt-1">Total capacity: {event.capacity}</p>
+              <p className="text-sm text-blue-700 font-medium">Registered</p>
+              <p className="text-xs text-blue-600 mt-1">{registrationPercentage.toFixed(0)}% of capacity</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between mb-2">
+                <Users className="h-5 w-5 text-green-600" />
+                <span className="text-2xl font-bold text-green-900">{spotsLeft}</span>
               </div>
+              <p className="text-sm text-green-700 font-medium">Spots Left</p>
+              <p className="text-xs text-green-600 mt-1">Total capacity: {event.capacity}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Event Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Event Details</CardTitle>
-            <CardDescription>Your event information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Event Title */}
-            <div>
-              <h4 className="text-sm font-semibold text-neutral-700 mb-2">Event Title</h4>
-              <p className="text-lg font-semibold text-neutral-900">{event.title}</p>
+      {/* Basic Information Section - Table Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Basic Information</CardTitle>
+          <CardDescription>Event title and description</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 border-b pb-3">
+              <span className="text-sm font-semibold text-neutral-700">Event Title:</span>
+              <span className="text-sm text-neutral-900 font-medium">{event.title}</span>
             </div>
-
-            {/* Description */}
-            <div>
-              <h4 className="text-sm font-semibold text-neutral-700 mb-2">Description</h4>
-              <p className="text-neutral-600">{event.description}</p>
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+              <span className="text-sm font-semibold text-neutral-700">Description:</span>
+              <span className="text-sm text-neutral-600">{event.description}</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Date & Time */}
-            <div className="flex items-start gap-3">
-              <Calendar className="h-5 w-5 text-[#FF7900] mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-neutral-700">Date & Time</h4>
-                <p className="text-neutral-600">
-                  {new Date(event.startDate).toLocaleString('en-US', {
+      {/* Date, Time & Location Section - Table Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Date, Time & Location</CardTitle>
+          <CardDescription>When and where the event takes place</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+              <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[#FF7900]" />
+                Start Date:
+              </span>
+              <span className="text-sm text-neutral-900">
+                {new Date(event.startDate).toLocaleString('en-US', {
+                  dateStyle: 'full',
+                  timeStyle: 'short',
+                })}
+              </span>
+            </div>
+            {event.endDate && (
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700">End Date:</span>
+                <span className="text-sm text-neutral-900">
+                  {new Date(event.endDate).toLocaleString('en-US', {
                     dateStyle: 'full',
                     timeStyle: 'short',
                   })}
-                </p>
-                {event.endDate && (
-                  <p className="text-sm text-neutral-500">
-                    Ends: {new Date(event.endDate).toLocaleString('en-US', {
-                      dateStyle: 'full',
-                      timeStyle: 'short',
-                    })}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Location */}
-            {event.city && (
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-[#FF7900] mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-700">Location</h4>
-                  <p className="text-neutral-600">
-                    {event.address && `${event.address}, `}
-                    {event.city}, {event.state} {event.zipCode}
-                  </p>
-                </div>
+                </span>
               </div>
             )}
+            {event.city && (
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-[#FF7900]" />
+                  Location:
+                </span>
+                <span className="text-sm text-neutral-900">
+                  {event.address && `${event.address}, `}
+                  {event.city}, {event.state} {event.zipCode}
+                </span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Category */}
-            <div>
-              <h4 className="text-sm font-semibold text-neutral-700 mb-2">Category</h4>
-              <Badge className="bg-gray-100 text-gray-700">
+      {/* Category & Capacity Section - Table Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Category & Capacity</CardTitle>
+          <CardDescription>Event classification and attendance limits</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+              <span className="text-sm font-semibold text-neutral-700">Category:</span>
+              <Badge className="bg-gray-100 text-gray-700 w-fit">
                 {getNameFromIntValue(categories, event.category) || 'Unknown'}
               </Badge>
             </div>
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
+              <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#FF7900]" />
+                Capacity:
+              </span>
+              <span className="text-sm text-neutral-900">{event.capacity} attendees</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Pricing */}
+      {/* Pricing Section - Table Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Pricing Information</CardTitle>
+          <CardDescription>Ticket prices and payment details</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start">
+            <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-[#FF7900]" />
+              Pricing:
+            </span>
             <div>
-              <h4 className="text-sm font-semibold text-neutral-700 mb-2">Pricing</h4>
               {event.isFree ? (
                 <Badge className="bg-green-100 text-green-700">Free Event</Badge>
               ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                 <div className="space-y-2">
-                  <Badge className="bg-purple-100 text-purple-700 mb-2">Group Tiered Pricing</Badge>
-                  <div className="flex flex-wrap items-center gap-1 text-sm">
+                  <Badge className="bg-purple-100 text-purple-700">Group Tiered Pricing</Badge>
+                  <div className="flex flex-wrap items-center gap-1 text-sm mt-2">
                     {event.groupPricingTiers.map((tier, index) => (
                       <span key={index} className="inline-flex items-center">
                         <Badge className="bg-[#FFE8CC] text-[#8B1538]">
@@ -198,13 +234,23 @@ export function EventDetailsTab({
                 <Badge className="bg-yellow-100 text-yellow-700">Paid Event</Badge>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Email Groups */}
+      {/* Email Groups Section - Table Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Email Groups</CardTitle>
+          <CardDescription>Newsletter groups assigned to this event</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start">
+            <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+              <Mail className="h-4 w-4 text-[#FF7900]" />
+              Groups:
+            </span>
             <div>
-              <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-[#FF7900]" />
-                Email Groups
-              </h4>
               {event.emailGroupIds && event.emailGroupIds.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {event.emailGroupIds.map((groupId) => {
@@ -224,9 +270,8 @@ export function EventDetailsTab({
                 <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm text-amber-700 mb-1">No email groups assigned to this event</p>
+                    <p className="text-sm text-amber-700 mb-1">No email groups assigned</p>
                     <p className="text-xs text-amber-600">
-                      Want to notify specific groups about this event?{' '}
                       <button
                         onClick={() => router.push(`/events/${event.id}/edit`)}
                         className="underline hover:text-amber-800 font-medium"
@@ -238,124 +283,121 @@ export function EventDetailsTab({
                 </div>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Phase 6A.X: Organizer Contact Details */}
-            {event.publishOrganizerContact && event.organizerContactName && (
-              <div className="mt-6">
-                <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+      {/* Phase 6A.X: Organizer Contact Section - Table Grid */}
+      {event.publishOrganizerContact && event.organizerContactName && (
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact</CardTitle>
+            <CardDescription>Event organizer's contact information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                   <Users className="h-4 w-4 text-[#FF7900]" />
-                  Event Organizer Contact
-                </h4>
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Name:</span>
-                    <span className="text-sm text-gray-900">{event.organizerContactName}</span>
-                  </div>
-
-                  {event.organizerContactEmail && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-blue-600" />
-                      <a
-                        href={`mailto:${event.organizerContactEmail}`}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        {event.organizerContactEmail}
-                      </a>
-                    </div>
-                  )}
-
-                  {event.organizerContactPhone && (
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="h-4 w-4 text-blue-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                      <a
-                        href={`tel:${event.organizerContactPhone}`}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        {event.organizerContactPhone}
-                      </a>
-                    </div>
-                  )}
-                </div>
+                  Name:
+                </span>
+                <span className="text-sm text-neutral-900">{event.organizerContactName}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Right Column - Media */}
-      <div className="space-y-6">
-        {/* Image Upload */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
-              <CardTitle style={{ color: '#8B1538' }}>Event Images</CardTitle>
+              {event.organizerContactEmail && (
+                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-[#FF7900]" />
+                    Email:
+                  </span>
+                  <a
+                    href={`mailto:${event.organizerContactEmail}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {event.organizerContactEmail}
+                  </a>
+                </div>
+              )}
+              {event.organizerContactPhone && (
+                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
+                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-[#FF7900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    Phone:
+                  </span>
+                  <a
+                    href={`tel:${event.organizerContactPhone}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {event.organizerContactPhone}
+                  </a>
+                </div>
+              )}
             </div>
-            <CardDescription>Upload photos to attract attendees</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ImageUploader
-              eventId={event.id}
-              existingImages={event.images ? [...event.images] : []}
-              maxImages={10}
-              onUploadComplete={onRefetch}
-            />
           </CardContent>
         </Card>
+      )}
 
-        {/* Badge Assignment */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Award className="h-5 w-5" style={{ color: '#FF7900' }} />
-              <CardTitle style={{ color: '#8B1538' }}>Event Badges</CardTitle>
+      {/* Media Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Event Media</CardTitle>
+          <CardDescription>Upload images and videos to promote your event</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Images */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <ImageIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
+                <h4 className="text-sm font-semibold text-neutral-700">Event Images</h4>
+              </div>
+              <ImageUploader
+                eventId={event.id}
+                existingImages={event.images ? [...event.images] : []}
+                maxImages={10}
+                onUploadComplete={onRefetch}
+              />
             </div>
-            <CardDescription>Add promotional badges to your event</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BadgeAssignment
-              eventId={event.id}
-              existingBadges={eventBadges}
-              onAssignmentChange={async () => {
-                await onRefetchBadges();
-                await onRefetch();
-              }}
-              maxBadges={3}
-            />
-          </CardContent>
-        </Card>
 
-        {/* Video Upload */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <VideoIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
-              <CardTitle style={{ color: '#8B1538' }}>Event Videos</CardTitle>
+            {/* Videos */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <VideoIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
+                <h4 className="text-sm font-semibold text-neutral-700">Event Videos</h4>
+              </div>
+              <VideoUploader
+                eventId={event.id}
+                existingVideos={event.videos ? [...event.videos] : []}
+                maxVideos={3}
+                onUploadComplete={onRefetch}
+              />
             </div>
-            <CardDescription>Upload videos to showcase your event</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <VideoUploader
-              eventId={event.id}
-              existingVideos={event.videos ? [...event.videos] : []}
-              maxVideos={3}
-              onUploadComplete={onRefetch}
-            />
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Badges Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Award className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Event Badges</CardTitle>
+          </div>
+          <CardDescription>Add promotional badges to your event</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BadgeAssignment
+            eventId={event.id}
+            existingBadges={eventBadges}
+            onAssignmentChange={async () => {
+              await onRefetchBadges();
+              await onRefetch();
+            }}
+            maxBadges={3}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

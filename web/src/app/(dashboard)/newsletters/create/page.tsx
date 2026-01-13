@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { NewsletterForm } from '@/presentation/components/features/newsletters/NewsletterForm';
 import { ArrowLeft } from 'lucide-react';
@@ -14,7 +15,9 @@ import { ArrowLeft } from 'lucide-react';
  * - Navigate to details page after creation
  * - Breadcrumb navigation
  */
-export default function CreateNewsletterPage() {
+
+// Component that uses searchParams (must be wrapped in Suspense)
+function CreateNewsletterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = searchParams.get('eventId');
@@ -50,5 +53,14 @@ export default function CreateNewsletterPage() {
         onCancel={() => router.back()}
       />
     </div>
+  );
+}
+
+// Page component with Suspense boundary
+export default function CreateNewsletterPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-8 max-w-5xl text-center">Loading...</div>}>
+      <CreateNewsletterContent />
+    </Suspense>
   );
 }

@@ -160,7 +160,7 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
 <p><strong>Date:</strong> ${formatEventDate(selectedEvent.startDate, selectedEvent.endDate)}</p>
 
 <p>
-  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${selectedEventSignUps && selectedEventSignUps.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}/manage?tab=sign-ups">View Sign-up Lists</a>` : ''}
+  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}/manage?tab=sign-ups">View Sign-up Lists</a>` : ''}
 </p>
 
 <hr />
@@ -170,7 +170,7 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
     `.trim();
 
     setValue('description', eventHtml);
-  }, [selectedEvent, selectedEventSignUps, isEditMode, watch, setValue]);
+  }, [selectedEvent, signUpLists, isEditMode, watch, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
     try {
@@ -180,8 +180,8 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
         await updateMutation.mutateAsync({ id: newsletterId, ...data });
         onSuccess?.(newsletterId);
       } else {
-        const result = await createMutation.mutateAsync(data);
-        onSuccess?.(result?.id);
+        const newsletterId = await createMutation.mutateAsync(data);
+        onSuccess?.(newsletterId);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save newsletter. Please try again.';

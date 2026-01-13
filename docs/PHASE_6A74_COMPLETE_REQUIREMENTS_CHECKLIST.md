@@ -82,11 +82,16 @@ News Alert/Newsletter/News & Update
 | Email includes event details link | ✅ Complete | Email template | Auto-populated HTML |
 | Email includes sign-up lists link | ✅ Complete | Email template | Auto-populated HTML |
 
-### 5. Landing Page Display
+### 5. Landing Page Display & Public Access
 | Requirement | Status | Location | Notes |
 |-------------|--------|----------|-------|
-| Published newsletters display on landing page | ✅ Complete | `LandingPageNewsletters.tsx` | Shows 3 most recent |
-| Users can navigate to see all recent newsletters | ❓ **MISSING?** | No public list page? | **VERIFY** |
+| Landing page shows 3 most recent newsletters | ✅ Complete | `LandingPageNewsletters.tsx` | Part 5 implementation |
+| **Location-based display logic** (like 4 events) | ❌ **MISSING** | Need `useFeaturedNewsletters` | Newsletter subscription + location |
+| Link to view ALL newsletters | ❌ **MISSING** | Need `/newsletters` page | "View All" button |
+| **Public newsletters list page** (`/newsletters`) | ❌ **MISSING** | Part 8 - Critical | Mirror `/events` page |
+| **Public newsletter details** (`/newsletters/{id}`) | ❌ **MISSING** | Part 8 - Critical | Public read-only view |
+| Search & filtration on list page | ❌ **MISSING** | Part 8 | Location + search + date |
+| Default sorting (location relevance + recency) | ❌ **MISSING** | Part 8 | Same as events logic |
 
 ### 6. Event Management Integration
 | Requirement | Status | Location | Notes |
@@ -95,7 +100,19 @@ News Alert/Newsletter/News & Update
 | "Send Reminder/Update" button on event page | ✅ Complete | `EventNewslettersTab.tsx` | Redirects to create |
 | Button redirects to newsletter creation with event linked | ✅ Complete | Navigation | `?eventId=xxx` param |
 
-### 7. Newsletter Details Page
+### 7. Edit Existing Newsletter (NEW USER CLARIFICATION)
+| Requirement | Status | Location | Notes |
+|-------------|--------|----------|-------|
+| Edit existing newsletter | ✅ Complete | `[id]/edit/page.tsx` | Part 4-6, needs verification |
+| Edit button visible (Draft + Active before sent) | ✅ Complete | `[id]/page.tsx` lines 160-166, 170-176 | Verified correct |
+
+### 8. Send Email with Database Template (NEW USER CLARIFICATION)
+| Requirement | Status | Location | Notes |
+|-------------|--------|----------|-------|
+| Send Email button based on database template | ❓ **VERIFY** | `SendNewsletterCommand` | Need to verify uses EmailTemplateService |
+| Email template stored in database | ❓ **VERIFY** | Migration 20260112100000 | Template should exist |
+
+### 9. Dashboard Newsletter Details Page
 | Requirement | Status | Location | Notes |
 |-------------|--------|----------|-------|
 | View newsletter details | ✅ Complete | `[id]/page.tsx` | All 286 lines |
@@ -138,20 +155,27 @@ News Alert/Newsletter/News & Update
 
 ## 📊 Feature Completion Summary
 
-### Completed Features: ~95%
+### Completed Features: ~85% (Revised after user clarifications)
 - ✅ Dashboard integration (all 3 roles)
 - ✅ Newsletter creation form (all fields)
 - ✅ Status workflow (Draft → Publish → Active → Inactive → Reactivate)
 - ✅ Email sending (with consolidated recipients)
 - ✅ Event management integration
-- ✅ Landing page display (3 recent)
+- ✅ Landing page display (3 recent) - but wrong logic
 - ✅ Rich text editor with images
 - ✅ Location targeting
 - ✅ Event auto-population
+- ✅ Edit functionality (already exists)
 
-### Critical Issues: 2
-- ⚠️ **"Unknown" status badges** (database issue)
-- ❓ **Missing public newsletter list page?** (needs verification)
+### Critical Issues & Missing Features: 8
+1. ⚠️ **"Unknown" status badges** (database status=1 issue) - HIGH PRIORITY
+2. ❌ **Public newsletter list page** (`/newsletters`) - CRITICAL MISSING
+3. ❌ **Public newsletter details** (`/newsletters/{id}`) - CRITICAL MISSING
+4. ❌ **Location-based featured logic** (like 4 events) - MISSING
+5. ❌ **Search & filtration** (mirror `/events`) - MISSING
+6. ❌ **Default sorting** (location + recency) - MISSING
+7. ❓ **Email template verification** (uses database template?) - NEEDS VERIFICATION
+8. ❌ **"View All Newsletters" link** from landing page - MISSING
 
 ### Documentation Gaps (NOW FIXED):
 - ✅ Phase 6A.74 now in PHASE_6A_MASTER_INDEX.md

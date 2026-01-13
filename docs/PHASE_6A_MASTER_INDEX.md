@@ -57,6 +57,11 @@
 | 6A.67 | CSV Export Improvements (Deprecated) | ❌ Superseded | See 6A.68 for proper fix | 2026-01-08 |
 | 6A.68 | CSV Export Formatting Fix | ✅ Complete | [PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md) | 2026-01-08 |
 | 6A.69 | Sign-Up List CSV Export (ZIP Archive) | ✅ Complete | [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md) | 2026-01-08 |
+| 6A.70 | Newsletter Subscription System | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-11 |
+| 6A.71 | Newsletter Confirmation & Unsubscribe Pages | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.72 | Newsletter Backend Foundation | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.73 | Newsletter Email Sending System | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.74 | Newsletter Complete Feature | ⚠️ **IN PROGRESS** | [PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md](./PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md) | **CRITICAL - See checklist** |
 
 ---
 

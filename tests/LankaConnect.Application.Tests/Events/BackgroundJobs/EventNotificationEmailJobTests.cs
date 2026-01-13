@@ -237,11 +237,16 @@ public class EventNotificationEmailJobTests
                 It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
-        // Should update history with 1 success and 1 failure
+        // Should update history twice: once after resolving recipients, once with final stats
+        _mockHistoryRepository.Verify(
+            x => x.Update(It.IsAny<EventNotificationHistory>()),
+            Times.Exactly(2));
+
+        // Final update should have 1 success and 1 failure
         _mockHistoryRepository.Verify(
             x => x.Update(It.Is<EventNotificationHistory>(h =>
                 h.SuccessfulSends == 1 && h.FailedSends == 1)),
-            Times.Once);
+            Times.AtLeastOnce);
     }
 
     #endregion

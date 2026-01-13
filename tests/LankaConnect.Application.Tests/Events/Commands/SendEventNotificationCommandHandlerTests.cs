@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using FluentAssertions;
 using Hangfire;
+using Hangfire.Common;
+using Hangfire.States;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
@@ -48,7 +50,7 @@ public class SendEventNotificationCommandHandlerTests
             Mock.Of<ILogger<SendEventNotificationCommandHandler>>());
     }
 
-    private Event CreateTestEvent(Guid organizerId)
+    private Event CreateTestEvent(Guid organizerId, bool publish = true)
     {
         var title = EventTitle.Create("Test Event").Value;
         var description = EventDescription.Create("Test Description").Value;
@@ -67,9 +69,11 @@ public class SendEventNotificationCommandHandlerTests
             location
         ).Value;
 
-        // Set as Active status
-        var field = typeof(Event).GetField("_status", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        field?.SetValue(@event, EventStatus.Active);
+        // Publish the event to change status from Draft to Published
+        if (publish)
+        {
+            @event.Publish();
+        }
 
         return @event;
     }
@@ -97,18 +101,23 @@ public class SendEventNotificationCommandHandlerTests
             .Setup(x => x.AddAsync(It.IsAny<EventNotificationHistory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EventNotificationHistory h, CancellationToken ct) => h);
 
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Note: Cannot mock Enqueue extension method, so we mock the underlying Create method
         _mockBackgroundJobClient
-            .Setup(x => x.Enqueue<EventNotificationEmailJob>(It.IsAny<Expression<Func<EventNotificationEmailJob, Task>>>()))
+            .Setup(x => x.Create(It.IsAny<Job>(), It.IsAny<IState>()))
             .Returns("job-123");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue($"Expected success but got error: {result.Error}");
         _mockHistoryRepository.Verify(x => x.AddAsync(It.IsAny<EventNotificationHistory>(), It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _mockBackgroundJobClient.Verify(x => x.Enqueue<EventNotificationEmailJob>(It.IsAny<Expression<Func<EventNotificationEmailJob, Task>>>()), Times.Once);
+        _mockBackgroundJobClient.Verify(x => x.Create(It.IsAny<Job>(), It.IsAny<IState>()), Times.Once);
     }
 
     #endregion
@@ -165,11 +174,7 @@ public class SendEventNotificationCommandHandlerTests
     {
         // Arrange
         var organizerId = Guid.NewGuid();
-        var @event = CreateTestEvent(organizerId);
-
-        // Set as Draft status using reflection
-        var field = typeof(Event).GetField("_status", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        field?.SetValue(@event, EventStatus.Draft);
+        var @event = CreateTestEvent(organizerId, publish: false); // Keep as Draft
 
         var command = new SendEventNotificationCommand(@event.Id);
 

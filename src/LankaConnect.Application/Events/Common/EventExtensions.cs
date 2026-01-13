@@ -10,7 +10,8 @@ public static class EventExtensions
 {
     /// <summary>
     /// Phase 6A.46: Calculate user-facing display label based on event lifecycle
-    /// Priority order: Cancelled > Completed > Inactive > New > Upcoming > Status
+    /// Phase 6A.X: Updated to show "New" or "Upcoming" for Published/Active events instead of status
+    /// Priority order: Cancelled > Completed > Inactive > New > Upcoming > Active (Published events)
     /// </summary>
     /// <param name="event">The event entity</param>
     /// <returns>Display label string</returns>
@@ -38,7 +39,20 @@ public static class EventExtensions
         if (@event.StartDate.AddDays(-7) <= now && now < @event.StartDate)
             return "Upcoming";
 
-        // Default: Use status as-is (Draft, Published, Active, Postponed, Archived, UnderReview)
+        // Phase 6A.X: For Published/Active events, show "Upcoming" instead of status
+        // This makes it clearer for users that the event is happening in the future
+        if (@event.Status == EventStatus.Published || @event.Status == EventStatus.Active)
+        {
+            // If event is in the future (not within 1 week of start), show "Upcoming"
+            if (now < @event.StartDate)
+                return "Upcoming";
+
+            // If event is currently happening, show "Active"
+            if (now >= @event.StartDate && now <= @event.EndDate)
+                return "Active";
+        }
+
+        // Default: Use status as-is (Draft, Postponed, Archived, UnderReview)
         return @event.Status.ToString();
     }
 

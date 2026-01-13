@@ -37,7 +37,7 @@ import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
 export interface NewsletterFormProps {
   newsletterId?: string;
   initialEventId?: string; // Pre-fill event ID for event-specific newsletters
-  onSuccess?: () => void;
+  onSuccess?: (newsletterId?: string) => void;
   onCancel?: () => void;
 }
 
@@ -178,11 +178,11 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
 
       if (isEditMode && newsletterId) {
         await updateMutation.mutateAsync({ id: newsletterId, ...data });
+        onSuccess?.(newsletterId);
       } else {
-        await createMutation.mutateAsync(data);
+        const result = await createMutation.mutateAsync(data);
+        onSuccess?.(result?.id);
       }
-
-      onSuccess?.();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save newsletter. Please try again.';
       setSubmitError(errorMessage);

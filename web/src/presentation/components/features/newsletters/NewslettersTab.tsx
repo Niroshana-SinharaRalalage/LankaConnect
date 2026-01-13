@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, Plus } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { NewsletterList } from './NewsletterList';
-import { NewsletterForm } from './NewsletterForm';
 import {
   useMyNewsletters,
   usePublishNewsletter,
@@ -16,11 +15,10 @@ import {
 /**
  * NewslettersTab Component
  * Dashboard tab for newsletter management
- * Phase 6A.74: Newsletter Feature - Part 4C Dashboard Integration
+ * Phase 6A.74 Part 6: Updated to use route-based navigation instead of modal
  */
 export function NewslettersTab() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const router = useRouter();
 
   // Fetch user's newsletters
   const { data: newsletters = [], isLoading } = useMyNewsletters();
@@ -32,23 +30,15 @@ export function NewslettersTab() {
 
   // Handlers
   const handleCreateClick = () => {
-    setEditingId(null);
-    setIsFormOpen(true);
+    router.push('/dashboard/newsletters/create');
+  };
+
+  const handleNewsletterClick = (newsletterId: string) => {
+    router.push(`/dashboard/newsletters/${newsletterId}`);
   };
 
   const handleEditClick = (newsletterId: string) => {
-    setEditingId(newsletterId);
-    setIsFormOpen(true);
-  };
-
-  const handleFormSuccess = () => {
-    setIsFormOpen(false);
-    setEditingId(null);
-  };
-
-  const handleFormCancel = () => {
-    setIsFormOpen(false);
-    setEditingId(null);
+    router.push(`/dashboard/newsletters/${newsletterId}/edit`);
   };
 
   const handlePublish = async (newsletterId: string) => {
@@ -107,29 +97,12 @@ export function NewslettersTab() {
         Create and manage newsletters to communicate with your email groups and subscribers.
       </p>
 
-      {/* Newsletter Form Modal */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-[#8B1538] mb-4">
-                {editingId ? 'Edit Newsletter' : 'Create Newsletter'}
-              </h3>
-              <NewsletterForm
-                newsletterId={editingId || undefined}
-                onSuccess={handleFormSuccess}
-                onCancel={handleFormCancel}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Newsletter List */}
       <NewsletterList
         newsletters={newsletters}
         isLoading={isLoading}
         emptyMessage="No newsletters yet. Create your first newsletter to get started!"
+        onNewsletterClick={handleNewsletterClick}
         onEditNewsletter={handleEditClick}
         onPublishNewsletter={handlePublish}
         onSendNewsletter={handleSend}

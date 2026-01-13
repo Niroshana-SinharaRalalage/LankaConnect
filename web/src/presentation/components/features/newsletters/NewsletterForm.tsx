@@ -115,11 +115,62 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   useEffect(() => {
     if (selectedEvent && !isEditMode) {
       // Only auto-populate if title is empty or looks like a previous auto-population
-      if (!currentTitle || currentTitle.startsWith('Newsletter for ')) {
-        setValue('title', `Newsletter for ${selectedEvent.title}`);
+      if (!currentTitle || currentTitle.startsWith('Newsletter for ') || currentTitle.startsWith('[UPDATE] on ')) {
+        setValue('title', `[UPDATE] on ${selectedEvent.title}`);
       }
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
+
+  // Auto-populate event links in rich text editor when event is selected
+  // Phase 6A.74 Part 6 - Issue 3 fix
+  useEffect(() => {
+    if (!selectedEvent || isEditMode) return;
+
+    const currentDescription = watch('description');
+
+    // Only auto-populate if description is completely empty (don't overwrite user content)
+    if (currentDescription && currentDescription.trim() !== '' && currentDescription !== '<p></p>') {
+      return;
+    }
+
+    // Format event date
+    const formatEventDate = (startDate: string, endDate: string) => {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const startStr = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const endStr = end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+      if (startDate === endDate) {
+        return startStr;
+      }
+      return `${startStr} - ${endStr}`;
+    };
+
+    // Build event location string
+    const eventLocation = [selectedEvent.city, selectedEvent.state].filter(Boolean).join(', ');
+
+    // Get frontend URL from environment or use relative paths
+    const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    // Build HTML template with event details and links
+    const eventHtml = `
+<h2>📅 Related Event</h2>
+<p><strong>Event:</strong> ${selectedEvent.title}</p>
+${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
+<p><strong>Date:</strong> ${formatEventDate(selectedEvent.startDate, selectedEvent.endDate)}</p>
+
+<p>
+  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${selectedEventSignUps && selectedEventSignUps.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}/manage?tab=sign-ups">View Sign-up Lists</a>` : ''}
+</p>
+
+<hr />
+
+<p><strong>Write your update message below:</strong></p>
+<p></p>
+    `.trim();
+
+    setValue('description', eventHtml);
+  }, [selectedEvent, selectedEventSignUps, isEditMode, watch, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
     try {

@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import CharacterCount from '@tiptap/extension-character-count';
 import {
   Bold,
   Italic,
@@ -93,6 +94,10 @@ export function RichTextEditor({
       }),
       Placeholder.configure({
         placeholder,
+      }),
+      CharacterCount.configure({
+        limit: maxLength,
+        mode: 'textSize', // Count text only, not HTML markup or base64 images
       }),
     ],
     content,

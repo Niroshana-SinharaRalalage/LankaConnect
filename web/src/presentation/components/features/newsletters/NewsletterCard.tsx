@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Calendar, Mail, MapPin, ExternalLink } from 'lucide-react';
-import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
+import { NewsletterDto, NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
 import { NewsletterStatusBadge } from './NewsletterStatusBadge';
 
 export interface NewsletterCardProps {
@@ -63,7 +63,7 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
         )}
 
         {/* Expires Date (Active only) */}
-        {newsletter.status === 0 && newsletter.expiresAt && (
+        {newsletter.status === NewsletterStatus.Active && newsletter.expiresAt && (
           <div className="flex items-center text-xs text-gray-600">
             <Calendar className="w-3 h-3 mr-2 text-[#F59E0B]" />
             <span>Expires {formatDate(newsletter.expiresAt)}</span>

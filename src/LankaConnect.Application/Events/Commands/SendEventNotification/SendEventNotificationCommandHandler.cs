@@ -98,8 +98,15 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.61] Error queueing notification for event {EventId}", request.EventId);
-            return Result<int>.Failure("Failed to send notification");
+            // Phase 6A.61 Hotfix: Enhanced error logging and messaging
+            _logger.LogError(ex,
+                "[Phase 6A.61 Hotfix] Error queueing notification - " +
+                "EventId: {EventId}, ExceptionType: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                request.EventId, ex.GetType().FullName, ex.Message, ex.StackTrace);
+
+            // Provide detailed error message to help debugging (safe for staging/production)
+            var errorMessage = $"Failed to send notification. Error: {ex.Message}";
+            return Result<int>.Failure(errorMessage);
         }
     }
 }

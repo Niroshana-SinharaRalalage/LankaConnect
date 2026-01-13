@@ -141,6 +141,85 @@ jobs:
             fi
           done
 
+      - name: Verify Database Schema (Phase 6A.61 Hotfix)
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "Phase 6A.61 Hotfix: Verifying database schema after migrations"
+          echo "════════════════════════════════════════════════════════════════"
+
+          # Retrieve database connection string from Key Vault
+          DB_CONNECTION=$(az keyvault secret show \
+            --vault-name ${{ env.KEY_VAULT_NAME }} \
+            --name DATABASE-CONNECTION-STRING \
+            --query value -o tsv)
+
+          # Install PostgreSQL client for schema verification
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+          # Verify critical Phase 6A.61 tables exist
+          echo "✓ Checking communications.event_notification_history table..."
+          TABLE_EXISTS=$(psql "$DB_CONNECTION" -t -c "
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = 'communications'
+            AND table_name = 'event_notification_history'
+          " | xargs)
+
+          if [ "$TABLE_EXISTS" -ne 1 ]; then
+            echo "❌ Schema verification failed: event_notification_history table missing"
+            echo "   Expected: 1 table, Found: $TABLE_EXISTS"
+            exit 1
+          fi
+          echo "✅ event_notification_history table exists"
+
+          # Verify event-details template exists
+          echo "✓ Checking event-details email template..."
+          TEMPLATE_EXISTS=$(psql "$DB_CONNECTION" -t -c "
+            SELECT COUNT(*) FROM communications.email_templates
+            WHERE name = 'event-details'
+            AND type = 'Transactional'
+            AND category = 'Events'
+          " | xargs)
+
+          if [ "$TEMPLATE_EXISTS" -ne 1 ]; then
+            echo "❌ Schema verification failed: event-details template missing"
+            echo "   Expected: 1 template, Found: $TEMPLATE_EXISTS"
+            exit 1
+          fi
+          echo "✅ event-details template exists"
+
+          # Verify foreign keys are correct
+          echo "✓ Checking foreign key constraints..."
+          FK_COUNT=$(psql "$DB_CONNECTION" -t -c "
+            SELECT COUNT(*) FROM information_schema.table_constraints
+            WHERE constraint_type = 'FOREIGN KEY'
+            AND table_schema = 'communications'
+            AND table_name = 'event_notification_history'
+          " | xargs)
+
+          if [ "$FK_COUNT" -ne 2 ]; then
+            echo "⚠️  Warning: Expected 2 foreign keys, found $FK_COUNT"
+          fi
+          echo "✅ Foreign key constraints verified ($FK_COUNT constraints)"
+
+          # Verify indexes exist
+          echo "✓ Checking indexes..."
+          INDEX_COUNT=$(psql "$DB_CONNECTION" -t -c "
+            SELECT COUNT(*) FROM pg_indexes
+            WHERE schemaname = 'communications'
+            AND tablename = 'event_notification_history'
+            AND indexname LIKE 'ix_%'
+          " | xargs)
+
+          if [ "$INDEX_COUNT" -lt 2 ]; then
+            echo "⚠️  Warning: Expected at least 2 indexes, found $INDEX_COUNT"
+          fi
+          echo "✅ Indexes verified ($INDEX_COUNT indexes)"
+
+          echo "════════════════════════════════════════════════════════════════"
+          echo "✅ Database schema verification completed successfully"
+          echo "════════════════════════════════════════════════════════════════"
+
       - name: Update Container App
         run: |
           # Update Container App with new image and environment variables

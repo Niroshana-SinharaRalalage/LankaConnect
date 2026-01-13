@@ -191,35 +191,46 @@ try
     var app = builder.Build();
 
     // Apply database migrations automatically on startup
-    // This ensures the database schema is always up-to-date in all environments
-    using (var scope = app.Services.CreateScope())
+    // CRITICAL FIX Phase 6A.61 Hotfix: Only run migrations in Development to avoid dual execution
+    // In Staging/Production, migrations are applied exclusively via GitHub Actions CI/CD pipeline (deploy-staging.yml)
+    // This prevents permission issues, connection string conflicts, and silent failures
+    if (app.Environment.IsDevelopment())
     {
-        var services = scope.ServiceProvider;
-        try
+        using (var scope = app.Services.CreateScope())
         {
-            var context = services.GetRequiredService<AppDbContext>();
-            var logger = services.GetRequiredService<ILogger<Program>>();
-
-            logger.LogInformation("Applying database migrations...");
-            await context.Database.MigrateAsync();
-            logger.LogInformation("Database migrations applied successfully");
-
-            // Seed initial data (Development and Staging only)
-            if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+            var services = scope.ServiceProvider;
+            try
             {
+                var context = services.GetRequiredService<AppDbContext>();
+                var logger = services.GetRequiredService<ILogger<Program>>();
+
+                logger.LogInformation("Applying database migrations...");
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Database migrations applied successfully");
+
+                // Seed initial data (Development only)
                 var dbInitializer = new DbInitializer(
                     context,
                     services.GetRequiredService<ILogger<DbInitializer>>(),
                     services.GetRequiredService<IPasswordHashingService>());
                 await dbInitializer.SeedAsync();
             }
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database");
+                throw; // Re-throw to prevent application startup with incomplete database
+            }
         }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred while migrating the database");
-            throw; // Re-throw to prevent application startup with incomplete database
-        }
+    }
+    else
+    {
+        // Phase 6A.61 Hotfix: Log that migrations are skipped in Staging/Production
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation(
+            "[Phase 6A.61 Hotfix] Skipping automatic migrations in {Environment} environment. " +
+            "Database schema changes are applied via GitHub Actions CI/CD pipeline (deploy-staging.yml lines 101-142).",
+            app.Environment.EnvironmentName);
     }
 
     // Configure the HTTP request pipeline

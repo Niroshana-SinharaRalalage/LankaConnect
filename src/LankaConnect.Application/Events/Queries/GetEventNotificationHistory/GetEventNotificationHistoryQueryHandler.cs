@@ -62,8 +62,15 @@ public class GetEventNotificationHistoryQueryHandler : IRequestHandler<GetEventN
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.61] Error getting notification history for event {EventId}", request.EventId);
-            return Result<List<EventNotificationHistoryDto>>.Failure("Failed to retrieve notification history");
+            // Phase 6A.61 Hotfix: Enhanced error logging and messaging
+            _logger.LogError(ex,
+                "[Phase 6A.61 Hotfix] Error getting notification history - " +
+                "EventId: {EventId}, ExceptionType: {ExceptionType}, Message: {Message}",
+                request.EventId, ex.GetType().FullName, ex.Message);
+
+            // Provide detailed error message to help debugging
+            var errorMessage = $"Failed to retrieve notification history. Error: {ex.Message}";
+            return Result<List<EventNotificationHistoryDto>>.Failure(errorMessage);
         }
     }
 }

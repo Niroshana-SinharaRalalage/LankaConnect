@@ -18,7 +18,7 @@ public class EventNotificationHistoryRepository : IEventNotificationHistoryRepos
     public EventNotificationHistoryRepository(AppDbContext context)
     {
         _context = context;
-        _dbSet = context.Set<EventNotificationHistory>();
+        _dbSet = context.EventNotificationHistories;
         _logger = Log.ForContext<EventNotificationHistoryRepository>();
     }
 

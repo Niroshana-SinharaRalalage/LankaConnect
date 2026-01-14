@@ -103,6 +103,61 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
         });
 
+        // Phase 6A.X: Configure revenue breakdown Money value objects
+        builder.OwnsOne(r => r.SalesTaxAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("sales_tax_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("sales_tax_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.StripeFeeAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("stripe_fee_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("stripe_fee_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.PlatformCommissionAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("platform_commission_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("platform_commission_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.OrganizerPayoutAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("organizer_payout_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("organizer_payout_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.Property(r => r.SalesTaxRate)
+            .HasColumnName("sales_tax_rate")
+            .HasPrecision(5, 4)
+            .IsRequired()
+            .HasDefaultValue(0m);
+
         // Configure properties
         builder.Property(r => r.Quantity)
             .IsRequired()

@@ -116,6 +116,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             });
         });
 
+        // Phase 6A.X: Configure RevenueBreakdown as JSONB
+        builder.OwnsOne(e => e.RevenueBreakdown, breakdown =>
+        {
+            breakdown.ToJson("revenue_breakdown");  // Store entire breakdown as JSONB
+
+            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
+            breakdown.OwnsOne(b => b.GrossAmount);
+            breakdown.OwnsOne(b => b.SalesTaxAmount);
+            breakdown.OwnsOne(b => b.TaxableAmount);
+            breakdown.OwnsOne(b => b.StripeFeeAmount);
+            breakdown.OwnsOne(b => b.PlatformCommission);
+            breakdown.OwnsOne(b => b.OrganizerPayout);
+        });
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

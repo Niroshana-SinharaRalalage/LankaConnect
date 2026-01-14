@@ -99,6 +99,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<UserRoleRef> UserRoles => Set<UserRoleRef>();
     public DbSet<ReferenceValue> ReferenceValues => Set<ReferenceValue>(); // Phase 6A.47: Unified Reference Data
 
+    // Tax Reference Data - Phase 6A.X
+    public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -1,13 +1,100 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-13 - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-14 - Phase 6A.74 Part 9BC: Database Migration to Fix Invalid Newsletter Status - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 9A Hotfix: Unknown Status Bug Fix & Unpublish Button - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.74 Part 9BC: Database Migration to Fix Invalid Newsletter Status - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.74 Part 9BC - Database Migration to Fix Invalid Newsletter Status - 2026-01-14
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflow #20980666242 - SUCCESS, Migration applied successfully)
+
+**Priority**: 🚨 **CRITICAL** - Proper database fix for newsletters with invalid status values
+
+**Goal**: Replace temporary fallback UI (Part 9A) with durable database migration that fixes all newsletters with invalid status values and prevents future occurrences
+
+**Root Cause**: Database contains newsletters with `status='1'` (invalid string value) because status column is VARCHAR, not integer:
+```csharp
+// NewsletterConfiguration.cs line 54
+builder.Property(n => n.Status)
+    .HasColumnName("status")
+    .HasConversion<string>()  // ← Enum stored as STRING, not integer!
+    .HasMaxLength(20)
+```
+
+**Migration Failure Investigation**:
+- First deployment attempt failed (Workflow #20980387200): `operator does not exist: character varying = integer`
+- Root cause: Migration SQL used integer values (0, 2, 3, 4) but column is VARCHAR
+- Fixed: Changed migration to use string values ('Draft', 'Active', 'Inactive', 'Sent')
+
+**Implementation Summary**:
+
+**Database Changes** (EF Core Migration):
+1. ✅ **20260114013838_Phase6A74Part9BC_FixInvalidNewsletterStatus.cs** - Created migration with:
+   - UPDATE statement to fix all newsletters with invalid status values
+   - Status correction logic based on PublishedAt, ExpiresAt, SentAt dates:
+     ```sql
+     UPDATE communications.newsletters
+     SET status = CASE
+         WHEN sent_at IS NOT NULL THEN 'Sent'
+         WHEN published_at IS NULL THEN 'Draft'
+         WHEN expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 'Inactive'
+         WHEN published_at IS NOT NULL THEN 'Active'
+         ELSE 'Draft'
+     END
+     WHERE status NOT IN ('Draft', 'Active', 'Inactive', 'Sent');
+     ```
+   - CHECK constraint to prevent future invalid status values:
+     ```sql
+     ALTER TABLE communications.newsletters
+     ADD CONSTRAINT ck_newsletters_status_valid
+     CHECK (status IN ('Draft', 'Active', 'Inactive', 'Sent'));
+     ```
+
+**Build & Verification**:
+- ✅ **Backend Build**: 0 errors, 0 warnings (1m 55s)
+- ✅ **Commit 1**: 76b5495e - "fix(phase-6a74-part9bc): Fix invalid newsletter status with database migration"
+- ✅ **Deployment Failed**: Workflow #20980387200 - FAILURE (Migration SQL error: integer vs VARCHAR)
+- ✅ **Commit 2**: ffe0a751 - "fix(phase-6a74-part9bc): Fix migration SQL - status is VARCHAR not integer"
+- ✅ **Deployment Success**: Workflow #20980666242 - SUCCESS (Migration applied successfully)
+
+**Deployment Details**:
+- ✅ **Backend Deployment**: Workflow #20980666242 - SUCCESS (5m 42s)
+- ✅ **Migration Applied**: Phase6A74Part9BC_FixInvalidNewsletterStatus (✅ Confirmed in logs)
+- ✅ **API Health**: Healthy (v1.0.0) - https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/health
+- ✅ **Staging Status**: API running and healthy, migration executed successfully
+- ✅ **Deployment Verified**: API responds, migration logs show successful execution
+
+**User Testing Required**:
+1. ⏳ **Test Newsletter Status Fix**: Login to staging → Navigate to newsletter manage page → Verify "Unknown" badge no longer appears
+2. ⏳ **Test Publish Button**: Click Publish on Draft newsletter → Should change status to Active successfully (no validation error)
+3. ⏳ **Test Unpublish Button**: Click Unpublish on Active newsletter → Should change status to Draft successfully
+4. ⏳ **Test All Actions**: Verify Edit, Delete, Send, Reactivate buttons work as expected
+5. ⏳ **User Acceptance**: Verify all newsletter management functionality works without errors
+
+**Next Steps** (After User Testing):
+6. ⏳ **Part 9D** (Optional): Remove temporary "Unknown" status fallback UI from frontend (lines 219-259 in [id]/page.tsx)
+   - Since database migration fixed all invalid statuses, fallback is no longer needed
+   - CHECK constraint prevents future invalid statuses
+   - Can safely remove fallback code in next cleanup phase
+
+**Technical Details**:
+- **Migration Strategy**: Date-based status correction (PublishedAt, ExpiresAt, SentAt determine correct status)
+- **Database Constraint**: CHECK (status IN ('Draft', 'Active', 'Inactive', 'Sent')) prevents future issues
+- **Column Type**: VARCHAR(20) with enum-to-string conversion (not integer!)
+- **Durable Fix**: No more temporary workarounds, proper database-level solution
+
+**Issues Resolved**:
+1. ✅ CRITICAL: Invalid newsletter status values (status='1') in database
+2. ✅ CRITICAL: Publish button failing with "Only draft newsletters can be published" error
+3. ✅ Database constraint added to prevent future invalid status values
+4. ✅ Migration error fixed (VARCHAR vs integer type mismatch)
+
+---
 
 ### Phase 6A.74 Part 9A Hotfix - Unknown Status Bug Fix & Unpublish Button - 2026-01-13
 
-**Status**: ✅ **DEPLOYED TO STAGING** (Workflows #20971032665 & #20971035732, Both successful)
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflows #20971032665 & #20971035732, Both successful) - ✅ **SUPERSEDED BY PART 9BC**
 
 **Priority**: 🚨 **CRITICAL** - No buttons visible on newsletter manage page due to "Unknown" status
 

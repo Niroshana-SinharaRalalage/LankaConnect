@@ -101,7 +101,15 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   };
 
   // Phase 6A.61: Check if event is Active or Published (can send notification)
-  const canSendNotification = event && (event.status === EventStatus.Active || event.status === EventStatus.Published);
+  // Handle status as enum value, string, or lowercase string (API inconsistency fix)
+  const canSendNotification = event && (
+    (event.status as any) === EventStatus.Active ||
+    (event.status as any) === EventStatus.Published ||
+    (event.status as any) === 'Active' ||
+    (event.status as any) === 'Published' ||
+    String(event.status).toLowerCase() === 'active' ||
+    String(event.status).toLowerCase() === 'published'
+  );
 
   return (
     <div className="space-y-8">

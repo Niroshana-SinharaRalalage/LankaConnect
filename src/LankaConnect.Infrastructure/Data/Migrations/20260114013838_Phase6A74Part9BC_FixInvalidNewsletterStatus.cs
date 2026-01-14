@@ -12,26 +12,27 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Phase 6A.74 Part 9B/9C: Fix invalid newsletter status values
-            // Fix newsletters with status=1 (invalid value not in enum)
+            // NOTE: status column is VARCHAR (enum stored as string), not integer!
+            // Fix newsletters with status='1' or any other invalid string value
             // Set status based on PublishedAt, ExpiresAt, and SentAt dates
             migrationBuilder.Sql(@"
                 UPDATE communications.newsletters
                 SET status = CASE
-                    WHEN sent_at IS NOT NULL THEN 4  -- Sent
-                    WHEN published_at IS NULL THEN 0  -- Draft
-                    WHEN expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 3  -- Inactive
-                    WHEN published_at IS NOT NULL THEN 2  -- Active
-                    ELSE 0  -- Default to Draft
+                    WHEN sent_at IS NOT NULL THEN 'Sent'
+                    WHEN published_at IS NULL THEN 'Draft'
+                    WHEN expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 'Inactive'
+                    WHEN published_at IS NOT NULL THEN 'Active'
+                    ELSE 'Draft'  -- Default to Draft
                 END
-                WHERE status = 1;
+                WHERE status NOT IN ('Draft', 'Active', 'Inactive', 'Sent');
             ");
 
             // Phase 6A.74 Part 9C: Add check constraint to prevent future invalid status values
-            // Valid status values: 0 (Draft), 2 (Active), 3 (Inactive), 4 (Sent)
+            // Valid status values: 'Draft', 'Active', 'Inactive', 'Sent' (strings, not integers)
             migrationBuilder.Sql(@"
                 ALTER TABLE communications.newsletters
                 ADD CONSTRAINT ck_newsletters_status_valid
-                CHECK (status IN (0, 2, 3, 4));
+                CHECK (status IN ('Draft', 'Active', 'Inactive', 'Sent'));
             ");
 
             migrationBuilder.UpdateData(

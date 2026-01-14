@@ -1,4 +1,3 @@
-using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
@@ -15,16 +14,13 @@ namespace LankaConnect.Application.Communications.Queries.GetPublishedNewsletter
 public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNewslettersQuery, IReadOnlyList<NewsletterDto>>
 {
     private readonly INewsletterRepository _newsletterRepository;
-    private readonly IMapper _mapper;
     private readonly ILogger<GetPublishedNewslettersQueryHandler> _logger;
 
     public GetPublishedNewslettersQueryHandler(
         INewsletterRepository newsletterRepository,
-        IMapper mapper,
         ILogger<GetPublishedNewslettersQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -56,8 +52,29 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                 "[Phase 6A.74 Parts 10/11] GetPublishedNewslettersQuery COMPLETED - Found {Count} newsletters",
                 newsletters.Count);
 
-            // Map to DTOs
-            var result = _mapper.Map<IReadOnlyList<NewsletterDto>>(newsletters);
+            // Manual mapping to DTOs (following pattern from GetNewsletterByIdQueryHandler)
+            var result = newsletters.Select(newsletter => new NewsletterDto
+            {
+                Id = newsletter.Id,
+                Title = newsletter.Title.Value,
+                Description = newsletter.Description.Value,
+                CreatedByUserId = newsletter.CreatedByUserId,
+                CreatedByUserName = string.Empty, // Public endpoint, no user details
+                EventId = newsletter.EventId,
+                EventTitle = null, // Can be populated by frontend if needed
+                Status = newsletter.Status,
+                PublishedAt = newsletter.PublishedAt,
+                SentAt = newsletter.SentAt,
+                ExpiresAt = newsletter.ExpiresAt,
+                IncludeNewsletterSubscribers = newsletter.IncludeNewsletterSubscribers,
+                TargetAllLocations = newsletter.TargetAllLocations,
+                CreatedAt = newsletter.CreatedAt,
+                UpdatedAt = newsletter.UpdatedAt,
+                EmailGroupIds = newsletter.EmailGroupIds,
+                EmailGroups = new List<EmailGroupSummaryDto>(), // Public endpoint, no group details
+                MetroAreaIds = newsletter.MetroAreaIds,
+                MetroAreas = new List<MetroAreaSummaryDto>() // Can be populated by frontend if needed
+            }).ToList();
 
             return Result<IReadOnlyList<NewsletterDto>>.Success(result);
         }

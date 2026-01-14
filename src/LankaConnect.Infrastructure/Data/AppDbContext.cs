@@ -63,7 +63,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
-    public DbSet<EventNotificationHistory> EventNotificationHistories => Set<EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
+    public DbSet<LankaConnect.Domain.Events.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Domain.Events.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
 
     // Analytics Entity Sets (Epic 2 Phase 3)
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();

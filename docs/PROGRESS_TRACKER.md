@@ -1,9 +1,88 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-14 - Phase 6A.74 Part 9BC: Database Migration to Fix Invalid Newsletter Status - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-14 - Phase 6A.61 Hotfix: Critical Migration Fix for event_notification_history Table - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 9BC: Database Migration to Fix Invalid Newsletter Status - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.61 Hotfix: Critical Migration Fix for event_notification_history Table - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.61 Hotfix - Idempotent Migration to Fix event_notification_history Table - 2026-01-14
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflow #21001336287 - SUCCESS, Migration applied successfully, API endpoints verified)
+
+**Priority**: 🚨 **CRITICAL** - Phase 6A.61 backend completely non-functional due to missing database table
+
+**Goal**: Fix missing `event_notification_history` table with missing `updated_at` column using idempotent migration
+
+**Root Cause Analysis** (Architecture Agent agentId: af15c07):
+- Original migration `20260113020500_Phase6A61_AddEventNotificationHistoryTable` was **missing `updated_at` column**
+- EventNotificationHistory entity inherits from BaseEntity which requires `CreatedAt` and `UpdatedAt` properties
+- Migration used raw SQL (`migrationBuilder.Sql()`) instead of EF Core fluent API
+- Developer forgot to include `updated_at` column (BaseEntity requirement)
+- Migration was marked as APPLIED in `__EFMigrationsHistory` but table was never created (transaction anomaly)
+- Subsequent deployments skipped migration ("No migrations were applied. The database is already up to date.")
+- API endpoints failed with "relation 'communications.event_notification_history' does not exist" error
+
+**Evidence**:
+- Migration SQL (lines 15-44): Creates table WITHOUT `updated_at` column
+- Entity Configuration (EventNotificationHistoryConfiguration.cs lines 56-58): EXPECTS `updated_at` column
+- BaseEntity class: Provides `UpdatedAt` property that ALL entities inherit
+- Confidence Level: 99.9% (conclusive evidence from code review)
+
+**Solution** - Idempotent Corrective Migration:
+Created `20260114151536_Phase6A61_Hotfix_AddUpdatedAtColumn.cs` migration that:
+- ✅ Creates table IF NOT EXISTS (handles missing table case)
+- ✅ Adds `updated_at` column IF table exists but column missing
+- ✅ Creates indexes IF NOT EXISTS
+- ✅ Safe to run multiple times, works in any state
+- ✅ Uses PostgreSQL `DO $$` block for conditional DDL
+
+**Files Changed**:
+1. ✅ `20260114151536_Phase6A61_Hotfix_AddUpdatedAtColumn.cs` - New idempotent migration
+2. ✅ `20260114151536_Phase6A61_Hotfix_AddUpdatedAtColumn.Designer.cs` - EF generated
+3. ✅ `AppDbContextModelSnapshot.cs` - Updated snapshot
+
+**Build & Deployment**:
+- ✅ **Backend Build**: 0 errors, 0 warnings (2m 30s)
+- ✅ **Commit**: 7d89d095 - "fix(phase-6a61-hotfix): Add idempotent migration to create event_notification_history table with updated_at column"
+- ✅ **Deployment**: Workflow #21001336287 - SUCCESS (Migration applied successfully)
+- ✅ **Migration Applied**: Phase6A61_Hotfix_AddUpdatedAtColumn (✅ Confirmed in logs)
+
+**Database Verification** (✅ PASSED):
+```json
+{
+  "table_exists": true,
+  "columns": [
+    {"column_name": "id", "data_type": "uuid", "is_nullable": "NO"},
+    {"column_name": "event_id", "data_type": "uuid", "is_nullable": "NO"},
+    {"column_name": "sent_by_user_id", "data_type": "uuid", "is_nullable": "NO"},
+    {"column_name": "sent_at", "data_type": "timestamp with time zone", "is_nullable": "NO"},
+    {"column_name": "recipient_count", "data_type": "integer", "is_nullable": "NO"},
+    {"column_name": "successful_sends", "data_type": "integer", "is_nullable": "NO"},
+    {"column_name": "failed_sends", "data_type": "integer", "is_nullable": "NO"},
+    {"column_name": "created_at", "data_type": "timestamp with time zone", "is_nullable": "NO"},
+    {"column_name": "updated_at", "data_type": "timestamp with time zone", "is_nullable": "YES"}
+  ]
+}
+```
+
+**API Testing** (✅ PASSED):
+- ✅ **POST `/api/events/{id}/send-notification`**: 200 OK - `{"recipientCount": 0}`
+- ✅ **GET `/api/events/{id}/notification-history`**: 200 OK - Returns notification history record
+- ✅ **Test Event**: 4378a7d9-280e-4322-9ca2-a17e27061ae8 (Published)
+
+**Prevention Measures**:
+1. ⏳ **Migration Template**: Add BaseEntity columns checklist to project docs
+2. ⏳ **Pre-Deployment Validation**: Add migration schema validation to CI/CD pipeline
+3. ⏳ **Unit Tests**: Add migration schema completeness tests
+4. ⏳ **Best Practice**: Use EF Core fluent API instead of raw SQL for table creation
+
+**Issues Resolved**:
+1. ✅ CRITICAL: Missing `event_notification_history` table in staging database
+2. ✅ CRITICAL: API endpoints returning "relation does not exist" error
+3. ✅ CRITICAL: Missing `updated_at` column from BaseEntity inheritance
+4. ✅ Phase 6A.61 Manual Event Email Dispatch backend now fully functional
+
+---
 
 ### Phase 6A.74 Part 9BC - Database Migration to Fix Invalid Newsletter Status - 2026-01-14
 

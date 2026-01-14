@@ -207,6 +207,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
         modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
+        modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
 
         // Analytics schema (Epic 2 Phase 3)
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
@@ -250,6 +251,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature
+            typeof(EventNotificationHistory), // Phase 6A.61: Event notification history tracking
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord), // Epic 2 Phase 3
             typeof(Notification), // Phase 6A.6

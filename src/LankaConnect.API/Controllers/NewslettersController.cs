@@ -12,6 +12,7 @@ using LankaConnect.Application.Communications.Commands.ReactivateNewsletter;
 using LankaConnect.Application.Communications.Queries.GetNewsletterById;
 using LankaConnect.Application.Communications.Queries.GetNewslettersByCreator;
 using LankaConnect.Application.Communications.Queries.GetNewslettersByEvent;
+using LankaConnect.Application.Communications.Queries.GetPublishedNewsletters;
 using LankaConnect.Application.Communications.Queries.GetRecipientPreview;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.API.Extensions;
@@ -193,6 +194,40 @@ public class NewslettersController : BaseController<NewslettersController>
         Logger.LogInformation("[Phase 6A.74] Getting recipient preview for newsletter {Id}", id);
 
         var query = new GetRecipientPreviewQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    [HttpGet("published")]
+    [AllowAnonymous] // Public endpoint - anyone can view published newsletters
+    [ProducesResponseType(typeof(List<NewsletterDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPublishedNewsletters(
+        [FromQuery] DateTime? publishedFrom = null,
+        [FromQuery] DateTime? publishedTo = null,
+        [FromQuery] string? state = null,
+        [FromQuery] List<Guid>? metroAreaIds = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] Guid? userId = null,
+        [FromQuery] decimal? latitude = null,
+        [FromQuery] decimal? longitude = null)
+    {
+        Logger.LogInformation(
+            "[Phase 6A.74 Parts 10/11] Getting published newsletters - SearchTerm: {SearchTerm}, State: {State}, MetroCount: {MetroCount}",
+            searchTerm,
+            state,
+            metroAreaIds?.Count ?? 0);
+
+        var query = new GetPublishedNewslettersQuery(
+            PublishedFrom: publishedFrom,
+            PublishedTo: publishedTo,
+            State: state,
+            UserId: userId,
+            Latitude: latitude,
+            Longitude: longitude,
+            MetroAreaIds: metroAreaIds,
+            SearchTerm: searchTerm);
+
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

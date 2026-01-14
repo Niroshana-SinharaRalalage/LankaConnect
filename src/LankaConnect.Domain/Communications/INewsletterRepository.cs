@@ -34,4 +34,19 @@ public interface INewsletterRepository : IRepository<Newsletter>
     /// Gets published (Active) newsletters for public display
     /// </summary>
     Task<IReadOnlyList<Newsletter>> GetPublishedNewslettersAsync(int limit = 50, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets published (Active) newsletters with filtering and location-based sorting
+    /// Phase 6A.74 Parts 10 & 11: Public newsletter list page
+    /// </summary>
+    Task<IReadOnlyList<Newsletter>> GetPublishedWithFiltersAsync(
+        DateTime? publishedFrom = null,
+        DateTime? publishedTo = null,
+        string? state = null,
+        List<Guid>? metroAreaIds = null,
+        string? searchTerm = null,
+        Guid? userId = null,
+        decimal? latitude = null,
+        decimal? longitude = null,
+        CancellationToken cancellationToken = default);
 }

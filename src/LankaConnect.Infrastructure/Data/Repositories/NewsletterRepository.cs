@@ -253,4 +253,68 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
 
         return result;
     }
+
+    public async Task<IReadOnlyList<Newsletter>> GetPublishedWithFiltersAsync(
+        DateTime? publishedFrom = null,
+        DateTime? publishedTo = null,
+        string? state = null,
+        List<Guid>? metroAreaIds = null,
+        string? searchTerm = null,
+        Guid? userId = null,
+        decimal? latitude = null,
+        decimal? longitude = null,
+        CancellationToken cancellationToken = default)
+    {
+        _repoLogger.LogDebug(
+            "[Phase 6A.74 Parts 10/11] Getting published newsletters with filters - PublishedFrom: {From}, PublishedTo: {To}, State: {State}, MetroCount: {MetroCount}, SearchTerm: {Search}",
+            publishedFrom,
+            publishedTo,
+            state,
+            metroAreaIds?.Count ?? 0,
+            searchTerm);
+
+        // Start with base query - only Active newsletters
+        var query = _dbSet
+            .AsNoTracking()
+            .Where(n => n.Status == NewsletterStatus.Active);
+
+        // Filter by published date range
+        if (publishedFrom.HasValue)
+        {
+            query = query.Where(n => n.PublishedAt.HasValue && n.PublishedAt >= publishedFrom.Value);
+        }
+
+        if (publishedTo.HasValue)
+        {
+            query = query.Where(n => n.PublishedAt.HasValue && n.PublishedAt <= publishedTo.Value);
+        }
+
+        // Filter by metro areas
+        // Note: Newsletters use MetroAreaIds and TargetAllLocations, not state
+        if (metroAreaIds != null && metroAreaIds.Count > 0)
+        {
+            query = query.Where(n =>
+                n.TargetAllLocations ||                                           // Targets all locations
+                n.MetroAreaIds.Any(id => metroAreaIds.Contains(id)));             // Or has overlapping metros
+        }
+
+        // Filter by search term (title or description)
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(n =>
+                n.Title.Value.Contains(searchTerm) ||
+                n.Description.Value.Contains(searchTerm));
+        }
+
+        // Order by published date (most recent first)
+        query = query.OrderByDescending(n => n.PublishedAt);
+
+        var result = await query.ToListAsync(cancellationToken);
+
+        _repoLogger.LogInformation(
+            "[Phase 6A.74 Parts 10/11] Found {Count} published newsletters with filters",
+            result.Count);
+
+        return result;
+    }
 }

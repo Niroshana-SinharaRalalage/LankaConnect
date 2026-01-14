@@ -300,3 +300,4 @@ Thumbs.db
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
+docs/DNS_CONFIGURATION_PRODUCTION.md

@@ -82,6 +82,43 @@ Created `20260114151536_Phase6A61_Hotfix_AddUpdatedAtColumn.cs` migration that:
 3. ✅ CRITICAL: Missing `updated_at` column from BaseEntity inheritance
 4. ✅ Phase 6A.61 Manual Event Email Dispatch backend now fully functional
 
+### Phase 6A.61 Frontend Fix - Send Email Button Not Showing - 2026-01-14
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflow #21005843126 - SUCCESS)
+
+**Priority**: 🚨 **CRITICAL** - "Send Email to Attendees" button not visible for Published events
+
+**Root Cause:**
+- EventNewslettersTab was checking `event.status === EventStatus.Published` (strict enum comparison)
+- API returns status as STRING ("Published") instead of enum value (1)
+- Button condition failed, button never showed for Published/Active events
+
+**Solution:**
+Updated `canSendNotification` check in EventNewslettersTab.tsx to handle all three status formats:
+1. Enum value (e.g., `EventStatus.Published = 1`)
+2. String value (e.g., `"Published"`)
+3. Lowercase string (e.g., `"published"`)
+
+This matches the pattern used in event manage page (lines 229-241).
+
+**Files Changed:**
+- ✅ EventNewslettersTab.tsx lines 103-112
+
+**Build & Deployment:**
+- ✅ **Frontend Build**: 0 errors (27.5s)
+- ✅ **Commit**: f3ec2a0f - "fix(phase-6a61): Fix Send Email button not showing for Published events"
+- ✅ **UI Deployment**: Workflow #21005843126 - SUCCESS
+
+**Impact:**
+- ✅ "Send Email to Attendees" button now appears for Published/Active events
+- ✅ Phase 6A.61 Quick Event Notification feature **NOW FULLY FUNCTIONAL END-TO-END**
+
+**Testing Required:**
+1. ⏳ Navigate to staging: Event Management → Communications tab
+2. ⏳ Verify "Send Email to Attendees" button is visible for Published events
+3. ⏳ Click button and verify email notification is sent
+4. ⏳ Verify notification appears in "Email Send History" section
+
 ---
 
 ### Phase 6A.74 Part 9BC - Database Migration to Fix Invalid Newsletter Status - 2026-01-14

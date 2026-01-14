@@ -28,6 +28,13 @@ public class Registration : BaseEntity
     public string? StripeCheckoutSessionId { get; private set; }
     public string? StripePaymentIntentId { get; private set; }
 
+    // Phase 6A.X: Revenue breakdown components for reporting and reconciliation
+    public Money? SalesTaxAmount { get; private set; }
+    public Money? StripeFeeAmount { get; private set; }  // Estimated at registration, actual after payment
+    public Money? PlatformCommissionAmount { get; private set; }
+    public Money? OrganizerPayoutAmount { get; private set; }
+    public decimal SalesTaxRate { get; private set; }  // Tax rate at time of registration
+
     // EF Core constructor
     private Registration() { }
 
@@ -289,6 +296,23 @@ public class Registration : BaseEntity
         Status = RegistrationStatus.Refunded;
         MarkAsUpdated();
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Sets the revenue breakdown components for this registration
+    /// Should be called when registration is created for paid events
+    /// </summary>
+    public void SetRevenueBreakdown(ValueObjects.RevenueBreakdown breakdown)
+    {
+        if (breakdown == null)
+            return;  // Free events don't have breakdown
+
+        SalesTaxAmount = breakdown.SalesTaxAmount;
+        StripeFeeAmount = breakdown.StripeFeeAmount;
+        PlatformCommissionAmount = breakdown.PlatformCommission;
+        OrganizerPayoutAmount = breakdown.OrganizerPayout;
+        SalesTaxRate = breakdown.SalesTaxRate;
+        MarkAsUpdated();
     }
 
     // Internal method for Event aggregate to update quantity

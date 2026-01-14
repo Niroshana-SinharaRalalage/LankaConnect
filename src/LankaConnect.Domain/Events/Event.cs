@@ -36,6 +36,7 @@ public class Event : BaseEntity
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
+    public RevenueBreakdown? RevenueBreakdown { get; private set; } // Phase 6A.X: Detailed revenue breakdown for paid events
 
     // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
@@ -749,6 +750,21 @@ public class Event : BaseEntity
 
         // Raise domain event
         RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Sets the revenue breakdown for this event
+    /// Should be called after pricing is set and location is known
+    /// </summary>
+    public Result SetRevenueBreakdown(RevenueBreakdown breakdown)
+    {
+        if (breakdown == null)
+            return Result.Failure("Revenue breakdown cannot be null");
+
+        RevenueBreakdown = breakdown;
+        MarkAsUpdated();
 
         return Result.Success();
     }

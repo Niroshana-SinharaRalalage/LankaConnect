@@ -34,11 +34,11 @@ export function NewslettersTab() {
   };
 
   const handleNewsletterClick = (newsletterId: string) => {
-    router.push(`/newsletters/${newsletterId}`);
+    router.push(`/dashboard/my-newsletters/${newsletterId}`);
   };
 
   const handleEditClick = (newsletterId: string) => {
-    router.push(`/newsletters/${newsletterId}/edit`);
+    router.push(`/dashboard/my-newsletters/${newsletterId}/edit`);
   };
 
   const handlePublish = async (newsletterId: string) => {

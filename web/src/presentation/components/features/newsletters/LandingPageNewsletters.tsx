@@ -12,8 +12,8 @@ import { usePublishedNewsletters } from '@/presentation/hooks/useNewsletters';
  * - Title
  * - Excerpt (first 200 chars of HTML content, stripped)
  * - Published date
- * - "Read More" button → /discover/newsletters/[id]
- * - "View All Newsletters" button → /discover/newsletters
+ * - "Read More" button → /newsletters/[id]
+ * - "View All Newsletters" button → /newsletters
  *
  * Features:
  * - Responsive card layout
@@ -106,7 +106,7 @@ export function LandingPageNewsletters() {
             </h2>
           </div>
           <a
-            href="/discover/newsletters"
+            href="/newsletters"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all hover:shadow-md"
             style={{
               backgroundColor: '#FF7900',
@@ -124,7 +124,7 @@ export function LandingPageNewsletters() {
             <Card
               key={newsletter.id}
               className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-orange-200 transition-all hover:shadow-lg cursor-pointer"
-              onClick={() => (window.location.href = `/discover/newsletters/${newsletter.id}`)}
+              onClick={() => (window.location.href = `/newsletters/${newsletter.id}`)}
             >
               <CardContent className="p-6">
                 {/* Title */}

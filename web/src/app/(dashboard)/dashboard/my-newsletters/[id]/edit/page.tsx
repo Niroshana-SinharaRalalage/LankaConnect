@@ -23,7 +23,7 @@ export default function EditNewsletterPage({ params }: { params: Promise<{ id: s
       {/* Breadcrumb Navigation */}
       <div className="mb-6">
         <button
-          onClick={() => router.push(`/newsletters/${id}`)}
+          onClick={() => router.push(`/dashboard/my-newsletters/${id}`)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -44,9 +44,9 @@ export default function EditNewsletterPage({ params }: { params: Promise<{ id: s
         newsletterId={id}
         onSuccess={(newsletterId) => {
           // Navigate to details page after save
-          router.push(`/newsletters/${newsletterId || id}`);
+          router.push(`/dashboard/my-newsletters/${newsletterId || id}`);
         }}
-        onCancel={() => router.push(`/newsletters/${id}`)}
+        onCancel={() => router.push(`/dashboard/my-newsletters/${id}`)}
       />
     </div>
   );

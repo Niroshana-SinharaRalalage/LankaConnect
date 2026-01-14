@@ -156,7 +156,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           {newsletter.status === NewsletterStatus.Draft && (
             <>
               <Button
-                onClick={() => router.push(`/newsletters/${id}/edit`)}
+                onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
                 variant="outline"
               >
                 <Edit className="w-4 h-4 mr-2" />
@@ -185,7 +185,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           {newsletter.status === NewsletterStatus.Active && !newsletter.sentAt && (
             <>
               <Button
-                onClick={() => router.push(`/newsletters/${id}/edit`)}
+                onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
                 variant="outline"
               >
                 <Edit className="w-4 h-4 mr-2" />
@@ -247,7 +247,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 </div>
               </div>
               <Button
-                onClick={() => router.push(`/newsletters/${id}/edit`)}
+                onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
                 variant="outline"
               >
                 <Edit className="w-4 h-4 mr-2" />

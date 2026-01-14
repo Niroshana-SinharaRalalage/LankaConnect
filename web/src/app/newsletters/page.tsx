@@ -19,7 +19,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 /**
  * Public Newsletters Discovery Page
  * Phase 6A.74 Parts 10 & 11
- * Route: /discover/newsletters
+ * Route: /newsletters
  */
 export default function DiscoverNewslettersPage() {
   const router = useRouter();
@@ -158,7 +158,7 @@ export default function DiscoverNewslettersPage() {
         </div>
 
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+          <div className="sm:flex-1 sm:max-w-md">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -224,7 +224,7 @@ export default function DiscoverNewslettersPage() {
               <Card
                 key={newsletter.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => router.push(`/discover/newsletters/${newsletter.id}`)}
+                onClick={() => router.push(`/newsletters/${newsletter.id}`)}
               >
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">

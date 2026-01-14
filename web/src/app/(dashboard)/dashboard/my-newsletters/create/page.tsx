@@ -48,7 +48,7 @@ function CreateNewsletterContent() {
         initialEventId={eventId || undefined}
         onSuccess={(id) => {
           // Navigate to details page after creation
-          router.push(`/newsletters/${id}`);
+          router.push(`/dashboard/my-newsletters/${id}`);
         }}
         onCancel={() => router.back()}
       />

@@ -164,7 +164,6 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
 
 <hr />
 
-<p><strong>Write your update message below:</strong></p>
 <p></p>
     `.trim();
 

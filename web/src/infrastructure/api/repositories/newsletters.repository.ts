@@ -73,13 +73,54 @@ export class NewslettersRepository {
   /**
    * Get all published (Active) newsletters for public landing page
    * Maps to backend GetPublishedNewslettersQuery
-   * Phase 6A.74 Part 5B: Public newsletter display
+   * Phase 6A.74 Part 5B: Public newsletter display (simple version)
    *
    * Returns only Active newsletters, sorted by publishedAt desc
    * No authentication required (public endpoint)
    */
   async getPublishedNewsletters(): Promise<NewsletterDto[]> {
     return await apiClient.get<NewsletterDto[]>(`${this.basePath}/published`);
+  }
+
+  /**
+   * Get published newsletters with filtering support
+   * Phase 6A.74 Parts 10 & 11: Public newsletter list page with advanced filtering
+   *
+   * @param filters - Optional filters for location, search, date range
+   * @returns Active newsletters matching the filter criteria
+   */
+  async getPublishedNewslettersWithFilters(filters?: GetNewslettersFilters): Promise<NewsletterDto[]> {
+    const params = new URLSearchParams();
+
+    if (filters?.publishedFrom) {
+      params.append('publishedFrom', filters.publishedFrom.toISOString());
+    }
+    if (filters?.publishedTo) {
+      params.append('publishedTo', filters.publishedTo.toISOString());
+    }
+    if (filters?.state) {
+      params.append('state', filters.state);
+    }
+    if (filters?.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+    if (filters?.searchTerm) {
+      params.append('searchTerm', filters.searchTerm);
+    }
+    if (filters?.userId) {
+      params.append('userId', filters.userId);
+    }
+    if (filters?.latitude !== undefined) {
+      params.append('latitude', filters.latitude.toString());
+    }
+    if (filters?.longitude !== undefined) {
+      params.append('longitude', filters.longitude.toString());
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.basePath}/published?${queryString}` : `${this.basePath}/published`;
+
+    return await apiClient.get<NewsletterDto[]>(url);
   }
 
   // ==================== MUTATIONS ====================

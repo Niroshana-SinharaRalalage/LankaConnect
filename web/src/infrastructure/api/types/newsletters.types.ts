@@ -111,8 +111,18 @@ export interface UpdateNewsletterRequest {
 
 /**
  * Filters for querying newsletters
+ * Phase 6A.74 Parts 10 & 11: Extended with public newsletter list filters
  */
 export interface GetNewslettersFilters {
   status?: NewsletterStatus;
   eventId?: string;
+  // Phase 6A.74 Parts 10/11: Public newsletter list filters
+  publishedFrom?: Date;
+  publishedTo?: Date;
+  state?: string;
+  metroAreaIds?: string[];
+  searchTerm?: string;
+  userId?: string;
+  latitude?: number;
+  longitude?: number;
 }

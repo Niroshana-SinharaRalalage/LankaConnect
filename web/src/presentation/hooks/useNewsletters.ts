@@ -211,6 +211,45 @@ export function usePublishedNewsletters(
 }
 
 /**
+ * usePublishedNewslettersWithFilters Hook
+ *
+ * Fetches published newsletters with advanced filtering support
+ * Phase 6A.74 Parts 10 & 11: Public newsletter list page
+ *
+ * Features:
+ * - Location-based filtering (metro areas, state)
+ * - Search term filtering (title + description)
+ * - Date range filtering (publishedFrom, publishedTo)
+ * - Public endpoint (no authentication required)
+ * - 2-minute stale time for list page performance
+ * - Dynamic cache keys based on filter parameters
+ *
+ * @param filters - Filter parameters for newsletters
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: newsletters, isLoading } = usePublishedNewslettersWithFilters({
+ *   searchTerm: 'christmas',
+ *   metroAreaIds: ['metro-id-1', 'metro-id-2']
+ * });
+ * ```
+ */
+export function usePublishedNewslettersWithFilters(
+  filters?: GetNewslettersFilters,
+  options?: Omit<UseQueryOptions<NewsletterDto[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: [...newsletterKeys.published(), 'filtered', filters] as const,
+    queryFn: () => newslettersRepository.getPublishedNewslettersWithFilters(filters),
+    staleTime: 2 * 60 * 1000, // 2 minutes (shorter than simple list for freshness)
+    refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
  * useCreateNewsletter Hook
  *
  * Mutation hook for creating a new newsletter in Draft status
@@ -513,6 +552,7 @@ export default {
   useNewsletterById,
   useNewslettersByEvent,
   usePublishedNewsletters,
+  usePublishedNewslettersWithFilters,
   useRecipientPreview,
   useCreateNewsletter,
   useUpdateNewsletter,

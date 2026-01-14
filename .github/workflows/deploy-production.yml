@@ -19,7 +19,7 @@ env:
   AZURE_CONTAINER_REGISTRY: lankaconnectprod
   CONTAINER_APP_NAME: lankaconnect-api-prod
   RESOURCE_GROUP: lankaconnect-prod
-  KEY_VAULT_NAME: lc-prod-kv
+  KEY_VAULT_NAME: lankaconnect-prod-kv
   DOTNET_VERSION: '8.0.x'
 
 jobs:

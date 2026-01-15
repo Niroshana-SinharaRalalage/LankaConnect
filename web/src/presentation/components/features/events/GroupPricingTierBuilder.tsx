@@ -8,6 +8,7 @@ import { Currency } from '@/infrastructure/api/types/events.types';
 import type { GroupPricingTierFormData } from '@/presentation/lib/validators/event.schemas';
 import { useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { toDropdownOptions, getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
+import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 
 /**
  * Group Pricing Tier Builder Component
@@ -228,17 +229,19 @@ export function GroupPricingTierBuilder({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Min Attendees */}
-            <div>
+          {/* Improved layout: Attendees narrower, Price wider */}
+          <div className="grid grid-cols-12 gap-3">
+            {/* Min Attendees - 2 cols */}
+            <div className="col-span-6 sm:col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Min Attendees *
+                Min *
               </label>
               <Input
                 type="number"
                 min="1"
                 max="10000"
                 placeholder="1"
+                className="w-full"
                 value={newTier.minAttendees || ''}
                 onChange={(e) =>
                   setNewTier({ ...newTier, minAttendees: parseInt(e.target.value) || undefined })
@@ -246,16 +249,17 @@ export function GroupPricingTierBuilder({
               />
             </div>
 
-            {/* Max Attendees */}
-            <div>
+            {/* Max Attendees - 2 cols */}
+            <div className="col-span-6 sm:col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Max Attendees
+                Max
               </label>
               <Input
                 type="number"
                 min={newTier.minAttendees || 1}
                 max="10000"
-                placeholder="Leave empty for unlimited"
+                placeholder="∞"
+                className="w-full"
                 value={newTier.maxAttendees || ''}
                 onChange={(e) =>
                   setNewTier({
@@ -264,17 +268,16 @@ export function GroupPricingTierBuilder({
                   })
                 }
               />
-              <p className="mt-1 text-xs text-neutral-500">Leave empty for unlimited (e.g., "6+")</p>
             </div>
 
-            {/* Price Per Person */}
-            <div>
+            {/* Price Per Person - 8 cols (wider) */}
+            <div className="col-span-12 sm:col-span-8">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Price Per Person *
               </label>
               <div className="flex items-center gap-2">
                 <select
-                  className="px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="flex-shrink-0 px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   value={newTier.currency || defaultCurrency}
                   onChange={(e) =>
                     setNewTier({ ...newTier, currency: parseInt(e.target.value) as Currency })
@@ -292,23 +295,22 @@ export function GroupPricingTierBuilder({
                   max="10000"
                   step="1"
                   placeholder="25"
+                  className="flex-1"
                   value={newTier.pricePerPerson || ''}
                   onChange={(e) =>
                     setNewTier({ ...newTier, pricePerPerson: parseFloat(e.target.value) || undefined })
                   }
                 />
               </div>
-              {/* Session 33: Commission info message for group pricing - standardized format */}
-              {(newTier.pricePerPerson ?? 0) > 0 && (
-                <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                  <p>5% (Stripe + LankaConnect commission) applies</p>
-                  <p className="font-medium text-green-700">
-                    You'll receive: ${((newTier.pricePerPerson ?? 0) * 0.95).toFixed(2)} per person
-                  </p>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Phase 6A.X: Revenue breakdown preview - full width below */}
+          <RevenueBreakdownPreview
+            ticketPrice={newTier.pricePerPerson}
+            currency={newTier.currency || defaultCurrency}
+            priceLabel="person"
+          />
 
           {/* Tier-specific errors */}
           {tierErrors && (

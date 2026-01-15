@@ -988,57 +988,59 @@ export function EventEditForm({ event }: EventEditFormProps) {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Min Attendees */}
-                              <div>
+                            {/* Improved layout: Attendees on left (narrower), Price on right (wider) */}
+                            <div className="grid grid-cols-12 gap-3">
+                              {/* Min Attendees - 2 cols */}
+                              <div className="col-span-6 sm:col-span-2">
                                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                  Min Attendees *
+                                  Min *
                                 </label>
                                 <Input
                                   type="number"
                                   min="1"
                                   max="10000"
+                                  className="w-full"
                                   {...register(`groupPricingTiers.${index}.minAttendees`, { valueAsNumber: true })}
                                   error={!!errors.groupPricingTiers?.[index]?.minAttendees}
                                 />
                                 {errors.groupPricingTiers?.[index]?.minAttendees && (
-                                  <p className="mt-1 text-sm text-destructive">
+                                  <p className="mt-1 text-xs text-destructive">
                                     {errors.groupPricingTiers[index]?.minAttendees?.message}
                                   </p>
                                 )}
                               </div>
 
-                              {/* Max Attendees */}
-                              <div>
+                              {/* Max Attendees - 2 cols */}
+                              <div className="col-span-6 sm:col-span-2">
                                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                  Max Attendees
+                                  Max
                                 </label>
                                 <Input
                                   type="number"
                                   min="1"
                                   max="10000"
-                                  placeholder="Leave empty for unlimited"
+                                  placeholder="∞"
+                                  className="w-full"
                                   {...register(`groupPricingTiers.${index}.maxAttendees`, {
                                     setValueAs: (v) => v === '' || v === null || v === undefined ? null : parseInt(v)
                                   })}
                                   error={!!errors.groupPricingTiers?.[index]?.maxAttendees}
                                 />
-                                <p className="mt-1 text-xs text-neutral-500">Leave empty for unlimited (e.g., "3+")</p>
                                 {errors.groupPricingTiers?.[index]?.maxAttendees && (
-                                  <p className="mt-1 text-sm text-destructive">
+                                  <p className="mt-1 text-xs text-destructive">
                                     {errors.groupPricingTiers[index]?.maxAttendees?.message}
                                   </p>
                                 )}
                               </div>
 
-                              {/* Price Per Person */}
-                              <div>
+                              {/* Price Per Person - 8 cols (wider) */}
+                              <div className="col-span-12 sm:col-span-8">
                                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                                   Price Per Person *
                                 </label>
                                 <div className="flex items-center gap-2">
                                   <select
-                                    className="px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    className="flex-shrink-0 px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                                     {...register(`groupPricingTiers.${index}.currency`, { valueAsNumber: true })}
                                   >
                                     {currencyOptions.map(curr => (
@@ -1052,26 +1054,27 @@ export function EventEditForm({ event }: EventEditFormProps) {
                                     min="0"
                                     max="10000"
                                     step="1"
+                                    className="flex-1"
                                     {...register(`groupPricingTiers.${index}.pricePerPerson`, { valueAsNumber: true })}
                                     error={!!errors.groupPricingTiers?.[index]?.pricePerPerson}
                                   />
                                 </div>
                                 {errors.groupPricingTiers?.[index]?.pricePerPerson && (
-                                  <p className="mt-1 text-sm text-destructive">
+                                  <p className="mt-1 text-xs text-destructive">
                                     {errors.groupPricingTiers[index]?.pricePerPerson?.message}
                                   </p>
                                 )}
-                                {/* Phase 6A.X: Revenue breakdown preview for group tier */}
-                                <RevenueBreakdownPreview
-                                  ticketPrice={tierPrice}
-                                  currency={tierCurrency}
-                                  state={watch('locationState') as string | undefined}
-                                  country={watch('locationCountry') as string | undefined}
-                                  priceLabel="person"
-                                  compact
-                                />
                               </div>
                             </div>
+
+                            {/* Phase 6A.X: Revenue breakdown preview - full width below */}
+                            <RevenueBreakdownPreview
+                              ticketPrice={tierPrice}
+                              currency={tierCurrency}
+                              state={watch('locationState') as string | undefined}
+                              country={watch('locationCountry') as string | undefined}
+                              priceLabel="person"
+                            />
                           </div>
                         );
                       })}

@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { Calendar, Mail, MapPin, ExternalLink } from 'lucide-react';
-import { NewsletterDto, NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
+import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
+import { isNewsletterActive } from '@/lib/enum-utils';
 import { NewsletterStatusBadge } from './NewsletterStatusBadge';
 
 export interface NewsletterCardProps {
@@ -15,6 +16,7 @@ export interface NewsletterCardProps {
  * NewsletterCard Component
  * Displays individual newsletter with status, metadata, and action buttons
  * Phase 6A.74: Newsletter Feature
+ * Phase 6A.74 Part 10: Fixed HTML tag stripping for description preview
  */
 export function NewsletterCard({ newsletter, onClick, actionButtons }: NewsletterCardProps) {
   const formatDate = (dateString: string): string => {
@@ -24,6 +26,12 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
       month: 'short',
       day: '2-digit',
     });
+  };
+
+  // Strip HTML tags from description for preview
+  const getPlainTextExcerpt = (html: string, maxLength: number = 150): string => {
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
   return (
@@ -41,9 +49,9 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
         <NewsletterStatusBadge status={newsletter.status} />
       </div>
 
-      {/* Description */}
+      {/* Description - Phase 6A.74 Part 10: Strip HTML tags for preview */}
       <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-        {newsletter.description}
+        {getPlainTextExcerpt(newsletter.description)}
       </p>
 
       {/* Metadata */}
@@ -63,7 +71,7 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
         )}
 
         {/* Expires Date (Active only) */}
-        {newsletter.status === NewsletterStatus.Active && newsletter.expiresAt && (
+        {isNewsletterActive(newsletter.status) && newsletter.expiresAt && (
           <div className="flex items-center text-xs text-gray-600">
             <Calendar className="w-3 h-3 mr-2 text-[#F59E0B]" />
             <span>Expires {formatDate(newsletter.expiresAt)}</span>

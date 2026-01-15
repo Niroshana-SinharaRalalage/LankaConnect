@@ -129,15 +129,20 @@ public class NewsletterEmailJob
             }
 
             // 4. Prepare template parameters
+            // Phase 6A.74 Part 10 Issue #3: Template uses 'NewsletterContent', not 'NewsletterDescription'
             var parameters = new Dictionary<string, object>
             {
                 ["NewsletterTitle"] = newsletter.Title.Value,
-                ["NewsletterDescription"] = newsletter.Description.Value,
+                ["NewsletterContent"] = newsletter.Description.Value, // Template expects 'NewsletterContent'
                 ["DashboardUrl"] = _urlsService.FrontendBaseUrl,
                 ["IsEventNewsletter"] = newsletter.EventId.HasValue,
+                ["EventId"] = newsletter.EventId?.ToString() ?? "",
                 ["EventTitle"] = eventTitle ?? "",
                 ["EventDate"] = eventDate ?? "",
-                ["EventLocation"] = eventLocation ?? ""
+                ["EventLocation"] = eventLocation ?? "",
+                ["EventDetailsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}" : "",
+                ["HasSignUpLists"] = false, // TODO: Check if event has sign-up lists
+                ["SignUpListsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}#signup-lists" : ""
             };
 
             // 5. Send templated email to each recipient

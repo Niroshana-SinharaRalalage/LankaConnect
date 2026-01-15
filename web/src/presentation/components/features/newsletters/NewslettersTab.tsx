@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Plus } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { NewsletterList } from './NewsletterList';
 import {
   useMyNewsletters,
@@ -16,9 +17,14 @@ import {
  * NewslettersTab Component
  * Dashboard tab for newsletter management
  * Phase 6A.74 Part 6: Updated to use route-based navigation instead of modal
+ * Phase 6A.74 Part 10 Issue #2: Replaced confirm() with ConfirmDialog
  */
 export function NewslettersTab() {
   const router = useRouter();
+
+  // Phase 6A.74 Part 10 Issue #2: Dialog state for delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [newsletterToDelete, setNewsletterToDelete] = React.useState<string | null>(null);
 
   // Fetch user's newsletters
   const { data: newsletters = [], isLoading } = useMyNewsletters();
@@ -61,17 +67,22 @@ export function NewslettersTab() {
     }
   };
 
-  const handleDelete = async (newsletterId: string) => {
-    if (!confirm('Are you sure you want to delete this newsletter? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteClick = async (newsletterId: string) => {
+    setNewsletterToDelete(newsletterId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!newsletterToDelete) return;
 
     try {
-      await deleteMutation.mutateAsync(newsletterId);
+      await deleteMutation.mutateAsync(newsletterToDelete);
       // Success notification handled by React Query
     } catch (error) {
       console.error('Failed to delete newsletter:', error);
       // Error notification handled by React Query
+    } finally {
+      setNewsletterToDelete(null);
     }
   };
 
@@ -106,7 +117,19 @@ export function NewslettersTab() {
         onEditNewsletter={handleEditClick}
         onPublishNewsletter={handlePublish}
         onSendNewsletter={handleSend}
-        onDeleteNewsletter={handleDelete}
+        onDeleteNewsletter={handleDeleteClick}
+      />
+
+      {/* Phase 6A.74 Part 10 Issue #2: Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Newsletter"
+        description="Are you sure you want to delete this newsletter? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDeleteConfirm}
+        variant="danger"
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

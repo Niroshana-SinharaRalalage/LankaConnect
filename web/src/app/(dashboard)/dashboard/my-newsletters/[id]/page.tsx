@@ -1,9 +1,11 @@
 'use client';
 
+import * as React from 'react';
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, XCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
 import {
   useNewsletterById,
@@ -42,6 +44,11 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   const fromSource = searchParams.get('from');
   const sourceEventId = searchParams.get('eventId');
 
+  // Phase 6A.74 Part 10 Issue #2: Dialog states for confirmation modals
+  const [showUnpublishDialog, setShowUnpublishDialog] = React.useState(false);
+  const [showSendDialog, setShowSendDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+
   const { data: newsletter, isLoading } = useNewsletterById(id);
   const publishMutation = usePublishNewsletter();
   const unpublishMutation = useUnpublishNewsletter();
@@ -58,10 +65,6 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   };
 
   const handleUnpublish = async () => {
-    if (!confirm('Are you sure you want to unpublish this newsletter? It will be reverted to Draft status.')) {
-      return;
-    }
-
     try {
       await unpublishMutation.mutateAsync(id);
     } catch (error) {
@@ -70,10 +73,6 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   };
 
   const handleSend = async () => {
-    if (!confirm('Are you sure you want to send this newsletter? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       await sendMutation.mutateAsync(id);
     } catch (error) {
@@ -82,10 +81,6 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this newsletter? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       await deleteMutation.mutateAsync(id);
       router.push('/dashboard?tab=newsletters'); // Dashboard navigation is correct
@@ -214,7 +209,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 {publishMutation.isPending ? 'Publishing...' : 'Publish'}
               </Button>
               <Button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteDialog(true)}
                 disabled={deleteMutation.isPending}
                 variant="destructive"
               >
@@ -235,7 +230,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 Edit
               </Button>
               <Button
-                onClick={handleSend}
+                onClick={() => setShowSendDialog(true)}
                 disabled={sendMutation.isPending}
                 className="bg-[#10B981] hover:bg-[#059669] text-white"
               >
@@ -243,7 +238,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 {sendMutation.isPending ? 'Sending...' : 'Send Email'}
               </Button>
               <Button
-                onClick={handleUnpublish}
+                onClick={() => setShowUnpublishDialog(true)}
                 disabled={unpublishMutation.isPending}
                 variant="outline"
                 className="border-red-600 text-red-600 hover:bg-red-50"
@@ -362,6 +357,40 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           dangerouslySetInnerHTML={{ __html: newsletter.description }}
         />
       </div>
+
+      {/* Phase 6A.74 Part 10 Issue #2: Confirmation Dialogs */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Delete Newsletter"
+        description="Are you sure you want to delete this newsletter? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showSendDialog}
+        onOpenChange={setShowSendDialog}
+        title="Send Newsletter"
+        description="Are you sure you want to send this newsletter? This action cannot be undone. The email will be sent to all selected recipients."
+        confirmLabel="Send Email"
+        onConfirm={handleSend}
+        variant="warning"
+        isLoading={sendMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showUnpublishDialog}
+        onOpenChange={setShowUnpublishDialog}
+        title="Unpublish Newsletter"
+        description="Are you sure you want to unpublish this newsletter? It will be reverted to Draft status and removed from public view."
+        confirmLabel="Unpublish"
+        onConfirm={handleUnpublish}
+        variant="warning"
+        isLoading={unpublishMutation.isPending}
+      />
     </div>
   );
 }

@@ -240,16 +240,17 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
 
     public async Task<IReadOnlyList<Newsletter>> GetPublishedNewslettersAsync(int limit = 50, CancellationToken cancellationToken = default)
     {
-        _repoLogger.LogDebug("[Phase 6A.74] Getting published newsletters (Active status, limit: {Limit})", limit);
+        _repoLogger.LogDebug("[Phase 6A.74] Getting published newsletters (Active or Sent status, limit: {Limit})", limit);
 
+        // Phase 6A.74 Part 10 Issue #4: Include both Active and Sent newsletters for public display
         var result = await _dbSet
             .AsNoTracking()
-            .Where(n => n.Status == NewsletterStatus.Active)
+            .Where(n => n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent)
             .OrderByDescending(n => n.PublishedAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        _repoLogger.LogInformation("[Phase 6A.74] Found {Count} published newsletters", result.Count);
+        _repoLogger.LogInformation("[Phase 6A.74] Found {Count} published newsletters (Active or Sent)", result.Count);
 
         return result;
     }
@@ -273,10 +274,10 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
             metroAreaIds?.Count ?? 0,
             searchTerm);
 
-        // Start with base query - only Active newsletters
+        // Phase 6A.74 Part 10 Issue #4: Include both Active and Sent newsletters for public display
         var query = _dbSet
             .AsNoTracking()
-            .Where(n => n.Status == NewsletterStatus.Active);
+            .Where(n => n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent);
 
         // Filter by published date range
         if (publishedFrom.HasValue)

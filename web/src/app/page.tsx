@@ -10,7 +10,7 @@ import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useCommunityStats } from '@/presentation/hooks/useStats';
-import { LandingPageNewsletters } from '@/presentation/components/features/newsletters/LandingPageNewsletters';
+import { usePublishedNewsletters } from '@/presentation/hooks/useNewsletters';
 
 export default function Home() {
   const { user } = useAuthStore();
@@ -29,6 +29,9 @@ export default function Home() {
   // Phase 6A.69: Fetch real-time community statistics
   const { data: stats, isLoading: statsLoading } = useCommunityStats();
 
+  // Phase 6A.74: Fetch published newsletters for News & Updates section
+  const { data: newsletters, isLoading: newslettersLoading } = usePublishedNewsletters();
+
   // Format number for display (1234 → "1.2K+", 25678 → "25.6K+")
   const formatCount = (count: number): string => {
     if (count >= 1000) {
@@ -40,6 +43,26 @@ export default function Home() {
       return `${k}K+`;
     }
     return count.toString();
+  };
+
+  // Phase 6A.74: Strip HTML tags and get excerpt for newsletter preview
+  const getNewsletterExcerpt = (html: string, maxLength: number = 100): string => {
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  // Phase 6A.74: Format relative time for newsletter display
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
@@ -438,7 +461,7 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                {/* Latest News & Updates - Phase 6A.74 Part 10: Updated heading per user request */}
+                {/* Latest News & Updates - Phase 6A.74 Part 10: Dynamic newsletters from database */}
                 <Card className="border-neutral-200 shadow-sm">
                   <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
                     <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
@@ -451,31 +474,48 @@ export default function Home() {
                   </CardHeader>
 
                   <CardContent className="p-6 space-y-4">
-                    {/* News 1 */}
-                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-amber-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                      <Badge variant="business">Business</Badge>
-                      <h3 className="font-semibold text-neutral-900 mt-3 mb-2 leading-snug group-hover:text-amber-600 transition-colors">
-                        New Sri Lankan restaurant opens in downtown
-                      </h3>
-                      <p className="text-sm text-neutral-600 mb-2">Authentic cuisine from Colombo arrives...</p>
-                      <div className="flex items-center gap-1 text-xs text-neutral-500">
-                        <Clock className="h-3 w-3" />
-                        <span>3h ago</span>
+                    {newslettersLoading ? (
+                      // Loading skeleton
+                      <>
+                        {[...Array(2)].map((_, i) => (
+                          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4 animate-pulse">
+                            <div className="h-5 w-20 bg-neutral-200 rounded mb-3"></div>
+                            <div className="h-5 w-3/4 bg-neutral-200 rounded mb-2"></div>
+                            <div className="h-4 w-full bg-neutral-100 rounded mb-2"></div>
+                            <div className="h-3 w-16 bg-neutral-100 rounded"></div>
+                          </div>
+                        ))}
+                      </>
+                    ) : newsletters && newsletters.length > 0 ? (
+                      // Real newsletter data
+                      newsletters.slice(0, 2).map((newsletter) => (
+                        <div
+                          key={newsletter.id}
+                          onClick={() => window.location.href = `/newsletters/${newsletter.id}`}
+                          className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-amber-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer"
+                        >
+                          <Badge variant={newsletter.eventId ? 'community' : 'business'}>
+                            {newsletter.eventId ? 'Event Update' : 'News'}
+                          </Badge>
+                          <h3 className="font-semibold text-neutral-900 mt-3 mb-2 leading-snug group-hover:text-amber-600 transition-colors line-clamp-2">
+                            {newsletter.title}
+                          </h3>
+                          <p className="text-sm text-neutral-600 mb-2 line-clamp-2">
+                            {getNewsletterExcerpt(newsletter.description)}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-neutral-500">
+                            <Clock className="h-3 w-3" />
+                            <span>{getRelativeTime(newsletter.publishedAt || newsletter.createdAt)}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      // Empty state
+                      <div className="text-center py-6 text-neutral-500">
+                        <Newspaper className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
+                        <p className="text-sm">No news available</p>
                       </div>
-                    </div>
-
-                    {/* News 2 */}
-                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-amber-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                      <Badge variant="community">Community</Badge>
-                      <h3 className="font-semibold text-neutral-900 mt-3 mb-2 leading-snug group-hover:text-amber-600 transition-colors">
-                        Community raises $50K for Sri Lankan schools
-                      </h3>
-                      <p className="text-sm text-neutral-600 mb-2">Successful fundraiser helps education...</p>
-                      <div className="flex items-center gap-1 text-xs text-neutral-500">
-                        <Clock className="h-3 w-3" />
-                        <span>1d ago</span>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -734,9 +774,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Phase 6A.74 Part 5B: Latest Newsletters Section */}
-      <LandingPageNewsletters />
 
       <Footer />
     </div>

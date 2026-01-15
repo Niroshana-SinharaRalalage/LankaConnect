@@ -1,9 +1,120 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-14 - Phase 6A.61 Hotfix: Critical Migration Fix for event_notification_history Table - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-15 - Phase 6A.61+ UI Enhancements: Event Email Notifications & Newsletters UI Fixes - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.61 Hotfix: Critical Migration Fix for event_notification_history Table - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.61+ UI Enhancements - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.61+ - Event Email Notifications & Newsletters UI Fixes - 2026-01-15
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Frontend: Workflow #21016593662 - SUCCESS)
+
+**Priority**: 🔧 **MEDIUM** - UI text and navigation improvements
+
+**Goal**: Fix 8 UI issues identified in Event Communications tab
+
+**Issues Resolved**:
+
+| # | Issue | Change | Status |
+|---|-------|--------|--------|
+| 1 | "Quick Event Notification" → "Event Email Notifications" | Text change | ✅ FIXED |
+| 2 | "Send Email to Attendees" → "Send an Email" | Button text | ✅ FIXED |
+| 3 | Description text update for notifications | Updated to include email groups | ✅ FIXED |
+| 4 | 0 recipients email sent | Improved toast message, DATA issue | ✅ FIXED |
+| 5 | Add box around Event Newsletters section | Box container added | ✅ FIXED |
+| 6 | "Send Reminder/Update" → "Create Reminder/Update Newsletter" | Button text | ✅ FIXED |
+| 7 | Description text update for newsletters | Updated to include all recipient types | ✅ FIXED |
+| 8 | Newsletter back button navigation | Dynamic navigation based on source | ✅ FIXED |
+
+**Root Cause Analysis (Issue #4 - 0 Recipients)**:
+- Classification: **DATA ISSUE, NOT A CODE BUG**
+- The event "Monthly Dana January 2026" had:
+  - ❌ No email groups configured
+  - ❌ No confirmed registrations
+  - ❌ No newsletter subscribers matching its metro area
+- Code working correctly - recipient resolution returns 0 when no recipients found
+
+**Frontend Changes**:
+1. ✅ `EventNewslettersTab.tsx` - All text label updates (#1, #2, #3, #6, #7)
+2. ✅ `EventNewslettersTab.tsx` - Box container for Event Newsletters section (#5)
+3. ✅ `EventNewslettersTab.tsx` - Newsletter list display with click navigation (#8)
+4. ✅ `EventNewslettersTab.tsx` - Pass `?from=event&eventId=xxx` for back navigation (#8)
+5. ✅ `my-newsletters/[id]/page.tsx` - Dynamic back button based on query params (#8)
+6. ✅ Improved toast message for email notifications (#4)
+
+**Build Status**:
+- ✅ **Frontend Build**: 0 errors
+- ✅ **Deployment**: Workflow #21016593662 completed successfully
+
+**Testing Required**:
+1. ⏳ Verify "Event Email Notifications" title shows correctly
+2. ⏳ Verify "Send an Email" button text
+3. ⏳ Verify updated description texts
+4. ⏳ Verify box container around Event Newsletters section
+5. ⏳ Verify "Create Reminder/Update Newsletter" button text
+6. ⏳ Verify newsletter list shows in event page with click navigation
+7. ⏳ Verify back button goes to Event Communications when coming from event
+
+---
+
+## Previous Session Status - Phase 6A.74 Part 10: Newsletter System Fixes - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.74 Part 10 - Newsletter System Comprehensive Fixes - 2026-01-14
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Backend: Workflow #21014354992, Frontend: Workflow #21014355003)
+
+**Priority**: 🚨 **CRITICAL** - Multiple blocking issues preventing newsletter workflow
+
+**Goal**: Fix all 9 reported newsletter issues identified through systematic root cause analysis
+
+**Issues Resolved**:
+
+| # | Issue | Root Cause | Fix Applied | Status |
+|---|-------|------------|-------------|--------|
+| 1 | "Unknown" status badges | Invalid DB status values | Migration Phase6A74Part9BC already deployed | ✅ FIXED |
+| 2 | Publishing fails (400) | Status validation fails | Fixed by Issue #1 | ✅ FIXED |
+| 3 | Image validation error | MaxLength 5000 too small | Increased to 50000 | ✅ FIXED |
+| 4 | Update fails (400) | Same as Issue #3 | Fixed by Issue #3 | ✅ FIXED |
+| 5 | Create not working | Combination of #1, #3 | Fixed by #1 and #3 | ✅ FIXED |
+| 6 | Landing page hardcoded | No Active newsletters | Will work once newsletters published | ⏳ VERIFY |
+| 7 | Grid layout → Table | Design choice | Changed to single-row list | ✅ FIXED |
+| 8 | MultiSelect → TreeDropdown | Wrong component | Implemented TreeDropdown | ✅ FIXED |
+| 9 | Event details in editor | Template too verbose | Simplified to links only | ✅ FIXED |
+
+**Backend Changes**:
+1. ✅ `NewsletterDescription.cs` - MaxLength 5000 → 50000
+2. ✅ `NewsletterConfiguration.cs` - HasMaxLength 5000 → 50000
+3. ✅ `20260114235215_Phase6A74Part10_IncreaseNewsletterDescriptionMaxLength.cs` - Migration to alter column
+4. ✅ `newsletter.schemas.ts` - Frontend validation 5000 → 50000
+
+**Frontend Changes**:
+1. ✅ `NewsletterForm.tsx` - Simplified event HTML template (only links, no event details)
+2. ✅ `NewsletterForm.tsx` - Replaced MultiSelect with TreeDropdown for locations
+3. ✅ `newsletters/page.tsx` - Changed grid layout to single-row list
+
+**Build Status**:
+- ✅ **Backend Build**: 0 errors, 0 warnings
+- ✅ **Frontend Build**: 0 errors
+- ✅ **Deployment**: Both workflows completed successfully
+
+**RCA Documentation Created**:
+- `docs/NEWSLETTER_ISSUES_ROOT_CAUSE_ANALYSIS.md` - Complete technical RCA for all 9 issues
+- `docs/NEWSLETTER_ISSUES_QUICK_REFERENCE.md` - Developer implementation guide
+- `docs/NEWSLETTER_ISSUES_DEPENDENCY_MAP.md` - Issue dependency visualization
+- `docs/NEWSLETTER_ISSUES_EXECUTIVE_SUMMARY.md` - Stakeholder brief
+
+**Testing Required**:
+1. ⏳ Create newsletter with embedded image - verify saves without validation error
+2. ⏳ Update newsletter - verify 400 error is gone
+3. ⏳ Publish newsletter - verify status changes to Active
+4. ⏳ Verify landing page shows published newsletters
+5. ⏳ Verify newsletter list uses single-row layout
+6. ⏳ Verify TreeDropdown for location selection works correctly
+7. ⏳ Verify event template shows only links (no event details)
+
+---
+
+### Previous Session: Phase 6A.61 Hotfix: Critical Migration Fix for event_notification_history Table - ✅ DEPLOYED TO STAGING
 
 ### Phase 6A.61 Hotfix - Idempotent Migration to Fix event_notification_history Table - 2026-01-14
 

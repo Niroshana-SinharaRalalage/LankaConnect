@@ -1,13 +1,13 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-15 - Phase 6A.X: Revenue Breakdown System - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-15 - Phase 6A.X: Revenue Breakdown System - ✅ FULLY DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X: Revenue Breakdown System - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.X: Revenue Breakdown System - ✅ FULLY DEPLOYED
 
 ### Phase 6A.X - Revenue Breakdown System - 2026-01-15
 
-**Status**: ✅ **DEPLOYED TO STAGING** (Backend: Workflow #21017867650, Frontend: Workflow #21018894459)
+**Status**: ✅ **FULLY DEPLOYED** (Backend + Frontend with Event Form Integration)
 
 **Priority**: 📊 **HIGH** - Enhanced revenue transparency for event organizers
 
@@ -35,7 +35,11 @@
 | Frontend Types | RevenueBreakdownDto interface | ✅ COMPLETE |
 | Frontend Types | EventAttendeesResponse with breakdown totals | ✅ COMPLETE |
 | Frontend | RevenueBreakdownTable component | ✅ COMPLETE |
-| Frontend | AttendeeManagementTab with detailed breakdown | ✅ COMPLETE |
+| Frontend | RevenueBreakdownPreview component | ✅ COMPLETE |
+| Frontend | revenue-calculator.ts utility | ✅ COMPLETE |
+| Frontend | EventCreationForm with breakdown preview | ✅ DEPLOYED |
+| Frontend | EventEditForm with breakdown preview | ✅ DEPLOYED |
+| Frontend | AttendeeManagementTab with detailed breakdown | ✅ DEPLOYED |
 
 **Formula (Tax-Inclusive)**:
 ```
@@ -75,8 +79,18 @@ For $100 ticket in California (7% tax):
 
 **Files Changed (Frontend)**:
 - `infrastructure/api/types/events.types.ts` - TypeScript types
-- `presentation/components/features/events/RevenueBreakdownTable.tsx` - New component
+- `presentation/lib/utils/revenue-calculator.ts` - Client-side breakdown calculation
+- `presentation/lib/validators/event.schemas.ts` - Fixed NaN validation for pricing fields
+- `presentation/components/features/events/RevenueBreakdownTable.tsx` - Display component
+- `presentation/components/features/events/RevenueBreakdownPreview.tsx` - Form preview component
+- `presentation/components/features/events/EventCreationForm.tsx` - Added breakdown preview
+- `presentation/components/features/events/EventEditForm.tsx` - Added breakdown preview
 - `presentation/components/features/events/AttendeeManagementTab.tsx` - Updated revenue card
+
+**Bug Fixes**:
+- Fixed NaN validation error when editing paid events (Zod preprocess for valueAsNumber)
+- Fixed TypeScript type errors with watch() calls for numeric form fields
+- Replaced old "5% commission" message with detailed breakdown preview in all pricing sections
 
 ---
 

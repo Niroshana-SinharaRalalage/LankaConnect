@@ -3,6 +3,7 @@ using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
@@ -16,17 +17,20 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
+    private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
-        IApplicationDbContext dbContext) // Phase 6A.32: ChangeTracker API
+        IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
+        IRevenueCalculatorService revenueCalculatorService) // Phase 6A.X: Revenue breakdown
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
+        _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     }
 
     public async Task<Result> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -237,6 +241,63 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             // Session 33 CORRECTED: EF Core automatically detects changes when Pricing object reference changes
             // The domain methods (SetGroupPricing/SetDualPricing) assign "Pricing = pricing" which triggers automatic tracking
             // No explicit change marking needed for JSONB columns - object replacement is sufficient
+
+            // Phase 6A.X: Recalculate revenue breakdown when pricing changes
+            // Use updated location if provided, otherwise use existing location
+            var locationForBreakdown = location ?? @event.Location;
+
+            Money? priceForBreakdown = null;
+            if (isGroupPricing && pricing.GroupTiers != null && pricing.GroupTiers.Count > 0)
+            {
+                priceForBreakdown = pricing.GroupTiers[0].PricePerPerson;
+            }
+            else if (pricing.AdultPrice != null)
+            {
+                priceForBreakdown = pricing.AdultPrice;
+            }
+
+            if (priceForBreakdown != null && priceForBreakdown.Amount > 0)
+            {
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    priceForBreakdown,
+                    locationForBreakdown,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    @event.SetRevenueBreakdown(breakdownResult.Value);
+                }
+                // Tax lookup failures don't block event update - breakdown is informational
+            }
+        }
+        else if (location != null && @event.Pricing != null)
+        {
+            // Phase 6A.X: Location changed but pricing didn't - recalculate breakdown with existing pricing
+            Money? priceForBreakdown = null;
+            var existingPricing = @event.Pricing;
+
+            if (existingPricing.HasGroupTiers &&
+                existingPricing.GroupTiers != null && existingPricing.GroupTiers.Count > 0)
+            {
+                priceForBreakdown = existingPricing.GroupTiers[0].PricePerPerson;
+            }
+            else if (existingPricing.AdultPrice != null)
+            {
+                priceForBreakdown = existingPricing.AdultPrice;
+            }
+
+            if (priceForBreakdown != null && priceForBreakdown.Amount > 0)
+            {
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    priceForBreakdown,
+                    location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    @event.SetRevenueBreakdown(breakdownResult.Value);
+                }
+            }
         }
 
         // Legacy: Update ticket price for backward compatibility

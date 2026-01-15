@@ -4,6 +4,7 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Application.Common.Mappings;
 
@@ -11,6 +12,19 @@ public class EventMappingProfile : Profile
 {
     public EventMappingProfile()
     {
+        // Phase 6A.X: RevenueBreakdown -> RevenueBreakdownDto mapping
+        CreateMap<RevenueBreakdown, RevenueBreakdownDto>()
+            .ForMember(dest => dest.GrossAmount, opt => opt.MapFrom(src => src.GrossAmount.Amount))
+            .ForMember(dest => dest.SalesTaxAmount, opt => opt.MapFrom(src => src.SalesTaxAmount.Amount))
+            .ForMember(dest => dest.TaxableAmount, opt => opt.MapFrom(src => src.TaxableAmount.Amount))
+            .ForMember(dest => dest.StripeFeeAmount, opt => opt.MapFrom(src => src.StripeFeeAmount.Amount))
+            .ForMember(dest => dest.PlatformCommissionAmount, opt => opt.MapFrom(src => src.PlatformCommission.Amount))
+            .ForMember(dest => dest.OrganizerPayoutAmount, opt => opt.MapFrom(src => src.OrganizerPayout.Amount))
+            .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.GrossAmount.Currency))
+            .ForMember(dest => dest.SalesTaxRate, opt => opt.MapFrom(src => src.SalesTaxRate))
+            .ForMember(dest => dest.TaxRateDisplay, opt => opt.MapFrom(src => $"{src.SalesTaxRate * 100:0.##}%"))
+            .ForMember(dest => dest.TaxJurisdiction, opt => opt.Ignore()); // Jurisdiction tracking can be added later
+
         CreateMap<Event, EventDto>()
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title.Value))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description.Value))
@@ -49,7 +63,9 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.PublishOrganizerContact, opt => opt.MapFrom(src => src.PublishOrganizerContact))
             .ForMember(dest => dest.OrganizerContactName, opt => opt.MapFrom(src => src.OrganizerContactName))
             .ForMember(dest => dest.OrganizerContactPhone, opt => opt.MapFrom(src => src.OrganizerContactPhone))
-            .ForMember(dest => dest.OrganizerContactEmail, opt => opt.MapFrom(src => src.OrganizerContactEmail));
+            .ForMember(dest => dest.OrganizerContactEmail, opt => opt.MapFrom(src => src.OrganizerContactEmail))
+            // Phase 6A.X: Revenue Breakdown for paid events
+            .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown));
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();

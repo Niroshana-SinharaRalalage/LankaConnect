@@ -3,6 +3,7 @@ using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
@@ -20,19 +21,22 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
+    private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
-        IApplicationDbContext dbContext) // Phase 6A.32: ChangeTracker API
+        IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
+        IRevenueCalculatorService revenueCalculatorService) // Phase 6A.X: Revenue breakdown
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
+        _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -209,6 +213,38 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
             if (setPricingResult.IsFailure)
                 return Result<Guid>.Failure(setPricingResult.Error);
+
+            // Phase 6A.X: Calculate and store revenue breakdown for paid events
+            // Use adult price for dual pricing, first tier for group pricing, or single price
+            Money? priceForBreakdown = null;
+            if (isGroupPricing && pricing.GroupTiers != null && pricing.GroupTiers.Count > 0)
+            {
+                // Use first tier price for group pricing breakdown preview
+                priceForBreakdown = pricing.GroupTiers[0].PricePerPerson;
+            }
+            else if (pricing.AdultPrice != null)
+            {
+                priceForBreakdown = pricing.AdultPrice;
+            }
+
+            if (priceForBreakdown != null && priceForBreakdown.Amount > 0)
+            {
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    priceForBreakdown,
+                    location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    var setBreakdownResult = eventResult.Value.SetRevenueBreakdown(breakdownResult.Value);
+                    if (setBreakdownResult.IsFailure)
+                    {
+                        // Log warning but don't fail event creation - breakdown is informational
+                        // Revenue breakdown failure shouldn't block event creation
+                    }
+                }
+                // Note: Tax lookup failures don't block event creation - breakdown is informational
+            }
         }
 
         // Phase 6A.32/33: Validate and assign email groups

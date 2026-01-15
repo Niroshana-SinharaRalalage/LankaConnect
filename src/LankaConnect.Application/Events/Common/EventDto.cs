@@ -103,6 +103,13 @@ public record EventDto
     public string? OrganizerContactName { get; init; }
     public string? OrganizerContactPhone { get; init; }
     public string? OrganizerContactEmail { get; init; }
+
+    /// <summary>
+    /// Phase 6A.X: Revenue Breakdown for paid events
+    /// Shows detailed fee breakdown (tax, Stripe fee, platform commission, organizer payout)
+    /// Null for free events
+    /// </summary>
+    public RevenueBreakdownDto? RevenueBreakdown { get; init; }
 }
 
 /// <summary>

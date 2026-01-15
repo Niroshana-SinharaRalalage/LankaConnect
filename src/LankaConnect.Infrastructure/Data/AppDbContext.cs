@@ -166,6 +166,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new UserRoleRefConfiguration());
         modelBuilder.ApplyConfiguration(new ReferenceValueConfiguration()); // Phase 6A.47: Unified Reference Data
 
+        // Tax entity configurations (Phase 6A.X)
+        modelBuilder.ApplyConfiguration(new StateTaxRateConfiguration()); // Phase 6A.X: US State Sales Tax Rates
+
         // Configure schemas
         ConfigureSchemas(modelBuilder);
 

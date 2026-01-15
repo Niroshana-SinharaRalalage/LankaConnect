@@ -85,14 +85,32 @@ public class EventNotificationEmailJob
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Resolved {Count} recipients from email groups/newsletter",
                 correlationId, recipients.Count);
 
-            // 3. Add confirmed registrations
+            // 3. Add confirmed registrations (filter out anonymous registrations with null UserId)
+            // Phase 6A.61+ Fix: Match EventCancellationEmailJob pattern - filter r.UserId.HasValue to prevent NullReferenceException
             var registrations = await _registrationRepository.GetByEventAsync(history.EventId, cancellationToken);
-            foreach (var reg in registrations.Where(r => r.Status == RegistrationStatus.Confirmed))
+            var confirmedRegistrations = registrations
+                .Where(r => r.Status == RegistrationStatus.Confirmed && r.UserId.HasValue)
+                .ToList();
+
+            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Found {Count} confirmed registrations with user accounts",
+                correlationId, confirmedRegistrations.Count);
+
+            if (confirmedRegistrations.Any())
             {
-                var user = await _userRepository.GetByIdAsync(reg.UserId!.Value, cancellationToken);
-                if (user != null)
+                // Use bulk query like EventCancellationEmailJob for better performance
+                var userIds = confirmedRegistrations
+                    .Select(r => r.UserId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var userEmails = await _userRepository.GetEmailsByUserIdsAsync(userIds, cancellationToken);
+
+                _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Bulk fetched {Count} user emails",
+                    correlationId, userEmails.Count);
+
+                foreach (var email in userEmails.Values)
                 {
-                    recipients.Add(user.Email.Value);
+                    recipients.Add(email);
                 }
             }
 

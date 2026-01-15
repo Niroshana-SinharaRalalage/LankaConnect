@@ -220,7 +220,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload Nightly Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: nightly-analysis-${{ github.run_number }}
           path: |

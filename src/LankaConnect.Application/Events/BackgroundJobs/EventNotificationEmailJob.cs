@@ -125,15 +125,29 @@ public class EventNotificationEmailJob
             // 5. Build template parameters
             var templateData = BuildTemplateData(@event);
 
+            // Phase 6A.61+ RCA: Diagnostic logging using LogError to bypass log filtering
+            _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] STARTING EMAIL SEND - Template: event-details, RecipientCount: {RecipientCount}, EventTitle: {EventTitle}",
+                correlationId, recipients.Count, @event.Title.Value);
+
+            // Log template data for debugging
+            _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Template Data Keys: {Keys}",
+                correlationId, string.Join(", ", templateData.Keys));
+
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Sending to {RecipientCount} recipients",
                 correlationId, recipients.Count);
 
             // 6. Send emails
             int successCount = 0, failedCount = 0;
+            int emailIndex = 0;
             foreach (var email in recipients)
             {
+                emailIndex++;
                 try
                 {
+                    // Phase 6A.61+ RCA: Log before each email send attempt
+                    _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Sending email {Index}/{Total} to: {Email}",
+                        correlationId, emailIndex, recipients.Count, email);
+
                     var result = await _emailService.SendTemplatedEmailAsync(
                         "event-details",
                         email,
@@ -143,20 +157,29 @@ public class EventNotificationEmailJob
                     if (result.IsSuccess)
                     {
                         successCount++;
+                        _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Email {Index}/{Total} SUCCESS to: {Email}",
+                            correlationId, emailIndex, recipients.Count, email);
                     }
                     else
                     {
                         failedCount++;
-                        _logger.LogWarning("[Phase 6A.61][{CorrelationId}] Failed to send to {Email}: {Error}",
-                            correlationId, email, result.Error);
+                        // Phase 6A.61+ RCA: Log the EXACT error message at ERROR level
+                        _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Email {Index}/{Total} FAILED to: {Email}, Error: {Error}",
+                            correlationId, emailIndex, recipients.Count, email, result.Error ?? "Unknown error");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "[Phase 6A.61][{CorrelationId}] Exception sending to {Email}", correlationId, email);
+                    // Phase 6A.61+ RCA: Log full exception details
+                    _logger.LogError(ex, "[DIAG-NOTIF-JOB][{CorrelationId}] Email {Index}/{Total} EXCEPTION to: {Email}, ExceptionType: {ExceptionType}, Message: {Message}",
+                        correlationId, emailIndex, recipients.Count, email, ex.GetType().Name, ex.Message);
                     failedCount++;
                 }
             }
+
+            // Phase 6A.61+ RCA: Summary log
+            _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] COMPLETED - Success: {Success}, Failed: {Failed}, Total: {Total}",
+                correlationId, successCount, failedCount, recipients.Count);
 
             // 7. Update history record with final statistics
             history.UpdateSendStatistics(recipients.Count, successCount, failedCount);

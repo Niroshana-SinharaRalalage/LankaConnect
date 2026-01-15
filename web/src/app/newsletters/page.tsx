@@ -219,41 +219,49 @@ export default function DiscoverNewslettersPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          /* Issue #7: Changed from 3-column grid to single-column list (one newsletter per row) */
+          <div className="space-y-4">
             {newsletters.map((newsletter) => (
               <Card
                 key={newsletter.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => router.push(`/newsletters/${newsletter.id}`)}
               >
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
+                <div className="flex items-start gap-4 p-4">
+                  {/* Left side: Status badge */}
+                  <div className="flex-shrink-0 pt-1">
                     <Badge className={getStatusBadgeColor(newsletter.status)}>
                       {getStatusLabel(newsletter.status)}
                     </Badge>
-                    <Calendar className="w-4 h-4 text-gray-400" />
                   </div>
-                  <CardTitle className="text-lg line-clamp-2">
-                    {newsletter.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    className="text-sm text-gray-600 line-clamp-3 mb-4"
-                    dangerouslySetInnerHTML={{
-                      __html: newsletter.description.replace(/<[^>]*>/g, ' ').substring(0, 150) + '...'
-                    }}
-                  />
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{formatDate(newsletter.publishedAt)}</span>
+
+                  {/* Middle: Title and description */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 mb-1">
+                      {newsletter.title}
+                    </h3>
+                    <div
+                      className="text-sm text-gray-600 line-clamp-2"
+                      dangerouslySetInnerHTML={{
+                        __html: newsletter.description.replace(/<[^>]*>/g, ' ').substring(0, 200) + '...'
+                      }}
+                    />
+                  </div>
+
+                  {/* Right side: Date and event indicator */}
+                  <div className="flex-shrink-0 text-right">
+                    <div className="flex items-center text-sm text-gray-500 mb-1">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      {formatDate(newsletter.publishedAt)}
+                    </div>
                     {newsletter.eventId && (
-                      <span className="flex items-center">
+                      <span className="inline-flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                         <Calendar className="w-3 h-3 mr-1" />
                         Linked Event
                       </span>
                     )}
                   </div>
-                </CardContent>
+                </div>
               </Card>
             ))}
           </div>

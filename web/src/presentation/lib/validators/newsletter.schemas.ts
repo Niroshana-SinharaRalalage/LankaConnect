@@ -17,7 +17,7 @@ export const createNewsletterSchema = z.object({
     .string()
     .min(1, 'Newsletter description is required')
     .min(20, 'Description must be at least 20 characters')
-    .max(5000, 'Description must be less than 5000 characters'),
+    .max(50000, 'Description must be less than 50000 characters'),
 
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))

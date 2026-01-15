@@ -31,11 +31,12 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
         });
 
         // Configure NewsletterDescription value object
+        // Phase 6A.74: Increased to 50000 to support embedded base64 images
         builder.OwnsOne(n => n.Description, description =>
         {
             description.Property(d => d.Value)
                 .HasColumnName("description")
-                .HasMaxLength(5000)
+                .HasMaxLength(50000)
                 .IsRequired();
         });
 

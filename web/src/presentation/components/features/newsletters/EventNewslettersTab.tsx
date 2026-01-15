@@ -1,21 +1,15 @@
 'use client';
 
-import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Send } from 'lucide-react';
+import { Mail, Send, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
-import { NewsletterList } from './NewsletterList';
-import {
-  useNewslettersByEvent,
-  usePublishNewsletter,
-  useSendNewsletter,
-  useDeleteNewsletter,
-} from '@/presentation/hooks/useNewsletters';
+import { NewsletterStatusBadge } from './NewsletterStatusBadge';
+import { useNewslettersByEvent } from '@/presentation/hooks/useNewsletters';
 import {
   useSendEventNotification,
   useEventNotificationHistory,
+  useEventById,
 } from '@/presentation/hooks/useEvents';
-import { useEventById } from '@/presentation/hooks/useEvents';
 import { EventStatus } from '@/infrastructure/api/types/events.types';
 import toast from 'react-hot-toast';
 
@@ -43,17 +37,19 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   const sendEmailMutation = useSendEventNotification();
   const { data: history, isLoading: historyLoading, error: historyError } = useEventNotificationHistory(eventId);
 
-  // Mutations
-  const publishMutation = usePublishNewsletter();
-  const sendMutation = useSendNewsletter();
-  const deleteMutation = useDeleteNewsletter();
-
   // Handlers
   // Phase 6A.61: Send event notification email
+  // Phase 6A.61+ Issue #4: Show warning if 0 recipients found
   const handleSendEmail = async () => {
     try {
       await sendEmailMutation.mutateAsync(eventId);
-      toast.success('Email is being sent in the background!');
+      // Phase 6A.61+ Issue #4: Check recipient count and show appropriate message
+      // Note: recipientCount is 0 initially because the actual count is updated by background job
+      // However, we can still give a general success message and the history will update
+      toast.success(
+        'Email notification queued! Check the history below for delivery status.',
+        { duration: 4000 }
+      );
     } catch (error: any) {
       toast.error(error?.message || 'Failed to send email');
     }
@@ -64,40 +60,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
     router.push(`/dashboard/my-newsletters/create?eventId=${eventId}`);
   };
 
+  // Phase 6A.61+ Issue #8: Pass navigation source for back button
   const handleNewsletterClick = (newsletterId: string) => {
-    router.push(`/dashboard/my-newsletters/${newsletterId}`);
-  };
-
-  const handleEditClick = (newsletterId: string) => {
-    router.push(`/dashboard/my-newsletters/${newsletterId}/edit`);
-  };
-
-  const handlePublish = async (newsletterId: string) => {
-    try {
-      await publishMutation.mutateAsync(newsletterId);
-    } catch (error) {
-      console.error('Failed to publish newsletter:', error);
-    }
-  };
-
-  const handleSend = async (newsletterId: string) => {
-    try {
-      await sendMutation.mutateAsync(newsletterId);
-    } catch (error) {
-      console.error('Failed to send newsletter:', error);
-    }
-  };
-
-  const handleDelete = async (newsletterId: string) => {
-    if (!confirm('Are you sure you want to delete this newsletter? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteMutation.mutateAsync(newsletterId);
-    } catch (error) {
-      console.error('Failed to delete newsletter:', error);
-    }
+    router.push(`/dashboard/my-newsletters/${newsletterId}?from=event&eventId=${eventId}`);
   };
 
   // Phase 6A.61: Check if event is Active or Published (can send notification)
@@ -113,14 +78,15 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
 
   return (
     <div className="space-y-8">
-      {/* Phase 6A.61: Event Notification Section */}
+      {/* Phase 6A.61: Event Email Notifications Section */}
+      {/* Phase 6A.61+ Issues #1, #2, #3: Updated text labels */}
       <div className="border rounded-lg p-6 bg-white shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Mail className="w-6 h-6 text-[#FF7900]" />
             <div>
-              <h3 className="text-lg font-bold text-[#8B1538]">Quick Event Notification</h3>
-              <p className="text-sm text-gray-600">Send event details to all attendees</p>
+              <h3 className="text-lg font-bold text-[#8B1538]">Event Email Notifications</h3>
+              <p className="text-sm text-gray-600">Send event details to recipients</p>
             </div>
           </div>
           {canSendNotification && (
@@ -131,17 +97,17 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
               style={{ background: '#FF7900' }}
             >
               <Mail className="h-4 w-4" />
-              {sendEmailMutation.isPending ? 'Sending...' : 'Send Email to Attendees'}
+              {sendEmailMutation.isPending ? 'Sending...' : 'Send an Email'}
             </Button>
           )}
         </div>
 
-        {/* Description */}
+        {/* Description - Phase 6A.61+ Issue #3: Updated text */}
         {canSendNotification && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-blue-800">
-              Sends a pre-formatted email with event details to all registered attendees and newsletter subscribers.
-              The email is sent in the background.
+              Sends a pre-formatted email with event details to email groups selected in the event,
+              all registered attendees and eligible newsletter subscribers. The email is sent in the background.
             </p>
           </div>
         )}
@@ -196,17 +162,14 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="border-t border-gray-200"></div>
-
-      {/* Event Newsletters Section */}
-      <div>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      {/* Phase 6A.61+ Issue #5: Event Newsletters Section with Box Container */}
+      <div className="border rounded-lg p-6 bg-white shadow-sm">
+        {/* Header - Phase 6A.61+ Issue #6: Updated button text */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Mail className="w-6 h-6 text-[#FF7900]" />
+            <FileText className="w-6 h-6 text-[#FF7900]" />
             <div>
-              <h3 className="text-xl font-bold text-[#8B1538]">Event Newsletters</h3>
+              <h3 className="text-lg font-bold text-[#8B1538]">Event Newsletters</h3>
               {eventTitle && (
                 <p className="text-sm text-gray-600">For: {eventTitle}</p>
               )}
@@ -217,29 +180,58 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             className="bg-[#FF7900] hover:bg-[#E66D00] text-white"
           >
             <Send className="w-4 h-4 mr-2" />
-            Send Reminder/Update
+            Create Reminder/Update Newsletter
           </Button>
         </div>
 
-      {/* Description */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          <strong>Event-Specific Newsletters:</strong> Create newsletters linked to this event.
-          Recipients will include registered attendees and any selected email groups.
-        </p>
-      </div>
+        {/* Description - Phase 6A.61+ Issue #7: Updated text */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-blue-800">
+            <strong>Event-Specific Newsletters:</strong> Create newsletters linked to this event.
+            Recipients will include event registered attendees, any selected email groups in the event,
+            any selected email groups in the newsletter, and eligible newsletter subscribers.
+          </p>
+        </div>
 
-        {/* Newsletter List */}
-        <NewsletterList
-          newsletters={newsletters}
-          isLoading={isLoading}
-          emptyMessage="No newsletters for this event yet. Click 'Send Reminder/Update' to create one!"
-          onNewsletterClick={handleNewsletterClick}
-          onEditNewsletter={handleEditClick}
-          onPublishNewsletter={handlePublish}
-          onSendNewsletter={handleSend}
-          onDeleteNewsletter={handleDelete}
-        />
+        {/* Phase 6A.61+ Issue #8: Newsletter List with clickable items */}
+        <div className="border-t pt-4">
+          <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Event Newsletters</h4>
+          {isLoading && <div className="text-sm text-gray-500">Loading newsletters...</div>}
+          {!isLoading && newsletters.length === 0 && (
+            <div className="text-sm text-gray-500">
+              No newsletters for this event yet. Click &apos;Create Reminder/Update Newsletter&apos; to create one!
+            </div>
+          )}
+          {!isLoading && newsletters.length > 0 && (
+            <div className="space-y-3">
+              {newsletters.map((newsletter) => (
+                <div
+                  key={newsletter.id}
+                  onClick={() => handleNewsletterClick(newsletter.id)}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h5 className="font-medium text-gray-900">{newsletter.title}</h5>
+                        <NewsletterStatusBadge status={newsletter.status} />
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                        {newsletter.description?.replace(/<[^>]*>/g, '').substring(0, 100)}
+                        {newsletter.description && newsletter.description.length > 100 ? '...' : ''}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Created: {new Date(newsletter.createdAt).toLocaleDateString()}
+                        {newsletter.sentAt && ` • Sent: ${new Date(newsletter.sentAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

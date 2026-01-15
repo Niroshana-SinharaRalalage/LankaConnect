@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Communications.ValueObjects;
 public class NewsletterDescription : ValueObject
 {
     public string Value { get; }
-    private const int MaxLength = 5000;
+    private const int MaxLength = 50000;
 
     private NewsletterDescription(string value)
     {

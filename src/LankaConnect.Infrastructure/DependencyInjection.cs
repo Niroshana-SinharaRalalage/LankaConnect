@@ -34,7 +34,10 @@ using LankaConnect.Infrastructure.Payments.Services;
 using LankaConnect.Infrastructure.Services.Tickets;
 using LankaConnect.Domain.Payments;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.Services;
+using LankaConnect.Domain.Tax.Repositories;
 using Stripe;
+using Serilog;
 
 namespace LankaConnect.Infrastructure;
 
@@ -169,6 +172,22 @@ public static class DependencyInjection
 
         // Add Reference Data Repository (Phase 6A.47)
         services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
+
+        // Phase 6A.X: Add Tax and Revenue Breakdown Services
+        services.AddScoped<IStateTaxRateRepository, StateTaxRateRepository>();
+        services.AddScoped<ISalesTaxService>(provider =>
+        {
+            var repository = provider.GetRequiredService<IStateTaxRateRepository>();
+            var memoryCache = provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            var logger = Log.ForContext<DatabaseSalesTaxService>();
+            return new DatabaseSalesTaxService(repository, memoryCache, logger);
+        });
+        services.AddScoped<IRevenueCalculatorService>(provider =>
+        {
+            var salesTaxService = provider.GetRequiredService<ISalesTaxService>();
+            var logger = Log.ForContext<RevenueCalculatorService>();
+            return new RevenueCalculatorService(salesTaxService, logger);
+        });
 
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
         // Note: EmailSettings is configured below with SimpleEmailService

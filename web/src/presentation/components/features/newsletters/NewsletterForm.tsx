@@ -2,12 +2,14 @@
 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
+import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
+import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { createNewsletterSchema, type CreateNewsletterFormData } from '@/presentation/lib/validators/newsletter.schemas';
 import { useCreateNewsletter, useUpdateNewsletter, useNewsletterById } from '@/presentation/hooks/useNewsletters';
@@ -54,7 +56,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   });
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
   const { data: events = [], isLoading: isLoadingEvents } = useEvents({});
-  const { metroAreas, isLoading: isLoadingMetroAreas } = useMetroAreas();
+  const { metroAreas, metroAreasByState, stateLevelMetros, isLoading: isLoadingMetroAreas } = useMetroAreas();
 
   const {
     register,
@@ -132,43 +134,56 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       return;
     }
 
-    // Format event date
-    const formatEventDate = (startDate: string, endDate: string) => {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const startStr = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      const endStr = end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-      if (startDate === endDate) {
-        return startStr;
-      }
-      return `${startStr} - ${endStr}`;
-    };
-
-    // Build event location string
-    const eventLocation = [selectedEvent.city, selectedEvent.state].filter(Boolean).join(', ');
-
     // Get frontend URL from environment or use relative paths
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Build HTML template with event details and links
+    // Phase 6A.74: Simplified template - only event links, no event details
+    // User requested to remove event title/location/date from auto-populated content
     const eventHtml = `
-<h2>📅 Related Event</h2>
-<p><strong>Event:</strong> ${selectedEvent.title}</p>
-${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
-<p><strong>Date:</strong> ${formatEventDate(selectedEvent.startDate, selectedEvent.endDate)}</p>
-
 <p>
   <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}/manage?tab=sign-ups">View Sign-up Lists</a>` : ''}
 </p>
-
-<hr />
 
 <p></p>
     `.trim();
 
     setValue('description', eventHtml);
   }, [selectedEvent, signUpLists, isEditMode, watch, setValue]);
+
+  // Build location tree for TreeDropdown (Issue #8)
+  const selectedMetroIds = watch('metroAreaIds') || [];
+  const locationTree = useMemo((): TreeNode[] => {
+    const stateNodes = US_STATES.map(state => {
+      const stateMetros = metroAreasByState.get(state.code) || [];
+      const stateLevelMetro = stateLevelMetros.find(m => m.state === state.code);
+      const stateId = stateLevelMetro?.id || state.code;
+
+      return {
+        id: stateId,
+        label: `All ${state.name}`,
+        checked: selectedMetroIds.includes(stateId),
+        children: stateMetros
+          .filter(m => !m.isStateLevelArea) // Only city-level metros as children
+          .map(metro => ({
+            id: metro.id,
+            label: `${metro.name}, ${metro.state}`,
+            checked: selectedMetroIds.includes(metro.id),
+          })),
+      };
+    });
+
+    // Only include states that have at least one metro area
+    const populatedStateNodes = stateNodes.filter(node =>
+      node.children && node.children.length > 0
+    );
+
+    return populatedStateNodes;
+  }, [metroAreasByState, stateLevelMetros, selectedMetroIds]);
+
+  // Handle location tree selection change
+  const handleLocationTreeChange = (selectedIds: string[]) => {
+    setValue('metroAreaIds', selectedIds.length > 0 ? selectedIds : undefined);
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     try {
@@ -421,26 +436,28 @@ ${eventLocation ? `<p><strong>Location:</strong> ${eventLocation}</p>` : ''}
               </label>
             </div>
 
-            {/* Metro Areas (only if not targeting all) */}
+            {/* Metro Areas (only if not targeting all) - Issue #8: TreeDropdown */}
             {!targetAllLocations && (
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Specific Metro Areas
                 </label>
-                <MultiSelect
-                  options={metroAreas.map(m => ({
-                    id: m.id,
-                    label: m.isStateLevelArea ? `All ${m.state}` : `${m.name}, ${m.state}`
-                  }))}
-                  value={watch('metroAreaIds') || []}
-                  onChange={(ids) => setValue('metroAreaIds', ids)}
-                  placeholder="Select metro areas"
-                  isLoading={isLoadingMetroAreas}
-                  error={!!errors.metroAreaIds}
-                  errorMessage={errors.metroAreaIds?.message}
-                />
+                {isLoadingMetroAreas ? (
+                  <div className="text-sm text-gray-500 py-2">Loading locations...</div>
+                ) : (
+                  <TreeDropdown
+                    nodes={locationTree}
+                    selectedIds={selectedMetroIds}
+                    onSelectionChange={handleLocationTreeChange}
+                    placeholder="Select metro areas by state"
+                    disabled={isLoadingMetroAreas}
+                  />
+                )}
+                {errors.metroAreaIds && (
+                  <p className="mt-1 text-sm text-red-600">{errors.metroAreaIds.message}</p>
+                )}
                 <p className="mt-1 text-xs text-neutral-500">
-                  Leave empty to target all locations
+                  Expand states to select specific metro areas
                 </p>
               </div>
             )}

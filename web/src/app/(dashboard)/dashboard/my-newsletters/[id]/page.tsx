@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
@@ -18,16 +18,23 @@ import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
 /**
  * Newsletter Details Page
  * Phase 6A.74 Part 6 - Route-based UI
+ * Phase 6A.61+ Issue #8 - Dynamic back button navigation
  *
  * Features:
  * - View full newsletter content (HTML rendered safely)
  * - Action buttons based on status
  * - Recipient information display
  * - Event linkage display
+ * - Dynamic back navigation based on referrer (event page, newsletters page, or dashboard)
  */
 export default function NewsletterDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Phase 6A.61+ Issue #8: Get navigation source from query params
+  const fromSource = searchParams.get('from');
+  const sourceEventId = searchParams.get('eventId');
 
   const { data: newsletter, isLoading } = useNewsletterById(id);
   const publishMutation = usePublishNewsletter();
@@ -125,16 +132,40 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
     });
   };
 
+  // Phase 6A.61+ Issue #8: Dynamic back button navigation
+  const getBackUrl = (): string => {
+    if (fromSource === 'event' && sourceEventId) {
+      // Came from Event Communications tab - go back to event management
+      return `/events/${sourceEventId}/manage?tab=communications`;
+    }
+    if (fromSource === 'newsletters') {
+      // Came from public /newsletters page
+      return '/newsletters';
+    }
+    // Default: go to dashboard newsletters tab
+    return '/dashboard?tab=newsletters';
+  };
+
+  const getBackLabel = (): string => {
+    if (fromSource === 'event') {
+      return 'Back to Event Communications';
+    }
+    if (fromSource === 'newsletters') {
+      return 'Back to Newsletters';
+    }
+    return 'Back to My Newsletters';
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      {/* Breadcrumb Navigation */}
+      {/* Breadcrumb Navigation - Phase 6A.61+ Issue #8: Dynamic back navigation */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/dashboard?tab=newsletters')}
+          onClick={() => router.push(getBackUrl())}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Newsletters</span>
+          <span>{getBackLabel()}</span>
         </button>
       </div>
 

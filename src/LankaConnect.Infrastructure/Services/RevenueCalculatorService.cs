@@ -1,23 +1,37 @@
+using LankaConnect.Application.Common.Options;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace LankaConnect.Infrastructure.Services;
 
 /// <summary>
 /// Phase 6A.X: Service for calculating detailed revenue breakdowns for event tickets
+/// Uses configurable fee rates from CommissionSettings
 /// </summary>
 public class RevenueCalculatorService : IRevenueCalculatorService
 {
     private readonly ISalesTaxService _salesTaxService;
+    private readonly CommissionSettings _commissionSettings;
     private readonly ILogger _logger;
 
-    public RevenueCalculatorService(ISalesTaxService salesTaxService, ILogger logger)
+    public RevenueCalculatorService(
+        ISalesTaxService salesTaxService,
+        IOptions<CommissionSettings> commissionSettings,
+        ILogger logger)
     {
         _salesTaxService = salesTaxService;
+        _commissionSettings = commissionSettings.Value;
         _logger = logger;
+
+        _logger.Information(
+            "RevenueCalculatorService initialized with rates: PlatformCommission={Platform}%, StripeFee={Stripe}% + ${Fixed}",
+            _commissionSettings.PlatformCommissionRate * 100,
+            _commissionSettings.StripeFeeRate * 100,
+            _commissionSettings.StripeFeeFixed);
     }
 
     public async Task<Result<RevenueBreakdown>> CalculateBreakdownAsync(
@@ -75,10 +89,22 @@ public class RevenueCalculatorService : IRevenueCalculatorService
         if (ticketPrice == null)
             return Result<RevenueBreakdown>.Failure("Ticket price is required");
 
-        _logger.Debug("Calculating revenue breakdown for ticket price {Price} with tax rate {TaxRate}",
-            ticketPrice.Amount, taxRate);
+        _logger.Debug(
+            "Calculating revenue breakdown for ticket price {Price} with tax rate {TaxRate}. " +
+            "Using configured rates: Platform={Platform}%, Stripe={Stripe}% + ${Fixed}",
+            ticketPrice.Amount,
+            taxRate,
+            _commissionSettings.PlatformCommissionRate * 100,
+            _commissionSettings.StripeFeeRate * 100,
+            _commissionSettings.StripeFeeFixed);
 
-        var breakdownResult = RevenueBreakdown.Create(ticketPrice, taxRate);
+        // Use configured rates from CommissionSettings
+        var breakdownResult = RevenueBreakdown.Create(
+            ticketPrice,
+            taxRate,
+            _commissionSettings.PlatformCommissionRate,
+            _commissionSettings.StripeFeeRate,
+            _commissionSettings.StripeFeeFixed);
 
         if (breakdownResult.IsSuccess)
         {

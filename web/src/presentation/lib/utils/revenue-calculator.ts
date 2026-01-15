@@ -8,12 +8,90 @@
  * 1. Gross Amount = Ticket Price (what buyer pays)
  * 2. Sales Tax = Gross - (Gross / (1 + taxRate))
  * 3. Taxable Amount = Gross - Sales Tax
- * 4. Stripe Fee = (Taxable * 0.029) + 0.30
- * 5. Platform Commission = Taxable * 0.02
+ * 4. Stripe Fee = (Taxable * stripeFeeRate) + stripeFeeFixed
+ * 5. Platform Commission = Taxable * platformCommissionRate
  * 6. Organizer Payout = Taxable - Stripe Fee - Platform Commission
  */
 
 import { Currency, RevenueBreakdownDto } from '@/infrastructure/api/types/events.types';
+
+/**
+ * Commission settings from backend configuration
+ * These are fetched from /api/reference-data/commission-settings
+ */
+export interface CommissionSettings {
+  platformCommissionRate: number;
+  stripeFeeRate: number;
+  stripeFeeFixed: number;
+}
+
+// Default fallback values (match appsettings.json defaults)
+const DEFAULT_COMMISSION_SETTINGS: CommissionSettings = {
+  platformCommissionRate: 0.02,
+  stripeFeeRate: 0.029,
+  stripeFeeFixed: 0.30,
+};
+
+// Cached commission settings (fetched once from API)
+let cachedCommissionSettings: CommissionSettings | null = null;
+let settingsFetchPromise: Promise<CommissionSettings> | null = null;
+
+/**
+ * Fetch commission settings from backend API
+ * Caches the result for subsequent calls
+ */
+export async function fetchCommissionSettings(): Promise<CommissionSettings> {
+  // Return cached settings if available
+  if (cachedCommissionSettings) {
+    return cachedCommissionSettings;
+  }
+
+  // Return existing fetch promise if in progress
+  if (settingsFetchPromise) {
+    return settingsFetchPromise;
+  }
+
+  // Start new fetch
+  settingsFetchPromise = fetch('/api/reference-data/commission-settings')
+    .then(async (response) => {
+      if (!response.ok) {
+        console.warn('Failed to fetch commission settings, using defaults');
+        return DEFAULT_COMMISSION_SETTINGS;
+      }
+      const data = await response.json();
+      cachedCommissionSettings = {
+        platformCommissionRate: data.platformCommissionRate ?? DEFAULT_COMMISSION_SETTINGS.platformCommissionRate,
+        stripeFeeRate: data.stripeFeeRate ?? DEFAULT_COMMISSION_SETTINGS.stripeFeeRate,
+        stripeFeeFixed: data.stripeFeeFixed ?? DEFAULT_COMMISSION_SETTINGS.stripeFeeFixed,
+      };
+      return cachedCommissionSettings;
+    })
+    .catch((error) => {
+      console.warn('Error fetching commission settings:', error);
+      return DEFAULT_COMMISSION_SETTINGS;
+    })
+    .finally(() => {
+      settingsFetchPromise = null;
+    });
+
+  return settingsFetchPromise;
+}
+
+/**
+ * Get current commission settings (sync version)
+ * Returns cached settings or defaults if not yet fetched
+ */
+export function getCommissionSettings(): CommissionSettings {
+  return cachedCommissionSettings ?? DEFAULT_COMMISSION_SETTINGS;
+}
+
+/**
+ * Clear cached commission settings (useful for testing or config refresh)
+ */
+export function clearCommissionSettingsCache(): void {
+  cachedCommissionSettings = null;
+  settingsFetchPromise = null;
+}
 
 // US State Tax Rates (2025 data from Tax Foundation)
 // Source: https://taxfoundation.org/data/all/state/sales-tax-rates/
@@ -181,18 +259,23 @@ export function formatTaxRateDisplay(taxRate: number): string {
  * @param currency - The currency enum value
  * @param state - US state name or code (optional)
  * @param country - Country name (optional, defaults to checking for "United States")
+ * @param settings - Commission settings (optional, uses cached/default if not provided)
  * @returns RevenueBreakdownDto or null if price is invalid
  */
 export function calculateRevenueBreakdown(
   ticketPrice: number | undefined | null,
   currency: Currency,
   state?: string | null,
-  country?: string | null
+  country?: string | null,
+  settings?: CommissionSettings
 ): RevenueBreakdownDto | null {
   // Validate input
   if (ticketPrice === undefined || ticketPrice === null || ticketPrice <= 0) {
     return null;
   }
+
+  // Use provided settings or get cached/default settings
+  const commissionSettings = settings ?? getCommissionSettings();
 
   // Get tax rate based on location
   const taxRate = getStateTaxRate(state, country);
@@ -208,11 +291,11 @@ export function calculateRevenueBreakdown(
   // Taxable amount (amount after removing sales tax)
   const taxableAmount = preTaxAmount;
 
-  // Stripe fee: 2.9% + $0.30
-  const stripeFeeAmount = taxableAmount * 0.029 + 0.3;
+  // Stripe fee: configured rate + fixed amount (default: 2.9% + $0.30)
+  const stripeFeeAmount = taxableAmount * commissionSettings.stripeFeeRate + commissionSettings.stripeFeeFixed;
 
-  // Platform commission: 2%
-  const platformCommissionAmount = taxableAmount * 0.02;
+  // Platform commission: configured rate (default: 2%)
+  const platformCommissionAmount = taxableAmount * commissionSettings.platformCommissionRate;
 
   // Organizer payout: Taxable - Stripe - Platform
   const organizerPayoutAmount = taxableAmount - stripeFeeAmount - platformCommissionAmount;

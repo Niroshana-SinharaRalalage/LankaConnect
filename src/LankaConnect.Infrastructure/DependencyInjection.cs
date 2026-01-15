@@ -28,6 +28,7 @@ using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Services;
+using LankaConnect.Application.Common.Options;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
@@ -185,8 +186,9 @@ public static class DependencyInjection
         services.AddScoped<IRevenueCalculatorService>(provider =>
         {
             var salesTaxService = provider.GetRequiredService<ISalesTaxService>();
+            var commissionSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CommissionSettings>>();
             var logger = Log.ForContext<RevenueCalculatorService>();
-            return new RevenueCalculatorService(salesTaxService, logger);
+            return new RevenueCalculatorService(salesTaxService, commissionSettings, logger);
         });
 
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)

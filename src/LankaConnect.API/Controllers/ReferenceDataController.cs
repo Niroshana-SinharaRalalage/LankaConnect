@@ -1,12 +1,15 @@
+using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.ReferenceData.DTOs;
 using LankaConnect.Application.ReferenceData.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
 /// Reference Data API endpoints
 /// Phase 6A.47: Database-driven reference data (enums, lookups, etc.)
+/// Phase 6A.X: Commission settings for revenue breakdown calculation
 /// </summary>
 [ApiController]
 [Route("api/reference-data")]
@@ -15,13 +18,16 @@ namespace LankaConnect.API.Controllers;
 public class ReferenceDataController : ControllerBase
 {
     private readonly IReferenceDataService _referenceDataService;
+    private readonly CommissionSettings _commissionSettings;
     private readonly ILogger<ReferenceDataController> _logger;
 
     public ReferenceDataController(
         IReferenceDataService referenceDataService,
+        IOptions<CommissionSettings> commissionSettings,
         ILogger<ReferenceDataController> logger)
     {
         _referenceDataService = referenceDataService;
+        _commissionSettings = commissionSettings.Value;
         _logger = logger;
     }
 
@@ -138,6 +144,27 @@ public class ReferenceDataController : ControllerBase
                 message = "An unexpected error occurred while invalidating cache"
             });
         }
+    }
+
+    /// <summary>
+    /// Get commission settings for revenue breakdown calculations
+    /// Phase 6A.X: Exposes configurable fee rates to frontend
+    /// </summary>
+    /// <returns>Commission settings including platform fee and Stripe fees</returns>
+    /// <response code="200">Returns commission settings</response>
+    [HttpGet("commission-settings")]
+    [ResponseCache(Duration = 3600)] // Cache for 1 hour
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetCommissionSettings()
+    {
+        _logger.LogInformation("GET /api/reference-data/commission-settings");
+
+        return Ok(new
+        {
+            platformCommissionRate = _commissionSettings.PlatformCommissionRate,
+            stripeFeeRate = _commissionSettings.StripeFeeRate,
+            stripeFeeFixed = _commissionSettings.StripeFeeFixed
+        });
     }
 
     /// <summary>

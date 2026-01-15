@@ -62,3 +62,22 @@ export async function getEventInterests(): Promise<EventInterestOption[]> {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/**
+ * Commission settings from backend configuration
+ * Phase 6A.X: Configurable fee rates for revenue breakdown
+ */
+export interface CommissionSettingsDto {
+  platformCommissionRate: number;
+  stripeFeeRate: number;
+  stripeFeeFixed: number;
+}
+
+/**
+ * Fetch commission settings for revenue breakdown calculations
+ * Phase 6A.X: Fee rates are configurable in appsettings.json
+ */
+export async function getCommissionSettings(): Promise<CommissionSettingsDto> {
+  const data = await apiClient.get<CommissionSettingsDto>('/reference-data/commission-settings');
+  return data;
+}

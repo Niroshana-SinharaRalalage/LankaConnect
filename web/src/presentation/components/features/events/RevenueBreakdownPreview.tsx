@@ -8,16 +8,19 @@
  * - Real-time calculation based on ticket price and location
  * - Shows detailed breakdown on hover/click
  * - Warning message for very low payouts
+ * - Fetches fee rates from backend configuration
  */
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Info, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Currency } from '@/infrastructure/api/types/events.types';
+import { useCommissionSettings } from '@/infrastructure/api/hooks/useReferenceData';
 import {
   calculateRevenueBreakdown,
   isPayoutWarningThreshold,
+  type CommissionSettings,
 } from '@/presentation/lib/utils/revenue-calculator';
 
 interface RevenueBreakdownPreviewProps {
@@ -52,6 +55,13 @@ function formatCurrency(amount: number, currency: Currency): string {
 }
 
 /**
+ * Format percentage rate for display
+ */
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(1).replace(/\.0$/, '')}%`;
+}
+
+/**
  * Revenue Breakdown Preview - shows inline preview with expandable details
  */
 export function RevenueBreakdownPreview({
@@ -64,10 +74,23 @@ export function RevenueBreakdownPreview({
 }: RevenueBreakdownPreviewProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Calculate breakdown using memoization
+  // Fetch commission settings from backend configuration
+  const { data: commissionSettings } = useCommissionSettings();
+
+  // Map CommissionSettingsDto to CommissionSettings type
+  const settings: CommissionSettings | undefined = useMemo(() => {
+    if (!commissionSettings) return undefined;
+    return {
+      platformCommissionRate: commissionSettings.platformCommissionRate,
+      stripeFeeRate: commissionSettings.stripeFeeRate,
+      stripeFeeFixed: commissionSettings.stripeFeeFixed,
+    };
+  }, [commissionSettings]);
+
+  // Calculate breakdown using memoization with fetched settings
   const breakdown = useMemo(
-    () => calculateRevenueBreakdown(ticketPrice, currency, state, country),
-    [ticketPrice, currency, state, country]
+    () => calculateRevenueBreakdown(ticketPrice, currency, state, country, settings),
+    [ticketPrice, currency, state, country, settings]
   );
 
   // Don't render if no valid breakdown
@@ -77,6 +100,11 @@ export function RevenueBreakdownPreview({
 
   const showWarning = isPayoutWarningThreshold(breakdown);
   const hasTax = breakdown.salesTaxAmount > 0;
+
+  // Get actual rates for display (use defaults if not loaded yet)
+  const stripeFeeRate = settings?.stripeFeeRate ?? 0.029;
+  const stripeFeeFixed = settings?.stripeFeeFixed ?? 0.30;
+  const platformRate = settings?.platformCommissionRate ?? 0.02;
 
   // Compact version - just shows payout
   if (compact) {
@@ -141,17 +169,17 @@ export function RevenueBreakdownPreview({
             </div>
           )}
 
-          {/* Stripe Fee */}
+          {/* Stripe Fee - displays actual configured rates */}
           <div className="flex justify-between items-center text-red-600">
-            <span>Stripe Fee (2.9% + $0.30)</span>
+            <span>Stripe Fee ({formatRate(stripeFeeRate)} + ${stripeFeeFixed.toFixed(2)})</span>
             <span className="font-medium">
               -{formatCurrency(breakdown.stripeFeeAmount, currency)}
             </span>
           </div>
 
-          {/* Platform Commission */}
+          {/* Platform Commission - displays actual configured rate */}
           <div className="flex justify-between items-center text-red-600">
-            <span>Platform Commission (2%)</span>
+            <span>Platform Commission ({formatRate(platformRate)})</span>
             <span className="font-medium">
               -{formatCurrency(breakdown.platformCommissionAmount, currency)}
             </span>

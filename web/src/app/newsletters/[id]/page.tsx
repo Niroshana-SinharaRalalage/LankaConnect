@@ -11,6 +11,8 @@ import { Calendar, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useNewsletterById } from '@/presentation/hooks/useNewsletters';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
+// Phase 6A.74 Part 10 Issue #1 Fix: Import enum helpers for string/number comparison
+import { isNewsletterActive, isNewsletterSent } from '@/lib/enum-utils';
 
 /**
  * Public Newsletter Details Page
@@ -39,16 +41,17 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
     });
   };
 
-  const getStatusBadgeColor = (status: NewsletterStatus) => {
-    if (status === NewsletterStatus.Active) return 'bg-green-100 text-green-800';
-    if (status === NewsletterStatus.Sent) return 'bg-blue-100 text-blue-800';
+  // Phase 6A.74 Part 10 Issue #1 Fix: Use enum helpers for string/number comparison
+  const getStatusBadgeColor = (status: NewsletterStatus | string) => {
+    if (isNewsletterActive(status)) return 'bg-green-100 text-green-800';
+    if (isNewsletterSent(status)) return 'bg-blue-100 text-blue-800';
     return 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusLabel = (status: NewsletterStatus) => {
-    if (status === NewsletterStatus.Active) return 'Active';
-    if (status === NewsletterStatus.Sent) return 'Sent';
-    return 'Active';
+  const getStatusLabel = (status: NewsletterStatus | string) => {
+    if (isNewsletterActive(status)) return 'Active';
+    if (isNewsletterSent(status)) return 'Sent';
+    return 'Published';
   };
 
   return (

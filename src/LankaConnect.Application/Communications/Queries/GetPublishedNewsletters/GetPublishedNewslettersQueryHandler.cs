@@ -31,10 +31,14 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
         try
         {
             _logger.LogInformation(
-                "[Phase 6A.74 Parts 10/11] GetPublishedNewslettersQuery STARTED - UserId: {UserId}, SearchTerm: {SearchTerm}, MetroAreaCount: {MetroCount}",
+                "[Phase 6A.74 Parts 10/11] GetPublishedNewslettersQuery STARTED - UserId: {UserId}, SearchTerm: {SearchTerm}, MetroAreaCount: {MetroCount}, " +
+                "PublishedFrom: {PublishedFrom}, PublishedTo: {PublishedTo}, State: {State}",
                 request.UserId,
                 request.SearchTerm,
-                request.MetroAreaIds?.Count ?? 0);
+                request.MetroAreaIds?.Count ?? 0,
+                request.PublishedFrom,
+                request.PublishedTo,
+                request.State);
 
             // Get published newsletters with filtering
             var newsletters = await _newsletterRepository.GetPublishedWithFiltersAsync(

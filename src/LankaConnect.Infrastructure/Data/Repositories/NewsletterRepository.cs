@@ -316,6 +316,27 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
             "[Phase 6A.74 Parts 10/11] Found {Count} published newsletters with filters",
             result.Count);
 
+        // Phase 6A.74 Part 10 Issue #1: Log details of returned newsletters for debugging
+        if (result.Count > 0)
+        {
+            foreach (var newsletter in result.Take(5)) // Log first 5 for debugging
+            {
+                _repoLogger.LogDebug(
+                    "[Phase 6A.74] Newsletter returned - Id: {Id}, Title: {Title}, Status: {Status}, PublishedAt: {PublishedAt}, SentAt: {SentAt}",
+                    newsletter.Id,
+                    newsletter.Title.Value,
+                    newsletter.Status,
+                    newsletter.PublishedAt,
+                    newsletter.SentAt);
+            }
+        }
+        else
+        {
+            _repoLogger.LogWarning(
+                "[Phase 6A.74 Parts 10/11] No newsletters found with Status = Active OR Sent. " +
+                "Check database for newsletters.status values.");
+        }
+
         return result;
     }
 }

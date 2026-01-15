@@ -35,8 +35,9 @@ export function NewslettersTab() {
   const deleteMutation = useDeleteNewsletter();
 
   // Handlers
+  // Phase 6A.74 Part 10 Issue #2 Fix: Correct route to dashboard create page
   const handleCreateClick = () => {
-    router.push('/newsletters/create');
+    router.push('/dashboard/my-newsletters/create');
   };
 
   const handleNewsletterClick = (newsletterId: string) => {

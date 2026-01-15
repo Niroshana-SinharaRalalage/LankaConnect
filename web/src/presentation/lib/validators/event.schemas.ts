@@ -123,12 +123,16 @@ export const createEventSchema = z.object({
   isFree: z.boolean(),
 
   // Legacy single pricing (backward compatibility)
+  // Note: valueAsNumber converts empty strings to NaN, so we preprocess to handle this
   ticketPriceAmount: z
-    .number()
-    .min(0, 'Price cannot be negative')
-    .max(10000, 'Price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Price cannot be negative')
+        .max(10000, 'Price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   ticketPriceCurrency: z
     .nativeEnum(Currency)
@@ -139,11 +143,14 @@ export const createEventSchema = z.object({
   enableDualPricing: z.boolean(),
 
   adultPriceAmount: z
-    .number()
-    .min(0, 'Adult price cannot be negative')
-    .max(10000, 'Adult price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Adult price cannot be negative')
+        .max(10000, 'Adult price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   adultPriceCurrency: z
     .nativeEnum(Currency)
@@ -151,11 +158,14 @@ export const createEventSchema = z.object({
     .nullable(),
 
   childPriceAmount: z
-    .number()
-    .min(0, 'Child price cannot be negative')
-    .max(10000, 'Child price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Child price cannot be negative')
+        .max(10000, 'Child price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   childPriceCurrency: z
     .nativeEnum(Currency)
@@ -163,12 +173,15 @@ export const createEventSchema = z.object({
     .nullable(),
 
   childAgeLimit: z
-    .number()
-    .int('Age limit must be a whole number')
-    .min(1, 'Age limit must be at least 1')
-    .max(18, 'Age limit cannot exceed 18')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .int('Age limit must be a whole number')
+        .min(1, 'Age limit must be at least 1')
+        .max(18, 'Age limit cannot exceed 18')
+        .optional()
+        .nullable()
+    ),
 
   // Phase 6D: Group tiered pricing
   enableGroupPricing: z.boolean(),
@@ -483,12 +496,16 @@ const baseEditEventSchema = z.object({
   // Pricing
   isFree: z.boolean(),
 
+  // Note: valueAsNumber converts empty strings to NaN, so we preprocess to handle this
   ticketPriceAmount: z
-    .number()
-    .min(0, 'Price cannot be negative')
-    .max(10000, 'Price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Price cannot be negative')
+        .max(10000, 'Price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   ticketPriceCurrency: z
     .nativeEnum(Currency)
@@ -499,11 +516,14 @@ const baseEditEventSchema = z.object({
   enableDualPricing: z.boolean(),
 
   adultPriceAmount: z
-    .number()
-    .min(0, 'Adult price cannot be negative')
-    .max(10000, 'Adult price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Adult price cannot be negative')
+        .max(10000, 'Adult price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   adultPriceCurrency: z
     .nativeEnum(Currency)
@@ -511,11 +531,14 @@ const baseEditEventSchema = z.object({
     .nullable(),
 
   childPriceAmount: z
-    .number()
-    .min(0, 'Child price cannot be negative')
-    .max(10000, 'Child price cannot exceed $10,000')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .min(0, 'Child price cannot be negative')
+        .max(10000, 'Child price cannot exceed $10,000')
+        .optional()
+        .nullable()
+    ),
 
   childPriceCurrency: z
     .nativeEnum(Currency)
@@ -523,12 +546,15 @@ const baseEditEventSchema = z.object({
     .nullable(),
 
   childAgeLimit: z
-    .number()
-    .int('Age limit must be a whole number')
-    .min(1, 'Age limit must be at least 1')
-    .max(18, 'Age limit cannot exceed 18')
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (typeof val === 'number' && isNaN(val) ? undefined : val),
+      z.number()
+        .int('Age limit must be a whole number')
+        .min(1, 'Age limit must be at least 1')
+        .max(18, 'Age limit cannot exceed 18')
+        .optional()
+        .nullable()
+    ),
 
   // Group tiered pricing
   enableGroupPricing: z.boolean(),

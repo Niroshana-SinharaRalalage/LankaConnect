@@ -666,11 +666,11 @@ export function EventCreationForm() {
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
                     )}
                     {/* Session 33: Commission info message - standardized format */}
-                    {(watch('ticketPriceAmount') ?? 0) > 0 && (
+                    {((watch('ticketPriceAmount') as number | undefined) ?? 0) > 0 && (
                       <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
                         <p>5% (Stripe + LankaConnect commission) applies</p>
                         <p className="font-medium text-green-700">
-                          You'll receive: ${((watch('ticketPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                          You'll receive: ${(((watch('ticketPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
                         </p>
                       </div>
                     )}
@@ -737,11 +737,11 @@ export function EventCreationForm() {
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
                       )}
                       {/* Session 33: Commission info for adult price - standardized format */}
-                      {(watch('adultPriceAmount') ?? 0) > 0 && (
+                      {((watch('adultPriceAmount') as number | undefined) ?? 0) > 0 && (
                         <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
                           <p>5% (Stripe + LankaConnect commission) applies</p>
                           <p className="font-medium text-green-700">
-                            You'll receive: ${((watch('adultPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                            You'll receive: ${(((watch('adultPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
                           </p>
                         </div>
                       )}
@@ -791,11 +791,11 @@ export function EventCreationForm() {
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
                       )}
                       {/* Session 33: Commission info for child price - standardized format */}
-                      {(watch('childPriceAmount') ?? 0) > 0 && (
+                      {((watch('childPriceAmount') as number | undefined) ?? 0) > 0 && (
                         <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
                           <p>5% (Stripe + LankaConnect commission) applies</p>
                           <p className="font-medium text-green-700">
-                            You'll receive: ${((watch('childPriceAmount') ?? 0) * 0.95).toFixed(2)} per ticket
+                            You'll receive: ${(((watch('childPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
                           </p>
                         </div>
                       )}

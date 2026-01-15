@@ -2,9 +2,15 @@
 
 import * as React from 'react';
 import { Mail, Edit, Upload, Send, Trash2 } from 'lucide-react';
-import { NewsletterDto, NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
+import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
 import { NewsletterCard } from './NewsletterCard';
 import { Button } from '@/presentation/components/ui/Button';
+import {
+  isNewsletterDraft,
+  isNewsletterActive,
+  isNewsletterInactive,
+  isNewsletterSent,
+} from '@/lib/enum-utils';
 
 export interface NewsletterListProps {
   newsletters: NewsletterDto[];
@@ -22,6 +28,7 @@ export interface NewsletterListProps {
  * Displays list of newsletters with status-based action buttons
  * Follows EventsList pattern but simplified for newsletter management
  * Phase 6A.74: Newsletter Feature
+ * Phase 6A.74 Part 10: Fixed status comparison for string/enum handling
  */
 export function NewsletterList({
   newsletters,
@@ -103,11 +110,17 @@ export function NewsletterList({
   return (
     <div className="space-y-4">
       {newsletters.map((newsletter) => {
+        // Phase 6A.74 Part 10: Use helper functions for status comparison
+        const isDraft = isNewsletterDraft(newsletter.status);
+        const isActive = isNewsletterActive(newsletter.status);
+        const isInactive = isNewsletterInactive(newsletter.status);
+        const isSent = isNewsletterSent(newsletter.status);
+
         // Determine action buttons based on status
         const actionButtons = (
           <>
             {/* Draft: Edit, Publish, Delete */}
-            {newsletter.status === NewsletterStatus.Draft && (
+            {isDraft && (
               <>
                 {onEditNewsletter && (
                   <Button
@@ -150,7 +163,7 @@ export function NewsletterList({
             )}
 
             {/* Active (not sent): Edit, Send Email, shows "Expires on [date]" */}
-            {newsletter.status === NewsletterStatus.Active && !newsletter.sentAt && (
+            {isActive && !newsletter.sentAt && (
               <>
                 {onEditNewsletter && (
                   <Button
@@ -181,14 +194,14 @@ export function NewsletterList({
             )}
 
             {/* Sent: No actions (just display sent date) */}
-            {newsletter.status === NewsletterStatus.Sent && (
+            {isSent && (
               <span className="text-xs text-gray-500 italic">
                 Email sent
               </span>
             )}
 
             {/* Inactive: Show info (reactivate button not implemented yet) */}
-            {newsletter.status === NewsletterStatus.Inactive && (
+            {isInactive && (
               <span className="text-xs text-gray-500 italic">
                 Inactive newsletter
               </span>

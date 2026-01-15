@@ -5,7 +5,7 @@ import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
 import { cn } from '@/presentation/lib/utils';
 
 export interface NewsletterStatusBadgeProps {
-  status: NewsletterStatus;
+  status: NewsletterStatus | string;
   className?: string;
 }
 
@@ -19,9 +19,32 @@ export interface NewsletterStatusBadgeProps {
  * - Active: Indigo (#6366F1) - Published and visible newsletters
  * - Inactive: Gray (#6B7280) - Expired newsletters
  * - Sent: Emerald (#10B981) - Newsletters that have been emailed
+ *
+ * Note: Backend returns status as STRING (e.g., "Active"), but enum is numeric.
+ * This component handles both formats.
  */
 export function NewsletterStatusBadge({ status, className }: NewsletterStatusBadgeProps) {
-  const getStatusConfig = (status: NewsletterStatus) => {
+  const getStatusConfig = (status: NewsletterStatus | string) => {
+    // Normalize status to handle both string and numeric values
+    const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : status;
+
+    // Handle string values (from API)
+    if (typeof normalizedStatus === 'string') {
+      switch (normalizedStatus) {
+        case 'draft':
+          return { color: '#F59E0B', label: 'Draft' };
+        case 'active':
+          return { color: '#6366F1', label: 'Active' };
+        case 'inactive':
+          return { color: '#6B7280', label: 'Inactive' };
+        case 'sent':
+          return { color: '#10B981', label: 'Sent' };
+        default:
+          return { color: '#6B7280', label: 'Unknown' };
+      }
+    }
+
+    // Handle numeric values (enum)
     switch (status) {
       case NewsletterStatus.Draft:
         return { color: '#F59E0B', label: 'Draft' };

@@ -438,16 +438,16 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                {/* News & Updates */}
+                {/* Latest News & Updates - Phase 6A.74 Part 10: Updated heading per user request */}
                 <Card className="border-neutral-200 shadow-sm">
                   <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
                     <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
                       <Newspaper className="h-5 w-5 text-amber-600" />
-                      News & Updates
+                      Latest News & Updates
                     </CardTitle>
-                    <button className="text-amber-600 hover:text-amber-700">
+                    <a href="/newsletters" className="text-amber-600 hover:text-amber-700">
                       <ArrowRight className="h-5 w-5" />
-                    </button>
+                    </a>
                   </CardHeader>
 
                   <CardContent className="p-6 space-y-4">

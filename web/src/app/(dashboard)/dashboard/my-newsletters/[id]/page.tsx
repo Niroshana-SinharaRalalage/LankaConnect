@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, AlertTriangle, XCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, XCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
 import {
@@ -13,12 +13,18 @@ import {
   useDeleteNewsletter,
   useReactivateNewsletter,
 } from '@/presentation/hooks/useNewsletters';
-import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
+import {
+  isNewsletterDraft,
+  isNewsletterActive,
+  isNewsletterInactive,
+  isNewsletterSent,
+} from '@/lib/enum-utils';
 
 /**
  * Newsletter Details Page
  * Phase 6A.74 Part 6 - Route-based UI
  * Phase 6A.61+ Issue #8 - Dynamic back button navigation
+ * Phase 6A.74 Part 10 - Fixed status comparison for string/enum handling
  *
  * Features:
  * - View full newsletter content (HTML rendered safely)
@@ -156,6 +162,12 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
     return 'Back to My Newsletters';
   };
 
+  // Phase 6A.74 Part 10: Use helper functions for status comparison
+  const isDraft = isNewsletterDraft(newsletter.status);
+  const isActive = isNewsletterActive(newsletter.status);
+  const isInactive = isNewsletterInactive(newsletter.status);
+  const isSent = isNewsletterSent(newsletter.status);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       {/* Breadcrumb Navigation - Phase 6A.61+ Issue #8: Dynamic back navigation */}
@@ -181,10 +193,10 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Phase 6A.74 Part 10: Using helper functions */}
         <div className="flex gap-2 flex-wrap">
           {/* Draft: Edit, Publish, Delete */}
-          {newsletter.status === NewsletterStatus.Draft && (
+          {isDraft && (
             <>
               <Button
                 onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
@@ -213,7 +225,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           )}
 
           {/* Active (not sent): Edit, Send Email, Unpublish */}
-          {newsletter.status === NewsletterStatus.Active && !newsletter.sentAt && (
+          {isActive && !newsletter.sentAt && (
             <>
               <Button
                 onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
@@ -243,7 +255,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           )}
 
           {/* Inactive (not sent): Reactivate */}
-          {newsletter.status === NewsletterStatus.Inactive && !newsletter.sentAt && (
+          {isInactive && !newsletter.sentAt && (
             <Button
               onClick={handleReactivate}
               disabled={reactivateMutation.isPending}
@@ -255,52 +267,10 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           )}
 
           {/* Sent: View only */}
-          {newsletter.status === NewsletterStatus.Sent && (
+          {isSent && (
             <div className="text-sm text-gray-600 italic">
               Email sent on {newsletter.sentAt && formatDate(newsletter.sentAt)}
             </div>
-          )}
-
-          {/* Unknown status: Fallback UI (TEMP FIX for status=1 bug) */}
-          {newsletter.status !== NewsletterStatus.Draft &&
-           newsletter.status !== NewsletterStatus.Active &&
-           newsletter.status !== NewsletterStatus.Inactive &&
-           newsletter.status !== NewsletterStatus.Sent && (
-            <>
-              <div className="w-full bg-yellow-50 border-2 border-yellow-400 text-yellow-900 px-4 py-3 rounded-lg flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Unknown Newsletter Status</p>
-                  <p className="text-sm mt-1">
-                    This newsletter has an invalid status value (likely database issue).
-                    Showing draft actions temporarily. Please publish or delete this newsletter.
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
-                variant="outline"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                onClick={handlePublish}
-                disabled={publishMutation.isPending}
-                className="bg-[#FF7900] hover:bg-[#E66D00] text-white"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {publishMutation.isPending ? 'Publishing...' : 'Publish'}
-              </Button>
-              <Button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                variant="destructive"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-            </>
           )}
         </div>
       </div>
@@ -374,7 +344,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 <span>Sent: {formatDate(newsletter.sentAt)}</span>
               </div>
             )}
-            {newsletter.status === NewsletterStatus.Active && newsletter.expiresAt && (
+            {isActive && newsletter.expiresAt && (
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#F59E0B]" />
                 <span>Expires: {formatDate(newsletter.expiresAt)}</span>

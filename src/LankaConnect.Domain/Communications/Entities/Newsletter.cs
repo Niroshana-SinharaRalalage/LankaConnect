@@ -194,8 +194,13 @@ public class Newsletter : BaseEntity
         IEnumerable<Guid>? metroAreaIds,
         bool targetAllLocations)
     {
-        if (Status != NewsletterStatus.Draft)
-            return Result.Failure("Only draft newsletters can be updated");
+        // Phase 6A.74 Part 10: Allow updating Draft and Active (not sent) newsletters
+        // User requested removal of draft-only restriction
+        if (Status == NewsletterStatus.Sent || SentAt.HasValue)
+            return Result.Failure("Sent newsletters cannot be updated");
+
+        if (Status == NewsletterStatus.Inactive)
+            return Result.Failure("Inactive newsletters cannot be updated. Please reactivate first.");
 
         var errors = new List<string>();
 

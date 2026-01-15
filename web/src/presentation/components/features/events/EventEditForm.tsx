@@ -19,6 +19,7 @@ import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { eventKeys } from '@/presentation/hooks/useEvents';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 
 interface EventEditFormProps {
   event: EventDto;
@@ -757,15 +758,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     {errors.ticketPriceAmount && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
                     )}
-                    {/* Session 33: Commission info message */}
-                    {((watch('ticketPriceAmount') as number | undefined) ?? 0) > 0 && (
-                      <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                        <p>5% Stripe + LankaConnect commission applies</p>
-                        <p className="font-medium text-green-700">
-                          You'll receive: ${(((watch('ticketPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
-                        </p>
-                      </div>
-                    )}
+                    {/* Phase 6A.X: Revenue breakdown preview with detailed fees */}
+                    <RevenueBreakdownPreview
+                      ticketPrice={watch('ticketPriceAmount') as number | undefined}
+                      currency={(watch('ticketPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                      state={watch('locationState') as string | undefined}
+                      country={watch('locationCountry') as string | undefined}
+                      priceLabel="ticket"
+                    />
                   </div>
 
                   {/* Currency */}
@@ -816,15 +816,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       {errors.adultPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
                       )}
-                      {/* Session 33: Commission info for adult price */}
-                      {((watch('adultPriceAmount') as number | undefined) ?? 0) > 0 && (
-                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                          <p>5% Stripe + LankaConnect commission applies</p>
-                          <p className="font-medium text-green-700">
-                            You'll receive: ${(((watch('adultPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
-                          </p>
-                        </div>
-                      )}
+                      {/* Phase 6A.X: Revenue breakdown preview for adult price */}
+                      <RevenueBreakdownPreview
+                        ticketPrice={watch('adultPriceAmount') as number | undefined}
+                        currency={(watch('adultPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                        state={watch('locationState') as string | undefined}
+                        country={watch('locationCountry') as string | undefined}
+                        priceLabel="adult ticket"
+                      />
                     </div>
 
                     <div>
@@ -870,15 +869,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       {errors.childPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
                       )}
-                      {/* Session 33: Commission info for child price */}
-                      {((watch('childPriceAmount') as number | undefined) ?? 0) > 0 && (
-                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                          <p>5% Stripe + LankaConnect commission applies</p>
-                          <p className="font-medium text-green-700">
-                            You'll receive: ${(((watch('childPriceAmount') as number | undefined) ?? 0) * 0.95).toFixed(2)} per ticket
-                          </p>
-                        </div>
-                      )}
+                      {/* Phase 6A.X: Revenue breakdown preview for child price */}
+                      <RevenueBreakdownPreview
+                        ticketPrice={watch('childPriceAmount') as number | undefined}
+                        currency={(watch('childPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                        state={watch('locationState') as string | undefined}
+                        country={watch('locationCountry') as string | undefined}
+                        priceLabel="child ticket"
+                      />
                     </div>
 
                     <div>
@@ -969,7 +967,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
                   {fields.length > 0 && (
                     <div className="space-y-4">
                       {fields.map((field, index) => {
-                        const tierPrice = watch(`groupPricingTiers.${index}.pricePerPerson`) ?? 0;
+                        const tierPrice = watch(`groupPricingTiers.${index}.pricePerPerson`) as number | undefined;
+                        const tierCurrency = watch(`groupPricingTiers.${index}.currency`) as Currency | undefined ?? Currency.USD;
                         return (
                           <div key={field.id} className="p-4 bg-white border-2 border-orange-200 rounded-lg space-y-4">
                             <div className="flex items-center justify-between">
@@ -1062,15 +1061,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
                                     {errors.groupPricingTiers[index]?.pricePerPerson?.message}
                                   </p>
                                 )}
-                                {/* Commission info */}
-                                {tierPrice > 0 && (
-                                  <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                                    <p>5% (Stripe + LankaConnect commission) applies</p>
-                                    <p className="font-medium text-green-700">
-                                      You'll receive: ${(tierPrice * 0.95).toFixed(2)} per person
-                                    </p>
-                                  </div>
-                                )}
+                                {/* Phase 6A.X: Revenue breakdown preview for group tier */}
+                                <RevenueBreakdownPreview
+                                  ticketPrice={tierPrice}
+                                  currency={tierCurrency}
+                                  state={watch('locationState') as string | undefined}
+                                  country={watch('locationCountry') as string | undefined}
+                                  priceLabel="person"
+                                  compact
+                                />
                               </div>
                             </div>
                           </div>

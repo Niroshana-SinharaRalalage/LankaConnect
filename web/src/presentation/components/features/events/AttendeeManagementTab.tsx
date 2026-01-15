@@ -564,11 +564,15 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                             <span className="text-sm font-semibold text-neutral-700">Total Attendees:</span>
                             <span className="text-lg font-bold text-green-900">{totalAttendees}</span>
                           </div>
-                          {!isFreeEvent && netRevenue > 0 && (
+                          {!isFreeEvent && grossRevenue > 0 && (
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-neutral-700">Net Revenue:</span>
-                              <span className="text-lg font-bold text-orange-900">${netRevenue.toFixed(2)}</span>
-                              <span className="text-xs text-neutral-500">(after 5% fee)</span>
+                              <span className="text-sm font-semibold text-neutral-700">Your Payout:</span>
+                              <span className="text-lg font-bold text-orange-900">
+                                ${(hasRevenueBreakdown ? totalOrganizerPayout : netRevenue).toFixed(2)}
+                              </span>
+                              <span className="text-xs text-neutral-500">
+                                {hasRevenueBreakdown ? '(after tax + fees)' : '(after fees)'}
+                              </span>
                             </div>
                           )}
                         </div>

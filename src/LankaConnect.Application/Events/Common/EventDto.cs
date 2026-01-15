@@ -1,4 +1,5 @@
 using LankaConnect.Application.Badges.DTOs;
+using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -140,14 +141,5 @@ public record EventVideoDto
     public DateTime UploadedAt { get; init; }
 }
 
-/// <summary>
-/// Phase 6A.32: Email Groups Integration
-/// Summary DTO for email groups associated with events
-/// Includes IsActive flag to detect soft-deleted groups
-/// </summary>
-public record EmailGroupSummaryDto
-{
-    public Guid Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public bool IsActive { get; init; }
-}
+// Phase 6A.32: EmailGroupSummaryDto moved to LankaConnect.Application.Communications.Common
+// to avoid Swagger schema conflicts (duplicate schemaId error)

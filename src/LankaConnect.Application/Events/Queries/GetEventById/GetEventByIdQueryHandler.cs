@@ -1,5 +1,6 @@
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Communications.Common; // Phase 6A.32: EmailGroupSummaryDto
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;

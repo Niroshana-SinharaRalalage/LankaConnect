@@ -150,6 +150,15 @@ public class EventNotificationEmailJobTests
             .Setup(x => x.GetByIdAsync(userId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user2);
 
+        // Phase 6A.61+ Fix: Add mock for bulk user email fetch
+        _mockUserRepository
+            .Setup(x => x.GetEmailsByUserIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>
+            {
+                { userId1, "user1@test.com" },
+                { userId2, "user2@test.com" }
+            });
+
         _mockEmailUrlHelper
             .Setup(x => x.BuildEventDetailsUrl(eventId))
             .Returns($"https://test.com/events/{eventId}");

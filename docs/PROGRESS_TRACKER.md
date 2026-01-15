@@ -1,9 +1,86 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-15 - Phase 6A.61+ UI Enhancements: Event Email Notifications & Newsletters UI Fixes - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-15 - Phase 6A.X: Revenue Breakdown System - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.61+ UI Enhancements - ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.X: Revenue Breakdown System - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.X - Revenue Breakdown System - 2026-01-15
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Backend: Workflow #21017867650, Frontend: Workflow #21018894459)
+
+**Priority**: 📊 **HIGH** - Enhanced revenue transparency for event organizers
+
+**Goal**: Replace simple 5% combined commission with detailed breakdown showing:
+- Sales tax (state-based)
+- Stripe payment processing fees (2.9% + $0.30)
+- Platform commission (2%)
+- Organizer payout (net amount)
+
+**Implementation Summary**:
+
+| Component | Description | Status |
+|-----------|-------------|--------|
+| Domain Layer | RevenueBreakdown value object with calculation logic | ✅ COMPLETE |
+| Domain Services | ISalesTaxService, IRevenueCalculatorService interfaces | ✅ COMPLETE |
+| Infrastructure | DatabaseSalesTaxService with 24-hour cache | ✅ COMPLETE |
+| Infrastructure | RevenueCalculatorService for breakdown calculation | ✅ COMPLETE |
+| Database | state_tax_rates table with 51 US state rates | ✅ DEPLOYED |
+| Database | revenue_breakdown JSONB column in events | ✅ DEPLOYED |
+| Database | breakdown columns in registrations | ✅ DEPLOYED |
+| Application | CreateEventCommandHandler calculates breakdown | ✅ COMPLETE |
+| Application | UpdateEventCommandHandler recalculates on change | ✅ COMPLETE |
+| Application | EventMappingProfile with RevenueBreakdown mapping | ✅ COMPLETE |
+| Application | GetEventAttendeesQueryHandler returns breakdown totals | ✅ COMPLETE |
+| Frontend Types | RevenueBreakdownDto interface | ✅ COMPLETE |
+| Frontend Types | EventAttendeesResponse with breakdown totals | ✅ COMPLETE |
+| Frontend | RevenueBreakdownTable component | ✅ COMPLETE |
+| Frontend | AttendeeManagementTab with detailed breakdown | ✅ COMPLETE |
+
+**Formula (Tax-Inclusive)**:
+```
+For $100 ticket in California (7% tax):
+1. Gross = $100.00 (what buyer pays)
+2. Tax = $100 - ($100 / 1.07) = $6.54
+3. Taxable = $100 - $6.54 = $93.46
+4. Stripe = ($93.46 × 2.9%) + $0.30 = $3.01
+5. Platform = $93.46 × 2% = $1.87
+6. Payout = $93.46 - $3.01 - $1.87 = $88.58
+```
+
+**Build Status**:
+- ✅ **Backend Build**: 0 errors, 0 warnings
+- ✅ **Frontend Build**: 0 errors
+- ✅ **Unit Tests**: 20 tests passed (RevenueBreakdown value object)
+- ✅ **Backend Deployment**: Workflow #21017867650 SUCCESS
+- ✅ **Frontend Deployment**: Workflow #21018894459 IN PROGRESS
+
+**Files Changed (Backend)**:
+- `Domain/Events/ValueObjects/RevenueBreakdown.cs` - Value object with calculation
+- `Domain/Events/Event.cs` - Added RevenueBreakdown property
+- `Domain/Events/Registration.cs` - Added breakdown fields
+- `Domain/Tax/StateTaxRate.cs` - Tax rate entity
+- `Domain/Tax/Repositories/IStateTaxRateRepository.cs` - Repository interface
+- `Infrastructure/Services/DatabaseSalesTaxService.cs` - Tax lookup with cache
+- `Infrastructure/Services/RevenueCalculatorService.cs` - Breakdown calculator
+- `Infrastructure/Data/Repositories/StateTaxRateRepository.cs` - Repository impl
+- `Infrastructure/Data/Configurations/StateTaxRateConfiguration.cs` - EF config
+- `Infrastructure/Data/Migrations/*_Phase6AX_AddRevenueBreakdownFields.cs` - Migration
+- `Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs` - Auto-calc
+- `Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs` - Recalc
+- `Application/Events/Common/RevenueBreakdownDto.cs` - DTO
+- `Application/Events/Common/EventDto.cs` - Added breakdown
+- `Application/Events/Common/EventAttendeesResponse.cs` - Added totals
+- `Application/Common/Mappings/EventMappingProfile.cs` - AutoMapper config
+
+**Files Changed (Frontend)**:
+- `infrastructure/api/types/events.types.ts` - TypeScript types
+- `presentation/components/features/events/RevenueBreakdownTable.tsx` - New component
+- `presentation/components/features/events/AttendeeManagementTab.tsx` - Updated revenue card
+
+---
+
+## Previous Session Status - Phase 6A.61+ UI Enhancements - ✅ DEPLOYED TO STAGING
 
 ### Phase 6A.61+ - Event Email Notifications & Newsletters UI Fixes - 2026-01-15
 

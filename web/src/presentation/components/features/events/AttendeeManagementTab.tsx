@@ -216,7 +216,23 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
     );
   }
 
-  const { attendees, totalRegistrations, totalAttendees, grossRevenue, commissionAmount, netRevenue, commissionRate, isFreeEvent } = attendeesData;
+  const {
+    attendees,
+    totalRegistrations,
+    totalAttendees,
+    grossRevenue,
+    commissionAmount,
+    netRevenue,
+    commissionRate,
+    isFreeEvent,
+    // Phase 6A.X: Detailed revenue breakdown
+    totalSalesTax,
+    totalStripeFees,
+    totalPlatformCommission,
+    totalOrganizerPayout,
+    averageTaxRate,
+    hasRevenueBreakdown,
+  } = attendeesData;
 
   return (
     <div className="space-y-6">
@@ -248,41 +264,74 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
           </CardContent>
         </Card>
 
-        {/* Phase 6A.71: Net Revenue (after commission) */}
+        {/* Phase 6A.X: Revenue with detailed breakdown (when available) */}
         {!isFreeEvent && grossRevenue > 0 && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-600">Net Revenue</p>
-                  <p className="text-3xl font-bold text-neutral-900">
-                    ${netRevenue.toFixed(2)}
+                  <p className="text-sm font-medium text-neutral-600">Your Payout</p>
+                  <p className="text-3xl font-bold text-green-700">
+                    ${(hasRevenueBreakdown ? totalOrganizerPayout : netRevenue).toFixed(2)}
                   </p>
                   <p className="text-xs text-neutral-500 mt-1">
-                    After {(commissionRate * 100).toFixed(0)}% platform fee
+                    {hasRevenueBreakdown
+                      ? 'After tax, Stripe fees & platform commission'
+                      : `After ${(commissionRate * 100).toFixed(0)}% platform fee`}
                   </p>
                 </div>
                 <DollarSign className="h-10 w-10 text-orange-600" />
               </div>
 
-              {/* Commission Breakdown */}
-              <div className="mt-3 pt-3 border-t border-neutral-200">
-                <div className="flex justify-between text-xs text-neutral-600 mb-1">
-                  <span>Gross Revenue:</span>
-                  <span className="font-medium">${grossRevenue.toFixed(2)}</span>
+              {/* Phase 6A.X: Detailed Breakdown (new events) */}
+              {hasRevenueBreakdown ? (
+                <div className="mt-3 pt-3 border-t border-neutral-200">
+                  <div className="flex justify-between text-xs text-neutral-600 mb-1">
+                    <span>Gross Revenue:</span>
+                    <span className="font-medium">${grossRevenue.toFixed(2)}</span>
+                  </div>
+                  {totalSalesTax > 0 && (
+                    <div className="flex justify-between text-xs text-amber-600 mb-1">
+                      <span>Sales Tax ({(averageTaxRate * 100).toFixed(2)}%):</span>
+                      <span className="font-medium">-${totalSalesTax.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs text-red-600 mb-1">
+                    <span>Stripe Fees (2.9% + $0.30):</span>
+                    <span className="font-medium">-${totalStripeFees.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-red-600 mb-1">
+                    <span>Platform Commission (2%):</span>
+                    <span className="font-medium">-${totalPlatformCommission.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-green-700 font-semibold pt-1 border-t border-neutral-200">
+                    <span>Your Payout:</span>
+                    <span>${totalOrganizerPayout.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-2">
+                    * Sales tax collected based on event location. Stripe & LankaConnect fees shown separately.
+                  </p>
                 </div>
-                <div className="flex justify-between text-xs text-red-600 mb-1">
-                  <span>Platform Fee ({(commissionRate * 100).toFixed(0)}%):</span>
-                  <span className="font-medium">-${commissionAmount.toFixed(2)}</span>
+              ) : (
+                /* Legacy Breakdown (older events without detailed breakdown) */
+                <div className="mt-3 pt-3 border-t border-neutral-200">
+                  <div className="flex justify-between text-xs text-neutral-600 mb-1">
+                    <span>Gross Revenue:</span>
+                    <span className="font-medium">${grossRevenue.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-red-600 mb-1">
+                    <span>Platform Fee ({(commissionRate * 100).toFixed(0)}%):</span>
+                    <span className="font-medium">-${commissionAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-green-700 font-semibold pt-1 border-t border-neutral-200">
+                    <span>Your Payout:</span>
+                    <span>${netRevenue.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-2">
+                    * 5% platform fee includes both LankaConnect and Stripe processing fees
+                  </p>
                 </div>
-                <div className="flex justify-between text-xs text-green-700 font-semibold pt-1 border-t border-neutral-200">
-                  <span>Your Payout:</span>
-                  <span>${netRevenue.toFixed(2)}</span>
-                </div>
-                <p className="text-[10px] text-neutral-400 mt-2">
-                  * 5% platform fee includes both LankaConnect and Stripe processing fees
-                </p>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}

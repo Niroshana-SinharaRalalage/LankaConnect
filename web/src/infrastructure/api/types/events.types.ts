@@ -144,6 +144,34 @@ export interface GroupPricingTierDto {
 }
 
 /**
+ * Phase 6A.X: Revenue breakdown DTO
+ * Matches backend RevenueBreakdownDto
+ * Shows detailed fee breakdown for paid events
+ */
+export interface RevenueBreakdownDto {
+  /** Gross amount (ticket price) paid by buyer */
+  grossAmount: number;
+  /** Sales tax amount (state tax based on event location) */
+  salesTaxAmount: number;
+  /** Taxable amount (gross minus sales tax) */
+  taxableAmount: number;
+  /** Stripe payment processing fee (2.9% + $0.30) */
+  stripeFeeAmount: number;
+  /** Platform commission (2% of taxable amount) */
+  platformCommissionAmount: number;
+  /** Net amount to event organizer after all fees and taxes */
+  organizerPayoutAmount: number;
+  /** Currency for all amounts */
+  currency: Currency;
+  /** Sales tax rate as decimal (e.g., 0.0725 for 7.25%) */
+  salesTaxRate: number;
+  /** Display-friendly tax rate percentage (e.g., "7.25%") */
+  taxRateDisplay: string;
+  /** State/jurisdiction where tax was calculated */
+  taxJurisdiction?: string | null;
+}
+
+/**
  * Main Event DTO
  * Matches backend EventDto from LankaConnect.Application.Events.Common
  * Session 21: Added dual ticket pricing support
@@ -212,6 +240,10 @@ export interface EventDto {
   organizerContactName?: string | null;
   organizerContactPhone?: string | null;
   organizerContactEmail?: string | null;
+
+  // Phase 6A.X: Revenue Breakdown for paid events
+  /** Detailed fee breakdown (null for free events) */
+  revenueBreakdown?: RevenueBreakdownDto | null;
 }
 
 /**
@@ -941,7 +973,7 @@ export interface EventAttendeeDto {
 }
 
 /**
- * Phase 6A.45/6A.71: Event attendees response with commission-aware revenue
+ * Phase 6A.45/6A.71/6A.X: Event attendees response with commission-aware revenue
  * Matches backend EventAttendeesResponse
  */
 export interface EventAttendeesResponse {
@@ -954,7 +986,7 @@ export interface EventAttendeesResponse {
   // Phase 6A.71: Commission-aware revenue properties
   /** Total revenue before commission deduction */
   grossRevenue: number;
-  /** Platform commission amount (LankaConnect + Stripe) */
+  /** Platform commission amount (LankaConnect + Stripe combined - legacy) */
   commissionAmount: number;
   /** Net revenue after commission deduction (organizer's payout) */
   netRevenue: number;
@@ -962,6 +994,20 @@ export interface EventAttendeesResponse {
   commissionRate: number;
   /** Whether this is a free event */
   isFreeEvent: boolean;
+
+  // Phase 6A.X: Detailed revenue breakdown totals
+  /** Total sales tax collected from all registrations */
+  totalSalesTax: number;
+  /** Total Stripe processing fees for all registrations */
+  totalStripeFees: number;
+  /** Total platform commission for all registrations */
+  totalPlatformCommission: number;
+  /** Total organizer payout after all deductions */
+  totalOrganizerPayout: number;
+  /** Average sales tax rate applied across registrations */
+  averageTaxRate: number;
+  /** Whether this event has detailed revenue breakdown data */
+  hasRevenueBreakdown: boolean;
 
   /** @deprecated Use grossRevenue instead */
   totalRevenue?: number | null;

@@ -229,7 +229,10 @@ public class GetEventAttendeesQueryHandler
             ? registrationsWithTax.Average(a => a.SalesTaxRate)
             : 0m;
 
-        // Check if any registration has breakdown data
+        // Phase 6A.X CRITICAL FIX: Check hasRevenueBreakdown AFTER on-the-fly calculation
+        // Original bug: This check was done BEFORE on-the-fly calculation loop (lines 118-185)
+        // Result: Even though we calculated breakdown on-the-fly, flag was already FALSE
+        // Fix: Move this check to AFTER on-the-fly calculation so it sees the updated DTOs
         bool hasRevenueBreakdown = attendeeDtos.Any(a =>
             a.SalesTaxAmount.HasValue ||
             a.StripeFeeAmount.HasValue ||

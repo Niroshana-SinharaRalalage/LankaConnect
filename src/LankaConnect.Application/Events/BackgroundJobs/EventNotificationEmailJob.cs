@@ -70,7 +70,9 @@ public class EventNotificationEmailJob
                 return;
             }
 
-            var @event = await _eventRepository.GetByIdAsync(history.EventId, cancellationToken);
+            // Phase 6A.61+ FIX: Use trackChanges: false to properly load email groups from junction table
+            // Background jobs don't need change tracking - this ensures .Include("_emailGroupEntities") works correctly
+            var @event = await _eventRepository.GetByIdAsync(history.EventId, trackChanges: false, cancellationToken);
             if (@event == null)
             {
                 _logger.LogError("[Phase 6A.61][{CorrelationId}] Event {EventId} not found for history {HistoryId}",

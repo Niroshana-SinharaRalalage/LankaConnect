@@ -50,7 +50,8 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         try
         {
             _logger.LogInformation("[RCA-2] Fetching event from repository...");
-            @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
+            // Phase 6A.61+ FIX: Use trackChanges: false to properly load email groups from junction table
+            @event = await _eventRepository.GetByIdAsync(eventId, trackChanges: false, cancellationToken);
             _logger.LogInformation("[RCA-3] Event fetch complete - Found: {Found}", @event != null);
         }
         catch (Exception ex)

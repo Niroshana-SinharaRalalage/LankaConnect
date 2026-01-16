@@ -68,17 +68,61 @@ public class NewsletterRecipientService : INewsletterRecipientService
             newsletter.TargetAllLocations,
             newsletter.IncludeNewsletterSubscribers);
 
-        // Get email addresses from email groups
-        List<string> emailGroupAddresses;
+        // Get email addresses from newsletter's email groups
+        List<string> newsletterEmailGroupAddresses;
         try
         {
-            _logger.LogDebug("[Phase 6A.74] Getting email group addresses...");
-            emailGroupAddresses = await GetEmailGroupAddressesAsync(newsletter, cancellationToken);
-            _logger.LogInformation("[Phase 6A.74] Email group addresses retrieved: {Count}", emailGroupAddresses.Count);
+            _logger.LogDebug("[Phase 6A.74] Getting newsletter email group addresses...");
+            newsletterEmailGroupAddresses = await GetEmailGroupAddressesAsync(newsletter, cancellationToken);
+            _logger.LogInformation("[Phase 6A.74] Newsletter email group addresses retrieved: {Count}", newsletterEmailGroupAddresses.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.74] Failed to get email group addresses for newsletter {NewsletterId}", newsletterId);
+            _logger.LogError(ex, "[Phase 6A.74] Failed to get newsletter email group addresses for newsletter {NewsletterId}", newsletterId);
+            throw;
+        }
+
+        // Phase 6A.74 HOTFIX: Get event registered attendees' emails
+        List<string> eventAttendeeEmails;
+        try
+        {
+            if (newsletter.EventId.HasValue)
+            {
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Getting event registered attendees for event {EventId}...", newsletter.EventId.Value);
+                eventAttendeeEmails = await GetEventAttendeeEmailsAsync(newsletter.EventId.Value, cancellationToken);
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Event attendee emails retrieved: {Count}", eventAttendeeEmails.Count);
+            }
+            else
+            {
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no attendee emails");
+                eventAttendeeEmails = new List<string>();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.74 HOTFIX] Failed to get event attendee emails for newsletter {NewsletterId}", newsletterId);
+            throw;
+        }
+
+        // Phase 6A.74 HOTFIX: Get event's email groups
+        List<string> eventEmailGroupAddresses;
+        try
+        {
+            if (newsletter.EventId.HasValue)
+            {
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Getting event's email groups for event {EventId}...", newsletter.EventId.Value);
+                eventEmailGroupAddresses = await GetEventEmailGroupAddressesAsync(newsletter.EventId.Value, cancellationToken);
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Event email group addresses retrieved: {Count}", eventEmailGroupAddresses.Count);
+            }
+            else
+            {
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no event email groups");
+                eventEmailGroupAddresses = new List<string>();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.74 HOTFIX] Failed to get event email groups for newsletter {NewsletterId}", newsletterId);
             throw;
         }
 
@@ -104,24 +148,31 @@ public class NewsletterRecipientService : INewsletterRecipientService
             throw;
         }
 
-        // Consolidate and deduplicate (case-insensitive)
+        // Phase 6A.74 HOTFIX: Consolidate ALL recipient sources and deduplicate (case-insensitive)
+        // Sources: 1) Newsletter email groups, 2) Event attendees, 3) Event email groups, 4) Newsletter subscribers
         var allEmails = new HashSet<string>(
-            emailGroupAddresses.Concat(subscriberBreakdown.Emails),
+            newsletterEmailGroupAddresses
+                .Concat(eventAttendeeEmails)
+                .Concat(eventEmailGroupAddresses)
+                .Concat(subscriberBreakdown.Emails),
             StringComparer.OrdinalIgnoreCase);
 
         var breakdownDto = new RecipientBreakdownDto
         {
-            EmailGroupCount = emailGroupAddresses.Count,
+            EmailGroupCount = newsletterEmailGroupAddresses.Count,
             MetroAreaSubscribers = subscriberBreakdown.MetroCount,
             StateLevelSubscribers = subscriberBreakdown.StateCount,
             AllLocationsSubscribers = subscriberBreakdown.AllLocationsCount
         };
 
         _logger.LogInformation(
-            "[Phase 6A.74] Resolved {TotalUnique} unique email recipients for newsletter {NewsletterId}. " +
-            "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+            "[Phase 6A.74 HOTFIX] Resolved {TotalUnique} unique email recipients for newsletter {NewsletterId}. " +
+            "Breakdown: NewsletterEmailGroups={NewsletterEmailGroupCount}, EventAttendees={EventAttendeeCount}, " +
+            "EventEmailGroups={EventEmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
             allEmails.Count, newsletterId,
-            breakdownDto.EmailGroupCount,
+            newsletterEmailGroupAddresses.Count,
+            eventAttendeeEmails.Count,
+            eventEmailGroupAddresses.Count,
             breakdownDto.MetroAreaSubscribers,
             breakdownDto.StateLevelSubscribers,
             breakdownDto.AllLocationsSubscribers);
@@ -338,6 +389,98 @@ public class NewsletterRecipientService : INewsletterRecipientService
                 AllLocationsSubscribers = 0
             }
         };
+    }
+
+    /// <summary>
+    /// Phase 6A.74 HOTFIX: Gets email addresses of all confirmed attendees for an event
+    /// Handles both legacy (AttendeeInfo) and new (Contact) registration formats
+    /// </summary>
+    private async Task<List<string>> GetEventAttendeeEmailsAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var @event = await _eventRepository.GetWithRegistrationsAsync(eventId, cancellationToken);
+            if (@event == null)
+            {
+                _logger.LogWarning("[Phase 6A.74 HOTFIX] Event {EventId} not found", eventId);
+                return new List<string>();
+            }
+
+            var emails = new List<string>();
+
+            foreach (var registration in @event.Registrations)
+            {
+                // Only include confirmed registrations
+                if (registration.Status != Domain.Events.Enums.RegistrationStatus.Confirmed)
+                    continue;
+
+                // New format: Registration with Contact
+                if (registration.Contact != null)
+                {
+                    emails.Add(registration.Contact.Email);
+                }
+                // Legacy format: Anonymous registration with AttendeeInfo
+                else if (registration.AttendeeInfo != null)
+                {
+                    emails.Add(registration.AttendeeInfo.Email.Value);
+                }
+            }
+
+            _logger.LogInformation("[Phase 6A.74 HOTFIX] Extracted {Count} attendee emails from event {EventId}",
+                emails.Count, eventId);
+
+            return emails;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.74 HOTFIX] Failed to get event attendees for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.74 HOTFIX: Gets all email addresses from email groups assigned to an event
+    /// </summary>
+    private async Task<List<string>> GetEventEmailGroupAddressesAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Load event with email group IDs
+            var @event = await _eventRepository.GetByIdAsync(eventId, trackChanges: false, cancellationToken);
+            if (@event == null || !@event.EmailGroupIds.Any())
+            {
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Event {EventId} has no email groups", eventId);
+                return new List<string>();
+            }
+
+            _logger.LogDebug("[Phase 6A.74 HOTFIX] Fetching {Count} email groups for event {EventId}: [{Ids}]",
+                @event.EmailGroupIds.Count,
+                eventId,
+                string.Join(", ", @event.EmailGroupIds));
+
+            // Fetch email groups
+            var emailGroups = await _emailGroupRepository.GetByIdsAsync(
+                @event.EmailGroupIds,
+                cancellationToken);
+
+            var emails = emailGroups
+                .SelectMany(g => g.GetEmailList())
+                .ToList();
+
+            _logger.LogInformation("[Phase 6A.74 HOTFIX] Retrieved {Count} emails from {GroupCount} event email groups",
+                emails.Count, emailGroups.Count);
+
+            return emails;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.74 HOTFIX] Failed to get event email groups for event {EventId}", eventId);
+            throw;
+        }
     }
 
     /// <summary>

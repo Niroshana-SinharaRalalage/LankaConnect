@@ -141,7 +141,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     // User requested to remove event title/location/date from auto-populated content
     const eventHtml = `
 <p>
-  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}/manage?tab=sign-ups">View Sign-up Lists</a>` : ''}
+  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Sign-up Lists</a>` : ''}
 </p>
 
 <p></p>

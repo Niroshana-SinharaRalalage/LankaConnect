@@ -142,7 +142,7 @@ public class NewsletterEmailJob
                 ["EventLocation"] = eventLocation ?? "",
                 ["EventDetailsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}" : "",
                 ["HasSignUpLists"] = false, // TODO: Check if event has sign-up lists
-                ["SignUpListsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}#signup-lists" : ""
+                ["SignUpListsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}#sign-ups" : ""
             };
 
             // 5. Send templated email to each recipient

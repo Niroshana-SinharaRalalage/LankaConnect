@@ -104,6 +104,63 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
             if (updateResult.IsFailure)
                 return Result<bool>.Failure(updateResult.Error);
 
+            // Phase 6A.74 HOTFIX: Sync shadow navigation for email groups and metro areas
+            // The domain's Update() method updates _emailGroupIds and _metroAreaIds lists,
+            // but EF Core only tracks shadow navigation (_emailGroupEntities, _metroAreaEntities).
+            // We must sync the loaded entities to shadow navigation for persistence to junction tables.
+            // Pattern mirrors NewsletterRepository.AddAsync (lines 39-90)
+
+            var dbContext2 = _dbContext as DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            // Sync email groups shadow navigation
+            if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
+            {
+                var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
+
+                var emailGroupEntities = await dbContext2.Set<EmailGroup>()
+                    .Where(eg => distinctGroupIds.Contains(eg.Id))
+                    .ToListAsync(cancellationToken);
+
+                var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
+                emailGroupsCollection.CurrentValue = emailGroupEntities;
+
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Synced {Count} email groups to shadow navigation",
+                    emailGroupEntities.Count);
+            }
+            else
+            {
+                // Clear email groups if none provided
+                var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
+                emailGroupsCollection.CurrentValue = new List<EmailGroup>();
+
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Cleared email groups shadow navigation");
+            }
+
+            // Sync metro areas shadow navigation
+            if (request.MetroAreaIds != null && request.MetroAreaIds.Any())
+            {
+                var distinctMetroIds = request.MetroAreaIds.Distinct().ToList();
+
+                var metroAreaEntities = await dbContext2.Set<Domain.Events.MetroArea>()
+                    .Where(m => distinctMetroIds.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+
+                var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
+                metroAreasCollection.CurrentValue = metroAreaEntities;
+
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Synced {Count} metro areas to shadow navigation",
+                    metroAreaEntities.Count);
+            }
+            else
+            {
+                // Clear metro areas if none provided
+                var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
+                metroAreasCollection.CurrentValue = new List<Domain.Events.MetroArea>();
+
+                _logger.LogDebug("[Phase 6A.74 HOTFIX] Cleared metro areas shadow navigation");
+            }
+
             // Commit changes
             await _unitOfWork.CommitAsync(cancellationToken);
 

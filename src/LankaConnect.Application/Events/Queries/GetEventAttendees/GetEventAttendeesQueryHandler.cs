@@ -41,12 +41,21 @@ public class GetEventAttendeesQueryHandler
         CancellationToken cancellationToken)
     {
         // Get event details using repository
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+        // Phase 6A.X FIX: Use trackChanges: false for read-only query (better performance)
+        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: false, cancellationToken);
 
         if (@event == null)
         {
             return Result<EventAttendeesResponse>.Failure("Event not found");
         }
+
+        // Phase 6A.X DIAGNOSTIC: Log Location status for revenue breakdown calculation
+        _logger.LogInformation(
+            "Event loaded for attendees query: EventId={EventId}, HasLocation={HasLocation}, Location={Location}",
+            @event.Id,
+            @event.Location != null,
+            @event.Location?.ToString() ?? "NULL");
+
 
         // Phase 6A.55: Use direct LINQ projection to avoid materializing JSONB with null AgeCategory
         // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
@@ -120,6 +129,11 @@ public class GetEventAttendeesQueryHandler
         // Phase 6A.X FIX: Calculate breakdown ON-THE-FLY for old registrations without breakdown data
         // This ensures ALL events show detailed breakdown (not just new ones created after fix deployment)
         // User validated: "regardless of new or old event, calculations should be reflected"
+        _logger.LogInformation(
+            "Starting on-the-fly revenue breakdown calculation: TotalRegistrations={Count}, EventLocation={HasLocation}",
+            attendeeDtos.Count,
+            @event.Location != null);
+
         int calculatedCount = 0;
         foreach (var attendeeDto in attendeeDtos)
         {
@@ -129,6 +143,10 @@ public class GetEventAttendeesQueryHandler
                 attendeeDto.TotalAmount.Value > 0 &&
                 @event.Location != null)
             {
+                _logger.LogInformation(
+                    "Attempting breakdown calculation for registration {RegistrationId}: Amount=${Amount}",
+                    attendeeDto.RegistrationId,
+                    attendeeDto.TotalAmount.Value);
                 try
                 {
                     // Create Money object from TotalAmount

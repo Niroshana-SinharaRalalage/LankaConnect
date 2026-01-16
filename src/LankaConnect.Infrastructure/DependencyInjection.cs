@@ -28,6 +28,7 @@ using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Services;
+using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
@@ -279,9 +280,8 @@ public static class DependencyInjection
         // Phase 6A.74: Newsletter Recipient Service
         services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
 
-        // Phase 6A.74: Newsletter Background Jobs - COMMENTED OUT (incomplete feature)
-        // services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.SendNewsletterEmailJob>();
-        // services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.DeactivateExpiredNewslettersJob>();
+        // Phase 6A.74: Newsletter Background Jobs
+        services.AddTransient<NewsletterEmailJob>();
 
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>

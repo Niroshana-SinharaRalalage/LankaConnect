@@ -201,7 +201,7 @@ public class EventNotificationEmailJob
         var isFree = @event.IsFree();
         var data = new Dictionary<string, object>
         {
-            { "EventTitle", @event.Title.Value },
+            { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
             { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern
             { "EventLocation", @event.Location?.Address.ToString() ?? "Location TBD" },
             { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },

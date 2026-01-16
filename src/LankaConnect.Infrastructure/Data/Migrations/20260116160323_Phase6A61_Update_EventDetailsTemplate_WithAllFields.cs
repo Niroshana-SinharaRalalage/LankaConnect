@@ -19,7 +19,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             migrationBuilder.Sql(@"
                 INSERT INTO communications.email_templates
                 (
-                    ""id"",
+                    ""Id"",
                     ""name"",
                     ""description"",
                     ""subject_template"",

@@ -242,7 +242,7 @@ public class EventReminderJobTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ExceptionDuringProcessing_ShouldNotThrow()
+    public async Task ExecuteAsync_ExceptionDuringProcessing_ShouldThrowForHangfireRetry()
     {
         // Arrange
         _eventRepository.Setup(x => x.GetEventsStartingInTimeWindowAsync(
@@ -252,11 +252,11 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act - Should not throw
+        // Act & Assert - Phase 6A.61+ Fix: Should re-throw for Hangfire automatic retry
         var act = async () => await _job.ExecuteAsync();
 
-        // Assert
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<Exception>()
+            .WithMessage("Database error");
     }
 
     private static Event CreateMockEventWithRegistration(Guid eventId, Guid organizerId, string title, Guid? userId = null)

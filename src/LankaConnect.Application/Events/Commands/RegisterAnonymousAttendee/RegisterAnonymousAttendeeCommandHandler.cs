@@ -1,10 +1,12 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Events.Services;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Users;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 
@@ -13,6 +15,7 @@ namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 /// 1. Email validation - check if email belongs to existing member
 /// 2. FREE events - complete registration immediately with confirmation email
 /// 3. PAID events - create Stripe checkout session and return URL
+/// Phase 6A.X: Added revenue breakdown calculation for paid registrations
 /// </summary>
 public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterAnonymousAttendeeCommand, string?>
 {
@@ -20,17 +23,23 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserRepository _userRepository;
     private readonly IStripePaymentService _stripePaymentService;
+    private readonly IRevenueCalculatorService _revenueCalculatorService;
+    private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         IUserRepository userRepository,
-        IStripePaymentService stripePaymentService)
+        IStripePaymentService stripePaymentService,
+        IRevenueCalculatorService revenueCalculatorService,
+        ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _userRepository = userRepository;
         _stripePaymentService = stripePaymentService;
+        _revenueCalculatorService = revenueCalculatorService;
+        _logger = logger;
     }
 
     public async Task<Result<string?>> Handle(RegisterAnonymousAttendeeCommand request, CancellationToken cancellationToken)
@@ -135,6 +144,50 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         // Get the just-created registration
         var registration = @event.Registrations.Last();
 
+        // Phase 6A.X: Calculate and store revenue breakdown for paid events
+        if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Calculating revenue breakdown for registration {RegistrationId} (Anonymous): Price={Price}, Event={EventId}, Location={Location}",
+                    registration.Id,
+                    registration.TotalPrice.Amount,
+                    @event.Id,
+                    @event.Location?.ToString() ?? "null");
+
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    registration.TotalPrice,
+                    @event.Location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    registration.SetRevenueBreakdown(breakdownResult.Value);
+                    _logger.LogInformation(
+                        "Revenue breakdown calculated successfully for registration {RegistrationId}: Tax={Tax}, StripeFee={StripeFee}, Commission={Commission}, Payout={Payout}",
+                        registration.Id,
+                        breakdownResult.Value.SalesTaxAmount.Amount,
+                        breakdownResult.Value.StripeFeeAmount.Amount,
+                        breakdownResult.Value.PlatformCommission.Amount,
+                        breakdownResult.Value.OrganizerPayout.Amount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Revenue breakdown calculation failed for registration {RegistrationId}: {Error}",
+                        registration.Id,
+                        breakdownResult.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Exception while calculating revenue breakdown for registration {RegistrationId}. Registration will continue without breakdown.",
+                    registration.Id);
+            }
+        }
+
         // Phase 6A.44: Handle payment for paid events
         if (!@event.IsFree())
         {
@@ -223,6 +276,50 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         // Get the just-created registration
         var registration = @event.Registrations.Last();
+
+        // Phase 6A.X: Calculate and store revenue breakdown for paid events
+        if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Calculating revenue breakdown for registration {RegistrationId} (Anonymous): Price={Price}, Event={EventId}, Location={Location}",
+                    registration.Id,
+                    registration.TotalPrice.Amount,
+                    @event.Id,
+                    @event.Location?.ToString() ?? "null");
+
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    registration.TotalPrice,
+                    @event.Location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    registration.SetRevenueBreakdown(breakdownResult.Value);
+                    _logger.LogInformation(
+                        "Revenue breakdown calculated successfully for registration {RegistrationId}: Tax={Tax}, StripeFee={StripeFee}, Commission={Commission}, Payout={Payout}",
+                        registration.Id,
+                        breakdownResult.Value.SalesTaxAmount.Amount,
+                        breakdownResult.Value.StripeFeeAmount.Amount,
+                        breakdownResult.Value.PlatformCommission.Amount,
+                        breakdownResult.Value.OrganizerPayout.Amount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Revenue breakdown calculation failed for registration {RegistrationId}: {Error}",
+                        registration.Id,
+                        breakdownResult.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Exception while calculating revenue breakdown for registration {RegistrationId}. Registration will continue without breakdown.",
+                    registration.Id);
+            }
+        }
 
         // Phase 6A.44: Handle payment for paid events
         if (!@event.IsFree())

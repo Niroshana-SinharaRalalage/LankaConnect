@@ -1,25 +1,34 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.RsvpToEvent;
 
 // Session 23: Updated to support Stripe payment integration for paid events
+// Phase 6A.X: Added revenue breakdown calculation for paid registrations
 public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, string?>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IStripePaymentService _stripePaymentService;
+    private readonly IRevenueCalculatorService _revenueCalculatorService;
+    private readonly ILogger<RsvpToEventCommandHandler> _logger;
 
     public RsvpToEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
-        IStripePaymentService stripePaymentService)
+        IStripePaymentService stripePaymentService,
+        IRevenueCalculatorService revenueCalculatorService,
+        ILogger<RsvpToEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _stripePaymentService = stripePaymentService;
+        _revenueCalculatorService = revenueCalculatorService;
+        _logger = logger;
     }
 
     public async Task<Result<string?>> Handle(RsvpToEventCommand request, CancellationToken cancellationToken)
@@ -103,6 +112,50 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
         // Session 23: Handle payment for paid events
         var registration = @event.Registrations.Last();  // Get the just-created registration
+
+        // Phase 6A.X: Calculate and store revenue breakdown for paid events
+        if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Calculating revenue breakdown for registration {RegistrationId} (RSVP): Price={Price}, Event={EventId}, Location={Location}",
+                    registration.Id,
+                    registration.TotalPrice.Amount,
+                    @event.Id,
+                    @event.Location?.ToString() ?? "null");
+
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    registration.TotalPrice,
+                    @event.Location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    registration.SetRevenueBreakdown(breakdownResult.Value);
+                    _logger.LogInformation(
+                        "Revenue breakdown calculated successfully for registration {RegistrationId}: Tax={Tax}, StripeFee={StripeFee}, Commission={Commission}, Payout={Payout}",
+                        registration.Id,
+                        breakdownResult.Value.SalesTaxAmount.Amount,
+                        breakdownResult.Value.StripeFeeAmount.Amount,
+                        breakdownResult.Value.PlatformCommission.Amount,
+                        breakdownResult.Value.OrganizerPayout.Amount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Revenue breakdown calculation failed for registration {RegistrationId}: {Error}",
+                        registration.Id,
+                        breakdownResult.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Exception while calculating revenue breakdown for registration {RegistrationId}. Registration will continue without breakdown.",
+                    registration.Id);
+            }
+        }
 
         // Check if event requires payment
         if (!@event.IsFree())

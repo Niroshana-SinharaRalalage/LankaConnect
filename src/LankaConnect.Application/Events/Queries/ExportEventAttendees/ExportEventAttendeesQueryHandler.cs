@@ -5,7 +5,9 @@ using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace LankaConnect.Application.Events.Queries.ExportEventAttendees;
@@ -15,22 +17,28 @@ public class ExportEventAttendeesQueryHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IEventRepository _eventRepository;
+    private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly IExcelExportService _excelService;
     private readonly ICsvExportService _csvService;
     private readonly IOptions<CommissionSettings> _commissionSettings;
+    private readonly ILogger<GetEventAttendeesQueryHandler> _attendeesQueryLogger;
 
     public ExportEventAttendeesQueryHandler(
         IApplicationDbContext context,
         IEventRepository eventRepository,
+        IRevenueCalculatorService revenueCalculatorService,
         IExcelExportService excelService,
         ICsvExportService csvService,
-        IOptions<CommissionSettings> commissionSettings)
+        IOptions<CommissionSettings> commissionSettings,
+        ILogger<GetEventAttendeesQueryHandler> attendeesQueryLogger)
     {
         _context = context;
         _eventRepository = eventRepository;
+        _revenueCalculatorService = revenueCalculatorService;
         _excelService = excelService;
         _csvService = csvService;
         _commissionSettings = commissionSettings;
+        _attendeesQueryLogger = attendeesQueryLogger;
     }
 
     public async Task<Result<ExportResult>> Handle(
@@ -39,7 +47,12 @@ public class ExportEventAttendeesQueryHandler
     {
         // Get attendees data using existing query handler logic
         var attendeesQuery = new GetEventAttendeesQuery(request.EventId);
-        var attendeesHandler = new GetEventAttendeesQueryHandler(_context, _eventRepository, _commissionSettings);
+        var attendeesHandler = new GetEventAttendeesQueryHandler(
+            _context,
+            _eventRepository,
+            _revenueCalculatorService,
+            _commissionSettings,
+            _attendeesQueryLogger);
         var attendeesResult = await attendeesHandler.Handle(attendeesQuery, cancellationToken);
 
         if (!attendeesResult.IsSuccess)

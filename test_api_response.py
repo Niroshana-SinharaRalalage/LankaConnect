@@ -1,0 +1,26 @@
+import sys, json
+
+data = json.load(sys.stdin)
+print('=== API RESPONSE SUMMARY ===')
+print(f'Event: {data["eventTitle"]}')
+print(f'Total Registrations: {data["totalRegistrations"]}')
+print(f'hasRevenueBreakdown: {data["hasRevenueBreakdown"]}')
+print()
+print('=== BREAKDOWN TOTALS ===')
+print(f'Gross Revenue: ${data["grossRevenue"]}')
+print(f'Sales Tax: ${data["totalSalesTax"]}')
+print(f'Stripe Fees: ${data["totalStripeFees"]}')
+print(f'Platform Commission: ${data["totalPlatformCommission"]}')
+print(f'Organizer Payout: ${data["totalOrganizerPayout"]}')
+print()
+print('=== FIRST ATTENDEE (sample) ===')
+if data['attendees']:
+    att = data['attendees'][0]
+    print(f'Registration ID: {att["registrationId"]}')
+    print(f'Total Amount: ${att.get("totalAmount", "N/A")}')
+    print(f'Net Amount: ${att.get("netAmount", "N/A")}')
+    print(f'Sales Tax Amount: {att.get("salesTaxAmount", "N/A")}')
+    print(f'Stripe Fee Amount: {att.get("stripeFeeAmount", "N/A")}')
+    print(f'Platform Commission Amount: {att.get("platformCommissionAmount", "N/A")}')
+    print(f'Organizer Payout Amount: {att.get("organizerPayoutAmount", "N/A")}')
+    print(f'Created: {att.get("createdAt", "N/A")[:10]}')

@@ -4,7 +4,11 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
+using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace LankaConnect.Application.Events.Queries.GetEventAttendees;
@@ -14,16 +18,22 @@ public class GetEventAttendeesQueryHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IEventRepository _eventRepository;
+    private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly CommissionSettings _commissionSettings;
+    private readonly ILogger<GetEventAttendeesQueryHandler> _logger;
 
     public GetEventAttendeesQueryHandler(
         IApplicationDbContext context,
         IEventRepository eventRepository,
-        IOptions<CommissionSettings> commissionSettings)
+        IRevenueCalculatorService revenueCalculatorService,
+        IOptions<CommissionSettings> commissionSettings,
+        ILogger<GetEventAttendeesQueryHandler> logger)
     {
         _context = context;
         _eventRepository = eventRepository;
+        _revenueCalculatorService = revenueCalculatorService;
         _commissionSettings = commissionSettings.Value;
+        _logger = logger;
     }
 
     public async Task<Result<EventAttendeesResponse>> Handle(
@@ -106,6 +116,74 @@ public class GetEventAttendeesQueryHandler
                 HasTicket = false
             })
             .ToListAsync(cancellationToken);
+
+        // Phase 6A.X FIX: Calculate breakdown ON-THE-FLY for old registrations without breakdown data
+        // This ensures ALL events show detailed breakdown (not just new ones created after fix deployment)
+        // User validated: "regardless of new or old event, calculations should be reflected"
+        int calculatedCount = 0;
+        foreach (var attendeeDto in attendeeDtos)
+        {
+            // Only calculate if breakdown is missing AND we have necessary data
+            if (!attendeeDto.SalesTaxAmount.HasValue &&
+                attendeeDto.TotalAmount.HasValue &&
+                attendeeDto.TotalAmount.Value > 0 &&
+                @event.Location != null)
+            {
+                try
+                {
+                    // Create Money object from TotalAmount
+                    var totalPriceMoney = Money.Create(attendeeDto.TotalAmount.Value, Currency.USD);
+                    if (totalPriceMoney.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "Failed to create Money for registration {RegistrationId}: {Error}",
+                            attendeeDto.RegistrationId,
+                            totalPriceMoney.Error);
+                        continue;
+                    }
+
+                    // Calculate breakdown using Event.Location
+                    var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                        totalPriceMoney.Value,
+                        @event.Location,
+                        cancellationToken);
+
+                    if (breakdownResult.IsSuccess)
+                    {
+                        // Update DTO with calculated values (NOT database - read-only query)
+                        var breakdown = breakdownResult.Value;
+                        attendeeDto.SalesTaxAmount = breakdown.SalesTaxAmount.Amount;
+                        attendeeDto.StripeFeeAmount = breakdown.StripeFeeAmount.Amount;
+                        attendeeDto.PlatformCommissionAmount = breakdown.PlatformCommission.Amount;
+                        attendeeDto.OrganizerPayoutAmount = breakdown.OrganizerPayout.Amount;
+                        attendeeDto.SalesTaxRate = breakdown.SalesTaxRate;
+
+                        calculatedCount++;
+                    }
+                    else
+                    {
+                        _logger.LogDebug(
+                            "Revenue breakdown calculation failed for registration {RegistrationId}: {Error}",
+                            attendeeDto.RegistrationId,
+                            breakdownResult.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Exception while calculating on-the-fly revenue breakdown for registration {RegistrationId}",
+                        attendeeDto.RegistrationId);
+                }
+            }
+        }
+
+        if (calculatedCount > 0)
+        {
+            _logger.LogInformation(
+                "Calculated revenue breakdown on-the-fly for {Count} old registrations in event {EventId}",
+                calculatedCount,
+                @event.Id);
+        }
 
         // Phase 6A.71: Calculate revenue with commission
         var grossRevenue = attendeeDtos.Sum(a => a.TotalAmount ?? 0);

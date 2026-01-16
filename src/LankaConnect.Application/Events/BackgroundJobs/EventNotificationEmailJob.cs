@@ -199,14 +199,29 @@ public class EventNotificationEmailJob
     private Dictionary<string, object> BuildTemplateData(Domain.Events.Event @event)
     {
         var isFree = @event.IsFree();
+
+        // Phase 6A.61+: Include ALL fields from event-published template for consistency
+        // This ensures event-details template can reuse the same rich template as event-published
         var data = new Dictionary<string, object>
         {
+            // Core fields (original)
             { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
-            { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern
-            { "EventLocation", @event.Location?.Address.ToString() ?? "Location TBD" },
+            { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern (e.g., "Monday, December 25, 2025 7:00 PM")
+            { "EventLocation", GetEventLocationString(@event) },
             { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
             { "IsFreeEvent", isFree },
-            { "PricingDetails", isFree ? "Free" : $"${@event.TicketPrice?.Amount ?? 0:F2}" }
+            { "PricingDetails", isFree ? "Free" : $"${@event.TicketPrice?.Amount ?? 0:F2}" },
+
+            // Phase 6A.61+: Add event-published fields for rich template compatibility
+            { "EventDescription", @event.Description?.Value ?? "" },
+            { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") }, // e.g., "December 25, 2025"
+            { "EventStartTime", @event.StartDate.ToString("h:mm tt") }, // e.g., "7:00 PM"
+            { "EventCity", @event.Location?.Address.City ?? "TBA" },
+            { "EventState", @event.Location?.Address.State ?? "TBA" },
+            { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
+            { "IsFree", isFree }, // event-published uses this name
+            { "IsPaid", !isFree }, // event-published conditional
+            { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) ?? "TBA" }
         };
 
         // Add sign-up lists URL if available
@@ -238,5 +253,29 @@ public class EventNotificationEmailJob
         }
 
         return data;
+    }
+
+    /// <summary>
+    /// Phase 6A.61+: Safely extracts event location string with defensive null handling.
+    /// Matches EventPublishedEventHandler pattern for consistency.
+    /// </summary>
+    private string GetEventLocationString(Domain.Events.Event @event)
+    {
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+        var state = @event.Location.Address.State;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+        return string.Join(", ", parts);
     }
 }

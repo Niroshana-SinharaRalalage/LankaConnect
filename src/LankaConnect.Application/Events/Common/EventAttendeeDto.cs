@@ -45,33 +45,38 @@ public class EventAttendeeDto
     /// <summary>
     /// Sales tax amount for this registration (state + local).
     /// Null for registrations without breakdown data or free events.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation in query handler.
     /// </summary>
-    public decimal? SalesTaxAmount { get; init; }
+    public decimal? SalesTaxAmount { get; set; }
 
     /// <summary>
     /// Stripe processing fee for this registration (2.9% + $0.30).
     /// Null for registrations without breakdown data or free events.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation in query handler.
     /// </summary>
-    public decimal? StripeFeeAmount { get; init; }
+    public decimal? StripeFeeAmount { get; set; }
 
     /// <summary>
     /// Platform commission for this registration (2% of taxable amount).
     /// Null for registrations without breakdown data or free events.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation in query handler.
     /// </summary>
-    public decimal? PlatformCommissionAmount { get; init; }
+    public decimal? PlatformCommissionAmount { get; set; }
 
     /// <summary>
     /// Organizer payout for this registration (after tax, Stripe fee, platform commission).
     /// Should equal NetAmount for registrations with breakdown data.
     /// Null for registrations without breakdown data or free events.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation in query handler.
     /// </summary>
-    public decimal? OrganizerPayoutAmount { get; init; }
+    public decimal? OrganizerPayoutAmount { get; set; }
 
     /// <summary>
     /// Sales tax rate applied to this registration (e.g., 0.0725 for 7.25%).
     /// Zero for registrations without tax or free events.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation in query handler.
     /// </summary>
-    public decimal SalesTaxRate { get; init; }
+    public decimal SalesTaxRate { get; set; }
 
     // Ticket Info
     public string? TicketCode { get; init; }

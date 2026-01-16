@@ -138,13 +138,15 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
     // Phase 6A.74: Simplified template - only event links, no event details
-    // User requested to remove event title/location/date from auto-populated content
+    // Phase 6A.74 Part 11: Add placeholder text + separator line + event links
     const eventHtml = `
+<p>Write your news letter content here.....</p>
+
+<hr />
+
 <p>
   <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Sign-up Lists</a>` : ''}
 </p>
-
-<p></p>
     `.trim();
 
     setValue('description', eventHtml);
@@ -356,7 +358,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
                 <RichTextEditor
                   content={field.value}
                   onChange={field.onChange}
-                  placeholder="Write your newsletter content here... Use the toolbar to format text, add links, and insert images."
+                  placeholder="Write your news letter content here....."
                   error={!!errors.description}
                   errorMessage={errors.description?.message}
                   minHeight={300}

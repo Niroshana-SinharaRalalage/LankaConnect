@@ -1,5 +1,5 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-15 - Phase 6A.X: Revenue Breakdown System - ✅ FULLY DEPLOYED*
+*Last Updated: 2026-01-16 - Phase 6A.74 Part 11 HOTFIX: Critical Newsletter Data Issues - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
@@ -145,6 +145,94 @@ For $100 ticket in California (7% tax):
 5. ⏳ Verify "Create Reminder/Update Newsletter" button text
 6. ⏳ Verify newsletter list shows in event page with click navigation
 7. ⏳ Verify back button goes to Event Communications when coming from event
+
+---
+
+## Previous Session Status - Phase 6A.74 Part 11 HOTFIX: Critical Newsletter Data Issues - ✅ DEPLOYED TO STAGING
+
+### Phase 6A.74 Part 11 HOTFIX - Newsletter Data Integrity & Recipient Consolidation - 2026-01-15
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Backend: lankaconnect-api-staging--0000610, Frontend: Workflow #21051672087)
+
+**Priority**: 🚨 **CRITICAL** - Data not saving, missing recipients, broken links
+
+**Goal**: Fix 7 critical issues discovered through deep RCA following user reports of newsletters not displaying, creation failing, and emails not being sent
+
+**Issues Resolved**:
+
+| # | Issue | Severity | Root Cause | Status |
+|---|-------|----------|------------|--------|
+| 1 | Sent newsletters not displaying | **HIGH** | Frontend enum comparison (string vs number) | ✅ FIXED |
+| 2 | Cannot create newsletters | **HIGH** | Next.js routing bug | ✅ FIXED |
+| 3 | Email groups not saving | **CRITICAL** | EF Core shadow navigation not synced | ✅ FIXED |
+| 4 | Missing event attendees in recipients | **CRITICAL** | Recipient service incomplete | ✅ FIXED |
+| 5 | Missing event email groups in recipients | **CRITICAL** | Recipient service incomplete | ✅ FIXED |
+| 6 | Sign-up link goes to wrong page | **MEDIUM** | Wrong URL pattern | ✅ FIXED |
+| 7 | Emails were sent (not a bug) | **N/A** | User misunderstood sentAt field | ℹ️ EXPLAINED |
+
+**Backend Changes**:
+1. ✅ `UpdateNewsletterCommandHandler.cs` (+58 lines) - Shadow navigation sync for email groups & metro areas
+2. ✅ `NewsletterRecipientService.cs` (+214 lines) - Added 2 missing recipient sources (event attendees, event email groups)
+3. ✅ `NewsletterEmailJob.cs` (+1 line) - Fixed sign-up link URL
+4. ✅ `RsvpToEventCommandHandler.cs` - Serilog → Microsoft.Extensions.Logging migration
+5. ✅ `RegisterAnonymousAttendeeCommandHandler.cs` - Serilog → Microsoft.Extensions.Logging migration
+
+**Frontend Changes**:
+1. ✅ `NewsletterForm.tsx` (+1 line) - Fixed sign-up link URL
+2. ✅ `newsletters/page.tsx` - Added `isNewsletterSent()` helper for string enum comparison
+3. ✅ `newsletters/[id]/page.tsx` - Added `isNewsletterSent()` helper
+4. ✅ `NewslettersTab.tsx` - Changed create route to avoid dynamic route conflict
+
+**Build Status**:
+- ✅ **Backend Build**: 0 errors, 0 warnings
+- ✅ **Frontend Build**: 0 errors
+- ✅ **Backend Deployment**: Container App running (lankaconnect-api-staging--0000610)
+- ✅ **Frontend Deployment**: Workflow #21051672087 SUCCESS (4m35s)
+- ✅ **Health Check**: API responding (PostgreSQL: Healthy, EF Core: Healthy)
+- ✅ **Azure Logs**: No errors, normal operation
+
+**RCA Documentation Created**:
+- `docs/PHASE_6A74_HOTFIX_RCA.md` - Comprehensive root cause analysis with technical deep dives, before/after comparisons, lessons learned
+
+**Technical Deep Dives**:
+
+1. **Issue #3 - EF Core Shadow Navigation Bug**:
+   - Domain's `Update()` method updates `_emailGroupIds` list (business logic)
+   - But EF Core ONLY tracks `_emailGroupEntities` shadow navigation
+   - Fix: Manually sync entities to shadow navigation after Update() (mirrored from AddAsync pattern)
+
+2. **Issues #4 & #5 - Missing Recipient Sources**:
+   - User expectation: "Recipients will include event registered attendees, any selected email groups in the event, any selected email groups in the newsletter, and eligible newsletter subscribers"
+   - Before fix: Only 2 of 4 sources fetched (newsletter email groups, subscribers)
+   - After fix: All 4 sources with case-insensitive deduplication via HashSet
+
+3. **Issue #1 - Frontend Enum Mismatch**:
+   - Backend uses JsonStringEnumConverter → returns "Sent" (string)
+   - Frontend NewsletterStatus enum → Sent = 4 (number)
+   - `4 === "Sent"` → false (type mismatch)
+   - Fix: Helper function for string comparison
+
+**Lessons Learned**:
+1. EF Core shadow navigation is fragile - always mirror Repository.AddAsync() pattern for Updates
+2. Frontend enum serialization mismatch - use string comparison for API enum values
+3. Incomplete implementation - requirements documented but implementation only partial
+4. Next.js dynamic routes catch static routes - avoid mixing at same level
+
+**Commit**: `71095cf7`
+
+**Testing Required**:
+1. ⏳ Create newsletter with email groups → verify they save to database
+2. ⏳ Update newsletter → verify email groups persist after update
+3. ⏳ Create newsletter linked to event → verify all 4 recipient sources included
+4. ⏳ Get recipient preview → verify breakdown shows all sources with correct counts
+5. ⏳ Send newsletter → verify emails sent to deduplicated recipients
+6. ⏳ Verify in Hangfire Dashboard → check job execution and recipient counts
+
+**Next Steps**:
+1. Manual testing via staging environment
+2. Add integration tests for recipient resolution
+3. Add E2E test for newsletter creation → send flow
+4. Monitor Hangfire logs for any errors
 
 ---
 

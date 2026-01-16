@@ -220,7 +220,8 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
           )}
 
           {/* Active (not sent): Edit, Send Email, Unpublish */}
-          {isActive && !newsletter.sentAt && (
+          {/* Phase 6A.74 Part 11: Fix - Don't show Edit/Send for sent newsletters */}
+          {isActive && !isSent && (
             <>
               <Button
                 onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}

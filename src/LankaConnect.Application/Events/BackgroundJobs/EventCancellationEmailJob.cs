@@ -81,7 +81,7 @@ public class EventCancellationEmailJob
             }
 
             _logger.LogInformation("[Phase 6A.64] Retrieved event {EventId} ({EventTitle}) in {ElapsedMs}ms",
-                eventId, @event.Title.Value, stopwatch.ElapsedMilliseconds);
+                eventId, @event.Title?.Value ?? "Untitled Event", stopwatch.ElapsedMilliseconds);
 
             // 2. Get confirmed registration emails (bulk query to avoid N+1)
             var registrationStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -158,7 +158,7 @@ public class EventCancellationEmailJob
             // 5. Prepare template parameters
             var parameters = new Dictionary<string, object>
             {
-                ["EventTitle"] = @event.Title.Value,
+                ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
                 ["EventDate"] = FormatEventDateTimeRange(@event.StartDate, @event.EndDate),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,

@@ -63,6 +63,7 @@ public class EventReminderJob
             _logger.LogError(ex,
                 "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Fatal error during execution",
                 correlationId);
+            throw;  // Phase 6A.61+ Fix: Re-throw for Hangfire retry
         }
     }
 
@@ -113,7 +114,7 @@ public class EventReminderJob
 
                 _logger.LogInformation(
                     "[Phase 6A.71] [{CorrelationId}] Sending {Timeframe} reminders for event {EventId} ({Title}) to {Count} attendees",
-                    correlationId, reminderTimeframe, @event.Id, @event.Title.Value, registrations.Count);
+                    correlationId, reminderTimeframe, @event.Id, @event.Title?.Value ?? "Untitled Event", registrations.Count);
 
                 var successCount = 0;
                 var failCount = 0;
@@ -184,7 +185,7 @@ public class EventReminderJob
                         var parameters = new Dictionary<string, object>
                         {
                             { "AttendeeName", toName },
-                            { "EventTitle", @event.Title.Value },
+                            { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
                             { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                             { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                             { "Location", @event.Location?.Address.ToString() ?? "Location TBD" },

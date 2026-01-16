@@ -88,7 +88,7 @@ public class NewsletterEmailJob
             }
 
             _logger.LogInformation("[Phase 6A.74] Retrieved newsletter {NewsletterId} ({Title}) in {ElapsedMs}ms",
-                newsletterId, newsletter.Title.Value, stopwatch.ElapsedMilliseconds);
+                newsletterId, newsletter.Title?.Value ?? "Untitled Newsletter", stopwatch.ElapsedMilliseconds);
 
             // 2. Resolve recipients (email groups + newsletter subscribers with location targeting)
             var recipientStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -122,7 +122,7 @@ public class NewsletterEmailJob
                 var @event = await _eventRepository.GetByIdAsync(newsletter.EventId.Value, CancellationToken.None);
                 if (@event != null)
                 {
-                    eventTitle = @event.Title.Value;
+                    eventTitle = @event.Title?.Value ?? "Untitled Event";
                     eventDate = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
                     eventLocation = GetEventLocationString(@event);
                 }
@@ -132,8 +132,8 @@ public class NewsletterEmailJob
             // Phase 6A.74 Part 10 Issue #3: Template uses 'NewsletterContent', not 'NewsletterDescription'
             var parameters = new Dictionary<string, object>
             {
-                ["NewsletterTitle"] = newsletter.Title.Value,
-                ["NewsletterContent"] = newsletter.Description.Value, // Template expects 'NewsletterContent'
+                ["NewsletterTitle"] = newsletter.Title?.Value ?? "Untitled Newsletter",
+                ["NewsletterContent"] = newsletter.Description?.Value ?? "No content", // Template expects 'NewsletterContent'
                 ["DashboardUrl"] = _urlsService.FrontendBaseUrl,
                 ["IsEventNewsletter"] = newsletter.EventId.HasValue,
                 ["EventId"] = newsletter.EventId?.ToString() ?? "",

@@ -67,6 +67,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
             .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
             .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
+            .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
             .Include(e => e.SignUpLists)
                 .ThenInclude(s => s.Items)
                     .ThenInclude(i => i.Commitments);

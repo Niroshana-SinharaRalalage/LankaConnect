@@ -318,7 +318,18 @@ public class ExcelExportService : IExcelExportService
         if (!data.IsFreeEvent)
         {
             headersList.Add("Payment Status");
-            headersList.Add("Net Amount (after 5% fee)");
+            headersList.Add("Gross Amount");
+
+            // Phase 6A.X: Add detailed revenue breakdown columns
+            if (data.HasRevenueBreakdown)
+            {
+                headersList.Add("Sales Tax");
+                headersList.Add("Tax Rate");
+                headersList.Add("Stripe Fee");
+                headersList.Add("Platform Commission");
+            }
+
+            headersList.Add("Net Amount");
             headersList.Add("Currency");
         }
 
@@ -372,7 +383,70 @@ public class ExcelExportService : IExcelExportService
             {
                 sheet.Cell(row, col++).Value = attendee.PaymentStatus.ToString();
 
-                // Phase 6A.71: Show NET amount (after commission) instead of GROSS
+                // Gross Amount
+                if (attendee.TotalAmount.HasValue)
+                {
+                    sheet.Cell(row, col).Value = attendee.TotalAmount.Value;
+                    sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                }
+                else
+                {
+                    sheet.Cell(row, col).Value = "—";
+                }
+                col++;
+
+                // Phase 6A.X: Write breakdown columns if available
+                if (data.HasRevenueBreakdown)
+                {
+                    // Sales Tax
+                    if (attendee.SalesTaxAmount.HasValue)
+                    {
+                        sheet.Cell(row, col).Value = attendee.SalesTaxAmount.Value;
+                        sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    }
+                    else
+                    {
+                        sheet.Cell(row, col).Value = "—";
+                    }
+                    col++;
+
+                    // Tax Rate
+                    if (attendee.SalesTaxRate > 0)
+                    {
+                        sheet.Cell(row, col).Value = $"{attendee.SalesTaxRate * 100:F2}%";
+                    }
+                    else
+                    {
+                        sheet.Cell(row, col).Value = "—";
+                    }
+                    col++;
+
+                    // Stripe Fee
+                    if (attendee.StripeFeeAmount.HasValue)
+                    {
+                        sheet.Cell(row, col).Value = attendee.StripeFeeAmount.Value;
+                        sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    }
+                    else
+                    {
+                        sheet.Cell(row, col).Value = "—";
+                    }
+                    col++;
+
+                    // Platform Commission
+                    if (attendee.PlatformCommissionAmount.HasValue)
+                    {
+                        sheet.Cell(row, col).Value = attendee.PlatformCommissionAmount.Value;
+                        sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    }
+                    else
+                    {
+                        sheet.Cell(row, col).Value = "—";
+                    }
+                    col++;
+                }
+
+                // Net Amount (organizer payout)
                 if (attendee.NetAmount.HasValue)
                 {
                     sheet.Cell(row, col).Value = attendee.NetAmount.Value;
@@ -409,15 +483,70 @@ public class ExcelExportService : IExcelExportService
         sheet.Cell(row, 3).Value = data.TotalAttendees;
         sheet.Cell(row, 3).Style.Font.Bold = true;
 
-        // Phase 6A.71: Net Revenue column (only for paid events)
-        // Column position: 11 (Address) + 1 (PaymentStatus) + 1 (NetAmount) = 13 for paid events
-        if (!data.IsFreeEvent && data.NetRevenue > 0)
+        // Phase 6A.X: Revenue totals (only for paid events)
+        if (!data.IsFreeEvent)
         {
-            // Net Amount column is at position 13 (11 base columns + PaymentStatus + NetAmount)
-            var netAmountCol = 13;
-            sheet.Cell(row, netAmountCol).Value = data.NetRevenue;
-            sheet.Cell(row, netAmountCol).Style.NumberFormat.Format = "#,##0.00";
-            sheet.Cell(row, netAmountCol).Style.Font.Bold = true;
+            int col = 12; // Start after Address (column 11)
+
+            // PaymentStatus column - skip
+            col++;
+
+            // Gross Amount
+            if (data.GrossRevenue > 0)
+            {
+                sheet.Cell(row, col).Value = data.GrossRevenue;
+                sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                sheet.Cell(row, col).Style.Font.Bold = true;
+            }
+            col++;
+
+            // Phase 6A.X: Breakdown totals (if available)
+            if (data.HasRevenueBreakdown)
+            {
+                // Sales Tax
+                if (data.TotalSalesTax > 0)
+                {
+                    sheet.Cell(row, col).Value = data.TotalSalesTax;
+                    sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    sheet.Cell(row, col).Style.Font.Bold = true;
+                }
+                col++;
+
+                // Tax Rate
+                if (data.AverageTaxRate > 0)
+                {
+                    sheet.Cell(row, col).Value = $"{data.AverageTaxRate * 100:F2}%";
+                    sheet.Cell(row, col).Style.Font.Bold = true;
+                }
+                col++;
+
+                // Stripe Fees
+                if (data.TotalStripeFees > 0)
+                {
+                    sheet.Cell(row, col).Value = data.TotalStripeFees;
+                    sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    sheet.Cell(row, col).Style.Font.Bold = true;
+                }
+                col++;
+
+                // Platform Commission
+                if (data.TotalPlatformCommission > 0)
+                {
+                    sheet.Cell(row, col).Value = data.TotalPlatformCommission;
+                    sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                    sheet.Cell(row, col).Style.Font.Bold = true;
+                }
+                col++;
+            }
+
+            // Net Amount (organizer payout)
+            var netPayout = data.TotalOrganizerPayout > 0 ? data.TotalOrganizerPayout : data.NetRevenue;
+            if (netPayout > 0)
+            {
+                sheet.Cell(row, col).Value = netPayout;
+                sheet.Cell(row, col).Style.NumberFormat.Format = "#,##0.00";
+                sheet.Cell(row, col).Style.Font.Bold = true;
+            }
         }
 
         // Auto-fit columns

@@ -85,11 +85,18 @@ public class GetEventAttendeesQueryHandler
 
                 TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
 
-                // Phase 6A.71: Calculate NET amount per registration (organizer's payout after 5% commission)
-                // For free events or null amounts, NetAmount will be null
-                NetAmount = r.TotalPrice != null
-                    ? r.TotalPrice.Amount * (1 - _commissionSettings.EventTicketCommissionRate)
-                    : null,
+                // Phase 6A.X: Use actual breakdown from Registration columns (set by SetRevenueBreakdown)
+                // For registrations without breakdown data, NetAmount uses legacy 5% calculation
+                SalesTaxAmount = r.SalesTaxAmount != null ? r.SalesTaxAmount.Amount : null,
+                StripeFeeAmount = r.StripeFeeAmount != null ? r.StripeFeeAmount.Amount : null,
+                PlatformCommissionAmount = r.PlatformCommissionAmount != null ? r.PlatformCommissionAmount.Amount : null,
+                OrganizerPayoutAmount = r.OrganizerPayoutAmount != null ? r.OrganizerPayoutAmount.Amount : null,
+                SalesTaxRate = r.SalesTaxRate,
+
+                // NetAmount: Use actual breakdown if available, otherwise legacy calculation
+                NetAmount = r.OrganizerPayoutAmount != null
+                    ? r.OrganizerPayoutAmount.Amount
+                    : (r.TotalPrice != null ? r.TotalPrice.Amount * (1 - _commissionSettings.EventTicketCommissionRate) : null),
 
                 Currency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
 
@@ -113,43 +120,29 @@ public class GetEventAttendeesQueryHandler
             netRevenue = grossRevenue - commissionAmount;
         }
 
-        // Phase 6A.X: Calculate detailed breakdown totals from event's RevenueBreakdown
-        // If event has RevenueBreakdown, use it to calculate per-registration totals
-        bool hasRevenueBreakdown = @event.RevenueBreakdown != null;
-        decimal totalSalesTax = 0m;
-        decimal totalStripeFees = 0m;
-        decimal totalPlatformCommission = 0m;
-        decimal totalOrganizerPayout = 0m;
-        decimal averageTaxRate = 0m;
+        // Phase 6A.X: Calculate detailed breakdown totals by summing actual Registration breakdown columns
+        // This uses the actual breakdown data stored when SetRevenueBreakdown() was called
+        decimal totalSalesTax = attendeeDtos.Sum(a => a.SalesTaxAmount ?? 0m);
+        decimal totalStripeFees = attendeeDtos.Sum(a => a.StripeFeeAmount ?? 0m);
+        decimal totalPlatformCommission = attendeeDtos.Sum(a => a.PlatformCommissionAmount ?? 0m);
+        decimal totalOrganizerPayout = attendeeDtos.Sum(a => a.OrganizerPayoutAmount ?? 0m);
 
-        if (hasRevenueBreakdown && @event.RevenueBreakdown != null)
+        // Calculate average tax rate weighted by registration count
+        var registrationsWithTax = attendeeDtos.Where(a => a.SalesTaxRate > 0).ToList();
+        decimal averageTaxRate = registrationsWithTax.Any()
+            ? registrationsWithTax.Average(a => a.SalesTaxRate)
+            : 0m;
+
+        // Check if any registration has breakdown data
+        bool hasRevenueBreakdown = attendeeDtos.Any(a =>
+            a.SalesTaxAmount.HasValue ||
+            a.StripeFeeAmount.HasValue ||
+            a.PlatformCommissionAmount.HasValue ||
+            a.OrganizerPayoutAmount.HasValue);
+
+        // Legacy fallback: If no registration has breakdown data, use commission-based calculation
+        if (!hasRevenueBreakdown && !isFreeEvent)
         {
-            // Calculate totals based on event's breakdown multiplied by registrations
-            // Each registration pays the same breakdown structure
-            var breakdown = @event.RevenueBreakdown;
-            var totalRegistrationCount = attendeeDtos.Sum(a => a.TotalAttendees);
-
-            // For single pricing (no dual/group), multiply breakdown by total attendees
-            // For dual/group pricing, this is an approximation (actual breakdown per registration may vary)
-            if (totalRegistrationCount > 0 && breakdown.GrossAmount.Amount > 0)
-            {
-                // Calculate ratio: actual gross / expected gross (if everyone paid base price)
-                var expectedGross = breakdown.GrossAmount.Amount * totalRegistrationCount;
-                var actualGross = grossRevenue;
-                var ratio = expectedGross > 0 ? actualGross / expectedGross : 0m;
-
-                // Scale breakdown components by actual revenue
-                totalSalesTax = breakdown.SalesTaxAmount.Amount * totalRegistrationCount * ratio;
-                totalStripeFees = breakdown.StripeFeeAmount.Amount * totalRegistrationCount * ratio;
-                totalPlatformCommission = breakdown.PlatformCommission.Amount * totalRegistrationCount * ratio;
-                totalOrganizerPayout = breakdown.OrganizerPayout.Amount * totalRegistrationCount * ratio;
-                averageTaxRate = breakdown.SalesTaxRate;
-            }
-        }
-        else if (!isFreeEvent)
-        {
-            // Legacy fallback: Use commission-based calculation
-            // Old events don't have detailed breakdown, so approximate
             totalPlatformCommission = commissionAmount;
             totalOrganizerPayout = netRevenue;
         }
@@ -159,7 +152,7 @@ public class GetEventAttendeesQueryHandler
             EventId = request.EventId,
             EventTitle = @event.Title.Value,
             Attendees = attendeeDtos,
-            TotalRegistrations = attendeeDtos.Count,
+            TotalRegistrations = attendeeDtos.Count(),
             TotalAttendees = attendeeDtos.Sum(a => a.TotalAttendees),
 
             // Phase 6A.71: Commission-aware revenue

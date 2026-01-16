@@ -41,6 +41,38 @@ public class EventAttendeeDto
 
     public string? Currency { get; init; }
 
+    // Phase 6A.X: Per-registration revenue breakdown
+    /// <summary>
+    /// Sales tax amount for this registration (state + local).
+    /// Null for registrations without breakdown data or free events.
+    /// </summary>
+    public decimal? SalesTaxAmount { get; init; }
+
+    /// <summary>
+    /// Stripe processing fee for this registration (2.9% + $0.30).
+    /// Null for registrations without breakdown data or free events.
+    /// </summary>
+    public decimal? StripeFeeAmount { get; init; }
+
+    /// <summary>
+    /// Platform commission for this registration (2% of taxable amount).
+    /// Null for registrations without breakdown data or free events.
+    /// </summary>
+    public decimal? PlatformCommissionAmount { get; init; }
+
+    /// <summary>
+    /// Organizer payout for this registration (after tax, Stripe fee, platform commission).
+    /// Should equal NetAmount for registrations with breakdown data.
+    /// Null for registrations without breakdown data or free events.
+    /// </summary>
+    public decimal? OrganizerPayoutAmount { get; init; }
+
+    /// <summary>
+    /// Sales tax rate applied to this registration (e.g., 0.0725 for 7.25%).
+    /// Zero for registrations without tax or free events.
+    /// </summary>
+    public decimal SalesTaxRate { get; init; }
+
     // Ticket Info
     public string? TicketCode { get; init; }
     public string? QrCodeData { get; init; }

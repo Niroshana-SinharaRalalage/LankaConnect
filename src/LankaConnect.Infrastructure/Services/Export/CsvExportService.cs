@@ -46,6 +46,17 @@ public class CsvExportService : ICsvExportService
         if (!attendees.IsFreeEvent)
         {
             csv.WriteField("PaymentStatus");
+            csv.WriteField("GrossAmount");
+
+            // Phase 6A.X: Add detailed revenue breakdown columns
+            if (attendees.HasRevenueBreakdown)
+            {
+                csv.WriteField("SalesTax");
+                csv.WriteField("TaxRate");
+                csv.WriteField("StripeFee");
+                csv.WriteField("PlatformCommission");
+            }
+
             csv.WriteField("NetAmount");
             csv.WriteField("Currency");
         }
@@ -93,8 +104,18 @@ public class CsvExportService : ICsvExportService
             if (!attendees.IsFreeEvent)
             {
                 csv.WriteField(a.PaymentStatus.ToString());
-                // Phase 6A.71: Show NET amount (after commission) instead of GROSS
-                csv.WriteField(a.NetAmount?.ToString("F2") ?? "");
+                csv.WriteField(a.TotalAmount?.ToString("F2") ?? "");  // Gross amount
+
+                // Phase 6A.X: Write breakdown columns if available
+                if (attendees.HasRevenueBreakdown)
+                {
+                    csv.WriteField(a.SalesTaxAmount?.ToString("F2") ?? "");
+                    csv.WriteField(a.SalesTaxRate > 0 ? $"{a.SalesTaxRate * 100:F2}%" : "");
+                    csv.WriteField(a.StripeFeeAmount?.ToString("F2") ?? "");
+                    csv.WriteField(a.PlatformCommissionAmount?.ToString("F2") ?? "");
+                }
+
+                csv.WriteField(a.NetAmount?.ToString("F2") ?? "");  // Net amount (organizer payout)
                 csv.WriteField(a.Currency ?? "");
             }
 
@@ -128,9 +149,20 @@ public class CsvExportService : ICsvExportService
             if (!attendees.IsFreeEvent)
             {
                 csv.WriteField("");  // PaymentStatus
-                csv.WriteField(netRevenue > 0
-                    ? $"{netRevenue:F2} (after 5% fee)"
-                    : "0.00");  // Show NET revenue with label
+                csv.WriteField(grossRevenue > 0 ? $"{grossRevenue:F2}" : "0.00");  // Gross revenue
+
+                // Phase 6A.X: Write breakdown totals if available
+                if (attendees.HasRevenueBreakdown)
+                {
+                    csv.WriteField(attendees.TotalSalesTax > 0 ? $"{attendees.TotalSalesTax:F2}" : "0.00");
+                    csv.WriteField(attendees.AverageTaxRate > 0 ? $"{attendees.AverageTaxRate * 100:F2}%" : "");
+                    csv.WriteField(attendees.TotalStripeFees > 0 ? $"{attendees.TotalStripeFees:F2}" : "0.00");
+                    csv.WriteField(attendees.TotalPlatformCommission > 0 ? $"{attendees.TotalPlatformCommission:F2}" : "0.00");
+                }
+
+                csv.WriteField(attendees.TotalOrganizerPayout > 0
+                    ? $"{attendees.TotalOrganizerPayout:F2}"
+                    : (netRevenue > 0 ? $"{netRevenue:F2}" : "0.00"));  // Net revenue (use breakdown if available, otherwise legacy)
                 csv.WriteField(currency);  // Currency
             }
 

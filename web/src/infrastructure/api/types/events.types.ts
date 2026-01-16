@@ -962,6 +962,18 @@ export interface EventAttendeeDto {
   netAmount?: number | null;
   currency?: string | null;
 
+  // Phase 6A.X: Per-registration revenue breakdown
+  /** Sales tax amount for this registration */
+  salesTaxAmount?: number | null;
+  /** Stripe processing fee for this registration */
+  stripeFeeAmount?: number | null;
+  /** Platform commission for this registration */
+  platformCommissionAmount?: number | null;
+  /** Organizer payout for this registration */
+  organizerPayoutAmount?: number | null;
+  /** Sales tax rate applied to this registration */
+  salesTaxRate: number;
+
   // Ticket Info
   ticketCode?: string | null;
   qrCodeData?: string | null;

@@ -178,11 +178,6 @@ public class EventNotificationEmailJob
             _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] COMPLETED - Success: {Success}, Failed: {Failed}, Total: {Total}",
                 correlationId, successCount, failedCount, recipients.Count);
 
-            // TEMPORARY: Database update commented out to test email sending independently
-            _logger.LogWarning("[Phase 6A.61][{CorrelationId}] SKIPPING database update - testing email sending only",
-                correlationId);
-
-            /* COMMENTED OUT FOR TESTING
             // 7. Update history record with final statistics
             // Phase 6A.61+ FIX: Reload entity to get fresh version and avoid DbUpdateConcurrencyException
             // The original entity loaded at the start may have stale UpdatedAt after minutes of email sending
@@ -259,7 +254,6 @@ public class EventNotificationEmailJob
                     correlationId, historyId, ex.GetType().FullName, ex.Message);
                 throw; // Re-throw for Hangfire retry
             }
-            */ // END COMMENTED OUT FOR TESTING
         }
         catch (Exception ex)
         {

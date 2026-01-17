@@ -185,9 +185,9 @@ public class EventNotificationEmailJobTests
                 It.IsAny<CancellationToken>()),
             Times.Exactly(4));
 
-        // TEMPORARY: Database update commented out for testing
-        // _mockHistoryRepository.Verify(x => x.Update(It.IsAny<EventNotificationHistory>()), Times.Once());
-        // _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once());
+        // Phase 6A.61+ Concurrency Fix: Entity reload before update
+        _mockHistoryRepository.Verify(x => x.Update(It.IsAny<EventNotificationHistory>()), Times.Once());
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Fact]
@@ -248,15 +248,16 @@ public class EventNotificationEmailJobTests
                 It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
-        // TEMPORARY: Database update commented out for testing
-        // _mockHistoryRepository.Verify(
-        //     x => x.Update(It.IsAny<EventNotificationHistory>()),
-        //     Times.Once());
+        // Phase 6A.61+ Concurrency Fix: Entity reload before update with final stats
+        _mockHistoryRepository.Verify(
+            x => x.Update(It.IsAny<EventNotificationHistory>()),
+            Times.Once());
 
-        // _mockHistoryRepository.Verify(
-        //     x => x.Update(It.Is<EventNotificationHistory>(h =>
-        //         h.SuccessfulSends == 1 && h.FailedSends == 1)),
-        //     Times.AtLeastOnce);
+        // Final update should have 1 success and 1 failure
+        _mockHistoryRepository.Verify(
+            x => x.Update(It.Is<EventNotificationHistory>(h =>
+                h.SuccessfulSends == 1 && h.FailedSends == 1)),
+            Times.AtLeastOnce);
     }
 
     #endregion

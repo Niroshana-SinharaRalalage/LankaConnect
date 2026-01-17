@@ -230,6 +230,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
 
         // Tax schema (Phase 6A.X)
+        // Migration 20260114170149 created in public schema, will be moved to reference_data schema
         modelBuilder.Entity<LankaConnect.Domain.Tax.StateTaxRate>().ToTable("state_tax_rates", "reference_data");
     }
 

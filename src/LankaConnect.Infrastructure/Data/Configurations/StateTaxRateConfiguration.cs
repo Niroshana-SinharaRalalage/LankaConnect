@@ -11,7 +11,8 @@ public class StateTaxRateConfiguration : IEntityTypeConfiguration<StateTaxRate>
 {
     public void Configure(EntityTypeBuilder<StateTaxRate> builder)
     {
-        builder.ToTable("state_tax_rates");
+        // Phase 6A.X: Explicitly specify reference_data schema (matches other reference data entities)
+        builder.ToTable("state_tax_rates", "reference_data");
 
         builder.HasKey(r => r.Id);
 

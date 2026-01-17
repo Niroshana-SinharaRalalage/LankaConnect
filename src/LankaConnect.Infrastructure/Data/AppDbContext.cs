@@ -228,6 +228,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Badges schema (Phase 6A.25)
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
+
+        // Tax schema (Phase 6A.X)
+        modelBuilder.Entity<LankaConnect.Domain.Tax.StateTaxRate>().ToTable("state_tax_rates", "reference_data");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -267,7 +270,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
             typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
-            typeof(ReferenceValue) // Phase 6A.47: Unified Reference Data
+            typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data
+            typeof(LankaConnect.Domain.Tax.StateTaxRate) // Phase 6A.X: US State Sales Tax Rates
         };
 
         // Get all types from Domain assembly that aren't in our configured list

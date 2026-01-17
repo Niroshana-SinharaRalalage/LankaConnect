@@ -244,11 +244,28 @@ public class NewsletterEmailJob
                 }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
                 {
-                    _logger.LogError(ex,
+                    _logger.LogWarning(ex,
                         "[Phase 6A.74] CONCURRENCY EXCEPTION when committing newsletter {NewsletterId}. " +
-                        "Expected 1 row affected. Entity may have been modified by another process. " +
-                        "SentAt: {SentAt}, Status: {Status}",
-                        newsletterId, freshNewsletter.SentAt, freshNewsletter.Status);
+                        "This likely means another concurrent Hangfire retry already updated the record. " +
+                        "Checking if another job execution succeeded...",
+                        newsletterId);
+
+                    // Phase 6A.74 CRITICAL FIX: Don't immediately retry on concurrency exception
+                    // Instead, reload the entity to check if another concurrent execution already succeeded
+                    var reloadedNewsletter = await _newsletterRepository.GetByIdAsync(newsletterId, CancellationToken.None);
+                    if (reloadedNewsletter != null && reloadedNewsletter.SentAt.HasValue)
+                    {
+                        _logger.LogInformation(
+                            "[Phase 6A.74] Verified that another concurrent job execution already marked newsletter as sent " +
+                            "(SentAt: {SentAt}). This job can exit successfully - no retry needed.",
+                            reloadedNewsletter.SentAt.Value);
+                        return; // Exit successfully - another execution handled the commit
+                    }
+
+                    // If the entity still has no SentAt, this is a real concurrency conflict that needs retry
+                    _logger.LogError(ex,
+                        "[Phase 6A.74] CONCURRENCY EXCEPTION and no other job succeeded yet. Newsletter: {NewsletterId}. Rethrowing for Hangfire retry.",
+                        newsletterId);
                     throw; // Re-throw for Hangfire retry
                 }
                 catch (Exception ex)

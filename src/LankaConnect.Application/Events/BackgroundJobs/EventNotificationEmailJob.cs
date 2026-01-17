@@ -221,10 +221,28 @@ public class EventNotificationEmailJob
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex,
+                _logger.LogWarning(ex,
                     "[Phase 6A.61][{CorrelationId}] CONCURRENCY EXCEPTION when committing history {HistoryId}. " +
-                    "Expected 1 row affected. Entity may have been modified. " +
-                    "Recipients: {Recipients}, Success: {Success}, Failed: {Failed}",
+                    "This likely means another concurrent Hangfire retry already updated the record. " +
+                    "Checking if another job execution succeeded...",
+                    correlationId, historyId);
+
+                // Phase 6A.61+ CRITICAL FIX: Don't immediately retry on concurrency exception
+                // Instead, reload the entity to check if another concurrent execution already succeeded
+                var reloadedHistory = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
+                if (reloadedHistory != null && (reloadedHistory.SuccessfulSends > 0 || reloadedHistory.FailedSends > 0))
+                {
+                    _logger.LogInformation(
+                        "[Phase 6A.61][{CorrelationId}] Verified that another concurrent job execution already committed statistics " +
+                        "(Success: {Success}, Failed: {Failed}). This job can exit successfully - no retry needed.",
+                        correlationId, reloadedHistory.SuccessfulSends, reloadedHistory.FailedSends);
+                    return; // Exit successfully - another execution handled the commit
+                }
+
+                // If the entity still has no statistics, this is a real concurrency conflict that needs retry
+                _logger.LogError(ex,
+                    "[Phase 6A.61][{CorrelationId}] CONCURRENCY EXCEPTION and no other job succeeded yet. " +
+                    "History: {HistoryId}, Recipients: {Recipients}, Success: {Success}, Failed: {Failed}. Rethrowing for Hangfire retry.",
                     correlationId, historyId, recipients.Count, successCount, failedCount);
                 throw; // Re-throw for Hangfire retry
             }

@@ -58,7 +58,20 @@
   - `totalOrganizerPayout`: $335.43 (net to organizer)
   - `grossRevenue`: $375.00 (8 registrations, 9 attendees)
 - ✅ Azure Logs: SQL queries visible, middleware active
-- ✅ **CONCLUSION**: Revenue calculation is working correctly. No fixes needed.
+- ❌ **BUG FOUND in Excel/CSV Export**: NetAmount showed **$47.50** instead of **$44.66**
+  - Root cause: NetAmount set to legacy 5% calculation (line 116-118) BEFORE on-the-fly breakdown calculation (lines 138-196)
+  - Result: Excel/CSV exports showed incorrect organizer payout
+
+**NetAmount Fix Deployed** (2026-01-17):
+- ✅ Root Cause Identified: [GetEventAttendeesQueryHandler.cs:116-118](../src/LankaConnect.Application/Events/Queries/GetEventAttendees/GetEventAttendeesQueryHandler.cs#L116-L118)
+- ✅ Fix Applied: Update NetAmount after on-the-fly calculation (line 182)
+- ✅ DTO Updated: [EventAttendeeDto.cs:41](../src/LankaConnect.Application/Events/Common/EventAttendeeDto.cs#L41) - Changed from `{ get; init; }` to `{ get; set; }`
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Deployment: #21100271270 SUCCESS (6m 8s)
+- ✅ **API Verification**: NetAmount now correctly shows **$44.66** (was $47.50)
+  - $50 ticket: `netAmount: 44.664539007092198581560283688` ✅
+  - $75 ticket: `netAmount: 67.146808510638297872340425532` ✅
+- ✅ **RESULT**: Excel/CSV exports will now show correct organizer payout amounts
 
 **Documentation**:
 - [OBSERVABILITY_IMPLEMENTATION_PLAN.md](./OBSERVABILITY_IMPLEMENTATION_PLAN.md) - 5-phase comprehensive plan (103 vulnerabilities identified)
@@ -68,6 +81,7 @@
 **Git Commits**:
 - 8c67c4b1 - "feat(phase-6ax): Phase 1 Quick Wins - Comprehensive Observability Improvements"
 - 3471bcd7 - "docs(phase-6ax): Add observability documentation"
+- db18cb21 - "fix(phase-6ax): Fix NetAmount calculation in revenue breakdown" ✅ **LATEST**
 
 **Next Steps** (Phase 2-5 Implementation - Ready to Begin):
 1. ⏳ **Phase 2** (Weeks 2-3): Apply logging template to all 30+ repositories

@@ -185,9 +185,10 @@ public class EventNotificationEmailJobTests
                 It.IsAny<CancellationToken>()),
             Times.Exactly(4));
 
-        // Should update history twice (once after recipient resolution, once after sending)
+        // Phase 6A.61+ Concurrency Fix: Only commits once at the end (not twice)
+        // History is updated twice (initial count + final stats) but only committed once to avoid concurrency exception
         _mockHistoryRepository.Verify(x => x.Update(It.IsAny<EventNotificationHistory>()), Times.Exactly(2));
-        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Fact]

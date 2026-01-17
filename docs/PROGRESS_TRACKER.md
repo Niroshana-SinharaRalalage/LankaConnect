@@ -1,9 +1,48 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-16 - Phase 6A.74 Part 11 HOTFIX: Critical Newsletter Data Issues - ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-01-17 - Phase 6A.61: Event Notification Email DI Fix - ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X: Revenue Breakdown System - ✅ FULLY DEPLOYED
+## 🎯 Current Session Status - Phase 6A.61: Event Notification Email Fix - ✅ DEPLOYED (Awaiting API Testing)
+
+### Phase 6A.61 - Critical DI Registration Fix - 2026-01-17
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Awaiting final API verification)
+
+**Priority**: 🚨 **CRITICAL** - Event organizers unable to send notification emails
+
+**Root Cause** (After comprehensive architect RCA):
+- EventNotificationEmailJob was **NEVER registered in the DI container**
+- Hangfire could not instantiate the job → Complete failure
+- Previous fixes addressed symptoms, not root cause
+
+**Critical Fix Implemented**:
+1. ✅ DI Registration: `services.AddTransient<EventNotificationEmailJob>()` at [DependencyInjection.cs:287](../src/LankaConnect.Infrastructure/DependencyInjection.cs#L287)
+2. ✅ Diagnostic Logging: Added `[DIAG-CMD-HANDLER]` logs in [SendEventNotificationCommandHandler.cs:97](../src/LankaConnect.Application/Events/Commands/SendEventNotification/SendEventNotificationCommandHandler.cs#L97)
+3. ✅ Integration Test: Created [BackgroundJobDIIntegrationTests.cs](../tests/LankaConnect.Infrastructure.Tests/Integration/BackgroundJobDIIntegrationTests.cs)
+
+**Build & Test Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Unit Tests: 1189 passed, 1 skipped (100% success)
+- ✅ Deployment: GitHub Actions Run #21096412655 - SUCCESS (5m 52s)
+- ⏳ API Testing: Awaiting event organizer credentials
+
+**Documentation**:
+- [PHASE_6A61_EVENT_NOTIFICATION_RCA.md](./PHASE_6A61_EVENT_NOTIFICATION_RCA.md) - 360-line comprehensive RCA (99% confidence)
+- [PHASE_6A61_FIX_IMPLEMENTATION.md](./PHASE_6A61_FIX_IMPLEMENTATION.md) - 400+ line implementation guide
+- [PHASE_6A61_RECIPIENT_RESOLUTION_FIX.md](./PHASE_6A61_RECIPIENT_RESOLUTION_FIX.md) - Previous (incorrect) fix attempt
+
+**Git Commit**: 8df1c378 - "fix(phase-6a61): CRITICAL - Register EventNotificationEmailJob in DI container"
+
+**Next Steps**:
+1. ⏳ API Testing with event d543629f-a5ba-4475-b124-3d0fc5200f2f
+2. ⏳ Verify Azure logs show `[DIAG-NOTIF-JOB]` execution (proves DI fix works)
+3. ⏳ Verify email delivery to recipients
+4. ⏳ Document final results
+
+---
+
+## ✅ Previous Session - Phase 6A.X: Revenue Breakdown System - ✅ FULLY DEPLOYED
 
 ### Phase 6A.X - Revenue Breakdown System - 2026-01-15
 

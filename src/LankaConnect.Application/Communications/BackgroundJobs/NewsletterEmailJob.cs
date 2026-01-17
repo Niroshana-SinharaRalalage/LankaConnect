@@ -198,7 +198,20 @@ public class NewsletterEmailJob
                 recipients.TotalRecipients > 0 ? emailStopwatch.ElapsedMilliseconds / recipients.TotalRecipients : 0);
 
             // 6. Mark newsletter as sent
-            var markResult = newsletter.MarkAsSent();
+            // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
+            // The entity was loaded at the start of the job, but by now the version may be stale
+            _logger.LogDebug("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);
+
+            var freshNewsletter = await _newsletterRepository.GetByIdAsync(newsletterId, CancellationToken.None);
+            if (freshNewsletter == null)
+            {
+                _logger.LogError(
+                    "[Phase 6A.74] Newsletter {NewsletterId} not found when reloading for MarkAsSent",
+                    newsletterId);
+                return;
+            }
+
+            var markResult = freshNewsletter.MarkAsSent();
             if (markResult.IsFailure)
             {
                 _logger.LogError(
@@ -210,7 +223,7 @@ public class NewsletterEmailJob
                 await _unitOfWork.CommitAsync(CancellationToken.None);
                 _logger.LogInformation(
                     "[Phase 6A.74] Newsletter {NewsletterId} marked as sent at {SentAt}",
-                    newsletterId, newsletter.SentAt);
+                    newsletterId, freshNewsletter.SentAt);
             }
 
             stopwatch.Stop();

@@ -220,10 +220,35 @@ public class NewsletterEmailJob
             }
             else
             {
-                await _unitOfWork.CommitAsync(CancellationToken.None);
-                _logger.LogInformation(
-                    "[Phase 6A.74] Newsletter {NewsletterId} marked as sent at {SentAt}",
-                    newsletterId, freshNewsletter.SentAt);
+                try
+                {
+                    _logger.LogInformation(
+                        "[Phase 6A.74] Attempting to commit newsletter {NewsletterId} as sent. Current version: {Version}",
+                        newsletterId, freshNewsletter.GetType().GetProperty("Version", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(freshNewsletter));
+
+                    await _unitOfWork.CommitAsync(CancellationToken.None);
+
+                    _logger.LogInformation(
+                        "[Phase 6A.74] Newsletter {NewsletterId} marked as sent at {SentAt}",
+                        newsletterId, freshNewsletter.SentAt);
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+                {
+                    _logger.LogError(ex,
+                        "[Phase 6A.74] CONCURRENCY EXCEPTION when committing newsletter {NewsletterId}. " +
+                        "Expected 1 row affected. Entity may have been modified by another process. " +
+                        "SentAt: {SentAt}, Status: {Status}",
+                        newsletterId, freshNewsletter.SentAt, freshNewsletter.Status);
+                    throw; // Re-throw for Hangfire retry
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "[Phase 6A.74] UNEXPECTED EXCEPTION when committing newsletter {NewsletterId}. " +
+                        "Exception Type: {ExceptionType}, Message: {Message}",
+                        newsletterId, ex.GetType().FullName, ex.Message);
+                    throw; // Re-throw for Hangfire retry
+                }
             }
 
             stopwatch.Stop();

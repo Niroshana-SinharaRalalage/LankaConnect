@@ -181,6 +181,9 @@ public class EventNotificationEmailJob
             // 7. Update history record with final statistics
             // Phase 6A.61+ FIX: Reload entity to get fresh version and avoid DbUpdateConcurrencyException
             // The original entity loaded at the start may have stale UpdatedAt after minutes of email sending
+            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Reloading history {HistoryId} to get fresh version before final update",
+                correlationId, historyId);
+
             var freshHistory = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
             if (freshHistory == null)
             {
@@ -189,12 +192,39 @@ public class EventNotificationEmailJob
                 return;
             }
 
+            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Updating history statistics - Recipients: {Recipients}, Success: {Success}, Failed: {Failed}",
+                correlationId, recipients.Count, successCount, failedCount);
+
             freshHistory.UpdateSendStatistics(recipients.Count, successCount, failedCount);
             _historyRepository.Update(freshHistory);
-            await _unitOfWork.CommitAsync(cancellationToken);
 
-            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Completed. Success: {Success}, Failed: {Failed}",
-                correlationId, successCount, failedCount);
+            try
+            {
+                _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Attempting to commit history {HistoryId}",
+                    correlationId, historyId);
+
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Successfully committed history update. Success: {Success}, Failed: {Failed}",
+                    correlationId, successCount, failedCount);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                _logger.LogError(ex,
+                    "[Phase 6A.61][{CorrelationId}] CONCURRENCY EXCEPTION when committing history {HistoryId}. " +
+                    "Expected 1 row affected. Entity may have been modified. " +
+                    "Recipients: {Recipients}, Success: {Success}, Failed: {Failed}",
+                    correlationId, historyId, recipients.Count, successCount, failedCount);
+                throw; // Re-throw for Hangfire retry
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[Phase 6A.61][{CorrelationId}] UNEXPECTED EXCEPTION when committing history {HistoryId}. " +
+                    "Exception Type: {ExceptionType}, Message: {Message}",
+                    correlationId, historyId, ex.GetType().FullName, ex.Message);
+                throw; // Re-throw for Hangfire retry
+            }
         }
         catch (Exception ex)
         {

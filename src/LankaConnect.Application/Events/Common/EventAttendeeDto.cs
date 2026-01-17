@@ -36,8 +36,9 @@ public class EventAttendeeDto
     /// <summary>
     /// Phase 6A.71: NET amount (organizer's payout after 5% platform commission).
     /// Null for free events or registrations without payment.
+    /// Phase 6A.X FIX: Changed to { get; set; } to allow on-the-fly calculation update in query handler.
     /// </summary>
-    public decimal? NetAmount { get; init; }
+    public decimal? NetAmount { get; set; }
 
     public string? Currency { get; init; }
 

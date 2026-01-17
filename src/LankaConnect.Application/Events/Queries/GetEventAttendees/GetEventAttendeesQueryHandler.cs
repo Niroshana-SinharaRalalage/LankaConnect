@@ -176,6 +176,11 @@ public class GetEventAttendeesQueryHandler
                         attendeeDto.OrganizerPayoutAmount = breakdown.OrganizerPayout.Amount;
                         attendeeDto.SalesTaxRate = breakdown.SalesTaxRate;
 
+                        // Phase 6A.X FIX: Update NetAmount to use calculated organizer payout
+                        // Bug: NetAmount was set to legacy 5% calculation (line 116-118) BEFORE on-the-fly calculation
+                        // This caused NetAmount to show $47.50 instead of $44.66 in Excel exports
+                        attendeeDto.NetAmount = breakdown.OrganizerPayout.Amount;
+
                         calculatedCount++;
                     }
                     else

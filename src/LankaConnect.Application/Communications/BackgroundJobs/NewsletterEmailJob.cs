@@ -211,6 +211,16 @@ public class NewsletterEmailJob
                 return;
             }
 
+            // Phase 6A.74 Final Idempotency Check: Check if another concurrent retry already marked it as sent
+            // This prevents DbUpdateConcurrencyException when multiple Hangfire retries run simultaneously
+            if (freshNewsletter.SentAt.HasValue)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.74] Newsletter {NewsletterId} was already marked as sent at {SentAt} by another job execution (concurrent retry). Skipping commit to avoid concurrency exception.",
+                    newsletterId, freshNewsletter.SentAt.Value);
+                return; // Exit successfully - emails were sent, another execution handled the commit
+            }
+
             var markResult = freshNewsletter.MarkAsSent();
             if (markResult.IsFailure)
             {

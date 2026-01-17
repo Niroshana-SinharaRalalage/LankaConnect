@@ -192,6 +192,17 @@ public class EventNotificationEmailJob
                 return;
             }
 
+            // Phase 6A.61+ Idempotency Check: If statistics already updated (SuccessCount > 0), skip to avoid duplicate sends
+            // This prevents concurrent Hangfire retries from sending the same emails multiple times
+            if (freshHistory.SuccessCount > 0 || freshHistory.FailedCount > 0)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.61][{CorrelationId}] History {HistoryId} already has statistics (Success: {Success}, Failed: {Failed}). " +
+                    "Another job execution already completed. Skipping commit to avoid concurrency exception.",
+                    correlationId, historyId, freshHistory.SuccessCount, freshHistory.FailedCount);
+                return; // Exit successfully - another concurrent execution handled the email send
+            }
+
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Updating history statistics - Recipients: {Recipients}, Success: {Success}, Failed: {Failed}",
                 correlationId, recipients.Count, successCount, failedCount);
 

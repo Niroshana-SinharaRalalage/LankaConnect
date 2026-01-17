@@ -190,6 +190,15 @@ try
 
     var app = builder.Build();
 
+    // Phase 6A.X: Validate configuration settings at startup
+    ValidateConfiguration(builder.Configuration, app.Services.GetRequiredService<ILogger<Program>>());
+
+    // Phase 6A.X: Validate EF Core configurations at startup (non-Development only - Development runs migrations)
+    if (!app.Environment.IsDevelopment())
+    {
+        await ValidateEfCoreConfigurationsAsync(app.Services);
+    }
+
     // Apply database migrations automatically on startup
     // CRITICAL FIX Phase 6A.61 Hotfix: Only run migrations in Development to avoid dual execution
     // In Staging/Production, migrations are applied exclusively via GitHub Actions CI/CD pipeline (deploy-staging.yml)
@@ -234,6 +243,9 @@ try
     }
 
     // Configure the HTTP request pipeline
+
+    // Phase 6A.X: Global exception handling middleware (FIRST to catch all exceptions)
+    app.UseMiddleware<LankaConnect.API.Middleware.GlobalExceptionMiddleware>();
 
     // CRITICAL FIX Phase 6A.12: Use ONLY built-in CORS middleware (removed custom middleware that was conflicting)
     // Apply CORS BEFORE other middleware to handle preflight requests correctly
@@ -453,6 +465,151 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// Phase 6A.X: Configuration validation methods
+static void ValidateConfiguration(IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
+{
+    logger.LogInformation("Phase 6A.X: Validating configuration settings at startup");
+
+    var requiredSettings = new Dictionary<string, bool>
+    {
+        // Critical settings (fail fast if missing)
+        { "ConnectionStrings:DefaultConnection", true },
+        { "Jwt:Key", true },
+        { "Jwt:Issuer", true },
+        { "Jwt:Audience", true },
+
+        // Optional settings based on features (warn if missing)
+        { "AzureStorage:ConnectionString", false },
+        { "Stripe:SecretKey", false },
+        { "Stripe:PublishableKey", false },
+        { "EmailSettings:AzureConnectionString", false }
+    };
+
+    var errors = new List<string>();
+    var warnings = new List<string>();
+
+    foreach (var (key, required) in requiredSettings)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (required)
+            {
+                errors.Add($"Missing required configuration: {key}");
+                logger.LogCritical("Configuration validation: Missing required setting {Key}", key);
+            }
+            else
+            {
+                warnings.Add($"Missing optional configuration: {key} (feature may be disabled)");
+                logger.LogWarning("Configuration validation: Missing optional setting {Key} - feature may be disabled", key);
+            }
+        }
+        else
+        {
+            logger.LogDebug("Configuration validation: Setting {Key} is present", key);
+        }
+    }
+
+    if (errors.Any())
+    {
+        logger.LogCritical(
+            "Configuration validation FAILED with {ErrorCount} critical errors:\n{Errors}",
+            errors.Count,
+            string.Join("\n", errors));
+        throw new InvalidOperationException($"Configuration validation failed. Missing required settings:\n{string.Join("\n", errors)}");
+    }
+
+    if (warnings.Any())
+    {
+        logger.LogWarning(
+            "Configuration validation completed with {WarningCount} warnings:\n{Warnings}",
+            warnings.Count,
+            string.Join("\n", warnings));
+    }
+    else
+    {
+        logger.LogInformation("Configuration validation PASSED - all required settings present");
+    }
+}
+
+static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    logger.LogInformation("Phase 6A.X: Validating EF Core configurations at startup");
+
+    try
+    {
+        // Step 1: Validate migrations are applied
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        if (pendingMigrations.Any())
+        {
+            logger.LogWarning(
+                "EF Core validation: Pending migrations detected - {Count} migrations not applied: {Migrations}",
+                pendingMigrations.Count(),
+                string.Join(", ", pendingMigrations));
+        }
+        else
+        {
+            logger.LogDebug("EF Core validation: All migrations applied");
+        }
+
+        // Step 2: Validate database connection
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            logger.LogCritical("EF Core validation: Cannot connect to database");
+            throw new InvalidOperationException("Cannot connect to database - check connection string");
+        }
+
+        logger.LogDebug("EF Core validation: Database connection successful");
+
+        // Step 3: Test critical DbSets to validate configurations
+        // This will throw if column mappings don't match database schema (like StateTaxRateConfiguration Phase 6A.X)
+        var criticalEntityTests = new List<(string EntityName, Func<Task> TestQuery)>
+        {
+            ("StateTaxRates", async () => await context.StateTaxRates.AsNoTracking().FirstOrDefaultAsync()),
+            ("Events", async () => await context.Events.AsNoTracking().FirstOrDefaultAsync()),
+            ("Users", async () => await context.Users.AsNoTracking().FirstOrDefaultAsync()),
+            ("Registrations", async () => await context.Registrations.AsNoTracking().FirstOrDefaultAsync())
+        };
+
+        foreach (var (entityName, testQuery) in criticalEntityTests)
+        {
+            try
+            {
+                await testQuery();
+                logger.LogDebug("EF Core validation: {EntityName} configuration VALID", entityName);
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex,
+                    "EF Core validation: {EntityName} configuration INVALID - {ErrorMessage}",
+                    entityName,
+                    ex.Message);
+                throw new InvalidOperationException(
+                    $"EF Core configuration validation failed for {entityName}. " +
+                    $"Error: {ex.Message}. " +
+                    $"This likely indicates a mismatch between entity configuration (HasColumnName) and database schema.",
+                    ex);
+            }
+        }
+
+        logger.LogInformation("EF Core configuration validation PASSED - all critical entities validated");
+    }
+    catch (Exception ex) when (ex is not InvalidOperationException)
+    {
+        logger.LogCritical(ex,
+            "EF Core validation: UNEXPECTED ERROR during validation - {ErrorMessage}",
+            ex.Message);
+        throw new InvalidOperationException(
+            $"EF Core configuration validation failed with unexpected error: {ex.Message}",
+            ex);
+    }
 }
 
 // Make Program class public for testing

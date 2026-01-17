@@ -17,6 +17,7 @@ public class StateTaxRateConfiguration : IEntityTypeConfiguration<StateTaxRate>
         builder.HasKey(r => r.Id);
 
         builder.Property(r => r.Id)
+            .HasColumnName("id")  // Phase 6A.X: PostgreSQL uses lowercase column names
             .ValueGeneratedNever();
 
         builder.Property(r => r.StateCode)

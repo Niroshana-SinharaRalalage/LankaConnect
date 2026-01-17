@@ -130,8 +130,9 @@ public class EventNotificationEmailJobTests
             .Setup(x => x.GetByIdAsync(historyId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(history);
 
+        // Phase 6A.61+ Fix: Mock now expects trackChanges: false parameter
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         _mockRecipientService
@@ -209,8 +210,9 @@ public class EventNotificationEmailJobTests
             .Setup(x => x.GetByIdAsync(historyId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(history);
 
+        // Phase 6A.61+ Fix: Mock now expects trackChanges: false parameter
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         _mockRecipientService

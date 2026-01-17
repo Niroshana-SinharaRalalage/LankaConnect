@@ -197,6 +197,14 @@ public class NewsletterEmailJob
                 newsletterId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 recipients.TotalRecipients > 0 ? emailStopwatch.ElapsedMilliseconds / recipients.TotalRecipients : 0);
 
+            // TEMPORARY DIAGNOSTIC: Comment out database tracking to isolate email sending
+            // If emails send successfully without this code, we know the issue is in the DB update logic
+            _logger.LogWarning(
+                "[Phase 6A.74] TEMPORARY: Database tracking DISABLED for diagnostic purposes. " +
+                "Newsletter {NewsletterId} emails sent but NOT marked as sent in database.",
+                newsletterId);
+
+            /* TEMPORARILY COMMENTED OUT FOR DIAGNOSTICS
             // 6. Mark newsletter as sent
             // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
             // The entity was loaded at the start of the job, but by now the version may be stale
@@ -277,6 +285,7 @@ public class NewsletterEmailJob
                     throw; // Re-throw for Hangfire retry
                 }
             }
+            END TEMPORARY COMMENT */
 
             stopwatch.Stop();
             _logger.LogInformation(

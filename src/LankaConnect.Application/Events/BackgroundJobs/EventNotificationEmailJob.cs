@@ -119,10 +119,9 @@ public class EventNotificationEmailJob
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Total recipients after adding registrations: {Count}",
                 correlationId, recipients.Count);
 
-            // 4. Update history record with recipient count
+            // 4. Update history record with recipient count (don't commit yet - will commit after email sending)
             history.UpdateSendStatistics(recipients.Count, 0, 0); // Initialize counts
             _historyRepository.Update(history);
-            await _unitOfWork.CommitAsync(cancellationToken);
 
             // 5. Build template parameters
             var templateData = BuildTemplateData(@event);

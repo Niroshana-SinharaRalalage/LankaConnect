@@ -119,11 +119,7 @@ public class EventNotificationEmailJob
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Total recipients after adding registrations: {Count}",
                 correlationId, recipients.Count);
 
-            // 4. Update history record with recipient count (don't commit yet - will commit after email sending)
-            history.UpdateSendStatistics(recipients.Count, 0, 0); // Initialize counts
-            _historyRepository.Update(history);
-
-            // 5. Build template parameters
+            // 4. Build template parameters (removed intermediate UpdateSendStatistics to prevent DbUpdateConcurrencyException)
             var templateData = BuildTemplateData(@event);
 
             // Phase 6A.61+ RCA: Diagnostic logging using LogError to bypass log filtering
@@ -183,8 +179,18 @@ public class EventNotificationEmailJob
                 correlationId, successCount, failedCount, recipients.Count);
 
             // 7. Update history record with final statistics
-            history.UpdateSendStatistics(recipients.Count, successCount, failedCount);
-            _historyRepository.Update(history);
+            // Phase 6A.61+ FIX: Reload entity to get fresh version and avoid DbUpdateConcurrencyException
+            // The original entity loaded at the start may have stale UpdatedAt after minutes of email sending
+            var freshHistory = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
+            if (freshHistory == null)
+            {
+                _logger.LogError("[Phase 6A.61][{CorrelationId}] History record {HistoryId} not found for final update",
+                    correlationId, historyId);
+                return;
+            }
+
+            freshHistory.UpdateSendStatistics(recipients.Count, successCount, failedCount);
+            _historyRepository.Update(freshHistory);
             await _unitOfWork.CommitAsync(cancellationToken);
 
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Completed. Success: {Success}, Failed: {Failed}",

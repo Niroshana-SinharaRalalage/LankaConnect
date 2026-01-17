@@ -438,6 +438,17 @@ Think as a Senior Software Engineer. Handle issues systematically, avoid shortcu
    - All the frontend changes must push and deployed to azure staging using deploy-ui-staging.yml.
 
 10. Make sure to test backend changes via relevent API(s) after pushind and deployed the changes including any database changes or any EF change or configuration.
+    - Geta token like this for API testing 
+      curl -X 'POST' \
+        'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+        "email": "niroshhh@gmail.com",
+        "password": "12!@qwASzx",
+        "rememberMe": true,
+        "ipAddress": "string"
+      }'
 
 11. Be accurate and honest in status reports. 
     - Check the changes are pushed and deployed correctly

@@ -283,6 +283,9 @@ public static class DependencyInjection
         // Phase 6A.74: Newsletter Background Jobs
         services.AddTransient<NewsletterEmailJob>();
 
+        // Phase 6A.61: Event Notification Background Jobs
+        services.AddTransient<LankaConnect.Application.Events.BackgroundJobs.EventNotificationEmailJob>();
+
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>
         {

@@ -93,6 +93,10 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
             _logger.LogInformation("[Phase 6A.61] Queued notification job {JobId} for history {HistoryId}",
                 jobId, history.Id);
 
+            // Phase 6A.61+ RCA: Diagnostic logging to confirm Hangfire received the job
+            _logger.LogError("[DIAG-CMD-HANDLER] Hangfire job enqueued - JobId: {JobId}, HistoryId: {HistoryId}, EventId: {EventId}, Status: {EventStatus}",
+                jobId, history.Id, request.EventId, @event.Status);
+
             // 6. Return success (count updated by background job)
             return Result<int>.Success(0); // Count updated by background job
         }

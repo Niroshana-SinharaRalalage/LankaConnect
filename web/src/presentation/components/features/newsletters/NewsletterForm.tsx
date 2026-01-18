@@ -139,6 +139,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
     // Phase 6A.74 Part 11 Fix: Event links template (NO placeholder - that's handled by RichTextEditor prop)
     // Always show both links - sign-up link navigates to #sign-ups anchor section
+    // Issue #3 Fix: Add horizontal line separator for visual separation from placeholder text
     const eventHtml = `
 <p style="margin-top: 16px;">
   Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}" style="color: #FF7900; text-decoration: underline;">View Event Details</a>
@@ -146,6 +147,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 <p>
   Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="color: #FF7900; text-decoration: underline;">View Event Sign-up Lists</a>
 </p>
+<hr style="margin: 16px 0; border: none; border-top: 1px solid #E5E7EB;" />
     `.trim();
 
     setValue('description', eventHtml);

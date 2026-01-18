@@ -36,8 +36,8 @@ export default function DiscoverNewslettersPage() {
     isLoading: metrosLoading,
   } = useMetroAreas();
 
+  // Issue #5 Fix: Remove selectedState - only use selectedMetroIds like /events page
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
-  const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
   const [dateFilter, setDateFilter] = useState<'all' | 'past-week' | 'past-month'>('all');
   const [searchInput, setSearchInput] = useState<string>('');
 
@@ -63,6 +63,7 @@ export default function DiscoverNewslettersPage() {
     [selectedMetroIds.length, ...selectedMetroIds]
   );
 
+  // Issue #5 Fix: Remove selectedState from filters - only use metroAreaIds
   const filters = useMemo(() => {
     return {
       searchTerm: debouncedSearchTerm || undefined,
@@ -70,57 +71,55 @@ export default function DiscoverNewslettersPage() {
       latitude: isAnonymous ? latitude ?? undefined : undefined,
       longitude: isAnonymous ? longitude ?? undefined : undefined,
       metroAreaIds: stableMetroIds,
-      state: selectedState,
       ...dateRange,
     };
-  }, [debouncedSearchTerm, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
+  }, [debouncedSearchTerm, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, dateRange]);
 
   const { data: newsletters, isLoading: newslettersLoading, error: newslettersError } = usePublishedNewslettersWithFilters(filters);
 
+  // Issue #5 Fix: Simplify location tree to match /events page pattern exactly
   const locationTree = useMemo((): TreeNode[] => {
-    const stateNodes = US_STATES.map(state => {
-      const stateMetros = metroAreasByState.get(state.code) || [];
-      const stateLevelMetro = stateLevelMetros.find(m => m.state === state.code);
-      const stateId = stateLevelMetro?.id || state.code;
+    const nodes: TreeNode[] = [];
 
-      return {
-        id: stateId,
-        label: `All ${state.name}`,
-        checked: selectedMetroIds.includes(stateId),
-        children: stateMetros.map(metro => ({
+    US_STATES.forEach((state) => {
+      const metrosForState = metroAreasByState.get(state.code) || [];
+      if (metrosForState.length === 0) return;
+
+      const stateMetro = metrosForState.find((m) => m.isStateLevelArea);
+      const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
+
+      const children: TreeNode[] = [];
+
+      if (stateMetro) {
+        children.push({
+          id: stateMetro.id,
+          label: `All of ${state.name}`,
+          checked: selectedMetroIds.includes(stateMetro.id),
+        });
+      }
+
+      cityMetros.forEach((metro) => {
+        children.push({
           id: metro.id,
-          label: `${metro.name}, ${metro.state}`,
+          label: metro.name,
           checked: selectedMetroIds.includes(metro.id),
-        })),
-      };
+        });
+      });
+
+      nodes.push({
+        id: state.code,
+        label: state.name,
+        checked: false,
+        children,
+      });
     });
 
-    return [
-      { id: 'all-locations', label: 'All Locations', checked: selectedMetroIds.length === 0 },
-      ...stateNodes,
-    ];
-  }, [metroAreasByState, stateLevelMetros, selectedMetroIds]);
+    return nodes;
+  }, [metroAreasByState, selectedMetroIds]);
 
-  const handleLocationChange = (selectedIds: string[]) => {
-    if (selectedIds.includes('all-locations')) {
-      setSelectedMetroIds([]);
-      setSelectedState(undefined);
-      return;
-    }
-
-    // Check if any selected ID is a state-level metro
-    const selectedStateLevelMetro = selectedIds.find(id =>
-      stateLevelMetros.some(metro => metro.id === id)
-    );
-
-    if (selectedStateLevelMetro) {
-      const metro = stateLevelMetros.find(m => m.id === selectedStateLevelMetro);
-      setSelectedState(metro?.state);
-      setSelectedMetroIds([]);
-    } else {
-      setSelectedState(undefined);
-      setSelectedMetroIds(selectedIds);
-    }
+  // Issue #5 Fix: Simplify handler to match /events page - just update selectedMetroIds
+  const handleLocationChange = (newSelectedIds: string[]) => {
+    setSelectedMetroIds(newSelectedIds);
   };
 
   const isLoading = newslettersLoading || locationLoading || metrosLoading;
@@ -175,19 +174,15 @@ export default function DiscoverNewslettersPage() {
             </div>
           </div>
 
-          {/* Fix Issue #2: Add minimum width wrapper for TreeDropdown */}
+          {/* Issue #5 Fix: Use selectedMetroIds directly like /events page */}
           <div className="min-w-[300px]">
             <TreeDropdown
               nodes={locationTree}
-              selectedIds={
-                selectedState
-                  ? [selectedState]
-                  : selectedMetroIds.length > 0
-                  ? selectedMetroIds
-                  : ['all-locations']
-              }
+              selectedIds={selectedMetroIds}
               onSelectionChange={handleLocationChange}
-              placeholder="Select Location"
+              placeholder="Select location"
+              maxSelections={20}
+              disabled={isLoading || metrosLoading}
               className="w-full"
             />
           </div>

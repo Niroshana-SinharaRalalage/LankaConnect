@@ -956,8 +956,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Sign-Up Management Section */}
         {/* Wait for auth hydration before rendering to ensure userId is available */}
+        {/* Issue #4 Fix: Add id="sign-ups" anchor for newsletter link navigation */}
         {_hasHydrated && (
-          <div className="mt-8">
+          <div id="sign-ups" className="mt-8">
             <SignUpManagementSection
               eventId={id}
               userId={user?.userId}

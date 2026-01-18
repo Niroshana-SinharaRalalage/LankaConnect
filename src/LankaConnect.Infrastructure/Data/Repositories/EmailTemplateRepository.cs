@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications.ValueObjects;
-using Serilog;
+using System.Diagnostics;
 using Serilog.Context;
 
 namespace LankaConnect.Infrastructure.Data.Repositories;
@@ -12,11 +13,17 @@ namespace LankaConnect.Infrastructure.Data.Repositories;
 /// <summary>
 /// Repository implementation for EmailTemplate entities with specialized template operations
 /// Follows TDD principles and integrates Result pattern for error handling
+/// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
 public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplateRepository
 {
-    public EmailTemplateRepository(AppDbContext context) : base(context)
+    private readonly ILogger<EmailTemplateRepository> _repoLogger;
+
+    public EmailTemplateRepository(
+        AppDbContext context,
+        ILogger<EmailTemplateRepository> logger) : base(context)
     {
+        _repoLogger = logger;
     }
 
     public async Task<List<EmailTemplate>> GetTemplatesAsync(
@@ -29,43 +36,75 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetTemplates"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
         using (LogContext.PushProperty("Category", category))
         using (LogContext.PushProperty("EmailType", emailType))
         using (LogContext.PushProperty("IsActive", isActive))
+        using (LogContext.PushProperty("SearchTerm", searchTerm))
         using (LogContext.PushProperty("PageNumber", pageNumber))
         using (LogContext.PushProperty("PageSize", pageSize))
         {
-            _logger.Debug("Getting email templates with filters - Category: {Category}, EmailType: {EmailType}, Active: {IsActive}, Search: {SearchTerm}",
-                category, emailType, isActive, searchTerm);
+            var stopwatch = Stopwatch.StartNew();
 
-            var query = _dbSet.AsNoTracking();
+            _repoLogger.LogDebug(
+                "GetTemplatesAsync START: Category={Category}, EmailType={EmailType}, IsActive={IsActive}, SearchTerm={SearchTerm}, Page={PageNumber}, PageSize={PageSize}",
+                category, emailType, isActive, searchTerm, pageNumber, pageSize);
 
-            // Apply filters
-            if (category != null)
-                query = query.Where(t => t.Category.Value == category.Value);
-
-            if (emailType.HasValue)
-                query = query.Where(t => t.Type == emailType.Value);
-
-            if (isActive.HasValue)
-                query = query.Where(t => t.IsActive == isActive.Value);
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
+            try
             {
-                query = query.Where(t => t.Name.Contains(searchTerm) || 
-                                       t.Description.Contains(searchTerm));
+                var query = _dbSet.AsNoTracking();
+
+                // Apply filters
+                if (category != null)
+                    query = query.Where(t => t.Category.Value == category.Value);
+
+                if (emailType.HasValue)
+                    query = query.Where(t => t.Type == emailType.Value);
+
+                if (isActive.HasValue)
+                    query = query.Where(t => t.IsActive == isActive.Value);
+
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    query = query.Where(t => t.Name.Contains(searchTerm) ||
+                                           t.Description.Contains(searchTerm));
+                }
+
+                // Apply pagination
+                var result = await query
+                    .OrderBy(t => t.Category.Value)
+                    .ThenBy(t => t.Name)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetTemplatesAsync COMPLETE: Category={Category}, EmailType={EmailType}, IsActive={IsActive}, Count={Count}, Duration={ElapsedMs}ms",
+                    category,
+                    emailType,
+                    isActive,
+                    result.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
             }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
 
-            // Apply pagination
-            var result = await query
-                .OrderBy(t => t.Category.Value)
-                .ThenBy(t => t.Name)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(cancellationToken);
+                _repoLogger.LogError(ex,
+                    "GetTemplatesAsync FAILED: Category={Category}, EmailType={EmailType}, Page={PageNumber}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    category,
+                    emailType,
+                    pageNumber,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
 
-            _logger.Debug("Retrieved {Count} email templates", result.Count);
-            return result;
+                throw;
+            }
         }
     }
 
@@ -77,29 +116,65 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetTemplatesCount"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
+        using (LogContext.PushProperty("Category", category))
+        using (LogContext.PushProperty("EmailType", emailType))
+        using (LogContext.PushProperty("IsActive", isActive))
+        using (LogContext.PushProperty("SearchTerm", searchTerm))
         {
-            var query = _dbSet.AsNoTracking();
+            var stopwatch = Stopwatch.StartNew();
 
-            // Apply same filters as GetTemplatesAsync
-            if (category != null)
-                query = query.Where(t => t.Category.Value == category.Value);
+            _repoLogger.LogDebug(
+                "GetTemplatesCountAsync START: Category={Category}, EmailType={EmailType}, IsActive={IsActive}, SearchTerm={SearchTerm}",
+                category, emailType, isActive, searchTerm);
 
-            if (emailType.HasValue)
-                query = query.Where(t => t.Type == emailType.Value);
-
-            if (isActive.HasValue)
-                query = query.Where(t => t.IsActive == isActive.Value);
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
+            try
             {
-                query = query.Where(t => t.Name.Contains(searchTerm) || 
-                                       t.Description.Contains(searchTerm));
-            }
+                var query = _dbSet.AsNoTracking();
 
-            var count = await query.CountAsync(cancellationToken);
-            
-            _logger.Debug("Templates count: {Count}", count);
-            return count;
+                // Apply same filters as GetTemplatesAsync
+                if (category != null)
+                    query = query.Where(t => t.Category.Value == category.Value);
+
+                if (emailType.HasValue)
+                    query = query.Where(t => t.Type == emailType.Value);
+
+                if (isActive.HasValue)
+                    query = query.Where(t => t.IsActive == isActive.Value);
+
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    query = query.Where(t => t.Name.Contains(searchTerm) ||
+                                           t.Description.Contains(searchTerm));
+                }
+
+                var count = await query.CountAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetTemplatesCountAsync COMPLETE: Category={Category}, EmailType={EmailType}, Count={Count}, Duration={ElapsedMs}ms",
+                    category,
+                    emailType,
+                    count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetTemplatesCountAsync FAILED: Category={Category}, EmailType={EmailType}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    category,
+                    emailType,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
         }
     }
 
@@ -108,30 +183,59 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetCategoryCounts"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
+        using (LogContext.PushProperty("IsActive", isActive))
         {
-            var query = _dbSet.AsNoTracking();
+            var stopwatch = Stopwatch.StartNew();
 
-            if (isActive.HasValue)
-                query = query.Where(t => t.IsActive == isActive.Value);
+            _repoLogger.LogDebug("GetCategoryCountsAsync START: IsActive={IsActive}", isActive);
 
-            var result = await query
-                .GroupBy(t => t.Category.Value)
-                .Select(g => new { CategoryValue = g.Key, Count = g.Count() })
-                .ToListAsync(cancellationToken);
-
-            // Convert to proper EmailTemplateCategory objects
-            var categoryDict = new Dictionary<EmailTemplateCategory, int>();
-            foreach (var item in result)
+            try
             {
-                var categoryResult = EmailTemplateCategory.FromValue(item.CategoryValue);
-                if (categoryResult.IsSuccess)
-                {
-                    categoryDict[categoryResult.Value] = item.Count;
-                }
-            }
+                var query = _dbSet.AsNoTracking();
 
-            _logger.Debug("Category counts: {@CategoryCounts}", categoryDict);
-            return categoryDict;
+                if (isActive.HasValue)
+                    query = query.Where(t => t.IsActive == isActive.Value);
+
+                var result = await query
+                    .GroupBy(t => t.Category.Value)
+                    .Select(g => new { CategoryValue = g.Key, Count = g.Count() })
+                    .ToListAsync(cancellationToken);
+
+                // Convert to proper EmailTemplateCategory objects
+                var categoryDict = new Dictionary<EmailTemplateCategory, int>();
+                foreach (var item in result)
+                {
+                    var categoryResult = EmailTemplateCategory.FromValue(item.CategoryValue);
+                    if (categoryResult.IsSuccess)
+                    {
+                        categoryDict[categoryResult.Value] = item.Count;
+                    }
+                }
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetCategoryCountsAsync COMPLETE: IsActive={IsActive}, CategoryCount={CategoryCount}, Duration={ElapsedMs}ms",
+                    isActive,
+                    categoryDict.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return categoryDict;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetCategoryCountsAsync FAILED: IsActive={IsActive}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    isActive,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
         }
     }
 
@@ -139,14 +243,17 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            _logger.Warning("[TEMPLATE-LOAD] GetByNameAsync called with null/empty name");
+            _repoLogger.LogWarning("GetByNameAsync called with null/empty name");
             return null;
         }
 
         using (LogContext.PushProperty("Operation", "GetByName"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
         using (LogContext.PushProperty("TemplateName", name))
         {
-            _logger.Information("[TEMPLATE-LOAD] Getting template by name: {TemplateName}", name);
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetByNameAsync START: TemplateName={TemplateName}", name);
 
             try
             {
@@ -154,21 +261,39 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                     .AsNoTracking()
                     .FirstOrDefaultAsync(t => t.Name == name, cancellationToken);
 
+                stopwatch.Stop();
+
                 if (result != null)
                 {
-                    _logger.Information("[TEMPLATE-LOAD] ✅ Found template {TemplateId} with name {TemplateName}, IsActive: {IsActive}, Category: {Category}",
-                        result.Id, name, result.IsActive, result.Category.Value);
+                    _repoLogger.LogInformation(
+                        "GetByNameAsync COMPLETE: TemplateName={TemplateName}, TemplateId={TemplateId}, IsActive={IsActive}, Category={Category}, Duration={ElapsedMs}ms",
+                        name,
+                        result.Id,
+                        result.IsActive,
+                        result.Category.Value,
+                        stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
-                    _logger.Warning("[TEMPLATE-LOAD] ❌ No template found with name {TemplateName}", name);
+                    _repoLogger.LogInformation(
+                        "GetByNameAsync COMPLETE: TemplateName={TemplateName}, Found=false, Duration={ElapsedMs}ms",
+                        name,
+                        stopwatch.ElapsedMilliseconds);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "[TEMPLATE-LOAD] ❌ Exception loading template {TemplateName}: {Message}", name, ex.Message);
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByNameAsync FAILED: TemplateName={TemplateName}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    name,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
                 throw;
             }
         }
@@ -180,35 +305,90 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetByEmailType"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
         using (LogContext.PushProperty("EmailType", emailType))
+        using (LogContext.PushProperty("IsActive", isActive))
         {
-            _logger.Debug("Getting templates by email type: {EmailType}", emailType);
+            var stopwatch = Stopwatch.StartNew();
 
-            var query = _dbSet.AsNoTracking().Where(t => t.Type == emailType);
+            _repoLogger.LogDebug("GetByEmailTypeAsync START: EmailType={EmailType}, IsActive={IsActive}", emailType, isActive);
 
-            if (isActive.HasValue)
-                query = query.Where(t => t.IsActive == isActive.Value);
+            try
+            {
+                var query = _dbSet.AsNoTracking().Where(t => t.Type == emailType);
 
-            var result = await query
-                .OrderBy(t => t.Name)
-                .ToListAsync(cancellationToken);
+                if (isActive.HasValue)
+                    query = query.Where(t => t.IsActive == isActive.Value);
 
-            _logger.Debug("Found {Count} templates for email type {EmailType}", result.Count, emailType);
-            return result;
+                var result = await query
+                    .OrderBy(t => t.Name)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByEmailTypeAsync COMPLETE: EmailType={EmailType}, IsActive={IsActive}, Count={Count}, Duration={ElapsedMs}ms",
+                    emailType,
+                    isActive,
+                    result.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByEmailTypeAsync FAILED: EmailType={EmailType}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    emailType,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
         }
     }
 
     public async Task UpdateAsync(EmailTemplate template, CancellationToken cancellationToken = default)
     {
-        using (LogContext.PushProperty("Operation", "UpdateTemplate"))
+        using (LogContext.PushProperty("Operation", "Update"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
         using (LogContext.PushProperty("TemplateId", template.Id))
+        using (LogContext.PushProperty("TemplateName", template.Name))
         {
-            _logger.Debug("Updating email template {TemplateId}", template.Id);
+            var stopwatch = Stopwatch.StartNew();
 
-            _dbSet.Update(template);
-            await _context.SaveChangesAsync(cancellationToken);
+            _repoLogger.LogDebug("UpdateAsync START: TemplateId={TemplateId}, TemplateName={TemplateName}", template.Id, template.Name);
 
-            _logger.Debug("Updated email template {TemplateId}", template.Id);
+            try
+            {
+                _dbSet.Update(template);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "UpdateAsync COMPLETE: TemplateId={TemplateId}, TemplateName={TemplateName}, IsActive={IsActive}, Duration={ElapsedMs}ms",
+                    template.Id,
+                    template.Name,
+                    template.IsActive,
+                    stopwatch.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "UpdateAsync FAILED: TemplateId={TemplateId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    template.Id,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
         }
     }
 }

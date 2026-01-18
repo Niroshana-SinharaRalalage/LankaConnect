@@ -1,9 +1,9 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 2 Step 3 Batch 2A Complete*
+*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 2 Step 3 Batch 2B Complete*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Phase 2 Step 3 Batch 2A Complete ✅
+## 🎯 Current Session Status - Phase 6A.X Observability - Phase 2 Step 3 Batch 2B Complete ✅
 
 ### Phase 6A.X - Comprehensive Observability Improvements (Phase 1 Quick Wins) - 2026-01-17
 
@@ -207,20 +207,69 @@
 - ✅ Performance timing available for all ticket and notification queries
 - ✅ Bulk operations (MarkAllAsReadAsync, DeleteOldReadNotificationsAsync) log rows affected
 
-**Remaining Repositories** (14 repositories for Batches 2B-4):
-- Batch 2B (Week 3): Review (22 methods), Service (14 methods), EmailMessage (13 methods upgrade from partial logging) - 49 methods
+**Phase 2 Step 3 - Batch 2B: Review, Service, and EmailMessage Repositories** (2026-01-18):
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflow #21105808301)
+
+**Batch 2B Repositories Enhanced** (3 repositories, 49 methods total):
+1. ✅ [ReviewRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/ReviewRepository.cs) - 22 methods
+   - GetByBusinessIdAsync, GetApprovedByBusinessIdAsync, GetByReviewerIdAsync, GetByBusinessAndReviewerAsync
+   - GetByStatusAsync, GetPendingReviewsAsync, GetReportedReviewsAsync
+   - GetByRatingAsync, GetByRatingRangeAsync, SearchByContentAsync, SearchByTitleAsync
+   - GetApprovedByBusinessIdPaginatedAsync, GetByBusinessIdOrderedByRatingAsync, GetRecentByBusinessIdAsync
+   - GetReviewCountByBusinessIdAsync, GetApprovedReviewCountByBusinessIdAsync
+   - GetAverageRatingByBusinessIdAsync, GetRatingDistributionByBusinessIdAsync
+   - GetReviewCountByReviewerIdAsync, HasReviewerReviewedBusinessAsync
+   - GetReviewsNeedingModerationAsync, GetPendingReviewCountAsync
+2. ✅ [ServiceRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/ServiceRepository.cs) - 14 methods
+   - GetByBusinessIdAsync, GetActiveByBusinessIdAsync, GetByBusinessIdAndNameAsync
+   - SearchByNameAsync, SearchByDescriptionAsync, GetByPriceRangeAsync, GetFreeServicesAsync
+   - GetServiceCountByBusinessIdAsync, GetActiveServiceCountByBusinessIdAsync
+   - GetServicesByBusinessIdsAsync, DeactivateAllByBusinessIdAsync
+3. ✅ [EmailMessageRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/EmailMessageRepository.cs) - 13 methods
+   - **UPGRADED** from partial to comprehensive logging
+   - GetQueuedEmailsAsync, GetFailedEmailsForRetryAsync, GetEmailsByStatusAsync, GetEmailsByTypeAsync
+   - GetEmailQueueStatsAsync, MarkAsProcessingAsync, CreateEmailMessageAsync
+   - GetStatusCountsAsync, GetFilteredAsync, GetFilteredCountAsync
+
+**Logging Pattern Enhancements**:
+- ✅ All methods follow RepositoryLoggingTemplate.cs pattern
+- ✅ LogContext.PushProperty for correlation (Operation, EntityType, parameters)
+- ✅ Stopwatch for performance timing (all 49 methods)
+- ✅ Debug logs at START with input parameters
+- ✅ Information logs at COMPLETE with results (count, found status, distribution data)
+- ✅ Error logs with PostgreSQL SqlState extraction
+- ✅ Try-catch wrappers for all database operations
+- ✅ EmailMessageRepository: Upgraded from Serilog _logger.Debug to comprehensive ILogger<T> pattern
+
+**Special Features**:
+- ✅ ReviewRepository: Statistical methods (average rating, distribution) with comprehensive metrics
+- ✅ ServiceRepository: Price range and search operations with full logging
+- ✅ EmailMessageRepository: Result pattern methods with enhanced error tracking (concurrency conflicts, unique constraints)
+
+**Build & Deployment Results**:
+- ✅ Build: 0 errors, 0 warnings (Infrastructure project)
+- ✅ Code Changes: +1,754 insertions, -356 deletions (comprehensive logging upgrade)
+- ✅ Commit: 754bd9e5 - "feat(phase-6ax): Batch 2B observability - comprehensive logging for 3 repositories (49 methods)"
+- ✅ Deployment: GitHub Actions Run #21105808301 - IN PROGRESS
+- ✅ Container App URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Impact**:
+- ✅ 14 repositories now have comprehensive observability (11 from previous batches + 3 from Batch 2B)
+- ✅ 100 total methods enhanced across all batches (51 from previous + 49 from Batch 2B)
+- ✅ Review operations fully logged (search, filter, statistics, moderation)
+- ✅ Service operations fully logged (search by name/description/price, bulk operations)
+- ✅ Email queue operations fully logged with Result pattern error handling
+- ✅ Performance timing available for all review, service, and email queries
+- ✅ Statistical operations (average rating, distribution) log detailed metrics
+
+**Remaining Repositories** (11 repositories for Batches 3-4):
 - Batch 3 (Week 4): BusinessMembership, Category, RefreshToken, NotificationPreference repositories (4)
-- Batch 4 (Week 5): AdminActionLog, Analytics, remaining repositories + external services (6)
+- Batch 4 (Week 5): AdminActionLog, Analytics, remaining repositories + external services (7)
 
 **Next Steps** (Phase 2-5 Implementation):
-1. ⏳ **Phase 2 Step 3 - Batch 2B** (Week 3): Apply logging template to 3 large repositories (49 methods)
-   - ReviewRepository (22 methods) - Business review operations
-   - ServiceRepository (14 methods) - Business service management
-   - EmailMessageRepository (13 methods) - Upgrade from partial to comprehensive logging
-   - Continue following established pattern from RepositoryLoggingTemplate.cs
-
-2. ⏳ **Phase 2 Step 3 - Batch 3** (Week 3-4): Apply logging template to remaining repositories
-   - BusinessMembership, Category, RefreshToken, NotificationPreference repositories
+1. ⏳ **Phase 2 Step 3 - Batch 3** (Week 3-4): Apply logging template to remaining repositories
+   - BusinessMembership, Category, RefreshToken, NotificationPreference repositories (4)
    - Add external service logging (Azure Email, SMS, Storage, Stripe)
    - Add Polly retry policies
    - Add performance metrics

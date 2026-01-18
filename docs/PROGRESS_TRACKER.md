@@ -3,13 +3,18 @@
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 11: Newsletter UI Quick Fixes Complete ✅
+## 🎯 Current Session Status - Phase 6A.74 Part 11: RCA CRITICAL FAILURES ⚠️
 
-### Phase 6A.74 Part 11 - Newsletter UI Quick Fixes (2026-01-18)
+### Phase 6A.74 Part 11 - CRITICAL: Root Cause Analysis (2026-01-18)
 
-**Status**: ✅ **COMPLETE** (Issues #3, #4, #5 resolved)
+**Status**: ⚠️ **FAILURES IDENTIFIED** - Previous fixes were WRONG
 
-**Deployment**: ✅ **SUCCESS** (Workflow #84, deploy-ui-staging.yml)
+**RCA Document**: See [RCA_PHASE_6A74_CRITICAL_FAILURES.md](./RCA_PHASE_6A74_CRITICAL_FAILURES.md) for complete analysis
+
+**User Feedback**: All 3 "fixes" from previous session were INCORRECT
+- ❌ Issue #3: Added HR separator → USER WANTS: No event links, just placeholder watermark
+- ❌ Issue #4: Added id="sign-ups" → STILL BROKEN: Link goes to top of page
+- ❌ Issue #5: Selection persists → BUT: API calls are failing with 404/400 errors
 
 **Implementation Summary**:
 Fixed 3 quick-win UI issues (Phase 1 & 2 from RCA) identified through user testing:

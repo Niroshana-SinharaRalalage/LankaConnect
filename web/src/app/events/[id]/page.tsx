@@ -19,7 +19,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -100,6 +100,32 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.14: Update registration mutation
   const updateRegistrationMutation = useUpdateRegistrationDetails();
+
+  // Phase 6A.74 Part 11 Issue #4 Fix: Handle hash navigation for anchor links
+  // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
+  useEffect(() => {
+    // Only run after component has mounted and data is loaded
+    if (!event || isLoading) return;
+
+    // Check if URL contains a hash
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    // Small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      const elementId = hash.substring(1); // Remove # from hash
+      const element = document.getElementById(elementId);
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [event, isLoading]);
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {

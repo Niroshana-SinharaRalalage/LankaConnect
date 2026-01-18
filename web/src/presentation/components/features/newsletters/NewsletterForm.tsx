@@ -122,37 +122,6 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
 
-  // Auto-populate event links in rich text editor when event is selected
-  // Phase 6A.74 Part 6 - Issue 3 fix
-  useEffect(() => {
-    if (!selectedEvent || isEditMode) return;
-
-    const currentDescription = watch('description');
-
-    // Only auto-populate if description is completely empty (don't overwrite user content)
-    if (currentDescription && currentDescription.trim() !== '' && currentDescription !== '<p></p>') {
-      return;
-    }
-
-    // Get frontend URL from environment or use relative paths
-    const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
-
-    // Phase 6A.74 Part 11 Fix: Event links template (NO placeholder - that's handled by RichTextEditor prop)
-    // Always show both links - sign-up link navigates to #sign-ups anchor section
-    // Issue #3 Fix: Add horizontal line separator for visual separation from placeholder text
-    const eventHtml = `
-<p style="margin-top: 16px;">
-  Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}" style="color: #FF7900; text-decoration: underline;">View Event Details</a>
-</p>
-<p>
-  Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="color: #FF7900; text-decoration: underline;">View Event Sign-up Lists</a>
-</p>
-<hr style="margin: 16px 0; border: none; border-top: 1px solid #E5E7EB;" />
-    `.trim();
-
-    setValue('description', eventHtml);
-  }, [selectedEvent, signUpLists, isEditMode, watch, setValue]);
-
   // Build location tree for TreeDropdown (Issue #8)
   const selectedMetroIds = watch('metroAreaIds') || [];
   const locationTree = useMemo((): TreeNode[] => {

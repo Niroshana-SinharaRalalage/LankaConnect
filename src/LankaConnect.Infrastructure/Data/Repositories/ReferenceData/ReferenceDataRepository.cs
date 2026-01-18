@@ -2,20 +2,28 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.ReferenceData.Entities;
 using LankaConnect.Domain.ReferenceData.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
+using System.Diagnostics;
 
 namespace LankaConnect.Infrastructure.Data.Repositories.ReferenceData;
 
 /// <summary>
 /// Repository implementation for unified reference data
 /// Phase 6A.47: Unified Reference Data Architecture
+/// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
 public class ReferenceDataRepository : IReferenceDataRepository
 {
     private readonly IApplicationDbContext _context;
+    private readonly ILogger<ReferenceDataRepository> _logger;
 
-    public ReferenceDataRepository(IApplicationDbContext context)
+    public ReferenceDataRepository(
+        IApplicationDbContext context,
+        ILogger<ReferenceDataRepository> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     // Unified operations
@@ -24,19 +32,57 @@ public class ReferenceDataRepository : IReferenceDataRepository
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.ReferenceValues
-            .Where(rv => rv.EnumType == enumType);
-
-        if (activeOnly)
+        using (LogContext.PushProperty("Operation", "GetByType"))
+        using (LogContext.PushProperty("EntityType", "ReferenceData"))
+        using (LogContext.PushProperty("EnumType", enumType))
+        using (LogContext.PushProperty("ActiveOnly", activeOnly))
         {
-            query = query.Where(rv => rv.IsActive);
-        }
+            var stopwatch = Stopwatch.StartNew();
 
-        return await query
-            .OrderBy(rv => rv.DisplayOrder)
-            .ThenBy(rv => rv.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            _logger.LogDebug("GetByTypeAsync START: EnumType={EnumType}, ActiveOnly={ActiveOnly}", enumType, activeOnly);
+
+            try
+            {
+                var query = _context.ReferenceValues
+                    .Where(rv => rv.EnumType == enumType);
+
+                if (activeOnly)
+                {
+                    query = query.Where(rv => rv.IsActive);
+                }
+
+                var result = await query
+                    .OrderBy(rv => rv.DisplayOrder)
+                    .ThenBy(rv => rv.Name)
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetByTypeAsync COMPLETE: EnumType={EnumType}, ActiveOnly={ActiveOnly}, Count={Count}, Duration={ElapsedMs}ms",
+                    enumType,
+                    activeOnly,
+                    result.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetByTypeAsync FAILED: EnumType={EnumType}, ActiveOnly={ActiveOnly}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    enumType,
+                    activeOnly,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     public async Task<IReadOnlyList<ReferenceValue>> GetByTypesAsync(
@@ -44,21 +90,60 @@ public class ReferenceDataRepository : IReferenceDataRepository
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
-        var typeList = enumTypes.ToList();
-        var query = _context.ReferenceValues
-            .Where(rv => typeList.Contains(rv.EnumType));
-
-        if (activeOnly)
+        using (LogContext.PushProperty("Operation", "GetByTypes"))
+        using (LogContext.PushProperty("EntityType", "ReferenceData"))
+        using (LogContext.PushProperty("ActiveOnly", activeOnly))
         {
-            query = query.Where(rv => rv.IsActive);
-        }
+            var typeList = enumTypes.ToList();
+            var stopwatch = Stopwatch.StartNew();
 
-        return await query
-            .OrderBy(rv => rv.EnumType)
-            .ThenBy(rv => rv.DisplayOrder)
-            .ThenBy(rv => rv.Name)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            _logger.LogDebug(
+                "GetByTypesAsync START: EnumTypeCount={EnumTypeCount}, ActiveOnly={ActiveOnly}",
+                typeList.Count, activeOnly);
+
+            try
+            {
+                var query = _context.ReferenceValues
+                    .Where(rv => typeList.Contains(rv.EnumType));
+
+                if (activeOnly)
+                {
+                    query = query.Where(rv => rv.IsActive);
+                }
+
+                var result = await query
+                    .OrderBy(rv => rv.EnumType)
+                    .ThenBy(rv => rv.DisplayOrder)
+                    .ThenBy(rv => rv.Name)
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetByTypesAsync COMPLETE: EnumTypeCount={EnumTypeCount}, ActiveOnly={ActiveOnly}, Count={Count}, Duration={ElapsedMs}ms",
+                    typeList.Count,
+                    activeOnly,
+                    result.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetByTypesAsync FAILED: EnumTypeCount={EnumTypeCount}, ActiveOnly={ActiveOnly}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    typeList.Count,
+                    activeOnly,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     public async Task<ReferenceValue?> GetByTypeAndCodeAsync(
@@ -66,9 +151,47 @@ public class ReferenceDataRepository : IReferenceDataRepository
         string code,
         CancellationToken cancellationToken = default)
     {
-        return await _context.ReferenceValues
-            .AsNoTracking()
-            .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.Code == code, cancellationToken);
+        using (LogContext.PushProperty("Operation", "GetByTypeAndCode"))
+        using (LogContext.PushProperty("EntityType", "ReferenceData"))
+        using (LogContext.PushProperty("EnumType", enumType))
+        using (LogContext.PushProperty("Code", code))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("GetByTypeAndCodeAsync START: EnumType={EnumType}, Code={Code}", enumType, code);
+
+            try
+            {
+                var result = await _context.ReferenceValues
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.Code == code, cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetByTypeAndCodeAsync COMPLETE: EnumType={EnumType}, Code={Code}, Found={Found}, Duration={ElapsedMs}ms",
+                    enumType,
+                    code,
+                    result != null,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetByTypeAndCodeAsync FAILED: EnumType={EnumType}, Code={Code}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    enumType,
+                    code,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     public async Task<ReferenceValue?> GetByTypeAndIntValueAsync(
@@ -76,18 +199,91 @@ public class ReferenceDataRepository : IReferenceDataRepository
         int intValue,
         CancellationToken cancellationToken = default)
     {
-        return await _context.ReferenceValues
-            .AsNoTracking()
-            .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.IntValue == intValue, cancellationToken);
+        using (LogContext.PushProperty("Operation", "GetByTypeAndIntValue"))
+        using (LogContext.PushProperty("EntityType", "ReferenceData"))
+        using (LogContext.PushProperty("EnumType", enumType))
+        using (LogContext.PushProperty("IntValue", intValue))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("GetByTypeAndIntValueAsync START: EnumType={EnumType}, IntValue={IntValue}", enumType, intValue);
+
+            try
+            {
+                var result = await _context.ReferenceValues
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(rv => rv.EnumType == enumType && rv.IntValue == intValue, cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetByTypeAndIntValueAsync COMPLETE: EnumType={EnumType}, IntValue={IntValue}, Found={Found}, Duration={ElapsedMs}ms",
+                    enumType,
+                    intValue,
+                    result != null,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetByTypeAndIntValueAsync FAILED: EnumType={EnumType}, IntValue={IntValue}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    enumType,
+                    intValue,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     public async Task<ReferenceValue?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await _context.ReferenceValues
-            .AsNoTracking()
-            .FirstOrDefaultAsync(rv => rv.Id == id, cancellationToken);
+        using (LogContext.PushProperty("Operation", "GetById"))
+        using (LogContext.PushProperty("EntityType", "ReferenceData"))
+        using (LogContext.PushProperty("Id", id))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("GetByIdAsync START: Id={Id}", id);
+
+            try
+            {
+                var result = await _context.ReferenceValues
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(rv => rv.Id == id, cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetByIdAsync COMPLETE: Id={Id}, Found={Found}, Duration={ElapsedMs}ms",
+                    id,
+                    result != null,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetByIdAsync FAILED: Id={Id}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    id,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     // DEPRECATED: Legacy methods for backward compatibility

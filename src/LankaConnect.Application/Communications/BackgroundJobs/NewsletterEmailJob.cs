@@ -2,6 +2,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ public class NewsletterEmailJob
     private readonly INewsletterRecipientService _recipientService;
     private readonly IEmailService _emailService;
     private readonly IApplicationUrlsService _urlsService;
+    private readonly IApplicationDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<NewsletterEmailJob> _logger;
 
@@ -36,6 +38,7 @@ public class NewsletterEmailJob
         INewsletterRecipientService recipientService,
         IEmailService emailService,
         IApplicationUrlsService urlsService,
+        IApplicationDbContext dbContext,
         IUnitOfWork unitOfWork,
         ILogger<NewsletterEmailJob> logger)
     {
@@ -44,6 +47,7 @@ public class NewsletterEmailJob
         _recipientService = recipientService;
         _emailService = emailService;
         _urlsService = urlsService;
+        _dbContext = dbContext;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -197,7 +201,38 @@ public class NewsletterEmailJob
                 newsletterId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 recipients.TotalRecipients > 0 ? emailStopwatch.ElapsedMilliseconds / recipients.TotalRecipients : 0);
 
-            // 6. Mark newsletter as sent
+            // 6. Phase 6A.74 Part 13 Issue #1: Persist recipient history for display in UI
+            _logger.LogInformation(
+                "[Phase 6A.74 Part 13 Issue #1] Persisting newsletter email history for newsletter {NewsletterId}. " +
+                "Total recipients: {TotalRecipients}, Email groups: {EmailGroupCount}, Subscribers: {SubscriberCount}",
+                newsletterId,
+                recipients.TotalRecipients,
+                recipients.Breakdown.EmailGroupCount,
+                recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+
+            var newsletterHistory = NewsletterEmailHistory.Create(
+                newsletterId,
+                DateTime.UtcNow,
+                recipients.TotalRecipients,
+                recipients.Breakdown.EmailGroupCount,
+                recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+
+            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext;
+            if (dbContext != null)
+            {
+                await dbContext.Set<NewsletterEmailHistory>().AddAsync(newsletterHistory);
+                _logger.LogDebug(
+                    "[Phase 6A.74 Part 13 Issue #1] Added NewsletterEmailHistory record {HistoryId} for newsletter {NewsletterId}",
+                    newsletterHistory.Id,
+                    newsletterId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.74 Part 13 Issue #1] Unable to cast IApplicationDbContext to DbContext. NewsletterEmailHistory not persisted.");
+            }
+
+            // 7. Mark newsletter as sent
             // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
             // The entity was loaded at the start of the job, but by now the version may be stale
             _logger.LogDebug("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);

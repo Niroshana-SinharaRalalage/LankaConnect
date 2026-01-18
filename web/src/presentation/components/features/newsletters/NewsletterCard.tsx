@@ -70,6 +70,21 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
           </div>
         )}
 
+        {/* Phase 6A.74 Part 13 Issue #2: Recipient Count */}
+        {newsletter.totalRecipientCount && newsletter.totalRecipientCount > 0 && (
+          <div className="flex items-center text-xs text-gray-600">
+            <Mail className="w-3 h-3 mr-2 text-[#6366F1]" />
+            <span>
+              Sent to {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
+              {newsletter.emailGroupRecipientCount && newsletter.subscriberRecipientCount && (
+                <span className="text-gray-500">
+                  {' '}({newsletter.emailGroupRecipientCount} from groups, {newsletter.subscriberRecipientCount} subscribers)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
         {/* Expires Date (Active only) */}
         {isNewsletterActive(newsletter.status) && newsletter.expiresAt && (
           <div className="flex items-center text-xs text-gray-600">

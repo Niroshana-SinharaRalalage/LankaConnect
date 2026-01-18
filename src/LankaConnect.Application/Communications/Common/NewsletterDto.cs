@@ -25,6 +25,24 @@ public record NewsletterDto
     public DateTime? UpdatedAt { get; init; }
 
     /// <summary>
+    /// Phase 6A.74 Part 13 Issue #1: Total number of recipients who received this newsletter email
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? TotalRecipientCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13 Issue #1: Number of recipients from email groups
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? EmailGroupRecipientCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13 Issue #1: Number of recipients from newsletter subscribers
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? SubscriberRecipientCount { get; init; }
+
+    /// <summary>
     /// Email groups associated with this newsletter
     /// </summary>
     public IReadOnlyList<Guid> EmailGroupIds { get; init; } = Array.Empty<Guid>();

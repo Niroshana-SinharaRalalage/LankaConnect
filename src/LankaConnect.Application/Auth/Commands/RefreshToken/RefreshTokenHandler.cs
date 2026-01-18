@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
@@ -32,100 +34,168 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
 
     public async Task<Result<RefreshTokenResponse>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "RefreshToken"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("IpAddress", request.IpAddress ?? "unknown"))
         {
-            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("RefreshToken START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
+
+            try
             {
-                return Result<RefreshTokenResponse>.Failure("Refresh token is required");
-            }
+                if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                {
+                    stopwatch.Stop();
 
-            // Find user by refresh token
-            var user = await _userRepository.GetByRefreshTokenAsync(request.RefreshToken, cancellationToken);
-            if (user == null)
+                    _logger.LogWarning(
+                        "RefreshToken VALIDATION FAILED: Refresh token missing - Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Result<RefreshTokenResponse>.Failure("Refresh token is required");
+                }
+
+                // Find user by refresh token
+                var user = await _userRepository.GetByRefreshTokenAsync(request.RefreshToken, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RefreshToken FAILED: Invalid refresh token - Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Result<RefreshTokenResponse>.Failure("Invalid refresh token");
+                }
+
+                // Add UserId to LogContext now that we have it
+                using (LogContext.PushProperty("UserId", user.Id))
+                {
+                    // Get the refresh token
+                    var refreshToken = user.GetRefreshToken(request.RefreshToken);
+                    if (refreshToken == null || !refreshToken.IsActive)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogWarning(
+                            "RefreshToken FAILED: Token invalid or expired - UserId={UserId}, Duration={ElapsedMs}ms",
+                            user.Id, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure("Invalid or expired refresh token");
+                    }
+
+                    // Check if user is active
+                    if (!user.IsActive)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogWarning(
+                            "RefreshToken FAILED: Account inactive - UserId={UserId}, Duration={ElapsedMs}ms",
+                            user.Id, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure("Account is not active");
+                    }
+
+                    // Generate new access token
+                    var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(user);
+                    if (!accessTokenResult.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogError(
+                            "RefreshToken FAILED: Access token generation failed - UserId={UserId}, Duration={ElapsedMs}ms",
+                            user.Id, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure("Failed to generate access token");
+                    }
+
+                    // Generate new refresh token
+                    var newRefreshTokenResult = await _jwtTokenService.GenerateRefreshTokenAsync();
+                    if (!newRefreshTokenResult.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogError(
+                            "RefreshToken FAILED: Refresh token generation failed - UserId={UserId}, Duration={ElapsedMs}ms",
+                            user.Id, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure("Failed to generate refresh token");
+                    }
+
+                    // Revoke old refresh token
+                    var revokeResult = user.RevokeRefreshToken(request.RefreshToken, request.IpAddress);
+                    if (!revokeResult.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogError(
+                            "RefreshToken FAILED: Token revocation failed - UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                            user.Id, revokeResult.Error, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure(revokeResult.Error);
+                    }
+
+                    // Create and add new refresh token
+                    var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(_tokenConfiguration.RefreshTokenExpirationDays);
+
+                    var newRefreshToken = Domain.Users.ValueObjects.RefreshToken.Create(
+                        newRefreshTokenResult.Value,
+                        newRefreshTokenExpiry,
+                        request.IpAddress ?? "unknown");
+
+                    if (!newRefreshToken.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogError(
+                            "RefreshToken FAILED: Refresh token creation failed - UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                            user.Id, newRefreshToken.Error, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure("Failed to create refresh token");
+                    }
+
+                    var addTokenResult = user.AddRefreshToken(newRefreshToken.Value);
+                    if (!addTokenResult.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogError(
+                            "RefreshToken FAILED: Adding refresh token failed - UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                            user.Id, addTokenResult.Error, stopwatch.ElapsedMilliseconds);
+
+                        return Result<RefreshTokenResponse>.Failure(addTokenResult.Error);
+                    }
+
+                    // Save changes
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    // Calculate token expiry
+                    var tokenExpiresAt = DateTime.UtcNow.AddMinutes(_tokenConfiguration.AccessTokenExpirationMinutes);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "RefreshToken COMPLETE: UserId={UserId}, IpAddress={IpAddress}, RefreshTokenExpiryDays={ExpiryDays}, Duration={ElapsedMs}ms",
+                        user.Id, request.IpAddress ?? "unknown", _tokenConfiguration.RefreshTokenExpirationDays, stopwatch.ElapsedMilliseconds);
+
+                    var response = new RefreshTokenResponse(
+                        accessTokenResult.Value,
+                        newRefreshTokenResult.Value,
+                        tokenExpiresAt);
+
+                    return Result<RefreshTokenResponse>.Success(response);
+                }
+            }
+            catch (Exception ex)
             {
-                _logger.LogWarning("Refresh token not found or user not found");
-                return Result<RefreshTokenResponse>.Failure("Invalid refresh token");
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "RefreshToken FAILED: Exception occurred - Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
             }
-
-            // Get the refresh token
-            var refreshToken = user.GetRefreshToken(request.RefreshToken);
-            if (refreshToken == null || !refreshToken.IsActive)
-            {
-                _logger.LogWarning("Refresh token is invalid or expired for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure("Invalid or expired refresh token");
-            }
-
-            // Check if user is active
-            if (!user.IsActive)
-            {
-                _logger.LogWarning("Refresh token attempt on inactive account: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure("Account is not active");
-            }
-
-            // Generate new access token
-            var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(user);
-            if (!accessTokenResult.IsSuccess)
-            {
-                _logger.LogError("Failed to generate new access token for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure("Failed to generate access token");
-            }
-
-            // Generate new refresh token
-            var newRefreshTokenResult = await _jwtTokenService.GenerateRefreshTokenAsync();
-            if (!newRefreshTokenResult.IsSuccess)
-            {
-                _logger.LogError("Failed to generate new refresh token for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure("Failed to generate refresh token");
-            }
-
-            // Revoke old refresh token
-            var revokeResult = user.RevokeRefreshToken(request.RefreshToken, request.IpAddress);
-            if (!revokeResult.IsSuccess)
-            {
-                _logger.LogError("Failed to revoke old refresh token for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure(revokeResult.Error);
-            }
-
-            // Create and add new refresh token
-            var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(_tokenConfiguration.RefreshTokenExpirationDays);
-
-            var newRefreshToken = Domain.Users.ValueObjects.RefreshToken.Create(
-                newRefreshTokenResult.Value, 
-                newRefreshTokenExpiry, 
-                request.IpAddress ?? "unknown");
-
-            if (!newRefreshToken.IsSuccess)
-            {
-                _logger.LogError("Failed to create new refresh token for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure("Failed to create refresh token");
-            }
-
-            var addTokenResult = user.AddRefreshToken(newRefreshToken.Value);
-            if (!addTokenResult.IsSuccess)
-            {
-                _logger.LogError("Failed to add new refresh token for user: {UserId}", user.Id);
-                return Result<RefreshTokenResponse>.Failure(addTokenResult.Error);
-            }
-
-            // Save changes
-            await _unitOfWork.CommitAsync(cancellationToken);
-
-            // Calculate token expiry
-            var tokenExpiresAt = DateTime.UtcNow.AddMinutes(_tokenConfiguration.AccessTokenExpirationMinutes);
-
-            _logger.LogInformation("Token refreshed successfully for user: {UserId}", user.Id);
-
-            var response = new RefreshTokenResponse(
-                accessTokenResult.Value,
-                newRefreshTokenResult.Value,
-                tokenExpiresAt);
-
-            return Result<RefreshTokenResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during token refresh");
-            return Result<RefreshTokenResponse>.Failure("An error occurred during token refresh");
         }
     }
 }

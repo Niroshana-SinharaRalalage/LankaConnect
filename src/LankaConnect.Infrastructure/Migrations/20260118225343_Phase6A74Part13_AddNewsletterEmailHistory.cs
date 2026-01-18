@@ -1,0 +1,265 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace LankaConnect.Infrastructure.Migrations
+{
+    /// <inheritdoc />
+    public partial class Phase6A74Part13_AddNewsletterEmailHistory : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.RenameColumn(
+                name: "Id",
+                schema: "reference_data",
+                table: "state_tax_rates",
+                newName: "id");
+
+            migrationBuilder.CreateTable(
+                name: "newsletter_email_history",
+                schema: "communications",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    newsletter_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sent_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    total_recipient_count = table.Column<int>(type: "integer", nullable: false),
+                    email_group_recipient_count = table.Column<int>(type: "integer", nullable: false),
+                    subscriber_recipient_count = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_newsletter_email_history", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_newsletter_email_history_newsletters_newsletter_id",
+                        column: x => x.newsletter_id,
+                        principalSchema: "communications",
+                        principalTable: "newsletters",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1402));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1468));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1339));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1436));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1452));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1544));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1419));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1383));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1514));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1500));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1485));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 18, 22, 53, 41, 886, DateTimeKind.Utc).AddTicks(1529));
+
+            migrationBuilder.CreateIndex(
+                name: "ix_newsletter_email_history_newsletter_id",
+                schema: "communications",
+                table: "newsletter_email_history",
+                column: "newsletter_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_newsletter_email_history_sent_at",
+                schema: "communications",
+                table: "newsletter_email_history",
+                column: "sent_at");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "newsletter_email_history",
+                schema: "communications");
+
+            migrationBuilder.RenameColumn(
+                name: "id",
+                schema: "reference_data",
+                table: "state_tax_rates",
+                newName: "Id");
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8675));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8781));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8606));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8723));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8745));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(9001));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8699));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8649));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8959));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8934));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8902));
+
+            migrationBuilder.UpdateData(
+                schema: "reference_data",
+                table: "reference_values",
+                keyColumn: "id",
+                keyValue: new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
+                column: "created_at",
+                value: new DateTime(2026, 1, 17, 15, 1, 25, 274, DateTimeKind.Utc).AddTicks(8980));
+        }
+    }
+}

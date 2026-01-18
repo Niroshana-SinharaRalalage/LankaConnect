@@ -212,9 +212,9 @@ public class RegisterUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithDatabaseError_ShouldReturnFailure()
+    public async Task Handle_WithDatabaseError_ShouldRethrowException()
     {
-        // Arrange
+        // Arrange - Phase 6A.X: Handler now re-throws exceptions for proper error handling
         var request = new RegisterUserCommand(
             "test@example.com",
             "ValidPassword123!",
@@ -222,25 +222,22 @@ public class RegisterUserHandlerTests
             "Doe");
 
         var email = Email.Create(request.Email).Value;
-        
+
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                           .ReturnsAsync((User?)null);
-        
+
         _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
                                   .Returns(Result.Success());
-        
+
         _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
                                   .Returns(Result<string>.Success("hashedpassword123"));
-        
+
         _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
                       .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _handler.Handle(request, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be("An error occurred during user registration");
+        // Act & Assert - Expect exception to be re-thrown (not caught)
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await _handler.Handle(request, CancellationToken.None));
     }
 
     [Theory]

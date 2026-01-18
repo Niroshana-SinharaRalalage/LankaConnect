@@ -43,6 +43,10 @@ export interface NewsletterDto {
   emailGroups: EmailGroupSummaryDto[];
   metroAreaIds: string[];
   metroAreas: MetroAreaSummaryDto[];
+  // Phase 6A.74 Part 13 Issue #1: Recipient counts from NewsletterEmailHistory
+  totalRecipientCount?: number | null;
+  emailGroupRecipientCount?: number | null;
+  subscriberRecipientCount?: number | null;
 }
 
 /**

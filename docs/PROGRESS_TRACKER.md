@@ -1,9 +1,163 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.X Observability - Batch 4 Complete & All Repositories Enhanced ✅*
+*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 3 Batch 1A Part 1 Complete (Auth Handlers) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Batch 4 Complete & ALL REPOSITORIES ENHANCED ✅
+## 🎯 Current Session Status - Phase 6A.X Observability - Phase 3 Batch 1A Part 1 Complete (Auth Handlers) ✅
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1A Part 1 (Auth Handlers) - 2026-01-18
+
+**Status**: ✅ **DEPLOYED TO STAGING & TESTED** (Workflow #21119648583)
+
+**Summary**:
+Enhanced first 2 of 164 CQRS command/query handlers with comprehensive logging following incremental TDD strategy. Started with Auth module (5 handlers total) - this is Part 1 of 3 completing 2/5 handlers.
+
+**Strategy Decision**:
+- ✅ **OPTION A Confirmed**: Upgrade ALL 164 handlers (not just 95 without logging) for consistency
+- ✅ **Incremental Approach**: Break into sub-batches (Batch 1A Part 1: 2 handlers → test/deploy → continue)
+
+**Handlers Enhanced** (2 handlers):
+1. ✅ **LoginUserHandler** (168 → 242 lines, +74 lines)
+   - Most critical auth handler - high traffic, business critical
+   - Added comprehensive logging to all validation paths (email format, user not found, account locked, account inactive, password verification, email verification)
+   - LogContext properties: Operation, EntityType, Email, RememberMe
+   - Dynamic UserId added after user lookup
+   - Success path logs: UserId, Role, RememberMe, RefreshTokenDays, Duration
+   - Exception path with re-throw pattern
+
+2. ✅ **LogoutUserHandler** (70 → 110 lines, +40 lines)
+   - Session termination handler, critical auth flow
+   - Added comprehensive logging with dynamic UserId LogContext
+   - LogContext properties: Operation, EntityType, IpAddress (then UserId after lookup)
+   - Token revocation logging with duration metrics
+   - Exception path with re-throw pattern
+
+**Files Modified**:
+- [LoginUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/LoginUser/LoginUserHandler.cs) - Enhanced (168 → 242 lines)
+- [LogoutUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/LogoutUser/LogoutUserHandler.cs) - Enhanced (70 → 110 lines)
+- [LankaConnect.Application.csproj](../src/LankaConnect.Application/LankaConnect.Application.csproj) - Added Serilog.Extensions.Logging 8.0.0
+- [LoginUserHandlerTests.cs](../tests/LankaConnect.Application.Tests/Auth/LoginUserHandlerTests.cs) - Updated exception test
+- **NEW**: [HandlerLoggingTemplate.md](../docs/HandlerLoggingTemplate.md) - Comprehensive 450+ line documentation
+
+**Package Added**:
+- ✅ Serilog.Extensions.Logging 8.0.0 (compatible with Microsoft.Extensions.Logging 8.0.x)
+- Central Package Management via Directory.Packages.props
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Tests: 1189 passed, 0 failed, 1 skipped (100% pass rate)
+- ✅ Code Changes: 2 handlers enhanced, 1 template created, 1 test updated
+
+**Issues Resolved**:
+1. **Serilog Version Conflict**: Initially added Serilog.Extensions.Logging 10.0.0, conflicted with Microsoft.Extensions.Logging 8.0.3
+   - **Fix**: Downgraded to Serilog.Extensions.Logging 8.0.0 (compatible version)
+
+2. **Test Failure on First Deployment**: `LoginUserHandlerTests.Handle_WithDatabaseException_ShouldReturnFailure` failed
+   - **Root Cause**: Test expected old behavior (catch exception, return Result.Failure)
+   - **Fix**: Updated to `Handle_WithDatabaseException_ShouldRethrowException` - new pattern re-throws exceptions for MediatR/API layer
+
+**Git Commits**:
+- 749a2304 - "feat(phase-6ax-phase3-batch1a-part1): Add comprehensive logging to 2 Auth handlers"
+- ce9a57c9 - "fix(phase-6ax-phase3-batch1a-part1): Fix LoginUserHandler test for exception re-throw"
+
+**Deployment**:
+- ✅ Workflow #21119648583: SUCCESS (6m 0s)
+- ✅ All deployment steps passed (Build, Tests, Docker, Container App Update, Smoke Tests)
+- ✅ API Health: Healthy (PostgreSQL ✅, EF Core ✅)
+
+**Testing**:
+- ✅ All 1189 tests passing
+- ✅ Zero-tolerance policy maintained (0 errors, 0 warnings)
+- ⏳ Manual API testing pending (Login endpoint with comprehensive logging)
+
+**Documentation Created**:
+- ✅ [HandlerLoggingTemplate.md](../docs/HandlerLoggingTemplate.md) - 450+ line comprehensive template
+  - Complete Command Handler example
+  - Complete Query Handler example
+  - Complete Event Handler example
+  - Comparison table: Handler Pattern vs Repository Pattern
+  - Batch implementation strategy for remaining 162 handlers
+  - Required using statements, testing requirements, notes
+
+**Handler Landscape** (Phase 3 Total Scope):
+- **Total**: 164 handlers (90 commands + 51 queries + 21 event handlers + 2 other)
+- **With Basic ILogger**: 69 handlers (42%) - need upgrade to comprehensive pattern
+- **Without Logging**: 95 handlers (58%) - need full implementation
+- **Decision**: OPTION A - Upgrade all 164 for consistency
+
+**Batch Strategy** (Remaining Work):
+- ✅ **Batch 1A Part 1**: 2/5 Auth handlers (LoginUser, LogoutUser) - COMPLETE
+- ⏳ **Batch 1A Part 2**: 3/5 Auth handlers (RegisterUser, LoginWithEntra, RefreshToken)
+- ⏳ **Batch 1B**: 10 Events Command handlers
+- ⏳ **Batch 1C**: 5 Events Query handlers
+- ⏳ **Batches 2-9**: Remaining ~144 handlers (20-30 per batch)
+
+**Logging Pattern Applied**:
+```csharp
+using System.Diagnostics;
+using Serilog.Context;
+
+public async Task<Result<T>> Handle(TCommand request, CancellationToken cancellationToken)
+{
+    using (LogContext.PushProperty("Operation", "OperationName"))
+    using (LogContext.PushProperty("EntityType", "EntityName"))
+    using (LogContext.PushProperty("Key", request.Value))
+    {
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogDebug("Operation START: Key={Value}", request.Value);
+
+        try
+        {
+            // Validation failures with duration logging
+            if (validationFails)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning("Operation VALIDATION FAILED: Reason, Duration={ElapsedMs}ms",
+                    stopwatch.ElapsedMilliseconds);
+                return Result<T>.Failure(reason);
+            }
+
+            // Success path
+            stopwatch.Stop();
+            _logger.LogInformation("Operation COMPLETE: Result, Duration={ElapsedMs}ms",
+                stopwatch.ElapsedMilliseconds);
+            return Result<T>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Operation FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                stopwatch.ElapsedMilliseconds, ex.Message);
+            throw; // CRITICAL: Re-throw for MediatR/API handling
+        }
+    }
+}
+```
+
+**Impact**:
+- ✅ 2 critical auth handlers now have comprehensive observability
+- ✅ Template document ensures consistency across remaining 162 handlers
+- ✅ Exception re-throw pattern established (handlers don't swallow errors)
+- ✅ Dynamic LogContext pattern documented (add properties after data retrieval)
+- ✅ Performance timing with Stopwatch (~100ns overhead, negligible)
+
+**Architectural Decisions**:
+- **Exception Re-throw Pattern**: Handlers log exceptions but always re-throw - MediatR/API layer handles error responses
+- **LogContext Correlation**: All logs within using block automatically get correlation properties
+- **Stopwatch Timing**: Measure entire operation including validation failures
+- **Structured Logging**: Named parameters `{ParamName}` not string interpolation
+
+**Next Steps**:
+1. ⏳ Batch 1A Part 2: Enhance remaining 3 Auth handlers (RegisterUser, LoginWithEntra, RefreshToken)
+2. ⏳ Deploy and test Part 2
+3. ⏳ Continue with Batch 1B (Events Commands)
+
+**Documentation Updated**:
+- ✅ [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Added Phase 3 Batch 1A Part 1 section
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability - Batch 4 Complete & ALL REPOSITORIES ENHANCED ✅
 
 ### Phase 6A.X - Batch 4 Final Repositories Comprehensive Logging - 2026-01-18
 

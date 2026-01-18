@@ -63,6 +63,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
+    public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
     public DbSet<LankaConnect.Domain.Events.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Domain.Events.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
 
     // Analytics Entity Sets (Epic 2 Phase 3)
@@ -135,6 +136,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
+        modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration()); // Phase 6A.74 Part 13 Issue #1: Newsletter email history
         modelBuilder.ApplyConfiguration(new EventNotificationHistoryConfiguration()); // Phase 6A.61: Event notification history tracking
 
         // Analytics entity configurations (Epic 2 Phase 3)
@@ -261,6 +263,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature
+            typeof(NewsletterEmailHistory), // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
             typeof(EventNotificationHistory), // Phase 6A.61: Event notification history tracking
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord), // Epic 2 Phase 3

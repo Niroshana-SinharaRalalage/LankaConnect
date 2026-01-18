@@ -122,8 +122,8 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
 
-  // Issue #3 Fix: Auto-populate event links template in description when event is selected
-  // User wants this behavior - see screenshot showing links in editor
+  // Phase 6A.74 Part 13 Issue #3: Auto-populate event links ONLY (not placeholder text)
+  // Event links persist as editable content, placeholder text handled by RichTextEditor
   useEffect(() => {
     if (!selectedEvent || isEditMode) return;
 
@@ -136,10 +136,8 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Template matching screenshot - event links at bottom with placeholder text at top
+    // Only include event links (NO placeholder text - that's handled by RichTextEditor placeholder prop)
     const eventLinksTemplate = `
-<p>[Write your newsletter content here.....]</p>
-
 <p style="margin-top: 16px;">Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
 
 <p>Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Event Sign-up Lists</a></p>

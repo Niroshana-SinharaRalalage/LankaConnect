@@ -1,57 +1,87 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.74 Part 10: Newsletter UI Fixes Complete & Deployed*
+*Last Updated: 2026-01-18 - Phase 6A.74 Part 11: Newsletter UI Quick Fixes Complete & Deployed ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 10: Newsletter UI Fixes Complete ✅
+## 🎯 Current Session Status - Phase 6A.74 Part 11: Newsletter UI Quick Fixes Complete ✅
 
-### Phase 6A.74 Part 10 - Newsletter UI Fixes (2026-01-18)
+### Phase 6A.74 Part 11 - Newsletter UI Quick Fixes (2026-01-18)
 
-**Status**: ✅ **COMPLETE** (All 5 issues resolved)
+**Status**: ✅ **COMPLETE** (Issues #3, #4, #5 resolved)
 
-**Deployment**: 🔄 **IN PROGRESS** (Workflow #21106137343)
+**Deployment**: ✅ **SUCCESS** (Workflow #84, deploy-ui-staging.yml)
 
 **Implementation Summary**:
-Fixed 5 critical UI issues with the newsletter feature identified through user testing:
-1. ✅ **Issue #1**: Removed internal status badges from public `/newsletters` page
-2. ✅ **Issue #2**: Fixed location filter dropdown (width + z-index issues)
-3. ✅ **Issue #3**: Fixed validation - event linkage now truly optional
-4. ✅ **Issue #4**: Added comprehensive error display in newsletter form
-5. ✅ **Issue #5**: Added search and status filtering to Dashboard Newsletters tab
+Fixed 3 quick-win UI issues (Phase 1 & 2 from RCA) identified through user testing:
+1. ✅ **Issue #3**: Added line separator between event links and placeholder in rich text editor
+2. ✅ **Issue #4**: Fixed "View sign-up list" link anchor navigation (added `id="sign-ups"`)
+3. ✅ **Issue #5**: Fixed TreeDropdown location selection persistence (state management refactor)
+
+**Root Cause (Issue #5)**:
+- Complex state management mixing state codes ("CA") with metro UUIDs
+- Conditional `selectedIds` prop causing type mismatch
+- TreeDropdown received inconsistent ID types, selections didn't persist
+- **Solution**: Simplified to match working `/events` page pattern exactly
 
 **Files Modified**:
-- `web/src/presentation/lib/validators/newsletter.schemas.ts` - Fixed validation logic
-- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Added error summary UI
-- `web/src/app/newsletters/page.tsx` - Removed status badges, fixed TreeDropdown wrapper
-- `web/src/presentation/components/ui/TreeDropdown.tsx` - Increased z-index to 100
-- `web/src/presentation/components/features/newsletters/NewslettersTab.tsx` - Added client-side filtering
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Added `<hr>` separator in template
+- `web/src/app/events/[id]/page.tsx` - Added `id="sign-ups"` anchor to SignUpManagementSection
+- `web/src/app/newsletters/page.tsx` - Refactored TreeDropdown state management (removed `selectedState`, simplified handler)
 
 **Technical Details**:
-- Client-side filtering with `React.useMemo` for performance
-- Type-safe status filtering using `NewsletterStatus` enum (Draft=0, Active=2, Sent=4, Inactive=3)
-- Search across title and description fields (case-insensitive)
-- Responsive filter UI (flex-col on mobile, flex-row on desktop)
-- Dynamic empty messages based on filter state
-- Orange focus rings matching brand colors (#FF7900)
+- Issue #5: Removed 20 lines of complex conditional logic, replaced with 3-line handler matching `/events`
+- Eliminated state/metro ID type mixing - only use metro UUIDs in `selectedMetroIds`
+- Removed `selectedState` state variable and `state` from API filters
+- Rebuilt location tree to match `/events` structure exactly
+- TreeDropdown now receives consistent UUID types in `selectedIds` prop
 
 **Build Results**:
 - ✅ TypeScript compilation: 0 errors
-- ✅ Next.js build: SUCCESS (20.4s)
+- ✅ Next.js build: SUCCESS (17.8s)
 - ✅ Static page generation: 27/27 pages
 
-**Git Commits**:
-- c8b29de0 - "fix(phase-6a74): Fix newsletter UI issues - disable edit/send for sent newsletters and improve editor" (Issues #1-4)
-- f597ef1b - "fix(phase-6a74): Add newsletter filtering to Dashboard tab (Issue #5)" ✅ **LATEST**
+**Deployment Results**:
+- ✅ Workflow #84 (deploy-ui-staging.yml): SUCCESS (3m 53s)
+- ✅ All smoke tests passed (health, home, API proxy)
+- ✅ Staging URL: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Git Commit**:
+- 5ac1523e - "fix(phase-6a74): Fix Issues #3, #4, #5 - Line separator, anchor navigation, TreeDropdown selection" ✅ **LATEST**
 
 **Documentation**:
-- ✅ [NEWSLETTER_UI_FIXES_SUMMARY.md](./NEWSLETTER_UI_FIXES_SUMMARY.md) - Comprehensive summary of all fixes
-- ✅ [NEWSLETTER_UI_ISSUES_RCA.md](./NEWSLETTER_UI_ISSUES_RCA.md) - Root cause analysis from architecture agent
+- ✅ [NEWSLETTER_UI_FIXES_PART11_SUMMARY.md](./NEWSLETTER_UI_FIXES_PART11_SUMMARY.md) - Part 11 fixes summary
+- ✅ [NEWSLETTER_UI_FIXES_SUMMARY.md](./NEWSLETTER_UI_FIXES_SUMMARY.md) - Part 10 fixes summary
+- ✅ [PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md](./PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md) - Root cause analysis
 - ✅ [PHASE_6A74_NEWSLETTER_SUMMARY.md](./PHASE_6A74_NEWSLETTER_SUMMARY.md) - Full feature documentation
 
 **Next Steps**:
-1. 🔄 Complete staging deployment (workflow in progress)
-2. ⏳ Perform manual QA testing of all 5 fixes
-3. ⏳ Consider production deployment after QA verification
+1. ✅ Staging deployment complete
+2. 🔄 Manual QA testing (waiting for user)
+3. ⏳ Production deployment (pending QA approval)
+
+**Deferred** (Backend Features Required):
+- Issue #1: Newsletter email recipient count display (needs `NewsletterEmailHistory` entity)
+- Issue #2: Dashboard recipient numbers (depends on Issue #1)
+
+---
+
+## 🎯 Previous Session - Phase 6A.74 Part 10: Newsletter UI Fixes Complete ✅
+
+### Phase 6A.74 Part 10 - Newsletter UI Fixes (2026-01-18)
+
+**Status**: ✅ **COMPLETE** (Issues #1-2 first attempt, #4 error display)
+
+**Implementation Summary**:
+Fixed initial set of UI issues:
+1. ✅ **Issue #1**: Removed internal status badges from public `/newsletters` page
+2. ✅ **Issue #2**: Fixed location filter dropdown (width + z-index issues)
+3. ✅ **Issue #3 (Validation)**: Fixed validation - event linkage now truly optional
+4. ✅ **Issue #4 (Error Display)**: Added comprehensive error display in newsletter form
+5. ✅ **Issue #5 (Dashboard Filters)**: Added search and status filtering to Dashboard Newsletters tab
+
+**Git Commits**:
+- c8b29de0 - Issues #1-4 (TreeDropdown, validation, error display, status badges)
+- f597ef1b - Issue #5 (Dashboard filters)
 
 ---
 

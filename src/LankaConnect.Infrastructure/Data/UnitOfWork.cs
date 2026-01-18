@@ -102,6 +102,33 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    /// <summary>
+    /// Phase 6A.61: Clears all tracked entities except those of the specified type.
+    /// Used to detach EmailMessage entities before committing EventNotificationHistory to avoid concurrency conflicts.
+    /// </summary>
+    public async Task ClearChangeTrackerExceptAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class
+    {
+        using (LogContext.PushProperty("Operation", "ClearChangeTrackerExcept"))
+        {
+            var entitiesToDetach = _context.ChangeTracker.Entries()
+                .Where(e => !(e.Entity is TEntity))
+                .ToList();
+
+            _logger.Debug("[Phase 6A.61] Detaching {Count} non-{EntityType} entities from ChangeTracker",
+                entitiesToDetach.Count, typeof(TEntity).Name);
+
+            foreach (var entry in entitiesToDetach)
+            {
+                entry.State = EntityState.Detached;
+            }
+
+            _logger.Information("[Phase 6A.61] Successfully detached {Count} entities, keeping only {EntityType} entities tracked",
+                entitiesToDetach.Count, typeof(TEntity).Name);
+
+            await Task.CompletedTask;
+        }
+    }
+
     public void Dispose()
     {
         _transaction?.Dispose();

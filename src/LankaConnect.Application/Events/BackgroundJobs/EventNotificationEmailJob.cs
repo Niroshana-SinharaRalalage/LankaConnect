@@ -209,6 +209,15 @@ public class EventNotificationEmailJob
             freshHistory.UpdateSendStatistics(recipients.Count, successCount, failedCount);
             _historyRepository.Update(freshHistory);
 
+            // Phase 6A.61+ CRITICAL FIX: Clear ChangeTracker to detach EmailMessage entities
+            // The email sending loop creates and tracks EmailMessage entities in the same DbContext
+            // If we don't detach them, EF Core will try to save ALL tracked entities (including EmailMessages)
+            // causing DbUpdateConcurrencyException when their timestamps have changed
+            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Clearing ChangeTracker to detach EmailMessage entities before commit",
+                correlationId);
+
+            await _unitOfWork.ClearChangeTrackerExceptAsync<Domain.Events.Entities.EventNotificationHistory>(cancellationToken);
+
             try
             {
                 _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Attempting to commit history {HistoryId}",

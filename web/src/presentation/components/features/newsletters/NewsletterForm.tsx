@@ -137,16 +137,21 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     // Get frontend URL from environment or use relative paths
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Phase 6A.74: Simplified template - only event links, no event details
-    // Phase 6A.74 Part 11: Add placeholder text + separator line + event links
+    // Phase 6A.74 Part 11: Improved template with placeholder + dynamic event links
+    // Sign-up lists link only shows if event has sign-up lists AND points to #sign-ups anchor
+    const hasSignUpLists = signUpLists && signUpLists.length > 0;
+
     const eventHtml = `
-<p>Write your news letter content here.....</p>
+<p><em style="color: #6B7280;">[Write your newsletter content here.....]</em></p>
 
 <hr />
 
-<p>
-  <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a>${signUpLists && signUpLists.length > 0 ? ` | <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Sign-up Lists</a>` : ''}
+<p style="margin-top: 16px;">
+  Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}" style="color: #FF7900; text-decoration: underline;">View Event Details</a>
 </p>
+${hasSignUpLists ? `<p>
+  Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="color: #FF7900; text-decoration: underline;">View Event Sign-up Lists</a>
+</p>` : ''}
     `.trim();
 
     setValue('description', eventHtml);

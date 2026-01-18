@@ -1,9 +1,61 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 2 Step 3 Batch 2B Complete & Tested*
+*Last Updated: 2026-01-18 - Phase 6A.74 Part 10: Newsletter UI Fixes Complete & Deployed*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Phase 2 Step 3 Batch 2B Complete & Tested ✅
+## 🎯 Current Session Status - Phase 6A.74 Part 10: Newsletter UI Fixes Complete ✅
+
+### Phase 6A.74 Part 10 - Newsletter UI Fixes (2026-01-18)
+
+**Status**: ✅ **COMPLETE** (All 5 issues resolved)
+
+**Deployment**: 🔄 **IN PROGRESS** (Workflow #21106137343)
+
+**Implementation Summary**:
+Fixed 5 critical UI issues with the newsletter feature identified through user testing:
+1. ✅ **Issue #1**: Removed internal status badges from public `/newsletters` page
+2. ✅ **Issue #2**: Fixed location filter dropdown (width + z-index issues)
+3. ✅ **Issue #3**: Fixed validation - event linkage now truly optional
+4. ✅ **Issue #4**: Added comprehensive error display in newsletter form
+5. ✅ **Issue #5**: Added search and status filtering to Dashboard Newsletters tab
+
+**Files Modified**:
+- `web/src/presentation/lib/validators/newsletter.schemas.ts` - Fixed validation logic
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Added error summary UI
+- `web/src/app/newsletters/page.tsx` - Removed status badges, fixed TreeDropdown wrapper
+- `web/src/presentation/components/ui/TreeDropdown.tsx` - Increased z-index to 100
+- `web/src/presentation/components/features/newsletters/NewslettersTab.tsx` - Added client-side filtering
+
+**Technical Details**:
+- Client-side filtering with `React.useMemo` for performance
+- Type-safe status filtering using `NewsletterStatus` enum (Draft=0, Active=2, Sent=4, Inactive=3)
+- Search across title and description fields (case-insensitive)
+- Responsive filter UI (flex-col on mobile, flex-row on desktop)
+- Dynamic empty messages based on filter state
+- Orange focus rings matching brand colors (#FF7900)
+
+**Build Results**:
+- ✅ TypeScript compilation: 0 errors
+- ✅ Next.js build: SUCCESS (20.4s)
+- ✅ Static page generation: 27/27 pages
+
+**Git Commits**:
+- c8b29de0 - "fix(phase-6a74): Fix newsletter UI issues - disable edit/send for sent newsletters and improve editor" (Issues #1-4)
+- f597ef1b - "fix(phase-6a74): Add newsletter filtering to Dashboard tab (Issue #5)" ✅ **LATEST**
+
+**Documentation**:
+- ✅ [NEWSLETTER_UI_FIXES_SUMMARY.md](./NEWSLETTER_UI_FIXES_SUMMARY.md) - Comprehensive summary of all fixes
+- ✅ [NEWSLETTER_UI_ISSUES_RCA.md](./NEWSLETTER_UI_ISSUES_RCA.md) - Root cause analysis from architecture agent
+- ✅ [PHASE_6A74_NEWSLETTER_SUMMARY.md](./PHASE_6A74_NEWSLETTER_SUMMARY.md) - Full feature documentation
+
+**Next Steps**:
+1. 🔄 Complete staging deployment (workflow in progress)
+2. ⏳ Perform manual QA testing of all 5 fixes
+3. ⏳ Consider production deployment after QA verification
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability - Phase 2 Step 3 Batch 2B Complete & Tested ✅
 
 ### Phase 6A.X - Comprehensive Observability Improvements (Phase 1 Quick Wins) - 2026-01-17
 

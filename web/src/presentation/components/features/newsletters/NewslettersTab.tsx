@@ -153,10 +153,10 @@ export function NewslettersTab() {
           </div>
         </div>
 
-        {/* Status Filter */}
+        {/* Status Filter - Phase 6A.74 Part 11 Issue #4 Fix */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value) as NewsletterStatus)}
+          onChange={(e) => setStatusFilter(e.target.value === 'all' ? 'all' : e.target.value as NewsletterStatus)}
           className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           aria-label="Filter by status"
         >

@@ -28,8 +28,10 @@ export const createNewsletterSchema = z.object({
 
   eventId: z
     .string()
-    .uuid('Invalid event ID')
-    .optional(),
+    .optional()
+    .refine((val) => !val || val === '' || z.string().uuid().safeParse(val).success, {
+      message: 'Invalid event ID',
+    }),
 
   targetAllLocations: z
     .boolean(),
@@ -43,15 +45,13 @@ export const createNewsletterSchema = z.object({
     const hasEmailGroups = data.emailGroupIds && data.emailGroupIds.length > 0;
     const hasNewsletterSubscribers = data.includeNewsletterSubscribers === true;
 
-    // Event ID is optional - only counts if it's a valid GUID (not empty string, not undefined)
-    // Empty string "" is treated as "No event linkage" from the dropdown
-    const hasEvent = data.eventId && data.eventId.trim().length > 0 && data.eventId !== '';
-
-    // At least one recipient source must be active
-    return hasEmailGroups || hasNewsletterSubscribers || hasEvent;
+    // Phase 6A.74 Part 11 Issue #2 Fix: Event ID is NOT a recipient source
+    // Event linkage is purely optional metadata - doesn't affect recipient validation
+    // At least one of: email groups OR newsletter subscribers must be selected
+    return hasEmailGroups || hasNewsletterSubscribers;
   },
   {
-    message: 'Must have at least one recipient source: select email groups, keep newsletter subscribers checked, or link to an event',
+    message: 'Must have at least one recipient source: select email groups or keep newsletter subscribers checked',
     path: ['emailGroupIds'], // Error displays on email groups field
   }
 );

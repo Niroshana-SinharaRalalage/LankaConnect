@@ -8,12 +8,14 @@
 
 /**
  * Newsletter status enum matching backend LankaConnect.Domain.Communications.Enums.NewsletterStatus
+ * Phase 6A.74 Part 11 Issue #4 Fix: Backend stores as string, not int
+ * Database column: VARCHAR(20) with values "Draft", "Active", "Inactive", "Sent"
  */
 export enum NewsletterStatus {
-  Draft = 0,
-  Active = 2,
-  Inactive = 3,
-  Sent = 4,
+  Draft = 'Draft',
+  Active = 'Active',
+  Inactive = 'Inactive',
+  Sent = 'Sent',
 }
 
 // ==================== DTOs ====================

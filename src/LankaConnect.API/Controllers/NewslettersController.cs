@@ -212,6 +212,14 @@ public class NewslettersController : BaseController<NewslettersController>
         [FromQuery] decimal? latitude = null,
         [FromQuery] decimal? longitude = null)
     {
+        // Issue #5 Fix: Log received metro area IDs for debugging
+        if (metroAreaIds != null && metroAreaIds.Any())
+        {
+            Logger.LogInformation(
+                "[Phase 6A.74 Issue #5] Received metro area IDs: {MetroAreaIds}",
+                string.Join(", ", metroAreaIds));
+        }
+
         Logger.LogInformation(
             "[Phase 6A.74 Parts 10/11] Getting published newsletters - SearchTerm: {SearchTerm}, State: {State}, MetroCount: {MetroCount}",
             searchTerm,

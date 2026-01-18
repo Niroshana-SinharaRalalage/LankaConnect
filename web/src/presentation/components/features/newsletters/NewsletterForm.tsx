@@ -180,8 +180,17 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
   // Handle location tree selection change
   const handleLocationTreeChange = (selectedIds: string[]) => {
+    console.log('[NewsletterForm] Location selection changed:', selectedIds);
     setValue('metroAreaIds', selectedIds.length > 0 ? selectedIds : undefined);
   };
+
+  // Issue #5: Log metro areas loaded for debugging
+  useEffect(() => {
+    if (metroAreas.length > 0) {
+      console.log('[NewsletterForm] Metro areas loaded:', metroAreas.length);
+      console.log('[NewsletterForm] Sample metro IDs:', metroAreas.slice(0, 3).map(m => ({ id: m.id, name: m.name, state: m.state })));
+    }
+  }, [metroAreas]);
 
   const onSubmit = handleSubmit(async (data) => {
     try {

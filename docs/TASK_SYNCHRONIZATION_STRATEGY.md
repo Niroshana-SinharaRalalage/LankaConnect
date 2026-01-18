@@ -3,13 +3,36 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.68: CSV EXPORT FORMATTING FIX ✅ COMPLETE & DEPLOYED
-**Date**: 2026-01-07 (Current Session)
-**Session**: Phase 6A.68 - CSV Export Formatting Fix (Excel Display Issue)
-**Progress**: **✅ COMPLETE & DEPLOYED** - Azure staging live, API tested, awaiting user verification
-**Status**: CSV/Excel exports fixed with Content-Type change + CsvHelper integration
-**Deployment**: Live on staging (run #20800415863)
-**User Verification**: Pending - User needs to verify exports in UI
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.X OBSERVABILITY: REPOSITORY ENHANCEMENT ✅ COMPLETE (100% COVERAGE)
+**Date**: 2026-01-18 (Current Session)
+**Session**: Phase 6A.X Observability - Batch 4 Repository Enhancement (Final 3 Repositories)
+**Progress**: **✅ COMPLETE** - All 25 repositories enhanced with comprehensive logging
+**Status**: 🎉 **MILESTONE ACHIEVED** - 100% repository coverage (158 methods total)
+**Deployment**: ✅ Azure staging (run #21115755324, 6m 30s)
+**Testing**: ✅ Verified logs working in Azure Container App
+
+**Phase 6A.X Complete Summary**:
+- **Batch 1**: 9 repositories, 51 methods ✅
+- **Batch 2**: 7 repositories, 54 methods ✅
+- **Batch 3**: 6 repositories, 41 methods ✅
+- **Batch 4**: 3 repositories, 12 methods ✅
+- **TOTAL**: 25 repositories, 158 methods, 100% coverage
+
+**Batch 4 Final Repositories**:
+1. EmailStatusRepository (5 methods) - Email status queries and analytics
+2. EventReminderRepository (2 methods) - Direct SQL with fail-open idempotency
+3. ReferenceDataRepository (5 methods) - Unified reference data queries
+
+**Logging Pattern Implemented**:
+- ILogger<T> with structured logging
+- LogContext.PushProperty for correlation tracking
+- Stopwatch timing for performance metrics
+- PostgreSQL SqlState extraction for error diagnosis
+- Comprehensive START/COMPLETE/FAILED logging
+
+**Git Commit**: 6a790f54 - "feat(phase-6ax-batch4): Add comprehensive logging to final 3 repositories"
+
+**Next Phase**: Phase 3 - CQRS Handler Logging (150+ handlers)
 
 ### Azure UI Deployment Summary:
 **Goal**: Deploy Next.js UI to Azure Container Apps staging environment for public access

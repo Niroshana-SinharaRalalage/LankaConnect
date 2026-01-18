@@ -484,12 +484,14 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
         }
 
         // Filter by metro areas
+        // Issue #5 Fix: Query junction table directly since MetroAreaIds is ignored in EF Core mapping
         // Note: Newsletters use MetroAreaIds and TargetAllLocations, not state
         if (metroAreaIds != null && metroAreaIds.Count > 0)
         {
             query = query.Where(n =>
                 n.TargetAllLocations ||                                           // Targets all locations
-                n.MetroAreaIds.Any(id => metroAreaIds.Contains(id)));             // Or has overlapping metros
+                _context.Set<Dictionary<string, object>>("newsletter_metro_areas")
+                    .Any(j => (Guid)j["newsletter_id"] == n.Id && metroAreaIds.Contains((Guid)j["metro_area_id"])));
         }
 
         // Filter by search term (title or description)

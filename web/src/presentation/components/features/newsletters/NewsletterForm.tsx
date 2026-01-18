@@ -137,21 +137,15 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     // Get frontend URL from environment or use relative paths
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Phase 6A.74 Part 11: Improved template with placeholder + dynamic event links
-    // Sign-up lists link only shows if event has sign-up lists AND points to #sign-ups anchor
-    const hasSignUpLists = signUpLists && signUpLists.length > 0;
-
+    // Phase 6A.74 Part 11 Fix: Event links template (NO placeholder - that's handled by RichTextEditor prop)
+    // Always show both links - sign-up link navigates to #sign-ups anchor section
     const eventHtml = `
-<p><em style="color: #6B7280;">[Write your newsletter content here.....]</em></p>
-
-<hr />
-
 <p style="margin-top: 16px;">
   Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}" style="color: #FF7900; text-decoration: underline;">View Event Details</a>
 </p>
-${hasSignUpLists ? `<p>
+<p>
   Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="color: #FF7900; text-decoration: underline;">View Event Sign-up Lists</a>
-</p>` : ''}
+</p>
     `.trim();
 
     setValue('description', eventHtml);
@@ -389,7 +383,7 @@ ${hasSignUpLists ? `<p>
                 <RichTextEditor
                   content={field.value}
                   onChange={field.onChange}
-                  placeholder="Write your news letter content here....."
+                  placeholder="Write your newsletter content here....."
                   error={!!errors.description}
                   errorMessage={errors.description?.message}
                   minHeight={300}

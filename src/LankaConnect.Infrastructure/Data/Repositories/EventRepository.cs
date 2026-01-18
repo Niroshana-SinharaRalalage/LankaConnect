@@ -700,4 +700,30 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Where(e => e.Badges.Any(eb => eb.ExpiresAt.HasValue && eb.ExpiresAt < now))
             .ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpListId (navigates through shadow property)
+    /// Used by signup commitment confirmation email handlers
+    /// </summary>
+    public async Task<Event?> GetEventBySignUpListIdAsync(Guid signUpListId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(e => e.Location)
+            .Where(e => e.SignUpLists.Any(sl => sl.Id == signUpListId))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpItemId
+    /// Used by commitment update confirmation email handler
+    /// </summary>
+    public async Task<Event?> GetEventBySignUpItemIdAsync(Guid signUpItemId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(e => e.Location)
+            .Where(e => e.SignUpLists.Any(sl => sl.Items.Any(item => item.Id == signUpItemId)))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

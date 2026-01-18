@@ -51,4 +51,17 @@ public interface IEventRepository : IRepository<Event>
     /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
     /// </summary>
     Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default);
+
+    // Signup commitment email queries (Phase 6A.51)
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpListId (navigates through shadow property)
+    /// Used by signup commitment confirmation email handlers
+    /// </summary>
+    Task<Event?> GetEventBySignUpListIdAsync(Guid signUpListId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpItemId
+    /// Used by commitment update confirmation email handler
+    /// </summary>
+    Task<Event?> GetEventBySignUpItemIdAsync(Guid signUpItemId, CancellationToken cancellationToken = default);
 }

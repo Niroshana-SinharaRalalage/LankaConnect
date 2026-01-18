@@ -119,6 +119,7 @@ export default function DiscoverNewslettersPage() {
 
   // Issue #5 Fix: Simplify handler to match /events page - just update selectedMetroIds
   const handleLocationChange = (newSelectedIds: string[]) => {
+    console.log('[Newsletters] Location selection changed:', newSelectedIds);
     setSelectedMetroIds(newSelectedIds);
   };
 

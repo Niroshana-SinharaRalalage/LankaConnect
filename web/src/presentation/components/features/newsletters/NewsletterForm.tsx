@@ -122,6 +122,32 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
 
+  // Issue #3 Fix: Auto-populate event links template in description when event is selected
+  // User wants this behavior - see screenshot showing links in editor
+  useEffect(() => {
+    if (!selectedEvent || isEditMode) return;
+
+    const currentDescription = watch('description');
+
+    // Only auto-populate if description is completely empty
+    if (currentDescription && currentDescription.trim() !== '' && currentDescription !== '<p></p>') {
+      return;
+    }
+
+    const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    // Template matching screenshot - event links at bottom with placeholder text at top
+    const eventLinksTemplate = `
+<p>[Write your newsletter content here.....]</p>
+
+<p style="margin-top: 16px;">Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
+
+<p>Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Event Sign-up Lists</a></p>
+    `.trim();
+
+    setValue('description', eventLinksTemplate);
+  }, [selectedEvent, isEditMode, watch, setValue]);
+
   // Build location tree for TreeDropdown (Issue #8)
   const selectedMetroIds = watch('metroAreaIds') || [];
   const locationTree = useMemo((): TreeNode[] => {

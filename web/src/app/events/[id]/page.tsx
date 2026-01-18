@@ -101,31 +101,36 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Phase 6A.14: Update registration mutation
   const updateRegistrationMutation = useUpdateRegistrationDetails();
 
-  // Phase 6A.74 Part 11 Issue #4 Fix: Handle hash navigation for anchor links
+  // Phase 6A.74 Part 12 Issue #4 Fix: Handle hash navigation for anchor links
   // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
   useEffect(() => {
-    // Only run after component has mounted and data is loaded
-    if (!event || isLoading) return;
+    // Only run after component has mounted, data is loaded, AND auth is hydrated
+    if (!event || isLoading || !_hasHydrated) return;
 
     // Check if URL contains a hash
     const hash = window.location.hash;
     if (!hash) return;
 
-    // Small delay to ensure DOM is fully rendered
+    console.log('[EventDetail] Attempting to scroll to hash:', hash);
+
+    // Longer delay to ensure DOM is fully rendered (including conditional sections)
     const timeoutId = setTimeout(() => {
       const elementId = hash.substring(1); // Remove # from hash
       const element = document.getElementById(elementId);
 
       if (element) {
+        console.log('[EventDetail] Found element, scrolling to:', elementId);
         element.scrollIntoView({
           behavior: 'smooth',
           block: 'start'
         });
+      } else {
+        console.warn('[EventDetail] Element not found with id:', elementId);
       }
-    }, 300);
+    }, 500); // Increased from 300ms to 500ms
 
     return () => clearTimeout(timeoutId);
-  }, [event, isLoading]);
+  }, [event, isLoading, _hasHydrated]);
 
   // Category labels
   const categoryLabels: Record<EventCategory, string> = {

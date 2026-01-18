@@ -19,6 +19,7 @@ public class NewsletterRecipientService : INewsletterRecipientService
     private readonly IEmailGroupRepository _emailGroupRepository;
     private readonly INewsletterSubscriberRepository _subscriberRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly EventMetroAreaMatcher _metroMatcher; // Phase 6A.74 Part 13: City-to-metro bucketing
     private readonly ILogger<NewsletterRecipientService> _logger;
 
     public NewsletterRecipientService(
@@ -26,12 +27,14 @@ public class NewsletterRecipientService : INewsletterRecipientService
         IEmailGroupRepository emailGroupRepository,
         INewsletterSubscriberRepository subscriberRepository,
         IEventRepository eventRepository,
+        EventMetroAreaMatcher metroMatcher, // Phase 6A.74 Part 13: Inject EventMetroAreaMatcher
         ILogger<NewsletterRecipientService> logger)
     {
         _newsletterRepository = newsletterRepository;
         _emailGroupRepository = emailGroupRepository;
         _subscriberRepository = subscriberRepository;
         _eventRepository = eventRepository;
+        _metroMatcher = metroMatcher; // Phase 6A.74 Part 13
         _logger = logger;
     }
 
@@ -260,46 +263,87 @@ public class NewsletterRecipientService : INewsletterRecipientService
         return new NewsletterSubscriberBreakdown(new HashSet<string>(), 0, 0, 0);
     }
 
+    /// <summary>
+    /// Phase 6A.74 Part 13: Gets subscribers for event-linked newsletters using geo-spatial metro area bucketing
+    /// Example: Event in Aurora, OH → Matches Cleveland metro → Returns only Cleveland metro subscribers
+    /// Replaces state-level matching (which would return ALL Ohio subscribers)
+    /// </summary>
     private async Task<NewsletterSubscriberBreakdown> GetSubscribersForEventAsync(
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        // Fetch event to get its metro area
+        // Fetch event to get its location
         var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
-        if (@event == null || @event.Location?.Address == null)
+        if (@event == null || @event.Location?.Coordinates == null)
         {
-            _logger.LogWarning("[Phase 6A.74] Event {EventId} not found or has no location", eventId);
+            _logger.LogWarning(
+                "[Phase 6A.74 Part 13] Event {EventId} not found or has no location/coordinates",
+                eventId);
             return new NewsletterSubscriberBreakdown(new HashSet<string>(), 0, 0, 0);
         }
 
-        var state = @event.Location.Address.State;
-        _logger.LogDebug("[Phase 6A.74] Event location: {City}, {State}",
-            @event.Location.Address.City, state);
+        _logger.LogDebug(
+            "[Phase 6A.74 Part 13] Event location: {City}, {State}, Coordinates: ({Lat}, {Lng})",
+            @event.Location.Address?.City,
+            @event.Location.Address?.State,
+            @event.Location.Coordinates.Latitude,
+            @event.Location.Coordinates.Longitude);
 
-        // Get subscribers for the event's state (matches event notification pattern)
-        IReadOnlyList<NewsletterSubscriber> subscribers;
         try
         {
-            subscribers = await _subscriberRepository.GetConfirmedSubscribersByStateAsync(state, cancellationToken);
-            _logger.LogInformation("[Phase 6A.74] Found {Count} subscribers for event's state {State}",
-                subscribers.Count, state);
+            // NEW: Determine which metro areas this event belongs to based on geographic proximity
+            var eventMetroIds = await _metroMatcher.GetMetroAreasForEventAsync(@event, cancellationToken);
+
+            if (!eventMetroIds.Any())
+            {
+                // Fallback: Use state-level matching if no metro match (rural events)
+                var state = @event.Location.Address?.State;
+                if (string.IsNullOrWhiteSpace(state))
+                {
+                    _logger.LogWarning(
+                        "[Phase 6A.74 Part 13] Event {EventId} has no state for fallback matching",
+                        eventId);
+                    return new NewsletterSubscriberBreakdown(new HashSet<string>(), 0, 0, 0);
+                }
+
+                _logger.LogWarning(
+                    "[Phase 6A.74 Part 13] Event {EventId} at ({Lat}, {Lng}) does not fall within any metro area radius. Falling back to state-level matching for {State}.",
+                    eventId,
+                    @event.Location.Coordinates.Latitude,
+                    @event.Location.Coordinates.Longitude,
+                    state);
+
+                var stateSubscribers = await _subscriberRepository.GetConfirmedSubscribersByStateAsync(
+                    state,
+                    cancellationToken);
+
+                var stateEmails = stateSubscribers
+                    .Select(s => s.Email.Value)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                return new NewsletterSubscriberBreakdown(
+                    Emails: stateEmails,
+                    MetroCount: 0,
+                    StateCount: stateSubscribers.Count,
+                    AllLocationsCount: 0);
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.74 Part 13] Event {EventId} belongs to {Count} metro area(s): [{MetroIds}]",
+                eventId,
+                eventMetroIds.Count,
+                string.Join(", ", eventMetroIds));
+
+            // Get subscribers for all matching metro areas
+            return await GetSubscribersByMetroAreasAsync(eventMetroIds, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.74] Failed to get subscribers for event state {State}", state);
+            _logger.LogError(ex,
+                "[Phase 6A.74 Part 13] Failed to get subscribers for event {EventId}",
+                eventId);
             throw;
         }
-
-        var emails = subscribers
-            .Select(s => s.Email.Value)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // For event-based newsletters, all subscribers come from state-level matching
-        return new NewsletterSubscriberBreakdown(
-            Emails: emails,
-            MetroCount: 0,
-            StateCount: subscribers.Count,
-            AllLocationsCount: 0);
     }
 
     private async Task<NewsletterSubscriberBreakdown> GetAllLocationSubscribersAsync(

@@ -280,6 +280,9 @@ public static class DependencyInjection
         // Phase 6A.74: Newsletter Recipient Service
         services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
 
+        // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
+        services.AddScoped<LankaConnect.Infrastructure.Services.EventMetroAreaMatcher>();
+
         // Phase 6A.74: Newsletter Background Jobs
         services.AddTransient<NewsletterEmailJob>();
 

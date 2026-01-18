@@ -74,7 +74,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       emailGroupIds: undefined,
       includeNewsletterSubscribers: true,
       eventId: initialEventId || undefined,
-      targetAllLocations: false,
+      targetAllLocations: true, // Phase 6A.74 Part 13: Default to all locations to allow newsletter creation without event
       metroAreaIds: undefined,
     },
   });

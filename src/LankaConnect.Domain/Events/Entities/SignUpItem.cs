@@ -163,6 +163,14 @@ public class SignUpItem : BaseEntity
         RemainingQuantity -= commitQuantity;
         MarkAsUpdated();
 
+        // Phase 6A.51: Raise domain event for sending confirmation email
+        RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
+            SignUpListId,
+            userId,
+            ItemDescription,
+            commitQuantity,
+            DateTime.UtcNow));
+
         return Result.Success();
     }
 
@@ -248,6 +256,15 @@ public class SignUpItem : BaseEntity
         // Adjust remaining quantity (handles both increases and decreases)
         RemainingQuantity -= quantityDifference;
         MarkAsUpdated();
+
+        // Phase 6A.51+: Raise domain event for sending update confirmation email
+        RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
+            Id,
+            userId,
+            oldQuantity,
+            newQuantity,
+            ItemDescription,
+            DateTime.UtcNow));
 
         return Result.Success();
     }

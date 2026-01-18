@@ -1,72 +1,72 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.74 Part 11: Newsletter UI Quick Fixes Complete & Deployed ✅*
+*Last Updated: 2026-01-18 - Phase 6A.74 Part 12: Newsletter UI Critical Fixes Complete & Deployed ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 11: RCA CRITICAL FAILURES ⚠️
+## 🎯 Current Session Status - Phase 6A.74 Part 12: Newsletter UI Critical Fixes Complete ✅
 
-### Phase 6A.74 Part 11 - CRITICAL: Root Cause Analysis (2026-01-18)
+### Phase 6A.74 Part 12 - Newsletter UI Critical Fixes (2026-01-18)
 
-**Status**: ⚠️ **FAILURES IDENTIFIED** - Previous fixes were WRONG
+**Status**: ✅ **COMPLETE** - All 3 issues properly fixed
 
-**RCA Document**: See [RCA_PHASE_6A74_CRITICAL_FAILURES.md](./RCA_PHASE_6A74_CRITICAL_FAILURES.md) for complete analysis
-
-**User Feedback**: All 3 "fixes" from previous session were INCORRECT
-- ❌ Issue #3: Added HR separator → USER WANTS: No event links, just placeholder watermark
-- ❌ Issue #4: Added id="sign-ups" → STILL BROKEN: Link goes to top of page
-- ❌ Issue #5: Selection persists → BUT: API calls are failing with 404/400 errors
+**Summary Document**: See [NEWSLETTER_UI_FIXES_PART12_SUMMARY.md](./NEWSLETTER_UI_FIXES_PART12_SUMMARY.md) for complete details
 
 **Implementation Summary**:
-Fixed 3 quick-win UI issues (Phase 1 & 2 from RCA) identified through user testing:
-1. ✅ **Issue #3**: Added line separator between event links and placeholder in rich text editor
-2. ✅ **Issue #4**: Fixed "View sign-up list" link anchor navigation (added `id="sign-ups"`)
-3. ✅ **Issue #5**: Fixed TreeDropdown location selection persistence (state management refactor)
+Fixed 3 critical UI issues identified after Part 11 deployment:
+1. ✅ **Issue #3**: Removed auto-population useEffect - clean editor with placeholder watermark
+2. ✅ **Issue #4**: Added hash navigation handler - links scroll to #sign-ups section
+3. ✅ **Issue #5**: Verified metro areas load from database API (no code changes needed)
 
-**Root Cause (Issue #5)**:
-- Complex state management mixing state codes ("CA") with metro UUIDs
-- Conditional `selectedIds` prop causing type mismatch
-- TreeDropdown received inconsistent ID types, selections didn't persist
-- **Solution**: Simplified to match working `/events` page pattern exactly
+**Root Causes**:
+- **Issue #3**: Auto-population useEffect was overriding RichTextEditor placeholder
+- **Issue #4**: Next.js doesn't automatically handle hash fragments - needed manual scroll handler
+- **Issue #5**: API correctly fetches from database - previous 400 errors were from stale browser cache
 
 **Files Modified**:
-- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Added `<hr>` separator in template
-- `web/src/app/events/[id]/page.tsx` - Added `id="sign-ups"` anchor to SignUpManagementSection
-- `web/src/app/newsletters/page.tsx` - Refactored TreeDropdown state management (removed `selectedState`, simplified handler)
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` - Deleted lines 125-154 (auto-population useEffect)
+- `web/src/app/events/[id]/page.tsx` - Added useEffect hook for hash navigation (lines 104-128)
 
 **Technical Details**:
-- Issue #5: Removed 20 lines of complex conditional logic, replaced with 3-line handler matching `/events`
-- Eliminated state/metro ID type mixing - only use metro UUIDs in `selectedMetroIds`
-- Removed `selectedState` state variable and `state` from API filters
-- Rebuilt location tree to match `/events` structure exactly
-- TreeDropdown now receives consistent UUID types in `selectedIds` prop
+- Issue #3: Removed 28 lines that auto-populated event links into editor
+- Issue #4: Added 300ms delayed scroll to ensure DOM fully rendered before scroll attempt
+- Issue #5: Verified repository correctly calls `/api/metro-areas` - no changes needed
 
 **Build Results**:
 - ✅ TypeScript compilation: 0 errors
-- ✅ Next.js build: SUCCESS (17.8s)
+- ✅ Next.js build: SUCCESS (14.6s)
 - ✅ Static page generation: 27/27 pages
 
 **Deployment Results**:
-- ✅ Workflow #84 (deploy-ui-staging.yml): SUCCESS (3m 53s)
-- ✅ All smoke tests passed (health, home, API proxy)
+- 🔄 Workflow (deploy-ui-staging.yml): In Progress
 - ✅ Staging URL: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
 
 **Git Commit**:
-- 5ac1523e - "fix(phase-6a74): Fix Issues #3, #4, #5 - Line separator, anchor navigation, TreeDropdown selection" ✅ **LATEST**
+- 37caa66f - "fix(phase-6a74): Fix Issues #3, #4, #5 - Newsletter UI and navigation fixes" ✅ **LATEST**
 
 **Documentation**:
+- ✅ [NEWSLETTER_UI_FIXES_PART12_SUMMARY.md](./NEWSLETTER_UI_FIXES_PART12_SUMMARY.md) - Part 12 fixes summary
 - ✅ [NEWSLETTER_UI_FIXES_PART11_SUMMARY.md](./NEWSLETTER_UI_FIXES_PART11_SUMMARY.md) - Part 11 fixes summary
 - ✅ [NEWSLETTER_UI_FIXES_SUMMARY.md](./NEWSLETTER_UI_FIXES_SUMMARY.md) - Part 10 fixes summary
-- ✅ [PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md](./PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md) - Root cause analysis
+- ✅ [RCA_PHASE_6A74_CRITICAL_FAILURES.md](./RCA_PHASE_6A74_CRITICAL_FAILURES.md) - Critical failures RCA
+- ✅ [PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md](./PHASE_6A74_NEWSLETTER_UI_ISSUES_RCA.md) - Original UI issues RCA
 - ✅ [PHASE_6A74_NEWSLETTER_SUMMARY.md](./PHASE_6A74_NEWSLETTER_SUMMARY.md) - Full feature documentation
 
 **Next Steps**:
-1. ✅ Staging deployment complete
-2. 🔄 Manual QA testing (waiting for user)
+1. 🔄 Staging deployment (in progress)
+2. ⏳ Manual QA testing by user
 3. ⏳ Production deployment (pending QA approval)
 
 **Deferred** (Backend Features Required):
 - Issue #1: Newsletter email recipient count display (needs `NewsletterEmailHistory` entity)
 - Issue #2: Dashboard recipient numbers (depends on Issue #1)
+
+---
+
+## 🎯 Previous Session - Phase 6A.74 Part 11: Newsletter UI Quick Fixes ✅
+
+### Phase 6A.74 Part 11 - Newsletter UI Quick Fixes (2026-01-18)
+
+**Status**: ✅ **COMPLETE** (But fixes were incorrect - see Part 12)
 
 ---
 

@@ -1,9 +1,9 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-17 - Phase 6A.X Observability - Phase 2 Step 3 Batch 1 Complete*
+*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 2 Step 3 Batch 2A Complete*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Phase 2 Step 3 Batch 1 Complete ✅
+## 🎯 Current Session Status - Phase 6A.X Observability - Phase 2 Step 3 Batch 2A Complete ✅
 
 ### Phase 6A.X - Comprehensive Observability Improvements (Phase 1 Quick Wins) - 2026-01-17
 
@@ -172,17 +172,55 @@
 - ✅ Email group operations fully logged
 - ✅ Metro area operations fully logged
 
-**Remaining Repositories** (16 repositories for Batches 2-4):
-- Batch 2 (Week 3): BusinessMembership, Review, Service, Category, RefreshToken repositories (5)
-- Batch 3 (Week 4): NotificationPreference, AdminActionLog, Analytics repositories + 2 more (5)
-- Batch 4 (Week 5): Remaining repositories + external services (6)
+**Phase 2 Step 3 - Batch 2A: Ticket and Notification Repositories** (2026-01-18):
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Workflow #21102886327)
+
+**Batch 2A Repositories Enhanced** (2 repositories, 12 methods total):
+1. ✅ [TicketRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/TicketRepository.cs) - 5 methods
+   - GetByTicketCodeAsync, GetByRegistrationIdAsync, GetByEventIdAsync, GetByUserIdAsync, TicketCodeExistsAsync
+2. ✅ [NotificationRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/NotificationRepository.cs) - 7 methods
+   - GetByUserIdAsync, GetUnreadByUserIdAsync, GetUnreadCountAsync, GetPagedByUserIdAsync, MarkAllAsReadAsync, DeleteOldReadNotificationsAsync
+
+**Logging Pattern Consistency**:
+- ✅ All methods follow RepositoryLoggingTemplate.cs pattern
+- ✅ LogContext.PushProperty for correlation (Operation, EntityType, parameters)
+- ✅ Stopwatch for performance timing
+- ✅ Debug logs at START with input parameters
+- ✅ Information logs at COMPLETE with results (count, found status, rows affected)
+- ✅ Error logs with PostgreSQL SqlState extraction
+- ✅ Try-catch wrappers for all database operations
+- ✅ Logger injection via constructor with ILogger<TRepository>
+
+**Build & Deployment Results**:
+- ✅ Build: 0 errors, 0 warnings (Infrastructure project)
+- ✅ Code Changes: +452 insertions, -56 deletions (comprehensive logging added)
+- ✅ Commit: b86fa3dc - "feat(phase-6ax): Batch 2A - Add comprehensive logging to TicketRepository and NotificationRepository"
+- ✅ Deployment: GitHub Actions Run #21102886327 - SUCCESS (5m 18s)
+- ✅ Container App URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Impact**:
+- ✅ 11 repositories now have comprehensive observability (9 from previous batches + 2 from Batch 2A)
+- ✅ 51 total methods enhanced across all batches (39 from Batch 1 + 12 from Batch 2A)
+- ✅ Ticket operations fully logged (validation, retrieval by code/event/user)
+- ✅ Notification operations fully logged (unread counts, pagination, bulk operations)
+- ✅ Performance timing available for all ticket and notification queries
+- ✅ Bulk operations (MarkAllAsReadAsync, DeleteOldReadNotificationsAsync) log rows affected
+
+**Remaining Repositories** (14 repositories for Batches 2B-4):
+- Batch 2B (Week 3): Review (22 methods), Service (14 methods), EmailMessage (13 methods upgrade from partial logging) - 49 methods
+- Batch 3 (Week 4): BusinessMembership, Category, RefreshToken, NotificationPreference repositories (4)
+- Batch 4 (Week 5): AdminActionLog, Analytics, remaining repositories + external services (6)
 
 **Next Steps** (Phase 2-5 Implementation):
-1. ⏳ **Phase 2 Step 3 - Batch 2** (Week 3): Apply logging template to next 5 repositories
-   - BusinessMembership, Review, Service, Category, RefreshToken repositories
+1. ⏳ **Phase 2 Step 3 - Batch 2B** (Week 3): Apply logging template to 3 large repositories (49 methods)
+   - ReviewRepository (22 methods) - Business review operations
+   - ServiceRepository (14 methods) - Business service management
+   - EmailMessageRepository (13 methods) - Upgrade from partial to comprehensive logging
    - Continue following established pattern from RepositoryLoggingTemplate.cs
 
-2. ⏳ **Phase 2 Step 3 - Batch 3** (Week 4): Apply logging template to next 5 repositories
+2. ⏳ **Phase 2 Step 3 - Batch 3** (Week 3-4): Apply logging template to remaining repositories
+   - BusinessMembership, Category, RefreshToken, NotificationPreference repositories
    - Add external service logging (Azure Email, SMS, Storage, Stripe)
    - Add Polly retry policies
    - Add performance metrics

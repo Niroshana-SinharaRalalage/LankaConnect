@@ -175,18 +175,22 @@ export default function DiscoverNewslettersPage() {
             </div>
           </div>
 
-          <TreeDropdown
-            nodes={locationTree}
-            selectedIds={
-              selectedState
-                ? [selectedState]
-                : selectedMetroIds.length > 0
-                ? selectedMetroIds
-                : ['all-locations']
-            }
-            onSelectionChange={handleLocationChange}
-            placeholder="Location"
-          />
+          {/* Fix Issue #2: Add minimum width wrapper for TreeDropdown */}
+          <div className="min-w-[300px]">
+            <TreeDropdown
+              nodes={locationTree}
+              selectedIds={
+                selectedState
+                  ? [selectedState]
+                  : selectedMetroIds.length > 0
+                  ? selectedMetroIds
+                  : ['all-locations']
+              }
+              onSelectionChange={handleLocationChange}
+              placeholder="Select Location"
+              className="w-full"
+            />
+          </div>
 
           <select
             value={dateFilter}
@@ -232,14 +236,9 @@ export default function DiscoverNewslettersPage() {
                 onClick={() => router.push(`/newsletters/${newsletter.id}`)}
               >
                 <div className="flex items-start gap-4 p-4">
-                  {/* Left side: Status badge */}
-                  <div className="flex-shrink-0 pt-1">
-                    <Badge className={getStatusBadgeColor(newsletter.status)}>
-                      {getStatusLabel(newsletter.status)}
-                    </Badge>
-                  </div>
+                  {/* Fix Issue #1: Removed status badge - public page should not show internal status */}
 
-                  {/* Middle: Title and description */}
+                  {/* Title and description */}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 mb-1">
                       {newsletter.title}

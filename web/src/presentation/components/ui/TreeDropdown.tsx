@@ -257,7 +257,7 @@ export function TreeDropdown({
       {/* Dropdown menu */}
       {isOpen && (
         <div
-          className="absolute z-50 w-full mt-2 bg-white border-2 rounded-lg shadow-lg max-h-96 overflow-y-auto"
+          className="absolute z-[100] w-full min-w-[300px] mt-2 bg-white border-2 rounded-lg shadow-lg max-h-96 overflow-y-auto"
           style={{ borderColor: '#FF7900' }}
           role="listbox"
         >

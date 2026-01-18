@@ -41,14 +41,18 @@ export const createNewsletterSchema = z.object({
   (data) => {
     // Must have at least one recipient source
     const hasEmailGroups = data.emailGroupIds && data.emailGroupIds.length > 0;
-    const hasNewsletterSubscribers = data.includeNewsletterSubscribers;
-    const hasEvent = data.eventId !== null && data.eventId !== undefined;
+    const hasNewsletterSubscribers = data.includeNewsletterSubscribers === true;
 
+    // Event ID is optional - only counts if it's a valid GUID (not empty string, not undefined)
+    // Empty string "" is treated as "No event linkage" from the dropdown
+    const hasEvent = data.eventId && data.eventId.trim().length > 0 && data.eventId !== '';
+
+    // At least one recipient source must be active
     return hasEmailGroups || hasNewsletterSubscribers || hasEvent;
   },
   {
-    message: 'Must select at least one recipient source: email groups, newsletter subscribers, or link to an event',
-    path: ['emailGroupIds'],
+    message: 'Must have at least one recipient source: select email groups, keep newsletter subscribers checked, or link to an event',
+    path: ['emailGroupIds'], // Error displays on email groups field
   }
 );
 

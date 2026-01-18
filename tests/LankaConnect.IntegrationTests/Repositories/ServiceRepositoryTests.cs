@@ -21,7 +21,7 @@ public class ServiceRepositoryTests : DockerComposeWebApiTestBase
     private void InitializeRepositories()
     {
         _context = DbContext;
-        _repository = new ServiceRepository(_context);
+        _repository = new ServiceRepository(_context, NullLogger<ServiceRepository>.Instance);
         _businessRepository = new BusinessRepository(_context, NullLogger<BusinessRepository>.Instance);
     }
 

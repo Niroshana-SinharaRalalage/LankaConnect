@@ -70,6 +70,17 @@ public class EventNotificationEmailJob
                 return;
             }
 
+            // Phase 6A.61+ FIX #1: IDEMPOTENCY CHECK BEFORE EMAIL LOOP
+            // This prevents duplicate emails on Hangfire retry - check BEFORE sending any emails
+            if (history.SuccessfulSends > 0 || history.FailedSends > 0)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.61][{CorrelationId}] IDEMPOTENCY CHECK - History {HistoryId} already processed " +
+                    "(Success: {Success}, Failed: {Failed}). Skipping to prevent duplicate emails.",
+                    correlationId, historyId, history.SuccessfulSends, history.FailedSends);
+                return; // Exit early - another execution already sent emails
+            }
+
             // Phase 6A.61+ FIX: Use trackChanges: false to properly load email groups from junction table
             // Background jobs don't need change tracking - this ensures .Include("_emailGroupEntities") works correctly
             var @event = await _eventRepository.GetByIdAsync(history.EventId, trackChanges: false, cancellationToken);
@@ -179,35 +190,13 @@ public class EventNotificationEmailJob
                 correlationId, successCount, failedCount, recipients.Count);
 
             // 7. Update history record with final statistics
-            // Phase 6A.61+ FIX: Reload entity to get fresh version and avoid DbUpdateConcurrencyException
-            // The original entity loaded at the start may have stale UpdatedAt after minutes of email sending
-            _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Reloading history {HistoryId} to get fresh version before final update",
-                correlationId, historyId);
-
-            var freshHistory = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
-            if (freshHistory == null)
-            {
-                _logger.LogError("[Phase 6A.61][{CorrelationId}] History record {HistoryId} not found for final update",
-                    correlationId, historyId);
-                return;
-            }
-
-            // Phase 6A.61+ Idempotency Check: If statistics already updated (SuccessfulSends > 0), skip to avoid duplicate sends
-            // This prevents concurrent Hangfire retries from sending the same emails multiple times
-            if (freshHistory.SuccessfulSends > 0 || freshHistory.FailedSends > 0)
-            {
-                _logger.LogInformation(
-                    "[Phase 6A.61][{CorrelationId}] History {HistoryId} already has statistics (Success: {Success}, Failed: {Failed}). " +
-                    "Another job execution already completed. Skipping commit to avoid concurrency exception.",
-                    correlationId, historyId, freshHistory.SuccessfulSends, freshHistory.FailedSends);
-                return; // Exit successfully - another concurrent execution handled the email send
-            }
-
+            // Phase 6A.61+ FIX #2: SINGLE ENTITY LOAD - Update the SAME entity loaded at start (line 66)
+            // DO NOT reload to avoid multiple tracked entities causing DbUpdateConcurrencyException
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Updating history statistics - Recipients: {Recipients}, Success: {Success}, Failed: {Failed}",
                 correlationId, recipients.Count, successCount, failedCount);
 
-            freshHistory.UpdateSendStatistics(recipients.Count, successCount, failedCount);
-            _historyRepository.Update(freshHistory);
+            history.UpdateSendStatistics(recipients.Count, successCount, failedCount);
+            _historyRepository.Update(history);
 
             // Phase 6A.61+ CRITICAL FIX: Clear ChangeTracker to detach EmailMessage entities
             // The email sending loop creates and tracks EmailMessage entities in the same DbContext
@@ -230,30 +219,34 @@ public class EventNotificationEmailJob
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
+                // Phase 6A.61+ FIX #3: GRACEFUL CONCURRENCY HANDLING
+                // DO NOT re-throw exception - emails were sent successfully, that's the primary goal
+                // Database statistics update is secondary - Hangfire retry would cause duplicate emails
                 _logger.LogWarning(ex,
                     "[Phase 6A.61][{CorrelationId}] CONCURRENCY EXCEPTION when committing history {HistoryId}. " +
-                    "This likely means another concurrent Hangfire retry already updated the record. " +
-                    "Checking if another job execution succeeded...",
-                    correlationId, historyId);
+                    "Emails sent successfully ({Success} success, {Failed} failed), accepting as partial success. " +
+                    "Exiting gracefully to prevent Hangfire retry and duplicate emails.",
+                    correlationId, historyId, successCount, failedCount);
 
-                // Phase 6A.61+ CRITICAL FIX: Don't immediately retry on concurrency exception
-                // Instead, reload the entity to check if another concurrent execution already succeeded
+                // Check if another concurrent execution saved the statistics
                 var reloadedHistory = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
                 if (reloadedHistory != null && (reloadedHistory.SuccessfulSends > 0 || reloadedHistory.FailedSends > 0))
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.61][{CorrelationId}] Verified that another concurrent job execution already committed statistics " +
-                        "(Success: {Success}, Failed: {Failed}). This job can exit successfully - no retry needed.",
+                        "[Phase 6A.61][{CorrelationId}] Verified that another concurrent job execution already saved statistics " +
+                        "(Success: {Success}, Failed: {Failed}). Exiting successfully.",
                         correlationId, reloadedHistory.SuccessfulSends, reloadedHistory.FailedSends);
-                    return; // Exit successfully - another execution handled the commit
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "[Phase 6A.61][{CorrelationId}] Concurrency exception prevented database update, but emails were sent. " +
+                        "Accepting as partial success - primary goal (email delivery) achieved.",
+                        correlationId);
                 }
 
-                // If the entity still has no statistics, this is a real concurrency conflict that needs retry
-                _logger.LogError(ex,
-                    "[Phase 6A.61][{CorrelationId}] CONCURRENCY EXCEPTION and no other job succeeded yet. " +
-                    "History: {HistoryId}, Recipients: {Recipients}, Success: {Success}, Failed: {Failed}. Rethrowing for Hangfire retry.",
-                    correlationId, historyId, recipients.Count, successCount, failedCount);
-                throw; // Re-throw for Hangfire retry
+                // CRITICAL: Return successfully WITHOUT throwing - prevents Hangfire retry loop
+                return;
             }
             catch (Exception ex)
             {

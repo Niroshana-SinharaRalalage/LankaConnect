@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.RsvpToEvent;
 
@@ -33,32 +35,90 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
     public async Task<Result<string?>> Handle(RsvpToEventCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "RsvpToEvent"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("UserId", request.UserId))
         {
-            // Retrieve event
-            var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-            if (@event == null)
-                return Result<string?>.Failure("Event not found");
+            var stopwatch = Stopwatch.StartNew();
 
-            // Session 21: Determine if using new multi-attendee format or legacy format
-            if (request.Attendees != null && request.Attendees.Any())
+            var isMultiAttendee = request.Attendees != null && request.Attendees.Any();
+            _logger.LogDebug(
+                "RsvpToEvent START: EventId={EventId}, UserId={UserId}, IsMultiAttendee={IsMultiAttendee}, AttendeesCount={AttendeesCount}",
+                request.EventId, request.UserId, isMultiAttendee, request.Attendees?.Count ?? 0);
+
+            try
             {
-                // NEW FORMAT: Multiple attendees with names and ages
-                return await HandleMultiAttendeeRsvp(@event, request, cancellationToken);
+                // Retrieve event
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RsvpToEvent FAILED: Event not found - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Failure("Event not found");
+                }
+
+                _logger.LogInformation(
+                    "RsvpToEvent: Event loaded - EventId={EventId}, Title={Title}, HasPricing={HasPricing}, CurrentRegistrations={CurrentRegistrations}",
+                    @event.Id, @event.Title.Value, @event.Pricing != null, @event.CurrentRegistrations);
+
+                Result<string?> result;
+
+                // Session 21: Determine if using new multi-attendee format or legacy format
+                if (isMultiAttendee)
+                {
+                    _logger.LogInformation(
+                        "RsvpToEvent: Using multi-attendee format - EventId={EventId}, AttendeesCount={Count}",
+                        request.EventId, request.Attendees!.Count);
+
+                    // NEW FORMAT: Multiple attendees with names and ages
+                    result = await HandleMultiAttendeeRsvp(@event, request, cancellationToken);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "RsvpToEvent: Using legacy format - EventId={EventId}",
+                        request.EventId);
+
+                    // LEGACY FORMAT: Simple quantity-based RSVP
+                    result = await HandleLegacyRsvp(@event, request, cancellationToken);
+                }
+
+                stopwatch.Stop();
+
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation(
+                        "RsvpToEvent COMPLETE: EventId={EventId}, UserId={UserId}, SessionUrl={HasSessionUrl}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, result.Value != null, stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "RsvpToEvent FAILED: EventId={EventId}, UserId={UserId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+
+                return result;
             }
-            else
+            catch (Exception ex)
             {
-                // LEGACY FORMAT: Simple quantity-based RSVP
-                return await HandleLegacyRsvp(@event, request, cancellationToken);
+                stopwatch.Stop();
+
+                // Phase 6A.10: Catch unhandled exceptions and return proper error response
+                // This prevents empty HTTP 500 responses and provides meaningful error details
+                var errorMessage = $"Registration failed: {ex.GetType().Name}: {ex.Message}";
+
+                _logger.LogError(ex,
+                    "RsvpToEvent FAILED: Exception occurred - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                return Result<string?>.Failure(errorMessage);
             }
-        }
-        catch (Exception ex)
-        {
-            // Phase 6A.10: Catch unhandled exceptions and return proper error response
-            // This prevents empty HTTP 500 responses and provides meaningful error details
-            var errorMessage = $"Registration failed: {ex.GetType().Name}: {ex.Message}";
-            Console.WriteLine($"🔴 [RsvpToEventCommandHandler] EXCEPTION: {errorMessage}", ex);
-            return Result<string?>.Failure(errorMessage);
         }
     }
 

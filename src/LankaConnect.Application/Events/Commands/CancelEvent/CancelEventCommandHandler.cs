@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.CancelEvent;
 
@@ -23,48 +25,76 @@ public class CancelEventCommandHandler : ICommandHandler<CancelEventCommand>
 
     public async Task<Result> Handle(CancelEventCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[Phase 6A.63] CancelEventCommandHandler - START cancelling event {EventId}, Reason: {Reason}",
-            request.EventId, request.CancellationReason);
-
-        try
+        using (LogContext.PushProperty("Operation", "CancelEvent"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("CancellationReason", request.CancellationReason ?? "Not specified"))
         {
-            // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
-            // This is required for EF Core to detect changes when we modify the entity
-            var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
-            if (@event == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug(
+                "CancelEvent START: EventId={EventId}, Reason={Reason}",
+                request.EventId, request.CancellationReason ?? "Not specified");
+
+            try
             {
-                _logger.LogWarning("[Phase 6A.63] Event {EventId} not found", request.EventId);
-                return Result.Failure("Event not found");
+                // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
+                // This is required for EF Core to detect changes when we modify the entity
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CancelEvent FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("Event not found");
+                }
+
+                _logger.LogInformation(
+                    "CancelEvent: Event loaded - EventId={EventId}, CurrentStatus={Status}, DomainEventsCount={DomainEventCount}",
+                    request.EventId, @event.Status, @event.GetDomainEvents().Count);
+
+                // Use domain method to cancel
+                var cancelResult = @event.Cancel(request.CancellationReason ?? "No reason provided");
+                if (cancelResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CancelEvent FAILED: Domain validation failed - EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        request.EventId, string.Join(", ", cancelResult.Errors), stopwatch.ElapsedMilliseconds);
+
+                    return cancelResult;
+                }
+
+                _logger.LogInformation(
+                    "CancelEvent: Domain method succeeded - EventId={EventId}, NewStatus={Status}, DomainEventsCount={DomainEventCount}",
+                    request.EventId, @event.Status, @event.GetDomainEvents().Count);
+
+                // Save changes (EF Core tracks changes automatically)
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "CancelEvent COMPLETE: EventId={EventId}, Status={Status}, Reason={Reason}, DomainEventsCount={DomainEventCount}, Duration={ElapsedMs}ms",
+                    request.EventId, @event.Status, request.CancellationReason ?? "Not specified",
+                    @event.GetDomainEvents().Count, stopwatch.ElapsedMilliseconds);
+
+                return Result.Success();
             }
-
-            _logger.LogInformation("[Phase 6A.63] Event {EventId} retrieved, Status: {Status}, Has DomainEvents: {HasEvents}",
-                request.EventId, @event.Status, @event.GetDomainEvents().Count);
-
-            // Use domain method to cancel
-            var cancelResult = @event.Cancel(request.CancellationReason);
-            if (cancelResult.IsFailure)
+            catch (Exception ex)
             {
-                _logger.LogWarning("[Phase 6A.63] Event.Cancel() failed for {EventId}: {Error}",
-                    request.EventId, string.Join(", ", cancelResult.Errors));
-                return cancelResult;
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CancelEvent FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
             }
-
-            _logger.LogInformation("[Phase 6A.63] Event.Cancel() succeeded, DomainEvents count: {Count}, Calling CommitAsync...",
-                @event.GetDomainEvents().Count);
-
-            // Save changes (EF Core tracks changes automatically)
-            await _unitOfWork.CommitAsync(cancellationToken);
-
-            _logger.LogInformation("[Phase 6A.63] CancelEventCommandHandler - COMPLETED for event {EventId}",
-                request.EventId);
-
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[Phase 6A.63] [ERROR] Exception in CancelEventCommandHandler for event {EventId}",
-                request.EventId);
-            throw;
         }
     }
 }

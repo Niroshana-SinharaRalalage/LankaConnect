@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Business.ValueObjects;
@@ -8,6 +9,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
 using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.UpdateEvent;
 
@@ -18,28 +21,52 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+    private readonly ILogger<UpdateEventCommandHandler> _logger;
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
-        IRevenueCalculatorService revenueCalculatorService) // Phase 6A.X: Revenue breakdown
+        IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
+        ILogger<UpdateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+        _logger = logger;
     }
 
     public async Task<Result> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
     {
-        // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
-        // This is required for EF Core to detect changes when we modify the entity
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
-        if (@event == null)
-            return Result.Failure("Event not found");
+        using (LogContext.PushProperty("Operation", "UpdateEvent"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("EventTitle", request.Title))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug(
+                "UpdateEvent START: EventId={EventId}, Title={Title}",
+                request.EventId, request.Title);
+
+            try
+            {
+                // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
+                // This is required for EF Core to detect changes when we modify the entity
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateEvent FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("Event not found");
+                }
 
         // NOTE: Allowing updates for all event statuses
         // Future enhancement: Implement status-based field restrictions (see ADR-011)
@@ -388,10 +415,28 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return contactResult;
         }
 
-        // Save changes (EF Core now detects changes via ChangeTracker)
-        _eventRepository.Update(@event);
-        await _unitOfWork.CommitAsync(cancellationToken);
+                // Save changes (EF Core now detects changes via ChangeTracker)
+                _eventRepository.Update(@event);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
-        return Result.Success();
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "UpdateEvent COMPLETE: EventId={EventId}, Title={Title}, Status={Status}, Duration={ElapsedMs}ms",
+                    request.EventId, request.Title, @event.Status, stopwatch.ElapsedMilliseconds);
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "UpdateEvent FAILED: Exception occurred - EventId={EventId}, Title={Title}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.Title, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
+            }
+        }
     }
 }

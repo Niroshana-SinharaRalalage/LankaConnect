@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
@@ -11,6 +12,8 @@ using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
 using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: EmailGroup entity
 using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
 
@@ -22,6 +25,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+    private readonly ILogger<CreateEventCommandHandler> _logger;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -29,7 +33,8 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         IUnitOfWork unitOfWork,
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
-        IRevenueCalculatorService revenueCalculatorService) // Phase 6A.X: Revenue breakdown
+        IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
+        ILogger<CreateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
@@ -37,30 +42,74 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+        _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        // Validate user can create events based on role
-        var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
-        if (user == null)
-            return Result<Guid>.Failure("User not found");
-
-        // Check if user has permission to create events (EventOrganizer or Admin roles)
-        if (!user.Role.CanCreateEvents())
+        using (LogContext.PushProperty("Operation", "CreateEvent"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("OrganizerId", request.OrganizerId))
+        using (LogContext.PushProperty("EventTitle", request.Title))
         {
-            return Result<Guid>.Failure("You do not have permission to create events. Only Event Organizers and Administrators can create events.");
-        }
+            var stopwatch = Stopwatch.StartNew();
 
-        // Create EventTitle value object
-        var titleResult = EventTitle.Create(request.Title);
-        if (titleResult.IsFailure)
-            return Result<Guid>.Failure(titleResult.Error);
+            _logger.LogDebug(
+                "CreateEvent START: OrganizerId={OrganizerId}, Title={Title}, Category={Category}, StartDate={StartDate}",
+                request.OrganizerId, request.Title, request.Category ?? EventCategory.Community, request.StartDate);
 
-        // Create EventDescription value object
-        var descriptionResult = EventDescription.Create(request.Description);
-        if (descriptionResult.IsFailure)
-            return Result<Guid>.Failure(descriptionResult.Error);
+            try
+            {
+                // Validate user can create events based on role
+                var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent FAILED: User not found - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure("User not found");
+                }
+
+                // Check if user has permission to create events (EventOrganizer or Admin roles)
+                if (!user.Role.CanCreateEvents())
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent FAILED: Insufficient permissions - OrganizerId={OrganizerId}, Role={Role}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, user.Role, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure("You do not have permission to create events. Only Event Organizers and Administrators can create events.");
+                }
+
+                // Create EventTitle value object
+                var titleResult = EventTitle.Create(request.Title);
+                if (titleResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Invalid title - OrganizerId={OrganizerId}, Title={Title}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, request.Title, titleResult.Error, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure(titleResult.Error);
+                }
+
+                // Create EventDescription value object
+                var descriptionResult = EventDescription.Create(request.Description);
+                if (descriptionResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Invalid description - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure(descriptionResult.Error);
+                }
 
         // Create EventLocation if location data provided
         EventLocation? location = null;
@@ -294,13 +343,41 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(contactResult.Error);
         }
 
-        // Phase 6A.33 FIX: Repository.AddAsync now handles email group shadow navigation sync
-        // No manual EF Core state manipulation needed - repository pattern handles it
-        await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
+                // Add EventId to LogContext now that we have it
+                using (LogContext.PushProperty("EventId", eventResult.Value.Id))
+                {
+                    _logger.LogInformation(
+                        "CreateEvent: Event aggregate created - EventId={EventId}, Title={Title}, Category={Category}",
+                        eventResult.Value.Id, request.Title, eventResult.Value.Category);
 
-        // Commit changes (EF Core now detects changes via ChangeTracker)
-        await _unitOfWork.CommitAsync(cancellationToken);
+                    // Phase 6A.33 FIX: Repository.AddAsync now handles email group shadow navigation sync
+                    // No manual EF Core state manipulation needed - repository pattern handles it
+                    await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
 
-        return Result<Guid>.Success(eventResult.Value.Id);
+                    // Commit changes (EF Core now detects changes via ChangeTracker)
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "CreateEvent COMPLETE: EventId={EventId}, OrganizerId={OrganizerId}, Title={Title}, Category={Category}, " +
+                        "StartDate={StartDate}, Capacity={Capacity}, HasPricing={HasPricing}, EmailGroupsCount={EmailGroupsCount}, Duration={ElapsedMs}ms",
+                        eventResult.Value.Id, request.OrganizerId, request.Title, eventResult.Value.Category,
+                        request.StartDate, request.Capacity, pricing != null, request.EmailGroupIds?.Count ?? 0, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Success(eventResult.Value.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CreateEvent FAILED: Exception occurred - OrganizerId={OrganizerId}, Title={Title}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.OrganizerId, request.Title, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
+            }
+        }
     }
 }

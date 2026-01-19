@@ -201,38 +201,7 @@ public class NewsletterEmailJob
                 newsletterId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 recipients.TotalRecipients > 0 ? emailStopwatch.ElapsedMilliseconds / recipients.TotalRecipients : 0);
 
-            // 6. Phase 6A.74 Part 13 Issue #1: Persist recipient history for display in UI
-            _logger.LogInformation(
-                "[Phase 6A.74 Part 13 Issue #1] Persisting newsletter email history for newsletter {NewsletterId}. " +
-                "Total recipients: {TotalRecipients}, Email groups: {EmailGroupCount}, Subscribers: {SubscriberCount}",
-                newsletterId,
-                recipients.TotalRecipients,
-                recipients.Breakdown.EmailGroupCount,
-                recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
-
-            var newsletterHistory = NewsletterEmailHistory.Create(
-                newsletterId,
-                DateTime.UtcNow,
-                recipients.TotalRecipients,
-                recipients.Breakdown.EmailGroupCount,
-                recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
-
-            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext;
-            if (dbContext != null)
-            {
-                await dbContext.Set<NewsletterEmailHistory>().AddAsync(newsletterHistory);
-                _logger.LogDebug(
-                    "[Phase 6A.74 Part 13 Issue #1] Added NewsletterEmailHistory record {HistoryId} for newsletter {NewsletterId}",
-                    newsletterHistory.Id,
-                    newsletterId);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.74 Part 13 Issue #1] Unable to cast IApplicationDbContext to DbContext. NewsletterEmailHistory not persisted.");
-            }
-
-            // 7. Mark newsletter as sent
+            // 6. Mark newsletter as sent
             // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
             // The entity was loaded at the start of the job, but by now the version may be stale
             _logger.LogDebug("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);
@@ -265,16 +234,48 @@ public class NewsletterEmailJob
             }
             else
             {
+                // Phase 6A.74 Part 13 Issue #1 BUGFIX: Create NewsletterEmailHistory AFTER marking newsletter as sent
+                // This ensures both entities are tracked by the same DbContext and committed together
+                _logger.LogInformation(
+                    "[Phase 6A.74 Part 13 Issue #1] Creating newsletter email history for newsletter {NewsletterId}. " +
+                    "Total recipients: {TotalRecipients}, Email groups: {EmailGroupCount}, Subscribers: {SubscriberCount}",
+                    newsletterId,
+                    recipients.TotalRecipients,
+                    recipients.Breakdown.EmailGroupCount,
+                    recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+
+                var newsletterHistory = NewsletterEmailHistory.Create(
+                    newsletterId,
+                    DateTime.UtcNow,
+                    recipients.TotalRecipients,
+                    recipients.Breakdown.EmailGroupCount,
+                    recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+
+                var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext;
+                if (dbContext != null)
+                {
+                    await dbContext.Set<NewsletterEmailHistory>().AddAsync(newsletterHistory);
+                    _logger.LogInformation(
+                        "[Phase 6A.74 Part 13 Issue #1] Added NewsletterEmailHistory record {HistoryId} to DbContext for newsletter {NewsletterId}",
+                        newsletterHistory.Id,
+                        newsletterId);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "[Phase 6A.74 Part 13 Issue #1] Unable to cast IApplicationDbContext to DbContext. NewsletterEmailHistory not persisted.");
+                }
+
                 try
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.74] Attempting to commit newsletter {NewsletterId} as sent. Current version: {Version}",
+                        "[Phase 6A.74] Attempting to commit newsletter {NewsletterId} as sent (with history record). Current version: {Version}",
                         newsletterId, freshNewsletter.GetType().GetProperty("Version", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(freshNewsletter));
 
                     await _unitOfWork.CommitAsync(CancellationToken.None);
 
                     _logger.LogInformation(
-                        "[Phase 6A.74] Newsletter {NewsletterId} marked as sent at {SentAt}",
+                        "[Phase 6A.74] Newsletter {NewsletterId} marked as sent at {SentAt} and history record persisted",
                         newsletterId, freshNewsletter.SentAt);
                 }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)

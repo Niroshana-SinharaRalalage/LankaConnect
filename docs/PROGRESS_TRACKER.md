@@ -1,9 +1,54 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 Batch 1B Part 6 ✅ DEPLOYED*
+*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 - LogDebug → LogInformation Migration ✅ VERIFIED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 Batch 1B Part 6 ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 - LogDebug → LogInformation Migration ✅ VERIFIED
+
+### Phase 6A.X - Phase 3: LogDebug → LogInformation Migration - 2026-01-19
+
+**Status**: ✅ **COMPLETE & VERIFIED** (Build: 0 errors, Tests: 1189 passed, Deployment: Success, Logs: Verified)
+
+**Summary**:
+Replaced ALL `LogDebug` calls with `LogInformation` across the entire backend solution (60+ files) to ensure operational logs appear in Azure staging/production environments by default. The change was requested because Serilog's default MinimumLevel: "Information" filters out Debug-level logs, making them invisible in Azure Application Insights and container logs.
+
+**Migration Scope** (60+ Backend Files):
+1. **Application Layer** (36 files):
+   - All CQRS handlers (Auth + Events Commands)
+   - Background jobs (EventReminderJob, NewsletterEmailJob, ExpiredBadgeCleanupJob)
+   - Reference data services
+
+2. **Infrastructure Layer** (15 files):
+   - Repositories: EmailStatusRepository, EventReminderRepository, ReferenceDataRepository
+   - Email services: AzureEmailService, EmailQueueProcessor, RazorEmailTemplateService
+   - Security: JwtTokenService, PasswordHashingService
+   - Utilities: ImageService, QrCodeService, EventMetroAreaMatcher
+
+3. **API Layer** (4 files):
+   - Controllers: AuthController, HealthController
+   - Extensions: AuthenticationExtensions, Program.cs
+
+4. **Test Projects** (5 files):
+   - Test utilities and base classes
+
+**Rationale**:
+- **Before**: LogDebug messages were invisible in Azure (filtered by MinimumLevel: "Information")
+- **After**: All operational logs now visible in Azure by default
+- **Impact**: Complete observability without configuration changes
+
+**Git Commits**:
+- `daf9b244` - Application layer handlers (36 files)
+- `2f02409e` - Entire backend solution (25 additional files)
+- `a828edd4` - Documentation update
+
+**Azure Verification** (Deployment Workflow #21151221691):
+✅ Deployment: SUCCESS
+✅ API Health: Operational (PostgreSQL/EF Healthy, Redis Degraded)
+✅ Logs Verified: LoginUser handler showing `[INF]` START/FAILED messages correctly
+- Example log: `LoginUser START: Email=niroshana@ambitiousme.com, RememberMe=False, IpAddress=174.104.204.213`
+- Example log: `LoginUser FAILED: User not found - Email=niroshana@ambitiousme.com, Duration=42ms`
+
+---
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 6 Complete (Events Commands) - 2026-01-19
 

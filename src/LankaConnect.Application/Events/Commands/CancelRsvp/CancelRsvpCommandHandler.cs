@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.CancelRsvp;
 
@@ -27,84 +29,139 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 
     public async Task<Result> Handle(CancelRsvpCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[CancelRsvp] Starting cancellation for EventId={EventId}, UserId={UserId}",
-            request.EventId, request.UserId);
-
-        // Verify event exists
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-        if (@event == null)
+        using (LogContext.PushProperty("Operation", "CancelRsvp"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("UserId", request.UserId))
         {
-            _logger.LogWarning("[CancelRsvp] Event not found: EventId={EventId}", request.EventId);
-            return Result.Failure("Event not found");
-        }
+            var stopwatch = Stopwatch.StartNew();
 
-        // Find active registration using GetByEventAndUserAsync (read-only query)
-        var registrationReadOnly = await _registrationRepository.GetByEventAndUserAsync(request.EventId, request.UserId, cancellationToken);
+            _logger.LogDebug(
+                "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}",
+                request.EventId, request.UserId, request.DeleteSignUpCommitments);
 
-        _logger.LogInformation("[CancelRsvp] Registration query result: Found={Found}, Status={Status}",
-            registrationReadOnly != null, registrationReadOnly?.Status.ToString() ?? "N/A");
-
-        if (registrationReadOnly == null)
-        {
-            _logger.LogWarning("[CancelRsvp] No registration found for EventId={EventId}, UserId={UserId}",
-                request.EventId, request.UserId);
-            // Phase 6A.45: Since we hard delete, no registration found means operation already succeeded (idempotent)
-            // This follows REST API idempotency best practices: DELETE operations should be idempotent
-            _logger.LogInformation("[CancelRsvp] No registration found - likely already cancelled and deleted (idempotent operation)");
-            return Result.Success();
-        }
-
-        // Phase 6A.45 FIX: Hard delete registration instead of soft delete (marking as cancelled)
-        // This prevents duplicate/cancelled registrations from cluttering the database
-        // Get the registration WITH tracking so EF Core can delete it
-        var registration = await _registrationRepository.GetByIdAsync(registrationReadOnly.Id, cancellationToken);
-
-        if (registration == null)
-        {
-            _logger.LogError("[CancelRsvp] Failed to retrieve registration with tracking: RegId={RegId}", registrationReadOnly.Id);
-            return Result.Failure("Failed to cancel registration");
-        }
-
-        // Phase 6A.28: Handle sign-up commitments based on user choice
-        // Fix: Trust domain model as single source of truth (removed competing deletion strategies)
-        if (request.DeleteSignUpCommitments)
-        {
-            _logger.LogInformation("[CancelRsvp] Deleting commitments via domain model for EventId={EventId}, UserId={UserId}",
-                request.EventId, request.UserId);
-
-            var cancelResult = @event.CancelAllUserCommitments(request.UserId);
-
-            if (cancelResult.IsFailure)
+            try
             {
-                _logger.LogWarning("[CancelRsvp] Failed to delete commitments: {Error}", cancelResult.Error);
+                // Verify event exists
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CancelRsvp FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("Event not found");
+                }
+
+                _logger.LogInformation(
+                    "CancelRsvp: Event loaded - EventId={EventId}, Title={Title}, Status={Status}",
+                    @event.Id, @event.Title.Value, @event.Status);
+
+                // Find active registration using GetByEventAndUserAsync (read-only query)
+                var registrationReadOnly = await _registrationRepository.GetByEventAndUserAsync(request.EventId, request.UserId, cancellationToken);
+
+                _logger.LogInformation(
+                    "CancelRsvp: Registration query result - Found={Found}, Status={Status}",
+                    registrationReadOnly != null, registrationReadOnly?.Status.ToString() ?? "N/A");
+
+                if (registrationReadOnly == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "CancelRsvp COMPLETE: No registration found (idempotent) - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    // Phase 6A.45: Since we hard delete, no registration found means operation already succeeded (idempotent)
+                    // This follows REST API idempotency best practices: DELETE operations should be idempotent
+                    return Result.Success();
+                }
+
+                // Phase 6A.45 FIX: Hard delete registration instead of soft delete (marking as cancelled)
+                // This prevents duplicate/cancelled registrations from cluttering the database
+                // Get the registration WITH tracking so EF Core can delete it
+                var registration = await _registrationRepository.GetByIdAsync(registrationReadOnly.Id, cancellationToken);
+
+                if (registration == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogError(
+                        "CancelRsvp FAILED: Could not retrieve registration with tracking - RegId={RegId}, Duration={ElapsedMs}ms",
+                        registrationReadOnly.Id, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("Failed to cancel registration");
+                }
+
+                using (LogContext.PushProperty("RegistrationId", registration.Id))
+                {
+
+                    // Phase 6A.28: Handle sign-up commitments based on user choice
+                    // Fix: Trust domain model as single source of truth (removed competing deletion strategies)
+                    if (request.DeleteSignUpCommitments)
+                    {
+                        _logger.LogInformation(
+                            "CancelRsvp: Deleting commitments via domain model - EventId={EventId}, UserId={UserId}",
+                            request.EventId, request.UserId);
+
+                        var cancelResult = @event.CancelAllUserCommitments(request.UserId);
+
+                        if (cancelResult.IsFailure)
+                        {
+                            _logger.LogWarning(
+                                "CancelRsvp: Failed to delete commitments - EventId={EventId}, UserId={UserId}, Error={Error}",
+                                request.EventId, request.UserId, cancelResult.Error);
+                        }
+                        else
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Commitments cancelled successfully - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+                        }
+
+                        // CRITICAL FIX ADR-007: Explicitly mark event as modified for EF Core change tracking
+                        // Without this, collection deletions (commitments removed) are not tracked even though
+                        // domain method executed successfully. Pattern matches RsvpToEventCommandHandler (Phase 6A.24)
+                        _eventRepository.Update(@event);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "CancelRsvp: User chose to keep sign-up commitments - EventId={EventId}, UserId={UserId}",
+                            request.EventId, request.UserId);
+                    }
+
+                    // Phase 6A.45: Hard delete the registration from database
+                    _logger.LogInformation(
+                        "CancelRsvp: Hard deleting registration - RegId={RegId}, EventId={EventId}, UserId={UserId}",
+                        registration.Id, request.EventId, request.UserId);
+
+                    _registrationRepository.Remove(registration);
+
+                    // Save changes
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "CancelRsvp COMPLETE: EventId={EventId}, UserId={UserId}, RegId={RegId}, DeletedCommitments={DeletedCommitments}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, registration.Id, request.DeleteSignUpCommitments, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Success();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogInformation("[CancelRsvp] Commitments cancelled successfully");
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CancelRsvp FAILED: Exception occurred - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
             }
-
-            // CRITICAL FIX ADR-007: Explicitly mark event as modified for EF Core change tracking
-            // Without this, collection deletions (commitments removed) are not tracked even though
-            // domain method executed successfully. Pattern matches RsvpToEventCommandHandler (Phase 6A.24)
-            _eventRepository.Update(@event);
         }
-        else
-        {
-            _logger.LogInformation("[CancelRsvp] User chose to keep sign-up commitments for EventId={EventId}, UserId={UserId}",
-                request.EventId, request.UserId);
-        }
-
-        // Phase 6A.45: Hard delete the registration from database
-        _logger.LogInformation("[CancelRsvp] Hard deleting registration: RegId={RegId}, EventId={EventId}, UserId={UserId}",
-            registration.Id, request.EventId, request.UserId);
-        _registrationRepository.Remove(registration);
-
-        // Save changes
-        await _unitOfWork.CommitAsync(cancellationToken);
-
-        _logger.LogInformation("[CancelRsvp] Cancellation successful for EventId={EventId}, UserId={UserId}",
-            request.EventId, request.UserId);
-
-        return Result.Success();
     }
 }

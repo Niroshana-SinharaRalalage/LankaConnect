@@ -8,6 +8,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -21,15 +22,18 @@ public class UpdateRegistrationDetailsCommandHandlerTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ILogger<UpdateRegistrationDetailsCommandHandler>> _mockLogger;
     private readonly UpdateRegistrationDetailsCommandHandler _handler;
 
     public UpdateRegistrationDetailsCommandHandlerTests()
     {
         _mockEventRepository = new Mock<IEventRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockLogger = new Mock<ILogger<UpdateRegistrationDetailsCommandHandler>>();
         _handler = new UpdateRegistrationDetailsCommandHandler(
             _mockEventRepository.Object,
-            _mockUnitOfWork.Object);
+            _mockUnitOfWork.Object,
+            _mockLogger.Object);
     }
 
     private Event CreatePublishedEventWithRegistration(Guid userId, out Registration registration)

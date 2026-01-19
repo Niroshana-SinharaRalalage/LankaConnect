@@ -1,80 +1,134 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 Batch 1B Part 3 ✅ DEPLOYED*
+*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 Batch 1B Part 5 ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 Batch 1B Part 3 ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 Batch 1B Part 5 ✅ DEPLOYED
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 5 Complete (Events Commands) - 2026-01-19
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Tests: 1189 passed, Deployment: Success)
+
+**Summary**:
+Enhanced 8 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 5, bringing total Events Command handlers to 28/39 (72%) complete. All changes deployed to Azure staging and verified operational.
+
+**Batch 1B Part 5 - Handlers Enhanced** (8 handlers):
+1. ✅ **AddToWaitingListCommandHandler** (40 → 102 lines, +62 lines)
+   - Adds users to event waiting list when at capacity
+   - LogContext: Operation, EntityType, EventId, UserId
+   - Logs: Capacity, waiting list count, position assignment
+   - Fixed: Null-coalescing operator for Capacity?.MaxCapacity
+
+2. ✅ **PromoteFromWaitingListCommandHandler** (40 → 102 lines, +62 lines)
+   - Promotes users from waiting list to confirmed registration
+   - LogContext: Operation, EntityType, EventId, UserId
+   - Logs: Capacity check, promotion success, updated counts
+
+3. ✅ **RemoveFromWaitingListCommandHandler** (40 → 103 lines, +63 lines)
+   - Removes users from waiting list with position resequencing
+   - LogContext: Operation, EntityType, EventId, UserId
+   - Logs: Removal success, updated waiting list count
+
+4. ✅ **UpdateRegistrationDetailsCommandHandler** (69 → 159 lines, +90 lines)
+   - Updates attendee and contact details for registrations
+   - LogContext: Operation, EntityType, EventId, UserId
+   - Logs: Attendee value object creation, contact info, domain method
+   - Phase 6A.14: Edit registration details feature
+
+5. ✅ **CreateSignUpListWithItemsCommandHandler** (65 → 158 lines, +93 lines)
+   - Creates sign-up list with items in single transaction
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Event loading, list creation, item counts
+   - Phase 6A.27: HasOpenItems parameter support
+
+6. ✅ **RemoveSignUpItemCommandHandler** (43 → 116 lines, +73 lines)
+   - Removes items from sign-up lists
+   - LogContext: Operation, EntityType, EventId, SignUpListId, SignUpItemId
+   - Logs: Item removal, updated item counts
+
+7. ✅ **RemoveSignUpListFromEventCommandHandler** (38 → 98 lines, +60 lines)
+   - Removes entire sign-up lists from events
+   - LogContext: Operation, EntityType, EventId, SignUpListId
+   - Logs: List removal, updated list counts
+
+8. ✅ **UpdateSignUpListCommandHandler** (55 → 127 lines, +72 lines)
+   - Updates sign-up list details and categories
+   - LogContext: Operation, EntityType, EventId, SignUpListId
+   - Logs: Category updates, domain method success
+   - Phase 6A.13: Edit Sign-Up List feature
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Tests: 1189 passed, 0 failed, 1 skipped (100% pass rate)
+- ✅ Code Changes: 8 handlers enhanced (+575 lines total)
+
+**Issues Resolved**:
+1. **Null-Coalescing Operator Error** (CS0023) in AddToWaitingList/PromoteFromWaitingList:
+   - **Root Cause**: `@event.Capacity?.MaxCapacity` is `int`, not `int?`, causing type mismatch with `?? 0`
+   - **Fix**: Changed to `@event.Capacity?.MaxCapacity ?? (int?)0`
+
+2. **Missing ILogger in Test Files**:
+   - Added Mock<ILogger<UpdateSignUpListCommandHandler>> to UpdateSignUpListCommandHandlerTests
+   - Added Mock<ILogger<UpdateRegistrationDetailsCommandHandler>> to UpdateRegistrationDetailsCommandHandlerTests
+
+**Git Commits**:
+- 8d964681 - "feat(observability-phase3): Enhance Events Command handlers (Batch 1B Part 5)"
+
+**Deployment**:
+- ✅ Workflow #21143718616: SUCCESS (6m)
+- ✅ API Health: Operational (verified via curl)
+- ✅ Container Logs: Comprehensive logging ready for new handlers
+
+**Overall Progress (Phase 3 Total Scope)**:
+- **Total**: 164 handlers (90 commands + 51 queries + 21 event handlers + 2 other)
+- **Batch 1A Complete**: 5/5 Auth handlers (100%) ✅
+- **Batch 1B Parts 1-5 Complete**: 28/39 Events Command handlers (72%) ✅
+  - Part 1 (5 handlers): CreateEvent, PublishEvent, CancelEvent, RejectEvent, DeleteEvent
+  - Part 2 (5 handlers): RsvpToEvent, CancelRsvp, CheckInAttendee, ApproveEvent, UpdateEvent
+  - Part 3 (5 handlers): UpdateRsvp, PostponeEvent, UnpublishEvent, ArchiveEvent, UpdateEventCapacity
+  - Part 4 (5 handlers): AddSignUpItem, CommitToSignUpItem, UpdateEventLocation, UpdateSignUpItem, UpdateEventOrganizerContact
+  - Part 5 (8 handlers): AddToWaitingList, PromoteFromWaitingList, RemoveFromWaitingList, UpdateRegistrationDetails, CreateSignUpListWithItems, RemoveSignUpItem, RemoveSignUpListFromEvent, UpdateSignUpList
+- **Completed**: 33/164 handlers (20%)
+- **Remaining**: 131/164 handlers (80%)
+
+**Next Steps**:
+1. ⏳ **Batch 1B Part 6**: Enhance remaining 11 Events Command handlers (CancelRsvp, AddOpenSignUpItem, etc.)
+2. ⏳ **Batch 1C**: ~5 Events Query handlers
+3. ⏳ **Batches 2-9**: Remaining ~126 handlers across other modules
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability Phase 3 Batch 1B Part 4 ✅ DEPLOYED
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 4 Complete (Events Commands) - 2026-01-19
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Tests: 1189 passed, Deployment: Success)
+
+**Summary**:
+Enhanced 5 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 4, bringing total Events Command handlers to 20/39 (51%) complete.
+
+**Handlers Enhanced** (5 handlers):
+- AddSignUpItemCommandHandler, CommitToSignUpItemCommandHandler, UpdateEventLocationCommandHandler, UpdateSignUpItemCommandHandler, UpdateEventOrganizerContactCommandHandler
+
+**Git Commits**: 1c0090c6
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability Phase 3 Batch 1B Part 3 ✅ DEPLOYED
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 3 Complete (Events Commands) - 2026-01-19
 
 **Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Tests: 1189 passed, Deployment: Success)
 
 **Summary**:
-Enhanced 5 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 3, bringing total Events Command handlers to 15/39 (38%) complete. All changes deployed to Azure staging and verified operational.
+Enhanced 5 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 3, bringing total Events Command handlers to 15/39 (38%) complete.
 
-**Batch 1B Part 3 - Handlers Enhanced** (5 handlers):
-1. ✅ **UpdateRsvpCommandHandler** (35 → 99 lines, +64 lines)
-   - Handles RSVP/registration quantity updates
-   - LogContext: Operation, EntityType, EventId, UserId
-   - Logs: Registration updated, validation failures, domain results
+**Handlers Enhanced** (5 handlers):
+- UpdateRsvpCommandHandler, PostponeEventCommandHandler, UnpublishEventCommandHandler, ArchiveEventCommandHandler, UpdateEventCapacityCommandHandler
 
-2. ✅ **PostponeEventCommandHandler** (36 → 100 lines, +64 lines)
-   - Handles event postponement with reason tracking
-   - LogContext: Operation, EntityType, EventId, PostponementReason
-   - Fixed: Null reference warning with `?? "No reason provided"`
+**Git Commits**: c8004bc2
 
-3. ✅ **UnpublishEventCommandHandler** (65 → 102 lines, +37 lines)
-   - Upgraded from basic ILogger to comprehensive pattern
-   - Removed verbose [Phase 6A.41] markers
-   - LogContext-based correlation instead
-
-4. ✅ **ArchiveEventCommandHandler** (35 → 96 lines, +61 lines)
-   - Handles event archiving for completed events
-   - Tracks status transitions (Draft/Published → Archived)
-   - Comprehensive logging for all validation paths
-
-5. ✅ **UpdateEventCapacityCommandHandler** (35 → 98 lines, +63 lines)
-   - Handles event capacity updates
-   - Logs old/new capacity changes
-   - Shows current registrations for validation context
-
-**Build Results**:
-- ✅ Build: 0 errors, 0 warnings
-- ✅ Tests: 1189 passed, 0 failed, 1 skipped (100% pass rate)
-- ✅ Code Changes: 5 handlers enhanced (+289 lines total)
-
-**Issues Resolved**:
-1. **Null Reference Warning - PostponeEventCommandHandler** (Line 60 - CS8604):
-   - **Root Cause**: `request.PostponementReason` is nullable but `Event.Postpone()` expects non-null
-   - **Fix**: Added null coalescing: `request.PostponementReason ?? "No reason provided"`
-
-**Git Commits**:
-- c8004bc2 - "feat(observability-phase3): Enhance Events Command handlers (Batch 1B Part 3)"
-
-**Deployment**:
-- ✅ Workflow #21125457812: SUCCESS (6m 5s)
-- ✅ API Health: Healthy (tested via login endpoint)
-- ✅ Container Logs: Comprehensive logging operational (verified via Azure CLI)
-
-**Verification Performed**:
-1. ✅ Login API Test: Received valid JWT token
-2. ✅ Azure Container Logs: Showing comprehensive logging from Auth handlers
-3. ✅ API Operational: Hangfire background jobs running, no errors
-
-**Overall Progress (Phase 3 Total Scope)**:
-- **Total**: 164 handlers (90 commands + 51 queries + 21 event handlers + 2 other)
-- **Batch 1A Complete**: 5/5 Auth handlers (100%) ✅
-- **Batch 1B Parts 1-3 Complete**: 15/39 Events Command handlers (38%) ✅
-  - Part 1 (5 handlers): CreateEvent, PublishEvent, CancelEvent, RejectEvent, DeleteEvent
-  - Part 2 (5 handlers): RsvpToEvent, CancelRsvp, CheckInAttendee, GetAttendees, UpdateEvent
-  - Part 3 (5 handlers): UpdateRsvp, PostponeEvent, UnpublishEvent, ArchiveEvent, UpdateEventCapacity
-- **Completed**: 20/164 handlers (12%)
-- **Remaining**: 144/164 handlers (88%)
-
-**Next Steps**:
-1. ⏳ **Batch 1B Part 4**: Enhance next 5-10 Events Command handlers
-2. ⏳ **Batch 1C**: ~5 Events Query handlers
-3. ⏳ **Batches 2-9**: Remaining ~124 handlers across other modules
+**Deployment**: Workflow #21125457812 SUCCESS
 
 ---
 

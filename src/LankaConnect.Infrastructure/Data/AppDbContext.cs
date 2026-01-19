@@ -215,6 +215,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
         modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
+        modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13: Newsletter email send history
         modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
 
         // Analytics schema (Epic 2 Phase 3)

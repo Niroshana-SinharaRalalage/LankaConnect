@@ -56,14 +56,11 @@ export const createNewsletterSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Phase 6A.74 Part 13 Issue #6 FIX: Location validation only applies if targetAllLocations is false
-    // If targetAllLocations is true OR event is selected, no metro area validation needed
-    if (data.targetAllLocations || (data.eventId && data.eventId !== '')) {
-      return true;
-    }
-
-    // If targetAllLocations is false and no event, must select at least one metro area
-    return data.metroAreaIds && data.metroAreaIds.length > 0;
+    // Phase 6A.74 Part 13 Issue #6 CRITICAL FIX: Location validation should NOT apply at all
+    // Location targeting is OPTIONAL - users can create newsletters without selecting locations
+    // They just need at least one recipient source (email groups OR subscribers)
+    // ALWAYS return true - no location validation needed
+    return true;
   },
   {
     message: 'Please select at least one location or check "Target All Locations"',

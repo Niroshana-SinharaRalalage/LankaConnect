@@ -141,12 +141,12 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Keep placeholder text and append event links below
+    // Keep placeholder text and append event links below with explicit line breaks
     const eventLinksTemplate = `
 <p>[Write your news letter content here.....]</p>
-
-<p style="margin-top: 16px;">Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
-
+<p><br></p>
+<p>Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
+<p><br></p>
 <p>Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Event Sign-up Lists</a></p>
     `.trim();
 

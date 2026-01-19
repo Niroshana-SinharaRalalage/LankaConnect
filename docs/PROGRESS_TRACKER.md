@@ -1,22 +1,22 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 3 Batch 1A Part 1 Complete (Auth Handlers) ✅*
+*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 3 Batch 1A Complete (Auth Handlers) ✅*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Phase 3 Batch 1A Part 1 Complete (Auth Handlers) ✅
+## 🎯 Current Session Status - Phase 6A.X Observability - Phase 3 Batch 1A Complete (All Auth Handlers) ✅
 
-### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1A Part 1 (Auth Handlers) - 2026-01-18
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1A Complete (Auth Handlers) - 2026-01-18
 
-**Status**: ✅ **DEPLOYED TO STAGING & TESTED** (Workflow #21119648583)
+**Status**: ✅ **CODE COMPLETE & TESTS PASSING** (Build: 0 errors, Tests: 1189 passed)
 
 **Summary**:
-Enhanced first 2 of 164 CQRS command/query handlers with comprehensive logging following incremental TDD strategy. Started with Auth module (5 handlers total) - this is Part 1 of 3 completing 2/5 handlers.
+Enhanced all 5 Auth module CQRS handlers with comprehensive logging following incremental TDD strategy. Completed in 2 parts (Part 1: 2 handlers, Part 2: 3 handlers) - achieving 100% Auth module coverage for Phase 3 logging enhancement.
 
 **Strategy Decision**:
 - ✅ **OPTION A Confirmed**: Upgrade ALL 164 handlers (not just 95 without logging) for consistency
-- ✅ **Incremental Approach**: Break into sub-batches (Batch 1A Part 1: 2 handlers → test/deploy → continue)
+- ✅ **Incremental Approach**: Break into sub-batches (Batch 1A Part 1: 2 handlers → Part 2: 3 handlers)
 
-**Handlers Enhanced** (2 handlers):
+**Batch 1A Part 1 - Handlers Enhanced** (2 handlers):
 1. ✅ **LoginUserHandler** (168 → 242 lines, +74 lines)
    - Most critical auth handler - high traffic, business critical
    - Added comprehensive logging to all validation paths (email format, user not found, account locked, account inactive, password verification, email verification)
@@ -32,11 +32,44 @@ Enhanced first 2 of 164 CQRS command/query handlers with comprehensive logging f
    - Token revocation logging with duration metrics
    - Exception path with re-throw pattern
 
+**Batch 1A Part 2 - Handlers Enhanced** (3 handlers):
+3. ✅ **RefreshTokenHandler** (130 → 201 lines, +71 lines)
+   - Token refresh flow - maintains user sessions
+   - Added comprehensive logging with START/COMPLETE/FAILED pattern
+   - LogContext properties: Operation, EntityType, IpAddress
+   - Dynamic UserId added after user lookup from refresh token
+   - Token rotation logging: old token revoked, new token created
+   - Duration metrics and exception re-throw pattern
+
+4. ✅ **RegisterUserHandler** (137 → 218 lines, +81 lines)
+   - User registration entry point - critical onboarding flow
+   - Added comprehensive logging throughout registration flow
+   - LogContext properties: Operation, EntityType, Email, SelectedRole
+   - Dynamic UserId added after user creation
+   - Defensive null checking for password service results (prevents NullReferenceException)
+   - Password validation, email verification, metro areas, pending role upgrade logging
+   - Duration metrics and exception re-throw pattern
+
+5. ✅ **LoginWithEntraCommandHandler** (228 → 313 lines, +85 lines)
+   - Microsoft Entra External ID authentication handler
+   - Auto-provisioning flow for new federated users
+   - Added comprehensive logging throughout token validation, user lookup, auto-provisioning
+   - LogContext properties: Operation, EntityType, IpAddress, Email (after token validation)
+   - Dynamic UserId added after user lookup/creation
+   - Federated provider detection and logging
+   - Profile sync logging for existing users
+   - Token generation and session creation logging
+   - Duration metrics and exception re-throw pattern
+
 **Files Modified**:
 - [LoginUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/LoginUser/LoginUserHandler.cs) - Enhanced (168 → 242 lines)
 - [LogoutUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/LogoutUser/LogoutUserHandler.cs) - Enhanced (70 → 110 lines)
+- [RefreshTokenHandler.cs](../src/LankaConnect.Application/Auth/Commands/RefreshToken/RefreshTokenHandler.cs) - Enhanced (130 → 201 lines)
+- [RegisterUserHandler.cs](../src/LankaConnect.Application/Auth/Commands/RegisterUser/RegisterUserHandler.cs) - Enhanced (137 → 218 lines)
+- [LoginWithEntraCommandHandler.cs](../src/LankaConnect.Application/Auth/Commands/LoginWithEntra/LoginWithEntraCommandHandler.cs) - Enhanced (228 → 313 lines)
 - [LankaConnect.Application.csproj](../src/LankaConnect.Application/LankaConnect.Application.csproj) - Added Serilog.Extensions.Logging 8.0.0
-- [LoginUserHandlerTests.cs](../tests/LankaConnect.Application.Tests/Auth/LoginUserHandlerTests.cs) - Updated exception test
+- [LoginUserHandlerTests.cs](../tests/LankaConnect.Application.Tests/Auth/LoginUserHandlerTests.cs) - Updated exception test (Part 1)
+- [RegisterUserHandlerTests.cs](../tests/LankaConnect.Application.Tests/Auth/RegisterUserHandlerTests.cs) - Updated exception test (Part 2)
 - **NEW**: [HandlerLoggingTemplate.md](../docs/HandlerLoggingTemplate.md) - Comprehensive 450+ line documentation
 
 **Package Added**:
@@ -46,29 +79,40 @@ Enhanced first 2 of 164 CQRS command/query handlers with comprehensive logging f
 **Build Results**:
 - ✅ Build: 0 errors, 0 warnings
 - ✅ Tests: 1189 passed, 0 failed, 1 skipped (100% pass rate)
-- ✅ Code Changes: 2 handlers enhanced, 1 template created, 1 test updated
+- ✅ Code Changes: 5 handlers enhanced, 1 template created, 2 tests updated
 
 **Issues Resolved**:
-1. **Serilog Version Conflict**: Initially added Serilog.Extensions.Logging 10.0.0, conflicted with Microsoft.Extensions.Logging 8.0.3
+1. **Part 1 - Serilog Version Conflict**: Initially added Serilog.Extensions.Logging 10.0.0, conflicted with Microsoft.Extensions.Logging 8.0.3
    - **Fix**: Downgraded to Serilog.Extensions.Logging 8.0.0 (compatible version)
 
-2. **Test Failure on First Deployment**: `LoginUserHandlerTests.Handle_WithDatabaseException_ShouldReturnFailure` failed
+2. **Part 1 - Test Failure on First Deployment**: `LoginUserHandlerTests.Handle_WithDatabaseException_ShouldReturnFailure` failed
    - **Root Cause**: Test expected old behavior (catch exception, return Result.Failure)
    - **Fix**: Updated to `Handle_WithDatabaseException_ShouldRethrowException` - new pattern re-throws exceptions for MediatR/API layer
+
+3. **Part 2 - NullReferenceException in RegisterUserHandler Tests** (3 test failures):
+   - **Root Cause**: Password hashing service returned null when called with empty password, handler accessed `.IsSuccess` on null
+   - **Fix**: Added defensive null checking for password validation/hashing service results with fallback error messages
+
+4. **Part 2 - RegisterUserHandler Database Error Test** (1 test failure):
+   - **Root Cause**: Test expected old behavior (catch exception, return Result.Failure), but new pattern re-throws
+   - **Fix**: Updated to `Handle_WithDatabaseError_ShouldRethrowException` matching new exception re-throw pattern
 
 **Git Commits**:
 - 749a2304 - "feat(phase-6ax-phase3-batch1a-part1): Add comprehensive logging to 2 Auth handlers"
 - ce9a57c9 - "fix(phase-6ax-phase3-batch1a-part1): Fix LoginUserHandler test for exception re-throw"
+- 7207aea4 - "feat(phase-6ax-phase3-batch1a-part2): Add comprehensive logging to 3 remaining Auth handlers (RefreshToken, RegisterUser, LoginWithEntra)"
 
 **Deployment**:
-- ✅ Workflow #21119648583: SUCCESS (6m 0s)
-- ✅ All deployment steps passed (Build, Tests, Docker, Container App Update, Smoke Tests)
-- ✅ API Health: Healthy (PostgreSQL ✅, EF Core ✅)
+- ✅ Part 1 Workflow #21119648583: SUCCESS (6m 0s) - All steps passed, API healthy
+- ⚠️ Part 2 Workflow #21120138596: FAILED at migration step (unrelated to code changes)
+  - **Failure**: Pre-existing migration issue (Phase 6A.74 Part 13 Newsletter) - column "Id" doesn't exist in state_tax_rates table
+  - **Impact**: No impact on Batch 1A Part 2 code quality - Auth handlers have no database changes
+  - **Status**: Code complete, tests passing (1189/1189), build: 0 errors
 
 **Testing**:
 - ✅ All 1189 tests passing
 - ✅ Zero-tolerance policy maintained (0 errors, 0 warnings)
-- ⏳ Manual API testing pending (Login endpoint with comprehensive logging)
+- ⏳ Deployment blocked by pre-existing migration issue (not caused by this batch)
 
 **Documentation Created**:
 - ✅ [HandlerLoggingTemplate.md](../docs/HandlerLoggingTemplate.md) - 450+ line comprehensive template
@@ -87,10 +131,16 @@ Enhanced first 2 of 164 CQRS command/query handlers with comprehensive logging f
 
 **Batch Strategy** (Remaining Work):
 - ✅ **Batch 1A Part 1**: 2/5 Auth handlers (LoginUser, LogoutUser) - COMPLETE
-- ⏳ **Batch 1A Part 2**: 3/5 Auth handlers (RegisterUser, LoginWithEntra, RefreshToken)
-- ⏳ **Batch 1B**: 10 Events Command handlers
-- ⏳ **Batch 1C**: 5 Events Query handlers
+- ✅ **Batch 1A Part 2**: 3/5 Auth handlers (RegisterUser, LoginWithEntra, RefreshToken) - COMPLETE
+- ✅ **Batch 1A Complete**: 5/5 Auth handlers (100% of Auth module) - COMPLETE
+- ⏳ **Batch 1B**: ~10 Events Command handlers
+- ⏳ **Batch 1C**: ~5 Events Query handlers
 - ⏳ **Batches 2-9**: Remaining ~144 handlers (20-30 per batch)
+
+**Overall Progress**:
+- **Phase 3 Total Scope**: 164 handlers (90 commands + 51 queries + 21 event handlers + 2 other)
+- **Completed**: 5 handlers (3% - all Auth module)
+- **Remaining**: 159 handlers (97%)
 
 **Logging Pattern Applied**:
 ```csharp

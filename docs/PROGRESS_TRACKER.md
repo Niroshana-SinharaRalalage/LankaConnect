@@ -1,9 +1,86 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-18 - Phase 6A.X Observability - Phase 3 Batch 1A Complete (Auth Handlers) ✅*
+*Last Updated: 2026-01-19 - Phase 6A.51 Signup Commitment Emails ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability - Phase 3 Batch 1A Complete (All Auth Handlers) ✅
+## 🎯 Current Session Status - Phase 6A.51: Signup Commitment Emails ✅ DEPLOYED
+
+### Phase 6A.51 - Signup Commitment Email Notifications - 2026-01-19
+
+**Status**: ✅ **COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success, Migration: Applied)
+
+**Summary**:
+Implemented complete signup commitment email notifications for three scenarios: commit, update, and cancel. Users now receive confirmation emails when they commit to bringing items, update quantities, or cancel their commitments. Includes email templates migration and multiple event handlers following established patterns.
+
+**Implementation Components**:
+
+1. **Email Templates Migration** (20260118235411_Phase6A51_AddMissingSignupCommitmentEmailTemplates)
+   - ✅ `signup-commitment-updated` - Blue theme, shows OldQuantity/NewQuantity
+   - ✅ `signup-commitment-cancelled` - Red theme, cancellation confirmation
+   - ✅ Complements existing `signup-commitment-confirmation` from Phase6A54
+
+2. **Event Handlers Created**:
+   - ✅ [UserCommittedToSignUpEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/UserCommittedToSignUpEventHandler.cs) - New commitments
+   - ✅ [CommitmentUpdatedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/CommitmentUpdatedEventHandler.cs) - Quantity updates
+   - ✅ [CommitmentCancelledEmailHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/CommitmentCancelledEmailHandler.cs) - Cancellations
+
+3. **Domain Events**:
+   - ✅ [CommitmentUpdatedEvent.cs](../src/LankaConnect.Domain/Events/DomainEvents/CommitmentUpdatedEvent.cs) - NEW domain event
+   - ✅ Modified [SignUpItem.cs](../src/LankaConnect.Domain/Events/Entities/SignUpItem.cs) to raise events
+
+4. **Repository Extensions**:
+   - ✅ Added `GetEventBySignUpListIdAsync()` to [IEventRepository.cs](../src/LankaConnect.Domain/Events/IEventRepository.cs)
+   - ✅ Added `GetEventBySignUpItemIdAsync()` to [IEventRepository.cs](../src/LankaConnect.Domain/Events/IEventRepository.cs)
+   - ✅ Implemented navigation methods in [EventRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs)
+
+**Files Changed** (9 files):
+- **Created**: CommitmentUpdatedEvent.cs, UserCommittedToSignUpEventHandler.cs, CommitmentUpdatedEventHandler.cs, CommitmentCancelledEmailHandler.cs, Phase6A51 migration
+- **Modified**: SignUpItem.cs, IEventRepository.cs, EventRepository.cs, AppDbContextModelSnapshot.cs
+
+**Git Commits**:
+- a6302eba - "feat(phase-6a51): Implement signup commitment email notifications"
+- e1f8d21f - "feat(phase-6a51): Add missing signup commitment email templates migration"
+- 4f3f4b05 - "feat(phase-6a51): Add email handler for commitment cancellations"
+
+**Deployment**:
+- ✅ Workflow #21121105182: SUCCESS (5m 48s)
+- ✅ Migration Phase6A51 applied successfully
+- ✅ Email templates created in database
+- ✅ API Health: Healthy (PostgreSQL ✅, EF Core ✅)
+
+**Architecture Patterns**:
+- **Multiple Handlers for Single Event**: `CommitmentCancelledEvent` has TWO handlers
+  - `CommitmentCancelledEventHandler` - Database deletion (Phase 6A.28)
+  - `CommitmentCancelledEmailHandler` - Email notification (Phase 6A.51)
+- **Repository Navigation**: EF Core shadow property EventId navigated via repository methods
+- **Fail-Silent Pattern**: Email handlers don't throw to prevent transaction rollback
+
+**Root Causes Identified**:
+1. **Frontend User ID Bug**: UI sends wrong user ID (`6c6bd484-...`) instead of actual from JWT (`5e782b4d-...`)
+   - Backend handles correctly with fail-silent pattern
+   - Logged as warning, continues gracefully
+
+2. **Missing Email Templates**: Phase6A54 migration never applied + templates didn't exist
+   - Fixed with Phase6A51 migration
+
+**Documentation**:
+- ✅ [PHASE_6A51_SIGNUP_COMMITMENT_EMAILS_FINAL_SUMMARY.md](./PHASE_6A51_SIGNUP_COMMITMENT_EMAILS_FINAL_SUMMARY.md)
+
+**Testing Status**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Deployment: Success
+- ✅ Migration: Applied successfully
+- ⏳ API Testing: Deferred (requires active signup lists/items)
+- ⏳ Frontend Bug Fix: User ID extraction (separate issue)
+
+**Next Steps**:
+1. Test emails when users actually commit/update/cancel signup items
+2. Fix frontend user ID extraction bug
+3. Monitor Azure logs for `[Phase 6A.51]` and `[Phase 6A.51+]` tags
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability - Phase 3 Batch 1A Complete (All Auth Handlers) ✅
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1A Complete (Auth Handlers) - 2026-01-18
 

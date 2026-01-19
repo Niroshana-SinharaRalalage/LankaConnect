@@ -54,19 +54,11 @@ export const createNewsletterSchema = z.object({
     message: 'Must have at least one recipient source: select email groups or keep newsletter subscribers checked',
     path: ['emailGroupIds'], // Error displays on email groups field
   }
-).refine(
-  (data) => {
-    // Phase 6A.74 Part 13 Issue #6 CRITICAL FIX: Location validation should NOT apply at all
-    // Location targeting is OPTIONAL - users can create newsletters without selecting locations
-    // They just need at least one recipient source (email groups OR subscribers)
-    // ALWAYS return true - no location validation needed
-    return true;
-  },
-  {
-    message: 'Please select at least one location or check "Target All Locations"',
-    path: ['metroAreaIds'], // Error displays on metro areas field
-  }
 );
+// Phase 6A.74 Part 13 Issue #6 CRITICAL FIX: Location validation COMPLETELY REMOVED
+// Location targeting is OPTIONAL - users can create newsletters without selecting locations
+// They just need at least one recipient source (email groups OR subscribers)
+// No location validation refine needed at all
 
 export type CreateNewsletterFormData = z.infer<typeof createNewsletterSchema>;
 

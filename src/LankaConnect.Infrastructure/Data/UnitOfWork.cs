@@ -22,9 +22,9 @@ public class UnitOfWork : IUnitOfWork
     {
         using (LogContext.PushProperty("Operation", "Commit"))
         {
-            _logger.Debug("Committing changes to database");
+            _logger.Information("[Phase 6A.74 RCA] UnitOfWork.CommitAsync called - forwarding to AppDbContext.CommitAsync");
             var changes = await _context.CommitAsync(cancellationToken);
-            _logger.Information("Successfully committed {ChangeCount} changes to database", changes);
+            _logger.Information("[Phase 6A.74 RCA] UnitOfWork.CommitAsync completed - {ChangeCount} changes committed", changes);
             return changes;
         }
     }

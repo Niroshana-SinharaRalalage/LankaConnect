@@ -47,7 +47,7 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "AddOpenSignUpItemAnonymous START: EventId={EventId}, SignUpListId={SignUpListId}, ContactEmail={ContactEmail}, ItemName={ItemName}",
                 request.EventId, request.SignUpListId, request.ContactEmail, request.ItemName);
 

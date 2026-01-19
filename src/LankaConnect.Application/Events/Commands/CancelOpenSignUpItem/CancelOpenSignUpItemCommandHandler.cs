@@ -38,7 +38,7 @@ public class CancelOpenSignUpItemCommandHandler : ICommandHandler<CancelOpenSign
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CancelOpenSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, ItemId={ItemId}, UserId={UserId}",
                 request.EventId, request.SignUpListId, request.ItemId, request.UserId);
 

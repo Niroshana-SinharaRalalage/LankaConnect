@@ -48,7 +48,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CommitToSignUpItemAnonymous START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, ContactEmail={ContactEmail}, Quantity={Quantity}",
                 request.EventId, request.SignUpListId, request.SignUpItemId, request.ContactEmail, request.Quantity);
 

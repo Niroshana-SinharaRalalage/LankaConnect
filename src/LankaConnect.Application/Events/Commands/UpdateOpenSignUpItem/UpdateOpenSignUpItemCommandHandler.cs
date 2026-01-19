@@ -38,7 +38,7 @@ public class UpdateOpenSignUpItemCommandHandler : ICommandHandler<UpdateOpenSign
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateOpenSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, ItemId={ItemId}, UserId={UserId}, ItemName={ItemName}",
                 request.EventId, request.SignUpListId, request.ItemId, request.UserId, request.ItemName);
 

@@ -229,8 +229,11 @@ public class NewsletterEmailJob
             if (markResult.IsFailure)
             {
                 _logger.LogError(
-                    "[Phase 6A.74] Failed to mark newsletter {NewsletterId} as sent: {Error}",
+                    "[Phase 6A.74] CRITICAL: Failed to mark newsletter {NewsletterId} as sent: {Error}. " +
+                    "Throwing exception to trigger Hangfire retry.",
                     newsletterId, markResult.Error);
+                throw new InvalidOperationException(
+                    $"Failed to mark newsletter {newsletterId} as sent: {markResult.Error}");
             }
             else
             {

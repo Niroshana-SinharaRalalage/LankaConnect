@@ -33,7 +33,7 @@ public class RejectEventCommandHandler : ICommandHandler<RejectEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RejectEvent START: EventId={EventId}, AdminId={AdminId}, Reason={Reason}",
                 request.EventId, request.RejectedByAdminId, request.Reason ?? "Not specified");
 

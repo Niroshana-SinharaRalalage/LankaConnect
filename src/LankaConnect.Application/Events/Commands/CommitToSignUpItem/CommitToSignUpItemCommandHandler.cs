@@ -34,7 +34,7 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CommitToSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, UserId={UserId}, Quantity={Quantity}",
                 request.EventId, request.SignUpListId, request.SignUpItemId, request.UserId, request.Quantity);
 

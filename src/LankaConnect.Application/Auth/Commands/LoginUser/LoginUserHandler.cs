@@ -44,7 +44,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "LoginUser START: Email={Email}, RememberMe={RememberMe}, IpAddress={IpAddress}",
                 request.Email, request.RememberMe, request.IpAddress ?? "unknown");
 

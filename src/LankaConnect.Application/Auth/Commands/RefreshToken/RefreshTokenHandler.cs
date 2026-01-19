@@ -40,7 +40,7 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("RefreshToken START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
+            _logger.LogInformation("RefreshToken START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
 
             try
             {

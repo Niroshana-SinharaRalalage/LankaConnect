@@ -35,7 +35,7 @@ public class UnpublishEventCommandHandler : ICommandHandler<UnpublishEventComman
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("UnpublishEvent START: EventId={EventId}", request.EventId);
+            _logger.LogInformation("UnpublishEvent START: EventId={EventId}", request.EventId);
 
             try
             {

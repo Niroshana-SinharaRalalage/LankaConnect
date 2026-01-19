@@ -32,7 +32,7 @@ public class AddSignUpItemCommandHandler : ICommandHandler<AddSignUpItemCommand,
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "AddSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, Description={Description}, Quantity={Quantity}",
                 request.EventId, request.SignUpListId, request.ItemDescription, request.Quantity);
 

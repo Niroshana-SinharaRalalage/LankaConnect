@@ -31,7 +31,7 @@ public class UpdateEventCapacityCommandHandler : ICommandHandler<UpdateEventCapa
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateEventCapacity START: EventId={EventId}, NewCapacity={NewCapacity}",
                 request.EventId, request.NewCapacity);
 

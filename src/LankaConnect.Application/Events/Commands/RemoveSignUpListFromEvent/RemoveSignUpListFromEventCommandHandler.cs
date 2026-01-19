@@ -32,7 +32,7 @@ public class RemoveSignUpListFromEventCommandHandler : ICommandHandler<RemoveSig
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RemoveSignUpListFromEvent START: EventId={EventId}, SignUpListId={SignUpListId}",
                 request.EventId, request.SignUpListId);
 

@@ -36,7 +36,7 @@ public class AddToWaitingListCommandHandler : ICommandHandler<AddToWaitingListCo
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "AddToWaitingList START: EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
 

@@ -31,7 +31,7 @@ public class UpdateEventOrganizerContactCommandHandler : ICommandHandler<UpdateE
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateEventOrganizerContact START: EventId={EventId}, PublishContact={PublishContact}, ContactName={ContactName}",
                 request.EventId, request.PublishOrganizerContact, request.OrganizerContactName);
 

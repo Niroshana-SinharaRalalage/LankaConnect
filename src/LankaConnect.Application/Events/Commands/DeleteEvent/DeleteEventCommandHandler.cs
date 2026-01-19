@@ -33,7 +33,7 @@ public class DeleteEventCommandHandler : ICommandHandler<DeleteEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "DeleteEvent START: EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
 

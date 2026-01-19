@@ -32,7 +32,7 @@ public class UpdateRsvpCommandHandler : ICommandHandler<UpdateRsvpCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateRsvp START: EventId={EventId}, UserId={UserId}, NewQuantity={NewQuantity}",
                 request.EventId, request.UserId, request.NewQuantity);
 

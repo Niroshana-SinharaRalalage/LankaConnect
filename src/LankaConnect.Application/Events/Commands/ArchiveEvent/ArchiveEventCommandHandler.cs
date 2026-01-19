@@ -31,7 +31,7 @@ public class ArchiveEventCommandHandler : ICommandHandler<ArchiveEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("ArchiveEvent START: EventId={EventId}", request.EventId);
+            _logger.LogInformation("ArchiveEvent START: EventId={EventId}", request.EventId);
 
             try
             {

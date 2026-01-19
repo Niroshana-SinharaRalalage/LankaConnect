@@ -32,7 +32,7 @@ public class ApproveEventCommandHandler : ICommandHandler<ApproveEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "ApproveEvent START: EventId={EventId}, AdminId={AdminId}",
                 request.EventId, request.ApprovedByAdminId);
 

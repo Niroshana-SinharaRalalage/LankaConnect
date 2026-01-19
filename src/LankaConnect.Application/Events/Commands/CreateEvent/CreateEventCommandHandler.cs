@@ -54,7 +54,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CreateEvent START: OrganizerId={OrganizerId}, Title={Title}, Category={Category}, StartDate={StartDate}",
                 request.OrganizerId, request.Title, request.Category ?? EventCategory.Community, request.StartDate);
 

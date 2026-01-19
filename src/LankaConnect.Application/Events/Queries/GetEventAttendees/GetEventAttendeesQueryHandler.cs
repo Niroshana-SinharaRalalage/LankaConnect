@@ -185,7 +185,7 @@ public class GetEventAttendeesQueryHandler
                     }
                     else
                     {
-                        _logger.LogDebug(
+                        _logger.LogInformation(
                             "Revenue breakdown calculation failed for registration {RegistrationId}: {Error}",
                             attendeeDto.RegistrationId,
                             breakdownResult.Error);

@@ -50,7 +50,7 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("LoginWithEntra START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
+            _logger.LogInformation("LoginWithEntra START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
 
             try
             {

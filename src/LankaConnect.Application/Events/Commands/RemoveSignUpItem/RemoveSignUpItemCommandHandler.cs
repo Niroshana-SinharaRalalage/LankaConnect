@@ -33,7 +33,7 @@ public class RemoveSignUpItemCommandHandler : ICommandHandler<RemoveSignUpItemCo
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RemoveSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}",
                 request.EventId, request.SignUpListId, request.SignUpItemId);
 

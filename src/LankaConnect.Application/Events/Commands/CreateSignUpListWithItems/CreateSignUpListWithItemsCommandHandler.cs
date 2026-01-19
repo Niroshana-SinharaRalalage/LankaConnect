@@ -35,7 +35,7 @@ public class CreateSignUpListWithItemsCommandHandler : ICommandHandler<CreateSig
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CreateSignUpListWithItems START: EventId={EventId}, Category={Category}, ItemCount={ItemCount}",
                 request.EventId, request.Category, request.Items.Count);
 

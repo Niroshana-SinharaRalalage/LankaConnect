@@ -32,7 +32,7 @@ public class PostponeEventCommandHandler : ICommandHandler<PostponeEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "PostponeEvent START: EventId={EventId}, Reason={Reason}",
                 request.EventId, request.PostponementReason ?? "Not specified");
 

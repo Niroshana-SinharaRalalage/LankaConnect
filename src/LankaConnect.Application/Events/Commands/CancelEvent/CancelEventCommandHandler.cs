@@ -32,7 +32,7 @@ public class CancelEventCommandHandler : ICommandHandler<CancelEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CancelEvent START: EventId={EventId}, Reason={Reason}",
                 request.EventId, request.CancellationReason ?? "Not specified");
 

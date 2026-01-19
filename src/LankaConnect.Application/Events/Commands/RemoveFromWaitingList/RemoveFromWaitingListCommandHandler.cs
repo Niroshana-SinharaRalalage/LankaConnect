@@ -36,7 +36,7 @@ public class RemoveFromWaitingListCommandHandler : ICommandHandler<RemoveFromWai
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RemoveFromWaitingList START: EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
 

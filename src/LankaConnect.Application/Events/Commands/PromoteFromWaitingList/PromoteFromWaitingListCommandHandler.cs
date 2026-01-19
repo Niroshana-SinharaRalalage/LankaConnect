@@ -36,7 +36,7 @@ public class PromoteFromWaitingListCommandHandler : ICommandHandler<PromoteFromW
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "PromoteFromWaitingList START: EventId={EventId}, UserId={UserId}",
                 request.EventId, request.UserId);
 

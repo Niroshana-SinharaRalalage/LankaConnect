@@ -43,7 +43,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             var stopwatch = Stopwatch.StartNew();
 
             var isMultiAttendee = request.Attendees != null && request.Attendees.Any();
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RsvpToEvent START: EventId={EventId}, UserId={UserId}, IsMultiAttendee={IsMultiAttendee}, AttendeesCount={AttendeesCount}",
                 request.EventId, request.UserId, isMultiAttendee, request.Attendees?.Count ?? 0);
 

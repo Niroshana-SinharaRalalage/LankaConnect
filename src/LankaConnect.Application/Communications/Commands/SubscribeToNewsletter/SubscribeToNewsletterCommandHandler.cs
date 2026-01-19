@@ -52,12 +52,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             }
 
             var email = emailResult.Value;
-            _logger.LogDebug("[Phase 6A.64] Email validation PASSED - Email: {Email}", request.Email);
+            _logger.LogInformation("[Phase 6A.64] Email validation PASSED - Email: {Email}", request.Email);
 
             // Check for existing subscriber
-            _logger.LogDebug("[Phase 6A.64] Checking for existing subscriber - Email: {Email}", request.Email);
+            _logger.LogInformation("[Phase 6A.64] Checking for existing subscriber - Email: {Email}", request.Email);
             var existingSubscriber = await _repository.GetByEmailAsync(request.Email, cancellationToken);
-            _logger.LogDebug("[Phase 6A.64] Existing subscriber check - Email: {Email}, Found: {Found}",
+            _logger.LogInformation("[Phase 6A.64] Existing subscriber check - Email: {Email}, Found: {Found}",
                 request.Email, existingSubscriber != null);
 
             NewsletterSubscriber subscriber;
@@ -82,7 +82,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 // Phase 6A.64: Convert single metro area ID to collection for new API
                 var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
 
-                _logger.LogDebug("[Phase 6A.64] Creating reactivation subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
+                _logger.LogInformation("[Phase 6A.64] Creating reactivation subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
                     request.Email, string.Join(", ", metroAreaIds), request.ReceiveAllLocations);
 
                 var reactivateResult = NewsletterSubscriber.Create(
@@ -114,7 +114,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 // Phase 6A.64: Convert single metro area ID to collection for new API
                 var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
 
-                _logger.LogDebug("[Phase 6A.64] Creating new subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
+                _logger.LogInformation("[Phase 6A.64] Creating new subscriber - Email: {Email}, MetroAreaIds: [{MetroAreaIds}], ReceiveAll: {ReceiveAll}",
                     request.Email, string.Join(", ", metroAreaIds), request.ReceiveAllLocations);
 
                 var createResult = NewsletterSubscriber.Create(
@@ -131,7 +131,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                 subscriber = createResult.Value;
 
-                _logger.LogDebug("[Phase 6A.64] Domain entity created - Email: {Email}, SubscriberId: {SubscriberId}, MetroAreaCount: {Count}",
+                _logger.LogInformation("[Phase 6A.64] Domain entity created - Email: {Email}, SubscriberId: {SubscriberId}, MetroAreaCount: {Count}",
                     request.Email, subscriber.Id, subscriber.MetroAreaIds.Count);
 
                 await _repository.AddAsync(subscriber, cancellationToken);
@@ -140,14 +140,14 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             }
 
             // Save changes
-            _logger.LogDebug("[Phase 6A.64] Committing changes to database - Email: {Email}", request.Email);
+            _logger.LogInformation("[Phase 6A.64] Committing changes to database - Email: {Email}", request.Email);
             await _unitOfWork.CommitAsync(cancellationToken);
             _logger.LogInformation("[Phase 6A.64] Database commit SUCCESSFUL - Email: {Email}, SubscriberId: {SubscriberId}",
                 request.Email, subscriber.Id);
 
             // Phase 6A.64: Insert junction table entries AFTER subscriber is saved
             // This avoids FK constraint violation (subscriber_id must exist in newsletter_subscribers table first)
-            _logger.LogDebug("[Phase 6A.64] Inserting junction table entries - Email: {Email}", request.Email);
+            _logger.LogInformation("[Phase 6A.64] Inserting junction table entries - Email: {Email}", request.Email);
             await _repository.InsertPendingJunctionEntriesAsync(cancellationToken);
             _logger.LogInformation("[Phase 6A.64] Junction table entries inserted - Email: {Email}", request.Email);
 

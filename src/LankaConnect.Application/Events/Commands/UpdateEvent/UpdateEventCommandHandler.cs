@@ -48,7 +48,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateEvent START: EventId={EventId}, Title={Title}",
                 request.EventId, request.Title);
 

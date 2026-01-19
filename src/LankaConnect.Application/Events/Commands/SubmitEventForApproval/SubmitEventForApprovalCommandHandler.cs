@@ -31,7 +31,7 @@ public class SubmitEventForApprovalCommandHandler : ICommandHandler<SubmitEventF
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("SubmitEventForApproval START: EventId={EventId}", request.EventId);
+            _logger.LogInformation("SubmitEventForApproval START: EventId={EventId}", request.EventId);
 
             try
             {

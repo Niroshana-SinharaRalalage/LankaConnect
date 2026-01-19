@@ -34,7 +34,7 @@ public class UpdateEventLocationCommandHandler : ICommandHandler<UpdateEventLoca
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateEventLocation START: EventId={EventId}, City={City}, State={State}",
                 request.EventId, request.LocationCity, request.LocationState);
 

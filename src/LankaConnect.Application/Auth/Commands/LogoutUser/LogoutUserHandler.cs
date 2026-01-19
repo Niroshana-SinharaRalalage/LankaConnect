@@ -38,7 +38,7 @@ public class LogoutUserHandler : IRequestHandler<LogoutUserCommand, Result>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("LogoutUser START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
+            _logger.LogInformation("LogoutUser START: IpAddress={IpAddress}", request.IpAddress ?? "unknown");
 
             try
             {

@@ -36,7 +36,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}",
                 request.EventId, request.UserId, request.DeleteSignUpCommitments);
 

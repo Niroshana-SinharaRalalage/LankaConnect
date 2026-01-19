@@ -125,7 +125,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
                 emailGroupsCollection.CurrentValue = emailGroupEntities;
 
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Synced {Count} email groups to shadow navigation",
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Synced {Count} email groups to shadow navigation",
                     emailGroupEntities.Count);
             }
             else
@@ -134,7 +134,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
                 emailGroupsCollection.CurrentValue = new List<EmailGroup>();
 
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Cleared email groups shadow navigation");
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Cleared email groups shadow navigation");
             }
 
             // Sync metro areas shadow navigation
@@ -149,7 +149,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
                 metroAreasCollection.CurrentValue = metroAreaEntities;
 
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Synced {Count} metro areas to shadow navigation",
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Synced {Count} metro areas to shadow navigation",
                     metroAreaEntities.Count);
             }
             else
@@ -158,7 +158,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
                 metroAreasCollection.CurrentValue = new List<Domain.Events.MetroArea>();
 
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Cleared metro areas shadow navigation");
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Cleared metro areas shadow navigation");
             }
 
             // Commit changes

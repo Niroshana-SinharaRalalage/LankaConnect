@@ -42,7 +42,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RegisterUser START: Email={Email}, SelectedRole={SelectedRole}, MetroAreasCount={MetroAreasCount}",
                 request.Email, request.SelectedRole?.ToString() ?? "GeneralUser", request.PreferredMetroAreaIds?.Count ?? 0);
 

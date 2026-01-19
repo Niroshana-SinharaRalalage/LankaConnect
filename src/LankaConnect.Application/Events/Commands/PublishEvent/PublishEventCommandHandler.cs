@@ -31,7 +31,7 @@ public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("PublishEvent START: EventId={EventId}", request.EventId);
+            _logger.LogInformation("PublishEvent START: EventId={EventId}", request.EventId);
 
             try
             {

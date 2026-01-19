@@ -37,7 +37,7 @@ public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCo
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, Description={Description}, Quantity={Quantity}",
                 request.EventId, request.SignUpListId, request.SignUpItemId, request.ItemDescription, request.Quantity);
 

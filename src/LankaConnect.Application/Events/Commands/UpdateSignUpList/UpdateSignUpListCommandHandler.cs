@@ -36,7 +36,7 @@ public class UpdateSignUpListCommandHandler : ICommandHandler<UpdateSignUpListCo
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateSignUpList START: EventId={EventId}, SignUpListId={SignUpListId}, Category={Category}",
                 request.EventId, request.SignUpListId, request.Category);
 

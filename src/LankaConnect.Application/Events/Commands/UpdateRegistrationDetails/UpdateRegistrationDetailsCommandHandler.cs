@@ -37,7 +37,7 @@ public class UpdateRegistrationDetailsCommandHandler : ICommandHandler<UpdateReg
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "UpdateRegistrationDetails START: EventId={EventId}, UserId={UserId}, AttendeeCount={AttendeeCount}",
                 request.EventId, request.UserId, request.Attendees.Count);
 

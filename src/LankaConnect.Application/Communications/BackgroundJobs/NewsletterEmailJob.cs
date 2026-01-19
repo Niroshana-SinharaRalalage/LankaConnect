@@ -269,6 +269,15 @@ public class NewsletterEmailJob
                         "[Phase 6A.74 Part 13 Issue #1] Unable to cast IApplicationDbContext to DbContext. NewsletterEmailHistory not persisted.");
                 }
 
+                // Phase 6A.74 Part 13 CRITICAL FIX (RCA Issue #1/#2): Clear ChangeTracker to detach EmailMessage entities
+                // The email sending loop creates and tracks EmailMessage entities in the same DbContext
+                // If we don't detach them, EF Core will try to save ALL tracked entities (including EmailMessages)
+                // causing DbUpdateConcurrencyException when their timestamps have changed
+                // This is the EXACT same pattern used in EventNotificationEmailJob (Phase 6A.61) which works perfectly
+                _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Clearing ChangeTracker to detach EmailMessage entities before commit");
+
+                await _unitOfWork.ClearChangeTrackerExceptAsync<NewsletterEmailHistory>(CancellationToken.None);
+
                 try
                 {
                     _logger.LogInformation(

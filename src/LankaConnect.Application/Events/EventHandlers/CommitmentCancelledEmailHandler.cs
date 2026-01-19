@@ -99,8 +99,9 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 { "EventTitle", @event.Title },
                 { "ItemDescription", signUpItem.ItemDescription },
                 { "Quantity", commitment.Quantity },
-                { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern
-                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" }
+                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern - fixed placeholder name
+                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
+                { "PickupInstructions", "No pickup/delivery needed as this commitment has been cancelled." } // Appropriate for cancellation
             };
 
             // Send templated email

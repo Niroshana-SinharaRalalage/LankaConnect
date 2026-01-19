@@ -68,8 +68,9 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 { "EventTitle", @event.Title },
                 { "ItemDescription", domainEvent.ItemDescription },
                 { "Quantity", domainEvent.Quantity },
-                { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern
-                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" }
+                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern - fixed placeholder name
+                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
+                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." } // Default instruction
             };
 
             // Send templated email

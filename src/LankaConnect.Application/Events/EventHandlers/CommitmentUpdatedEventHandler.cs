@@ -69,8 +69,9 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 { "ItemDescription", domainEvent.ItemDescription },
                 { "OldQuantity", domainEvent.OldQuantity },
                 { "NewQuantity", domainEvent.NewQuantity },
-                { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern
-                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" }
+                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern - fixed placeholder name
+                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
+                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." } // Default instruction
             };
 
             // Send templated email

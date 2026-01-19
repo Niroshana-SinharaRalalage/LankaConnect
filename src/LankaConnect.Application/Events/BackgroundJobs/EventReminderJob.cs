@@ -131,7 +131,7 @@ public class EventReminderJob
                         if (alreadySent)
                         {
                             skippedCount++;
-                            _logger.LogDebug(
+                            _logger.LogInformation(
                                 "[Phase 6A.71] [{CorrelationId}] Skipping duplicate {ReminderType} reminder for registration {RegistrationId}",
                                 correlationId, reminderType, registration.Id);
                             continue;

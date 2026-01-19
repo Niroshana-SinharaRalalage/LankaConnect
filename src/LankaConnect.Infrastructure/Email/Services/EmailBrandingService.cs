@@ -57,7 +57,7 @@ public class EmailBrandingService : IEmailBrandingService
                 ContentId = LogoContentId
             };
 
-            _logger.LogDebug("Retrieved logo branding asset, size: {Size} bytes", logoBytes.Length);
+            _logger.LogInformation("Retrieved logo branding asset, size: {Size} bytes", logoBytes.Length);
             return Task.FromResult(Result<EmailBrandingAsset>.Success(asset));
         }
         catch (Exception ex)
@@ -82,7 +82,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Try to get from cache first
             if (_cache.TryGetValue(cacheKey, out byte[]? cachedBytes) && cachedBytes != null)
             {
-                _logger.LogDebug("Retrieved header banner from cache, size: {Size} bytes", cachedBytes.Length);
+                _logger.LogInformation("Retrieved header banner from cache, size: {Size} bytes", cachedBytes.Length);
                 return Result<EmailBrandingAsset>.Success(new EmailBrandingAsset
                 {
                     Content = cachedBytes,
@@ -103,7 +103,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Cache the image
             _cache.Set(cacheKey, imageBytes, CacheDuration);
 
-            _logger.LogDebug("Downloaded and cached header banner, size: {Size} bytes", imageBytes.Length);
+            _logger.LogInformation("Downloaded and cached header banner, size: {Size} bytes", imageBytes.Length);
 
             return Result<EmailBrandingAsset>.Success(new EmailBrandingAsset
             {
@@ -129,7 +129,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Try to get from cache first
             if (_cache.TryGetValue(cacheKey, out byte[]? cachedBytes) && cachedBytes != null)
             {
-                _logger.LogDebug("Retrieved footer banner from cache, size: {Size} bytes", cachedBytes.Length);
+                _logger.LogInformation("Retrieved footer banner from cache, size: {Size} bytes", cachedBytes.Length);
                 return Result<EmailBrandingAsset>.Success(new EmailBrandingAsset
                 {
                     Content = cachedBytes,
@@ -150,7 +150,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Cache the image
             _cache.Set(cacheKey, imageBytes, CacheDuration);
 
-            _logger.LogDebug("Downloaded and cached footer banner, size: {Size} bytes", imageBytes.Length);
+            _logger.LogInformation("Downloaded and cached footer banner, size: {Size} bytes", imageBytes.Length);
 
             return Result<EmailBrandingAsset>.Success(new EmailBrandingAsset
             {
@@ -185,7 +185,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Try to get from cache first
             if (_cache.TryGetValue(cacheKey, out byte[]? cachedBytes) && cachedBytes != null)
             {
-                _logger.LogDebug("Retrieved image from cache for {ContentId}, size: {Size} bytes", contentId, cachedBytes.Length);
+                _logger.LogInformation("Retrieved image from cache for {ContentId}, size: {Size} bytes", contentId, cachedBytes.Length);
                 return Result<EmailBrandingAsset>.Success(CreateAssetFromBytes(cachedBytes, imageUrl, contentId));
             }
 
@@ -200,7 +200,7 @@ public class EmailBrandingService : IEmailBrandingService
             // Cache with shorter duration for dynamic images (15 minutes)
             _cache.Set(cacheKey, imageBytes, TimeSpan.FromMinutes(15));
 
-            _logger.LogDebug("Downloaded and cached image from {Url}, size: {Size} bytes", imageUrl, imageBytes.Length);
+            _logger.LogInformation("Downloaded and cached image from {Url}, size: {Size} bytes", imageUrl, imageBytes.Length);
 
             return Result<EmailBrandingAsset>.Success(CreateAssetFromBytes(imageBytes, imageUrl, contentId));
         }

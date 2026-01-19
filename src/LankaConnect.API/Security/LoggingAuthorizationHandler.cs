@@ -32,7 +32,7 @@ public class LoggingAuthorizationHandler : IAuthorizationHandler
             user.Identity?.IsAuthenticated ?? false);
 
         // Log all claims for debugging
-        _logger.LogDebug("User claims: {Claims}",
+        _logger.LogInformation("User claims: {Claims}",
             string.Join(", ", user.Claims.Select(c => $"{c.Type}={c.Value}")));
 
         // Log all requirements being checked

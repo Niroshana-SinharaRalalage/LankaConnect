@@ -66,7 +66,7 @@ public class RazorEmailTemplateService : IEmailTemplateService
             
             if (_emailSettings.CacheTemplates && _cache.TryGetValue(cacheKey, out var cachedResult))
             {
-                _logger.LogDebug("Using cached template result for {TemplateName}", templateName);
+                _logger.LogInformation("Using cached template result for {TemplateName}", templateName);
                 return Result<RenderedEmailTemplate>.Success((RenderedEmailTemplate)cachedResult!);
             }
 
@@ -268,7 +268,7 @@ public class RazorEmailTemplateService : IEmailTemplateService
                 try
                 {
                     await RenderTemplateInternalAsync(templateName, sampleData, cancellationToken);
-                    _logger.LogDebug("Precompiled template {TemplateName}", templateName);
+                    _logger.LogInformation("Precompiled template {TemplateName}", templateName);
                 }
                 catch (Exception ex)
                 {

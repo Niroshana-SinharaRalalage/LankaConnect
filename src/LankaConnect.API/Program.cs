@@ -508,7 +508,7 @@ static void ValidateConfiguration(IConfiguration configuration, Microsoft.Extens
         }
         else
         {
-            logger.LogDebug("Configuration validation: Setting {Key} is present", key);
+            logger.LogInformation("Configuration validation: Setting {Key} is present", key);
         }
     }
 
@@ -555,7 +555,7 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
         }
         else
         {
-            logger.LogDebug("EF Core validation: All migrations applied");
+            logger.LogInformation("EF Core validation: All migrations applied");
         }
 
         // Step 2: Validate database connection
@@ -566,7 +566,7 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
             throw new InvalidOperationException("Cannot connect to database - check connection string");
         }
 
-        logger.LogDebug("EF Core validation: Database connection successful");
+        logger.LogInformation("EF Core validation: Database connection successful");
 
         // Step 3: Test critical DbSets to validate configurations
         // This will throw if column mappings don't match database schema (like StateTaxRateConfiguration Phase 6A.X)
@@ -583,7 +583,7 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
             try
             {
                 await testQuery();
-                logger.LogDebug("EF Core validation: {EntityName} configuration VALID", entityName);
+                logger.LogInformation("EF Core validation: {EntityName} configuration VALID", entityName);
             }
             catch (Exception ex)
             {

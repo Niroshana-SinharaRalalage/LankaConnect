@@ -106,7 +106,7 @@ public class JwtTokenService : IJwtTokenService
             rng.GetBytes(randomBytes);
             var refreshToken = Convert.ToBase64String(randomBytes);
 
-            _logger.LogDebug("Refresh token generated");
+            _logger.LogInformation("Refresh token generated");
             return Task.FromResult(Result<string>.Success(refreshToken));
         }
         catch (Exception ex)
@@ -144,7 +144,7 @@ public class JwtTokenService : IJwtTokenService
                 return Result<Guid>.Failure("Invalid user ID in token");
             }
 
-            _logger.LogDebug("Token validated for user {UserId}", userId);
+            _logger.LogInformation("Token validated for user {UserId}", userId);
             return Result<Guid>.Success(userId);
         }
         catch (SecurityTokenExpiredException)

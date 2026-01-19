@@ -39,7 +39,7 @@ public class PasswordHashingService : IPasswordHashingService
             }
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password, WorkFactor);
-            _logger.LogDebug("Password hashed successfully");
+            _logger.LogInformation("Password hashed successfully");
             
             return Result<string>.Success(hashedPassword);
         }
@@ -65,7 +65,7 @@ public class PasswordHashingService : IPasswordHashingService
             }
 
             var isValid = BCrypt.Net.BCrypt.Verify(password, hashedPassword);
-            _logger.LogDebug("Password verification completed: {IsValid}", isValid);
+            _logger.LogInformation("Password verification completed: {IsValid}", isValid);
             
             return Result<bool>.Success(isValid);
         }
@@ -133,11 +133,11 @@ public class PasswordHashingService : IPasswordHashingService
         if (errors.Any())
         {
             var errorMessage = string.Join(". ", errors);
-            _logger.LogDebug("Password validation failed: {Errors}", errorMessage);
+            _logger.LogInformation("Password validation failed: {Errors}", errorMessage);
             return Result.Failure(errorMessage);
         }
 
-        _logger.LogDebug("Password validation passed");
+        _logger.LogInformation("Password validation passed");
         return Result.Success();
     }
 

@@ -39,7 +39,7 @@ public class EventReminderRepository : IEventReminderRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "IsReminderAlreadySentAsync START: EventId={EventId}, RegistrationId={RegistrationId}, ReminderType={ReminderType}",
                 eventId, registrationId, reminderType);
 
@@ -123,7 +123,7 @@ public class EventReminderRepository : IEventReminderRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "RecordReminderSentAsync START: EventId={EventId}, RegistrationId={RegistrationId}, ReminderType={ReminderType}, RecipientEmail={RecipientEmail}",
                 eventId, registrationId, reminderType, recipientEmail);
 

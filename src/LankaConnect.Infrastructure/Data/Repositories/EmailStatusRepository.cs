@@ -33,7 +33,7 @@ public class EmailStatusRepository : IEmailStatusRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetStatusCountsAsync START: FromDate={FromDate}", fromDate);
+            _logger.LogInformation("GetStatusCountsAsync START: FromDate={FromDate}", fromDate);
 
             try
             {
@@ -71,7 +71,7 @@ public class EmailStatusRepository : IEmailStatusRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetQueueStatsAsync START");
+            _logger.LogInformation("GetQueueStatsAsync START");
 
             try
             {
@@ -115,7 +115,7 @@ public class EmailStatusRepository : IEmailStatusRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetStatusTrendsAsync START: FromDate={FromDate}, ToDate={ToDate}", fromDate, toDate);
+            _logger.LogInformation("GetStatusTrendsAsync START: FromDate={FromDate}, ToDate={ToDate}", fromDate, toDate);
 
             try
             {
@@ -174,7 +174,7 @@ public class EmailStatusRepository : IEmailStatusRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "GetEmailStatusAsync START: UserId={UserId}, Email={EmailAddress}, Type={EmailType}, Status={Status}, PageNumber={PageNumber}, PageSize={PageSize}",
                 userId, emailAddress, emailType, status, pageNumber, pageSize);
 
@@ -232,7 +232,7 @@ public class EmailStatusRepository : IEmailStatusRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "GetEmailStatusCountAsync START: UserId={UserId}, Email={EmailAddress}, Type={EmailType}, Status={Status}",
                 userId, emailAddress, emailType, status);
 

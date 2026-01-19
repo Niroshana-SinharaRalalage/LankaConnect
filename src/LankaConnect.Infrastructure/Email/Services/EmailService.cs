@@ -226,7 +226,7 @@ public class EmailService : IEmailService
             }
 
             // Additional validation could include template syntax validation
-            _logger.LogDebug("Template '{TemplateName}' validation passed", templateName);
+            _logger.LogInformation("Template '{TemplateName}' validation passed", templateName);
             return Result.Success();
         }
         catch (Exception ex)

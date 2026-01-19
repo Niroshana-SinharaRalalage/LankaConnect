@@ -50,12 +50,12 @@ public class ReferenceDataService : IReferenceDataService
 
         if (_cache.TryGetValue<IReadOnlyList<ReferenceValueDto>>(cacheKey, out var cached))
         {
-            _logger.LogDebug("Cache HIT for unified reference data (types={Types}, activeOnly={ActiveOnly})",
+            _logger.LogInformation("Cache HIT for unified reference data (types={Types}, activeOnly={ActiveOnly})",
                 string.Join(",", typeList), activeOnly);
             return cached!;
         }
 
-        _logger.LogDebug("Cache MISS for unified reference data (types={Types}, activeOnly={ActiveOnly})",
+        _logger.LogInformation("Cache MISS for unified reference data (types={Types}, activeOnly={ActiveOnly})",
             string.Join(",", typeList), activeOnly);
 
         var entities = await _repository.GetByTypesAsync(typeList, activeOnly, cancellationToken);

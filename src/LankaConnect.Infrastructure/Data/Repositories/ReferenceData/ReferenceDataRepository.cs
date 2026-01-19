@@ -39,7 +39,7 @@ public class ReferenceDataRepository : IReferenceDataRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetByTypeAsync START: EnumType={EnumType}, ActiveOnly={ActiveOnly}", enumType, activeOnly);
+            _logger.LogInformation("GetByTypeAsync START: EnumType={EnumType}, ActiveOnly={ActiveOnly}", enumType, activeOnly);
 
             try
             {
@@ -97,7 +97,7 @@ public class ReferenceDataRepository : IReferenceDataRepository
             var typeList = enumTypes.ToList();
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "GetByTypesAsync START: EnumTypeCount={EnumTypeCount}, ActiveOnly={ActiveOnly}",
                 typeList.Count, activeOnly);
 
@@ -158,7 +158,7 @@ public class ReferenceDataRepository : IReferenceDataRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetByTypeAndCodeAsync START: EnumType={EnumType}, Code={Code}", enumType, code);
+            _logger.LogInformation("GetByTypeAndCodeAsync START: EnumType={EnumType}, Code={Code}", enumType, code);
 
             try
             {
@@ -206,7 +206,7 @@ public class ReferenceDataRepository : IReferenceDataRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetByTypeAndIntValueAsync START: EnumType={EnumType}, IntValue={IntValue}", enumType, intValue);
+            _logger.LogInformation("GetByTypeAndIntValueAsync START: EnumType={EnumType}, IntValue={IntValue}", enumType, intValue);
 
             try
             {
@@ -252,7 +252,7 @@ public class ReferenceDataRepository : IReferenceDataRepository
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _logger.LogDebug("GetByIdAsync START: Id={Id}", id);
+            _logger.LogInformation("GetByIdAsync START: Id={Id}", id);
 
             try
             {

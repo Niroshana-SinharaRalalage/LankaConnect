@@ -49,7 +49,7 @@ public static class AuthenticationExtensions
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                     var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                    logger.LogDebug("JWT token validated for user: {UserId}", userId);
+                    logger.LogInformation("JWT token validated for user: {UserId}", userId);
                     return Task.CompletedTask;
                 },
                 OnChallenge = context =>

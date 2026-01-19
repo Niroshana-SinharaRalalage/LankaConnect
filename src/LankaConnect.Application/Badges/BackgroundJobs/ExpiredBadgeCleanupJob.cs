@@ -62,7 +62,7 @@ public class ExpiredBadgeCleanupJob
                         _eventRepository.Update(@event);
                         totalAssignmentsRemoved += removedCount;
                         totalEventsUpdated++;
-                        _logger.LogDebug("ExpiredBadgeCleanupJob: Removed {Count} expired badge assignments from event {EventId}",
+                        _logger.LogInformation("ExpiredBadgeCleanupJob: Removed {Count} expired badge assignments from event {EventId}",
                             removedCount, @event.Id);
                     }
                 }

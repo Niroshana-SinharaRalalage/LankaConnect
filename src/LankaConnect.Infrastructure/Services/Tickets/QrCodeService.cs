@@ -27,7 +27,7 @@ public class QrCodeService : IQrCodeService
 
             var qrCodeImage = qrCode.GetGraphic(pixelsPerModule);
 
-            _logger.LogDebug("Generated QR code with {Bytes} bytes for data length {DataLength}",
+            _logger.LogInformation("Generated QR code with {Bytes} bytes for data length {DataLength}",
                 qrCodeImage.Length, data.Length);
 
             return qrCodeImage;

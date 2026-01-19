@@ -417,7 +417,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
                 return Result.Failure($"Template '{templateName}' is not active");
             }
 
-            _logger.LogDebug("Template '{TemplateName}' validation passed", templateName);
+            _logger.LogInformation("Template '{TemplateName}' validation passed", templateName);
             return Result.Success();
         }
         catch (Exception ex)
@@ -575,7 +575,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
                     if (!string.IsNullOrEmpty(attachment.ContentId))
                     {
                         azureAttachment.ContentId = attachment.ContentId;
-                        _logger.LogDebug("Adding inline attachment {FileName} with ContentId: {ContentId}",
+                        _logger.LogInformation("Adding inline attachment {FileName} with ContentId: {ContentId}",
                             attachment.FileName, attachment.ContentId);
                     }
 
@@ -584,7 +584,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             }
 
             // Send email
-            _logger.LogDebug("Sending email via Azure Communication Services to {ToEmail}", emailMessage.ToEmail);
+            _logger.LogInformation("Sending email via Azure Communication Services to {ToEmail}", emailMessage.ToEmail);
 
             var operation = await _azureEmailClient.SendAsync(
                 WaitUntil.Completed,

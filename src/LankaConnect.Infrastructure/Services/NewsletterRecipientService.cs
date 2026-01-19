@@ -47,9 +47,9 @@ public class NewsletterRecipientService : INewsletterRecipientService
         Newsletter? newsletter;
         try
         {
-            _logger.LogDebug("[Phase 6A.74] Fetching newsletter from repository...");
+            _logger.LogInformation("[Phase 6A.74] Fetching newsletter from repository...");
             newsletter = await _newsletterRepository.GetByIdAsync(newsletterId, cancellationToken);
-            _logger.LogDebug("[Phase 6A.74] Newsletter fetch complete - Found: {Found}", newsletter != null);
+            _logger.LogInformation("[Phase 6A.74] Newsletter fetch complete - Found: {Found}", newsletter != null);
         }
         catch (Exception ex)
         {
@@ -75,7 +75,7 @@ public class NewsletterRecipientService : INewsletterRecipientService
         List<string> newsletterEmailGroupAddresses;
         try
         {
-            _logger.LogDebug("[Phase 6A.74] Getting newsletter email group addresses...");
+            _logger.LogInformation("[Phase 6A.74] Getting newsletter email group addresses...");
             newsletterEmailGroupAddresses = await GetEmailGroupAddressesAsync(newsletter, cancellationToken);
             _logger.LogInformation("[Phase 6A.74] Newsletter email group addresses retrieved: {Count}", newsletterEmailGroupAddresses.Count);
         }
@@ -91,13 +91,13 @@ public class NewsletterRecipientService : INewsletterRecipientService
         {
             if (newsletter.EventId.HasValue)
             {
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Getting event registered attendees for event {EventId}...", newsletter.EventId.Value);
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Getting event registered attendees for event {EventId}...", newsletter.EventId.Value);
                 eventAttendeeEmails = await GetEventAttendeeEmailsAsync(newsletter.EventId.Value, cancellationToken);
                 _logger.LogInformation("[Phase 6A.74 HOTFIX] Event attendee emails retrieved: {Count}", eventAttendeeEmails.Count);
             }
             else
             {
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no attendee emails");
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no attendee emails");
                 eventAttendeeEmails = new List<string>();
             }
         }
@@ -113,13 +113,13 @@ public class NewsletterRecipientService : INewsletterRecipientService
         {
             if (newsletter.EventId.HasValue)
             {
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Getting event's email groups for event {EventId}...", newsletter.EventId.Value);
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Getting event's email groups for event {EventId}...", newsletter.EventId.Value);
                 eventEmailGroupAddresses = await GetEventEmailGroupAddressesAsync(newsletter.EventId.Value, cancellationToken);
                 _logger.LogInformation("[Phase 6A.74 HOTFIX] Event email group addresses retrieved: {Count}", eventEmailGroupAddresses.Count);
             }
             else
             {
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no event email groups");
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Newsletter not linked to event, no event email groups");
                 eventEmailGroupAddresses = new List<string>();
             }
         }
@@ -135,12 +135,12 @@ public class NewsletterRecipientService : INewsletterRecipientService
         {
             if (newsletter.IncludeNewsletterSubscribers)
             {
-                _logger.LogDebug("[Phase 6A.74] Newsletter includes newsletter subscribers, resolving based on location targeting...");
+                _logger.LogInformation("[Phase 6A.74] Newsletter includes newsletter subscribers, resolving based on location targeting...");
                 subscriberBreakdown = await GetNewsletterSubscriberEmailsAsync(newsletter, cancellationToken);
             }
             else
             {
-                _logger.LogDebug("[Phase 6A.74] Newsletter does not include newsletter subscribers");
+                _logger.LogInformation("[Phase 6A.74] Newsletter does not include newsletter subscribers");
                 subscriberBreakdown = new NewsletterSubscriberBreakdown(new HashSet<string>(), 0, 0, 0);
             }
             _logger.LogInformation("[Phase 6A.74] Newsletter subscribers retrieved: {Count}", subscriberBreakdown.Emails.Count);
@@ -194,11 +194,11 @@ public class NewsletterRecipientService : INewsletterRecipientService
     {
         if (!newsletter.EmailGroupIds.Any())
         {
-            _logger.LogDebug("[Phase 6A.74] Newsletter {NewsletterId} has no email groups", newsletter.Id);
+            _logger.LogInformation("[Phase 6A.74] Newsletter {NewsletterId} has no email groups", newsletter.Id);
             return new List<string>();
         }
 
-        _logger.LogDebug("[Phase 6A.74] Fetching {Count} email groups: [{Ids}]",
+        _logger.LogInformation("[Phase 6A.74] Fetching {Count} email groups: [{Ids}]",
             newsletter.EmailGroupIds.Count,
             string.Join(", ", newsletter.EmailGroupIds));
 
@@ -208,7 +208,7 @@ public class NewsletterRecipientService : INewsletterRecipientService
             emailGroups = await _emailGroupRepository.GetByIdsAsync(
                 newsletter.EmailGroupIds,
                 cancellationToken);
-            _logger.LogDebug("[Phase 6A.74] Email groups fetched: {Count}", emailGroups.Count);
+            _logger.LogInformation("[Phase 6A.74] Email groups fetched: {Count}", emailGroups.Count);
         }
         catch (Exception ex)
         {
@@ -282,7 +282,7 @@ public class NewsletterRecipientService : INewsletterRecipientService
             return new NewsletterSubscriberBreakdown(new HashSet<string>(), 0, 0, 0);
         }
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "[Phase 6A.74 Part 13] Event location: {City}, {State}, Coordinates: ({Lat}, {Lng})",
             @event.Location.Address?.City,
             @event.Location.Address?.State,
@@ -382,13 +382,13 @@ public class NewsletterRecipientService : INewsletterRecipientService
         {
             try
             {
-                _logger.LogDebug("[Phase 6A.74] Fetching subscribers for metro area {MetroAreaId}", metroAreaId);
+                _logger.LogInformation("[Phase 6A.74] Fetching subscribers for metro area {MetroAreaId}", metroAreaId);
 
                 var subscribers = await _subscriberRepository.GetConfirmedSubscribersByMetroAreaAsync(
                     metroAreaId,
                     cancellationToken);
 
-                _logger.LogDebug("[Phase 6A.74] Found {Count} subscribers for metro area {MetroAreaId}",
+                _logger.LogInformation("[Phase 6A.74] Found {Count} subscribers for metro area {MetroAreaId}",
                     subscribers.Count, metroAreaId);
 
                 allSubscribers.AddRange(subscribers);
@@ -497,11 +497,11 @@ public class NewsletterRecipientService : INewsletterRecipientService
             var @event = await _eventRepository.GetByIdAsync(eventId, trackChanges: false, cancellationToken);
             if (@event == null || !@event.EmailGroupIds.Any())
             {
-                _logger.LogDebug("[Phase 6A.74 HOTFIX] Event {EventId} has no email groups", eventId);
+                _logger.LogInformation("[Phase 6A.74 HOTFIX] Event {EventId} has no email groups", eventId);
                 return new List<string>();
             }
 
-            _logger.LogDebug("[Phase 6A.74 HOTFIX] Fetching {Count} email groups for event {EventId}: [{Ids}]",
+            _logger.LogInformation("[Phase 6A.74 HOTFIX] Fetching {Count} email groups for event {EventId}: [{Ids}]",
                 @event.EmailGroupIds.Count,
                 eventId,
                 string.Join(", ", @event.EmailGroupIds));

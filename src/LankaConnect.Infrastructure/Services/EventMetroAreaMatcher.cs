@@ -52,7 +52,7 @@ public class EventMetroAreaMatcher
         var eventLat = (decimal)@event.Location.Coordinates.Latitude;
         var eventLng = (decimal)@event.Location.Coordinates.Longitude;
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "[EventMetroAreaMatcher] Matching event {EventId} at ({Lat}, {Lng}) to metro areas",
             @event.Id,
             eventLat,
@@ -68,7 +68,7 @@ public class EventMetroAreaMatcher
                 .Where(m => m.IsActive)
                 .ToListAsync(cancellationToken);
 
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "[EventMetroAreaMatcher] Retrieved {Count} active metro areas for matching",
                 allMetros.Count);
 
@@ -142,7 +142,7 @@ public class EventMetroAreaMatcher
         var matchingMetros = await GetMetroAreasForEventAsync(@event, cancellationToken);
         var matches = matchingMetros.Any(id => metroAreaIds.Contains(id));
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "[EventMetroAreaMatcher] Event {EventId} matches filter: {Matches} (matched {MatchCount} of {FilterCount} metros)",
             @event.Id,
             matches,

@@ -72,7 +72,7 @@ public class EmailQueueProcessor : BackgroundService
 
             if (!queuedEmails.Any())
             {
-                _logger.LogDebug("No queued emails to process");
+                _logger.LogInformation("No queued emails to process");
                 return;
             }
 
@@ -110,7 +110,7 @@ public class EmailQueueProcessor : BackgroundService
                 return;
             }
 
-            _logger.LogDebug("Processing email {EmailId} to {Recipients}",
+            _logger.LogInformation("Processing email {EmailId} to {Recipients}",
                 emailMessage.Id,
                 string.Join(", ", emailMessage.ToEmails));
 
@@ -187,7 +187,7 @@ public class EmailQueueProcessor : BackgroundService
                 return true;
             }
 
-            _logger.LogDebug("Email {EmailId} not ready for retry. Next retry at {NextRetry}",
+            _logger.LogInformation("Email {EmailId} not ready for retry. Next retry at {NextRetry}",
                 emailMessage.Id, emailMessage.NextRetryAt.Value);
             return false;
         }

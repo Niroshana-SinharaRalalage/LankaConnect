@@ -202,7 +202,7 @@ public class SimpleEmailService : ISimpleEmailService, IDisposable
             client.Credentials = new NetworkCredential(_emailSettings.Username, _emailSettings.Password);
         }
 
-        _logger.LogDebug("Created SMTP client for {Server}:{Port}, SSL: {EnableSsl}", 
+        _logger.LogInformation("Created SMTP client for {Server}:{Port}, SSL: {EnableSsl}", 
             _emailSettings.SmtpServer, _emailSettings.SmtpPort, _emailSettings.EnableSsl);
 
         return client;
@@ -271,7 +271,7 @@ public class SimpleEmailService : ISimpleEmailService, IDisposable
 
             await File.WriteAllTextAsync(filePath, content, cancellationToken);
             
-            _logger.LogDebug("Email saved to file: {FilePath}", filePath);
+            _logger.LogInformation("Email saved to file: {FilePath}", filePath);
         }
         catch (Exception ex)
         {

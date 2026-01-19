@@ -655,7 +655,7 @@ public class AuthController : ControllerBase
             Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, " +
             "Expires={Expires}, Environment={Environment}, IsHttps={IsHttps}, Path={Path}",
             cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires,
@@ -679,7 +679,7 @@ public class AuthController : ControllerBase
             Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "Clearing refresh token cookie: Secure={Secure}, SameSite={SameSite}, Environment={Environment}, IsHttps={IsHttps}",
             cookieOptions.Secure, cookieOptions.SameSite, _env.EnvironmentName, Request.IsHttps);
 

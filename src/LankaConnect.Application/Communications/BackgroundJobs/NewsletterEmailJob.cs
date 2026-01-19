@@ -173,7 +173,7 @@ public class NewsletterEmailJob
                     if (result.IsSuccess)
                     {
                         successCount++;
-                        _logger.LogDebug("[Phase 6A.74] Successfully sent newsletter email to {Email} in {ElapsedMs}ms",
+                        _logger.LogInformation("[Phase 6A.74] Successfully sent newsletter email to {Email} in {ElapsedMs}ms",
                             email, singleEmailStopwatch.ElapsedMilliseconds);
                     }
                     else
@@ -204,7 +204,7 @@ public class NewsletterEmailJob
             // 6. Mark newsletter as sent
             // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
             // The entity was loaded at the start of the job, but by now the version may be stale
-            _logger.LogDebug("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);
+            _logger.LogInformation("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);
 
             var freshNewsletter = await _newsletterRepository.GetByIdAsync(newsletterId, CancellationToken.None);
             if (freshNewsletter == null)

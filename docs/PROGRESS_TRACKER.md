@@ -1,16 +1,46 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 Batch 1B Part 5 ✅ DEPLOYED*
+*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3 Batch 1B Part 6 ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 Batch 1B Part 5 ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.X Observability Phase 3 Batch 1B Part 6 ✅ DEPLOYED
 
-### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 5 Complete (Events Commands) - 2026-01-19
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1B Part 6 Complete (Events Commands) - 2026-01-19
 
 **Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Tests: 1189 passed, Deployment: Success)
 
 **Summary**:
-Enhanced 8 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 5, bringing total Events Command handlers to 28/39 (72%) complete. All changes deployed to Azure staging and verified operational.
+Enhanced 5 Events Command handlers with comprehensive logging following the established pattern. This completes Batch 1B Part 6, bringing total Events Command handlers to 38/39 (97%) complete. All changes deployed to Azure staging and verified operational.
+
+**Batch 1B Part 6 - Handlers Enhanced** (5 handlers):
+1. ✅ **AddOpenSignUpItemCommandHandler** (Phase 6A.27 - User-submitted Open items)
+   - Allows authenticated users to add custom Open items to sign-up lists
+   - LogContext: Operation, EntityType, EventId, SignUpListId, UserId
+   - Logs: Event loading, sign-up list validation, domain method success, item ID
+
+2. ✅ **AddOpenSignUpItemAnonymousCommandHandler** (Phase 6A.44 - Anonymous Open items)
+   - Allows anonymous users to add Open items if registered for event
+   - LogContext: Operation, EntityType, EventId, SignUpListId
+   - Logs: Email validation, registration check (ShouldPromptLogin, NeedsEventRegistration, CanCommitAnonymously), deterministic UserId generation, domain method
+   - Complex validation flow with 3-step UX guidance
+
+3. ✅ **UpdateOpenSignUpItemCommandHandler** (Phase 6A.27 - Edit user-submitted items)
+   - Updates Open item details and commitment quantity
+   - LogContext: Operation, EntityType, EventId, SignUpListId, ItemId, UserId
+   - Logs: Authorization check (IsCreatedByUser), item category validation, commitment update
+   - Updates both item details and user's commitment in sync
+
+4. ✅ **CancelOpenSignUpItemCommandHandler** (Phase 6A.27/6A.28 - Delete user-submitted items)
+   - Cancels/deletes user-created Open items
+   - LogContext: Operation, EntityType, EventId, SignUpListId, ItemId, UserId
+   - Logs: Authorization check, commitment cancellation, other users' commitments check, item removal
+   - Phase 6A.28 Issue 3 Fix: Prevents deletion if other users have committed
+
+5. ✅ **CommitToSignUpItemAnonymousCommandHandler** (Phase 6A.23 - Anonymous commitments)
+   - Allows anonymous users to commit to sign-up items if registered
+   - LogContext: Operation, EntityType, SignUpCommitment, EventId, SignUpListId, SignUpItemId
+   - Logs: Email validation, registration check flow, deterministic UserId, existing vs new commitment, domain method
+   - Handles both new commitments and updates to existing commitments
 
 **Batch 1B Part 5 - Handlers Enhanced** (8 handlers):
 1. ✅ **AddToWaitingListCommandHandler** (40 → 102 lines, +62 lines)
@@ -79,22 +109,37 @@ Enhanced 8 Events Command handlers with comprehensive logging following the esta
 - ✅ API Health: Operational (verified via curl)
 - ✅ Container Logs: Comprehensive logging ready for new handlers
 
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Tests: 1189 passed, 0 failed, 1 skipped (100% pass rate)
+- ✅ Code Changes: 5 handlers enhanced (~800 lines total)
+
+**Git Commits**:
+- e2453cab - "fix(phase-6a54-part2): Correct email type enum values for update/cancel templates" (includes Batch 1B Part 6 handler enhancements)
+
+**Deployment**:
+- ✅ Workflow #21149779270: SUCCESS (6m18s)
+- ✅ API Health: Operational (verified via curl https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/health)
+- ✅ Status: Degraded (PostgreSQL Healthy, EF Core Healthy, Redis Degraded - as expected without Redis config)
+
 **Overall Progress (Phase 3 Total Scope)**:
 - **Total**: 164 handlers (90 commands + 51 queries + 21 event handlers + 2 other)
 - **Batch 1A Complete**: 5/5 Auth handlers (100%) ✅
-- **Batch 1B Parts 1-5 Complete**: 28/39 Events Command handlers (72%) ✅
+- **Batch 1B Parts 1-6 Complete**: 38/39 Events Command handlers (97%) ✅
   - Part 1 (5 handlers): CreateEvent, PublishEvent, CancelEvent, RejectEvent, DeleteEvent
   - Part 2 (5 handlers): RsvpToEvent, CancelRsvp, CheckInAttendee, ApproveEvent, UpdateEvent
   - Part 3 (5 handlers): UpdateRsvp, PostponeEvent, UnpublishEvent, ArchiveEvent, UpdateEventCapacity
   - Part 4 (5 handlers): AddSignUpItem, CommitToSignUpItem, UpdateEventLocation, UpdateSignUpItem, UpdateEventOrganizerContact
   - Part 5 (8 handlers): AddToWaitingList, PromoteFromWaitingList, RemoveFromWaitingList, UpdateRegistrationDetails, CreateSignUpListWithItems, RemoveSignUpItem, RemoveSignUpListFromEvent, UpdateSignUpList
-- **Completed**: 33/164 handlers (20%)
-- **Remaining**: 131/164 handlers (80%)
+  - Part 6 (5 handlers): AddOpenSignUpItem, AddOpenSignUpItemAnonymous, UpdateOpenSignUpItem, CancelOpenSignUpItem, CommitToSignUpItemAnonymous
+  - **Remaining**: 1 handler (CancelCommitmentCommandHandler)
+- **Completed**: 38/164 handlers (23%)
+- **Remaining**: 126/164 handlers (77%)
 
 **Next Steps**:
-1. ⏳ **Batch 1B Part 6**: Enhance remaining 11 Events Command handlers (CancelRsvp, AddOpenSignUpItem, etc.)
+1. ⏳ **Batch 1B Part 7**: Enhance final Events Command handler (CancelCommitmentCommandHandler) + AddPassToEvent, RemovePassFromEvent (3 handlers total)
 2. ⏳ **Batch 1C**: ~5 Events Query handlers
-3. ⏳ **Batches 2-9**: Remaining ~126 handlers across other modules
+3. ⏳ **Batches 2-9**: Remaining ~121 handlers across other modules
 
 ---
 

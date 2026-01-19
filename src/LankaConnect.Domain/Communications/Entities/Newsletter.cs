@@ -91,14 +91,10 @@ public class Newsletter : BaseEntity
             errors.Add("Newsletter must have at least one recipient source (email groups or newsletter subscribers)");
         }
 
-        // Business Rule 2: Non-event newsletters with subscribers must specify location
-        if (!eventId.HasValue && includeNewsletterSubscribers)
-        {
-            if (!targetAllLocations && (metroAreaIds == null || !metroAreaIds.Any()))
-            {
-                errors.Add("Non-event newsletters with newsletter subscribers must specify TargetAllLocations or at least one MetroArea");
-            }
-        }
+        // Business Rule 2 REMOVED: Phase 6A.74 Part 13 Issue #6 CRITICAL FIX
+        // Location targeting is OPTIONAL - users can create newsletters without selecting locations
+        // They just need at least one recipient source (email groups OR subscribers) - validated above
+        // No location validation needed
 
         if (errors.Any())
         {

@@ -94,7 +94,7 @@ Questions? Reply to this email or visit our support page.',
     </div>
 </body>
 </html>',
-                    'SignupCommitmentUpdate',
+                    'SignupCommitmentConfirmation',
                     'Notification',
                     true,
                     NOW()
@@ -178,7 +178,7 @@ Questions? Reply to this email or visit our support page.',
     </div>
 </body>
 </html>',
-                    'SignupCommitmentCancellation',
+                    'SignupCommitmentConfirmation',
                     'Notification',
                     true,
                     NOW()

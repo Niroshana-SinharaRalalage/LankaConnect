@@ -122,22 +122,29 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
 
-  // Phase 6A.74 Part 13 Issue #3: Auto-populate event links ONLY (not placeholder text)
-  // Event links persist as editable content, placeholder text handled by RichTextEditor
+  // Phase 6A.74 Part 13 Issue #3 FIX: Append event links to placeholder text (don't replace it)
+  // The placeholder "[Write your news letter content here.....]" should remain visible
+  // Event links are appended below the placeholder text
   useEffect(() => {
     if (!selectedEvent || isEditMode) return;
 
     const currentDescription = watch('description');
 
-    // Only auto-populate if description is completely empty
-    if (currentDescription && currentDescription.trim() !== '' && currentDescription !== '<p></p>') {
+    // Only auto-populate if description is completely empty OR contains only placeholder
+    const placeholderPattern = /^\[Write your news letter content here\.\.\.\.\.\]/i;
+    const isEmpty = !currentDescription || currentDescription.trim() === '' || currentDescription === '<p></p>';
+    const isOnlyPlaceholder = currentDescription && placeholderPattern.test(currentDescription.replace(/<[^>]*>/g, ''));
+
+    if (!isEmpty && !isOnlyPlaceholder) {
       return;
     }
 
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Only include event links (NO placeholder text - that's handled by RichTextEditor placeholder prop)
+    // Keep placeholder text and append event links below
     const eventLinksTemplate = `
+<p>[Write your news letter content here.....]</p>
+
 <p style="margin-top: 16px;">Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
 
 <p>Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Event Sign-up Lists</a></p>
@@ -156,7 +163,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
       return {
         id: stateId,
-        label: `All ${state.name}`,
+        label: state.name, // Phase 6A.74 Part 13: Removed "All" prefix to match other location dropdowns
         checked: selectedMetroIds.includes(stateId),
         children: stateMetros
           .filter(m => !m.isStateLevelArea) // Only city-level metros as children

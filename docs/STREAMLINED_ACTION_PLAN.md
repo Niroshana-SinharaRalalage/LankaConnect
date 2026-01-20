@@ -7,36 +7,46 @@
 
 ---
 
-## ✅ CURRENT STATUS - UI IMPROVEMENTS (4 FIXES) COMPLETE (2026-01-20)
+## ✅ CURRENT STATUS - NEWSLETTER FORM FIX COMPLETE (2026-01-20)
+**Date**: 2026-01-20
+**Session**: Newsletter Form Fix - Creation without event linkage
+**Status**: ✅ COMPLETE & DEPLOYED
+**Build Status**: ✅ 0 errors
+**Deployment**: ✅ GitHub Actions Run #21158698521 - SUCCESS
+
+**Issues Fixed**:
+
+1. ✅ **Newsletter creation without event linkage**
+   - Issue: "Invalid location selection" validation error
+   - Cause: Form's "No event linkage" sets eventId to empty string `""` instead of `null`
+   - Fix: Added `cleanNewsletterDataForApi()` to transform empty string to `undefined`
+
+2. ✅ **Target All Locations causing 400 error**
+   - Issue: 400 Bad Request when checkbox checked
+   - Cause: metroAreaIds contained non-UUID values (state codes)
+   - Fix: Filter metroAreaIds to only valid UUIDs before API submission
+
+**Files Changed**:
+- `newsletter.schemas.ts`: Added `cleanNewsletterDataForApi()` function
+- `NewsletterForm.tsx`: Use cleanup function before API calls
+
+**Git Commit**: `4beaa54f`
+
+---
+
+## ✅ PREVIOUS STATUS - UI IMPROVEMENTS (4 FIXES) COMPLETE (2026-01-20)
 **Date**: 2026-01-20
 **Session**: UI Improvements - 4 Frontend Fixes
 **Status**: ✅ COMPLETE & DEPLOYED
-**Build Status**: ✅ 0 errors
 **Deployment**: ✅ GitHub Actions Run #21157878498 - SUCCESS
 
-**Fixes Implemented**:
+**Fixes**:
+1. ✅ Phone Number Prefill in Signup Modal
+2. ✅ Replace Number of Attendees Textbox with Add/Remove Buttons
+3. ✅ Consolidate Email Stats into Single Line
+4. ✅ Add Scroll Bars to Communications Tab
 
-1. ✅ **Phone Number Prefill in Signup Modal**
-   - File: `SignUpCommitmentModal.tsx`
-   - Added `user.phoneNumber` fallback for auto-fill
-
-2. ✅ **Replace Number of Attendees Textbox with Add/Remove Buttons**
-   - File: `EventRegistrationForm.tsx`
-   - New "Add Attendee" button with dashed border styling
-   - Trash icon for removing attendees (except first)
-   - Spots counter: "X of Y spots"
-
-3. ✅ **Consolidate Email Stats into Single Line**
-   - File: `EventNewslettersTab.tsx`
-   - Format: "3 recipients ✓ 0 sent ✗ 3 failed"
-
-4. ✅ **Add Scroll Bars to Communications Tab**
-   - File: `EventNewslettersTab.tsx`
-   - Email Send History: max-h-[240px]
-   - Event Newsletters: max-h-[360px]
-
-**Git Commit**: `e802d894` - "fix(ui): Four UI improvements - phone prefill, attendee buttons, stats format, scroll"
-**Files Changed**: 3 files, +79 lines, -52 lines
+**Git Commit**: `e802d894`
 
 ---
 

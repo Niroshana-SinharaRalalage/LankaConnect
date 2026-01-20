@@ -1,9 +1,55 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.X Observability Batch 1C Part 2: Events Query Handlers*
+*Last Updated: 2026-01-20 - Newsletter Form Fix & UI Improvements*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Batch 1C Part 2 ✅ COMPLETE
+## 🎯 Current Session Status - Newsletter Form Fix ✅ COMPLETE
+
+### Newsletter Form Fix - 2026-01-20
+
+**Status**: ✅ **COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Fixed newsletter creation failing when no event is linked or when "Target All Locations" is checked.
+
+**Issues Fixed**:
+
+1. ✅ **Newsletter creation without event linkage**
+   - Issue: "Invalid location selection" validation error when creating newsletter without event
+   - Cause: Form's "No event linkage" sets eventId to empty string `""` instead of `null`
+   - Fix: Added `cleanNewsletterDataForApi()` to transform empty string to `undefined`
+
+2. ✅ **Target All Locations causing 400 error**
+   - Issue: 400 Bad Request when "Target All Locations" checkbox is checked
+   - Cause: metroAreaIds array contained non-UUID values from tree selection (state codes)
+   - Fix: Filter metroAreaIds to only valid UUIDs before API submission
+
+**Files Changed**:
+- `newsletter.schemas.ts`: Added `cleanNewsletterDataForApi()` function, relaxed metroAreaIds schema
+- `NewsletterForm.tsx`: Import and use cleanup function before API calls
+
+**Git Commit**: `4beaa54f` - "fix(newsletter): Fix newsletter creation without event linkage and Target All Locations"
+
+**Deployment**: GitHub Actions #21158698521 - SUCCESS
+
+---
+
+### UI Improvements - 4 Frontend Fixes - 2026-01-20
+
+**Status**: ✅ **COMPLETE & DEPLOYED**
+
+**Fixes Implemented**:
+1. ✅ Phone number prefill in Signup modal (`SignUpCommitmentModal.tsx`)
+2. ✅ Replace Number of Attendees textbox with Add/Remove Attendee buttons (`EventRegistrationForm.tsx`)
+3. ✅ Consolidate email stats into single line format (`EventNewslettersTab.tsx`)
+4. ✅ Add scroll bars to Communications tab sections (`EventNewslettersTab.tsx`)
+
+**Git Commit**: `e802d894` - "fix(ui): Four UI improvements"
+**Deployment**: GitHub Actions #21157878498 - SUCCESS
+
+---
+
+## Previous Session Status - Phase 6A.X Observability Batch 1C Part 2 ✅ COMPLETE
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1C Part 2 Complete (Events Queries) - 2026-01-20
 

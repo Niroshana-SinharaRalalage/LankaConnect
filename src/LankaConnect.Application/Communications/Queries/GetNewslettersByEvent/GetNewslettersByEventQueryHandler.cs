@@ -41,9 +41,12 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
             var dbContext = _dbContext as DbContext;
 
             // Get history records for all newsletters in a single query
+            // Phase 6A.74 Part 14 Fix: Group by NewsletterId and take most recent (newsletters can now be sent multiple times)
             var historyRecords = dbContext != null
                 ? await dbContext.Set<NewsletterEmailHistory>()
                     .Where(h => newsletterIds.Contains(h.NewsletterId))
+                    .GroupBy(h => h.NewsletterId)
+                    .Select(g => g.OrderByDescending(h => h.CreatedAt).First())
                     .ToDictionaryAsync(h => h.NewsletterId, cancellationToken)
                 : new Dictionary<Guid, NewsletterEmailHistory>();
 

@@ -219,9 +219,8 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
             </>
           )}
 
-          {/* Active (not sent): Edit, Send Email, Unpublish */}
-          {/* Phase 6A.74 Part 11: Fix - Don't show Edit/Send for sent newsletters */}
-          {isActive && !isSent && (
+          {/* Active: Edit, Send Email, Unpublish (Phase 6A.74 Part 14: unlimited sends) */}
+          {isActive && (
             <>
               <Button
                 onClick={() => router.push(`/dashboard/my-newsletters/${id}/edit`)}
@@ -238,20 +237,23 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                 <Send className="w-4 h-4 mr-2" />
                 {sendMutation.isPending ? 'Sending...' : 'Send Email'}
               </Button>
-              <Button
-                onClick={() => setShowUnpublishDialog(true)}
-                disabled={unpublishMutation.isPending}
-                variant="outline"
-                className="border-red-600 text-red-600 hover:bg-red-50"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                {unpublishMutation.isPending ? 'Unpublishing...' : 'Unpublish'}
-              </Button>
+              {/* Phase 6A.74 Part 14: Don't show Unpublish for announcement-only newsletters */}
+              {!newsletter.isAnnouncementOnly && (
+                <Button
+                  onClick={() => setShowUnpublishDialog(true)}
+                  disabled={unpublishMutation.isPending}
+                  variant="outline"
+                  className="border-red-600 text-red-600 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  {unpublishMutation.isPending ? 'Unpublishing...' : 'Unpublish'}
+                </Button>
+              )}
             </>
           )}
 
-          {/* Inactive (not sent): Reactivate */}
-          {isInactive && !newsletter.sentAt && (
+          {/* Inactive: Reactivate (Phase 6A.74 Part 14: allow for all inactive newsletters) */}
+          {isInactive && (
             <Button
               onClick={handleReactivate}
               disabled={reactivateMutation.isPending}

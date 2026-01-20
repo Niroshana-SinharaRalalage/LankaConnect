@@ -1,9 +1,51 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.X Observability: Batch 1D CQRS Handler Logging COMPLETE*
+*Last Updated: 2026-01-20 - Phase 6A.74 Part 14 Fixes: Newsletter API & UI Fixes COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability: Batch 1D CQRS Handler Logging ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.74 Part 14 Fixes ✅ COMPLETE
+
+### Phase 6A.74 Part 14 - Post-Deployment Fixes - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, All APIs: Verified)
+
+**Issues Fixed**:
+
+1. **400 Error on `/newsletters/my-newsletters` and `/newsletters/event/{eventId}`**
+   - **Root Cause**: `ToDictionaryAsync` failed when newsletters had multiple email history records (now valid since unlimited sends)
+   - **Fix**: Group by NewsletterId and take most recent history record for each newsletter
+   - **Files**: `GetNewslettersByCreatorQueryHandler.cs`, `GetNewslettersByEventQueryHandler.cs`
+
+2. **Unpublish Button for Announcement-Only Newsletters**
+   - **Issue**: Unpublish button shouldn't show for announcement-only newsletters (they were never "published" to public page)
+   - **Fix**: Hide Unpublish button when `newsletter.isAnnouncementOnly` is true
+   - **File**: `my-newsletters/[id]/page.tsx`
+
+3. **Reactivate Button for Inactive Newsletters**
+   - **Issue**: Reactivate button was only shown for inactive newsletters that hadn't been sent
+   - **Fix**: Show Reactivate for ALL inactive newsletters (now that unlimited sends is allowed)
+   - **File**: `my-newsletters/[id]/page.tsx`
+
+4. **Email Sending Feedback Missing**
+   - **Issue**: After sending email, recipient details didn't show until page refresh
+   - **Fix**: Added feedback message "Email is being sent in the background. Recipient details will update shortly."
+   - **Fix**: Added 5-second delayed cache invalidation to pick up history data after job completes
+   - **Files**: `useNewsletters.ts`, `my-newsletters/[id]/page.tsx`
+
+5. **Event Newsletters Not Showing in Communications Tab**
+   - **Issue**: `/newsletters/event/{eventId}` endpoint was returning 400 error
+   - **Fix**: Same duplicate key fix as #1 above
+   - **Verification**: API now returns 14 newsletters for test event
+
+**Git Commits**:
+- `fix(phase-6a74-part14): Fix newsletter history duplicate key and UI issues`
+- `fix(phase-6a74-part14): Add email sending feedback and delayed cache refresh`
+
+**API Verification**:
+- ✅ `GET /api/newsletters/my-newsletters` returns 41 newsletters
+- ✅ `GET /api/newsletters/event/{eventId}` returns 14 newsletters for test event
+
+---
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1D Complete (Users, MetroAreas, Communications) - 2026-01-20
 

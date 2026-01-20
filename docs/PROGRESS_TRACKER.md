@@ -1,9 +1,87 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.X Observability Batch 1C Part 3: Events Query Handlers*
+*Last Updated: 2026-01-20 - Phase 6A.X Observability Batch 1C Part 4: Events Query Handlers COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Batch 1C Part 3 ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Observability Batch 1C Part 4 ✅ COMPLETE
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1C Part 4 Complete (Events Queries COMPLETE) - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Enhanced 7 Events Query handlers with comprehensive logging following the established pattern. This completes Batch 1C (ALL Events Query handlers are now enhanced).
+
+**Batch 1C Part 4 - Handlers Enhanced** (7 handlers):
+
+1. ✅ **GetEventTemplatesQueryHandler** (+37 lines)
+   - Retrieves event templates with category/active filters
+   - LogContext: Operation, EntityType
+   - Logs: Filter parameters, template count
+   - START/COMPLETE/FAILED pattern with timing
+
+2. ✅ **GetPendingEventsForApprovalQueryHandler** (+39 lines)
+   - Admin approval workflow - lists events with UnderReview status
+   - LogContext: Operation, EntityType
+   - Logs: Total events, pending count after filtering
+   - Ordered by CreatedAt (oldest first for admin review)
+
+3. ✅ **GetUpcomingEventsForUserQueryHandler** (+52 lines)
+   - Returns user's upcoming registered events
+   - LogContext: Operation, EntityType, UserId
+   - Logs: Registration counts (total vs confirmed), upcoming events count
+   - Validates UserId is not Guid.Empty
+
+4. ✅ **GetUserRegistrationForEventQueryHandler** (+61 lines)
+   - Looks up user's registration for specific event
+   - LogContext: Operation, EntityType, EventId, UserId
+   - Logs: Found status, registration ID, status, timing
+   - Dual validation (EventId AND UserId)
+
+5. ✅ **GetUserRsvpsQueryHandler** (+52 lines)
+   - Returns all RSVPs/registrations for a user
+   - LogContext: Operation, EntityType, UserId
+   - Logs: Registration count, RSVP enrichment with event data
+   - Validates UserId is not Guid.Empty
+
+6. ✅ **GetWaitingListQueryHandler** (+61 lines)
+   - Returns waiting list entries with positions
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Event title, waiting list count, entry positions
+   - Validates EventId is not Guid.Empty
+
+7. ✅ **SearchEventsQueryHandler** (+64 lines)
+   - Full-text search using PostgreSQL tsvector
+   - LogContext: Operation, EntityType
+   - Logs: Search parameters, total count, returned count, pagination stats
+   - Validates Page > 0 and PageSize between 1-100
+
+**Logging Pattern Applied**:
+- ILogger<T> dependency injection
+- LogContext.PushProperty for structured correlation
+- Stopwatch for performance timing
+- START/COMPLETE/FAILED message pattern
+- Try-catch with exception logging
+- Request validation with LogWarning
+
+**Also Fixed**:
+- `SearchEventsQueryHandlerTests.cs`: Added logger mock to test constructor
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Code Changes: 8 files (+534 lines, -165 lines)
+
+**Git Commit**: `6fbf976b` - "feat(phase-6a.x-batch1c-part4): Add logging to remaining Events Query handlers"
+
+**Batch 1C COMPLETE - All Events Query Handlers Enhanced**:
+- **Batch 1C Part 1**: 5 handlers (GetEvents, GetEventById, CheckEventRegistration, GetEventAttendees, GetEventSignUpLists) ✅
+- **Batch 1C Part 2**: 5 handlers (GetFeaturedEvents, GetMyRegisteredEvents, GetEventsByOrganizer, GetNearbyEvents, GetRegistrationById) ✅
+- **Batch 1C Part 3**: 5 handlers (ExportEventAttendees, GetEventIcs, GetEventNotificationHistory, GetEventPasses, GetEventRegistrationByEmail) ✅
+- **Batch 1C Part 4**: 7 handlers (GetEventTemplates, GetPendingEventsForApproval, GetUpcomingEventsForUser, GetUserRegistrationForEvent, GetUserRsvps, GetWaitingList, SearchEvents) ✅
+- **Batch 1C Total**: 22/22 Events Query handlers (100%) ✅ **COMPLETE**
+- **Next**: Batch 1D - Newsletter, Users, Metro Area Query handlers
+
+---
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1C Part 3 Complete (Events Queries) - 2026-01-20
 
@@ -60,13 +138,6 @@ Enhanced 5 Events Query handlers with comprehensive logging following the establ
 - ✅ Code Changes: 6 files (+426 lines, -112 lines)
 
 **Git Commit**: `4c325c75` - "feat(phase-6a.x-batch1c-part3): Add logging to Events Query handlers"
-
-**Phase Progress**:
-- **Batch 1C Part 1**: 5 handlers (GetEvents, GetEventById, CheckEventRegistration, GetEventAttendees, GetEventSignUpLists) ✅
-- **Batch 1C Part 2**: 5 handlers (GetFeaturedEvents, GetMyRegisteredEvents, GetEventsByOrganizer, GetNearbyEvents, GetRegistrationById) ✅
-- **Batch 1C Part 3**: 5 handlers (ExportEventAttendees, GetEventIcs, GetEventNotificationHistory, GetEventPasses, GetEventRegistrationByEmail) ✅
-- **Batch 1C Total**: 15/~22 Events Query handlers (68%) ✅
-- **Next**: Batch 1C Part 4 - Remaining Events Query handlers (~7 handlers)
 
 ---
 

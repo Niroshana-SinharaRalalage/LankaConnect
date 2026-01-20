@@ -159,12 +159,17 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     const stateNodes = US_STATES.map(state => {
       const stateMetros = metroAreasByState.get(state.code) || [];
       const stateLevelMetro = stateLevelMetros.find(m => m.state === state.code);
-      const stateId = stateLevelMetro?.id || state.code;
+
+      // Phase 6A.74 Part 13 Issue #6 FIX: Only use valid UUIDs for state IDs
+      // If no state-level metro exists, don't show the state as a selectable node
+      // Previously used state.code (e.g., "CA") which fails UUID validation
+      const stateId = stateLevelMetro?.id;
 
       return {
-        id: stateId,
-        label: state.name, // Phase 6A.74 Part 13: Removed "All" prefix to match other location dropdowns
-        checked: selectedMetroIds.includes(stateId),
+        id: stateId || `state-${state.code}`, // Use prefix for display-only state nodes
+        label: state.name,
+        checked: stateId ? selectedMetroIds.includes(stateId) : false,
+        isSelectableParent: !!stateId, // Only selectable if we have a valid UUID
         children: stateMetros
           .filter(m => !m.isStateLevelArea) // Only city-level metros as children
           .map(metro => ({
@@ -184,9 +189,14 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   }, [metroAreasByState, stateLevelMetros, selectedMetroIds]);
 
   // Handle location tree selection change
+  // Phase 6A.74 Part 13 Issue #6 FIX: Filter out non-UUID IDs (state codes like "CA")
   const handleLocationTreeChange = (selectedIds: string[]) => {
-    console.log('[NewsletterForm] Location selection changed:', selectedIds);
-    setValue('metroAreaIds', selectedIds.length > 0 ? selectedIds : undefined);
+    console.log('[NewsletterForm] Location selection changed (raw):', selectedIds);
+    // UUID regex pattern to filter valid metro area IDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validUuids = selectedIds.filter(id => uuidRegex.test(id));
+    console.log('[NewsletterForm] Location selection changed (valid UUIDs):', validUuids);
+    setValue('metroAreaIds', validUuids.length > 0 ? validUuids : undefined);
   };
 
   // Issue #5: Log metro areas loaded for debugging
@@ -234,7 +244,10 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
             {errors.description && <li>Description: {errors.description.message}</li>}
             {errors.emailGroupIds && <li>Recipients: {errors.emailGroupIds.message}</li>}
             {errors.eventId && <li>Event: {errors.eventId.message}</li>}
-            {errors.metroAreaIds && <li>Location: {errors.metroAreaIds.message}</li>}
+            {/* Phase 6A.74 Part 13 Issue #6: Handle array errors properly - metroAreaIds can be array of errors */}
+            {errors.metroAreaIds && (
+              <li>Location: {(errors.metroAreaIds as any).message || (errors.metroAreaIds as any).root?.message || 'Invalid location selection'}</li>
+            )}
             {errors.targetAllLocations && <li>Location Targeting: {errors.targetAllLocations.message}</li>}
           </ul>
         </div>

@@ -461,9 +461,19 @@ export function useSendNewsletter() {
   return useMutation({
     mutationFn: (id: string) => newslettersRepository.sendNewsletter(id),
     onSuccess: (_data, id) => {
-      // Invalidate affected queries
+      // Invalidate affected queries immediately
       queryClient.invalidateQueries({ queryKey: newsletterKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
+      // Phase 6A.74 Part 14: Also invalidate byEvent queries (for Event Communications tab)
+      queryClient.invalidateQueries({ queryKey: newsletterKeys.all });
+
+      // Phase 6A.74 Part 14: Background job creates history record after a delay
+      // Schedule delayed refetch to pick up history data after job completes
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: newsletterKeys.detail(id) });
+        queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
+        queryClient.invalidateQueries({ queryKey: newsletterKeys.all });
+      }, 5000); // 5 second delay for background job to complete
     },
   });
 }

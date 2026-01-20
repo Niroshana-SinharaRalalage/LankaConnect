@@ -48,6 +48,8 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   const [showUnpublishDialog, setShowUnpublishDialog] = React.useState(false);
   const [showSendDialog, setShowSendDialog] = React.useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  // Phase 6A.74 Part 14: Feedback message state for async email sending
+  const [sendFeedback, setSendFeedback] = React.useState<string | null>(null);
 
   const { data: newsletter, isLoading } = useNewsletterById(id);
   const publishMutation = usePublishNewsletter();
@@ -75,8 +77,13 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
   const handleSend = async () => {
     try {
       await sendMutation.mutateAsync(id);
+      // Phase 6A.74 Part 14: Show feedback that email is being sent in background
+      setSendFeedback('Email is being sent in the background. Recipient details will update shortly.');
+      // Auto-hide after 10 seconds
+      setTimeout(() => setSendFeedback(null), 10000);
     } catch (error) {
       console.error('Failed to send newsletter:', error);
+      setSendFeedback(null);
     }
   };
 
@@ -271,6 +278,14 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
             </div>
           )}
         </div>
+
+        {/* Phase 6A.74 Part 14: Feedback message for async email sending */}
+        {sendFeedback && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+            <div className="inline-block w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <span className="text-sm text-blue-700">{sendFeedback}</span>
+          </div>
+        )}
       </div>
 
       {/* Metadata Cards */}

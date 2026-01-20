@@ -1,9 +1,115 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-19 - Phase 6A.X Observability Phase 3: Batch 1B Part 7 ✅ COMPLETE - ALL Events Commands 100%*
+*Last Updated: 2026-01-20 - Phase 6A.X Observability Batch 1C Part 2: Events Query Handlers*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Phase 3: Batch 1B Part 7 ✅ COMPLETE - ALL Events Commands 100%
+## 🎯 Current Session Status - Phase 6A.X Observability Batch 1C Part 2 ✅ COMPLETE
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1C Part 2 Complete (Events Queries) - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Enhanced 5 Events Query handlers with comprehensive logging following the established pattern. This continues Batch 1C (Events Query handlers) with a focus on location-based, user-specific, and registration lookup queries.
+
+**Batch 1C Part 2 - Handlers Enhanced** (5 handlers):
+
+1. ✅ **GetFeaturedEventsQueryHandler** (147 → 288 lines, +141 lines)
+   - Landing page featured events with location-based sorting
+   - LogContext: Operation, EntityType
+   - Logs: User loading, metro area coordinates fetch, home location lookup, fallback events, priority flow (preferred metros → home location → fallback)
+   - Performance timing with Stopwatch
+
+2. ✅ **GetMyRegisteredEventsQueryHandler** (67 → 200 lines, +133 lines)
+   - Returns events user is registered for with filter support
+   - LogContext: Operation, EntityType, UserId
+   - Logs: User validation, registration loading, filtered/unfiltered path selection, GetEventsQuery delegation
+   - Validates UserId is not Guid.Empty
+
+3. ✅ **GetEventsByOrganizerQueryHandler** (69 → 200 lines, +131 lines)
+   - Returns events created by organizer with filter support
+   - LogContext: Operation, EntityType, OrganizerId
+   - Logs: Organizer validation, events loading, filtered/unfiltered path selection, GetEventsQuery delegation
+   - Validates OrganizerId is not Guid.Empty
+
+4. ✅ **GetNearbyEventsQueryHandler** (78 → 148 lines, +70 lines)
+   - Location-based event discovery using PostGIS spatial queries
+   - LogContext: Operation, EntityType
+   - Logs: Coordinate validation (lat/lon bounds), radius validation (0-1000km), km-to-miles conversion, spatial query execution, filter application
+   - Comprehensive input validation with specific error messages
+
+5. ✅ **GetRegistrationByIdQueryHandler** (60 → 118 lines, +58 lines)
+   - Registration details lookup for anonymous users post-payment
+   - LogContext: Operation, EntityType, RegistrationId
+   - Logs: RegistrationId validation, query execution, registration found/not found status, attendee count, payment status
+   - Validates RegistrationId is not Guid.Empty
+
+**Logging Pattern Applied**:
+- ILogger<T> dependency injection
+- LogContext.PushProperty for structured correlation
+- Stopwatch for performance timing
+- START/COMPLETE/FAILED message pattern
+- Try-catch with exception logging
+- Request validation with LogWarning
+
+**Also Fixed**:
+- `GetNearbyEventsQueryHandlerTests.cs`: Added logger mock to test constructor
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Code Changes: 6 files (+633 lines, -251 lines)
+
+**Git Commit**: `6ff7c845` - "feat(phase-6a.x-batch1c-part2): Add logging to Events Query handlers"
+
+**Phase Progress**:
+- **Batch 1C Part 1**: 5 handlers (GetEvents, GetEventById, CheckEventRegistration, GetEventAttendees, GetEventSignUpLists) ✅
+- **Batch 1C Part 2**: 5 handlers (GetFeaturedEvents, GetMyRegisteredEvents, GetEventsByOrganizer, GetNearbyEvents, GetRegistrationById) ✅
+- **Batch 1C Total**: 10/~19 Events Query handlers (53%) ✅
+- **Next**: Batch 1C Part 3 - Remaining Events Query handlers
+
+---
+
+### UI Improvements - 4 Frontend Fixes - 2026-01-20
+
+**Status**: ✅ **COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Implemented 4 UI improvements based on user feedback to enhance event registration, signup lists, and communications dashboard experience.
+
+**Fixes Implemented**:
+
+1. ✅ **Phone Number Prefill in Signup Modal**
+   - File: `SignUpCommitmentModal.tsx`
+   - Issue: Phone number was not being auto-filled from user profile
+   - Fix: Added `user.phoneNumber` fallback when setting phone state in useEffect
+   - Now prefills phone from user profile for logged-in users
+
+2. ✅ **Replace Number of Attendees Textbox with Add/Remove Buttons**
+   - File: `EventRegistrationForm.tsx`
+   - Issue: Numeric input was less intuitive for adding attendees
+   - Fix: Replaced number input with "Add Attendee" button (dashed border, hover effect)
+   - Added trash icon for removing individual attendees (except first)
+   - Shows spots counter: "X of Y spots"
+
+3. ✅ **Consolidate Email Stats into Single Line**
+   - File: `EventNewslettersTab.tsx`
+   - Issue: Stats displayed across multiple lines
+   - Fix: Consolidated to single line format: "3 recipients ✓ 0 sent ✗ 3 failed"
+
+4. ✅ **Add Scroll Bars to Communications Tab**
+   - File: `EventNewslettersTab.tsx`
+   - Issue: Long lists pushed content down without scrolling
+   - Fix: Added max-height and overflow-y-auto to both sections
+   - Email Send History: max-h-[240px] (shows ~3 items)
+   - Event Newsletters: max-h-[360px] (shows ~3 items)
+
+**Git Commit**: `e802d894` - "fix(ui): Four UI improvements - phone prefill, attendee buttons, stats format, scroll"
+
+**Files Changed**: 3 files, +79 lines, -52 lines
+
+**Deployment**: GitHub Actions #21157878498 - SUCCESS
+
+---
 
 ### Phase 6A.X - Phase 3: LogDebug → LogInformation Migration - 2026-01-19
 

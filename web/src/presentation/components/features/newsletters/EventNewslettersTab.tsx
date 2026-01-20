@@ -224,6 +224,20 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
                         Created: {new Date(newsletter.createdAt).toLocaleDateString()}
                         {newsletter.sentAt && ` • Sent: ${new Date(newsletter.sentAt).toLocaleDateString()}`}
                       </p>
+                      {/* Phase 6A.74 Part 13 Issue #2: Display recipient counts in Event Communications tab */}
+                      {newsletter.totalRecipientCount && newsletter.totalRecipientCount > 0 && (
+                        <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-[#6366F1]" />
+                          <span>
+                            Sent to {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
+                            {newsletter.emailGroupRecipientCount != null && newsletter.subscriberRecipientCount != null && (
+                              <span className="text-gray-500">
+                                {' '}({newsletter.emailGroupRecipientCount} from groups, {newsletter.subscriberRecipientCount} subscribers)
+                              </span>
+                            )}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
                   </div>

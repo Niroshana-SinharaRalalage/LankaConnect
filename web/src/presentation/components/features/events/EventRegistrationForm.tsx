@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/presentation/components/ui/Input';
 import { Button } from '@/presentation/components/ui/Button';
-import { Clock } from 'lucide-react';
+import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto } from '@/infrastructure/api/types/events.types';
@@ -108,18 +108,34 @@ export function EventRegistrationForm({
     }
   }, [user, profile]);
 
-  // Session 21: Update attendee array when quantity changes
+  // Session 21: Update quantity when attendees array changes (for submission)
   useEffect(() => {
-    const newAttendees = Array.from({ length: quantity }, (_, index) => {
-      // Preserve existing attendee data if available
-      return attendees[index] || { name: '', ageCategory: '', gender: null };
-    });
-    setAttendees(newAttendees);
-    setTouched(prev => ({
-      ...prev,
-      attendees: Array(quantity).fill(false),
-    }));
-  }, [quantity]);
+    setQuantity(attendees.length);
+  }, [attendees.length]);
+
+  // Add attendee function
+  const handleAddAttendee = () => {
+    const maxAttendees = Math.min(10, spotsLeft);
+    if (attendees.length < maxAttendees) {
+      setAttendees([...attendees, { name: '', ageCategory: '', gender: null }]);
+      setTouched(prev => ({
+        ...prev,
+        attendees: [...prev.attendees, false],
+      }));
+    }
+  };
+
+  // Remove attendee function
+  const handleRemoveAttendee = (index: number) => {
+    if (attendees.length > 1) {
+      const newAttendees = attendees.filter((_, i) => i !== index);
+      setAttendees(newAttendees);
+      setTouched(prev => ({
+        ...prev,
+        attendees: prev.attendees.filter((_, i) => i !== index),
+      }));
+    }
+  };
 
   // Session 21: Update individual attendee
   // Phase 6A.43: Updated to handle AgeCategory and Gender
@@ -279,30 +295,19 @@ export function EventRegistrationForm({
   const totalPrice = calculateTotalPrice();
   const applicableTier = hasGroupPricing ? findApplicableTier() : null;
 
+  const maxAttendees = Math.min(10, spotsLeft);
+  const canAddMore = attendees.length < maxAttendees;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Quantity Selector */}
-      <div>
-        <label className="block text-sm font-medium mb-2 text-neutral-700">
-          Number of Attendees
-        </label>
-        <Input
-          type="number"
-          min="1"
-          max={Math.min(10, spotsLeft)}
-          value={quantity}
-          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-          disabled={isProcessing}
-          className="w-full"
-        />
-        <p className="text-xs text-neutral-500 mt-1">
-          You'll provide name and age for each attendee below
-        </p>
-      </div>
-
       {/* Session 21: Individual Attendee Fields */}
-      <div className="border-t pt-4">
-        <h4 className="text-sm font-semibold mb-3 text-neutral-700">Attendee Information</h4>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-neutral-700">Attendee Information</h4>
+          <span className="text-xs text-neutral-500">
+            {attendees.length} of {maxAttendees} spots
+          </span>
+        </div>
         {!user && (
           <p className="text-xs text-neutral-500 mb-4">
             Please provide name, age category, and optionally gender for each attendee
@@ -317,9 +322,23 @@ export function EventRegistrationForm({
         <div className="space-y-4">
           {attendees.map((attendee, index) => (
             <div key={index} className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-              <h5 className="text-sm font-medium mb-3 text-neutral-700">
-                Attendee {index + 1}
-              </h5>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-sm font-medium text-neutral-700">
+                  Attendee {index + 1}
+                </h5>
+                {/* Show remove button for all except the first attendee */}
+                {index > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttendee(index)}
+                    disabled={isProcessing}
+                    className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                    title="Remove attendee"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Name */}
                 <div>
@@ -404,6 +423,19 @@ export function EventRegistrationForm({
               </div>
             </div>
           ))}
+
+          {/* Add Attendee Button */}
+          {canAddMore && (
+            <button
+              type="button"
+              onClick={handleAddAttendee}
+              disabled={isProcessing}
+              className="w-full py-3 px-4 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">Add Attendee</span>
+            </button>
+          )}
         </div>
       </div>
 

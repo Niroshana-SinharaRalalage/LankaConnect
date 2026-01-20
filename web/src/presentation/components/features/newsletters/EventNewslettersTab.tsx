@@ -129,10 +129,10 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             <div className="text-sm text-gray-500">No emails sent yet</div>
           )}
           {history && history.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2">
               {history.map((record) => (
                 <div key={record.id} className="border-b pb-3 last:border-b-0">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-center">
                     <div>
                       <p className="text-sm font-medium text-gray-900">
                         Sent on {new Date(record.sentAt).toLocaleString()}
@@ -141,19 +141,14 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
                         By: {record.sentByUserName}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">
-                        <span className="font-medium">{record.recipientCount}</span> recipients
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        ✓ {record.successfulSends} sent
-                      </p>
+                    {/* Consolidated stats on single line */}
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">{record.recipientCount}</span> recipients
+                      <span className="text-green-600 ml-3">✓ {record.successfulSends} sent</span>
                       {record.failedSends > 0 && (
-                        <p className="text-xs text-red-600">
-                          ✗ {record.failedSends} failed
-                        </p>
+                        <span className="text-red-600 ml-3">✗ {record.failedSends} failed</span>
                       )}
-                    </div>
+                    </p>
                   </div>
                 </div>
               ))}
@@ -203,7 +198,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             </div>
           )}
           {!isLoading && newsletters.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
               {newsletters.map((newsletter) => (
                 <div
                   key={newsletter.id}

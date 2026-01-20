@@ -97,14 +97,14 @@ export function SignUpCommitmentModal({
         // Updating existing commitment - pre-fill with that data
         setName(existingCommitment.contactName || user?.fullName || '');
         setEmail(existingCommitment.contactEmail || user?.email || '');
-        setPhone(existingCommitment.contactPhone || '');
+        setPhone(existingCommitment.contactPhone || user?.phoneNumber || '');
         setQuantity(existingCommitment.quantity);
         setNotes(existingCommitment.notes || '');
       } else if (user) {
         // New commitment with logged-in user - use their defaults
         setName(user.fullName || '');
         setEmail(user.email || '');
-        setPhone('');
+        setPhone(user.phoneNumber || '');
         setQuantity(1);
         setNotes('');
       } else {

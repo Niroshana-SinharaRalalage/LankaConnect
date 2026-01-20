@@ -11,7 +11,7 @@ import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
-import { createNewsletterSchema, type CreateNewsletterFormData } from '@/presentation/lib/validators/newsletter.schemas';
+import { createNewsletterSchema, cleanNewsletterDataForApi, type CreateNewsletterFormData } from '@/presentation/lib/validators/newsletter.schemas';
 import { useCreateNewsletter, useUpdateNewsletter, useNewsletterById } from '@/presentation/hooks/useNewsletters';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useEvents, useEventById } from '@/presentation/hooks/useEvents';
@@ -211,12 +211,16 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     try {
       setSubmitError(null);
 
+      // Clean form data for API submission
+      // Transforms empty strings to undefined and filters invalid metro area IDs
+      const cleanedData = cleanNewsletterDataForApi(data);
+
       if (isEditMode && newsletterId) {
-        await updateMutation.mutateAsync({ id: newsletterId, ...data });
+        await updateMutation.mutateAsync({ id: newsletterId, ...cleanedData });
         onSuccess?.(newsletterId);
       } else {
-        const newsletterId = await createMutation.mutateAsync(data);
-        onSuccess?.(newsletterId);
+        const newNewsletterId = await createMutation.mutateAsync(cleanedData);
+        onSuccess?.(newNewsletterId);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save newsletter. Please try again.';

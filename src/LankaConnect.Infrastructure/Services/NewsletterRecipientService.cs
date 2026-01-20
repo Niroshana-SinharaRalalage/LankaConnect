@@ -160,25 +160,27 @@ public class NewsletterRecipientService : INewsletterRecipientService
                 .Concat(subscriberBreakdown.Emails),
             StringComparer.OrdinalIgnoreCase);
 
+        // Phase 6A.74 Part 13+: Updated breakdown with all 4 sources separately
         var breakdownDto = new RecipientBreakdownDto
         {
-            EmailGroupCount = newsletterEmailGroupAddresses.Count,
+            NewsletterEmailGroupCount = newsletterEmailGroupAddresses.Count,
+            EventEmailGroupCount = eventEmailGroupAddresses.Count,
+            SubscriberCount = subscriberBreakdown.Emails.Count,
+            EventRegistrationCount = eventAttendeeEmails.Count,
             MetroAreaSubscribers = subscriberBreakdown.MetroCount,
             StateLevelSubscribers = subscriberBreakdown.StateCount,
             AllLocationsSubscribers = subscriberBreakdown.AllLocationsCount
         };
 
         _logger.LogInformation(
-            "[Phase 6A.74 HOTFIX] Resolved {TotalUnique} unique email recipients for newsletter {NewsletterId}. " +
-            "Breakdown: NewsletterEmailGroups={NewsletterEmailGroupCount}, EventAttendees={EventAttendeeCount}, " +
-            "EventEmailGroups={EventEmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+            "[Phase 6A.74 Part 13+] Resolved {TotalUnique} unique email recipients for newsletter {NewsletterId}. " +
+            "Breakdown: NewsletterEmailGroups={NewsletterEmailGroupCount}, EventEmailGroups={EventEmailGroupCount}, " +
+            "Subscribers={SubscriberCount}, EventRegistrations={EventRegistrationCount}",
             allEmails.Count, newsletterId,
-            newsletterEmailGroupAddresses.Count,
-            eventAttendeeEmails.Count,
-            eventEmailGroupAddresses.Count,
-            breakdownDto.MetroAreaSubscribers,
-            breakdownDto.StateLevelSubscribers,
-            breakdownDto.AllLocationsSubscribers);
+            breakdownDto.NewsletterEmailGroupCount,
+            breakdownDto.EventEmailGroupCount,
+            breakdownDto.SubscriberCount,
+            breakdownDto.EventRegistrationCount);
 
         return new RecipientPreviewDto
         {
@@ -427,7 +429,10 @@ public class NewsletterRecipientService : INewsletterRecipientService
             EmailAddresses = Array.Empty<string>(),
             Breakdown = new RecipientBreakdownDto
             {
-                EmailGroupCount = 0,
+                NewsletterEmailGroupCount = 0,
+                EventEmailGroupCount = 0,
+                SubscriberCount = 0,
+                EventRegistrationCount = 0,
                 MetroAreaSubscribers = 0,
                 StateLevelSubscribers = 0,
                 AllLocationsSubscribers = 0

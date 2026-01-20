@@ -11,7 +11,39 @@ import {
   useEventById,
 } from '@/presentation/hooks/useEvents';
 import { EventStatus } from '@/infrastructure/api/types/events.types';
+import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
 import toast from 'react-hot-toast';
+
+/**
+ * Phase 6A.74 Part 13+: Build recipient breakdown string showing all 4 sources
+ * Format: "(X from newsletter groups, Y from event groups, Z subscribers, W event registrations)"
+ * Only includes sources with count > 0
+ */
+function buildNewsletterRecipientBreakdown(newsletter: NewsletterDto): string | null {
+  const parts: string[] = [];
+
+  // Newsletter email groups
+  if (newsletter.newsletterEmailGroupCount && newsletter.newsletterEmailGroupCount > 0) {
+    parts.push(`${newsletter.newsletterEmailGroupCount} from newsletter groups`);
+  }
+
+  // Event email groups (if newsletter linked to event)
+  if (newsletter.eventEmailGroupCount && newsletter.eventEmailGroupCount > 0) {
+    parts.push(`${newsletter.eventEmailGroupCount} from event groups`);
+  }
+
+  // Newsletter subscribers
+  if (newsletter.subscriberCount && newsletter.subscriberCount > 0) {
+    parts.push(`${newsletter.subscriberCount} subscribers`);
+  }
+
+  // Event registrations (if newsletter linked to event)
+  if (newsletter.eventRegistrationCount && newsletter.eventRegistrationCount > 0) {
+    parts.push(`${newsletter.eventRegistrationCount} from event registrations`);
+  }
+
+  return parts.length > 0 ? `(${parts.join(', ')})` : null;
+}
 
 export interface EventNewslettersTabProps {
   eventId: string;
@@ -219,18 +251,27 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
                         Created: {new Date(newsletter.createdAt).toLocaleDateString()}
                         {newsletter.sentAt && ` • Sent: ${new Date(newsletter.sentAt).toLocaleDateString()}`}
                       </p>
-                      {/* Phase 6A.74 Part 13 Issue #2: Display recipient counts in Event Communications tab */}
-                      {newsletter.totalRecipientCount && newsletter.totalRecipientCount > 0 && (
-                        <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                      {/* Phase 6A.74 Part 13+: Display recipient counts with detailed breakdown and send stats */}
+                      {newsletter.totalRecipientCount != null && newsletter.totalRecipientCount > 0 && (
+                        <p className="text-xs text-gray-600 mt-1 flex items-center flex-wrap gap-1">
                           <Mail className="w-3 h-3 text-[#6366F1]" />
                           <span>
-                            Sent to {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
-                            {newsletter.emailGroupRecipientCount != null && newsletter.subscriberRecipientCount != null && (
-                              <span className="text-gray-500">
-                                {' '}({newsletter.emailGroupRecipientCount} from groups, {newsletter.subscriberRecipientCount} subscribers)
-                              </span>
+                            {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
+                            {buildNewsletterRecipientBreakdown(newsletter) && (
+                              <span className="text-gray-500"> {buildNewsletterRecipientBreakdown(newsletter)}</span>
                             )}
                           </span>
+                          {/* Success/Failed counts */}
+                          {newsletter.successfulSends != null && (
+                            <span className="text-green-600 ml-1">
+                              ✓ {newsletter.successfulSends} sent
+                            </span>
+                          )}
+                          {newsletter.failedSends != null && newsletter.failedSends > 0 && (
+                            <span className="text-red-600 ml-1">
+                              ✗ {newsletter.failedSends} failed
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>

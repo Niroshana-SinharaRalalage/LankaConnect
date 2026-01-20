@@ -79,8 +79,15 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                 EmailGroups = new List<EmailGroupSummaryDto>(), // Populated by controller if needed
                 MetroAreaIds = newsletter.MetroAreaIds,
                 MetroAreas = new List<MetroAreaSummaryDto>(), // Populated by controller if needed
-                // Phase 6A.74 Part 13 Issue #1 FIX: Populate recipient counts from history
+                // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
                 TotalRecipientCount = history?.TotalRecipientCount,
+                NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,
+                EventEmailGroupCount = history?.EventEmailGroupCount,
+                SubscriberCount = history?.SubscriberCount,
+                EventRegistrationCount = history?.EventRegistrationCount,
+                SuccessfulSends = history?.SuccessfulSends,
+                FailedSends = history?.FailedSends,
+                // Legacy fields for backwards compatibility
                 EmailGroupRecipientCount = history?.EmailGroupRecipientCount,
                 SubscriberRecipientCount = history?.SubscriberRecipientCount
             };

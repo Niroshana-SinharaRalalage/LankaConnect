@@ -31,13 +31,49 @@ public record NewsletterDto
     public int? TotalRecipientCount { get; init; }
 
     /// <summary>
-    /// Phase 6A.74 Part 13 Issue #1: Number of recipients from email groups
+    /// Phase 6A.74 Part 13+: Number of recipients from newsletter's email groups
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? NewsletterEmailGroupCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13+: Number of recipients from event's email groups (if linked)
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? EventEmailGroupCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13+: Number of newsletter subscribers
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? SubscriberCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13+: Number of event registrations (if linked)
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? EventRegistrationCount { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13+: Number of emails successfully sent
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? SuccessfulSends { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 13+: Number of emails that failed to send
+    /// Null if newsletter hasn't been sent yet
+    /// </summary>
+    public int? FailedSends { get; init; }
+
+    /// <summary>
+    /// Legacy: Number of recipients from email groups (backwards compatibility)
     /// Null if newsletter hasn't been sent yet
     /// </summary>
     public int? EmailGroupRecipientCount { get; init; }
 
     /// <summary>
-    /// Phase 6A.74 Part 13 Issue #1: Number of recipients from newsletter subscribers
+    /// Legacy: Number of recipients from newsletter subscribers (backwards compatibility)
     /// Null if newsletter hasn't been sent yet
     /// </summary>
     public int? SubscriberRecipientCount { get; init; }

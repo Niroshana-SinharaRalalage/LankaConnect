@@ -386,6 +386,17 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.62 Fix: Raises RegistrationCancelledEvent without requiring _registrations to be loaded.
+    /// This allows the CancelRsvpCommandHandler to bypass EF Core navigation property issues
+    /// while still triggering email notifications.
+    /// </summary>
+    public void RaiseRegistrationCancelledEvent(Guid userId)
+    {
+        RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
+        MarkAsUpdated();
+    }
+
     public Result UpdateRegistration(Guid userId, int newQuantity)
     {
         if (userId == Guid.Empty)

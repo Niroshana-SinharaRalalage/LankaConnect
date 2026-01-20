@@ -1,9 +1,74 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Newsletter Form Fix & UI Improvements*
+*Last Updated: 2026-01-20 - Phase 6A.X Observability Batch 1C Part 3: Events Query Handlers*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Newsletter Form Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Observability Batch 1C Part 3 ✅ COMPLETE
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1C Part 3 Complete (Events Queries) - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Enhanced 5 Events Query handlers with comprehensive logging following the established pattern. This continues Batch 1C (Events Query handlers) with a focus on export, calendar, notification history, passes, and email validation queries.
+
+**Batch 1C Part 3 - Handlers Enhanced** (5 handlers):
+
+1. ✅ **ExportEventAttendeesQueryHandler** (+117 lines)
+   - Exports attendees to CSV/Excel/ZIP formats
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Attendee data loading, format-specific export generation (CSV/Excel/SignUpListsZip/SignUpListsExcel), file size, export completion
+   - Comprehensive validation and error handling
+
+2. ✅ **GetEventIcsQueryHandler** (+55 lines)
+   - Generates ICS (iCalendar) file for calendar integration
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Event loading, ICS content generation, content length
+   - Validates EventId is not Guid.Empty
+
+3. ✅ **GetEventNotificationHistoryQueryHandler** (refactored)
+   - Returns notification history for Communication tab
+   - LogContext: Operation, EntityType, EventId
+   - Logs: History records loading, recipient totals, success/failure counts
+   - Comprehensive START/COMPLETE/FAILED pattern
+
+4. ✅ **GetEventPassesQueryHandler** (+61 lines)
+   - Returns multi-tier ticket passes for an event
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Event loading, pass count, total available quantity
+   - Validates EventId is not Guid.Empty
+
+5. ✅ **GetEventRegistrationByEmailQueryHandler** (+79 lines)
+   - Checks if email is registered for an event
+   - LogContext: Operation, EntityType, EventId
+   - Logs: Email validation (masked for security), registration check result
+   - Email masking for secure logging (first 3 chars + domain)
+
+**Logging Pattern Applied**:
+- ILogger<T> dependency injection
+- LogContext.PushProperty for structured correlation
+- Stopwatch for performance timing
+- START/COMPLETE/FAILED message pattern
+- Try-catch with exception logging
+- Request validation with LogWarning
+
+**Also Fixed**:
+- `GetEventRegistrationByEmailQueryHandlerTests.cs`: Added logger mock to test constructor
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Code Changes: 6 files (+426 lines, -112 lines)
+
+**Git Commit**: `4c325c75` - "feat(phase-6a.x-batch1c-part3): Add logging to Events Query handlers"
+
+**Phase Progress**:
+- **Batch 1C Part 1**: 5 handlers (GetEvents, GetEventById, CheckEventRegistration, GetEventAttendees, GetEventSignUpLists) ✅
+- **Batch 1C Part 2**: 5 handlers (GetFeaturedEvents, GetMyRegisteredEvents, GetEventsByOrganizer, GetNearbyEvents, GetRegistrationById) ✅
+- **Batch 1C Part 3**: 5 handlers (ExportEventAttendees, GetEventIcs, GetEventNotificationHistory, GetEventPasses, GetEventRegistrationByEmail) ✅
+- **Batch 1C Total**: 15/~22 Events Query handlers (68%) ✅
+- **Next**: Batch 1C Part 4 - Remaining Events Query handlers (~7 handlers)
+
+---
 
 ### Newsletter Form Fix - 2026-01-20
 

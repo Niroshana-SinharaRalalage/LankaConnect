@@ -34,6 +34,37 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
+  /**
+   * Phase 6A.74 Part 13+: Build recipient breakdown string showing all 4 sources
+   * Format: "(X from newsletter groups, Y from event groups, Z subscribers, W event registrations)"
+   * Only includes sources with count > 0
+   */
+  const buildRecipientBreakdown = (): string | null => {
+    const parts: string[] = [];
+
+    // Newsletter email groups
+    if (newsletter.newsletterEmailGroupCount && newsletter.newsletterEmailGroupCount > 0) {
+      parts.push(`${newsletter.newsletterEmailGroupCount} from newsletter groups`);
+    }
+
+    // Event email groups (if newsletter linked to event)
+    if (newsletter.eventEmailGroupCount && newsletter.eventEmailGroupCount > 0) {
+      parts.push(`${newsletter.eventEmailGroupCount} from event groups`);
+    }
+
+    // Newsletter subscribers
+    if (newsletter.subscriberCount && newsletter.subscriberCount > 0) {
+      parts.push(`${newsletter.subscriberCount} subscribers`);
+    }
+
+    // Event registrations (if newsletter linked to event)
+    if (newsletter.eventRegistrationCount && newsletter.eventRegistrationCount > 0) {
+      parts.push(`${newsletter.eventRegistrationCount} from event registrations`);
+    }
+
+    return parts.length > 0 ? `(${parts.join(', ')})` : null;
+  };
+
   return (
     <div
       onClick={onClick}
@@ -70,18 +101,27 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
           </div>
         )}
 
-        {/* Phase 6A.74 Part 13 Issue #2: Recipient Count */}
-        {newsletter.totalRecipientCount && newsletter.totalRecipientCount > 0 && (
-          <div className="flex items-center text-xs text-gray-600">
+        {/* Phase 6A.74 Part 13+: Recipient Count with detailed breakdown and send stats */}
+        {newsletter.totalRecipientCount != null && newsletter.totalRecipientCount > 0 && (
+          <div className="flex items-center flex-wrap text-xs text-gray-600">
             <Mail className="w-3 h-3 mr-2 text-[#6366F1]" />
             <span>
-              Sent to {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
-              {newsletter.emailGroupRecipientCount && newsletter.subscriberRecipientCount && (
-                <span className="text-gray-500">
-                  {' '}({newsletter.emailGroupRecipientCount} from groups, {newsletter.subscriberRecipientCount} subscribers)
-                </span>
+              {newsletter.totalRecipientCount.toLocaleString()} recipient{newsletter.totalRecipientCount === 1 ? '' : 's'}
+              {buildRecipientBreakdown() && (
+                <span className="text-gray-500"> {buildRecipientBreakdown()}</span>
               )}
             </span>
+            {/* Success/Failed counts */}
+            {newsletter.successfulSends != null && (
+              <span className="text-green-600 ml-2">
+                ✓ {newsletter.successfulSends} sent
+              </span>
+            )}
+            {newsletter.failedSends != null && newsletter.failedSends > 0 && (
+              <span className="text-red-600 ml-2">
+                ✗ {newsletter.failedSends} failed
+              </span>
+            )}
           </div>
         )}
 

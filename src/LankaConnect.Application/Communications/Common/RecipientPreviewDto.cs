@@ -24,13 +24,29 @@ public record RecipientPreviewDto
 
 /// <summary>
 /// Breakdown of newsletter recipient sources
+/// Phase 6A.74 Part 13+: Updated to track all 4 recipient sources separately
 /// </summary>
 public record RecipientBreakdownDto
 {
     /// <summary>
-    /// Count of recipients from email groups
+    /// Count of recipients from newsletter's email groups
     /// </summary>
-    public int EmailGroupCount { get; init; }
+    public int NewsletterEmailGroupCount { get; init; }
+
+    /// <summary>
+    /// Count of recipients from event's email groups (if newsletter linked to event)
+    /// </summary>
+    public int EventEmailGroupCount { get; init; }
+
+    /// <summary>
+    /// Count of newsletter subscribers (metro + state + all locations combined)
+    /// </summary>
+    public int SubscriberCount { get; init; }
+
+    /// <summary>
+    /// Count of event registered attendees (if newsletter linked to event)
+    /// </summary>
+    public int EventRegistrationCount { get; init; }
 
     /// <summary>
     /// Count of newsletter subscribers matched by metro area
@@ -51,4 +67,9 @@ public record RecipientBreakdownDto
     /// Total newsletter subscribers (sum of metro + state + all locations)
     /// </summary>
     public int TotalNewsletterSubscribers => MetroAreaSubscribers + StateLevelSubscribers + AllLocationsSubscribers;
+
+    /// <summary>
+    /// Legacy property for backwards compatibility - total from all email groups
+    /// </summary>
+    public int EmailGroupCount => NewsletterEmailGroupCount + EventEmailGroupCount;
 }

@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
-/// Phase 6A.74 Part 13 Issue #1: EF Core configuration for NewsletterEmailHistory entity
+/// Phase 6A.74 Part 13+: EF Core configuration for NewsletterEmailHistory entity
+/// Updated to include detailed recipient breakdown and send statistics
 /// </summary>
 public class NewsletterEmailHistoryConfiguration : IEntityTypeConfiguration<NewsletterEmailHistory>
 {
@@ -31,6 +32,38 @@ public class NewsletterEmailHistoryConfiguration : IEntityTypeConfiguration<News
             .HasColumnName("total_recipient_count")
             .IsRequired();
 
+        // Phase 6A.74 Part 13+: New detailed breakdown fields
+        builder.Property(e => e.NewsletterEmailGroupCount)
+            .HasColumnName("newsletter_email_group_count")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.EventEmailGroupCount)
+            .HasColumnName("event_email_group_count")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.SubscriberCount)
+            .HasColumnName("subscriber_count")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.EventRegistrationCount)
+            .HasColumnName("event_registration_count")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.SuccessfulSends)
+            .HasColumnName("successful_sends")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.FailedSends)
+            .HasColumnName("failed_sends")
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        // Legacy fields for backwards compatibility
         builder.Property(e => e.EmailGroupRecipientCount)
             .HasColumnName("email_group_recipient_count")
             .IsRequired();

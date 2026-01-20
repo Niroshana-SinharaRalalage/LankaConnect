@@ -237,22 +237,31 @@ public class NewsletterEmailJob
             }
             else
             {
-                // Phase 6A.74 Part 13 Issue #1 BUGFIX: Create NewsletterEmailHistory AFTER marking newsletter as sent
+                // Phase 6A.74 Part 13+ Issue #1 BUGFIX: Create NewsletterEmailHistory AFTER marking newsletter as sent
                 // This ensures both entities are tracked by the same DbContext and committed together
                 _logger.LogInformation(
-                    "[Phase 6A.74 Part 13 Issue #1] Creating newsletter email history for newsletter {NewsletterId}. " +
-                    "Total recipients: {TotalRecipients}, Email groups: {EmailGroupCount}, Subscribers: {SubscriberCount}",
+                    "[Phase 6A.74 Part 13+] Creating newsletter email history for newsletter {NewsletterId}. " +
+                    "Total: {TotalRecipients}, NewsletterGroups: {NewsletterEmailGroupCount}, EventGroups: {EventEmailGroupCount}, " +
+                    "Subscribers: {SubscriberCount}, EventRegistrations: {EventRegistrationCount}, Success: {SuccessCount}, Failed: {FailedCount}",
                     newsletterId,
                     recipients.TotalRecipients,
-                    recipients.Breakdown.EmailGroupCount,
-                    recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+                    recipients.Breakdown.NewsletterEmailGroupCount,
+                    recipients.Breakdown.EventEmailGroupCount,
+                    recipients.Breakdown.SubscriberCount,
+                    recipients.Breakdown.EventRegistrationCount,
+                    successCount,
+                    failCount);
 
                 var newsletterHistory = NewsletterEmailHistory.Create(
                     newsletterId,
                     DateTime.UtcNow,
                     recipients.TotalRecipients,
-                    recipients.Breakdown.EmailGroupCount,
-                    recipients.Breakdown.MetroAreaSubscribers + recipients.Breakdown.StateLevelSubscribers + recipients.Breakdown.AllLocationsSubscribers);
+                    recipients.Breakdown.NewsletterEmailGroupCount,
+                    recipients.Breakdown.EventEmailGroupCount,
+                    recipients.Breakdown.SubscriberCount,
+                    recipients.Breakdown.EventRegistrationCount,
+                    successCount,
+                    failCount);
 
                 var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext;
                 if (dbContext != null)

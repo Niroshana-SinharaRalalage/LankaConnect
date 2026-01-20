@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -139,6 +140,16 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         registration.Id, request.EventId, request.UserId);
 
                     _registrationRepository.Remove(registration);
+
+                    // Phase 6A.62 Fix: Raise domain event for email notification
+                    // The original CancelRegistration domain method was bypassed due to EF Core navigation issues,
+                    // but we still need to trigger the email notification via the domain event.
+                    @event.RaiseRegistrationCancelledEvent(request.UserId);
+                    _eventRepository.Update(@event);
+
+                    _logger.LogInformation(
+                        "CancelRsvp: Raised RegistrationCancelledEvent for email notification - EventId={EventId}, UserId={UserId}",
+                        request.EventId, request.UserId);
 
                     // Save changes
                     await _unitOfWork.CommitAsync(cancellationToken);

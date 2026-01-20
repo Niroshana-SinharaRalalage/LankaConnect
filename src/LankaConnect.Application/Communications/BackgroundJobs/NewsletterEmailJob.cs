@@ -269,14 +269,31 @@ public class NewsletterEmailJob
                         "[Phase 6A.74 Part 13 Issue #1] Unable to cast IApplicationDbContext to DbContext. NewsletterEmailHistory not persisted.");
                 }
 
-                // Phase 6A.74 Part 13 CRITICAL FIX (RCA Issue #1/#2): Clear ChangeTracker to detach EmailMessage entities
+                // Phase 6A.74 Part 13 CRITICAL FIX (RCA Issue #1/#2): Detach EmailMessage entities
                 // The email sending loop creates and tracks EmailMessage entities in the same DbContext
                 // If we don't detach them, EF Core will try to save ALL tracked entities (including EmailMessages)
                 // causing DbUpdateConcurrencyException when their timestamps have changed
-                // This is the EXACT same pattern used in EventNotificationEmailJob (Phase 6A.61) which works perfectly
-                _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Clearing ChangeTracker to detach EmailMessage entities before commit");
+                // Unlike Event notifications (which only update History), Newsletter needs to save BOTH
+                // Newsletter entity (MarkAsSent) AND NewsletterEmailHistory, so we manually detach only EmailMessages
+                _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Detaching EmailMessage entities before commit, keeping Newsletter and NewsletterEmailHistory tracked");
 
-                await _unitOfWork.ClearChangeTrackerExceptAsync<NewsletterEmailHistory>(CancellationToken.None);
+                if (dbContext != null)
+                {
+                    var emailMessageEntries = dbContext.ChangeTracker.Entries()
+                        .Where(e => e.Entity is Domain.Communications.Entities.EmailMessage)
+                        .ToList();
+
+                    _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Found {Count} EmailMessage entities to detach",
+                        emailMessageEntries.Count);
+
+                    foreach (var entry in emailMessageEntries)
+                    {
+                        entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    }
+
+                    _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Detached {Count} EmailMessage entities, Newsletter and NewsletterEmailHistory still tracked",
+                        emailMessageEntries.Count);
+                }
 
                 try
                 {

@@ -1,9 +1,108 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.74 Part 14: Newsletter Types & Migration Fix COMPLETE*
+*Last Updated: 2026-01-20 - Phase 6A.X Observability: Batch 1D CQRS Handler Logging COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 14: Newsletter Types & Migration Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Observability: Batch 1D CQRS Handler Logging ✅ COMPLETE
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1D Complete (Users, MetroAreas, Communications) - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Enhanced 10 Query handlers with comprehensive logging following the established pattern. Batch 1D covers Users, MetroAreas, and Communications Query handlers.
+
+**Batch 1D - Handlers Enhanced** (10 handlers):
+
+**Users Handlers** (3 handlers):
+1. ✅ **GetUserByIdQueryHandler** (+68 lines)
+   - Retrieves user by ID with profile fields
+   - LogContext: Operation, EntityType, UserId
+   - Logs: User lookup, IsActive, HasLocation, MetroAreaCount
+   - Validates UserId is not Guid.Empty
+
+2. ✅ **GetPendingRoleUpgradesQueryHandler** (+38 lines)
+   - Admin query for users awaiting role upgrade approval
+   - LogContext: Operation, EntityType
+   - Logs: Pending count loaded, DTO mapping count
+   - START/COMPLETE/FAILED pattern with timing
+
+3. ✅ **GetUserPreferredMetroAreasQueryHandler** (+39 lines)
+   - Returns metro area details for user's preferences
+   - LogContext: Operation, EntityType, UserId
+   - Logs: User lookup, metro area count
+   - Validates UserId is not Guid.Empty
+
+**MetroAreas Handlers** (1 handler):
+4. ✅ **GetMetroAreasQueryHandler** (+31 lines)
+   - Returns filtered metro areas list
+   - LogContext: Operation, EntityType
+   - Logs: ActiveOnly filter, StateFilter, MetroAreaCount
+   - START/COMPLETE/FAILED pattern with timing
+
+**Communications Handlers** (6 handlers):
+5. ✅ **GetEmailGroupByIdQueryHandler** (+72 lines)
+   - Returns single email group with access control
+   - LogContext: Operation, EntityType, EmailGroupId
+   - Logs: Group lookup, access check, email count
+   - Validates EmailGroupId, checks owner/admin access
+
+6. ✅ **GetEmailGroupsQueryHandler** (+49 lines)
+   - Returns email groups for user (or all for admin)
+   - LogContext: Operation, EntityType
+   - Logs: Admin vs user fetch, group count, owner count
+   - START/COMPLETE/FAILED pattern with timing
+
+7. ✅ **GetEmailStatusQueryHandler** (+57 lines)
+   - Paginated email status with filters
+   - LogContext: Operation, EntityType
+   - Logs: Filters (UserId, EmailType, Status, DateRange), pagination, counts
+   - Validates pagination, date range, user existence
+
+8. ✅ **GetEmailTemplatesQueryHandler** (+49 lines)
+   - Returns email templates with pagination and filters
+   - LogContext: Operation, EntityType
+   - Logs: Category, IsActive, SearchTerm, ReturnedCount, TotalCount
+   - Validates pagination parameters
+
+9. ✅ **GetRecipientPreviewQueryHandler** (+45 lines)
+   - Newsletter recipient preview with location targeting
+   - LogContext: Operation, EntityType, NewsletterId
+   - Logs: Newsletter lookup, authorization check, total recipients
+   - Validates NewsletterId, checks creator/admin access
+
+10. ✅ **GetUserEmailPreferencesQueryHandler** (+54 lines)
+    - Returns user email preferences with defaults
+    - LogContext: Operation, EntityType, UserId
+    - Logs: User lookup, preference creation status, marketing settings
+    - Validates UserId is not Guid.Empty
+
+**Logging Pattern Applied**:
+- ILogger<T> dependency injection
+- LogContext.PushProperty for structured correlation
+- Stopwatch for performance timing
+- START/COMPLETE/FAILED message pattern
+- Try-catch with exception logging
+- Request validation with LogWarning
+
+**Also Fixed**:
+- `GetUserByIdQueryHandlerTests.cs`: Added logger mock to test constructor
+- Updated test to expect "User ID is required" for Guid.Empty validation
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Code Changes: 12 files (+879 lines, -382 lines)
+
+**Git Commit**: `a769721c` - "feat(phase-6a.x-observability): Add comprehensive logging to Batch 1D Query handlers"
+
+**Batch 1D COMPLETE - All Non-Events Query Handlers Enhanced**:
+- **Users**: GetUserById, GetPendingRoleUpgrades, GetUserPreferredMetroAreas ✅
+- **MetroAreas**: GetMetroAreas ✅
+- **Communications**: GetEmailGroupById, GetEmailGroups, GetEmailStatus, GetEmailTemplates, GetRecipientPreview, GetUserEmailPreferences ✅
+- **Batch 1D Total**: 10/10 Query handlers (100%) ✅ **COMPLETE**
+- **Next**: Batch 1E - Remaining Newsletter Query handlers (GetNewsletterById, GetNewslettersByCreator, GetNewslettersByEvent, GetPublishedNewsletters)
+
+---
 
 ### Phase 6A.74 Part 14 - Newsletter Types Feature + Migration Fix - 2026-01-20
 

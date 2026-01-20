@@ -9,6 +9,7 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Business.ValueObjects;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Events.Queries;
 
@@ -16,13 +17,15 @@ public class SearchEventsQueryHandlerTests
 {
     private readonly Mock<IEventRepository> _mockRepository;
     private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<ILogger<SearchEventsQueryHandler>> _mockLogger;
     private readonly SearchEventsQueryHandler _handler;
 
     public SearchEventsQueryHandlerTests()
     {
         _mockRepository = new Mock<IEventRepository>();
         _mockMapper = new Mock<IMapper>();
-        _handler = new SearchEventsQueryHandler(_mockRepository.Object, _mockMapper.Object);
+        _mockLogger = new Mock<ILogger<SearchEventsQueryHandler>>();
+        _handler = new SearchEventsQueryHandler(_mockRepository.Object, _mockMapper.Object, _mockLogger.Object);
     }
 
     [Fact]

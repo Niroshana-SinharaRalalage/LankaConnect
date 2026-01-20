@@ -1,9 +1,63 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.62 Fix: Registration Cancellation Email Template COMPLETE*
+*Last Updated: 2026-01-20 - Phase 6A.74 Part 14: Newsletter Types & Migration Fix COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.62 Fix: Registration Cancellation Email ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.74 Part 14: Newsletter Types & Migration Fix ✅ COMPLETE
+
+### Phase 6A.74 Part 14 - Newsletter Types Feature + Migration Fix - 2026-01-20
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Migration: Applied, API: Verified)
+
+**Feature Summary**:
+Implemented two newsletter types with different behavior:
+1. **Published Newsletters** - Must publish before sending, visible on `/newsletters` page, unlimited email sends
+2. **Announcement-Only Newsletters** - Auto-activates on creation, NOT visible on public page, for internal communications
+
+**Key Change**: Removed "Sent" terminal status that locked newsletters after one email send.
+
+**Backend Changes**:
+- Added `IsAnnouncementOnly` property to Newsletter domain entity
+- Modified `Create()` factory to auto-activate announcement-only newsletters
+- Changed `CanSendEmail()` to allow unlimited sends (removed SentAt check)
+- Renamed `MarkAsSent()` to `RecordEmailSent()` (just records timestamp, doesn't change status)
+- Updated repository to filter `IsAnnouncementOnly=false` in public queries
+- Added `isAnnouncementOnly` field to DTOs and API requests
+
+**Frontend Changes**:
+- Added "Publication Information" section to NewsletterForm.tsx with checkbox
+- Removed `sentAt` check from Send button in NewsletterList.tsx
+- Added `isAnnouncementOnly` field to newsletters.types.ts
+
+**Migration Fix**:
+- Initial migration was missing Designer.cs file, causing EF Core to not recognize it
+- Fixed by regenerating migration with `dotnet ef migrations add`
+- Migration `20260120214726_Phase6A74Part14_AddNewsletterIsAnnouncementOnly` applied successfully
+
+**Files Changed**:
+- `src/LankaConnect.Domain/Communications/Entities/Newsletter.cs`
+- `src/LankaConnect.Application/Communications/Commands/CreateNewsletter/*`
+- `src/LankaConnect.Application/Communications/Common/NewsletterDto.cs`
+- `src/LankaConnect.Application/Communications/Common/*Request.cs`
+- `src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs`
+- `src/LankaConnect.Infrastructure/Data/Configurations/NewsletterConfiguration.cs`
+- `src/LankaConnect.Infrastructure/Data/Repositories/NewsletterRepository.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260120214726_Phase6A74Part14_*` (both .cs and .Designer.cs)
+- `web/src/infrastructure/api/types/newsletters.types.ts`
+- `web/src/presentation/lib/validators/newsletter.schemas.ts`
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx`
+- `web/src/presentation/components/features/newsletters/NewsletterList.tsx`
+
+**Git Commits**:
+- `feat(phase-6a74-part14): Add announcement-only newsletters and unlimited email sends`
+- `fix(phase-6a74-part14): Regenerate migration with Designer.cs file`
+
+**API Verification**:
+- ✅ GET `/api/newsletters/my-newsletters` returns 37 newsletters with `isAnnouncementOnly` field
+- ✅ POST `/api/newsletters` with `isAnnouncementOnly=true` creates Active newsletter immediately
+- ✅ Announcement-only newsletters are auto-activated (status=Active, not Draft)
+
+---
 
 ### Phase 6A.62 Fix - Registration Cancellation Email Template Parameter Mismatch - 2026-01-20
 

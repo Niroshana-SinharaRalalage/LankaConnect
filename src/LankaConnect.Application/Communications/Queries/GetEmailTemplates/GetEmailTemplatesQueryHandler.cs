@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Queries.GetEmailTemplates;
 
@@ -27,67 +29,96 @@ public class GetEmailTemplatesQueryHandler : IRequestHandler<GetEmailTemplatesQu
 
     public async Task<Result<GetEmailTemplatesResponse>> Handle(GetEmailTemplatesQuery request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "GetEmailTemplates"))
+        using (LogContext.PushProperty("EntityType", "EmailTemplate"))
         {
-            // Validate pagination parameters
-            if (request.PageNumber < 1)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetEmailTemplates START: Category={Category}, IsActive={IsActive}, SearchTerm={SearchTerm}, Page={Page}, PageSize={PageSize}",
+                request.Category, request.IsActive, request.SearchTerm, request.PageNumber, request.PageSize);
+
+            try
             {
-                return Result<GetEmailTemplatesResponse>.Failure("Page number must be greater than 0");
-            }
+                // Validate pagination parameters
+                if (request.PageNumber < 1)
+                {
+                    stopwatch.Stop();
 
-            if (request.PageSize < 1 || request.PageSize > 100)
+                    _logger.LogWarning(
+                        "GetEmailTemplates FAILED: Invalid page number - PageNumber={PageNumber}, Duration={ElapsedMs}ms",
+                        request.PageNumber, stopwatch.ElapsedMilliseconds);
+
+                    return Result<GetEmailTemplatesResponse>.Failure("Page number must be greater than 0");
+                }
+
+                if (request.PageSize < 1 || request.PageSize > 100)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEmailTemplates FAILED: Invalid page size - PageSize={PageSize}, Duration={ElapsedMs}ms",
+                        request.PageSize, stopwatch.ElapsedMilliseconds);
+
+                    return Result<GetEmailTemplatesResponse>.Failure("Page size must be between 1 and 100");
+                }
+
+                // Get templates with filters using domain types
+                var templates = await _emailTemplateRepository.GetTemplatesAsync(
+                    request.Category,
+                    null, // emailType filter - can be added to query if needed
+                    request.IsActive,
+                    request.SearchTerm,
+                    request.PageNumber,
+                    request.PageSize,
+                    cancellationToken);
+
+                // Get total count for pagination
+                var totalCount = await _emailTemplateRepository.GetTemplatesCountAsync(
+                    request.Category,
+                    null, // emailType filter
+                    request.IsActive,
+                    request.SearchTerm,
+                    cancellationToken);
+
+                // Get category counts for filtering
+                var categoryCounts = await _emailTemplateRepository.GetCategoryCountsAsync(
+                    request.IsActive,
+                    cancellationToken);
+
+                // Map to DTOs
+                var templateDtos = new List<EmailTemplateDto>();
+                foreach (var template in templates)
+                {
+                    var dto = MapToDto(template);
+                    templateDtos.Add(dto);
+                }
+
+                var response = new GetEmailTemplatesResponse(
+                    templateDtos,
+                    totalCount,
+                    request.PageNumber,
+                    request.PageSize,
+                    categoryCounts);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetEmailTemplates COMPLETE: Category={Category}, IsActive={IsActive}, ReturnedCount={Count}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
+                    request.Category, request.IsActive, templates.Count, totalCount, stopwatch.ElapsedMilliseconds);
+
+                return Result<GetEmailTemplatesResponse>.Success(response);
+            }
+            catch (Exception ex)
             {
-                return Result<GetEmailTemplatesResponse>.Failure("Page size must be between 1 and 100");
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetEmailTemplates FAILED: Exception occurred - Category={Category}, SearchTerm={SearchTerm}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.Category, request.SearchTerm, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                return Result<GetEmailTemplatesResponse>.Failure("An error occurred while retrieving email templates");
             }
-
-            // Get templates with filters using domain types
-            var templates = await _emailTemplateRepository.GetTemplatesAsync(
-                request.Category,
-                null, // emailType filter - can be added to query if needed
-                request.IsActive,
-                request.SearchTerm,
-                request.PageNumber,
-                request.PageSize,
-                cancellationToken);
-
-            // Get total count for pagination
-            var totalCount = await _emailTemplateRepository.GetTemplatesCountAsync(
-                request.Category,
-                null, // emailType filter
-                request.IsActive,
-                request.SearchTerm,
-                cancellationToken);
-
-            // Get category counts for filtering
-            var categoryCounts = await _emailTemplateRepository.GetCategoryCountsAsync(
-                request.IsActive,
-                cancellationToken);
-
-            // Map to DTOs
-            var templateDtos = new List<EmailTemplateDto>();
-            foreach (var template in templates)
-            {
-                var dto = MapToDto(template);
-                templateDtos.Add(dto);
-            }
-
-            var response = new GetEmailTemplatesResponse(
-                templateDtos,
-                totalCount,
-                request.PageNumber,
-                request.PageSize,
-                categoryCounts);
-
-            _logger.LogInformation("Retrieved {Count} email templates for query with filters: Category={Category}, IsActive={IsActive}, SearchTerm={SearchTerm}", 
-                templates.Count, request.Category, request.IsActive, request.SearchTerm);
-
-            return Result<GetEmailTemplatesResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving email templates for query: Category={Category}, SearchTerm={SearchTerm}", 
-                request.Category, request.SearchTerm);
-            return Result<GetEmailTemplatesResponse>.Failure("An error occurred while retrieving email templates");
         }
     }
 

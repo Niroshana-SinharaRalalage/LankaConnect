@@ -83,12 +83,15 @@ public class NewsletterEmailJob
                 return;
             }
 
+            // Phase 6A.74 Part 14: REMOVED SentAt check - newsletters can send unlimited emails
+            // Old behavior blocked resending after first send, new behavior allows unlimited sends
+            // SentAt is only used to track the first send timestamp for historical purposes
             if (newsletter.SentAt.HasValue)
             {
-                _logger.LogWarning(
-                    "[Phase 6A.74] Newsletter {NewsletterId} has already been sent at {SentAt}. Skipping email job.",
+                _logger.LogInformation(
+                    "[Phase 6A.74 Part 14] Newsletter {NewsletterId} was previously sent at {SentAt}. " +
+                    "Allowing resend - unlimited email sends are now supported.",
                     newsletterId, newsletter.SentAt);
-                return;
             }
 
             _logger.LogInformation("[Phase 6A.74] Retrieved newsletter {NewsletterId} ({Title}) in {ElapsedMs}ms",
@@ -201,41 +204,35 @@ public class NewsletterEmailJob
                 newsletterId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 recipients.TotalRecipients > 0 ? emailStopwatch.ElapsedMilliseconds / recipients.TotalRecipients : 0);
 
-            // 6. Mark newsletter as sent
+            // 6. Record email send and create history
+            // Phase 6A.74 Part 14: Changed from MarkAsSent() to RecordEmailSent()
+            // - RecordEmailSent() only sets SentAt timestamp on first send, does NOT change status
+            // - Newsletter remains Active and can send more emails
             // Phase 6A.74 Hotfix: Reload newsletter entity to get latest version and avoid concurrency exception
-            // The entity was loaded at the start of the job, but by now the version may be stale
-            _logger.LogInformation("[Phase 6A.74] Reloading newsletter {NewsletterId} to get latest version before marking as sent", newsletterId);
+            _logger.LogInformation("[Phase 6A.74 Part 14] Reloading newsletter {NewsletterId} to get latest version before recording email send", newsletterId);
 
             var freshNewsletter = await _newsletterRepository.GetByIdAsync(newsletterId, CancellationToken.None);
             if (freshNewsletter == null)
             {
                 _logger.LogError(
-                    "[Phase 6A.74] Newsletter {NewsletterId} not found when reloading for MarkAsSent",
+                    "[Phase 6A.74] Newsletter {NewsletterId} not found when reloading for RecordEmailSent",
                     newsletterId);
                 return;
             }
 
-            // Phase 6A.74 Final Idempotency Check: Check if another concurrent retry already marked it as sent
-            // This prevents DbUpdateConcurrencyException when multiple Hangfire retries run simultaneously
-            if (freshNewsletter.SentAt.HasValue)
+            // Phase 6A.74 Part 14: Call RecordEmailSent() instead of MarkAsSent()
+            // This only sets SentAt on first send but does NOT change status to Sent
+            var recordResult = freshNewsletter.RecordEmailSent();
+            if (recordResult.IsFailure)
             {
-                _logger.LogInformation(
-                    "[Phase 6A.74] Newsletter {NewsletterId} was already marked as sent at {SentAt} by another job execution (concurrent retry). Skipping commit to avoid concurrency exception.",
-                    newsletterId, freshNewsletter.SentAt.Value);
-                return; // Exit successfully - emails were sent, another execution handled the commit
+                _logger.LogWarning(
+                    "[Phase 6A.74 Part 14] Could not record email send for newsletter {NewsletterId}: {Error}. " +
+                    "Continuing anyway - emails were sent successfully.",
+                    newsletterId, recordResult.Error);
+                // Don't throw - emails were sent, just couldn't update the record
             }
 
-            var markResult = freshNewsletter.MarkAsSent();
-            if (markResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[Phase 6A.74] CRITICAL: Failed to mark newsletter {NewsletterId} as sent: {Error}. " +
-                    "Throwing exception to trigger Hangfire retry.",
-                    newsletterId, markResult.Error);
-                throw new InvalidOperationException(
-                    $"Failed to mark newsletter {newsletterId} as sent: {markResult.Error}");
-            }
-            else
+            // Always create history record, even for resends
             {
                 // Phase 6A.74 Part 13+ Issue #1 BUGFIX: Create NewsletterEmailHistory AFTER marking newsletter as sent
                 // This ensures both entities are tracked by the same DbContext and committed together

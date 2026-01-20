@@ -42,4 +42,10 @@ public record UpdateNewsletterRequest
     /// Phase 6A.74 Enhancement 1
     /// </summary>
     public List<Guid>? MetroAreaIds { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 14: Announcement-only newsletters
+    /// Note: This cannot be changed after creation - read-only in update
+    /// </summary>
+    public bool IsAnnouncementOnly { get; init; }
 }

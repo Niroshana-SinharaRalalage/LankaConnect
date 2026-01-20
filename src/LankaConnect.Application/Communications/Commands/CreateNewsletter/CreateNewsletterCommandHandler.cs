@@ -87,6 +87,7 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
             }
 
             // Create Newsletter aggregate
+            // Phase 6A.74 Part 14: Pass IsAnnouncementOnly flag to determine newsletter type
             var newsletterResult = Newsletter.Create(
                 titleResult.Value,
                 descriptionResult.Value,
@@ -95,7 +96,8 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
                 request.IncludeNewsletterSubscribers,
                 request.EventId,
                 request.MetroAreaIds,
-                request.TargetAllLocations);
+                request.TargetAllLocations,
+                request.IsAnnouncementOnly);  // Phase 6A.74 Part 14: Pass announcement-only flag
 
             if (newsletterResult.IsFailure)
                 return Result<Guid>.Failure(newsletterResult.Error);
@@ -106,9 +108,10 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
             // Commit changes
             await _unitOfWork.CommitAsync(cancellationToken);
 
+            // Phase 6A.74 Part 14: Log different messages based on newsletter type
             _logger.LogInformation(
-                "[Phase 6A.74] Newsletter created successfully - ID: {NewsletterId}, User: {UserId}",
-                newsletterResult.Value.Id, _currentUserService.UserId);
+                "[Phase 6A.74] Newsletter created successfully - ID: {NewsletterId}, User: {UserId}, IsAnnouncementOnly: {IsAnnouncementOnly}, Status: {Status}",
+                newsletterResult.Value.Id, _currentUserService.UserId, request.IsAnnouncementOnly, newsletterResult.Value.Status);
 
             return Result<Guid>.Success(newsletterResult.Value.Id);
         }

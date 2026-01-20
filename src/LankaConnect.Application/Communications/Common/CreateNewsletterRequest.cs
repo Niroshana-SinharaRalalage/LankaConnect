@@ -42,4 +42,11 @@ public record CreateNewsletterRequest
     /// Phase 6A.74 Enhancement 1
     /// </summary>
     public List<Guid>? MetroAreaIds { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 14: Announcement-only newsletters skip Draft state
+    /// When true: Auto-activates on creation, NOT visible on /newsletters public page
+    /// When false (default): Creates in Draft status, must publish to make visible on public page
+    /// </summary>
+    public bool IsAnnouncementOnly { get; init; }
 }

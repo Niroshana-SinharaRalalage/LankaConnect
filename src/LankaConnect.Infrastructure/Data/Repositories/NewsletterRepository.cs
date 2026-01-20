@@ -433,17 +433,19 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
 
     public async Task<IReadOnlyList<Newsletter>> GetPublishedNewslettersAsync(int limit = 50, CancellationToken cancellationToken = default)
     {
-        _repoLogger.LogDebug("[Phase 6A.74] Getting published newsletters (Active or Sent status, limit: {Limit})", limit);
+        _repoLogger.LogDebug("[Phase 6A.74] Getting published newsletters (Active or Sent status, excluding announcement-only, limit: {Limit})", limit);
 
         // Phase 6A.74 Part 10 Issue #4: Include both Active and Sent newsletters for public display
+        // Phase 6A.74 Part 14: CRITICAL - Exclude announcement-only newsletters from public page
         var result = await _dbSet
             .AsNoTracking()
-            .Where(n => n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent)
+            .Where(n => (n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent)
+                && !n.IsAnnouncementOnly)  // Phase 6A.74 Part 14: Exclude announcement-only
             .OrderByDescending(n => n.PublishedAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        _repoLogger.LogInformation("[Phase 6A.74] Found {Count} published newsletters (Active or Sent)", result.Count);
+        _repoLogger.LogInformation("[Phase 6A.74] Found {Count} published newsletters (Active or Sent, excluding announcement-only)", result.Count);
 
         return result;
     }
@@ -468,9 +470,11 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
             searchTerm);
 
         // Phase 6A.74 Part 10 Issue #4: Include both Active and Sent newsletters for public display
+        // Phase 6A.74 Part 14: CRITICAL - Exclude announcement-only newsletters from public page
         var query = _dbSet
             .AsNoTracking()
-            .Where(n => n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent);
+            .Where(n => (n.Status == NewsletterStatus.Active || n.Status == NewsletterStatus.Sent)
+                && !n.IsAnnouncementOnly);  // Phase 6A.74 Part 14: Exclude announcement-only
 
         // Filter by published date range
         if (publishedFrom.HasValue)

@@ -162,8 +162,8 @@ export function NewsletterList({
               </>
             )}
 
-            {/* Active (not sent): Edit, Send Email, shows "Expires on [date]" */}
-            {isActive && !newsletter.sentAt && (
+            {/* Active: Edit, Send Email (unlimited sends - Phase 6A.74 Part 14) */}
+            {isActive && (
               <>
                 {onEditNewsletter && (
                   <Button

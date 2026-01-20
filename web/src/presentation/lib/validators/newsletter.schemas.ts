@@ -43,6 +43,12 @@ const newsletterBaseSchema = z.object({
   metroAreaIds: z
     .array(z.string())
     .optional(),
+
+  // Phase 6A.74 Part 14: Announcement-only newsletters
+  // When true: Auto-activates on creation, NOT visible on /newsletters public page
+  // When false (default): Creates in Draft status, must publish to make visible
+  isAnnouncementOnly: z
+    .boolean(),
 });
 
 // Add the recipient validation refinement
@@ -87,6 +93,8 @@ export function cleanNewsletterDataForApi(data: CreateNewsletterFormData): Creat
     metroAreaIds: data.metroAreaIds && data.metroAreaIds.length > 0
       ? data.metroAreaIds.filter(id => uuidRegex.test(id))
       : undefined,
+    // Phase 6A.74 Part 14: Include isAnnouncementOnly (defaults to false)
+    isAnnouncementOnly: data.isAnnouncementOnly ?? false,
   };
 }
 

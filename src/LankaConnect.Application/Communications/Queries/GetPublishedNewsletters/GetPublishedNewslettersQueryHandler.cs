@@ -77,7 +77,9 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                 EmailGroupIds = newsletter.EmailGroupIds,
                 EmailGroups = new List<EmailGroupSummaryDto>(), // Public endpoint, no group details
                 MetroAreaIds = newsletter.MetroAreaIds,
-                MetroAreas = new List<MetroAreaSummaryDto>() // Can be populated by frontend if needed
+                MetroAreas = new List<MetroAreaSummaryDto>(), // Can be populated by frontend if needed
+                // Phase 6A.74 Part 14: Announcement-only flag (always false for public page)
+                IsAnnouncementOnly = newsletter.IsAnnouncementOnly
             }).ToList();
 
             return Result<IReadOnlyList<NewsletterDto>>.Success(result);

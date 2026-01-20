@@ -29,6 +29,13 @@ public class Newsletter : BaseEntity
     // Phase 6A.74 Enhancement 1: Location Targeting for Non-Event Newsletters
     public bool TargetAllLocations { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.74 Part 14: Announcement-only newsletters skip Draft state and are NOT published to public page.
+    /// When true: auto-activates on creation, cannot be published to /newsletters page
+    /// When false: normal published newsletter behavior (Draft → Active → visible on public page)
+    /// </summary>
+    public bool IsAnnouncementOnly { get; private set; }
+
     public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly();
     public IReadOnlyList<Guid> MetroAreaIds => _metroAreaIds.AsReadOnly();
 
@@ -47,7 +54,8 @@ public class Newsletter : BaseEntity
         bool includeNewsletterSubscribers,
         Guid? eventId,
         IEnumerable<Guid>? metroAreaIds,
-        bool targetAllLocations)
+        bool targetAllLocations,
+        bool isAnnouncementOnly)
     {
         Title = title;
         Description = description;
@@ -55,7 +63,19 @@ public class Newsletter : BaseEntity
         IncludeNewsletterSubscribers = includeNewsletterSubscribers;
         EventId = eventId;
         TargetAllLocations = targetAllLocations;
-        Status = NewsletterStatus.Draft;
+        IsAnnouncementOnly = isAnnouncementOnly;
+
+        // Phase 6A.74 Part 14: Announcement-only newsletters auto-activate
+        if (isAnnouncementOnly)
+        {
+            Status = NewsletterStatus.Active;
+            ExpiresAt = DateTime.UtcNow.AddDays(7);
+            // PublishedAt stays null - indicates not published to public page
+        }
+        else
+        {
+            Status = NewsletterStatus.Draft;
+        }
 
         _emailGroupIds.AddRange(emailGroupIds);
         if (metroAreaIds != null)
@@ -72,7 +92,8 @@ public class Newsletter : BaseEntity
         bool includeNewsletterSubscribers,
         Guid? eventId = null,
         IEnumerable<Guid>? metroAreaIds = null,
-        bool targetAllLocations = false)
+        bool targetAllLocations = false,
+        bool isAnnouncementOnly = false)
     {
         if (title == null)
             return Result<Newsletter>.Failure("Title is required");
@@ -109,11 +130,16 @@ public class Newsletter : BaseEntity
             includeNewsletterSubscribers,
             eventId,
             metroAreaIds,
-            targetAllLocations));
+            targetAllLocations,
+            isAnnouncementOnly));
     }
 
     public Result Publish()
     {
+        // Phase 6A.74 Part 14: Announcement-only newsletters cannot be published to public page
+        if (IsAnnouncementOnly)
+            return Result.Failure("Announcement-only newsletters cannot be published to the public page. They are already active for sending emails.");
+
         if (Status != NewsletterStatus.Draft)
             return Result.Failure("Only draft newsletters can be published");
 
@@ -124,18 +150,35 @@ public class Newsletter : BaseEntity
         return Result.Success();
     }
 
-    public Result MarkAsSent()
+    /// <summary>
+    /// Phase 6A.74 Part 14: Record that an email was sent from this newsletter.
+    /// Unlike the old MarkAsSent(), this does NOT change the status - newsletter remains Active
+    /// and can send unlimited emails. SentAt is only set on the first send for tracking purposes.
+    /// </summary>
+    public Result RecordEmailSent()
     {
         if (Status != NewsletterStatus.Active)
-            return Result.Failure("Only active newsletters can be marked as sent");
+            return Result.Failure("Only active newsletters can send emails");
 
-        if (SentAt.HasValue)
-            return Result.Failure("Newsletter has already been sent");
+        // Only set SentAt on the first send (for historical tracking)
+        if (!SentAt.HasValue)
+        {
+            SentAt = DateTime.UtcNow;
+        }
 
-        Status = NewsletterStatus.Sent;
-        SentAt = DateTime.UtcNow;
-
+        // DO NOT change status - newsletter remains Active and can send more emails
         return Result.Success();
+    }
+
+    /// <summary>
+    /// DEPRECATED: Use RecordEmailSent() instead.
+    /// Kept for backwards compatibility with existing code that may call it.
+    /// Phase 6A.74 Part 14: This now delegates to RecordEmailSent() and does NOT lock the newsletter.
+    /// </summary>
+    [Obsolete("Use RecordEmailSent() instead. This method no longer changes status to Sent.")]
+    public Result MarkAsSent()
+    {
+        return RecordEmailSent();
     }
 
     public Result Deactivate()
@@ -148,13 +191,17 @@ public class Newsletter : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Reactivate an inactive newsletter for another 7-day period.
+    /// Phase 6A.74 Part 14: Removed SentAt check - newsletters can be reactivated even after sending emails.
+    /// </summary>
     public Result Reactivate()
     {
         if (Status != NewsletterStatus.Inactive)
             return Result.Failure("Only inactive newsletters can be reactivated");
 
-        if (SentAt.HasValue)
-            return Result.Failure("Sent newsletters cannot be reactivated");
+        // Phase 6A.74 Part 14: REMOVED SentAt check - newsletters can be reactivated and send more emails
+        // Old behavior locked newsletters after first send, new behavior allows unlimited sends
 
         Status = NewsletterStatus.Active;
         ExpiresAt = DateTime.UtcNow.AddDays(7);
@@ -165,14 +212,20 @@ public class Newsletter : BaseEntity
     /// <summary>
     /// Unpublish newsletter (Active → Draft)
     /// Phase 6A.74 Part 9A: Unpublish functionality
+    /// Phase 6A.74 Part 14: Removed SentAt check - newsletters can be unpublished even after sending emails.
+    /// Announcement-only newsletters cannot be unpublished (they were never published).
     /// </summary>
     public Result Unpublish()
     {
+        // Phase 6A.74 Part 14: Announcement-only newsletters cannot be unpublished
+        if (IsAnnouncementOnly)
+            return Result.Failure("Announcement-only newsletters cannot be unpublished. They were never published to the public page.");
+
         if (Status != NewsletterStatus.Active)
             return Result.Failure("Only active newsletters can be unpublished");
 
-        if (SentAt.HasValue)
-            return Result.Failure("Sent newsletters cannot be unpublished");
+        // Phase 6A.74 Part 14: REMOVED SentAt check - newsletters can be unpublished even after sending emails
+        // Old behavior blocked unpublish after first send, new behavior allows it
 
         Status = NewsletterStatus.Draft;
         PublishedAt = null;
@@ -181,6 +234,10 @@ public class Newsletter : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Update newsletter content and settings.
+    /// Phase 6A.74 Part 14: Removed SentAt check - newsletters can be updated even after sending emails.
+    /// </summary>
     public Result Update(
         NewsletterTitle title,
         NewsletterDescription description,
@@ -190,10 +247,11 @@ public class Newsletter : BaseEntity
         IEnumerable<Guid>? metroAreaIds,
         bool targetAllLocations)
     {
-        // Phase 6A.74 Part 10: Allow updating Draft and Active (not sent) newsletters
-        // User requested removal of draft-only restriction
-        if (Status == NewsletterStatus.Sent || SentAt.HasValue)
-            return Result.Failure("Sent newsletters cannot be updated");
+        // Phase 6A.74 Part 14: REMOVED SentAt check - newsletters can be updated even after sending emails
+        // Only block updates for Inactive status (must reactivate first)
+        // Note: Status == Sent should not occur anymore with new behavior, but keep for backwards compatibility
+        if (Status == NewsletterStatus.Sent)
+            return Result.Failure("Newsletters in Sent status cannot be updated. Please reactivate first.");
 
         if (Status == NewsletterStatus.Inactive)
             return Result.Failure("Inactive newsletters cannot be updated. Please reactivate first.");
@@ -238,9 +296,17 @@ public class Newsletter : BaseEntity
         return Result.Success();
     }
 
-    public bool CanSendEmail() => Status == NewsletterStatus.Active && !SentAt.HasValue;
+    /// <summary>
+    /// Check if newsletter can send emails.
+    /// Phase 6A.74 Part 14: Removed SentAt check - newsletters can send unlimited emails while Active.
+    /// </summary>
+    public bool CanSendEmail() => Status == NewsletterStatus.Active;
 
-    public bool CanDelete() => Status == NewsletterStatus.Draft;
+    /// <summary>
+    /// Check if newsletter can be deleted.
+    /// Only Draft newsletters can be deleted. Announcement-only newsletters are never in Draft status.
+    /// </summary>
+    public bool CanDelete() => Status == NewsletterStatus.Draft && !IsAnnouncementOnly;
 
     // Sync method for repository pattern - called by infrastructure layer
     public void SyncEmailGroupIdsFromEntities(List<Guid> emailGroupIds)

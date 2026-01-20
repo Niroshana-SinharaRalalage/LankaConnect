@@ -85,6 +85,14 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
             .IsRequired()
             .HasDefaultValue(false);
 
+        // Phase 6A.74 Part 14: Announcement-only flag
+        // When true: auto-activates on creation, NOT visible on public /newsletters page
+        // When false: normal published newsletter behavior (Draft → Active → visible on public page)
+        builder.Property(n => n.IsAnnouncementOnly)
+            .HasColumnName("is_announcement_only")
+            .IsRequired()
+            .HasDefaultValue(false);
+
         // Audit fields
         builder.Property(n => n.CreatedAt)
             .HasColumnName("created_at")
@@ -194,5 +202,15 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
         // Composite index for published newsletters query
         builder.HasIndex(n => new { n.Status, n.PublishedAt })
             .HasDatabaseName("ix_newsletters_status_published_at");
+
+        // Phase 6A.74 Part 14: Index for announcement-only filtering
+        // Used when filtering public newsletters to exclude announcement-only
+        builder.HasIndex(n => n.IsAnnouncementOnly)
+            .HasDatabaseName("ix_newsletters_is_announcement_only");
+
+        // Phase 6A.74 Part 14: Composite index for public newsletter queries
+        // Optimizes queries that filter by status AND is_announcement_only
+        builder.HasIndex(n => new { n.Status, n.IsAnnouncementOnly })
+            .HasDatabaseName("ix_newsletters_status_is_announcement_only");
     }
 }

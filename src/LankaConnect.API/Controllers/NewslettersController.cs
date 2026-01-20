@@ -33,6 +33,7 @@ public class NewslettersController : BaseController<NewslettersController>
     {
         Logger.LogInformation("[Phase 6A.74] Creating newsletter '{Title}'", request.Title);
 
+        // Phase 6A.74 Part 14: Pass IsAnnouncementOnly to command
         var command = new CreateNewsletterCommand(
             request.Title,
             request.Description,
@@ -40,7 +41,8 @@ public class NewslettersController : BaseController<NewslettersController>
             request.IncludeNewsletterSubscribers,
             request.EventId,
             request.MetroAreaIds,
-            request.TargetAllLocations);
+            request.TargetAllLocations,
+            request.IsAnnouncementOnly);
 
         var result = await Mediator.Send(command);
 

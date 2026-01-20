@@ -21,6 +21,14 @@ public record NewsletterDto
     public DateTime? ExpiresAt { get; init; }
     public bool IncludeNewsletterSubscribers { get; init; }
     public bool TargetAllLocations { get; init; }
+
+    /// <summary>
+    /// Phase 6A.74 Part 14: Indicates if this is an announcement-only newsletter
+    /// - When true: Auto-activated on creation, NOT visible on public /newsletters page
+    /// - When false: Normal published newsletter (Draft → Active → visible on public page)
+    /// </summary>
+    public bool IsAnnouncementOnly { get; init; }
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 

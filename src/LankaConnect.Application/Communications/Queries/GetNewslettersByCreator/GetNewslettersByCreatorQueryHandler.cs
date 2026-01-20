@@ -72,6 +72,7 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
                     ExpiresAt = newsletter.ExpiresAt,
                     IncludeNewsletterSubscribers = newsletter.IncludeNewsletterSubscribers,
                     TargetAllLocations = newsletter.TargetAllLocations,
+                    IsAnnouncementOnly = newsletter.IsAnnouncementOnly,
                     CreatedAt = newsletter.CreatedAt,
                     UpdatedAt = newsletter.UpdatedAt,
                     EmailGroupIds = newsletter.EmailGroupIds,

@@ -74,6 +74,8 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                     EmailGroups = new List<EmailGroupSummaryDto>(),
                     MetroAreaIds = newsletter.MetroAreaIds,
                     MetroAreas = new List<MetroAreaSummaryDto>(),
+                    // Phase 6A.74 Part 14: Announcement-only flag
+                    IsAnnouncementOnly = newsletter.IsAnnouncementOnly,
                     // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
                     TotalRecipientCount = history?.TotalRecipientCount,
                     NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,

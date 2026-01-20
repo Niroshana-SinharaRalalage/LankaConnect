@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect, useMemo } from 'react';
-import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks } from 'lucide-react';
+import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks, Bell } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -76,6 +76,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       eventId: initialEventId || undefined,
       targetAllLocations: true, // Phase 6A.74 Part 13: Default to all locations to allow newsletter creation without event
       metroAreaIds: undefined,
+      isAnnouncementOnly: false, // Phase 6A.74 Part 14: Default to published newsletter type
     },
   });
 
@@ -108,6 +109,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
         eventId: newsletter.eventId || undefined,
         targetAllLocations: newsletter.targetAllLocations,
         metroAreaIds: newsletter.metroAreaIds || undefined,
+        isAnnouncementOnly: newsletter.isAnnouncementOnly || false,
       });
     }
   }, [newsletter, isEditMode, reset]);
@@ -365,7 +367,56 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
         </CardContent>
       </Card>
 
-      {/* 2. BASIC INFORMATION */}
+      {/* 2. PUBLICATION INFORMATION - Phase 6A.74 Part 14 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Publication Information</CardTitle>
+          </div>
+          <CardDescription>
+            Choose how this newsletter will be published
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="isAnnouncementOnly"
+              {...register('isAnnouncementOnly')}
+              disabled={isEditMode && newsletter?.status !== 'Draft'}
+              className="h-4 w-4 mt-1 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+            />
+            <div>
+              <label htmlFor="isAnnouncementOnly" className="text-sm font-medium text-neutral-700 cursor-pointer">
+                Unpublished Announcement Only Newsletter
+              </label>
+              <div className="text-xs text-neutral-500 mt-1 space-y-1">
+                <p>When checked:</p>
+                <ul className="list-disc list-inside ml-2 space-y-0.5">
+                  <li>Auto-activates immediately (skips Draft status)</li>
+                  <li><strong>NOT</strong> visible on public /newsletters page</li>
+                  <li>Can send emails right after creation</li>
+                  <li>Expires after 7 days, can be reactivated</li>
+                </ul>
+                <p className="mt-2">When unchecked (default):</p>
+                <ul className="list-disc list-inside ml-2 space-y-0.5">
+                  <li>Creates in Draft status</li>
+                  <li>Must Publish to make visible on /newsletters page</li>
+                  <li>Can only send emails after publishing</li>
+                </ul>
+              </div>
+              {isEditMode && newsletter?.status !== 'Draft' && (
+                <p className="text-xs text-amber-600 mt-2">
+                  This setting cannot be changed after the newsletter leaves Draft status.
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. BASIC INFORMATION */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">

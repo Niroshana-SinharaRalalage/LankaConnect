@@ -54,6 +54,8 @@ export interface NewsletterDto {
   // Legacy fields for backwards compatibility
   emailGroupRecipientCount?: number | null;
   subscriberRecipientCount?: number | null;
+  // Phase 6A.74 Part 14: Announcement-only newsletter type
+  isAnnouncementOnly: boolean;
 }
 
 /**
@@ -98,6 +100,7 @@ export interface RecipientBreakdownDto {
 
 /**
  * Request DTO for creating a newsletter
+ * Phase 6A.74 Part 14: Added isAnnouncementOnly field
  */
 export interface CreateNewsletterRequest {
   title: string;
@@ -107,10 +110,13 @@ export interface CreateNewsletterRequest {
   eventId?: string;
   targetAllLocations: boolean;
   metroAreaIds?: string[];
+  /** Phase 6A.74 Part 14: Announcement-only newsletters auto-activate and are NOT visible on public page */
+  isAnnouncementOnly?: boolean;
 }
 
 /**
  * Request DTO for updating a draft newsletter
+ * Phase 6A.74 Part 14: Added isAnnouncementOnly field (read-only after creation)
  */
 export interface UpdateNewsletterRequest {
   title: string;
@@ -120,6 +126,8 @@ export interface UpdateNewsletterRequest {
   eventId?: string;
   targetAllLocations: boolean;
   metroAreaIds?: string[];
+  /** Phase 6A.74 Part 14: Read-only after creation - cannot be changed */
+  isAnnouncementOnly?: boolean;
 }
 
 /**

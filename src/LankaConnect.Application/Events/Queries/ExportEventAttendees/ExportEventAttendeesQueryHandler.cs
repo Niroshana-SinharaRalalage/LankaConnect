@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
@@ -9,6 +10,7 @@ using LankaConnect.Domain.Events.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.ExportEventAttendees;
 
@@ -22,6 +24,7 @@ public class ExportEventAttendeesQueryHandler
     private readonly ICsvExportService _csvService;
     private readonly IOptions<CommissionSettings> _commissionSettings;
     private readonly ILogger<GetEventAttendeesQueryHandler> _attendeesQueryLogger;
+    private readonly ILogger<ExportEventAttendeesQueryHandler> _logger;
 
     public ExportEventAttendeesQueryHandler(
         IApplicationDbContext context,
@@ -30,7 +33,8 @@ public class ExportEventAttendeesQueryHandler
         IExcelExportService excelService,
         ICsvExportService csvService,
         IOptions<CommissionSettings> commissionSettings,
-        ILogger<GetEventAttendeesQueryHandler> attendeesQueryLogger)
+        ILogger<GetEventAttendeesQueryHandler> attendeesQueryLogger,
+        ILogger<ExportEventAttendeesQueryHandler> logger)
     {
         _context = context;
         _eventRepository = eventRepository;
@@ -39,26 +43,61 @@ public class ExportEventAttendeesQueryHandler
         _csvService = csvService;
         _commissionSettings = commissionSettings;
         _attendeesQueryLogger = attendeesQueryLogger;
+        _logger = logger;
     }
 
     public async Task<Result<ExportResult>> Handle(
         ExportEventAttendeesQuery request,
         CancellationToken cancellationToken)
     {
-        // Get attendees data using existing query handler logic
-        var attendeesQuery = new GetEventAttendeesQuery(request.EventId);
-        var attendeesHandler = new GetEventAttendeesQueryHandler(
-            _context,
-            _eventRepository,
-            _revenueCalculatorService,
-            _commissionSettings,
-            _attendeesQueryLogger);
-        var attendeesResult = await attendeesHandler.Handle(attendeesQuery, cancellationToken);
-
-        if (!attendeesResult.IsSuccess)
+        using (LogContext.PushProperty("Operation", "ExportEventAttendees"))
+        using (LogContext.PushProperty("EntityType", "Export"))
+        using (LogContext.PushProperty("EventId", request.EventId))
         {
-            return Result<ExportResult>.Failure(attendeesResult.Error);
-        }
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "ExportEventAttendees START: EventId={EventId}, Format={Format}",
+                request.EventId, request.Format);
+
+            try
+            {
+                // Validate request
+                if (request.EventId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "ExportEventAttendees FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<ExportResult>.Failure("Event ID is required");
+                }
+
+                // Get attendees data using existing query handler logic
+                var attendeesQuery = new GetEventAttendeesQuery(request.EventId);
+                var attendeesHandler = new GetEventAttendeesQueryHandler(
+                    _context,
+                    _eventRepository,
+                    _revenueCalculatorService,
+                    _commissionSettings,
+                    _attendeesQueryLogger);
+                var attendeesResult = await attendeesHandler.Handle(attendeesQuery, cancellationToken);
+
+                if (!attendeesResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "ExportEventAttendees FAILED: GetEventAttendees failed - EventId={EventId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.EventId, attendeesResult.Error, stopwatch.ElapsedMilliseconds);
+
+                    return Result<ExportResult>.Failure(attendeesResult.Error);
+                }
+
+                _logger.LogInformation(
+                    "ExportEventAttendees: Attendees data loaded - EventId={EventId}, AttendeeCount={AttendeeCount}",
+                    request.EventId, attendeesResult.Value?.Attendees?.Count ?? 0);
 
         var attendeesResponse = attendeesResult.Value!;
 
@@ -177,37 +216,73 @@ public class ExportEventAttendeesQueryHandler
                 contentType = "application/zip";
             }
 
-            return Result<ExportResult>.Success(new ExportResult
+                    _logger.LogInformation(
+                        "ExportEventAttendees: SignUpLists export generated - EventId={EventId}, Format={Format}, SignUpListCount={SignUpListCount}",
+                        request.EventId, request.Format, signUpListsForExport.Count);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "ExportEventAttendees COMPLETE: EventId={EventId}, Format={Format}, FileName={FileName}, FileSize={FileSize}bytes, Duration={ElapsedMs}ms",
+                        request.EventId, request.Format, fileName, fileContent.Length, stopwatch.ElapsedMilliseconds);
+
+                    return Result<ExportResult>.Success(new ExportResult
+                    {
+                        FileContent = fileContent,
+                        FileName = fileName,
+                        ContentType = contentType
+                    });
+                }
+
+                if (request.Format == ExportFormat.Excel)
+                {
+                    fileContent = _excelService.ExportEventAttendees(
+                        attendeesResponse,
+                        signUpListDtos
+                    );
+                    fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+                    _logger.LogInformation(
+                        "ExportEventAttendees: Excel export generated - EventId={EventId}, HasSignUpLists={HasSignUpLists}",
+                        request.EventId, signUpListDtos != null && signUpListDtos.Any());
+                }
+                else
+                {
+                    fileContent = _csvService.ExportEventAttendees(attendeesResponse);
+                    fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+                    // Phase 6A.68 Fix: Use application/octet-stream to prevent HTTP middleware from treating CSV as text
+                    // This prevents newline escaping (\n → literal \n) and ensures binary transfer to Excel
+                    contentType = "application/octet-stream";
+
+                    _logger.LogInformation(
+                        "ExportEventAttendees: CSV export generated - EventId={EventId}",
+                        request.EventId);
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "ExportEventAttendees COMPLETE: EventId={EventId}, Format={Format}, FileName={FileName}, FileSize={FileSize}bytes, Duration={ElapsedMs}ms",
+                    request.EventId, request.Format, fileName, fileContent.Length, stopwatch.ElapsedMilliseconds);
+
+                return Result<ExportResult>.Success(new ExportResult
+                {
+                    FileContent = fileContent,
+                    FileName = fileName,
+                    ContentType = contentType
+                });
+            }
+            catch (Exception ex)
             {
-                FileContent = fileContent,
-                FileName = fileName,
-                ContentType = contentType
-            });
-        }
+                stopwatch.Stop();
 
-        if (request.Format == ExportFormat.Excel)
-        {
-            fileContent = _excelService.ExportEventAttendees(
-                attendeesResponse,
-                signUpListDtos
-            );
-            fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
-            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        }
-        else
-        {
-            fileContent = _csvService.ExportEventAttendees(attendeesResponse);
-            fileName = $"event-{request.EventId}-attendees-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
-            // Phase 6A.68 Fix: Use application/octet-stream to prevent HTTP middleware from treating CSV as text
-            // This prevents newline escaping (\n → literal \n) and ensures binary transfer to Excel
-            contentType = "application/octet-stream";
-        }
+                _logger.LogError(ex,
+                    "ExportEventAttendees FAILED: Exception occurred - EventId={EventId}, Format={Format}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.Format, stopwatch.ElapsedMilliseconds, ex.Message);
 
-        return Result<ExportResult>.Success(new ExportResult
-        {
-            FileContent = fileContent,
-            FileName = fileName,
-            ContentType = contentType
-        });
+                throw;
+            }
+        }
     }
 }

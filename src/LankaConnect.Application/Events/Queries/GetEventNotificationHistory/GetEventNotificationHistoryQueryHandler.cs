@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Repositories;
@@ -5,6 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
 
@@ -30,47 +32,79 @@ public class GetEventNotificationHistoryQueryHandler : IRequestHandler<GetEventN
 
     public async Task<Result<List<EventNotificationHistoryDto>>> Handle(GetEventNotificationHistoryQuery request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "GetEventNotificationHistory"))
+        using (LogContext.PushProperty("EntityType", "NotificationHistory"))
+        using (LogContext.PushProperty("EventId", request.EventId))
         {
-            _logger.LogInformation("[Phase 6A.61] Getting notification history for event {EventId}", request.EventId);
+            var stopwatch = Stopwatch.StartNew();
 
-            var historyRecords = await _historyRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+            _logger.LogInformation(
+                "GetEventNotificationHistory START: EventId={EventId}",
+                request.EventId);
 
-            var dtos = new List<EventNotificationHistoryDto>();
-
-            foreach (var record in historyRecords)
+            try
             {
-                // Resolve user name
-                var user = await _userRepository.GetByIdAsync(record.SentByUserId, cancellationToken);
-                var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Unknown User";
-
-                dtos.Add(new EventNotificationHistoryDto
+                // Validate request
+                if (request.EventId == Guid.Empty)
                 {
-                    Id = record.Id,
-                    SentAt = record.SentAt,
-                    SentByUserName = userName,
-                    RecipientCount = record.RecipientCount,
-                    SuccessfulSends = record.SuccessfulSends,
-                    FailedSends = record.FailedSends
-                });
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventNotificationHistory FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<List<EventNotificationHistoryDto>>.Failure("Event ID is required");
+                }
+
+                var historyRecords = await _historyRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+
+                _logger.LogInformation(
+                    "GetEventNotificationHistory: History records loaded - EventId={EventId}, RecordCount={RecordCount}",
+                    request.EventId, historyRecords.Count);
+
+                var dtos = new List<EventNotificationHistoryDto>();
+
+                foreach (var record in historyRecords)
+                {
+                    // Resolve user name
+                    var user = await _userRepository.GetByIdAsync(record.SentByUserId, cancellationToken);
+                    var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Unknown User";
+
+                    dtos.Add(new EventNotificationHistoryDto
+                    {
+                        Id = record.Id,
+                        SentAt = record.SentAt,
+                        SentByUserName = userName,
+                        RecipientCount = record.RecipientCount,
+                        SuccessfulSends = record.SuccessfulSends,
+                        FailedSends = record.FailedSends
+                    });
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetEventNotificationHistory COMPLETE: EventId={EventId}, RecordCount={RecordCount}, TotalRecipients={TotalRecipients}, TotalSuccessful={TotalSuccessful}, TotalFailed={TotalFailed}, Duration={ElapsedMs}ms",
+                    request.EventId, dtos.Count,
+                    dtos.Sum(d => d.RecipientCount),
+                    dtos.Sum(d => d.SuccessfulSends),
+                    dtos.Sum(d => d.FailedSends),
+                    stopwatch.ElapsedMilliseconds);
+
+                return Result<List<EventNotificationHistoryDto>>.Success(dtos);
             }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
 
-            _logger.LogInformation("[Phase 6A.61] Retrieved {Count} notification history records for event {EventId}",
-                dtos.Count, request.EventId);
+                _logger.LogError(ex,
+                    "GetEventNotificationHistory FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
 
-            return Result<List<EventNotificationHistoryDto>>.Success(dtos);
-        }
-        catch (Exception ex)
-        {
-            // Phase 6A.61 Hotfix: Enhanced error logging and messaging
-            _logger.LogError(ex,
-                "[Phase 6A.61 Hotfix] Error getting notification history - " +
-                "EventId: {EventId}, ExceptionType: {ExceptionType}, Message: {Message}",
-                request.EventId, ex.GetType().FullName, ex.Message);
-
-            // Provide detailed error message to help debugging
-            var errorMessage = $"Failed to retrieve notification history. Error: {ex.Message}";
-            return Result<List<EventNotificationHistoryDto>>.Failure(errorMessage);
+                // Provide detailed error message to help debugging
+                var errorMessage = $"Failed to retrieve notification history. Error: {ex.Message}";
+                return Result<List<EventNotificationHistoryDto>>.Failure(errorMessage);
+            }
         }
     }
 }

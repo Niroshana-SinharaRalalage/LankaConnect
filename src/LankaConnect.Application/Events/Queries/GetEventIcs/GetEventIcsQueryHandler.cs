@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using System.Text;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.GetEventIcs;
 
@@ -13,23 +16,81 @@ namespace LankaConnect.Application.Events.Queries.GetEventIcs;
 public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly ILogger<GetEventIcsQueryHandler> _logger;
 
-    public GetEventIcsQueryHandler(IEventRepository eventRepository)
+    public GetEventIcsQueryHandler(
+        IEventRepository eventRepository,
+        ILogger<GetEventIcsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
+        _logger = logger;
     }
 
     public async Task<Result<string>> Handle(GetEventIcsQuery request, CancellationToken cancellationToken)
     {
-        // Retrieve event
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-        if (@event == null)
-            return Result<string>.Failure("Event not found");
+        using (LogContext.PushProperty("Operation", "GetEventIcs"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        {
+            var stopwatch = Stopwatch.StartNew();
 
-        // Build ICS content
-        var icsContent = BuildIcsContent(@event);
+            _logger.LogInformation(
+                "GetEventIcs START: EventId={EventId}",
+                request.EventId);
 
-        return Result<string>.Success(icsContent);
+            try
+            {
+                // Validate request
+                if (request.EventId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventIcs FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string>.Failure("Event ID is required");
+                }
+
+                // Retrieve event
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventIcs FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string>.Failure("Event not found");
+                }
+
+                _logger.LogInformation(
+                    "GetEventIcs: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, HasLocation={HasLocation}",
+                    @event.Id, @event.Title.Value, @event.Status, @event.Location != null);
+
+                // Build ICS content
+                var icsContent = BuildIcsContent(@event);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetEventIcs COMPLETE: EventId={EventId}, ContentLength={ContentLength}chars, Duration={ElapsedMs}ms",
+                    request.EventId, icsContent.Length, stopwatch.ElapsedMilliseconds);
+
+                return Result<string>.Success(icsContent);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetEventIcs FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
     }
 
     /// <summary>

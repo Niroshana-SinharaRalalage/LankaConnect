@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
@@ -6,6 +7,8 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.GetEvents;
 
@@ -20,59 +23,118 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     private readonly IUserRepository _userRepository;
     private readonly IApplicationDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly ILogger<GetEventsQueryHandler> _logger;
 
     public GetEventsQueryHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IApplicationDbContext dbContext,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<GetEventsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _dbContext = dbContext;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IReadOnlyList<EventDto>>> Handle(GetEventsQuery request, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-
-        // Phase 6A.47: If SearchTerm provided, use full-text search first
-        IReadOnlyList<Event> events;
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        using (LogContext.PushProperty("Operation", "GetEvents"))
+        using (LogContext.PushProperty("EntityType", "Event"))
         {
-            // Step 1a: Apply full-text search with filters
-            (events, _) = await _eventRepository.SearchAsync(
-                request.SearchTerm,
-                limit: 1000, // Large limit for search
-                offset: 0,
-                request.Category,
-                request.IsFreeOnly,
-                request.StartDateFrom,
-                cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetEvents START: Category={Category}, City={City}, State={State}, Status={Status}, SearchTerm={SearchTerm}, IsFreeOnly={IsFreeOnly}, UserId={UserId}, HasLocation={HasLocation}",
+                request.Category, request.City, request.State, request.Status, request.SearchTerm,
+                request.IsFreeOnly, request.UserId, request.Latitude.HasValue && request.Longitude.HasValue);
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Phase 6A.47: If SearchTerm provided, use full-text search first
+                IReadOnlyList<Event> events;
+                if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+                {
+                    _logger.LogInformation(
+                        "GetEvents: Using full-text search - SearchTerm={SearchTerm}",
+                        request.SearchTerm);
+
+                    // Step 1a: Apply full-text search with filters
+                    (events, _) = await _eventRepository.SearchAsync(
+                        request.SearchTerm,
+                        limit: 1000, // Large limit for search
+                        offset: 0,
+                        request.Category,
+                        request.IsFreeOnly,
+                        request.StartDateFrom,
+                        cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Full-text search completed - SearchTerm={SearchTerm}, ResultCount={ResultCount}",
+                        request.SearchTerm, events.Count);
+                }
+                else
+                {
+                    // Step 1b: Get base event list with traditional filtering
+                    events = await GetFilteredEventsAsync(request, cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Traditional filtering completed - ResultCount={ResultCount}",
+                        events.Count);
+                }
+
+                // Step 2: Apply location-based sorting if location parameters provided
+                if (ShouldApplyLocationSorting(request))
+                {
+                    _logger.LogInformation(
+                        "GetEvents: Applying location-based sorting - UserId={UserId}, HasCoordinates={HasCoordinates}, MetroAreaCount={MetroAreaCount}",
+                        request.UserId, request.Latitude.HasValue && request.Longitude.HasValue,
+                        request.MetroAreaIds?.Count ?? 0);
+
+                    events = await ApplyLocationBasedSortingAsync(events, request, now, cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Location-based sorting completed - ResultCount={ResultCount}",
+                        events.Count);
+                }
+
+                // Step 3: Apply additional in-memory filters
+                var filteredEvents = ApplyInMemoryFilters(events, request);
+                var filteredList = filteredEvents.ToList();
+
+                _logger.LogInformation(
+                    "GetEvents: In-memory filters applied - BeforeFilter={BeforeFilter}, AfterFilter={AfterFilter}",
+                    events.Count, filteredList.Count);
+
+                // Step 4: Sort and map to DTOs
+                var result = filteredList
+                    .OrderBy(e => e.StartDate)
+                    .Select(e => _mapper.Map<EventDto>(e))
+                    .ToList();
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetEvents COMPLETE: TotalResults={TotalResults}, Duration={ElapsedMs}ms",
+                    result.Count, stopwatch.ElapsedMilliseconds);
+
+                return Result<IReadOnlyList<EventDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetEvents FAILED: Exception occurred - Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
-        else
-        {
-            // Step 1b: Get base event list with traditional filtering
-            events = await GetFilteredEventsAsync(request, cancellationToken);
-        }
-
-        // Step 2: Apply location-based sorting if location parameters provided
-        if (ShouldApplyLocationSorting(request))
-        {
-            events = await ApplyLocationBasedSortingAsync(events, request, now, cancellationToken);
-        }
-
-        // Step 3: Apply additional in-memory filters
-        var filteredEvents = ApplyInMemoryFilters(events, request);
-
-        // Step 4: Sort and map to DTOs
-        var result = filteredEvents
-            .OrderBy(e => e.StartDate)
-            .Select(e => _mapper.Map<EventDto>(e))
-            .ToList();
-
-        return Result<IReadOnlyList<EventDto>>.Success(result);
     }
 
     /// <summary>

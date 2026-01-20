@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
@@ -10,9 +11,14 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.GetEventAttendees;
 
+/// <summary>
+/// Handler for retrieving event attendees with revenue breakdown
+/// Includes on-the-fly revenue calculation for legacy registrations
+/// </summary>
 public class GetEventAttendeesQueryHandler
     : IQueryHandler<GetEventAttendeesQuery, EventAttendeesResponse>
 {
@@ -40,27 +46,57 @@ public class GetEventAttendeesQueryHandler
         GetEventAttendeesQuery request,
         CancellationToken cancellationToken)
     {
-        // Get event details using repository
-        // Phase 6A.X FIX: Use trackChanges: false for read-only query (better performance)
-        var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: false, cancellationToken);
-
-        if (@event == null)
+        using (LogContext.PushProperty("Operation", "GetEventAttendees"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", request.EventId))
         {
-            return Result<EventAttendeesResponse>.Failure("Event not found");
-        }
+            var stopwatch = Stopwatch.StartNew();
 
-        // Phase 6A.X DIAGNOSTIC: Log Location status for revenue breakdown calculation
-        _logger.LogInformation(
-            "Event loaded for attendees query: EventId={EventId}, HasLocation={HasLocation}, Location={Location}",
-            @event.Id,
-            @event.Location != null,
-            @event.Location?.ToString() ?? "NULL");
+            _logger.LogInformation(
+                "GetEventAttendees START: EventId={EventId}",
+                request.EventId);
+
+            try
+            {
+                // Validate request
+                if (request.EventId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventAttendees FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventAttendeesResponse>.Failure("Event ID is required");
+                }
+
+                // Get event details using repository
+                // Phase 6A.X FIX: Use trackChanges: false for read-only query (better performance)
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: false, cancellationToken);
+
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventAttendees FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventAttendeesResponse>.Failure("Event not found");
+                }
+
+                // Phase 6A.X DIAGNOSTIC: Log Location status for revenue breakdown calculation
+                _logger.LogInformation(
+                    "GetEventAttendees: Event loaded - EventId={EventId}, Title={Title}, HasLocation={HasLocation}",
+                    @event.Id,
+                    @event.Title.Value,
+                    @event.Location != null);
 
 
-        // Phase 6A.55: Use direct LINQ projection to avoid materializing JSONB with null AgeCategory
-        // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
-        // This pattern projects directly to DTO, allowing nullable AgeCategory to be handled gracefully
-        var attendeeDtos = await _context.Registrations
+                // Phase 6A.55: Use direct LINQ projection to avoid materializing JSONB with null AgeCategory
+                // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
+                // This pattern projects directly to DTO, allowing nullable AgeCategory to be handled gracefully
+                var attendeeDtos = await _context.Registrations
             .AsNoTracking()
             .Where(r => r.EventId == request.EventId)
             .Where(r => r.Status != RegistrationStatus.Cancelled &&
@@ -244,41 +280,65 @@ public class GetEventAttendeesQueryHandler
             a.PlatformCommissionAmount.HasValue ||
             a.OrganizerPayoutAmount.HasValue);
 
-        // Legacy fallback: If no registration has breakdown data, use commission-based calculation
-        if (!hasRevenueBreakdown && !isFreeEvent)
-        {
-            totalPlatformCommission = commissionAmount;
-            totalOrganizerPayout = netRevenue;
-        }
+                // Legacy fallback: If no registration has breakdown data, use commission-based calculation
+                if (!hasRevenueBreakdown && !isFreeEvent)
+                {
+                    totalPlatformCommission = commissionAmount;
+                    totalOrganizerPayout = netRevenue;
+                }
 
-        return Result<EventAttendeesResponse>.Success(new EventAttendeesResponse
-        {
-            EventId = request.EventId,
-            EventTitle = @event.Title.Value,
-            Attendees = attendeeDtos,
-            TotalRegistrations = attendeeDtos.Count(),
-            TotalAttendees = attendeeDtos.Sum(a => a.TotalAttendees),
+                stopwatch.Stop();
 
-            // Phase 6A.71: Commission-aware revenue
-            GrossRevenue = grossRevenue,
-            CommissionAmount = commissionAmount,
-            NetRevenue = netRevenue,
-            CommissionRate = _commissionSettings.EventTicketCommissionRate,
-            IsFreeEvent = isFreeEvent,
+                _logger.LogInformation(
+                    "GetEventAttendees COMPLETE: EventId={EventId}, TotalRegistrations={TotalRegistrations}, TotalAttendees={TotalAttendees}, GrossRevenue={GrossRevenue}, IsFreeEvent={IsFreeEvent}, HasRevenueBreakdown={HasRevenueBreakdown}, Duration={ElapsedMs}ms",
+                    request.EventId,
+                    attendeeDtos.Count,
+                    attendeeDtos.Sum(a => a.TotalAttendees),
+                    grossRevenue,
+                    isFreeEvent,
+                    hasRevenueBreakdown,
+                    stopwatch.ElapsedMilliseconds);
 
-            // Phase 6A.X: Detailed revenue breakdown totals
-            TotalSalesTax = totalSalesTax,
-            TotalStripeFees = totalStripeFees,
-            TotalPlatformCommission = totalPlatformCommission,
-            TotalOrganizerPayout = totalOrganizerPayout,
-            AverageTaxRate = averageTaxRate,
-            HasRevenueBreakdown = hasRevenueBreakdown,
+                return Result<EventAttendeesResponse>.Success(new EventAttendeesResponse
+                {
+                    EventId = request.EventId,
+                    EventTitle = @event.Title.Value,
+                    Attendees = attendeeDtos,
+                    TotalRegistrations = attendeeDtos.Count(),
+                    TotalAttendees = attendeeDtos.Sum(a => a.TotalAttendees),
 
-            // Deprecated (for backward compatibility)
+                    // Phase 6A.71: Commission-aware revenue
+                    GrossRevenue = grossRevenue,
+                    CommissionAmount = commissionAmount,
+                    NetRevenue = netRevenue,
+                    CommissionRate = _commissionSettings.EventTicketCommissionRate,
+                    IsFreeEvent = isFreeEvent,
+
+                    // Phase 6A.X: Detailed revenue breakdown totals
+                    TotalSalesTax = totalSalesTax,
+                    TotalStripeFees = totalStripeFees,
+                    TotalPlatformCommission = totalPlatformCommission,
+                    TotalOrganizerPayout = totalOrganizerPayout,
+                    AverageTaxRate = averageTaxRate,
+                    HasRevenueBreakdown = hasRevenueBreakdown,
+
+                    // Deprecated (for backward compatibility)
 #pragma warning disable CS0618 // Type or member is obsolete
-            TotalRevenue = grossRevenue
+                    TotalRevenue = grossRevenue
 #pragma warning restore CS0618 // Type or member is obsolete
-        });
+                });
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetEventAttendees FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
     }
 
     // Phase 6A.55 NOTE: MapToDto method removed and replaced with direct LINQ projection above

@@ -25,17 +25,20 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
     private readonly IApplicationDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AddOpenSignUpItemAnonymousCommandHandler> _logger;
+    private readonly ILogger<CheckEventRegistrationQueryHandler> _checkEventRegistrationLogger;
 
     public AddOpenSignUpItemAnonymousCommandHandler(
         IEventRepository eventRepository,
         IApplicationDbContext context,
         IUnitOfWork unitOfWork,
-        ILogger<AddOpenSignUpItemAnonymousCommandHandler> logger)
+        ILogger<AddOpenSignUpItemAnonymousCommandHandler> logger,
+        ILogger<CheckEventRegistrationQueryHandler> checkEventRegistrationLogger)
     {
         _eventRepository = eventRepository;
         _context = context;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _checkEventRegistrationLogger = checkEventRegistrationLogger;
     }
 
     public async Task<Result<Guid>> Handle(AddOpenSignUpItemAnonymousCommand request, CancellationToken cancellationToken)
@@ -73,7 +76,7 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
 
                 // Step 1: Check registration status and member status
                 var checkQuery = new CheckEventRegistrationQuery(request.EventId, emailToCheck);
-                var checkHandler = new CheckEventRegistrationQueryHandler(_context);
+                var checkHandler = new CheckEventRegistrationQueryHandler(_context, _checkEventRegistrationLogger);
                 var registrationResult = await checkHandler.Handle(checkQuery, cancellationToken);
 
                 if (registrationResult.IsFailure)

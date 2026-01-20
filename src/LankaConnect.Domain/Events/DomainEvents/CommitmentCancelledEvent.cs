@@ -11,9 +11,15 @@ namespace LankaConnect.Domain.Events.DomainEvents;
 /// EF Core cannot detect the deletion. This event allows the infrastructure layer
 /// to explicitly mark the entity as Deleted in the change tracker.
 ///
+/// Phase 6A.51+ Fix: Added ItemDescription, Quantity, and SignUpListId to support
+/// email notifications without database queries (entity may be deleted by then).
+///
 /// See ADR-008 for full analysis of why this pattern is necessary.
 /// </summary>
 public record CommitmentCancelledEvent(
     Guid SignUpItemId,
     Guid CommitmentId,
-    Guid UserId) : DomainEvent;
+    Guid UserId,
+    Guid SignUpListId,
+    string ItemDescription,
+    int Quantity) : DomainEvent;

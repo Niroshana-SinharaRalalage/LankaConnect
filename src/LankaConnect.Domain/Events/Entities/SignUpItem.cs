@@ -281,6 +281,9 @@ public class SignUpItem : BaseEntity
         if (commitment == null)
             return Result.Failure("User has no commitment to this item");
 
+        // Capture data BEFORE removing commitment (needed for email notification)
+        var cancelledQuantity = commitment.Quantity;
+
         // Return the quantity back to remaining
         RemainingQuantity += commitment.Quantity;
         _commitments.Remove(commitment);
@@ -288,7 +291,14 @@ public class SignUpItem : BaseEntity
         // Phase 6A.28 Issue 4 Fix: Raise domain event for infrastructure to handle deletion
         // EF Core cannot detect collection removals from private backing fields
         // This event allows infrastructure to explicitly mark entity as Deleted
-        RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(Id, commitment.Id, userId));
+        // Phase 6A.51+ Fix: Include data for email notification (entity may be deleted by then)
+        RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
+            Id,
+            commitment.Id,
+            userId,
+            SignUpListId,
+            ItemDescription,
+            cancelledQuantity));
 
         MarkAsUpdated();
 

@@ -141,24 +141,16 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       return;
     }
 
-    const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
-
-    // Phase 6A.74 Part 14 Fix #2: Styled button links centered with separators
-    // Keep placeholder text and append styled event link buttons below
+    // Phase 6A.74 Part 14 Fix: Simple placeholder template
+    // Note: Event links are automatically added by the email template when EventId is set
+    // The email template (in database) renders styled buttons in a "Related Event" section:
+    // - "View Event Details" (orange gradient button)
+    // - "View Sign-up Lists" (maroon gradient button)
+    // So we only need the placeholder text here - no manual links needed in content!
     const eventLinksTemplate = `
 <p>[Write your news letter content here.....]</p>
 <p><br></p>
-<p style="text-align: center;">─────────────────────────────────────</p>
-<p><br></p>
-<p style="text-align: center;">
-  <a href="${frontendUrl}/events/${selectedEvent.id}" style="display: inline-block; padding: 12px 24px; background-color: #FF7900; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 0 8px;">View Event Details</a>
-</p>
-<p><br></p>
-<p style="text-align: center;">
-  <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="display: inline-block; padding: 12px 24px; background-color: #8B1538; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 0 8px;">View Event Sign-up Lists</a>
-</p>
-<p><br></p>
-<p style="text-align: center;">─────────────────────────────────────</p>
+<p><em>💡 Tip: When this newsletter is linked to an event, styled event links will be automatically included in the email.</em></p>
     `.trim();
 
     setValue('description', eventLinksTemplate);

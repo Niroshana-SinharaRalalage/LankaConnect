@@ -15,6 +15,7 @@ namespace LankaConnect.Application.Events.BackgroundJobs;
 /// 1. Confirmed registrations (user accounts only)
 /// 2. Event email groups
 /// 3. Location-matched newsletter subscribers (metro → state → all locations)
+/// 4. Sign-up list committed users (Phase 6A.75)
 ///
 /// Performance: Sends emails to unlimited recipients without blocking the API response.
 /// Retry: Hangfire automatically retries failed jobs (default: 10 attempts with exponential backoff).
@@ -115,7 +116,45 @@ public class EventCancellationEmailJob
                 }
             }
 
-            // 3. Get email groups + newsletter subscribers
+            // 3. Phase 6A.75: Get sign-up committed users
+            var signUpCommitmentEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var signUpStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            if (@event.SignUpLists != null && @event.SignUpLists.Any())
+            {
+                // Extract all unique user IDs from sign-up commitments
+                var signUpUserIds = @event.SignUpLists
+                    .SelectMany(sl => sl.Items ?? Enumerable.Empty<Domain.Events.Entities.SignUpItem>())
+                    .SelectMany(item => item.Commitments ?? Enumerable.Empty<Domain.Events.Entities.SignUpCommitment>())
+                    .Select(c => c.UserId)
+                    .Distinct()
+                    .ToList();
+
+                _logger.LogInformation(
+                    "[Phase 6A.75] Found {Count} unique sign-up committed users in {ElapsedMs}ms",
+                    signUpUserIds.Count, signUpStopwatch.ElapsedMilliseconds);
+
+                if (signUpUserIds.Any())
+                {
+                    var signUpEmailsStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    var signUpUserEmails = await _userRepository.GetEmailsByUserIdsAsync(signUpUserIds, CancellationToken.None);
+
+                    _logger.LogInformation(
+                        "[Phase 6A.75] Bulk fetched {Count} sign-up user emails in {ElapsedMs}ms",
+                        signUpUserEmails.Count, signUpEmailsStopwatch.ElapsedMilliseconds);
+
+                    foreach (var email in signUpUserEmails.Values)
+                    {
+                        signUpCommitmentEmails.Add(email);
+                    }
+                }
+            }
+            else
+            {
+                _logger.LogInformation("[Phase 6A.75] No sign-up lists found for event {EventId}", eventId);
+            }
+
+            // 4. Get email groups + newsletter subscribers
             var recipientStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var notificationRecipients = await _recipientService.ResolveRecipientsAsync(
                 eventId,
@@ -130,8 +169,10 @@ public class EventCancellationEmailJob
                 notificationRecipients.Breakdown.StateLevelSubscribers,
                 notificationRecipients.Breakdown.AllLocationsSubscribers);
 
-            // 4. Consolidate all recipients (deduplicated, case-insensitive)
+            // 5. Consolidate all recipients (deduplicated, case-insensitive)
+            // Phase 6A.75: Now includes sign-up committed users
             var allRecipients = registrationEmails
+                .Concat(signUpCommitmentEmails)
                 .Concat(notificationRecipients.EmailAddresses)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -143,10 +184,11 @@ public class EventCancellationEmailJob
             }
 
             _logger.LogInformation(
-                "[Phase 6A.64] Sending cancellation emails to {TotalCount} unique recipients for Event {EventId}. " +
-                "Breakdown: Registrations={RegCount}, EmailGroups+Newsletter={NotificationCount}",
+                "[Phase 6A.75] Sending cancellation emails to {TotalCount} unique recipients for Event {EventId}. " +
+                "Breakdown: Registrations={RegCount}, SignUpCommitments={SignUpCount}, EmailGroups+Newsletter={NotificationCount}",
                 allRecipients.Count, eventId,
                 registrationEmails.Count,
+                signUpCommitmentEmails.Count,
                 notificationRecipients.EmailAddresses.Count);
 
             // TEMP DIAGNOSTIC: Log all recipient email addresses
@@ -155,7 +197,7 @@ public class EventCancellationEmailJob
                 "[TEMP-DIAGNOSTIC] Event {EventId} cancellation email recipients: {Recipients}",
                 eventId, string.Join(", ", allRecipients.OrderBy(e => e)));
 
-            // 5. Prepare template parameters
+            // 6. Prepare template parameters
             var parameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
@@ -170,7 +212,7 @@ public class EventCancellationEmailJob
                 ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? ""
             };
 
-            // 6. Send templated email to each recipient
+            // 7. Send templated email to each recipient
             // Phase 6A.64: Detailed timing and error tracking for observability
             var successCount = 0;
             var failCount = 0;

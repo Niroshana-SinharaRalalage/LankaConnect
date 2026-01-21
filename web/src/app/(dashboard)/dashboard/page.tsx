@@ -8,7 +8,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { TabPanel } from '@/presentation/components/ui/TabPanel';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import Footer from '@/presentation/components/layout/Footer';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
 import { canCreateEvents, isAdmin } from '@/infrastructure/api/utils/role-helpers';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
@@ -22,9 +22,10 @@ import {
   ClipboardCheck,
   FolderOpen,
   Bell,
-  Mail
+  Mail,
+  Plus
 } from 'lucide-react';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
@@ -41,13 +42,18 @@ import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals
 import { CancelEventModal } from '@/presentation/components/features/events/CancelEventModal';
 import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
-export default function DashboardPage() {
+// Phase 6A.74 Part 14 Fix #3: Wrapper component to use useSearchParams inside Suspense
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, clearAuth } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Phase 6A.74 Part 14 Fix #3: Get initial tab from URL query param for back navigation
+  const initialTab = searchParams.get('tab') || undefined;
 
   // Phase 6A.59: Cancel event modal state
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
@@ -427,6 +433,7 @@ export default function DashboardPage() {
           )}
 
           {/* Quick Actions - Epic 1: Role-based visibility, Post Topic removed */}
+          {/* Phase 6A.74 Part 14 Fix #1: Moved Create Event button inside Event Management tab */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Show 'Upgrade to Event Organizer' button for GeneralUser (if not already pending) */}
@@ -445,23 +452,8 @@ export default function DashboardPage() {
                   Upgrade to Event Organizer
                 </Button>
               )}
-              {/* Show 'Create Event' for EventOrganizer, Admin, and AdminManager */}
-              {user && (user.role === UserRole.EventOrganizer || user.role === UserRole.Admin || user.role === UserRole.AdminManager) && (
-                <Button
-                  onClick={() => router.push('/events/create')}
-                  className="flex-1 sm:flex-none rounded-lg"
-                  style={{
-                    background: '#FF7900',
-                    color: 'white',
-                    transition: 'all 0.3s'
-                  }}
-                  variant="default"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Create Event
-                </Button>
-              )}
               {/* Post Topic button removed per Epic 1 requirements */}
+              {/* Create Event button moved to Event Management tab per Phase 6A.74 Part 14 Fix #1 */}
             </div>
           </div>
 
@@ -473,6 +465,7 @@ export default function DashboardPage() {
                 {/* Render tabs based on user role */}
                 {user && isAdmin(user.role as UserRole) ? (
                   <TabPanel
+                    defaultTab={initialTab}
                     tabs={[
                       {
                         id: 'created',
@@ -480,6 +473,22 @@ export default function DashboardPage() {
                         icon: FolderOpen,
                         content: (
                           <div>
+                            {/* Phase 6A.74 Part 14 Fix #1: Create Event button inside tab */}
+                            <div className="mb-4 flex justify-end">
+                              <Button
+                                onClick={() => router.push('/events/create')}
+                                className="rounded-lg"
+                                style={{
+                                  background: '#FF7900',
+                                  color: 'white',
+                                  transition: 'all 0.3s'
+                                }}
+                                variant="default"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Event
+                              </Button>
+                            </div>
                             {/* Phase 6A.58: Event Filters for Event Management */}
                             <div className="mb-6">
                               <EventFilters
@@ -491,18 +500,21 @@ export default function DashboardPage() {
                                 showLocation={true}
                               />
                             </div>
-                            <EventsList
-                              events={createdEvents}
-                              isLoading={loadingCreated}
-                              emptyMessage="You haven't created any events yet"
-                              onEventClick={handleManageEventClick}
-                              registeredEventIds={registeredEventIds}
-                              showManagementActions={true}
-                              onEditEvent={handleEditEvent}
-                              onPublishEvent={handlePublishEvent}
-                              onCancelEvent={handleCancelEventManagement}
-                              onDeleteEvent={handleDeleteEventClick}
-                            />
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={createdEvents}
+                                isLoading={loadingCreated}
+                                emptyMessage="You haven't created any events yet"
+                                onEventClick={handleManageEventClick}
+                                registeredEventIds={registeredEventIds}
+                                showManagementActions={true}
+                                onEditEvent={handleEditEvent}
+                                onPublishEvent={handlePublishEvent}
+                                onCancelEvent={handleCancelEventManagement}
+                                onDeleteEvent={handleDeleteEventClick}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -523,14 +535,17 @@ export default function DashboardPage() {
                                 showLocation={true}
                               />
                             </div>
-                            <EventsList
-                              events={registeredEvents}
-                              isLoading={loadingRegistered}
-                              emptyMessage="You haven't registered for any events yet"
-                              onEventClick={handleEventClick}
-                              onCancelClick={handleCancelRegistration}
-                              registeredEventIds={registeredEventIds}
-                            />
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -543,13 +558,16 @@ export default function DashboardPage() {
                             <h3 className="text-lg font-semibold mb-4 text-[#8B1538]">
                               Pending Approvals
                             </h3>
-                            {loadingApprovals ? (
-                              <div className="text-center py-8">
-                                <p className="text-gray-600">Loading approvals...</p>
-                              </div>
-                            ) : (
-                              <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
-                            )}
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              {loadingApprovals ? (
+                                <div className="text-center py-8">
+                                  <p className="text-gray-600">Loading approvals...</p>
+                                </div>
+                              ) : (
+                                <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
+                              )}
+                            </div>
                           </div>
                         ),
                       },
@@ -557,30 +575,41 @@ export default function DashboardPage() {
                         id: 'email-groups',
                         label: 'Email Groups',
                         icon: Mail,
-                        content: <EmailGroupsTab />,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <EmailGroupsTab />
+                          </div>
+                        ),
                       },
                       {
                         id: 'newsletters',
                         label: 'Newsletters',
                         icon: Mail,
-                        content: <NewslettersTab />,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NewslettersTab />
+                          </div>
+                        ),
                       },
                       {
                         id: 'notifications',
                         label: 'Notifications',
                         icon: Bell,
                         content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
                         ),
                       },
                     ]}
                   />
                 ) : user && user.role === UserRole.EventOrganizer ? (
                   <TabPanel
+                    defaultTab={initialTab}
                     tabs={[
                       {
                         id: 'created',
@@ -588,6 +617,22 @@ export default function DashboardPage() {
                         icon: FolderOpen,
                         content: (
                           <div>
+                            {/* Phase 6A.74 Part 14 Fix #1: Create Event button inside tab */}
+                            <div className="mb-4 flex justify-end">
+                              <Button
+                                onClick={() => router.push('/events/create')}
+                                className="rounded-lg"
+                                style={{
+                                  background: '#FF7900',
+                                  color: 'white',
+                                  transition: 'all 0.3s'
+                                }}
+                                variant="default"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Event
+                              </Button>
+                            </div>
                             {/* Phase 6A.58: Event Filters for Event Management */}
                             <div className="mb-6">
                               <EventFilters
@@ -599,18 +644,21 @@ export default function DashboardPage() {
                                 showLocation={true}
                               />
                             </div>
-                            <EventsList
-                              events={createdEvents}
-                              isLoading={loadingCreated}
-                              emptyMessage="You haven't created any events yet"
-                              onEventClick={handleManageEventClick}
-                              registeredEventIds={registeredEventIds}
-                              showManagementActions={true}
-                              onEditEvent={handleEditEvent}
-                              onPublishEvent={handlePublishEvent}
-                              onCancelEvent={handleCancelEventManagement}
-                              onDeleteEvent={handleDeleteEventClick}
-                            />
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={createdEvents}
+                                isLoading={loadingCreated}
+                                emptyMessage="You haven't created any events yet"
+                                onEventClick={handleManageEventClick}
+                                registeredEventIds={registeredEventIds}
+                                showManagementActions={true}
+                                onEditEvent={handleEditEvent}
+                                onPublishEvent={handlePublishEvent}
+                                onCancelEvent={handleCancelEventManagement}
+                                onDeleteEvent={handleDeleteEventClick}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -631,14 +679,17 @@ export default function DashboardPage() {
                                 showLocation={true}
                               />
                             </div>
-                            <EventsList
-                              events={registeredEvents}
-                              isLoading={loadingRegistered}
-                              emptyMessage="You haven't registered for any events yet"
-                              onEventClick={handleEventClick}
-                              onCancelClick={handleCancelRegistration}
-                              registeredEventIds={registeredEventIds}
-                            />
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -646,24 +697,34 @@ export default function DashboardPage() {
                         id: 'email-groups',
                         label: 'Email Groups',
                         icon: Mail,
-                        content: <EmailGroupsTab />,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <EmailGroupsTab />
+                          </div>
+                        ),
                       },
                       {
                         id: 'newsletters',
                         label: 'Newsletters',
                         icon: Mail,
-                        content: <NewslettersTab />,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NewslettersTab />
+                          </div>
+                        ),
                       },
                       {
                         id: 'notifications',
                         label: 'Notifications',
                         icon: Bell,
                         content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
                         ),
                       },
                     ]}
@@ -671,6 +732,7 @@ export default function DashboardPage() {
                 ) : (
                   /* General User - Tabbed interface with Registered Events and Notifications */
                   <TabPanel
+                    defaultTab={initialTab}
                     tabs={[
                       {
                         id: 'registered',
@@ -689,14 +751,17 @@ export default function DashboardPage() {
                                 showLocation={true}
                               />
                             </div>
-                            <EventsList
-                              events={registeredEvents}
-                              isLoading={loadingRegistered}
-                              emptyMessage="You haven't registered for any events yet. Browse events to join!"
-                              onEventClick={handleEventClick}
-                              onCancelClick={handleCancelRegistration}
-                              registeredEventIds={registeredEventIds}
-                            />
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -705,11 +770,13 @@ export default function DashboardPage() {
                         label: 'Notifications',
                         icon: Bell,
                         content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
                         ),
                       },
                     ]}
@@ -754,5 +821,21 @@ export default function DashboardPage() {
         />
       </div>
     </ProtectedRoute>
+  );
+}
+
+// Phase 6A.74 Part 14 Fix #3: Wrap in Suspense for useSearchParams
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7fafc' }}>
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-[#FF7900] rounded-full animate-spin" />
+          <p className="mt-2 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }

@@ -19,7 +19,7 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 /**
  * Rich Text Editor Component using TipTap
@@ -108,10 +108,17 @@ export function RichTextEditor({
     },
   });
 
+  // Phase 6A.74 Part 14 Fix #4: Improved content sync for form reset
+  // Use a ref to track the last content we set to avoid unnecessary updates
+  const lastContentRef = useRef<string>(content);
+
   // Update editor content when prop changes (for form reset)
+  // Compare with ref to avoid infinite loops and ensure proper sync
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+    if (editor && content !== lastContentRef.current) {
+      // Content prop changed from outside (e.g., form reset with newsletter data)
+      editor.commands.setContent(content, { emitUpdate: false });
+      lastContentRef.current = content;
     }
   }, [content, editor]);
 

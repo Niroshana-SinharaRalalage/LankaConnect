@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -5,12 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Seeders;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.BackgroundJobs;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
 /// Administrative endpoints for system maintenance
 /// Phase 6A.9: Database seeding endpoints for Development/Staging environments
+/// Phase 6A.75: Added manual trigger for EventReminderJob
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -21,6 +24,7 @@ public class AdminController : BaseController<AdminController>
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
     public AdminController(
         IMediator mediator,
@@ -28,13 +32,15 @@ public class AdminController : BaseController<AdminController>
         AppDbContext context,
         IPasswordHashingService passwordHashingService,
         IWebHostEnvironment environment,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IBackgroundJobClient backgroundJobClient)
         : base(mediator, logger)
     {
         _context = context;
         _passwordHashingService = passwordHashingService;
         _environment = environment;
         _loggerFactory = loggerFactory;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -357,5 +363,178 @@ public class AdminController : BaseController<AdminController>
             isProduction = _environment.IsProduction(),
             applicationName = _environment.ApplicationName
         });
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Manually trigger EventReminderJob for testing
+    /// ONLY available in Development and Staging environments
+    /// This allows testing reminder emails without waiting for the hourly schedule
+    /// </summary>
+    /// <returns>Job ID of the enqueued reminder job</returns>
+    [HttpPost("trigger-reminder-job")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public IActionResult TriggerReminderJob()
+    {
+        // Only allow in Development or Staging
+        if (!_environment.IsDevelopment() && !_environment.IsStaging())
+        {
+            Logger.LogWarning("[Phase 6A.75] Trigger reminder job endpoint called in {Environment} - DENIED", _environment.EnvironmentName);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Manual job triggering is only available in Development and Staging environments"
+            });
+        }
+
+        try
+        {
+            Logger.LogInformation("[Phase 6A.75] Manually triggering EventReminderJob...");
+
+            // Enqueue the job to run immediately
+            var jobId = _backgroundJobClient.Enqueue<EventReminderJob>(job => job.ExecuteAsync());
+
+            Logger.LogInformation("[Phase 6A.75] EventReminderJob enqueued with JobId: {JobId}", jobId);
+
+            return Ok(new
+            {
+                message = "EventReminderJob has been enqueued and will execute shortly",
+                jobId = jobId,
+                environment = _environment.EnvironmentName,
+                timestamp = DateTime.UtcNow,
+                note = "Check the Hangfire dashboard at /hangfire for job status and logs"
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[Phase 6A.75] Error triggering EventReminderJob");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Job Trigger Error",
+                Detail = ex.Message,
+                Status = StatusCodes.Status500InternalServerError
+            });
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Get upcoming events in reminder windows for diagnostic purposes
+    /// Shows which events would receive reminders if the job ran now
+    /// </summary>
+    /// <returns>Events in each reminder window</returns>
+    [HttpGet("reminder-diagnostics")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetReminderDiagnostics()
+    {
+        // Only allow in Development or Staging
+        if (!_environment.IsDevelopment() && !_environment.IsStaging())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Diagnostics only available in Development and Staging environments"
+            });
+        }
+
+        try
+        {
+            var now = DateTime.UtcNow;
+
+            // Check 7-day window (167-169 hours)
+            var sevenDayStart = now.AddHours(167);
+            var sevenDayEnd = now.AddHours(169);
+            var sevenDayEvents = await _context.Events
+                .AsNoTracking()
+                .Include(e => e.Registrations)
+                .Where(e => e.StartDate >= sevenDayStart && e.StartDate <= sevenDayEnd)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
+                .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
+                .ToListAsync();
+
+            // Check 2-day window (47-49 hours)
+            var twoDayStart = now.AddHours(47);
+            var twoDayEnd = now.AddHours(49);
+            var twoDayEvents = await _context.Events
+                .AsNoTracking()
+                .Include(e => e.Registrations)
+                .Where(e => e.StartDate >= twoDayStart && e.StartDate <= twoDayEnd)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
+                .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
+                .ToListAsync();
+
+            // Check 1-day window (23-25 hours)
+            var oneDayStart = now.AddHours(23);
+            var oneDayEnd = now.AddHours(25);
+            var oneDayEvents = await _context.Events
+                .AsNoTracking()
+                .Include(e => e.Registrations)
+                .Where(e => e.StartDate >= oneDayStart && e.StartDate <= oneDayEnd)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
+                .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
+                .ToListAsync();
+
+            // Get reminders already sent today using raw SQL (table is not mapped as entity)
+            var todayStart = DateTime.UtcNow.Date;
+            var remindersSentToday = 0;
+            try
+            {
+                using var connection = _context.Database.GetDbConnection();
+                await connection.OpenAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT COUNT(*) FROM events.event_reminders_sent WHERE sent_at >= @todayStart";
+                var param = command.CreateParameter();
+                param.ParameterName = "@todayStart";
+                param.Value = todayStart;
+                command.Parameters.Add(param);
+                var result = await command.ExecuteScalarAsync();
+                remindersSentToday = Convert.ToInt32(result);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "[Phase 6A.75] Could not retrieve reminder count from database");
+            }
+
+            return Ok(new
+            {
+                timestamp = now,
+                windows = new
+                {
+                    sevenDay = new
+                    {
+                        windowStart = sevenDayStart,
+                        windowEnd = sevenDayEnd,
+                        eventsFound = sevenDayEvents.Count,
+                        events = sevenDayEvents
+                    },
+                    twoDay = new
+                    {
+                        windowStart = twoDayStart,
+                        windowEnd = twoDayEnd,
+                        eventsFound = twoDayEvents.Count,
+                        events = twoDayEvents
+                    },
+                    oneDay = new
+                    {
+                        windowStart = oneDayStart,
+                        windowEnd = oneDayEnd,
+                        eventsFound = oneDayEvents.Count,
+                        events = oneDayEvents
+                    }
+                },
+                remindersSentToday = remindersSentToday,
+                note = "Events must have status Published or Active and have registrations to receive reminders"
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[Phase 6A.75] Error getting reminder diagnostics");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Diagnostics Error",
+                Detail = ex.Message,
+                Status = StatusCodes.Status500InternalServerError
+            });
+        }
     }
 }

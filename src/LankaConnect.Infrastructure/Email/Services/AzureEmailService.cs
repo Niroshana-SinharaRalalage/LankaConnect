@@ -283,7 +283,11 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
 
     /// <summary>
     /// Phase 6A.34: Render template content by replacing {{variable}} placeholders
-    /// Supports conditional sections with {{#variable}}...{{/variable}} syntax
+    /// Phase 6A.74 Part 14 Fix: Now supports Handlebars-style syntax:
+    /// - {{#if variable}}...{{/if}} conditionals
+    /// - {{#variable}}...{{/variable}} conditionals (legacy)
+    /// - {{{variable}}} triple-brace unescaped placeholders
+    /// - {{variable}} double-brace placeholders
     /// </summary>
     private static string RenderTemplateContent(string template, Dictionary<string, object> parameters)
     {
@@ -304,7 +308,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             }
         }
 
-        // Process conditional sections first: {{#HasEventImage}}...{{/HasEventImage}}
+        // Phase 6A.74 Part 14 Fix: Process Handlebars-style conditionals {{#if variable}}...{{/if}}
         foreach (var param in parameters)
         {
             var isTruthy = param.Value switch
@@ -315,34 +319,61 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
                 _ => true
             };
 
-            var openTag = $"{{{{#{param.Key}}}}}";
-            var closeTag = $"{{{{/{param.Key}}}}}";
+            // Support Handlebars {{#if variable}}...{{/if}} syntax
+            var handlebarsOpenTag = $"{{{{#if {param.Key}}}}}";
+            var handlebarsCloseTag = "{{/if}}";
 
-            // Find and process all conditional sections for this parameter
             int startIndex = 0;
-            while ((startIndex = result.IndexOf(openTag, startIndex, StringComparison.Ordinal)) != -1)
+            while ((startIndex = result.IndexOf(handlebarsOpenTag, startIndex, StringComparison.Ordinal)) != -1)
             {
-                var endIndex = result.IndexOf(closeTag, startIndex, StringComparison.Ordinal);
+                var endIndex = result.IndexOf(handlebarsCloseTag, startIndex, StringComparison.Ordinal);
                 if (endIndex == -1) break;
 
-                var contentStart = startIndex + openTag.Length;
-                var content = result.Substring(contentStart, endIndex - contentStart);
+                var contentStart = startIndex + handlebarsOpenTag.Length;
 
                 if (isTruthy)
                 {
                     // Keep the content, remove the tags
-                    result = result.Remove(endIndex, closeTag.Length);
-                    result = result.Remove(startIndex, openTag.Length);
+                    result = result.Remove(endIndex, handlebarsCloseTag.Length);
+                    result = result.Remove(startIndex, handlebarsOpenTag.Length);
                 }
                 else
                 {
                     // Remove the entire section including tags
-                    result = result.Remove(startIndex, endIndex - startIndex + closeTag.Length);
+                    result = result.Remove(startIndex, endIndex - startIndex + handlebarsCloseTag.Length);
+                }
+            }
+
+            // Also support legacy {{#variable}}...{{/variable}} syntax
+            var legacyOpenTag = $"{{{{#{param.Key}}}}}";
+            var legacyCloseTag = $"{{{{/{param.Key}}}}}";
+
+            startIndex = 0;
+            while ((startIndex = result.IndexOf(legacyOpenTag, startIndex, StringComparison.Ordinal)) != -1)
+            {
+                var endIndex = result.IndexOf(legacyCloseTag, startIndex, StringComparison.Ordinal);
+                if (endIndex == -1) break;
+
+                if (isTruthy)
+                {
+                    result = result.Remove(endIndex, legacyCloseTag.Length);
+                    result = result.Remove(startIndex, legacyOpenTag.Length);
+                }
+                else
+                {
+                    result = result.Remove(startIndex, endIndex - startIndex + legacyCloseTag.Length);
                 }
             }
         }
 
-        // Then replace simple placeholders: {{variable}}
+        // Phase 6A.74 Part 14 Fix: Replace triple-brace placeholders first {{{variable}}} (unescaped HTML)
+        foreach (var param in parameters)
+        {
+            var triplePlaceholder = $"{{{{{{{param.Key}}}}}}}";
+            result = result.Replace(triplePlaceholder, param.Value?.ToString() ?? string.Empty);
+        }
+
+        // Then replace double-brace placeholders: {{variable}}
         foreach (var param in parameters)
         {
             var placeholder = $"{{{{{param.Key}}}}}";

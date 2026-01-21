@@ -537,4 +537,91 @@ public class AdminController : BaseController<AdminController>
             });
         }
     }
+
+    /// <summary>
+    /// Phase 6A.75: Send reminder emails for a specific event (bypass time window check)
+    /// This is for testing purposes only - sends reminders regardless of event start date
+    /// </summary>
+    /// <param name="eventId">The event ID to send reminders for</param>
+    /// <param name="reminderType">Type of reminder: "1day", "2day", or "7day"</param>
+    /// <returns>Result of sending reminders</returns>
+    [HttpPost("send-event-reminder/{eventId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendEventReminder(Guid eventId, [FromQuery] string reminderType = "1day")
+    {
+        // Only allow in Development or Staging
+        if (!_environment.IsDevelopment() && !_environment.IsStaging())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Manual reminder sending only available in Development and Staging environments"
+            });
+        }
+
+        try
+        {
+            // Validate reminder type
+            var validTypes = new[] { "1day", "2day", "7day" };
+            if (!validTypes.Contains(reminderType))
+            {
+                return BadRequest(new { error = $"Invalid reminderType. Must be one of: {string.Join(", ", validTypes)}" });
+            }
+
+            // Get the event with registrations
+            var @event = await _context.Events
+                .AsNoTracking()
+                .Include(e => e.Registrations)
+                .FirstOrDefaultAsync(e => e.Id == eventId);
+
+            if (@event == null)
+            {
+                return NotFound(new { error = $"Event {eventId} not found" });
+            }
+
+            Logger.LogInformation(
+                "[Phase 6A.75] Manual reminder trigger for Event {EventId} ({Title}), Type={ReminderType}, Registrations={Count}",
+                eventId, @event.Title?.Value ?? "Untitled", reminderType, @event.Registrations.Count);
+
+            if (@event.Registrations.Count == 0)
+            {
+                return Ok(new
+                {
+                    message = "No reminders sent - event has no registrations",
+                    eventId = eventId,
+                    eventTitle = @event.Title?.Value ?? "Untitled Event",
+                    registrationCount = 0
+                });
+            }
+
+            // Queue the reminder job for this specific event
+            // We use a custom job that bypasses the time window check
+            var jobId = _backgroundJobClient.Enqueue<EventReminderJob>(
+                job => job.SendRemindersForEventAsync(eventId, reminderType, CancellationToken.None));
+
+            return Ok(new
+            {
+                message = $"Reminder job queued for event",
+                jobId = jobId,
+                eventId = eventId,
+                eventTitle = @event.Title?.Value ?? "Untitled Event",
+                reminderType = reminderType,
+                registrationCount = @event.Registrations.Count,
+                note = "Check Hangfire dashboard for job status"
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[Phase 6A.75] Error sending manual reminder for event {EventId}", eventId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Reminder Error",
+                Detail = ex.Message,
+                Status = StatusCodes.Status500InternalServerError
+            });
+        }
+    }
 }

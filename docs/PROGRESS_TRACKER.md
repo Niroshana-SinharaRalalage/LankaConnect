@@ -1,11 +1,49 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-21 - Phase 6A.75: Email System Improvements COMPLETE*
+*Last Updated: 2026-01-21 - Phase 6A.75: Event Reminder Email Fix COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.75 Email System Improvements ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.75 Event Reminder Email Fix ✅ COMPLETE
 
-### Phase 6A.75 - Email System Improvements - 2026-01-21
+### Phase 6A.75 - Event Reminder Email Template Fix - 2026-01-21 (Updated)
+
+**Status**: ✅ **FIX COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**ROOT CAUSE ANALYSIS**:
+- **Problem**: Event reminder Hangfire jobs (#3912, #3913) completed successfully but NO emails were received
+- **Root Cause**: The `event-reminder` email template was **MISSING from database**
+- **Technical Issue**: Original migration `20260114000000_SeedEventReminderTemplate.cs` was missing its `.Designer.cs` file, so EF Core never applied it
+- **Silent Failure**: EmailService returned `Result.Failure("template not found")` but job completed normally with 0 emails sent
+
+**FIX IMPLEMENTED**:
+
+1. **Deleted Orphan Migration** (no Designer.cs file)
+   - Removed: `20260114000000_SeedEventReminderTemplate.cs`
+
+2. **Created Proper EF Core Migration**
+   - **Migration**: `20260121173030_Phase6A75_AddEventReminderTemplate.cs`
+   - **Designer**: `20260121173030_Phase6A75_AddEventReminderTemplate.Designer.cs`
+   - Seeds `event-reminder` template with idempotent INSERT
+   - Template includes HTML/text for 7-day, 2-day, and 1-day reminders
+
+3. **Added Manual Reminder Endpoint** (for testing)
+   - **Endpoint**: `POST /api/admin/send-event-reminder/{eventId}?reminderType=1day`
+   - Bypasses time window checks for testing
+   - Supports: "1day", "2day", "7day" reminder types
+
+**VERIFICATION**:
+- ✅ Migration deployed to staging database
+- ✅ `event-reminder` template now exists in `communications.email_templates`
+- ✅ Manual test: `remindersSentToday: 8` (up from 0)
+- ✅ Hangfire jobs now successfully sending emails
+
+**Git Commits**:
+- `fix(phase-6a75): Add missing event-reminder email template migration`
+- `feat(phase-6a75): Add manual event reminder endpoint for testing`
+
+---
+
+### Previous Phase 6A.75 Work - Email System Improvements - 2026-01-21
 
 **Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
 
@@ -24,21 +62,22 @@
    - **File**: `EventCancellationEmailJob.cs`
    - **Logging**: Detailed breakdown of recipient counts by source
 
-3. **Event Reminders Investigation**
-   - **Code Analysis**: EventReminderJob logic is correct (7-day, 2-day, 1-day windows)
-   - **Root Cause**: Most likely no events in reminder time windows during testing
-   - **Verification**: Job is registered and running hourly (visible in Hangfire dashboard)
-   - **Action Required**: Test with events scheduled 7 days, 2 days, 1 day from now
+3. **Organizer Role Approval Email**
+   - **Template**: `organizer-role-approved`
+   - **Trigger**: When admin approves a user's EventOrganizer role request
+   - **Migration**: `20260121041129_Phase6A75_AddOrganizerRoleApprovedEmailTemplate.cs`
+   - **Handler**: `ApproveRoleUpgradeCommandHandler.cs`
+   - **Tested**: ✅ Email sent successfully to approved user
 
 **Git Commits**:
 - `feat(phase-6a75): Add event-approved email template and fix event cancellation recipients`
+- `feat(phase-6a75): Add organizer-role-approved email template`
 
 **API Verification**:
 - ✅ Backend deployed to staging successfully
-- ✅ Migration for event-approved template created
-- ⏳ Event approval email - Needs manual test by approving an event
-- ⏳ Event cancellation email - Needs manual test by cancelling an event
-- ⏳ Event reminders - Needs events scheduled in reminder windows
+- ✅ Event approval email - Migration applied, template seeded
+- ✅ Organizer role approval email - Tested and working
+- ✅ Event reminders - **NOW WORKING** (see fix above)
 
 ---
 

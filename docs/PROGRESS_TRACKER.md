@@ -1,9 +1,48 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-20 - Phase 6A.74 Part 14 Fixes: Newsletter API & UI Fixes COMPLETE*
+*Last Updated: 2026-01-21 - Phase 6A.75: Email System Improvements COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.74 Part 14 Fixes ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.75 Email System Improvements ✅ COMPLETE
+
+### Phase 6A.75 - Email System Improvements - 2026-01-21
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Issues Fixed**:
+
+1. **Event Approval Email - Now Uses Database Template**
+   - **Before**: EventApprovedEventHandler generated inline HTML (maintenance nightmare)
+   - **After**: Uses `event-approved` database template with LankaConnect branding
+   - **Files**: `EventApprovedEventHandler.cs`, `EventApprovedEventHandlerTests.cs`
+   - **Migration**: `20260120235127_Phase6A75_AddEventApprovedEmailTemplate.cs`
+   - **Features**: Brand gradient header/footer, View Event + Manage Event CTA buttons
+
+2. **Event Cancellation Email - Now Includes Sign-up Committed Users**
+   - **Before**: Recipients: Registrations + Email Groups + Newsletter Subscribers
+   - **After**: Recipients: Registrations + **Sign-up Commitments** + Email Groups + Newsletter Subscribers
+   - **File**: `EventCancellationEmailJob.cs`
+   - **Logging**: Detailed breakdown of recipient counts by source
+
+3. **Event Reminders Investigation**
+   - **Code Analysis**: EventReminderJob logic is correct (7-day, 2-day, 1-day windows)
+   - **Root Cause**: Most likely no events in reminder time windows during testing
+   - **Verification**: Job is registered and running hourly (visible in Hangfire dashboard)
+   - **Action Required**: Test with events scheduled 7 days, 2 days, 1 day from now
+
+**Git Commits**:
+- `feat(phase-6a75): Add event-approved email template and fix event cancellation recipients`
+
+**API Verification**:
+- ✅ Backend deployed to staging successfully
+- ✅ Migration for event-approved template created
+- ⏳ Event approval email - Needs manual test by approving an event
+- ⏳ Event cancellation email - Needs manual test by cancelling an event
+- ⏳ Event reminders - Needs events scheduled in reminder windows
+
+---
+
+## 🔧 Previous Session Status - Phase 6A.74 Part 14 Fixes ✅ COMPLETE
 
 ### Phase 6A.74 Part 14 - Post-Deployment Fixes - 2026-01-20
 

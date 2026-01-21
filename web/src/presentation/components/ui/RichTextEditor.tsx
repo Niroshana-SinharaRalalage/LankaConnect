@@ -109,16 +109,26 @@ export function RichTextEditor({
   });
 
   // Phase 6A.74 Part 14 Fix #4: Improved content sync for form reset
-  // Use a ref to track the last content we set to avoid unnecessary updates
-  const lastContentRef = useRef<string>(content);
+  // Track if we've initialized the content (ref persists across renders)
+  const isInitializedRef = useRef<boolean>(false);
+  const lastContentRef = useRef<string>('');
 
-  // Update editor content when prop changes (for form reset)
-  // Compare with ref to avoid infinite loops and ensure proper sync
+  // Update editor content when prop changes (for form reset in edit mode)
+  // This handles the case where newsletter data loads after the editor initializes
   useEffect(() => {
-    if (editor && content !== lastContentRef.current) {
-      // Content prop changed from outside (e.g., form reset with newsletter data)
+    if (!editor) return;
+
+    // Skip if content is empty or same as what we already set
+    if (!content || content === '<p></p>' || content === lastContentRef.current) {
+      return;
+    }
+
+    // Always update if we haven't initialized yet, or if content truly changed
+    if (!isInitializedRef.current || content !== lastContentRef.current) {
+      console.log('[RichTextEditor] Syncing content:', content.substring(0, 100));
       editor.commands.setContent(content, { emitUpdate: false });
       lastContentRef.current = content;
+      isInitializedRef.current = true;
     }
   }, [content, editor]);
 

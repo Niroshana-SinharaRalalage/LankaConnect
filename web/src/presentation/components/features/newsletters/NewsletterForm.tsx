@@ -143,13 +143,22 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
 
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Keep placeholder text and append event links below with explicit line breaks
+    // Phase 6A.74 Part 14 Fix #2: Styled button links centered with separators
+    // Keep placeholder text and append styled event link buttons below
     const eventLinksTemplate = `
 <p>[Write your news letter content here.....]</p>
 <p><br></p>
-<p>Learn more about the event: <a href="${frontendUrl}/events/${selectedEvent.id}">View Event Details</a></p>
+<p style="text-align: center;">─────────────────────────────────────</p>
 <p><br></p>
-<p>Checkout the Sign Up lists: <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups">View Event Sign-up Lists</a></p>
+<p style="text-align: center;">
+  <a href="${frontendUrl}/events/${selectedEvent.id}" style="display: inline-block; padding: 12px 24px; background-color: #FF7900; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 0 8px;">View Event Details</a>
+</p>
+<p><br></p>
+<p style="text-align: center;">
+  <a href="${frontendUrl}/events/${selectedEvent.id}#sign-ups" style="display: inline-block; padding: 12px 24px; background-color: #8B1538; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 0 8px;">View Event Sign-up Lists</a>
+</p>
+<p><br></p>
+<p style="text-align: center;">─────────────────────────────────────</p>
     `.trim();
 
     setValue('description', eventLinksTemplate);

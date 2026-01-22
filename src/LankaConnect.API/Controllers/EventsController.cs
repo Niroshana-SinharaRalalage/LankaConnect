@@ -34,6 +34,7 @@ using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
 using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
 using LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
+using LankaConnect.Application.Events.Queries.GetEventReminderHistory;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
@@ -2061,6 +2062,26 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("[Phase 6A.61] API: Getting notification history for event {EventId}", id);
 
         var query = new GetEventNotificationHistoryQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.76: Get event reminder history
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>List of reminder history records aggregated by type and date</returns>
+    [HttpGet("{id:guid}/reminder-history")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(List<EventReminderHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEventReminderHistory(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.76] API: Getting reminder history for event {EventId}", id);
+
+        var query = new GetEventReminderHistoryQuery(id);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

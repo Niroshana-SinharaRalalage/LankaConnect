@@ -11,6 +11,7 @@ import {
   useEventNotificationHistory,
   useEventById,
   useSendEventReminder,
+  useEventReminderHistory,
 } from '@/presentation/hooks/useEvents';
 import { EventStatus } from '@/infrastructure/api/types/events.types';
 import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
@@ -77,6 +78,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
 
   // Phase 6A.76: Reminder functionality
   const sendReminderMutation = useSendEventReminder();
+  const { data: reminderHistory, isLoading: reminderHistoryLoading } = useEventReminderHistory(eventId);
 
   // Handlers
   // Phase 6A.61: Send event notification email
@@ -181,7 +183,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
           </div>
         )}
 
-        {/* Email Send History */}
+        {/* Email Send History - Phase 6A.76: Updated to match newsletter format */}
         <div className="border-t pt-4">
           <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Email Send History</h4>
           {historyLoading && <div className="text-sm text-gray-500">Loading history...</div>}
@@ -190,27 +192,22 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             <div className="text-sm text-gray-500">No emails sent yet</div>
           )}
           {history && history.length > 0 && (
-            <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2">
               {history.map((record) => (
-                <div key={record.id} className="border-b pb-3 last:border-b-0">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Sent on {new Date(record.sentAt).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        By: {record.sentByUserName}
-                      </p>
-                    </div>
-                    {/* Consolidated stats on single line */}
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">{record.recipientCount}</span> recipients
-                      <span className="text-green-600 ml-3">✓ {record.successfulSends} sent</span>
-                      {record.failedSends > 0 && (
-                        <span className="text-red-600 ml-3">✗ {record.failedSends} failed</span>
-                      )}
-                    </p>
-                  </div>
+                <div key={record.id} className="border-b pb-2 last:border-b-0">
+                  <p className="text-sm text-gray-700 flex items-center flex-wrap gap-1">
+                    <Mail className="w-3 h-3 text-[#6366F1]" />
+                    <span className="font-medium">{record.recipientCount}</span>
+                    <span>recipient{record.recipientCount === 1 ? '' : 's'}</span>
+                    <span className="text-gray-500">(from event registrations)</span>
+                    <span className="text-green-600">✓ {record.successfulSends} sent</span>
+                    {record.failedSends > 0 && (
+                      <span className="text-red-600">✗ {record.failedSends} failed</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Sent on {new Date(record.sentAt).toLocaleString()} by {record.sentByUserName}
+                  </p>
                 </div>
               ))}
             </div>
@@ -273,6 +270,33 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             <div className="mt-4 text-xs text-gray-500">
               <strong>Note:</strong> Reminders are tracked to prevent duplicates.
               If attendees have already received this reminder type, they will be skipped.
+            </div>
+
+            {/* Phase 6A.76: Reminder History */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Reminder Send History</h4>
+              {reminderHistoryLoading && <div className="text-sm text-gray-500">Loading history...</div>}
+              {!reminderHistoryLoading && (!reminderHistory || reminderHistory.length === 0) && (
+                <div className="text-sm text-gray-500">No reminders sent yet</div>
+              )}
+              {!reminderHistoryLoading && reminderHistory && reminderHistory.length > 0 && (
+                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2">
+                  {reminderHistory.map((record, index) => (
+                    <div key={`${record.reminderType}-${record.sentDate}-${index}`} className="border-b pb-2 last:border-b-0">
+                      <p className="text-sm text-gray-700 flex items-center flex-wrap gap-1">
+                        <Mail className="w-3 h-3 text-[#6366F1]" />
+                        <span className="font-medium">{record.recipientCount}</span>
+                        <span>recipient{record.recipientCount === 1 ? '' : 's'}</span>
+                        <span className="text-gray-500">({record.reminderTypeLabel})</span>
+                        <span className="text-green-600">✓ sent</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Sent on {new Date(record.sentDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (

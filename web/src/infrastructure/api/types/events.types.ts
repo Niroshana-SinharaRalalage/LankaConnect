@@ -1048,3 +1048,14 @@ export interface EventNotificationHistoryDto {
   successfulSends: number;
   failedSends: number;
 }
+
+/**
+ * Phase 6A.76: Event reminder history DTO
+ * Matches backend EventReminderHistoryDto
+ */
+export interface EventReminderHistoryDto {
+  reminderType: string;
+  reminderTypeLabel: string;
+  sentDate: string;
+  recipientCount: number;
+}

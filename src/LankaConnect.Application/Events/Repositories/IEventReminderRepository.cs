@@ -1,3 +1,5 @@
+using LankaConnect.Application.Events.Common;
+
 namespace LankaConnect.Application.Events.Repositories;
 
 /// <summary>
@@ -22,5 +24,13 @@ public interface IEventReminderRepository
         Guid registrationId,
         string reminderType,
         string recipientEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.76: Get reminder history for an event, aggregated by type and date.
+    /// Returns summary records showing when reminders were sent and to how many recipients.
+    /// </summary>
+    Task<List<EventReminderHistoryDto>> GetReminderHistoryAsync(
+        Guid eventId,
         CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -187,6 +188,95 @@ public class EventReminderRepository : IEventReminderRepository
                     stopwatch.ElapsedMilliseconds,
                     ex.Message,
                     (ex as PostgresException)?.SqlState ?? "N/A");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.76: Get reminder history for an event, aggregated by type and date
+    /// </summary>
+    public async Task<List<EventReminderHistoryDto>> GetReminderHistoryAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetReminderHistory"))
+        using (LogContext.PushProperty("EntityType", "EventReminder"))
+        using (LogContext.PushProperty("EventId", eventId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetReminderHistoryAsync START: EventId={EventId}",
+                eventId);
+
+            try
+            {
+                var connection = _context.Database.GetDbConnection() as NpgsqlConnection;
+                if (connection == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "GetReminderHistoryAsync FAILED: Unable to get database connection, Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+                    return new List<EventReminderHistoryDto>();
+                }
+
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync(cancellationToken);
+                }
+
+                // Aggregate by reminder_type and date (truncated to day)
+                await using var cmd = new NpgsqlCommand(
+                    @"SELECT
+                        reminder_type,
+                        DATE(sent_at) as sent_date,
+                        COUNT(*) as recipient_count
+                      FROM events.event_reminders_sent
+                      WHERE event_id = @eventId
+                      GROUP BY reminder_type, DATE(sent_at)
+                      ORDER BY sent_date DESC, reminder_type
+                      LIMIT 20",
+                    connection);
+
+                cmd.Parameters.AddWithValue("@eventId", eventId);
+
+                var results = new List<EventReminderHistoryDto>();
+                await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    var reminderType = reader.GetString(0);
+                    results.Add(new EventReminderHistoryDto
+                    {
+                        ReminderType = reminderType,
+                        ReminderTypeLabel = EventReminderHistoryDto.GetReminderTypeLabel(reminderType),
+                        SentDate = reader.GetDateTime(1),
+                        RecipientCount = reader.GetInt32(2)
+                    });
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetReminderHistoryAsync COMPLETE: EventId={EventId}, RecordCount={RecordCount}, Duration={ElapsedMs}ms",
+                    eventId,
+                    results.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(ex,
+                    "GetReminderHistoryAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    eventId,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message);
+
+                return new List<EventReminderHistoryDto>();
             }
         }
     }

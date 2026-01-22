@@ -840,6 +840,18 @@ export function useSendEventReminder() {
 }
 
 /**
+ * Phase 6A.76: Hook to fetch event reminder history
+ */
+export function useEventReminderHistory(eventId: string) {
+  return useQuery({
+    queryKey: ['eventReminderHistory', eventId],
+    queryFn: () => eventsRepository.getEventReminderHistory(eventId),
+    enabled: !!eventId,
+    refetchInterval: 30000 // Refresh every 30 seconds to show updated statistics
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -862,4 +874,5 @@ export default {
   useSendEventNotification,
   useEventNotificationHistory,
   useSendEventReminder,
+  useEventReminderHistory,
 };

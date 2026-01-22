@@ -40,6 +40,8 @@ import type {
   EventAttendeesResponse,
   // Phase 6A.61: Event Notification
   EventNotificationHistoryDto,
+  // Phase 6A.76: Event Reminder History
+  EventReminderHistoryDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -959,6 +961,17 @@ export class EventsRepository {
   async getEventNotificationHistory(eventId: string): Promise<EventNotificationHistoryDto[]> {
     return await apiClient.get<EventNotificationHistoryDto[]>(
       `${this.basePath}/${eventId}/notification-history`
+    );
+  }
+
+  /**
+   * Phase 6A.76: Get event reminder history
+   * @param eventId - Event ID (GUID)
+   * @returns List of reminder history records aggregated by type and date
+   */
+  async getEventReminderHistory(eventId: string): Promise<EventReminderHistoryDto[]> {
+    return await apiClient.get<EventReminderHistoryDto[]>(
+      `${this.basePath}/${eventId}/reminder-history`
     );
   }
 }

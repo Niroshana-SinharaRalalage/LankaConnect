@@ -986,17 +986,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* Sign-Up Management Section */}
-        {/* Wait for auth hydration before rendering to ensure userId is available */}
+        {/* Phase 6A.76: Removed _hasHydrated condition to allow non-members to view sign-up lists */}
+        {/* The component handles userId being undefined for anonymous users */}
         {/* Issue #4 Fix: Add id="sign-ups" anchor for newsletter link navigation */}
-        {_hasHydrated && (
-          <div id="sign-ups" className="mt-8">
-            <SignUpManagementSection
-              eventId={id}
-              userId={user?.userId}
-              isOrganizer={false}
-            />
-          </div>
-        )}
+        <div id="sign-ups" className="mt-8">
+          <SignUpManagementSection
+            eventId={id}
+            userId={user?.userId}
+            isOrganizer={false}
+          />
+        </div>
       </div>
 
       <Footer />

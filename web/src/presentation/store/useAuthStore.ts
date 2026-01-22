@@ -198,6 +198,14 @@ export const useAuthStore = create<AuthState>()(
             } catch (error) {
               console.error('❌ [AUTH STORE] Failed to manually restore from localStorage:', error);
             }
+
+            // Phase 6A.76 FIX: For anonymous users (no stored auth), we still need to mark hydration as complete
+            // This ensures components like SignUpManagementSection render for non-authenticated users
+            setTimeout(() => {
+              useAuthStore.setState({ _hasHydrated: true });
+              console.log('✅ [AUTH STORE] Marked as hydrated for anonymous user');
+            }, 0);
+            return;
           }
 
           // Phase 6A.56 FIX: Ensure isAuthenticated flag is correctly restored

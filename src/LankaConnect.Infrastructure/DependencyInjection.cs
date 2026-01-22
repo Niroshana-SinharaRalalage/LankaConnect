@@ -245,6 +245,9 @@ public static class DependencyInjection
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
 
+        // Phase 6A.76: Contact Us Feature - Register Contact Settings
+        services.Configure<ContactSettings>(configuration.GetSection(ContactSettings.SectionName));
+
         // Phase 0 (Email System): Register new configuration options
         services.Configure<ApplicationUrlsOptions>(configuration.GetSection(ApplicationUrlsOptions.SectionName));
         services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.SectionName));

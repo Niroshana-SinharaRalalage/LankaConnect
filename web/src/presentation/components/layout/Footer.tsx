@@ -59,13 +59,14 @@ const Footer: React.FC = () => {
     setCurrentYear(new Date().getFullYear());
   }, []);
 
+  // Phase 6A.76: Updated footer links - removed Cultural Hub, Services, Sell Items,
+  // entire Resources category, Careers, Press. Renamed "Our Story" to "About Us".
   const linkCategories: LinkCategory[] = [
     {
       title: 'Community',
       links: [
         { label: 'Events', href: '/events' },
         { label: 'Forums', href: '/forums' },
-        { label: 'Cultural Hub', href: '/culture' },
         ...(isAuthenticated ? [{ label: 'Dashboard', href: '/dashboard' }] : []),
       ],
     },
@@ -74,26 +75,13 @@ const Footer: React.FC = () => {
       links: [
         { label: 'Browse Listings', href: '/marketplace' },
         { label: 'Businesses', href: '/business' },
-        { label: 'Services', href: '/services' },
-        { label: 'Sell Items', href: '/marketplace/sell' },
-      ],
-    },
-    {
-      title: 'Resources',
-      links: [
-        { label: 'Help Center', href: '/help' },
-        { label: 'Guidelines', href: '/guidelines' },
-        { label: 'Safety', href: '/safety' },
-        { label: 'Blog', href: '/blog' },
       ],
     },
     {
       title: 'About',
       links: [
-        { label: 'Our Story', href: '/about' },
+        { label: 'About Us', href: '/about' },
         { label: 'Contact Us', href: '/contact' },
-        { label: 'Careers', href: '/careers' },
-        { label: 'Press', href: '/press' },
       ],
     },
   ];
@@ -223,8 +211,8 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Links Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        {/* Links Grid - Phase 6A.76: Changed from 4 to 3 columns after removing Resources category */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {linkCategories.map((category) => (
             <div key={category.title}>
               <h4 className="text-white font-semibold mb-4">{category.title}</h4>

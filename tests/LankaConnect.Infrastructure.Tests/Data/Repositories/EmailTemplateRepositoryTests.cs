@@ -508,7 +508,7 @@ public class EmailTemplateRepositoryTests : IDisposable
         var templates = new List<EmailTemplate>
         {
             CreateValidEmailTemplate("welcome-email", EmailType.Welcome, "Transactional", true),
-            CreateValidEmailTemplate("password-reset", EmailType.PasswordReset, "Transactional", true),
+            CreateValidEmailTemplate("template-password-reset", EmailType.PasswordReset, "Transactional", true),
             CreateValidEmailTemplate("email-verification", EmailType.EmailVerification, "Transactional", false),
             CreateValidEmailTemplate("business-notification", EmailType.BusinessNotification, "Marketing", true),
             CreateValidEmailTemplate("welcome-premium", EmailType.Welcome, "Marketing", false)

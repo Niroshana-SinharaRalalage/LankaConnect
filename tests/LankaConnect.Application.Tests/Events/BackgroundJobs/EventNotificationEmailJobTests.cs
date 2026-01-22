@@ -179,7 +179,7 @@ public class EventNotificationEmailJobTests
         // Should send to 4 recipients (2 from groups + 2 from registrations)
         _mockEmailService.Verify(
             x => x.SendTemplatedEmailAsync(
-                "event-details",
+                "template-event-details-publication",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
@@ -229,11 +229,11 @@ public class EventNotificationEmailJobTests
 
         // One succeeds, one fails
         _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync("event-details", "success@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SendTemplatedEmailAsync("template-event-details-publication", "success@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync("event-details", "fail@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SendTemplatedEmailAsync("template-event-details-publication", "fail@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure("SMTP error"));
 
         // Act
@@ -242,7 +242,7 @@ public class EventNotificationEmailJobTests
         // Assert
         _mockEmailService.Verify(
             x => x.SendTemplatedEmailAsync(
-                "event-details",
+                "template-event-details-publication",
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),

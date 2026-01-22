@@ -53,7 +53,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -78,7 +78,7 @@ public class SendPasswordResetCommandHandlerTests
         // Verify email was sent with correct template
         _mockEmailService.Verify(
             e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.Is<Dictionary<string, object>>(d =>
                     d.ContainsKey("UserName") &&
@@ -241,7 +241,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -261,7 +261,7 @@ public class SendPasswordResetCommandHandlerTests
         // Verify email WAS sent (rate limiting bypassed)
         _mockEmailService.Verify(
             e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
@@ -285,7 +285,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -320,7 +320,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -352,7 +352,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -386,7 +386,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))

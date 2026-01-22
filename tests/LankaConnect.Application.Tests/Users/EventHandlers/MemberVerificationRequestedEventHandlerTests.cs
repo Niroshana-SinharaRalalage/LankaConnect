@@ -66,9 +66,9 @@ public class MemberVerificationRequestedEventHandlerTests
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert
+        // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "member-email-verification",
+            "template-membership-email-verification",
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("Email") &&
@@ -111,9 +111,9 @@ public class MemberVerificationRequestedEventHandlerTests
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert
+        // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "member-email-verification",
+            "template-membership-email-verification",
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("UserName") &&
@@ -150,9 +150,9 @@ public class MemberVerificationRequestedEventHandlerTests
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert
+        // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "member-email-verification",
+            "template-membership-email-verification",
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("UserName") &&

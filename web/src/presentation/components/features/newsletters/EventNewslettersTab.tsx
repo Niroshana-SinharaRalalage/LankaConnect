@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Send, FileText, ExternalLink, Bell } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
@@ -63,8 +62,7 @@ export interface EventNewslettersTabProps {
 export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTabProps) {
   const router = useRouter();
 
-  // Phase 6A.76: Reminder type state
-  const [reminderType, setReminderType] = useState<string>('1day');
+  // Phase 6A.76: Custom reminder type (automatic reminders handled by system)
 
   // Fetch event details to check status
   const { data: event } = useEventById(eventId);
@@ -98,10 +96,10 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
     }
   };
 
-  // Phase 6A.76: Send manual event reminder
+  // Phase 6A.76: Send manual event reminder (always custom type - automatic reminders handled by system)
   const handleSendReminder = async () => {
     try {
-      const result = await sendReminderMutation.mutateAsync({ eventId, reminderType });
+      const result = await sendReminderMutation.mutateAsync({ eventId, reminderType: 'custom' });
       if (result.recipientCount === 0) {
         toast.success(
           'No registrations found for this event. Reminder not sent.',
@@ -199,7 +197,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
                     <Mail className="w-3 h-3 text-[#6366F1]" />
                     <span className="font-medium">{record.recipientCount}</span>
                     <span>recipient{record.recipientCount === 1 ? '' : 's'}</span>
-                    <span className="text-gray-500">(from event registrations)</span>
+                    <span className="text-gray-500">(from email groups, subscribers & registrations)</span>
                     <span className="text-green-600">✓ {record.successfulSends} sent</span>
                     {record.failedSends > 0 && (
                       <span className="text-red-600">✗ {record.failedSends} failed</span>
@@ -231,45 +229,21 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
           <>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
-                Send reminder emails to all registered attendees for this event.
-                Choose a reminder type to customize the message. Automatic reminders are also
-                sent 7 days, 2 days, and 1 day before the event.
+                Send a custom reminder email to all registered attendees for this event.
+                Automatic reminders are sent 7 days, 2 days, and 1 day before the event by the system.
               </p>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex-1 max-w-xs">
-                <label htmlFor="reminder-type" className="block text-sm font-medium text-gray-700 mb-1">
-                  Reminder Type
-                </label>
-                <select
-                  id="reminder-type"
-                  value={reminderType}
-                  onChange={(e) => setReminderType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-[#FF7900]"
-                >
-                  <option value="1day">Tomorrow (1 day)</option>
-                  <option value="2day">In 2 days</option>
-                  <option value="7day">In 1 week</option>
-                  <option value="custom">Custom (general reminder)</option>
-                </select>
-              </div>
-              <div className="pt-6">
-                <Button
-                  onClick={handleSendReminder}
-                  disabled={sendReminderMutation.isPending}
-                  className="flex items-center gap-2 text-white"
-                  style={{ background: '#FF7900' }}
-                >
-                  <Bell className="h-4 w-4" />
-                  {sendReminderMutation.isPending ? 'Sending...' : 'Send Reminder'}
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-4 text-xs text-gray-500">
-              <strong>Note:</strong> Reminders are tracked to prevent duplicates.
-              If attendees have already received this reminder type, they will be skipped.
+              <Button
+                onClick={handleSendReminder}
+                disabled={sendReminderMutation.isPending}
+                className="flex items-center gap-2 text-white"
+                style={{ background: '#FF7900' }}
+              >
+                <Bell className="h-4 w-4" />
+                {sendReminderMutation.isPending ? 'Sending...' : 'Send Custom Reminder'}
+              </Button>
             </div>
 
             {/* Phase 6A.76: Reminder History */}

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
@@ -5,6 +6,7 @@ using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Queries.GetNewslettersByCreator;
 
@@ -33,81 +35,93 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
 
     public async Task<Result<List<NewsletterDto>>> Handle(GetNewslettersByCreatorQuery request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "[Phase 6A.74] GetNewslettersByCreatorQuery STARTED - User {UserId}",
-            _currentUserService.UserId);
-
-        try
+        using (LogContext.PushProperty("Operation", "GetNewslettersByCreator"))
+        using (LogContext.PushProperty("EntityType", "Newsletter"))
+        using (LogContext.PushProperty("CreatorUserId", _currentUserService.UserId))
         {
-            var newsletters = await _newsletterRepository.GetByCreatorAsync(_currentUserService.UserId, cancellationToken);
-
-            // Phase 6A.74 Part 13 Issue #1: Get recipient counts from NewsletterEmailHistory
-            var newsletterIds = newsletters.Select(n => n.Id).ToList();
-            var dbContext = _dbContext as DbContext;
-
-            // Get history records for all newsletters in a single query
-            // Phase 6A.74 Part 14 Fix: Group by NewsletterId and take most recent (newsletters can now be sent multiple times)
-            var historyRecords = dbContext != null
-                ? await dbContext.Set<NewsletterEmailHistory>()
-                    .Where(h => newsletterIds.Contains(h.NewsletterId))
-                    .GroupBy(h => h.NewsletterId)
-                    .Select(g => g.OrderByDescending(h => h.CreatedAt).First())
-                    .ToDictionaryAsync(h => h.NewsletterId, cancellationToken)
-                : new Dictionary<Guid, NewsletterEmailHistory>();
-
-            var dtoList = newsletters.Select(newsletter =>
-            {
-                // Get history record if exists
-                historyRecords.TryGetValue(newsletter.Id, out var history);
-
-                return new NewsletterDto
-                {
-                    Id = newsletter.Id,
-                    Title = newsletter.Title.Value,
-                    Description = newsletter.Description.Value,
-                    CreatedByUserId = newsletter.CreatedByUserId,
-                    CreatedByUserName = string.Empty,
-                    EventId = newsletter.EventId,
-                    EventTitle = null,
-                    Status = newsletter.Status,
-                    PublishedAt = newsletter.PublishedAt,
-                    SentAt = newsletter.SentAt,
-                    ExpiresAt = newsletter.ExpiresAt,
-                    IncludeNewsletterSubscribers = newsletter.IncludeNewsletterSubscribers,
-                    TargetAllLocations = newsletter.TargetAllLocations,
-                    IsAnnouncementOnly = newsletter.IsAnnouncementOnly,
-                    CreatedAt = newsletter.CreatedAt,
-                    UpdatedAt = newsletter.UpdatedAt,
-                    EmailGroupIds = newsletter.EmailGroupIds,
-                    EmailGroups = new List<EmailGroupSummaryDto>(),
-                    MetroAreaIds = newsletter.MetroAreaIds,
-                    MetroAreas = new List<MetroAreaSummaryDto>(),
-                    // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
-                    TotalRecipientCount = history?.TotalRecipientCount,
-                    NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,
-                    EventEmailGroupCount = history?.EventEmailGroupCount,
-                    SubscriberCount = history?.SubscriberCount,
-                    EventRegistrationCount = history?.EventRegistrationCount,
-                    SuccessfulSends = history?.SuccessfulSends,
-                    FailedSends = history?.FailedSends,
-                    // Legacy fields for backwards compatibility
-                    EmailGroupRecipientCount = history?.EmailGroupRecipientCount,
-                    SubscriberRecipientCount = history?.SubscriberRecipientCount
-                };
-            }).ToList();
+            var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[Phase 6A.74] Retrieved {Count} newsletters for user {UserId}",
-                dtoList.Count, _currentUserService.UserId);
-
-            return Result<List<NewsletterDto>>.Success(dtoList);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "[Phase 6A.74] ERROR retrieving newsletters for user {UserId}",
+                "GetNewslettersByCreator START: CreatorUserId={UserId}",
                 _currentUserService.UserId);
-            throw;
+
+            try
+            {
+                var newsletters = await _newsletterRepository.GetByCreatorAsync(_currentUserService.UserId, cancellationToken);
+
+                // Phase 6A.74 Part 13 Issue #1: Get recipient counts from NewsletterEmailHistory
+                var newsletterIds = newsletters.Select(n => n.Id).ToList();
+                var dbContext = _dbContext as DbContext;
+
+                // Get history records for all newsletters in a single query
+                // Phase 6A.74 Part 14 Fix: Group by NewsletterId and take most recent (newsletters can now be sent multiple times)
+                var historyRecords = dbContext != null
+                    ? await dbContext.Set<NewsletterEmailHistory>()
+                        .Where(h => newsletterIds.Contains(h.NewsletterId))
+                        .GroupBy(h => h.NewsletterId)
+                        .Select(g => g.OrderByDescending(h => h.CreatedAt).First())
+                        .ToDictionaryAsync(h => h.NewsletterId, cancellationToken)
+                    : new Dictionary<Guid, NewsletterEmailHistory>();
+
+                var dtoList = newsletters.Select(newsletter =>
+                {
+                    // Get history record if exists
+                    historyRecords.TryGetValue(newsletter.Id, out var history);
+
+                    return new NewsletterDto
+                    {
+                        Id = newsletter.Id,
+                        Title = newsletter.Title.Value,
+                        Description = newsletter.Description.Value,
+                        CreatedByUserId = newsletter.CreatedByUserId,
+                        CreatedByUserName = string.Empty,
+                        EventId = newsletter.EventId,
+                        EventTitle = null,
+                        Status = newsletter.Status,
+                        PublishedAt = newsletter.PublishedAt,
+                        SentAt = newsletter.SentAt,
+                        ExpiresAt = newsletter.ExpiresAt,
+                        IncludeNewsletterSubscribers = newsletter.IncludeNewsletterSubscribers,
+                        TargetAllLocations = newsletter.TargetAllLocations,
+                        IsAnnouncementOnly = newsletter.IsAnnouncementOnly,
+                        CreatedAt = newsletter.CreatedAt,
+                        UpdatedAt = newsletter.UpdatedAt,
+                        EmailGroupIds = newsletter.EmailGroupIds,
+                        EmailGroups = new List<EmailGroupSummaryDto>(),
+                        MetroAreaIds = newsletter.MetroAreaIds,
+                        MetroAreas = new List<MetroAreaSummaryDto>(),
+                        // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
+                        TotalRecipientCount = history?.TotalRecipientCount,
+                        NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,
+                        EventEmailGroupCount = history?.EventEmailGroupCount,
+                        SubscriberCount = history?.SubscriberCount,
+                        EventRegistrationCount = history?.EventRegistrationCount,
+                        SuccessfulSends = history?.SuccessfulSends,
+                        FailedSends = history?.FailedSends,
+                        // Legacy fields for backwards compatibility
+                        EmailGroupRecipientCount = history?.EmailGroupRecipientCount,
+                        SubscriberRecipientCount = history?.SubscriberRecipientCount
+                    };
+                }).ToList();
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetNewslettersByCreator COMPLETE: CreatorUserId={UserId}, NewsletterCount={Count}, WithHistoryCount={HistoryCount}, Duration={ElapsedMs}ms",
+                    _currentUserService.UserId, dtoList.Count, historyRecords.Count, stopwatch.ElapsedMilliseconds);
+
+                return Result<List<NewsletterDto>>.Success(dtoList);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetNewslettersByCreator FAILED: Exception occurred - CreatorUserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    _currentUserService.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
     }
 }

@@ -90,7 +90,7 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
 
             // Phase 6A.75: Use templated email instead of inline HTML
             var result = await _emailService.SendTemplatedEmailAsync(
-                "event-approved",
+                "template-event-approval",
                 organizer.Email.Value,
                 parameters,
                 cancellationToken);

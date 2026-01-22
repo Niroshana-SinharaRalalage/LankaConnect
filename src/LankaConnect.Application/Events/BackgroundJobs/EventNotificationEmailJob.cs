@@ -157,7 +157,7 @@ public class EventNotificationEmailJob
                         correlationId, emailIndex, recipients.Count, email);
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "event-details",
+                        "template-event-details-publication",
                         email,
                         templateData,
                         cancellationToken);

@@ -104,7 +104,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     };
 
                     await _emailService.SendTemplatedEmailAsync(
-                        "password-changed-confirmation",
+                        "template-password-change-confirmation",
                         user.Email.Value,
                         templateParameters,
                         CancellationToken.None);

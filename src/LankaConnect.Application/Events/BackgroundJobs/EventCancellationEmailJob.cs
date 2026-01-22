@@ -227,7 +227,7 @@ public class EventCancellationEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "event-cancelled-notification",
+                        "template-event-cancellation-notifications",
                         email,
                         parameters,
                         CancellationToken.None);

@@ -110,7 +110,7 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
 
             // Send password reset email
             var sendResult = await _emailService.SendTemplatedEmailAsync(
-                "password-reset",
+                "template-password-reset",
                 user.Email.Value,
                 templateParameters,
                 cancellationToken);

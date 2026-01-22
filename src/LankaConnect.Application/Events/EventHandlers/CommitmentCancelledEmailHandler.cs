@@ -88,7 +88,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
 
             // Send templated email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "signup-commitment-cancelled",
+                "template-signup-list-commitment-cancellation",
                 user.Email.Value,
                 templateData,
                 cancellationToken);

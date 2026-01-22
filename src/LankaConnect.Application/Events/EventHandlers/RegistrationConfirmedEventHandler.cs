@@ -138,7 +138,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
             var result = await _emailService.SendTemplatedEmailAsync(
-                "registration-confirmation",
+                "template-free-event-registration-confirmation",
                 user.Email.Value,
                 parameters,
                 cancellationToken);

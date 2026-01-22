@@ -75,7 +75,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
 
             // Send templated email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "signup-commitment-confirmation",
+                "template-signup-list-commitment-confirmation",
                 user.Email.Value,
                 templateData,
                 cancellationToken);

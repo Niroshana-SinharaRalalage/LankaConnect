@@ -76,7 +76,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
 
             // Send templated email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "signup-commitment-updated",
+                "template-signup-list-commitment-update",
                 user.Email.Value,
                 templateData,
                 cancellationToken);

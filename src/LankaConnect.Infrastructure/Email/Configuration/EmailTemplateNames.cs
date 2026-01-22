@@ -5,60 +5,136 @@ namespace LankaConnect.Infrastructure.Email.Configuration;
 /// Eliminates magic strings and provides compile-time checking.
 /// Templates are stored in database and referenced by these names.
 /// Phase 0 - Email System Configuration Infrastructure
+/// Phase 6A.76 - Updated to use descriptive 'template-*' naming convention
 /// </summary>
 public static class EmailTemplateNames
 {
     /// <summary>
     /// Free event registration confirmation email.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
-    /// Status: ✅ Existing (working)
     /// </summary>
-    public const string FreeEventRegistration = "FreeEventRegistration";
+    public const string FreeEventRegistration = "template-free-event-registration-confirmation";
 
     /// <summary>
     /// Paid event registration confirmation email (sent after payment).
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
     ///           {Amount}, {Currency}, {TicketUrl}, {QRCode}
-    /// Status: 🔧 Broken (Phase 6A.49 - PaymentCompletedEvent not dispatched)
     /// </summary>
-    public const string PaidEventRegistration = "PaidEventRegistration";
+    public const string PaidEventRegistration = "template-paid-event-registration-confirmation-with-ticket";
 
     /// <summary>
     /// Event reminder email (sent before event starts).
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
-    /// Status: ✅ Existing (working)
     /// </summary>
-    public const string EventReminder = "EventReminder";
+    public const string EventReminder = "template-event-reminder";
 
     /// <summary>
     /// Member email verification email.
     /// Variables: {UserName}, {VerificationUrl}, {TokenExpiry}
-    /// Status: 🆕 New (Phase 6A.53)
     /// </summary>
-    public const string MemberEmailVerification = "MemberEmailVerification";
+    public const string MemberEmailVerification = "template-membership-email-verification";
 
     /// <summary>
     /// Signup commitment confirmation email (when user confirms "I Will Attend").
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
     ///           {SignupItem}, {CommitmentType}
-    /// Status: 🆕 New (Phase 6A.51)
     /// </summary>
-    public const string SignupCommitmentConfirmation = "SignupCommitmentConfirmation";
+    public const string SignupCommitmentConfirmation = "template-signup-list-commitment-confirmation";
+
+    /// <summary>
+    /// Signup commitment update email (when user updates their commitment).
+    /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
+    ///           {SignupItem}, {CommitmentType}
+    /// </summary>
+    public const string SignupCommitmentUpdate = "template-signup-list-commitment-update";
+
+    /// <summary>
+    /// Signup commitment cancellation email (when user cancels their commitment).
+    /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
+    ///           {SignupItem}
+    /// </summary>
+    public const string SignupCommitmentCancellation = "template-signup-list-commitment-cancellation";
 
     /// <summary>
     /// Registration cancellation confirmation email.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {RefundAmount}, {RefundCurrency}
-    /// Status: 🆕 New (Phase 6A.52)
     /// </summary>
-    public const string RegistrationCancellation = "RegistrationCancellation";
+    public const string RegistrationCancellation = "template-event-registration-cancellation";
+
+    /// <summary>
+    /// Event published notification email.
+    /// Variables: {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
+    /// </summary>
+    public const string EventPublished = "template-new-event-publication";
+
+    /// <summary>
+    /// Event details publication email.
+    /// Variables: {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
+    /// </summary>
+    public const string EventDetails = "template-event-details-publication";
+
+    /// <summary>
+    /// Event cancellation notification email.
+    /// Variables: {EventTitle}, {EventDateTime}, {CancellationReason}
+    /// </summary>
+    public const string EventCancellation = "template-event-cancellation-notifications";
+
+    /// <summary>
+    /// Event approval notification email.
+    /// Variables: {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
+    /// </summary>
+    public const string EventApproval = "template-event-approval";
+
+    /// <summary>
+    /// Newsletter notification email.
+    /// Variables: {NewsletterTitle}, {NewsletterContent}, {UnsubscribeUrl}
+    /// </summary>
+    public const string Newsletter = "template-newsletter-notification";
+
+    /// <summary>
+    /// Newsletter subscription confirmation email.
+    /// Variables: {UserName}, {UnsubscribeUrl}
+    /// </summary>
+    public const string NewsletterSubscriptionConfirmation = "template-newsletter-subscription-confirmation";
 
     /// <summary>
     /// Custom organizer email to event attendees/signups.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
     ///           {CustomSubject}, {CustomBody}, {OrganizerName}, {OrganizerEmail}
-    /// Status: 🆕 New (Phase 6A.50)
     /// </summary>
     public const string OrganizerCustomEmail = "OrganizerCustomEmail";
+
+    /// <summary>
+    /// Password reset email with reset link.
+    /// Variables: {UserName}, {UserEmail}, {ResetToken}, {ResetLink}, {ExpiresAt}, {CompanyName}, {SupportEmail}
+    /// </summary>
+    public const string PasswordReset = "template-password-reset";
+
+    /// <summary>
+    /// Password change confirmation email (sent after successful password reset).
+    /// Variables: {UserName}, {UserEmail}, {ChangeDate}, {CompanyName}, {SupportEmail}, {LoginUrl}
+    /// </summary>
+    public const string PasswordChangeConfirmation = "template-password-change-confirmation";
+
+    /// <summary>
+    /// Welcome email sent after user verifies their email (different from verification email).
+    /// Variables: {UserName}, {UserEmail}, {CompanyName}, {LoginUrl}
+    /// </summary>
+    public const string Welcome = "template-welcome";
+
+    /// <summary>
+    /// RSVP confirmation for anonymous (non-registered) event attendees.
+    /// Variables: {UserName}, {EventTitle}, {EventStartDate}, {EventStartTime}, {EventEndDate},
+    ///           {EventLocation}, {Quantity}, {RegistrationDate}, {Attendees}, {HasAttendeeDetails},
+    ///           {ContactEmail}, {ContactPhone}, {HasContactInfo}
+    /// </summary>
+    public const string AnonymousRsvpConfirmation = "template-anonymous-rsvp-confirmation";
+
+    /// <summary>
+    /// Organizer role approval notification email.
+    /// Variables: {UserName}, {ApprovedAt}, {DashboardUrl}
+    /// </summary>
+    public const string OrganizerRoleApproval = "template-organizer-role-approval";
 
     /// <summary>
     /// Gets all template names as a collection.
@@ -71,8 +147,21 @@ public static class EmailTemplateNames
         EventReminder,
         MemberEmailVerification,
         SignupCommitmentConfirmation,
+        SignupCommitmentUpdate,
+        SignupCommitmentCancellation,
         RegistrationCancellation,
-        OrganizerCustomEmail
+        EventPublished,
+        EventDetails,
+        EventCancellation,
+        EventApproval,
+        Newsletter,
+        NewsletterSubscriptionConfirmation,
+        OrganizerCustomEmail,
+        PasswordReset,
+        PasswordChangeConfirmation,
+        Welcome,
+        AnonymousRsvpConfirmation,
+        OrganizerRoleApproval
     };
 
     /// <summary>
@@ -99,8 +188,21 @@ public static class EmailTemplateNames
             EventReminder => "Event reminder sent before event starts",
             MemberEmailVerification => "Member email verification email",
             SignupCommitmentConfirmation => "Signup commitment confirmation (I Will Attend)",
+            SignupCommitmentUpdate => "Signup commitment update notification",
+            SignupCommitmentCancellation => "Signup commitment cancellation notification",
             RegistrationCancellation => "Registration cancellation confirmation",
+            EventPublished => "New event publication notification",
+            EventDetails => "Event details publication notification",
+            EventCancellation => "Event cancellation notification",
+            EventApproval => "Event approval notification to organizer",
+            Newsletter => "Newsletter notification email",
+            NewsletterSubscriptionConfirmation => "Newsletter subscription confirmation",
             OrganizerCustomEmail => "Custom organizer email to attendees/signups",
+            PasswordReset => "Password reset email with reset link",
+            PasswordChangeConfirmation => "Password change confirmation email",
+            Welcome => "Welcome email after email verification",
+            AnonymousRsvpConfirmation => "RSVP confirmation for anonymous attendees",
+            OrganizerRoleApproval => "Organizer role approval notification",
             _ => "Unknown template"
         };
     }

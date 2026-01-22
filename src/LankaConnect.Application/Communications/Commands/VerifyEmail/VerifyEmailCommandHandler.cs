@@ -83,7 +83,7 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
                     };
 
                     await _emailService.SendTemplatedEmailAsync(
-                        "welcome-email",
+                        "template-welcome",
                         user.Email.Value,
                         templateParameters,
                         CancellationToken.None);

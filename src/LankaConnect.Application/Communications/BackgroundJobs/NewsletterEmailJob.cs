@@ -173,7 +173,7 @@ public class NewsletterEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "newsletter",
+                        "template-newsletter-notification",
                         email,
                         parameters,
                         CancellationToken.None);

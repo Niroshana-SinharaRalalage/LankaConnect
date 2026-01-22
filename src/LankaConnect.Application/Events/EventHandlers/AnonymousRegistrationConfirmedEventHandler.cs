@@ -118,7 +118,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
 
             // Send templated email to the attendee email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "RsvpConfirmation",
+                "template-anonymous-rsvp-confirmation",
                 domainEvent.AttendeeEmail,
                 parameters,
                 cancellationToken);

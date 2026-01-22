@@ -59,7 +59,7 @@ public class MemberVerificationRequestedEventHandler
                 domainEvent.Email, userName, verificationUrl);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "member-email-verification",
+                "template-membership-email-verification",
                 domainEvent.Email,
                 parameters,
                 cancellationToken);

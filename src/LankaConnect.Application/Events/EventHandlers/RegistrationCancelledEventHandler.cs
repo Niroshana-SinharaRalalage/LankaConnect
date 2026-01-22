@@ -67,7 +67,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
 
             // Send templated email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "registration-cancellation",
+                "template-event-registration-cancellation",
                 user.Email.Value,
                 parameters,
                 cancellationToken);

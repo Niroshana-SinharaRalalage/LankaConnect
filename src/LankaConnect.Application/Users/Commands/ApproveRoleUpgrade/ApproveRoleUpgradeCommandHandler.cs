@@ -109,7 +109,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                 user.Email.Value, user.Id);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "organizer-role-approved",
+                "template-organizer-role-approval",
                 user.Email.Value,
                 parameters,
                 cancellationToken);

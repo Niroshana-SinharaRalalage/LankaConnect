@@ -202,7 +202,7 @@ public class EventReminderJob
                         };
 
                         var result = await _emailService.SendTemplatedEmailAsync(
-                            "event-reminder",
+                            "template-event-reminder",
                             toEmail,
                             parameters,
                             cancellationToken);
@@ -377,7 +377,7 @@ public class EventReminderJob
                     };
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "event-reminder",
+                        "template-event-reminder",
                         toEmail,
                         parameters,
                         cancellationToken);

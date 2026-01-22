@@ -106,7 +106,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             foreach (var email in recipients.EmailAddresses)
             {
                 var result = await _emailService.SendTemplatedEmailAsync(
-                    "event-published",
+                    "template-new-event-publication",
                     email,
                     parameters,
                     cancellationToken);

@@ -173,7 +173,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             };
 
             var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
-                "newsletter-confirmation",
+                "template-newsletter-subscription-confirmation",
                 request.Email,
                 emailParameters,
                 cancellationToken);

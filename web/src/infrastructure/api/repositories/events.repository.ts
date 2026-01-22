@@ -936,6 +936,22 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.76: Send manual event reminder email to all registered attendees
+   * @param eventId - Event ID (GUID)
+   * @param reminderType - Type of reminder: "1day", "2day", "7day", or "custom"
+   * @returns Recipient count (actual sends may vary due to idempotency)
+   */
+  async sendEventReminder(
+    eventId: string,
+    reminderType: string = '1day'
+  ): Promise<{ recipientCount: number }> {
+    return await apiClient.post<{ recipientCount: number }>(
+      `${this.basePath}/${eventId}/send-reminder?reminderType=${encodeURIComponent(reminderType)}`,
+      {} // Empty body - eventId is in URL, reminderType in query string
+    );
+  }
+
+  /**
    * Phase 6A.61: Get event notification history
    * @param eventId - Event ID (GUID)
    * @returns List of notification history records

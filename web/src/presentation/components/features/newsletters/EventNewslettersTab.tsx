@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Send, FileText, ExternalLink } from 'lucide-react';
+import { Mail, Send, FileText, ExternalLink, Bell } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { NewsletterStatusBadge } from './NewsletterStatusBadge';
 import { useNewslettersByEvent } from '@/presentation/hooks/useNewsletters';
@@ -9,6 +10,7 @@ import {
   useSendEventNotification,
   useEventNotificationHistory,
   useEventById,
+  useSendEventReminder,
 } from '@/presentation/hooks/useEvents';
 import { EventStatus } from '@/infrastructure/api/types/events.types';
 import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
@@ -55,9 +57,13 @@ export interface EventNewslettersTabProps {
  * Event management tab for event-specific newsletters
  * Phase 6A.74 Part 6: Updated to use route-based navigation
  * Phase 6A.61: Added event notification email functionality
+ * Phase 6A.76: Added manual event reminder functionality
  */
 export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTabProps) {
   const router = useRouter();
+
+  // Phase 6A.76: Reminder type state
+  const [reminderType, setReminderType] = useState<string>('1day');
 
   // Fetch event details to check status
   const { data: event } = useEventById(eventId);
@@ -68,6 +74,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   // Phase 6A.61: Notification functionality
   const sendEmailMutation = useSendEventNotification();
   const { data: history, isLoading: historyLoading, error: historyError } = useEventNotificationHistory(eventId);
+
+  // Phase 6A.76: Reminder functionality
+  const sendReminderMutation = useSendEventReminder();
 
   // Handlers
   // Phase 6A.61: Send event notification email
@@ -84,6 +93,26 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
       );
     } catch (error: any) {
       toast.error(error?.message || 'Failed to send email');
+    }
+  };
+
+  // Phase 6A.76: Send manual event reminder
+  const handleSendReminder = async () => {
+    try {
+      const result = await sendReminderMutation.mutateAsync({ eventId, reminderType });
+      if (result.recipientCount === 0) {
+        toast.success(
+          'No registrations found for this event. Reminder not sent.',
+          { duration: 4000 }
+        );
+      } else {
+        toast.success(
+          `Reminder queued for ${result.recipientCount} registered attendee${result.recipientCount === 1 ? '' : 's'}!`,
+          { duration: 4000 }
+        );
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to send reminder');
     }
   };
 
@@ -187,6 +216,72 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             </div>
           )}
         </div>
+      </div>
+
+      {/* Phase 6A.76: Event Reminders Section */}
+      <div className="border rounded-lg p-6 bg-white shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Bell className="w-6 h-6 text-[#FF7900]" />
+            <div>
+              <h3 className="text-lg font-bold text-[#8B1538]">Event Reminders</h3>
+              <p className="text-sm text-gray-600">Send reminder emails to registered attendees</p>
+            </div>
+          </div>
+        </div>
+
+        {canSendNotification ? (
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800">
+                Send reminder emails to all registered attendees for this event.
+                Choose a reminder type to customize the message. Automatic reminders are also
+                sent 7 days, 2 days, and 1 day before the event.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex-1 max-w-xs">
+                <label htmlFor="reminder-type" className="block text-sm font-medium text-gray-700 mb-1">
+                  Reminder Type
+                </label>
+                <select
+                  id="reminder-type"
+                  value={reminderType}
+                  onChange={(e) => setReminderType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-[#FF7900]"
+                >
+                  <option value="1day">Tomorrow (1 day)</option>
+                  <option value="2day">In 2 days</option>
+                  <option value="7day">In 1 week</option>
+                  <option value="custom">Custom (general reminder)</option>
+                </select>
+              </div>
+              <div className="pt-6">
+                <Button
+                  onClick={handleSendReminder}
+                  disabled={sendReminderMutation.isPending}
+                  className="flex items-center gap-2 text-white"
+                  style={{ background: '#FF7900' }}
+                >
+                  <Bell className="h-4 w-4" />
+                  {sendReminderMutation.isPending ? 'Sending...' : 'Send Reminder'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 text-xs text-gray-500">
+              <strong>Note:</strong> Reminders are tracked to prevent duplicates.
+              If attendees have already received this reminder type, they will be skipped.
+            </div>
+          </>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-sm text-gray-600">
+              Event reminders are only available for Active and Published events.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Phase 6A.61+ Issue #5: Event Newsletters Section with Box Container */}

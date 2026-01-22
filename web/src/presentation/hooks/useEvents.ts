@@ -818,6 +818,27 @@ export function useEventNotificationHistory(eventId: string) {
   });
 }
 
+// ==================== Phase 6A.76: Event Reminder ====================
+
+/**
+ * Phase 6A.76: Hook to send manual event reminder email to all registered attendees
+ */
+export function useSendEventReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { eventId: string; reminderType: string }) =>
+      eventsRepository.sendEventReminder(data.eventId, data.reminderType),
+    onSuccess: (_data, variables) => {
+      // Invalidate event detail to refresh any reminder-related state
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+    onError: (error: any) => {
+      console.error('Failed to send event reminder:', error);
+    }
+  });
+}
+
 /**
  * Export all hooks
  */
@@ -840,4 +861,5 @@ export default {
   useExportEventAttendees,
   useSendEventNotification,
   useEventNotificationHistory,
+  useSendEventReminder,
 };

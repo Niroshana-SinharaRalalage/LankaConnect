@@ -19,6 +19,7 @@ using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Commands.SendEventNotification;
+using LankaConnect.Application.Events.Commands.SendEventReminder;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
@@ -1447,8 +1448,10 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Get all sign-up lists for an event
+    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists
     /// </summary>
     [HttpGet("{id:guid}/signups")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(List<SignUpListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetEventSignUpLists(Guid id)
@@ -2003,6 +2006,40 @@ public class EventsController : BaseController<EventsController>
         if (result.IsSuccess)
         {
             Logger.LogInformation("[Phase 6A.61] API: Event notification queued successfully for event {EventId}", id);
+            return Accepted(new { recipientCount = result.Value });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.76: Send manual reminder email to all registered attendees.
+    /// Allows organizers to trigger reminders at any time from the Communications tab.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="reminderType">Type of reminder: "1day", "2day", "7day", or "custom"</param>
+    /// <returns>Accepted with recipient count</returns>
+    [HttpPost("{id:guid}/send-reminder")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendEventReminder(Guid id, [FromQuery] string reminderType = "1day")
+    {
+        Logger.LogInformation(
+            "[Phase 6A.76] API: Sending manual event reminder for event {EventId}, type={ReminderType}",
+            id, reminderType);
+
+        var command = new SendEventReminderCommand(id, reminderType);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "[Phase 6A.76] API: Event reminder queued successfully for event {EventId}, recipients={Count}",
+                id, result.Value);
             return Accepted(new { recipientCount = result.Value });
         }
 

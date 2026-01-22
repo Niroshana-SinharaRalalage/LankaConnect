@@ -183,7 +183,7 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* Vision Section - Using gradient theme instead of black */}
+      {/* Vision Section - Using gradient theme */}
       <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-12 md:py-16">
         {/* Decorative Background Pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -196,9 +196,6 @@ export default function AboutPage() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex justify-center mb-6">
-            <Sparkles className="h-12 w-12 text-white" />
-          </div>
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
             Our Vision
           </h2>
@@ -211,45 +208,33 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* Join Us CTA - Using gradient theme instead of black */}
+      {/* Join Us CTA - White card style like Mission section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <div className="relative bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800">
-            {/* Decorative Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                }}
-              ></div>
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-8 md:p-12 text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-4">
+              Join Our Growing Community
+            </h2>
+            <p className="text-neutral-600 mb-8 max-w-2xl mx-auto">
+              Whether you're looking to discover events, find trusted businesses,
+              connect with fellow Sri Lankans, or simply stay in touch with your heritage,
+              LankaConnect is here for you.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href="/events"
+                className="inline-flex items-center justify-center px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Explore Events
+              </a>
+              <a
+                href="/contact"
+                className="inline-flex items-center justify-center px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-lg transition-colors"
+              >
+                Get in Touch
+              </a>
             </div>
-
-            <CardContent className="relative p-8 md:p-12 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                Join Our Growing Community
-              </h2>
-              <p className="text-white/90 mb-8 max-w-2xl mx-auto">
-                Whether you're looking to discover events, find trusted businesses,
-                connect with fellow Sri Lankans, or simply stay in touch with your heritage,
-                LankaConnect is here for you.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a
-                  href="/events"
-                  className="inline-flex items-center justify-center px-6 py-3 bg-white text-orange-600 hover:bg-neutral-100 font-medium rounded-lg transition-colors shadow-lg"
-                >
-                  Explore Events
-                </a>
-                <a
-                  href="/contact"
-                  className="inline-flex items-center justify-center px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/30"
-                >
-                  Get in Touch
-                </a>
-              </div>
-            </CardContent>
-          </div>
+          </CardContent>
         </Card>
       </div>
 

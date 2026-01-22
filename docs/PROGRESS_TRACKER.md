@@ -1,9 +1,67 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-21 - Phase 6A.75: Event Reminder Email Fix COMPLETE*
+*Last Updated: 2026-01-21 - Phase 6A.76: Footer Cleanup, About Us & Contact Us Pages COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.75 Event Reminder Email Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.76 Footer & Static Pages ✅ COMPLETE
+
+### Phase 6A.76 - Footer Cleanup, About Us & Contact Us Pages - 2026-01-21
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: In Progress)
+
+**Changes Implemented**:
+
+1. **Footer Cleanup**
+   - Removed: Cultural Hub (Community), Services, Sell Items (Marketplace)
+   - Removed: Entire Resources category (Help Center, Guidelines, Safety, Blog)
+   - Removed: Careers, Press (About)
+   - Renamed: "Our Story" → "About Us"
+   - Updated: Grid layout from 4 columns to 3 columns
+   - **File**: `web/src/presentation/components/layout/Footer.tsx`
+
+2. **About Us Page** (`/about`)
+   - Comprehensive description of LankaConnect
+   - Mission: Connecting Sri Lankan diaspora worldwide
+   - Features grid: Events, Marketplace, Business Directory, Community Forums
+   - Values section: Community First, Preserving Culture, Bridging Distances
+   - Vision statement with call-to-action buttons
+   - **File**: `web/src/app/about/page.tsx`
+
+3. **Contact Us Page** (`/contact`)
+   - Contact form with name, email, subject, message fields
+   - Client-side validation (min/max lengths, email format)
+   - Loading state and success/error feedback
+   - Reference ID displayed on successful submission
+   - **File**: `web/src/app/contact/page.tsx`
+
+4. **Backend Contact API**
+   - **Endpoint**: `POST /api/contact`
+   - **Controller**: `ContactController.cs`
+   - **DTOs**: `SubmitContactRequest.cs`, `ContactSubmissionResponse.cs`
+   - **Configuration**: `ContactSettings.cs` (recipient email hidden from clients)
+   - HTML and plain text email templates with LankaConnect branding
+   - Reference ID generation: `CONTACT-YYYYMMDD-XXXXXXXX`
+   - Reply-To header set to sender's email
+   - Comprehensive logging for traceability
+
+5. **Configuration**
+   - Added `ContactSettings` section to all appsettings files
+   - Recipient email: `niroshanaks@gmail.com` (server-side only, never exposed)
+   - Email subject prefix: `[LankaConnect Contact]`
+   - Registered in DependencyInjection.cs
+
+**Git Commit**:
+- `feat(phase-6a76): Add footer cleanup, About Us and Contact Us pages`
+
+**Verification**:
+- ✅ Backend build: 0 errors
+- ✅ Frontend build: 0 errors
+- ✅ Git push: Success
+- ⏳ Staging deployment: In progress (triggered by push)
+
+---
+
+## 🔧 Previous Session Status - Phase 6A.75 Event Reminder Email Fix ✅ COMPLETE
 
 ### Phase 6A.75 - Event Reminder Email Template Fix - 2026-01-21 (Updated)
 

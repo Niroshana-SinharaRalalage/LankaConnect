@@ -121,8 +121,8 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
     } catch (error: any) {
       toast.error(error?.message || 'Failed to send reminder');
     } finally {
-      // Keep message visible for 1 second after toast appears
-      setTimeout(() => setShowReminderProcessing(false), 1000);
+      // Keep message visible for 2 seconds after toast appears so user can read the result
+      setTimeout(() => setShowReminderProcessing(false), 2000);
     }
   };
 
@@ -256,24 +256,33 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
               </Button>
             </div>
 
-            {showReminderProcessing && (
-              <div className="mt-2 text-sm text-blue-600 flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing reminder... Details will update shortly.
-              </div>
-            )}
 
             {/* Phase 6A.76: Reminder History */}
             <div className="border-t pt-4 mt-4">
               <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Reminder Send History</h4>
-              {reminderHistoryLoading && <div className="text-sm text-gray-500">Loading history...</div>}
-              {!reminderHistoryLoading && (!reminderHistory || reminderHistory.length === 0) && (
+
+              {/* Show processing message in history area while sending */}
+              {showReminderProcessing && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <div>
+                      <p className="font-medium text-blue-900">Processing reminder request...</p>
+                      <p className="text-sm text-blue-700">Checking eligible recipients and queuing emails. This will update shortly.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Show actual history when not processing */}
+              {!showReminderProcessing && reminderHistoryLoading && <div className="text-sm text-gray-500">Loading history...</div>}
+              {!showReminderProcessing && !reminderHistoryLoading && (!reminderHistory || reminderHistory.length === 0) && (
                 <div className="text-sm text-gray-500">No reminders sent yet</div>
               )}
-              {!reminderHistoryLoading && reminderHistory && reminderHistory.length > 0 && (
+              {!showReminderProcessing && !reminderHistoryLoading && reminderHistory && reminderHistory.length > 0 && (
                 <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2">
                   {reminderHistory.map((record, index) => (
                     <div key={`${record.reminderType}-${record.sentDate}-${index}`} className="border-b pb-2 last:border-b-0">

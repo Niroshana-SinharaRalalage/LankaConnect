@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users.DomainEvents;
 using MediatR;
@@ -59,7 +60,7 @@ public class MemberVerificationRequestedEventHandler
                 domainEvent.Email, userName, verificationUrl);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-membership-email-verification",
+                EmailTemplateNames.MemberEmailVerification,
                 domainEvent.Email,
                 parameters,
                 cancellationToken);

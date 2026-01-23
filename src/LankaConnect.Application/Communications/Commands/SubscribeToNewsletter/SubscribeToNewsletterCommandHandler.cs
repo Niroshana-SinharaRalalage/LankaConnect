@@ -2,6 +2,7 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
@@ -217,7 +218,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 };
 
                 var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
-                    "template-newsletter-subscription-confirmation",
+                    EmailTemplateNames.NewsletterSubscriptionConfirmation,
                     request.Email,
                     emailParameters,
                     cancellationToken);

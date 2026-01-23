@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -130,7 +131,7 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
                         };
 
                         await _emailService.SendTemplatedEmailAsync(
-                            "template-welcome",
+                            EmailTemplateNames.Welcome,
                             user.Email.Value,
                             templateParameters,
                             CancellationToken.None);

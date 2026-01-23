@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Services;
 using LankaConnect.Domain.Common;
@@ -173,7 +174,7 @@ public class NewsletterEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "template-newsletter-notification",
+                        EmailTemplateNames.Newsletter,
                         email,
                         parameters,
                         CancellationToken.None);

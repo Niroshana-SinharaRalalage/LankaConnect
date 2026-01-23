@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
@@ -157,7 +158,7 @@ public class EventNotificationEmailJob
                         correlationId, emailIndex, recipients.Count, email);
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "template-event-details-publication",
+                        EmailTemplateNames.EventDetails,
                         email,
                         templateData,
                         cancellationToken);

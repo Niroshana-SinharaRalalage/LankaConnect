@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -106,7 +107,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             foreach (var email in recipients.EmailAddresses)
             {
                 var result = await _emailService.SendTemplatedEmailAsync(
-                    "template-new-event-publication",
+                    EmailTemplateNames.EventPublished,
                     email,
                     parameters,
                     cancellationToken);

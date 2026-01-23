@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -88,7 +89,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
 
             // Send templated email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-signup-list-commitment-cancellation",
+                EmailTemplateNames.SignupCommitmentCancellation,
                 user.Email.Value,
                 templateData,
                 cancellationToken);

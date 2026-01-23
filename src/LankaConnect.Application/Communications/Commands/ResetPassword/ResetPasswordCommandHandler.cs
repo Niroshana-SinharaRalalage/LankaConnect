@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.ValueObjects;
@@ -160,7 +161,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                         };
 
                         await _emailService.SendTemplatedEmailAsync(
-                            "template-password-change-confirmation",
+                            EmailTemplateNames.PasswordChangeConfirmation,
                             user.Email.Value,
                             templateParameters,
                             CancellationToken.None);

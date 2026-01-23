@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -118,7 +119,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
 
             // Send templated email to the attendee email
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-anonymous-rsvp-confirmation",
+                EmailTemplateNames.AnonymousRsvpConfirmation,
                 domainEvent.AttendeeEmail,
                 parameters,
                 cancellationToken);

@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -227,7 +228,7 @@ public class EventCancellationEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "template-event-cancellation-notifications",
+                        EmailTemplateNames.EventCancellation,
                         email,
                         parameters,
                         CancellationToken.None);

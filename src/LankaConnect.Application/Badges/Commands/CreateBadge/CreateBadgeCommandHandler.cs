@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Common;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Badges.Commands.CreateBadge;
 
@@ -18,35 +21,82 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
     private readonly IAzureBlobStorageService _blobStorageService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CreateBadgeCommandHandler> _logger;
 
     public CreateBadgeCommandHandler(
         IBadgeRepository badgeRepository,
         IAzureBlobStorageService blobStorageService,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<CreateBadgeCommandHandler> logger)
     {
         _badgeRepository = badgeRepository;
         _blobStorageService = blobStorageService;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Result<BadgeDto>> Handle(CreateBadgeCommand request, CancellationToken cancellationToken)
     {
-        // 1. Validate input
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return Result<BadgeDto>.Failure("Badge name is required");
+        using (LogContext.PushProperty("Operation", "CreateBadge"))
+        using (LogContext.PushProperty("EntityType", "Badge"))
+        using (LogContext.PushProperty("BadgeName", request.Name))
+        {
+            var stopwatch = Stopwatch.StartNew();
 
-        if (request.ImageData == null || request.ImageData.Length == 0)
-            return Result<BadgeDto>.Failure("Badge image is required");
+            _logger.LogInformation(
+                "CreateBadge START: Name={Name}, DefaultDurationDays={DefaultDurationDays}, IsAdmin={IsAdmin}",
+                request.Name, request.DefaultDurationDays, _currentUserService.IsAdmin);
 
-        if (string.IsNullOrWhiteSpace(request.FileName))
-            return Result<BadgeDto>.Failure("File name is required");
+            try
+            {
+                // 1. Validate input
+                if (string.IsNullOrWhiteSpace(request.Name))
+                {
+                    stopwatch.Stop();
 
-        // 2. Check for duplicate name
-        var existingBadge = await _badgeRepository.ExistsByNameAsync(request.Name, cancellationToken);
-        if (existingBadge)
-            return Result<BadgeDto>.Failure($"A badge with the name '{request.Name}' already exists");
+                    _logger.LogWarning(
+                        "CreateBadge FAILED: Missing badge name - Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("Badge name is required");
+                }
+
+                if (request.ImageData == null || request.ImageData.Length == 0)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateBadge FAILED: Missing image data - Name={Name}, Duration={ElapsedMs}ms",
+                        request.Name, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("Badge image is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.FileName))
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateBadge FAILED: Missing file name - Name={Name}, Duration={ElapsedMs}ms",
+                        request.Name, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("File name is required");
+                }
+
+                // 2. Check for duplicate name
+                var existingBadge = await _badgeRepository.ExistsByNameAsync(request.Name, cancellationToken);
+                if (existingBadge)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateBadge FAILED: Duplicate badge name - Name={Name}, Duration={ElapsedMs}ms",
+                        request.Name, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure($"A badge with the name '{request.Name}' already exists");
+                }
 
         // 3. Get next display order
         var displayOrder = await _badgeRepository.GetNextDisplayOrderAsync(cancellationToken);
@@ -101,12 +151,30 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Res
             badge = badgeResult.Value;
         }
 
-        // 6. Save to repository
-        await _badgeRepository.AddAsync(badge, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+                // 6. Save to repository
+                await _badgeRepository.AddAsync(badge, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 7. Return DTO using mapping extension
-        return Result<BadgeDto>.Success(badge.ToBadgeDto());
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "CreateBadge COMPLETE: Name={Name}, BadgeId={BadgeId}, IsSystem={IsSystem}, DefaultDurationDays={DefaultDurationDays}, BlobUrl={BlobUrl}, Duration={ElapsedMs}ms",
+                    request.Name, badge.Id, badge.IsSystem, badge.DefaultDurationDays, badge.ImageUrl, stopwatch.ElapsedMilliseconds);
+
+                // 7. Return DTO using mapping extension
+                return Result<BadgeDto>.Success(badge.ToBadgeDto());
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CreateBadge FAILED: Exception occurred - Name={Name}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.Name, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
     }
 
     private static string GetContentType(string fileName)

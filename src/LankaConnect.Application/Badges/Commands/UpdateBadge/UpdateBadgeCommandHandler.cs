@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Common;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Badges.Commands.UpdateBadge;
 
@@ -16,23 +19,57 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
     private readonly IBadgeRepository _badgeRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateBadgeCommandHandler> _logger;
 
     public UpdateBadgeCommandHandler(
         IBadgeRepository badgeRepository,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<UpdateBadgeCommandHandler> logger)
     {
         _badgeRepository = badgeRepository;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Result<BadgeDto>> Handle(UpdateBadgeCommand request, CancellationToken cancellationToken)
     {
-        // 1. Get existing badge
-        var badge = await _badgeRepository.GetByIdAsync(request.BadgeId, cancellationToken);
-        if (badge == null)
-            return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
+        using (LogContext.PushProperty("Operation", "UpdateBadge"))
+        using (LogContext.PushProperty("EntityType", "Badge"))
+        using (LogContext.PushProperty("BadgeId", request.BadgeId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "UpdateBadge START: BadgeId={BadgeId}, Name={Name}, IsActive={IsActive}, DefaultDurationDays={DefaultDurationDays}, IsAdmin={IsAdmin}",
+                request.BadgeId, request.Name, request.IsActive, request.DefaultDurationDays, _currentUserService.IsAdmin);
+
+            try
+            {
+                if (request.BadgeId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadge FAILED: Invalid BadgeId - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("Badge ID is required");
+                }
+
+                // 1. Get existing badge
+                var badge = await _badgeRepository.GetByIdAsync(request.BadgeId, cancellationToken);
+                if (badge == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadge FAILED: Badge not found - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
+                }
 
         // 2. Phase 6A.27: Ownership validation
         // - Admins can edit ANY badge (system or custom)
@@ -108,11 +145,29 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Res
             badge.UpdateDetailConfig(request.DetailConfig.FromDto());
         }
 
-        // 8. Save changes
-        _badgeRepository.Update(badge);
-        await _unitOfWork.CommitAsync(cancellationToken);
+                // 8. Save changes
+                _badgeRepository.Update(badge);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 8. Return updated DTO using mapping extension
-        return Result<BadgeDto>.Success(badge.ToBadgeDto());
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "UpdateBadge COMPLETE: BadgeId={BadgeId}, Name={Name}, IsActive={IsActive}, DefaultDurationDays={DefaultDurationDays}, Duration={ElapsedMs}ms",
+                    request.BadgeId, badge.Name, badge.IsActive, badge.DefaultDurationDays, stopwatch.ElapsedMilliseconds);
+
+                // 8. Return updated DTO using mapping extension
+                return Result<BadgeDto>.Success(badge.ToBadgeDto());
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "UpdateBadge FAILED: Exception occurred - BadgeId={BadgeId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.BadgeId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
     }
 }

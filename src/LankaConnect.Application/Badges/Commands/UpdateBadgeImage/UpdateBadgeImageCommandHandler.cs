@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Common;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Badges.Commands.UpdateBadgeImage;
 
@@ -15,30 +18,80 @@ public class UpdateBadgeImageCommandHandler : IRequestHandler<UpdateBadgeImageCo
     private readonly IBadgeRepository _badgeRepository;
     private readonly IAzureBlobStorageService _blobStorageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateBadgeImageCommandHandler> _logger;
 
     public UpdateBadgeImageCommandHandler(
         IBadgeRepository badgeRepository,
         IAzureBlobStorageService blobStorageService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<UpdateBadgeImageCommandHandler> logger)
     {
         _badgeRepository = badgeRepository;
         _blobStorageService = blobStorageService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Result<BadgeDto>> Handle(UpdateBadgeImageCommand request, CancellationToken cancellationToken)
     {
-        // 1. Validate input
-        if (request.ImageData == null || request.ImageData.Length == 0)
-            return Result<BadgeDto>.Failure("Badge image is required");
+        using (LogContext.PushProperty("Operation", "UpdateBadgeImage"))
+        using (LogContext.PushProperty("EntityType", "Badge"))
+        using (LogContext.PushProperty("BadgeId", request.BadgeId))
+        {
+            var stopwatch = Stopwatch.StartNew();
 
-        if (string.IsNullOrWhiteSpace(request.FileName))
-            return Result<BadgeDto>.Failure("File name is required");
+            _logger.LogInformation(
+                "UpdateBadgeImage START: BadgeId={BadgeId}, FileName={FileName}, ImageSize={ImageSize}",
+                request.BadgeId, request.FileName, request.ImageData?.Length ?? 0);
 
-        // 2. Get existing badge
-        var badge = await _badgeRepository.GetByIdAsync(request.BadgeId, cancellationToken);
-        if (badge == null)
-            return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
+            try
+            {
+                // 1. Validate input
+                if (request.BadgeId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadgeImage FAILED: Invalid BadgeId - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("Badge ID is required");
+                }
+
+                if (request.ImageData == null || request.ImageData.Length == 0)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadgeImage FAILED: Missing image data - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("Badge image is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.FileName))
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadgeImage FAILED: Missing file name - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure("File name is required");
+                }
+
+                // 2. Get existing badge
+                var badge = await _badgeRepository.GetByIdAsync(request.BadgeId, cancellationToken);
+                if (badge == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateBadgeImage FAILED: Badge not found - BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<BadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
+                }
 
         // 3. Store old blob name for deletion
         var oldBlobName = badge.BlobName;
@@ -63,25 +116,49 @@ public class UpdateBadgeImageCommandHandler : IRequestHandler<UpdateBadgeImageCo
             return Result<BadgeDto>.Failure(updateResult.Errors);
         }
 
-        // 6. Save changes
-        _badgeRepository.Update(badge);
-        await _unitOfWork.CommitAsync(cancellationToken);
+                // 6. Save changes
+                _badgeRepository.Update(badge);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
-        // 7. Delete old image (non-blocking, ignore errors)
-        try
-        {
-            await _blobStorageService.DeleteFileAsync(oldBlobName, "badges", cancellationToken);
+                // 7. Delete old image (non-blocking, ignore errors)
+                try
+                {
+                    await _blobStorageService.DeleteFileAsync(oldBlobName, "badges", cancellationToken);
+
+                    _logger.LogInformation(
+                        "UpdateBadgeImage: Old blob deleted - BadgeId={BadgeId}, OldBlobName={OldBlobName}",
+                        request.BadgeId, oldBlobName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "UpdateBadgeImage: Old blob deletion failed (non-critical) - BadgeId={BadgeId}, OldBlobName={OldBlobName}, Error={ErrorMessage}",
+                        request.BadgeId, oldBlobName, ex.Message);
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "UpdateBadgeImage COMPLETE: BadgeId={BadgeId}, NewBlobUrl={BlobUrl}, OldBlobName={OldBlobName}, Duration={ElapsedMs}ms",
+                    request.BadgeId, badge.ImageUrl, oldBlobName, stopwatch.ElapsedMilliseconds);
+
+                // 8. Return updated DTO
+                // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
+                var dto = badge.ToBadgeDto();
+
+                return Result<BadgeDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "UpdateBadgeImage FAILED: Exception occurred - BadgeId={BadgeId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.BadgeId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
-        catch
-        {
-            // Log but don't fail - old image cleanup is best effort
-        }
-
-        // 8. Return updated DTO
-        // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
-        var dto = badge.ToBadgeDto();
-
-        return Result<BadgeDto>.Success(dto);
     }
 
     private static string GetContentType(string fileName)

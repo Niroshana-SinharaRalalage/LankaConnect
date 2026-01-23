@@ -101,9 +101,15 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
           'No registrations found for this event. Reminder not sent.',
           { duration: 4000 }
         );
+      } else if (result.recipientCount === -1) {
+        // All recipients already received this reminder type
+        toast('All attendees have already received this reminder. To avoid duplicate emails, the reminder was not sent again.', {
+          icon: 'ℹ️',
+          duration: 5000,
+        });
       } else {
         toast.success(
-          `Reminder queued for ${result.recipientCount} registered attendee${result.recipientCount === 1 ? '' : 's'}!`,
+          `Reminder queued for ${result.recipientCount} attendee${result.recipientCount === 1 ? '' : 's'}!`,
           { duration: 4000 }
         );
       }

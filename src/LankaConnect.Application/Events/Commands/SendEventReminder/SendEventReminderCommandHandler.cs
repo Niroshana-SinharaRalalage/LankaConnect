@@ -1,6 +1,7 @@
 using Hangfire;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -18,17 +19,20 @@ public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminder
     private readonly IEventRepository _eventRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly IEventReminderRepository _eventReminderRepository;
     private readonly ILogger<SendEventReminderCommandHandler> _logger;
 
     public SendEventReminderCommandHandler(
         IEventRepository eventRepository,
         ICurrentUserService currentUserService,
         IBackgroundJobClient backgroundJobClient,
+        IEventReminderRepository eventReminderRepository,
         ILogger<SendEventReminderCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _currentUserService = currentUserService;
         _backgroundJobClient = backgroundJobClient;
+        _eventReminderRepository = eventReminderRepository;
         _logger = logger;
     }
 
@@ -70,8 +74,8 @@ public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminder
             }
 
             // 4. Get registration count
-            var registrationCount = @event.Registrations?.Count ?? 0;
-            if (registrationCount == 0)
+            var registrations = @event.Registrations;
+            if (registrations == null || registrations.Count == 0)
             {
                 _logger.LogInformation(
                     "[Phase 6A.76] Event {EventId} has no registrations, no reminders to send",
@@ -85,16 +89,41 @@ public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminder
                 ? request.ReminderType
                 : "custom";
 
-            // 6. Queue background job to send reminders
+            // 6. Phase 6A.76: Check idempotency before queuing - count how many will actually be sent
+            var eligibleCount = 0;
+            foreach (var registration in registrations)
+            {
+                if (registration == null || registration.Id == Guid.Empty) continue;
+
+                var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
+                    request.EventId, registration.Id, reminderType, cancellationToken);
+
+                if (!alreadySent)
+                {
+                    eligibleCount++;
+                }
+            }
+
+            if (eligibleCount == 0)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.76] All {Count} attendees have already received {ReminderType} reminder for event {EventId}",
+                    registrations.Count, reminderType, request.EventId);
+
+                // Return -1 to indicate all were already sent (frontend will show appropriate message)
+                return Result<int>.Success(-1);
+            }
+
+            // 7. Queue background job to send reminders
             var jobId = _backgroundJobClient.Enqueue<EventReminderJob>(
                 job => job.SendRemindersForEventAsync(request.EventId, reminderType, CancellationToken.None));
 
             _logger.LogInformation(
-                "[Phase 6A.76] Queued manual reminder job {JobId} for event {EventId}, type={ReminderType}, registrations={Count}",
-                jobId, request.EventId, reminderType, registrationCount);
+                "[Phase 6A.76] Queued manual reminder job {JobId} for event {EventId}, type={ReminderType}, eligible={Eligible}/{Total}",
+                jobId, request.EventId, reminderType, eligibleCount, registrations.Count);
 
-            // 7. Return registration count (actual sends may vary due to idempotency)
-            return Result<int>.Success(registrationCount);
+            // 8. Return eligible count (how many will actually receive the reminder)
+            return Result<int>.Success(eligibleCount);
         }
         catch (Exception ex)
         {

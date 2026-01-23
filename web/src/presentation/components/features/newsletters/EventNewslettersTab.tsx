@@ -79,16 +79,12 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   const { data: reminderHistory, isLoading: reminderHistoryLoading } = useEventReminderHistory(eventId);
 
   // Handlers
-  // Phase 6A.61: Send event notification email
-  // Phase 6A.61+ Issue #4: Show warning if 0 recipients found
+  // Phase 6A.76: Send event publication email
   const handleSendEmail = async () => {
     try {
       await sendEmailMutation.mutateAsync(eventId);
-      // Phase 6A.61+ Issue #4: Check recipient count and show appropriate message
-      // Note: recipientCount is 0 initially because the actual count is updated by background job
-      // However, we can still give a general success message and the history will update
       toast.success(
-        'Email notification queued! Check the history below for delivery status.',
+        'Event publication email queued! Check the history below for delivery status.',
         { duration: 4000 }
       );
     } catch (error: any) {
@@ -139,15 +135,14 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
 
   return (
     <div className="space-y-8">
-      {/* Phase 6A.61: Event Email Notifications Section */}
-      {/* Phase 6A.61+ Issues #1, #2, #3: Updated text labels */}
+      {/* Phase 6A.76: Event Email Publications Section */}
       <div className="border rounded-lg p-6 bg-white shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Mail className="w-6 h-6 text-[#FF7900]" />
             <div>
-              <h3 className="text-lg font-bold text-[#8B1538]">Event Email Notifications</h3>
-              <p className="text-sm text-gray-600">Send event details to recipients</p>
+              <h3 className="text-lg font-bold text-[#8B1538]">Event Email Publications</h3>
+              <p className="text-sm text-gray-600">Publish event details to recipients</p>
             </div>
           </div>
           {canSendNotification && (
@@ -158,17 +153,18 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
               style={{ background: '#FF7900' }}
             >
               <Mail className="h-4 w-4" />
-              {sendEmailMutation.isPending ? 'Sending...' : 'Send an Email'}
+              {sendEmailMutation.isPending ? 'Sending...' : 'Publish Event'}
             </Button>
           )}
         </div>
 
-        {/* Description - Phase 6A.61+ Issue #3: Updated text */}
+        {/* Description - Phase 6A.76: Updated text with usage guidance */}
         {canSendNotification && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-blue-800">
               Sends a pre-formatted email with event details to email groups selected in the event,
-              all registered attendees and eligible newsletter subscribers. The email is sent in the background.
+              all registered attendees, and eligible newsletter subscribers. Use this to announce a new event
+              or notify recipients about important updates to the event. The email is sent in the background.
             </p>
           </div>
         )}
@@ -176,18 +172,18 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
         {!canSendNotification && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-gray-600">
-              Event notification is only available for Active and Published events.
+              Event publication is only available for Active and Published events.
             </p>
           </div>
         )}
 
-        {/* Email Send History - Phase 6A.76: Updated to match newsletter format */}
+        {/* Publication History - Phase 6A.76: Updated to match newsletter format */}
         <div className="border-t pt-4">
-          <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Email Send History</h4>
+          <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Publication History</h4>
           {historyLoading && <div className="text-sm text-gray-500">Loading history...</div>}
           {historyError && <div className="text-sm text-red-500">Failed to load history</div>}
           {history && history.length === 0 && (
-            <div className="text-sm text-gray-500">No emails sent yet</div>
+            <div className="text-sm text-gray-500">No publications sent yet</div>
           )}
           {history && history.length > 0 && (
             <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2">

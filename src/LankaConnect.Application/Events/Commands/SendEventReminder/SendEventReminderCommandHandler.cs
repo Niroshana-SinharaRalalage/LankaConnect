@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Hangfire;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
@@ -7,12 +8,15 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.SendEventReminder;
 
 /// <summary>
-/// Phase 6A.76: Handler for SendEventReminder command.
-/// Allows organizers to manually trigger reminder emails from the Communications tab.
+/// Handler for SendEventReminder command
+/// Allows organizers to manually trigger reminder emails from the Communications tab
+/// Phase 6A.76: Manual reminder triggering feature
+/// Phase 6A.X Observability: Enhanced with comprehensive structured logging
 /// </summary>
 public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminderCommand, Result<int>>
 {
@@ -38,100 +42,151 @@ public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminder
 
     public async Task<Result<int>> Handle(SendEventReminderCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "SendEventReminder"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("ReminderType", request.ReminderType))
         {
+            var stopwatch = Stopwatch.StartNew();
+
             _logger.LogInformation(
-                "[Phase 6A.76] Sending manual event reminder for event {EventId}, type={ReminderType}",
+                "SendEventReminder START: EventId={EventId}, ReminderType={ReminderType}",
                 request.EventId, request.ReminderType);
 
-            // 1. Fetch event with registrations to get count
-            var @event = await _eventRepository.GetWithRegistrationsAsync(request.EventId, cancellationToken);
-            if (@event == null)
+            try
             {
-                _logger.LogWarning("[Phase 6A.76] Event {EventId} not found", request.EventId);
-                return Result<int>.Failure("Event not found");
-            }
+                // Check for cancellation at the start
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // 2. Authorization: Verify organizer or admin
-            var userId = _currentUserService.UserId;
-            var isAdmin = _currentUserService.IsAdmin;
-
-            if (@event.OrganizerId != userId && !isAdmin)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.76] Unauthorized attempt to send reminder by user {UserId} for event {EventId}",
-                    userId, request.EventId);
-                return Result<int>.Failure("You are not authorized to send reminders for this event");
-            }
-
-            // 3. Verify event status (Active or Published only)
-            if (@event.Status != EventStatus.Active && @event.Status != EventStatus.Published)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.76] Attempt to send reminder for event {EventId} with status {Status}",
-                    request.EventId, @event.Status);
-                return Result<int>.Failure($"Cannot send reminders for events with status: {@event.Status}");
-            }
-
-            // 4. Get registration count
-            var registrations = @event.Registrations;
-            if (registrations == null || registrations.Count == 0)
-            {
-                _logger.LogInformation(
-                    "[Phase 6A.76] Event {EventId} has no registrations, no reminders to send",
-                    request.EventId);
-                return Result<int>.Success(0);
-            }
-
-            // 5. Validate reminder type
-            var validReminderTypes = new[] { "1day", "2day", "7day", "custom" };
-            var reminderType = validReminderTypes.Contains(request.ReminderType)
-                ? request.ReminderType
-                : "custom";
-
-            // 6. Phase 6A.76: Check idempotency before queuing - count how many will actually be sent
-            var eligibleCount = 0;
-            foreach (var registration in registrations)
-            {
-                if (registration == null || registration.Id == Guid.Empty) continue;
-
-                var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
-                    request.EventId, registration.Id, reminderType, cancellationToken);
-
-                if (!alreadySent)
+                // 1. Fetch event with registrations to get count
+                var @event = await _eventRepository.GetWithRegistrationsAsync(request.EventId, cancellationToken);
+                if (@event == null)
                 {
-                    eligibleCount++;
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "SendEventReminder FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<int>.Failure("Event not found");
                 }
-            }
 
-            if (eligibleCount == 0)
-            {
                 _logger.LogInformation(
-                    "[Phase 6A.76] All {Count} attendees have already received {ReminderType} reminder for event {EventId}",
-                    registrations.Count, reminderType, request.EventId);
+                    "SendEventReminder: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, OrganizerId={OrganizerId}",
+                    @event.Id, @event.Title.Value, @event.Status, @event.OrganizerId);
 
-                // Return -1 to indicate all were already sent (frontend will show appropriate message)
-                return Result<int>.Success(-1);
+                // 2. Authorization: Verify organizer or admin
+                var userId = _currentUserService.UserId;
+                var isAdmin = _currentUserService.IsAdmin;
+
+                if (@event.OrganizerId != userId && !isAdmin)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "SendEventReminder FAILED: Permission denied - EventId={EventId}, UserId={UserId}, OrganizerId={OrganizerId}, IsAdmin={IsAdmin}, Duration={ElapsedMs}ms",
+                        request.EventId, userId, @event.OrganizerId, isAdmin, stopwatch.ElapsedMilliseconds);
+
+                    return Result<int>.Failure("You are not authorized to send reminders for this event");
+                }
+
+                // 3. Verify event status (Active or Published only)
+                if (@event.Status != EventStatus.Active && @event.Status != EventStatus.Published)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "SendEventReminder FAILED: Invalid status - EventId={EventId}, Status={Status}, Duration={ElapsedMs}ms",
+                        request.EventId, @event.Status, stopwatch.ElapsedMilliseconds);
+
+                    return Result<int>.Failure($"Cannot send reminders for events with status: {@event.Status}");
+                }
+
+                // 4. Get registration count
+                var registrations = @event.Registrations;
+                if (registrations == null || registrations.Count == 0)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "SendEventReminder: No registrations - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<int>.Success(0);
+                }
+
+                _logger.LogInformation(
+                    "SendEventReminder: Registrations loaded - EventId={EventId}, TotalRegistrations={Count}",
+                    request.EventId, registrations.Count);
+
+                // 5. Validate reminder type
+                var validReminderTypes = new[] { "1day", "2day", "7day", "custom" };
+                var reminderType = validReminderTypes.Contains(request.ReminderType)
+                    ? request.ReminderType
+                    : "custom";
+
+                // 6. Check idempotency before queuing - count how many will actually be sent
+                var eligibleCount = 0;
+                foreach (var registration in registrations)
+                {
+                    if (registration == null || registration.Id == Guid.Empty) continue;
+
+                    var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
+                        request.EventId, registration.Id, reminderType, cancellationToken);
+
+                    if (!alreadySent)
+                    {
+                        eligibleCount++;
+                    }
+                }
+
+                _logger.LogInformation(
+                    "SendEventReminder: Idempotency check complete - EventId={EventId}, Eligible={Eligible}, Total={Total}",
+                    request.EventId, eligibleCount, registrations.Count);
+
+                if (eligibleCount == 0)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "SendEventReminder: All reminders already sent - EventId={EventId}, Count={Count}, ReminderType={ReminderType}, Duration={ElapsedMs}ms",
+                        request.EventId, registrations.Count, reminderType, stopwatch.ElapsedMilliseconds);
+
+                    // Return -1 to indicate all were already sent (frontend will show appropriate message)
+                    return Result<int>.Success(-1);
+                }
+
+                // 7. Queue background job to send reminders
+                var jobId = _backgroundJobClient.Enqueue<EventReminderJob>(
+                    job => job.SendRemindersForEventAsync(request.EventId, reminderType, CancellationToken.None));
+
+                _logger.LogInformation(
+                    "SendEventReminder: Background job queued - JobId={JobId}, EventId={EventId}, ReminderType={ReminderType}, Eligible={Eligible}",
+                    jobId, request.EventId, reminderType, eligibleCount);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "SendEventReminder COMPLETE: EventId={EventId}, ReminderType={ReminderType}, JobId={JobId}, Eligible={Eligible}/{Total}, Duration={ElapsedMs}ms",
+                    request.EventId, reminderType, jobId, eligibleCount, registrations.Count, stopwatch.ElapsedMilliseconds);
+
+                // 8. Return eligible count (how many will actually receive the reminder)
+                return Result<int>.Success(eligibleCount);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
 
-            // 7. Queue background job to send reminders
-            var jobId = _backgroundJobClient.Enqueue<EventReminderJob>(
-                job => job.SendRemindersForEventAsync(request.EventId, reminderType, CancellationToken.None));
+                _logger.LogError(ex,
+                    "SendEventReminder FAILED: Unexpected error - EventId={EventId}, ReminderType={ReminderType}, Duration={ElapsedMs}ms, ErrorMessage={ErrorMessage}",
+                    request.EventId, request.ReminderType, stopwatch.ElapsedMilliseconds, ex.Message);
 
-            _logger.LogInformation(
-                "[Phase 6A.76] Queued manual reminder job {JobId} for event {EventId}, type={ReminderType}, eligible={Eligible}/{Total}",
-                jobId, request.EventId, reminderType, eligibleCount, registrations.Count);
-
-            // 8. Return eligible count (how many will actually receive the reminder)
-            return Result<int>.Success(eligibleCount);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "[Phase 6A.76] Error queueing manual reminder - EventId: {EventId}, ReminderType: {ReminderType}",
-                request.EventId, request.ReminderType);
-
-            return Result<int>.Failure($"Failed to send reminder. Error: {ex.Message}");
+                throw;
+            }
         }
     }
 }

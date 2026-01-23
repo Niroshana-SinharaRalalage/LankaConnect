@@ -1,12 +1,15 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SendBusinessNotification;
 
 /// <summary>
 /// Handler for sending business notification emails
+/// Phase 6A.X Observability: Enhanced with comprehensive structured logging
 /// </summary>
 public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusinessNotificationCommand, Result<SendBusinessNotificationResponse>>
 {
@@ -32,27 +35,62 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
 
     public async Task<Result<SendBusinessNotificationResponse>> Handle(SendBusinessNotificationCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "SendBusinessNotification"))
+        using (LogContext.PushProperty("EntityType", "BusinessNotification"))
+        using (LogContext.PushProperty("UserId", request.UserId))
+        using (LogContext.PushProperty("BusinessId", request.BusinessId))
+        using (LogContext.PushProperty("NotificationType", request.NotificationType))
         {
-            // Get user
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-            if (user == null)
-            {
-                return Result<SendBusinessNotificationResponse>.Failure("User not found");
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            // Check if user is active
-            if (!user.IsActive)
-            {
-                return Result<SendBusinessNotificationResponse>.Failure("Cannot send notification to inactive user");
-            }
+            _logger.LogInformation(
+                "SendBusinessNotification START: UserId={UserId}, BusinessId={BusinessId}, NotificationType={NotificationType}, Subject={Subject}",
+                request.UserId,
+                request.BusinessId,
+                request.NotificationType,
+                request.Subject);
 
-            // Get business
-            var business = await _businessRepository.GetByIdAsync(request.BusinessId, cancellationToken);
-            if (business == null)
+            try
             {
-                return Result<SendBusinessNotificationResponse>.Failure("Business not found");
-            }
+                // Get user
+                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendBusinessNotification FAILED: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendBusinessNotificationResponse>.Failure("User not found");
+                }
+
+                // Check if user is active
+                if (!user.IsActive)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendBusinessNotification FAILED: User is inactive - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendBusinessNotificationResponse>.Failure("Cannot send notification to inactive user");
+                }
+
+                // Get business
+                var business = await _businessRepository.GetByIdAsync(request.BusinessId, cancellationToken);
+                if (business == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendBusinessNotification FAILED: Business not found - BusinessId={BusinessId}, Duration={ElapsedMs}ms",
+                        request.BusinessId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendBusinessNotificationResponse>.Failure("Business not found");
+                }
+
+                _logger.LogInformation(
+                    "SendBusinessNotification: Entities found - UserEmail={UserEmail}, BusinessName={BusinessName}",
+                    user.Email.Value,
+                    business.Profile.Name);
 
             // Determine template based on notification type
             var templateName = GetTemplateNameForNotificationType(request.NotificationType);
@@ -97,45 +135,67 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
                 Priority = GetEmailPriorityForNotificationType(request.NotificationType)
             };
 
-            // Render template and set email body
-            var renderResult = await _emailTemplateService.RenderTemplateAsync(templateName, templateParameters, cancellationToken);
-            if (!renderResult.IsSuccess)
-            {
-                _logger.LogError("Failed to render template {TemplateName} for notification {NotificationType}: {Error}", 
-                    templateName, request.NotificationType, renderResult.Error);
-                return Result<SendBusinessNotificationResponse>.Failure("Failed to render email template");
+                // Render template and set email body
+                var renderResult = await _emailTemplateService.RenderTemplateAsync(templateName, templateParameters, cancellationToken);
+                if (!renderResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendBusinessNotification FAILED: Template render failed - TemplateName={TemplateName}, NotificationType={NotificationType}, Error={Error}, Duration={ElapsedMs}ms",
+                        templateName,
+                        request.NotificationType,
+                        renderResult.Error,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendBusinessNotificationResponse>.Failure("Failed to render email template");
+                }
+
+                emailMessage.HtmlBody = renderResult.Value.HtmlBody;
+                emailMessage.PlainTextBody = renderResult.Value.PlainTextBody;
+
+                // Send email
+                var sendResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+                if (!sendResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendBusinessNotification FAILED: Email send failed - Email={Email}, BusinessId={BusinessId}, Error={Error}, Duration={ElapsedMs}ms",
+                        user.Email.Value,
+                        request.BusinessId,
+                        sendResult.Error,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendBusinessNotificationResponse>.Failure("Failed to send notification email");
+                }
+
+                var response = new SendBusinessNotificationResponse(
+                    request.BusinessId,
+                    request.UserId,
+                    user.Email.Value,
+                    request.NotificationType,
+                    request.Subject,
+                    DateTime.UtcNow);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "SendBusinessNotification COMPLETE: Email={Email}, BusinessId={BusinessId}, NotificationType={NotificationType}, Duration={ElapsedMs}ms",
+                    user.Email.Value,
+                    request.BusinessId,
+                    request.NotificationType,
+                    stopwatch.ElapsedMilliseconds);
+
+                return Result<SendBusinessNotificationResponse>.Success(response);
             }
-
-            emailMessage.HtmlBody = renderResult.Value.HtmlBody;
-            emailMessage.PlainTextBody = renderResult.Value.PlainTextBody;
-
-            // Send email
-            var sendResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
-            if (!sendResult.IsSuccess)
+            catch (Exception ex)
             {
-                _logger.LogError("Failed to send business notification to {Email} for business {BusinessId}: {Error}", 
-                    user.Email.Value, request.BusinessId, sendResult.Error);
-                return Result<SendBusinessNotificationResponse>.Failure("Failed to send notification email");
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "SendBusinessNotification FAILED: Unexpected error - BusinessId={BusinessId}, UserId={UserId}, NotificationType={NotificationType}, Duration={ElapsedMs}ms, ErrorMessage={ErrorMessage}",
+                    request.BusinessId,
+                    request.UserId,
+                    request.NotificationType,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message);
+                throw;
             }
-
-            _logger.LogInformation("Business notification sent successfully to {Email} for business {BusinessId}, type: {NotificationType}", 
-                user.Email.Value, request.BusinessId, request.NotificationType);
-
-            var response = new SendBusinessNotificationResponse(
-                request.BusinessId,
-                request.UserId,
-                user.Email.Value,
-                request.NotificationType,
-                request.Subject,
-                DateTime.UtcNow);
-
-            return Result<SendBusinessNotificationResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending business notification for business {BusinessId}, user {UserId}, type: {NotificationType}", 
-                request.BusinessId, request.UserId, request.NotificationType);
-            return Result<SendBusinessNotificationResponse>.Failure("An error occurred while sending business notification");
         }
     }
 

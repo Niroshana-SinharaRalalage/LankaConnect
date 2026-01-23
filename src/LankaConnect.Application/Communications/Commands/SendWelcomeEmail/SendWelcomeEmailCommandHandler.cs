@@ -1,12 +1,15 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SendWelcomeEmail;
 
 /// <summary>
 /// Handler for sending welcome emails to users
+/// Phase 6A.X Observability: Enhanced with comprehensive structured logging
 /// </summary>
 public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCommand, Result<SendWelcomeEmailResponse>>
 {
@@ -29,26 +32,59 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
 
     public async Task<Result<SendWelcomeEmailResponse>> Handle(SendWelcomeEmailCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "SendWelcomeEmail"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("UserId", request.UserId))
+        using (LogContext.PushProperty("TriggerType", request.TriggerType))
         {
-            // Get user
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-            if (user == null)
-            {
-                return Result<SendWelcomeEmailResponse>.Failure("User not found");
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            // Check if user is active
-            if (!user.IsActive)
-            {
-                return Result<SendWelcomeEmailResponse>.Failure("Cannot send welcome email to inactive user");
-            }
+            _logger.LogInformation(
+                "SendWelcomeEmail START: UserId={UserId}, TriggerType={TriggerType}",
+                request.UserId,
+                request.TriggerType);
 
-            // For email verification trigger, ensure email is verified
-            if (request.TriggerType == WelcomeEmailTrigger.EmailVerification && !user.IsEmailVerified)
+            try
             {
-                return Result<SendWelcomeEmailResponse>.Failure("Cannot send verification welcome email to unverified user");
-            }
+                // Get user
+                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendWelcomeEmail FAILED: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendWelcomeEmailResponse>.Failure("User not found");
+                }
+
+                // Check if user is active
+                if (!user.IsActive)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendWelcomeEmail FAILED: User is inactive - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendWelcomeEmailResponse>.Failure("Cannot send welcome email to inactive user");
+                }
+
+                // For email verification trigger, ensure email is verified
+                if (request.TriggerType == WelcomeEmailTrigger.EmailVerification && !user.IsEmailVerified)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendWelcomeEmail FAILED: Email not verified for verification trigger - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendWelcomeEmailResponse>.Failure("Cannot send verification welcome email to unverified user");
+                }
+
+                _logger.LogInformation(
+                    "SendWelcomeEmail: User found - UserId={UserId}, Email={Email}, Role={Role}",
+                    user.Id,
+                    user.Email.Value,
+                    user.Role);
 
             // Determine template based on trigger type
             var templateName = request.TriggerType switch
@@ -90,36 +126,52 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
             templateParameters.Add("IsEventOrganizer", user.Role == Domain.Users.Enums.UserRole.EventOrganizer);
             templateParameters.Add("IsAdmin", user.Role == Domain.Users.Enums.UserRole.Admin || user.Role == Domain.Users.Enums.UserRole.AdminManager);
 
-            // Send welcome email
-            var sendResult = await _emailService.SendTemplatedEmailAsync(
-                templateName,
-                user.Email.Value,
-                templateParameters,
-                cancellationToken);
+                // Send welcome email
+                var sendResult = await _emailService.SendTemplatedEmailAsync(
+                    templateName,
+                    user.Email.Value,
+                    templateParameters,
+                    cancellationToken);
 
-            if (!sendResult.IsSuccess)
-            {
-                _logger.LogError("Failed to send welcome email to {Email} for trigger {TriggerType}: {Error}", 
-                    user.Email.Value, request.TriggerType, sendResult.Error);
-                return Result<SendWelcomeEmailResponse>.Failure("Failed to send welcome email");
+                if (!sendResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendWelcomeEmail FAILED: Email send failed - Email={Email}, TriggerType={TriggerType}, Error={Error}, Duration={ElapsedMs}ms",
+                        user.Email.Value,
+                        request.TriggerType,
+                        sendResult.Error,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendWelcomeEmailResponse>.Failure("Failed to send welcome email");
+                }
+
+                var response = new SendWelcomeEmailResponse(
+                    user.Id,
+                    user.Email.Value,
+                    request.TriggerType,
+                    DateTime.UtcNow);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "SendWelcomeEmail COMPLETE: Email={Email}, UserId={UserId}, TriggerType={TriggerType}, Duration={ElapsedMs}ms",
+                    user.Email.Value,
+                    user.Id,
+                    request.TriggerType,
+                    stopwatch.ElapsedMilliseconds);
+
+                return Result<SendWelcomeEmailResponse>.Success(response);
             }
-
-            _logger.LogInformation("Welcome email sent successfully to {Email} for user {UserId}, trigger: {TriggerType}", 
-                user.Email.Value, user.Id, request.TriggerType);
-
-            var response = new SendWelcomeEmailResponse(
-                user.Id,
-                user.Email.Value,
-                request.TriggerType,
-                DateTime.UtcNow);
-
-            return Result<SendWelcomeEmailResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending welcome email for user {UserId}, trigger: {TriggerType}", 
-                request.UserId, request.TriggerType);
-            return Result<SendWelcomeEmailResponse>.Failure("An error occurred while sending welcome email");
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "SendWelcomeEmail FAILED: Unexpected error - UserId={UserId}, TriggerType={TriggerType}, Duration={ElapsedMs}ms, ErrorMessage={ErrorMessage}",
+                    request.UserId,
+                    request.TriggerType,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message);
+                throw;
+            }
         }
     }
 }

@@ -54,6 +54,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
 
             try
             {
+                // Check for cancellation at the start
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // Phase 6A.53 FIX: Retrieve event WITH CHANGE TRACKING (trackChanges: true)
                 // This is required for EF Core to detect changes when we modify the entity
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: true, cancellationToken);
@@ -426,6 +429,10 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                     request.EventId, request.Title, @event.Status, stopwatch.ElapsedMilliseconds);
 
                 return Result.Success();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

@@ -60,6 +60,9 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
             try
             {
+                // Check for cancellation at the start
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // Validate user can create events based on role
                 var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
                 if (user == null)
@@ -367,6 +370,10 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
                     return Result<Guid>.Success(eventResult.Value.Id);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Send, FileText, ExternalLink, Bell } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
@@ -78,6 +79,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   const sendReminderMutation = useSendEventReminder();
   const { data: reminderHistory, isLoading: reminderHistoryLoading } = useEventReminderHistory(eventId);
 
+  // Phase 6A.76: Local state for persistent loading message
+  const [showReminderProcessing, setShowReminderProcessing] = useState(false);
+
   // Handlers
   // Phase 6A.76: Send event publication email
   const handleSendEmail = async () => {
@@ -94,6 +98,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
 
   // Phase 6A.76: Send manual event reminder (always custom type - automatic reminders handled by system)
   const handleSendReminder = async () => {
+    setShowReminderProcessing(true); // Show message immediately
     try {
       const result = await sendReminderMutation.mutateAsync({ eventId, reminderType: 'custom' });
       if (result.recipientCount === 0) {
@@ -115,6 +120,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
       }
     } catch (error: any) {
       toast.error(error?.message || 'Failed to send reminder');
+    } finally {
+      // Keep message visible for 1 second after toast appears
+      setTimeout(() => setShowReminderProcessing(false), 1000);
     }
   };
 
@@ -248,7 +256,7 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
               </Button>
             </div>
 
-            {sendReminderMutation.isPending && (
+            {showReminderProcessing && (
               <div className="mt-2 text-sm text-blue-600 flex items-center gap-2">
                 <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

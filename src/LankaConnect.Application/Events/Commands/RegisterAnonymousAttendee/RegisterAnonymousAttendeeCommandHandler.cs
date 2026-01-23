@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -7,6 +8,7 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 
@@ -44,57 +46,137 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
     public async Task<Result<string?>> Handle(RegisterAnonymousAttendeeCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "RegisterAnonymousAttendee"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("Email", request.Email))
         {
-            // Phase 6A.44: Validate email and check if it belongs to existing member
-            var emailResult = Email.Create(request.Email);
-            if (emailResult.IsFailure)
-                return Result<string?>.Failure(emailResult.Error);
+            var stopwatch = Stopwatch.StartNew();
 
-            var emailExists = await _userRepository.ExistsWithEmailAsync(emailResult.Value, cancellationToken);
-            if (emailExists)
+            _logger.LogInformation(
+                "RegisterAnonymousAttendee START: EventId={EventId}, Email={Email}, AttendeeCount={AttendeeCount}",
+                request.EventId, request.Email, request.Attendees?.Count ?? request.Quantity);
+
+            try
             {
-                return Result<string?>.Failure(
-                    "This email is already registered as a member. Please log in to register for events.");
+                // Check for cancellation at the start
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Phase 6A.44: Validate email and check if it belongs to existing member
+                var emailResult = Email.Create(request.Email);
+                if (emailResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee FAILED: Invalid email - EventId={EventId}, Email={Email}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.EventId, request.Email, emailResult.Error, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Failure(emailResult.Error);
+                }
+
+                _logger.LogInformation(
+                    "RegisterAnonymousAttendee: Email validated - Email={Email}",
+                    request.Email);
+
+                var emailExists = await _userRepository.ExistsWithEmailAsync(emailResult.Value, cancellationToken);
+                if (emailExists)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee FAILED: Email belongs to existing member - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                        request.EventId, request.Email, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Failure(
+                        "This email is already registered as a member. Please log in to register for events.");
+                }
+
+                _logger.LogInformation(
+                    "RegisterAnonymousAttendee: Email not found in user database - proceeding with anonymous registration - Email={Email}",
+                    request.Email);
+
+                // Retrieve event with registrations
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Failure("Event not found");
+                }
+
+                _logger.LogInformation(
+                    "RegisterAnonymousAttendee: Event loaded - EventId={EventId}, Title={Title}, IsFree={IsFree}, Status={Status}",
+                    @event.Id, @event.Title.Value, @event.IsFree(), @event.Status);
+
+                // Phase 6A.44: Check if this email is already registered for the event (anonymous registration)
+                var existingAnonymousRegistration = @event.Registrations
+                    .Where(r => r.UserId == null) // Only anonymous registrations
+                    .Where(r => r.Status != RegistrationStatus.Cancelled && r.Status != RegistrationStatus.Refunded)
+                    .FirstOrDefault(r =>
+                        (r.Contact != null && r.Contact.Email == request.Email) ||
+                        (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == request.Email));
+
+                if (existingAnonymousRegistration != null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee FAILED: Email already registered - EventId={EventId}, Email={Email}, ExistingRegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.Email, existingAnonymousRegistration.Id, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Failure(
+                        "This email is already registered for this event. Each email can only register once.");
+                }
+
+                _logger.LogInformation(
+                    "RegisterAnonymousAttendee: Email not found in event registrations - proceeding - EventId={EventId}, Email={Email}",
+                    request.EventId, request.Email);
+
+                // Session 21: Determine if using new multi-attendee format or legacy format
+                if (request.Attendees != null && request.Attendees.Any())
+                {
+                    _logger.LogInformation(
+                        "RegisterAnonymousAttendee: Using multi-attendee format - EventId={EventId}, AttendeeCount={AttendeeCount}",
+                        request.EventId, request.Attendees.Count);
+
+                    // NEW FORMAT: Multiple attendees with names and ages
+                    return await HandleMultiAttendeeRegistration(@event, request, cancellationToken);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "RegisterAnonymousAttendee: Using legacy format - EventId={EventId}, Quantity={Quantity}",
+                        request.EventId, request.Quantity);
+
+                    // LEGACY FORMAT: Single attendee with Name/Age/Address
+                    return await HandleLegacyRegistration(@event, request, cancellationToken);
+                }
             }
-
-            // Retrieve event with registrations
-            var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-            if (@event == null)
-                return Result<string?>.Failure("Event not found");
-
-            // Phase 6A.44: Check if this email is already registered for the event (anonymous registration)
-            var existingAnonymousRegistration = @event.Registrations
-                .Where(r => r.UserId == null) // Only anonymous registrations
-                .Where(r => r.Status != RegistrationStatus.Cancelled && r.Status != RegistrationStatus.Refunded)
-                .FirstOrDefault(r =>
-                    (r.Contact != null && r.Contact.Email == request.Email) ||
-                    (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == request.Email));
-
-            if (existingAnonymousRegistration != null)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                return Result<string?>.Failure(
-                    "This email is already registered for this event. Each email can only register once.");
-            }
+                stopwatch.Stop();
 
-            // Session 21: Determine if using new multi-attendee format or legacy format
-            if (request.Attendees != null && request.Attendees.Any())
-            {
-                // NEW FORMAT: Multiple attendees with names and ages
-                return await HandleMultiAttendeeRegistration(@event, request, cancellationToken);
+                _logger.LogWarning(
+                    "RegisterAnonymousAttendee CANCELLED: Operation was cancelled - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                    request.EventId, request.Email, stopwatch.ElapsedMilliseconds);
+
+                throw;
             }
-            else
+            catch (Exception ex)
             {
-                // LEGACY FORMAT: Single attendee with Name/Age/Address
-                return await HandleLegacyRegistration(@event, request, cancellationToken);
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "RegisterAnonymousAttendee FAILED: Exception occurred - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.Email, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
             }
-        }
-        catch (Exception ex)
-        {
-            // Phase 6A.44: Catch unhandled exceptions and return proper error response
-            var errorMessage = $"Anonymous registration failed: {ex.GetType().Name}: {ex.Message}";
-            Console.WriteLine($"🔴 [RegisterAnonymousAttendeeCommandHandler] EXCEPTION: {errorMessage}");
-            return Result<string?>.Failure(errorMessage);
         }
     }
 
@@ -107,16 +189,34 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         RegisterAnonymousAttendeeCommand request,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: Creating attendee value objects - EventId={EventId}, AttendeeCount={AttendeeCount}",
+            @event.Id, request.Attendees!.Count);
+
         // Create AttendeeDetails value objects from DTOs
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
             var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
             if (attendeeResult.IsFailure)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "HandleMultiAttendeeRegistration FAILED: Invalid attendee details - EventId={EventId}, AttendeeName={Name}, Error={Error}, Duration={ElapsedMs}ms",
+                    @event.Id, attendeeDto.Name, attendeeResult.Error, stopwatch.ElapsedMilliseconds);
+
                 return Result<string?>.Failure(attendeeResult.Error);
+            }
 
             attendeeDetailsList.Add(attendeeResult.Value);
         }
+
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: Attendee value objects created - EventId={EventId}, Count={Count}",
+            @event.Id, attendeeDetailsList.Count);
 
         // Create RegistrationContact value object
         var contactResult = RegistrationContact.Create(
@@ -126,7 +226,19 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         );
 
         if (contactResult.IsFailure)
+        {
+            stopwatch.Stop();
+
+            _logger.LogWarning(
+                "HandleMultiAttendeeRegistration FAILED: Invalid contact details - EventId={EventId}, Email={Email}, Error={Error}, Duration={ElapsedMs}ms",
+                @event.Id, request.Email, contactResult.Error, stopwatch.ElapsedMilliseconds);
+
             return Result<string?>.Failure(contactResult.Error);
+        }
+
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: Contact value object created - EventId={EventId}, Email={Email}",
+            @event.Id, request.Email);
 
         // Use new domain method to register multiple attendees
         var registerResult = @event.RegisterWithAttendees(
@@ -136,7 +248,19 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         );
 
         if (registerResult.IsFailure)
+        {
+            stopwatch.Stop();
+
+            _logger.LogWarning(
+                "HandleMultiAttendeeRegistration FAILED: Domain validation failed - EventId={EventId}, Error={Error}, Duration={ElapsedMs}ms",
+                @event.Id, registerResult.Error, stopwatch.ElapsedMilliseconds);
+
             return Result<string?>.Failure(registerResult.Error);
+        }
+
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: Domain method succeeded - EventId={EventId}, AttendeeCount={AttendeeCount}",
+            @event.Id, attendeeDetailsList.Count);
 
         // Explicitly mark event as modified for change tracking
         _eventRepository.Update(@event);
@@ -226,7 +350,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             // Save changes with checkout session ID
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            Console.WriteLine($"✅ [RegisterAnonymousAttendeeCommandHandler] Created Stripe checkout for paid event. RegistrationId: {registration.Id}");
+            stopwatch.Stop();
+
+            _logger.LogInformation(
+                "HandleMultiAttendeeRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, CheckoutSessionId={SessionId}, Amount={Amount}, Duration={ElapsedMs}ms",
+                @event.Id, registration.Id, checkoutResult.Value, registration.TotalPrice!.Amount, stopwatch.ElapsedMilliseconds);
 
             // Return checkout session URL for frontend to redirect
             return Result<string?>.Success(checkoutResult.Value);
@@ -236,7 +364,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         // Domain event will trigger confirmation email
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        Console.WriteLine($"✅ [RegisterAnonymousAttendeeCommandHandler] FREE event registration complete. RegistrationId: {registration.Id}");
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration COMPLETE (FREE): EventId={EventId}, RegistrationId={RegistrationId}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+            @event.Id, registration.Id, attendeeDetailsList.Count, stopwatch.ElapsedMilliseconds);
 
         return Result<string?>.Success(null);
     }
@@ -250,9 +382,23 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         RegisterAnonymousAttendeeCommand request,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        _logger.LogInformation(
+            "HandleLegacyRegistration: Validating legacy format - EventId={EventId}, Name={Name}, Age={Age}, Quantity={Quantity}",
+            @event.Id, request.Name ?? "null", request.Age ?? 0, request.Quantity);
+
         // Validate legacy format fields
         if (string.IsNullOrWhiteSpace(request.Name) || !request.Age.HasValue)
+        {
+            stopwatch.Stop();
+
+            _logger.LogWarning(
+                "HandleLegacyRegistration FAILED: Missing required fields - EventId={EventId}, Name={Name}, Age={Age}, Duration={ElapsedMs}ms",
+                @event.Id, request.Name ?? "null", request.Age ?? 0, stopwatch.ElapsedMilliseconds);
+
             return Result<string?>.Failure("Name and Age are required for registration");
+        }
 
         // Create AttendeeInfo value object (legacy)
         var attendeeInfoResult = AttendeeInfo.Create(
@@ -264,12 +410,36 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         );
 
         if (attendeeInfoResult.IsFailure)
+        {
+            stopwatch.Stop();
+
+            _logger.LogWarning(
+                "HandleLegacyRegistration FAILED: Invalid attendee info - EventId={EventId}, Name={Name}, Error={Error}, Duration={ElapsedMs}ms",
+                @event.Id, request.Name, attendeeInfoResult.Error, stopwatch.ElapsedMilliseconds);
+
             return Result<string?>.Failure(attendeeInfoResult.Error);
+        }
+
+        _logger.LogInformation(
+            "HandleLegacyRegistration: AttendeeInfo value object created - EventId={EventId}, Name={Name}",
+            @event.Id, request.Name);
 
         // Use legacy domain method
         var registerResult = @event.RegisterAnonymous(attendeeInfoResult.Value, request.Quantity);
         if (registerResult.IsFailure)
+        {
+            stopwatch.Stop();
+
+            _logger.LogWarning(
+                "HandleLegacyRegistration FAILED: Domain validation failed - EventId={EventId}, Error={Error}, Duration={ElapsedMs}ms",
+                @event.Id, registerResult.Error, stopwatch.ElapsedMilliseconds);
+
             return Result<string?>.Failure(registerResult.Error);
+        }
+
+        _logger.LogInformation(
+            "HandleLegacyRegistration: Domain method succeeded - EventId={EventId}, Quantity={Quantity}",
+            @event.Id, request.Quantity);
 
         // Explicitly mark event as modified for change tracking
         _eventRepository.Update(@event);
@@ -359,7 +529,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             // Save changes with checkout session ID
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            Console.WriteLine($"✅ [RegisterAnonymousAttendeeCommandHandler] Created Stripe checkout for paid event (legacy). RegistrationId: {registration.Id}");
+            stopwatch.Stop();
+
+            _logger.LogInformation(
+                "HandleLegacyRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, CheckoutSessionId={SessionId}, Amount={Amount}, Quantity={Quantity}, Duration={ElapsedMs}ms",
+                @event.Id, registration.Id, checkoutResult.Value, registration.TotalPrice!.Amount, request.Quantity, stopwatch.ElapsedMilliseconds);
 
             // Return checkout session URL for frontend to redirect
             return Result<string?>.Success(checkoutResult.Value);
@@ -368,7 +542,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         // FREE event - save and return null (no payment needed)
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        Console.WriteLine($"✅ [RegisterAnonymousAttendeeCommandHandler] FREE event registration complete (legacy). RegistrationId: {registration.Id}");
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "HandleLegacyRegistration COMPLETE (FREE): EventId={EventId}, RegistrationId={RegistrationId}, Quantity={Quantity}, Duration={ElapsedMs}ms",
+            @event.Id, registration.Id, request.Quantity, stopwatch.ElapsedMilliseconds);
 
         return Result<string?>.Success(null);
     }

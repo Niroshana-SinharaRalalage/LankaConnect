@@ -1,9 +1,75 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-23 - Phase 6A.X Observability: Batch 2C Business Command Handlers COMPLETE*
+*Last Updated: 2026-01-23 - Phase 6A.79: Fix Email Template Parameter Rendering Issue ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability: Batch 2C Business Command Handlers ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.79: Fix Email Template Parameter Rendering Issue ✅ COMPLETE
+
+### Phase 6A.79 - Email Template Parameter Rendering Fix (Hotfix) - 2026-01-23
+
+**Status**: ✅ **CODE COMPLETE & PUSHED TO DEVELOP** (Build: 0 errors, 0 warnings)
+
+**Problem**:
+Handlebars template parameters ({{TicketCode}}, {{TicketExpiryDate}}, {{HasTicket}}, etc.) were rendering literally in emails instead of being replaced with actual values. This affected all 14 renamed templates from Phase 6A.76.
+
+**Root Cause**:
+Phase 6A.76 renamed 14 email templates in database for naming consistency (e.g., `ticket-confirmation` → `template-paid-event-registration-confirmation-with-ticket`), but application code was never updated. Template lookups failed because code used old hardcoded names that no longer exist, causing fallback to templates with literal Handlebars placeholders.
+
+**Solution**:
+Updated ALL application code to use `EmailTemplateNames` constants instead of hardcoded strings, aligning code with Phase 6A.76 database naming standardization.
+
+**Files Changed** (6 files, +301 insertions, -175 deletions):
+
+1. ✅ **PaymentCompletedEventHandler.cs**
+   - Changed: `"ticket-confirmation"` → `EmailTemplateNames.PaidEventRegistration`
+   - Added: `using LankaConnect.Application.Common.Constants;`
+   - Lines: 268, 240, 275
+
+2. ✅ **ResendTicketEmailCommandHandler.cs**
+   - Changed: `"ticket-confirmation"` → `EmailTemplateNames.PaidEventRegistration`
+   - Added: `using LankaConnect.Application.Common.Constants;`
+   - Fixed: Indentation issues causing build errors
+
+3. ✅ **RegistrationConfirmedEventHandler.cs**
+   - Changed: Hardcoded string → `EmailTemplateNames.FreeEventRegistration`
+   - Added: `using LankaConnect.Application.Common.Constants;`
+   - Line: 143
+
+4. ✅ **EventReminderJob.cs**
+   - Changed: Hardcoded strings → `EmailTemplateNames.EventReminder`
+   - Added: `using LankaConnect.Application.Common.Constants;`
+   - Lines: 205, 380 (2 occurrences)
+
+5. ✅ **RegistrationCancelledEventHandler.cs**
+   - Changed: Hardcoded string → `EmailTemplateNames.RegistrationCancellation`
+   - Added: `using LankaConnect.Application.Common.Constants;`
+
+6. ✅ **EmailTemplateNames.cs** (MOVED)
+   - **Critical Architectural Fix**: Moved from `Infrastructure/Email/Configuration/` to `Application/Common/Constants/`
+   - Reason: Clean Architecture - Application layer cannot reference Infrastructure
+   - Namespace changed: `LankaConnect.Infrastructure.Email.Configuration` → `LankaConnect.Application.Common.Constants`
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ All 5 handler/job files updated with type-safe constants
+- ✅ Clean Architecture compliance restored
+
+**Git Commit**: `0523856a` - "fix(phase-6a79): Update all code to use EmailTemplateNames constants"
+
+**Benefits**:
+- Eliminates magic strings (best practice)
+- Type-safe template name references
+- Prevents future name mismatch issues
+- Aligns with Phase 6A.76 naming standardization
+
+**Next Steps**:
+- Await staging deployment
+- Test email rendering via API (event reminders, registration confirmations, ticket emails)
+- Verify emails show actual values instead of {{placeholders}}
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.X Observability: Batch 2C Business Command Handlers ✅ COMPLETE
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 2C Complete (Business Commands) - 2026-01-23
 

@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -236,8 +237,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
 
             // Phase 6A.52: Step 5 - Render email template
             _logger.LogInformation(
-                "[Phase 6A.52] [PaymentEmail-12] Starting template rendering - CorrelationId: {CorrelationId}, TemplateName: ticket-confirmation, ParameterCount: {ParameterCount}",
-                correlationId, parameters.Count);
+                "[Phase 6A.52] [PaymentEmail-12] Starting template rendering - CorrelationId: {CorrelationId}, TemplateName: {TemplateName}, ParameterCount: {ParameterCount}",
+                correlationId, EmailTemplateNames.PaidEventRegistration, parameters.Count);
             _logger.LogInformation(
                 "[Phase 6A.52] [PaymentEmail-13] Template parameters - CorrelationId: {CorrelationId}, Parameters: {Parameters}",
                 correlationId, string.Join(", ", parameters.Keys));
@@ -264,15 +265,15 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             }
 
             var renderResult = await _emailTemplateService.RenderTemplateAsync(
-                "ticket-confirmation",
+                EmailTemplateNames.PaidEventRegistration,
                 parameters,
                 cancellationToken);
 
             if (renderResult.IsFailure)
             {
                 _logger.LogError(
-                    "[Phase 6A.52] [PaymentEmail-ERROR] Template rendering failed - CorrelationId: {CorrelationId}, TemplateName: ticket-confirmation, Error: {Error}",
-                    correlationId, renderResult.Error);
+                    "[Phase 6A.52] [PaymentEmail-ERROR] Template rendering failed - CorrelationId: {CorrelationId}, TemplateName: {TemplateName}, Error: {Error}",
+                    correlationId, EmailTemplateNames.PaidEventRegistration, renderResult.Error);
                 return;
             }
 

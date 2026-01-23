@@ -1,4 +1,4 @@
-namespace LankaConnect.Infrastructure.Email.Configuration;
+namespace LankaConnect.Application.Common.Constants;
 
 /// <summary>
 /// Type-safe constants for email template names.

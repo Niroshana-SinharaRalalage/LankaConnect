@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
@@ -202,7 +203,7 @@ public class EventReminderJob
                         };
 
                         var result = await _emailService.SendTemplatedEmailAsync(
-                            "template-event-reminder",
+                            EmailTemplateNames.EventReminder,
                             toEmail,
                             parameters,
                             cancellationToken);
@@ -377,7 +378,7 @@ public class EventReminderJob
                     };
 
                     var result = await _emailService.SendTemplatedEmailAsync(
-                        "template-event-reminder",
+                        EmailTemplateNames.EventReminder,
                         toEmail,
                         parameters,
                         cancellationToken);

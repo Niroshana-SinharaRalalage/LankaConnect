@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -66,8 +67,9 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
             };
 
             // Send templated email
+            // Phase 6A.79: Use EmailTemplateNames constant
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-event-registration-cancellation",
+                EmailTemplateNames.RegistrationCancellation,
                 user.Email.Value,
                 parameters,
                 cancellationToken);

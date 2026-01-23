@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -137,8 +138,9 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
 
             // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
+            // Phase 6A.79: Use EmailTemplateNames constant
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-free-event-registration-confirmation",
+                EmailTemplateNames.FreeEventRegistration,
                 user.Email.Value,
                 parameters,
                 cancellationToken);

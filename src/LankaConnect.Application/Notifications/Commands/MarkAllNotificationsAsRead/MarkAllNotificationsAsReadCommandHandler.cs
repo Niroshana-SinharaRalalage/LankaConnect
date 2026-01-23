@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Notifications;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Notifications.Commands.MarkAllNotificationsAsRead;
 
@@ -13,27 +16,72 @@ public class MarkAllNotificationsAsReadCommandHandler : ICommandHandler<MarkAllN
     private readonly INotificationRepository _notificationRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<MarkAllNotificationsAsReadCommandHandler> _logger;
 
     public MarkAllNotificationsAsReadCommandHandler(
         INotificationRepository notificationRepository,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<MarkAllNotificationsAsReadCommandHandler> logger)
     {
         _notificationRepository = notificationRepository;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(MarkAllNotificationsAsReadCommand request, CancellationToken cancellationToken)
     {
-        var currentUserId = _currentUserService.UserId;
+        using (LogContext.PushProperty("Operation", "MarkAllNotificationsAsRead"))
+        using (LogContext.PushProperty("EntityType", "Notification"))
+        {
+            var stopwatch = Stopwatch.StartNew();
 
-        if (currentUserId == Guid.Empty)
-            return Result.Failure("User must be authenticated");
+            _logger.LogInformation("MarkAllNotificationsAsRead START");
 
-        await _notificationRepository.MarkAllAsReadAsync(currentUserId, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+            try
+            {
+                var currentUserId = _currentUserService.UserId;
 
-        return Result.Success();
+                if (currentUserId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "MarkAllNotificationsAsRead FAILED: User not authenticated - Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("User must be authenticated");
+                }
+
+                using (LogContext.PushProperty("UserId", currentUserId))
+                {
+                    _logger.LogInformation(
+                        "MarkAllNotificationsAsRead: Processing - UserId={UserId}",
+                        currentUserId);
+
+                    await _notificationRepository.MarkAllAsReadAsync(currentUserId, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "MarkAllNotificationsAsRead COMPLETE: UserId={UserId}, Duration={ElapsedMs}ms",
+                        currentUserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Success();
+                }
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "MarkAllNotificationsAsRead FAILED: Exception occurred - Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
     }
 }

@@ -586,9 +586,8 @@ function DashboardContent() {
                         label: 'Newsletters',
                         icon: Mail,
                         content: (
-                          <div className="max-h-[600px] overflow-y-auto">
-                            <NewslettersTab />
-                          </div>
+                          // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
+                          <NewslettersTab />
                         ),
                       },
                       {
@@ -708,9 +707,8 @@ function DashboardContent() {
                         label: 'Newsletters',
                         icon: Mail,
                         content: (
-                          <div className="max-h-[600px] overflow-y-auto">
-                            <NewslettersTab />
-                          </div>
+                          // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
+                          <NewslettersTab />
                         ),
                       },
                       {

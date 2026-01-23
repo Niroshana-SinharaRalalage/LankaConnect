@@ -175,21 +175,23 @@ export function NewslettersTab() {
         </div>
       )}
 
-      {/* Newsletter List with filtered data */}
-      <NewsletterList
-        newsletters={filteredNewsletters}
-        isLoading={isLoading}
-        emptyMessage={
-          searchTerm || statusFilter !== 'all'
-            ? 'No newsletters match your filters. Try adjusting your search or filter criteria.'
-            : 'No newsletters yet. Create your first newsletter to get started!'
-        }
-        onNewsletterClick={handleNewsletterClick}
-        onEditNewsletter={handleEditClick}
-        onPublishNewsletter={handlePublish}
-        onSendNewsletter={handleSend}
-        onDeleteNewsletter={handleDeleteClick}
-      />
+      {/* Phase 6A.75: Newsletter List with scroll starting at list position */}
+      <div className="max-h-[480px] overflow-y-auto">
+        <NewsletterList
+          newsletters={filteredNewsletters}
+          isLoading={isLoading}
+          emptyMessage={
+            searchTerm || statusFilter !== 'all'
+              ? 'No newsletters match your filters. Try adjusting your search or filter criteria.'
+              : 'No newsletters yet. Create your first newsletter to get started!'
+          }
+          onNewsletterClick={handleNewsletterClick}
+          onEditNewsletter={handleEditClick}
+          onPublishNewsletter={handlePublish}
+          onSendNewsletter={handleSend}
+          onDeleteNewsletter={handleDeleteClick}
+        />
+      </div>
 
       {/* Phase 6A.74 Part 10 Issue #2: Delete Confirmation Dialog */}
       <ConfirmDialog

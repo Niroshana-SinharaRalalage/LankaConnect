@@ -141,16 +141,11 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
       return;
     }
 
-    // Phase 6A.74 Part 14 Fix: Simple placeholder template
-    // Note: Event links are automatically added by the email template when EventId is set
-    // The email template (in database) renders styled buttons in a "Related Event" section:
-    // - "View Event Details" (orange gradient button)
-    // - "View Sign-up Lists" (maroon gradient button)
-    // So we only need the placeholder text here - no manual links needed in content!
+    // Phase 6A.75: Simple placeholder template
+    // Note: Event links (View Event Details + View Sign-up Lists buttons) are automatically
+    // added by the email template when EventId is set - no manual links needed in content!
     const eventLinksTemplate = `
-<p>[Write your news letter content here.....]</p>
-<p><br></p>
-<p><em>💡 Tip: When this newsletter is linked to an event, styled event links will be automatically included in the email.</em></p>
+<p>[Write your newsletter content here.....]</p>
     `.trim();
 
     setValue('description', eventLinksTemplate);

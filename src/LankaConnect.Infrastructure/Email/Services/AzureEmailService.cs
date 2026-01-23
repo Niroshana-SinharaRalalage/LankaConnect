@@ -284,10 +284,11 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
     /// <summary>
     /// Phase 6A.34: Render template content by replacing {{variable}} placeholders
     /// Phase 6A.74 Part 14 Fix: Now supports Handlebars-style syntax:
-    /// - {{#if variable}}...{{/if}} conditionals
+    /// - {{#if variable}}...{{/if}} conditionals (with proper NESTED support)
     /// - {{#variable}}...{{/variable}} conditionals (legacy)
     /// - {{{variable}}} triple-brace unescaped placeholders
     /// - {{variable}} double-brace placeholders
+    /// Phase 6A.75 Fix: Implemented bracket-matching algorithm for nested {{#if}} conditionals
     /// </summary>
     private static string RenderTemplateContent(string template, Dictionary<string, object> parameters)
     {
@@ -308,47 +309,19 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             }
         }
 
-        // Phase 6A.74 Part 14 Fix: Process Handlebars-style conditionals {{#if variable}}...{{/if}}
+        // Phase 6A.75 Fix: Process ALL Handlebars-style conditionals with proper nesting support
+        // We need to process from innermost to outermost, so we repeatedly process until no more changes
+        result = ProcessNestedConditionals(result, parameters);
+
+        // Also support legacy {{#variable}}...{{/variable}} syntax
         foreach (var param in parameters)
         {
-            var isTruthy = param.Value switch
-            {
-                bool b => b,
-                string s => !string.IsNullOrEmpty(s),
-                null => false,
-                _ => true
-            };
+            var isTruthy = IsTruthyValue(param.Value);
 
-            // Support Handlebars {{#if variable}}...{{/if}} syntax
-            var handlebarsOpenTag = $"{{{{#if {param.Key}}}}}";
-            var handlebarsCloseTag = "{{/if}}";
-
-            int startIndex = 0;
-            while ((startIndex = result.IndexOf(handlebarsOpenTag, startIndex, StringComparison.Ordinal)) != -1)
-            {
-                var endIndex = result.IndexOf(handlebarsCloseTag, startIndex, StringComparison.Ordinal);
-                if (endIndex == -1) break;
-
-                var contentStart = startIndex + handlebarsOpenTag.Length;
-
-                if (isTruthy)
-                {
-                    // Keep the content, remove the tags
-                    result = result.Remove(endIndex, handlebarsCloseTag.Length);
-                    result = result.Remove(startIndex, handlebarsOpenTag.Length);
-                }
-                else
-                {
-                    // Remove the entire section including tags
-                    result = result.Remove(startIndex, endIndex - startIndex + handlebarsCloseTag.Length);
-                }
-            }
-
-            // Also support legacy {{#variable}}...{{/variable}} syntax
             var legacyOpenTag = $"{{{{#{param.Key}}}}}";
             var legacyCloseTag = $"{{{{/{param.Key}}}}}";
 
-            startIndex = 0;
+            int startIndex = 0;
             while ((startIndex = result.IndexOf(legacyOpenTag, startIndex, StringComparison.Ordinal)) != -1)
             {
                 var endIndex = result.IndexOf(legacyCloseTag, startIndex, StringComparison.Ordinal);
@@ -381,6 +354,180 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Helper method to determine if a value is truthy for conditional processing
+    /// </summary>
+    private static bool IsTruthyValue(object? value)
+    {
+        return value switch
+        {
+            bool b => b,
+            string s => !string.IsNullOrEmpty(s),
+            null => false,
+            _ => true
+        };
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Process nested {{#if variable}}...{{/if}} conditionals using bracket-matching
+    /// This algorithm correctly handles nested conditionals by finding the MATCHING {{/if}} tag
+    /// using a depth counter to track open/close pairs.
+    /// </summary>
+    private static string ProcessNestedConditionals(string template, Dictionary<string, object> parameters)
+    {
+        var result = template;
+        const string ifOpenPattern = "{{#if ";
+        const string ifCloseTag = "{{/if}}";
+
+        // Keep processing until no more {{#if}} tags remain
+        bool madeChanges;
+        int maxIterations = 100; // Safety limit to prevent infinite loops
+        int iteration = 0;
+
+        do
+        {
+            madeChanges = false;
+            iteration++;
+
+            // Find the innermost {{#if}} block (one that has no nested {{#if}} inside it)
+            // This ensures we process from inside-out
+            int searchStart = 0;
+            int innermostStart = -1;
+            string? innermostVariable = null;
+
+            while (true)
+            {
+                var ifStart = result.IndexOf(ifOpenPattern, searchStart, StringComparison.Ordinal);
+                if (ifStart == -1) break;
+
+                // Extract the variable name
+                var varStart = ifStart + ifOpenPattern.Length;
+                var varEnd = result.IndexOf("}}", varStart, StringComparison.Ordinal);
+                if (varEnd == -1) break;
+
+                var variableName = result.Substring(varStart, varEnd - varStart).Trim();
+                var fullOpenTag = $"{{{{#if {variableName}}}}}";
+                var openTagEnd = ifStart + fullOpenTag.Length;
+
+                // Find the matching {{/if}} using bracket counting
+                int matchingCloseIndex = FindMatchingCloseTag(result, openTagEnd);
+
+                if (matchingCloseIndex == -1)
+                {
+                    // No matching close tag, skip this one
+                    searchStart = openTagEnd;
+                    continue;
+                }
+
+                // Check if there are any nested {{#if}} between this open and its matching close
+                var contentBetween = result.Substring(openTagEnd, matchingCloseIndex - openTagEnd);
+                if (!contentBetween.Contains(ifOpenPattern))
+                {
+                    // This is an innermost block (no nested {{#if}} inside)
+                    innermostStart = ifStart;
+                    innermostVariable = variableName;
+                    break;
+                }
+
+                // There are nested blocks, continue searching for a deeper one
+                searchStart = openTagEnd;
+            }
+
+            // Process the innermost block we found
+            if (innermostStart != -1 && innermostVariable != null)
+            {
+                var fullOpenTag = $"{{{{#if {innermostVariable}}}}}";
+                var openTagEnd = innermostStart + fullOpenTag.Length;
+                var matchingCloseIndex = FindMatchingCloseTag(result, openTagEnd);
+
+                if (matchingCloseIndex != -1)
+                {
+                    // Check if this variable has a truthy value in parameters
+                    var isTruthy = false;
+                    if (parameters.TryGetValue(innermostVariable, out var paramValue))
+                    {
+                        isTruthy = IsTruthyValue(paramValue);
+                    }
+
+                    if (isTruthy)
+                    {
+                        // Keep the content, remove only the tags
+                        var contentStart = openTagEnd;
+                        var content = result.Substring(contentStart, matchingCloseIndex - contentStart);
+
+                        // Replace the entire block (open tag + content + close tag) with just the content
+                        result = result.Substring(0, innermostStart) +
+                                 content +
+                                 result.Substring(matchingCloseIndex + ifCloseTag.Length);
+                    }
+                    else
+                    {
+                        // Remove the entire section including tags
+                        result = result.Substring(0, innermostStart) +
+                                 result.Substring(matchingCloseIndex + ifCloseTag.Length);
+                    }
+
+                    madeChanges = true;
+                }
+            }
+
+        } while (madeChanges && iteration < maxIterations);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Find the matching {{/if}} tag for an opening {{#if}} tag
+    /// Uses bracket-counting to handle nested conditionals correctly.
+    /// </summary>
+    /// <param name="template">The template string</param>
+    /// <param name="startAfterOpenTag">Position right after the opening {{#if variable}} tag</param>
+    /// <returns>Index of the matching {{/if}} tag, or -1 if not found</returns>
+    private static int FindMatchingCloseTag(string template, int startAfterOpenTag)
+    {
+        const string ifOpenPattern = "{{#if ";
+        const string ifCloseTag = "{{/if}}";
+
+        int depth = 1; // We start at depth 1 because we've already passed one opening tag
+        int currentPos = startAfterOpenTag;
+
+        while (depth > 0 && currentPos < template.Length)
+        {
+            // Find the next occurrence of either {{#if or {{/if}}
+            var nextOpen = template.IndexOf(ifOpenPattern, currentPos, StringComparison.Ordinal);
+            var nextClose = template.IndexOf(ifCloseTag, currentPos, StringComparison.Ordinal);
+
+            if (nextClose == -1)
+            {
+                // No more closing tags found
+                return -1;
+            }
+
+            if (nextOpen == -1 || nextClose < nextOpen)
+            {
+                // The next tag is a closing tag
+                depth--;
+                if (depth == 0)
+                {
+                    // This is our matching close tag
+                    return nextClose;
+                }
+                currentPos = nextClose + ifCloseTag.Length;
+            }
+            else
+            {
+                // The next tag is an opening tag
+                depth++;
+                // Skip past this opening tag - find its closing }}
+                var closeBrace = template.IndexOf("}}", nextOpen + ifOpenPattern.Length, StringComparison.Ordinal);
+                if (closeBrace == -1) return -1;
+                currentPos = closeBrace + 2;
+            }
+        }
+
+        return -1;
     }
 
     public async Task<Result<BulkEmailResult>> SendBulkEmailAsync(IEnumerable<EmailMessageDto> emailMessages,

@@ -49,4 +49,9 @@
     <Compile Remove="SimpleIntegrationTest.cs" />
   </ItemGroup>
 
+  <!-- Phase 6A.75: Include specific test files that are actively needed -->
+  <ItemGroup>
+    <Compile Include="Email\Services\AzureEmailServiceRenderTemplateTests.cs" />
+  </ItemGroup>
+
 </Project>

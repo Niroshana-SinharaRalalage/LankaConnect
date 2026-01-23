@@ -192,22 +192,20 @@ public class DeleteBusinessCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithEmptyGuid_ShouldThrowBusinessNotFoundException()
+    public async Task Handle_WithEmptyGuid_ShouldReturnFailure()
     {
         // Arrange
         var command = new DeleteBusinessCommand(Guid.Empty);
 
-        _mockBusinessRepository
-            .Setup(x => x.GetByIdAsync(Guid.Empty, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Business?)null);
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Act & Assert
-        await _handler.Invoking(x => x.Handle(command, CancellationToken.None))
-                     .Should().ThrowAsync<BusinessNotFoundException>()
-                     .WithMessage($"Business with ID '{Guid.Empty}' was not found.");
-        
-        // Verify repository was called but no delete operations
-        _mockBusinessRepository.Verify(x => x.GetByIdAsync(Guid.Empty, It.IsAny<CancellationToken>()), Times.Once);
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Be("Business ID cannot be empty");
+
+        // Verify repository was never called due to early validation
+        _mockBusinessRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockBusinessRepository.Verify(x => x.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

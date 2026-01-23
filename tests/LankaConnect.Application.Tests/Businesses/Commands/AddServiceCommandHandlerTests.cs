@@ -211,10 +211,11 @@ public class AddServiceCommandHandlerTests
             .Setup(x => x.GetByIdAsync(businessId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBusiness);
 
-        // Act & Assert
-        await _handler.Invoking(x => x.Handle(command, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
 
+        // Assert
+        result.IsSuccess.Should().BeFalse();
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -241,10 +242,11 @@ public class AddServiceCommandHandlerTests
             .Setup(x => x.GetByIdAsync(businessId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBusiness);
 
-        // Act & Assert
-        await _handler.Invoking(x => x.Handle(command, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
 
+        // Assert
+        result.IsSuccess.Should().BeFalse();
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

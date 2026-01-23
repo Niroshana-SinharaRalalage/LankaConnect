@@ -6,6 +6,7 @@ using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Exceptions;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace LankaConnect.Application.Tests.Businesses.Commands;
@@ -14,13 +15,15 @@ public class AddServiceCommandHandlerTests
 {
     private readonly Mock<IBusinessRepository> _mockBusinessRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ILogger<AddServiceCommandHandler>> _mockLogger;
     private readonly AddServiceCommandHandler _handler;
 
     public AddServiceCommandHandlerTests()
     {
         _mockBusinessRepository = new Mock<IBusinessRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _handler = new AddServiceCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object);
+        _mockLogger = new Mock<ILogger<AddServiceCommandHandler>>();
+        _handler = new AddServiceCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object, _mockLogger.Object);
     }
 
     [Fact]

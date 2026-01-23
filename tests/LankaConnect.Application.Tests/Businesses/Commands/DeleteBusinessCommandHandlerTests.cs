@@ -4,6 +4,7 @@ using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Businesses.Commands;
 
@@ -11,6 +12,7 @@ public class DeleteBusinessCommandHandlerTests
 {
     private readonly Mock<IBusinessRepository> _mockBusinessRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ILogger<DeleteBusinessCommandHandler>> _mockLogger;
     private readonly DeleteBusinessCommandHandler _handler;
     private readonly Fixture _fixture;
 
@@ -18,7 +20,8 @@ public class DeleteBusinessCommandHandlerTests
     {
         _mockBusinessRepository = new Mock<IBusinessRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _handler = new DeleteBusinessCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object);
+        _mockLogger = new Mock<ILogger<DeleteBusinessCommandHandler>>();
+        _handler = new DeleteBusinessCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object, _mockLogger.Object);
         _fixture = new Fixture();
     }
 

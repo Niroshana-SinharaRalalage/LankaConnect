@@ -21,7 +21,7 @@ public class CreateBusinessCommandHandlerTests
         _mockBusinessRepository = new Mock<IBusinessRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<CreateBusinessCommandHandler>>();
-        _handler = new CreateBusinessCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object);
+        _handler = new CreateBusinessCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object, _mockLogger.Object);
         _fixture = new Fixture();
     }
 

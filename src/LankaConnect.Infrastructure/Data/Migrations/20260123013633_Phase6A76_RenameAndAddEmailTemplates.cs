@@ -148,11 +148,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Transactional',
                     'PasswordReset',
                     'Reset Your Password - LankaConnect',
-                    '<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Reset Your Password</title></head><body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;""><div style=""background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;""><h1 style=""color: white; margin: 0; font-size: 28px;"">Password Reset</h1></div><div style=""background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;""><p>Hello {{UserName}},</p><p>We received a request to reset your password. Click the button below to create a new password:</p><div style=""text-align: center; margin: 30px 0;""><a href=""{{ResetLink}}"" style=""background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;"">Reset Password</a></div><p style=""color: #666; font-size: 14px;"">This link will expire in 1 hour for security reasons.</p><p style=""color: #666; font-size: 14px;"">If you did not request this reset, please ignore this email or contact support if you have concerns.</p><hr style=""border: none; border-top: 1px solid #eee; margin: 20px 0;""><p style=""color: #999; font-size: 12px; text-align: center;"">&copy; {{Year}} LankaConnect. All rights reserved.</p></div></body></html>',
                     'Hello {{UserName}}, We received a request to reset your password. Visit this link to create a new password: {{ResetLink}} This link will expire in 1 hour. If you did not request this reset, please ignore this email.',
+                    '<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Reset Your Password</title></head><body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;""><div style=""background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;""><h1 style=""color: white; margin: 0; font-size: 28px;"">Password Reset</h1></div><div style=""background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;""><p>Hello {{UserName}},</p><p>We received a request to reset your password. Click the button below to create a new password:</p><div style=""text-align: center; margin: 30px 0;""><a href=""{{ResetLink}}"" style=""background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;"">Reset Password</a></div><p style=""color: #666; font-size: 14px;"">This link will expire in 1 hour for security reasons.</p><p style=""color: #666; font-size: 14px;"">If you did not request this reset, please ignore this email or contact support if you have concerns.</p><hr style=""border: none; border-top: 1px solid #eee; margin: 20px 0;""><p style=""color: #999; font-size: 12px; text-align: center;"">&copy; {{Year}} LankaConnect. All rights reserved.</p></div></body></html>',
                     true,
 
-                    NOW()
                     NOW()
                 WHERE NOT EXISTS (SELECT 1 FROM communications.email_templates WHERE name = 'template-password-reset');");
 
@@ -166,11 +165,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Transactional',
                     'PasswordChange',
                     'Your Password Has Been Changed - LankaConnect',
-                    '<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Password Changed</title></head><body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;""><div style=""background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;""><h1 style=""color: white; margin: 0; font-size: 28px;"">Password Changed</h1></div><div style=""background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;""><p>Hello {{UserName}},</p><p>Your password has been successfully changed on {{ChangedAt}}.</p><p style=""color: #666;"">If you made this change, you can safely ignore this email.</p><p style=""color: #d9534f; font-weight: bold;"">If you did not make this change, please contact our support team immediately and secure your account.</p><hr style=""border: none; border-top: 1px solid #eee; margin: 20px 0;""><p style=""color: #999; font-size: 12px; text-align: center;"">&copy; {{Year}} LankaConnect. All rights reserved.</p></div></body></html>',
                     'Hello {{UserName}}, Your password has been successfully changed on {{ChangedAt}}. If you did not make this change, please contact support immediately.',
+                    '<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Password Changed</title></head><body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;""><div style=""background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;""><h1 style=""color: white; margin: 0; font-size: 28px;"">Password Changed</h1></div><div style=""background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;""><p>Hello {{UserName}},</p><p>Your password has been successfully changed on {{ChangedAt}}.</p><p style=""color: #666;"">If you made this change, you can safely ignore this email.</p><p style=""color: #d9534f; font-weight: bold;"">If you did not make this change, please contact our support team immediately and secure your account.</p><hr style=""border: none; border-top: 1px solid #eee; margin: 20px 0;""><p style=""color: #999; font-size: 12px; text-align: center;"">&copy; {{Year}} LankaConnect. All rights reserved.</p></div></body></html>',
                     true,
 
-                    NOW()
                     NOW()
                 WHERE NOT EXISTS (SELECT 1 FROM communications.email_templates WHERE name = 'template-password-change-confirmation');");
 
@@ -189,7 +187,6 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     true,
 
                     NOW()
-                    NOW()
                 WHERE NOT EXISTS (SELECT 1 FROM communications.email_templates WHERE name = 'template-welcome');");
 
             // Template 4: Anonymous RSVP Confirmation
@@ -207,7 +204,6 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     true,
 
                     NOW()
-                    NOW()
                 WHERE NOT EXISTS (SELECT 1 FROM communications.email_templates WHERE name = 'template-anonymous-rsvp-confirmation');");
 
             // Template 5: Organizer Role Approval
@@ -224,7 +220,6 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Hello {{UserName}}, Congratulations! Your request to become an Event Organizer has been approved. You can now create events, manage registrations, and access the organizer dashboard at {{DashboardUrl}}.',
                     true,
 
-                    NOW()
                     NOW()
                 WHERE NOT EXISTS (SELECT 1 FROM communications.email_templates WHERE name = 'template-organizer-role-approval');");
 

@@ -1,0 +1,185 @@
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace LankaConnect.Infrastructure.Data.Migrations
+{
+    /// <inheritdoc />
+    public partial class Phase6A77_FixAllTemplateTextVersions : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // =====================================================
+            // Phase 6A.77: Fix ALL Email Template Text Versions
+            // Hotfix for Phase 6A.76 deployment issue
+            //
+            // PROBLEM:
+            // 1. The 5 new templates from Phase 6A.76 were inserted with HTML/text swapped
+            // 2. ALL 19 templates need proper plain text extracted from HTML
+            //
+            // SOLUTION:
+            // Part 1: Swap HTML/text for the 5 new templates that have it backwards
+            // Part 2: Update ALL 19 templates with proper plain text versions
+            // =====================================================
+
+            // PART 1: Fix the 5 new templates (swap HTML/text columns)
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET
+                    text_template = html_template,
+                    html_template = text_template,
+                    updated_at = NOW()
+                WHERE name IN (
+                    'template-password-reset',
+                    'template-password-change-confirmation',
+                    'template-welcome',
+                    'template-anonymous-rsvp-confirmation',
+                    'template-organizer-role-approval'
+                )
+                AND text_template LIKE '<!DOCTYPE%';");
+
+            // PART 2: Update ALL 19 templates with proper plain text
+
+            // Template 1: Free Event Registration
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Thank you for registering for {{EventTitle}}! Your registration is confirmed. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. {{#if EventDescription}}About this event: {{EventDescription}}{{/if}} {{#if OrganizerName}}Organized by: {{OrganizerName}}{{#if OrganizerEmail}} ({{OrganizerEmail}}){{/if}}{{/if}} View full event details: {{EventDetailsUrl}} We look forward to seeing you there!',
+                    updated_at = NOW()
+                WHERE name = 'template-free-event-registration-confirmation';");
+
+            // Template 2: Paid Event Registration with Ticket
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Your ticket for {{EventTitle}} is confirmed! Order Details: Ticket Type: {{TicketType}}, Quantity: {{Quantity}}, Total Paid: ${{TotalAmount}}, Order Number: {{OrderNumber}}. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. Important: Please bring this confirmation email or your ticket to the event. View your ticket and event details: {{TicketUrl}} Thank you for your purchase!',
+                    updated_at = NOW()
+                WHERE name = 'template-paid-event-registration-confirmation-with-ticket';");
+
+            // Template 3: Event Reminder
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, This is a friendly reminder about {{EventTitle}} happening soon! Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}{{#if EventDescription}}, About: {{EventDescription}}{{/if}}. {{#if IsRegistered}}You are registered for this event.{{/if}} View event details: {{EventDetailsUrl}} See you there!',
+                    updated_at = NOW()
+                WHERE name = 'template-event-reminder';");
+
+            // Template 4: Email Verification
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hello {{UserName}}, Thank you for signing up for LankaConnect! Please verify your email address to complete your registration. Verification link: {{VerificationUrl}} This link will expire in {{ExpirationHours}} hours. If you did not create this account, please ignore this email.',
+                    updated_at = NOW()
+                WHERE name = 'template-membership-email-verification';");
+
+            // Template 5: Signup Commitment Confirmation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Thank you for committing to bring {{ItemName}} for {{EventTitle}}! Your Commitment: Item: {{ItemName}}, Quantity: {{Quantity}}, Notes: {{Notes}}. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. You can update or cancel your commitment anytime: {{ManageCommitmentUrl}} Thank you for contributing!',
+                    updated_at = NOW()
+                WHERE name = 'template-signup-list-commitment-confirmation';");
+
+            // Template 6: Signup Commitment Update
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Your commitment for {{EventTitle}} has been updated. Updated Commitment: Item: {{ItemName}}, Quantity: {{Quantity}}, Notes: {{Notes}}. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. Manage your commitment: {{ManageCommitmentUrl}} Thank you!',
+                    updated_at = NOW()
+                WHERE name = 'template-signup-list-commitment-update';");
+
+            // Template 7: Signup Commitment Cancellation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Your commitment for {{EventTitle}} has been cancelled as requested. Cancelled Commitment: Item: {{ItemName}}, Quantity: {{Quantity}}. If you would like to sign up again, visit: {{EventDetailsUrl}} Thank you for your participation!',
+                    updated_at = NOW()
+                WHERE name = 'template-signup-list-commitment-cancellation';");
+
+            // Template 8: Event Registration Cancellation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Your registration for {{EventTitle}} has been cancelled as requested. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. If you would like to register again, visit: {{EventDetailsUrl}} We hope to see you at future events!',
+                    updated_at = NOW()
+                WHERE name = 'template-event-registration-cancellation';");
+
+            // Template 9: New Event Publication
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'NEW EVENT ANNOUNCEMENT: {{EventTitle}}. {{EventDescription}} Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}{{#if TicketPrice}}, Price: ${{TicketPrice}}{{/if}}{{#if OrganizerName}}, Organized by: {{OrganizerName}}{{/if}}. View full details and register: {{EventDetailsUrl}} Don''t miss out!',
+                    updated_at = NOW()
+                WHERE name = 'template-new-event-publication';");
+
+            // Template 10: Event Details Publication
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi {{UserName}}, Here are the details for {{EventTitle}}. {{EventDescription}} Event Information: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}{{#if TicketPrice}}, Price: ${{TicketPrice}}{{/if}}{{#if OrganizerName}}, Organized by: {{OrganizerName}}{{/if}}. View full details: {{EventDetailsUrl}} We look forward to seeing you!',
+                    updated_at = NOW()
+                WHERE name = 'template-event-details-publication';");
+
+            // Template 11: Event Cancellation Notifications
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'IMPORTANT: Event Cancellation Notice. Hi {{UserName}}, We regret to inform you that {{EventTitle}} scheduled for {{EventStartDate}} at {{EventStartTime}} has been cancelled. {{#if CancellationReason}}Reason: {{CancellationReason}}{{/if}} {{#if RefundInfo}}Refund Information: {{RefundInfo}}{{/if}} We apologize for any inconvenience. For more information, contact: {{OrganizerEmail}}',
+                    updated_at = NOW()
+                WHERE name = 'template-event-cancellation-notifications';");
+
+            // Template 12: Event Approval
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Great news! Your event has been approved. Hi {{OrganizerName}}, Your event ""{{EventTitle}}"" has been reviewed and approved by our team. Your event is now live and visible to all users. Event Details: Date: {{EventStartDate}} at {{EventStartTime}}, Location: {{EventLocation}}. View and manage your event: {{EventDetailsUrl}} Thank you for organizing with LankaConnect!',
+                    updated_at = NOW()
+                WHERE name = 'template-event-approval';");
+
+            // Template 13: Newsletter Notification
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'LankaConnect Newsletter: {{NewsletterTitle}}. {{NewsletterContent}} Stay connected with your community! Unsubscribe: {{UnsubscribeUrl}}',
+                    updated_at = NOW()
+                WHERE name = 'template-newsletter-notification';");
+
+            // Template 14: Newsletter Subscription Confirmation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hi, Thank you for subscribing to the LankaConnect newsletter! You will now receive updates about events and community news. You can unsubscribe at any time: {{UnsubscribeUrl}} Welcome to our community!',
+                    updated_at = NOW()
+                WHERE name = 'template-newsletter-subscription-confirmation';");
+
+            // Template 15: Password Reset
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hello {{UserName}}, We received a request to reset your password for your LankaConnect account. Click this link to reset your password: {{ResetLink}} This link will expire in 1 hour for security reasons. If you did not request this password reset, please ignore this email or contact support if you have concerns.',
+                    updated_at = NOW()
+                WHERE name = 'template-password-reset';");
+
+            // Template 16: Password Change Confirmation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hello {{UserName}}, Your LankaConnect password has been successfully changed on {{ChangedAt}}. If you made this change, you can safely ignore this email. If you did NOT make this change, please contact our support team immediately to secure your account.',
+                    updated_at = NOW()
+                WHERE name = 'template-password-change-confirmation';");
+
+            // Template 17: Welcome
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hello {{UserName}}, Welcome to LankaConnect! Thank you for joining our community. With LankaConnect, you can: - Discover local events and activities, - Connect with your community, - Create and manage your own events, - Stay updated with newsletters. Get started: {{DashboardUrl}} If you have any questions, our support team is here to help!',
+                    updated_at = NOW()
+                WHERE name = 'template-welcome';");
+
+            // Template 18: Anonymous RSVP Confirmation
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Your RSVP for {{EventTitle}} has been confirmed! Event Details: Date: {{EventDate}}, Time: {{EventTime}}, Location: {{EventLocation}}. View full event details: {{EventUrl}} To modify or cancel your RSVP: {{ManageRsvpUrl}} We look forward to seeing you!',
+                    updated_at = NOW()
+                WHERE name = 'template-anonymous-rsvp-confirmation';");
+
+            // Template 19: Organizer Role Approval
+            migrationBuilder.Sql(@"
+                UPDATE communications.email_templates
+                SET text_template = 'Hello {{UserName}}, Congratulations! Your request to become an Event Organizer has been approved. You now have access to: - Create and publish events, - Manage event registrations, - Send notifications to attendees, - Access organizer dashboard and analytics. Visit your organizer dashboard: {{DashboardUrl}} We''re excited to see the amazing events you''ll create!',
+                    updated_at = NOW()
+                WHERE name = 'template-organizer-role-approval';");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            // Rollback not needed - text templates can remain
+            // If needed, restore from backup or re-run Phase 6A.76
+        }
+    }
+}

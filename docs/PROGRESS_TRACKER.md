@@ -1,9 +1,86 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-22 - Phase 6A.X Observability: Batch 1E Newsletter Query Handlers COMPLETE*
+*Last Updated: 2026-01-23 - Phase 6A.X Observability: Batch 2A Command Handlers COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability: Batch 1E Newsletter Query Handlers ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Observability: Batch 2A Command Handlers ✅ COMPLETE
+
+### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 2A Complete (Analytics + Notifications Commands) - 2026-01-23
+
+**Status**: ✅ **CODE COMPLETE & DEPLOYED** (Build: 0 errors, Deployment: Success)
+
+**Summary**:
+Enhanced 4 Command handlers (Analytics + Notifications) with comprehensive logging. Batch 2A is the first batch of Command Handler logging, starting Phase 2 of CQRS Handler Logging.
+
+**Batch 2A - Handlers Enhanced** (4 handlers):
+
+1. ✅ **RecordEventShareCommandHandler** (+54 lines)
+   - Records social media shares for events
+   - LogContext: Operation, EntityType, EventId
+   - Logs: EventId, IsNewRecord status, analytics creation/update
+   - Validates EventId is not Guid.Empty
+   - Try-catch with exception logging
+
+2. ✅ **RecordEventViewCommandHandler** (+68 lines)
+   - Records event views with 5-minute deduplication
+   - LogContext: Operation, EntityType, EventId, IpAddress
+   - Logs: EventId, UserId, IpAddress, deduplication decision (ShouldCount), ViewCounted status, RecordId
+   - Validates EventId and IpAddress
+   - Logs deduplication window (5 minutes)
+   - Try-catch with exception logging
+
+3. ✅ **MarkNotificationAsReadCommandHandler** (+83 lines)
+   - Marks single notification as read
+   - LogContext: Operation, EntityType, NotificationId, UserId
+   - Logs: NotificationId, UserId, access control decisions
+   - Validates authentication, NotificationId, ownership
+   - Logs access denied attempts with requesting user vs notification owner
+   - Try-catch with exception logging
+
+4. ✅ **MarkAllNotificationsAsReadCommandHandler** (+54 lines)
+   - Marks all user notifications as read (bulk operation)
+   - LogContext: Operation, EntityType, UserId
+   - Logs: UserId, batch processing
+   - Validates authentication
+   - Try-catch with exception logging
+
+**Note**: LoginWithEntraCommandHandler already had comprehensive logging from previous work and was not modified.
+
+**Logging Pattern Applied**:
+- System.Diagnostics.Stopwatch for performance timing
+- ILogger<T> dependency injection
+- Serilog LogContext.PushProperty for structured correlation
+- START/COMPLETE/FAILED message pattern with duration metrics
+- Try-catch blocks with exception logging
+- Request validation with LogWarning for failures
+- **No LogDebug usage** (only LogInformation, LogWarning, LogError)
+
+**Build Results**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Code Changes: 4 files modified
+
+**Git Commit**: `2aac4c59` - "feat(phase-6a.x-observability): Add comprehensive logging to Batch 2A Command handlers"
+
+**Batch 2A COMPLETE - Analytics + Notifications Command Handlers Enhanced**:
+- RecordEventShareCommandHandler ✅
+- RecordEventViewCommandHandler ✅
+- MarkNotificationAsReadCommandHandler ✅
+- MarkAllNotificationsAsReadCommandHandler ✅
+- **Batch 2A Total**: 4/5 Command handlers enhanced (LoginWithEntra already had logging) ✅ **COMPLETE**
+
+**Overall Command Handler Logging Progress** (Phase 2):
+- **Batch 2A: Analytics (2) + Notifications (2) ✅ COMPLETE** (4 handlers)
+- Batch 2B: Badges (6 handlers) - PENDING
+- Batch 2C: Businesses (7 handlers) - PENDING
+- Batch 2D: Communications (17 handlers) - PENDING
+- Batch 2E-2H: Events (48 handlers split across 4 batches) - PENDING
+- Batch 2I: Users (13 handlers) - PENDING
+- **Total Command Handlers**: ~90 handlers
+- **Next**: Batch 2B (Badges Command handlers)
+
+---
+
+## 🔧 Previous Session Status - Phase 6A.X Observability: Batch 1E Newsletter Query Handlers ✅ COMPLETE
 
 ### Phase 6A.X - Phase 3: CQRS Handler Logging - Batch 1E Complete (Newsletter Queries) - 2026-01-22
 
@@ -38,34 +115,15 @@ Enhanced 4 Newsletter Query handlers with comprehensive logging following the es
    - Logs: Filter parameters (UserId, SearchTerm, State, MetroAreaCount, DateRange), location filtering status
    - START/COMPLETE/FAILED pattern with timing
 
-**Logging Pattern Applied**:
-- ILogger<T> dependency injection
-- LogContext.PushProperty for structured correlation
-- Stopwatch for performance timing
-- START/COMPLETE/FAILED message pattern
-- Try-catch with exception logging
-- Request validation with LogWarning
-
-**Build Results**:
-- ✅ Build: 0 errors, 0 warnings
-- ✅ Code Changes: 4 files (+345 lines, -246 lines)
-
-**Git Commit**: `0d516e4e` - "feat(phase-6a.x-observability): Add comprehensive logging to Batch 1E Newsletter Query handlers"
-
-**Batch 1E COMPLETE - Newsletter Query Handlers Enhanced**:
-- GetNewsletterByIdQueryHandler ✅
-- GetNewslettersByCreatorQueryHandler ✅
-- GetNewslettersByEventQueryHandler ✅
-- GetPublishedNewslettersQueryHandler ✅
-- **Batch 1E Total**: 4/4 Newsletter Query handlers (100%) ✅ **COMPLETE**
-
-**Overall Query Handler Logging Progress**:
+**Overall Query Handler Logging Progress** (Phase 1 - COMPLETE):
 - Batch 1A: Auth + Business (10 handlers) ✅
 - Batch 1B: Business + Communications (9 handlers) ✅
 - Batch 1C: Events (22 handlers) ✅
 - Batch 1D: Users + MetroAreas + Communications (10 handlers) ✅
 - **Batch 1E: Newsletter (4 handlers) ✅ COMPLETE**
-- **Next**: Command handlers (Phase 2 of CQRS Logging)
+- **Total**: 55/55 Query handlers (100%) ✅ **PHASE 1 COMPLETE**
+
+**Git Commit**: `0d516e4e` - "feat(phase-6a.x-observability): Add comprehensive logging to Batch 1E Newsletter Query handlers"
 
 ---
 

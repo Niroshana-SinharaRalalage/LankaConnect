@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using LankaConnect.Application.Analytics.Commands.RecordEventView;
@@ -16,6 +17,7 @@ public class RecordEventViewCommandHandlerTests
     private readonly Mock<IEventAnalyticsRepository> _analyticsRepository;
     private readonly Mock<IEventViewRecordRepository> _viewRecordRepository;
     private readonly Mock<IUnitOfWork> _unitOfWork;
+    private readonly Mock<ILogger<RecordEventViewCommandHandler>> _logger;
     private readonly RecordEventViewCommandHandler _handler;
 
     public RecordEventViewCommandHandlerTests()
@@ -23,10 +25,12 @@ public class RecordEventViewCommandHandlerTests
         _analyticsRepository = new Mock<IEventAnalyticsRepository>();
         _viewRecordRepository = new Mock<IEventViewRecordRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
+        _logger = new Mock<ILogger<RecordEventViewCommandHandler>>();
         _handler = new RecordEventViewCommandHandler(
             _analyticsRepository.Object,
             _viewRecordRepository.Object,
-            _unitOfWork.Object
+            _unitOfWork.Object,
+            _logger.Object
         );
     }
 

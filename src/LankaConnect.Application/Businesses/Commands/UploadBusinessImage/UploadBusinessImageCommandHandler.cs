@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Businesses.Commands.UploadBusinessImage;
 
@@ -31,130 +33,217 @@ public sealed class UploadBusinessImageCommandHandler
     }
 
     public async Task<Result<UploadBusinessImageResponse>> Handle(
-        UploadBusinessImageCommand request, 
+        UploadBusinessImageCommand request,
         CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "UploadBusinessImage"))
+        using (LogContext.PushProperty("EntityType", "Business"))
+        using (LogContext.PushProperty("BusinessId", request.BusinessId))
         {
-            _logger.LogInformation("Starting image upload for business {BusinessId}", request.BusinessId);
+            var stopwatch = Stopwatch.StartNew();
 
-            // Get business entity
-            var business = await _businessRepository.GetByIdAsync(request.BusinessId, cancellationToken);
-            if (business == null)
+            _logger.LogInformation(
+                "UploadBusinessImage START: BusinessId={BusinessId}, FileName={FileName}, FileSize={FileSize}",
+                request.BusinessId, request.Image?.FileName, request.Image?.Length ?? 0);
+
+            try
             {
-                _logger.LogWarning("Business not found: {BusinessId}", request.BusinessId);
-                return Result<UploadBusinessImageResponse>.Failure("Business not found");
-            }
-
-            // Convert IFormFile to byte array
-            byte[] imageBytes;
-            using (var memoryStream = new MemoryStream())
-            {
-                await request.Image.CopyToAsync(memoryStream, cancellationToken);
-                imageBytes = memoryStream.ToArray();
-            }
-
-            // Upload and resize image using the image service
-            var resizeResult = await _imageService.ResizeAndUploadAsync(
-                imageBytes,
-                request.Image.FileName,
-                request.BusinessId,
-                cancellationToken);
-
-            if (!resizeResult.IsSuccess)
-            {
-                _logger.LogError("Image resize and upload failed for business {BusinessId}: {Errors}",
-                    request.BusinessId, string.Join(", ", resizeResult.Errors));
-                return Result<UploadBusinessImageResponse>.Failure(resizeResult.Errors);
-            }
-
-            // Create BusinessImage value object
-            var businessImageResult = BusinessImage.Create(
-                resizeResult.Value.OriginalUrl,
-                resizeResult.Value.ThumbnailUrl,
-                resizeResult.Value.MediumUrl,
-                resizeResult.Value.LargeUrl,
-                request.AltText ?? string.Empty,
-                request.Caption ?? string.Empty,
-                request.DisplayOrder,
-                request.IsPrimary,
-                resizeResult.Value.SizesBytes.GetValueOrDefault("original", 0),
-                GetContentType(request.Image.FileName),
-                new Dictionary<string, string>
+                if (request.BusinessId == Guid.Empty)
                 {
-                    ["OriginalFileName"] = request.Image.FileName,
-                    ["UploadSource"] = "WebAPI",
-                    ["UserId"] = "System" // TODO: Get from current user context
-                });
+                    stopwatch.Stop();
 
-            if (!businessImageResult.IsSuccess)
-            {
-                _logger.LogError("Failed to create BusinessImage for business {BusinessId}: {Errors}",
-                    request.BusinessId, string.Join(", ", businessImageResult.Errors));
+                    _logger.LogWarning(
+                        "UploadBusinessImage FAILED: Invalid BusinessId - BusinessId={BusinessId}, Duration={ElapsedMs}ms",
+                        request.BusinessId, stopwatch.ElapsedMilliseconds);
 
-                // Clean up uploaded files if BusinessImage creation fails
-                try
-                {
-                    await _imageService.DeleteImageAsync(resizeResult.Value.OriginalUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.ThumbnailUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.MediumUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.LargeUrl, cancellationToken);
-                }
-                catch (Exception cleanupEx)
-                {
-                    _logger.LogWarning(cleanupEx, "Failed to clean up uploaded images after BusinessImage creation failure");
+                    return Result<UploadBusinessImageResponse>.Failure("Business ID cannot be empty");
                 }
 
-                return Result<UploadBusinessImageResponse>.Failure(businessImageResult.Errors);
-            }
-
-            // Add image to business
-            var addImageResult = business.AddImage(businessImageResult.Value);
-            if (!addImageResult.IsSuccess)
-            {
-                _logger.LogError("Failed to add image to business {BusinessId}: {Errors}",
-                    request.BusinessId, string.Join(", ", addImageResult.Errors));
-
-                // Clean up uploaded files if adding to business fails
-                try
+                if (request.Image == null || request.Image.Length == 0)
                 {
-                    await _imageService.DeleteImageAsync(resizeResult.Value.OriginalUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.ThumbnailUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.MediumUrl, cancellationToken);
-                    await _imageService.DeleteImageAsync(resizeResult.Value.LargeUrl, cancellationToken);
-                }
-                catch (Exception cleanupEx)
-                {
-                    _logger.LogWarning(cleanupEx, "Failed to clean up uploaded images after adding to business failure");
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UploadBusinessImage FAILED: No image provided - BusinessId={BusinessId}, Duration={ElapsedMs}ms",
+                        request.BusinessId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UploadBusinessImageResponse>.Failure("Image file is required");
                 }
 
-                return Result<UploadBusinessImageResponse>.Failure(addImageResult.Errors);
+                // Get business entity
+                var business = await _businessRepository.GetByIdAsync(request.BusinessId, cancellationToken);
+
+                if (business == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UploadBusinessImage FAILED: Business not found - BusinessId={BusinessId}, Duration={ElapsedMs}ms",
+                        request.BusinessId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UploadBusinessImageResponse>.Failure("Business not found");
+                }
+
+                _logger.LogInformation(
+                    "UploadBusinessImage: Converting image to byte array - BusinessId={BusinessId}, FileName={FileName}, FileSize={FileSize}",
+                    request.BusinessId, request.Image.FileName, request.Image.Length);
+
+                // Convert IFormFile to byte array
+                byte[] imageBytes;
+                using (var memoryStream = new MemoryStream())
+                {
+                    await request.Image.CopyToAsync(memoryStream, cancellationToken);
+                    imageBytes = memoryStream.ToArray();
+                }
+
+                // Upload and resize image using the image service
+                var resizeResult = await _imageService.ResizeAndUploadAsync(
+                    imageBytes,
+                    request.Image.FileName,
+                    request.BusinessId,
+                    cancellationToken);
+
+                if (!resizeResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UploadBusinessImage FAILED: Image resize/upload failed - BusinessId={BusinessId}, FileName={FileName}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.BusinessId, request.Image.FileName, string.Join(", ", resizeResult.Errors), stopwatch.ElapsedMilliseconds);
+
+                    return Result<UploadBusinessImageResponse>.Failure(resizeResult.Errors);
+                }
+
+                _logger.LogInformation(
+                    "UploadBusinessImage: Images uploaded to Azure - BusinessId={BusinessId}, OriginalUrl={OriginalUrl}",
+                    request.BusinessId, resizeResult.Value.OriginalUrl);
+
+                // Create BusinessImage value object
+                var businessImageResult = BusinessImage.Create(
+                    resizeResult.Value.OriginalUrl,
+                    resizeResult.Value.ThumbnailUrl,
+                    resizeResult.Value.MediumUrl,
+                    resizeResult.Value.LargeUrl,
+                    request.AltText ?? string.Empty,
+                    request.Caption ?? string.Empty,
+                    request.DisplayOrder,
+                    request.IsPrimary,
+                    resizeResult.Value.SizesBytes.GetValueOrDefault("original", 0),
+                    GetContentType(request.Image.FileName),
+                    new Dictionary<string, string>
+                    {
+                        ["OriginalFileName"] = request.Image.FileName,
+                        ["UploadSource"] = "WebAPI",
+                        ["UserId"] = "System" // TODO: Get from current user context
+                    });
+
+                if (!businessImageResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UploadBusinessImage FAILED: BusinessImage creation failed - BusinessId={BusinessId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.BusinessId, string.Join(", ", businessImageResult.Errors), stopwatch.ElapsedMilliseconds);
+
+                    // Clean up uploaded files if BusinessImage creation fails
+                    try
+                    {
+                        _logger.LogInformation(
+                            "UploadBusinessImage: Cleaning up uploaded blobs after BusinessImage creation failure - BusinessId={BusinessId}",
+                            request.BusinessId);
+
+                        await _imageService.DeleteImageAsync(resizeResult.Value.OriginalUrl, cancellationToken);
+                        await _imageService.DeleteImageAsync(resizeResult.Value.ThumbnailUrl, cancellationToken);
+                        await _imageService.DeleteImageAsync(resizeResult.Value.MediumUrl, cancellationToken);
+                        await _imageService.DeleteImageAsync(resizeResult.Value.LargeUrl, cancellationToken);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        _logger.LogWarning(cleanupEx,
+                            "UploadBusinessImage: Failed to clean up uploaded blobs - BusinessId={BusinessId}, Error={ErrorMessage}",
+                            request.BusinessId, cleanupEx.Message);
+                    }
+
+                    return Result<UploadBusinessImageResponse>.Failure(businessImageResult.Errors);
+                }
+
+                using (LogContext.PushProperty("ImageId", businessImageResult.Value.Id))
+                {
+                    _logger.LogInformation(
+                        "UploadBusinessImage: BusinessImage created - BusinessId={BusinessId}, ImageId={ImageId}, IsPrimary={IsPrimary}",
+                        request.BusinessId, businessImageResult.Value.Id, request.IsPrimary);
+
+                    // Add image to business
+                    var addImageResult = business.AddImage(businessImageResult.Value);
+
+                    if (!addImageResult.IsSuccess)
+                    {
+                        stopwatch.Stop();
+
+                        _logger.LogWarning(
+                            "UploadBusinessImage FAILED: Failed to add image to business - BusinessId={BusinessId}, ImageId={ImageId}, Error={Error}, Duration={ElapsedMs}ms",
+                            request.BusinessId, businessImageResult.Value.Id, string.Join(", ", addImageResult.Errors), stopwatch.ElapsedMilliseconds);
+
+                        // Clean up uploaded files if adding to business fails
+                        try
+                        {
+                            _logger.LogInformation(
+                                "UploadBusinessImage: Cleaning up uploaded blobs after add-to-business failure - BusinessId={BusinessId}, ImageId={ImageId}",
+                                request.BusinessId, businessImageResult.Value.Id);
+
+                            await _imageService.DeleteImageAsync(resizeResult.Value.OriginalUrl, cancellationToken);
+                            await _imageService.DeleteImageAsync(resizeResult.Value.ThumbnailUrl, cancellationToken);
+                            await _imageService.DeleteImageAsync(resizeResult.Value.MediumUrl, cancellationToken);
+                            await _imageService.DeleteImageAsync(resizeResult.Value.LargeUrl, cancellationToken);
+                        }
+                        catch (Exception cleanupEx)
+                        {
+                            _logger.LogWarning(cleanupEx,
+                                "UploadBusinessImage: Failed to clean up uploaded blobs - BusinessId={BusinessId}, ImageId={ImageId}, Error={ErrorMessage}",
+                                request.BusinessId, businessImageResult.Value.Id, cleanupEx.Message);
+                        }
+
+                        return Result<UploadBusinessImageResponse>.Failure(addImageResult.Errors);
+                    }
+
+                    // Update business in repository
+                    _businessRepository.Update(business);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    _logger.LogInformation(
+                        "UploadBusinessImage: Database updated - BusinessId={BusinessId}, ImageId={ImageId}",
+                        request.BusinessId, businessImageResult.Value.Id);
+
+                    var response = new UploadBusinessImageResponse
+                    {
+                        ImageId = businessImageResult.Value.Id,
+                        OriginalUrl = businessImageResult.Value.OriginalUrl,
+                        ThumbnailUrl = businessImageResult.Value.ThumbnailUrl,
+                        MediumUrl = businessImageResult.Value.MediumUrl,
+                        LargeUrl = businessImageResult.Value.LargeUrl,
+                        FileSizeBytes = businessImageResult.Value.FileSizeBytes,
+                        UploadedAt = businessImageResult.Value.UploadedAt
+                    };
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "UploadBusinessImage COMPLETE: BusinessId={BusinessId}, ImageId={ImageId}, FileName={FileName}, FileSize={FileSize}, Duration={ElapsedMs}ms",
+                        request.BusinessId, businessImageResult.Value.Id, request.Image.FileName, businessImageResult.Value.FileSizeBytes, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UploadBusinessImageResponse>.Success(response);
+                }
             }
-
-            // Update business in repository
-            _businessRepository.Update(business);
-            await _unitOfWork.CommitAsync(cancellationToken);
-
-            var response = new UploadBusinessImageResponse
+            catch (Exception ex)
             {
-                ImageId = businessImageResult.Value.Id,
-                OriginalUrl = businessImageResult.Value.OriginalUrl,
-                ThumbnailUrl = businessImageResult.Value.ThumbnailUrl,
-                MediumUrl = businessImageResult.Value.MediumUrl,
-                LargeUrl = businessImageResult.Value.LargeUrl,
-                FileSizeBytes = businessImageResult.Value.FileSizeBytes,
-                UploadedAt = businessImageResult.Value.UploadedAt
-            };
+                stopwatch.Stop();
 
-            _logger.LogInformation("Successfully uploaded image for business {BusinessId}. ImageId: {ImageId}",
-                request.BusinessId, businessImageResult.Value.Id);
+                _logger.LogError(ex,
+                    "UploadBusinessImage FAILED: Exception occurred - BusinessId={BusinessId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.BusinessId, stopwatch.ElapsedMilliseconds, ex.Message);
 
-            return Result<UploadBusinessImageResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during image upload for business {BusinessId}", request.BusinessId);
-            return Result<UploadBusinessImageResponse>.Failure("An unexpected error occurred during image upload");
+                return Result<UploadBusinessImageResponse>.Failure("An unexpected error occurred during image upload");
+            }
         }
     }
 

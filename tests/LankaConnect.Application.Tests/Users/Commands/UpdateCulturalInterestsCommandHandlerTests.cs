@@ -5,6 +5,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,7 +27,8 @@ public class UpdateCulturalInterestsCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _handler = new UpdateCulturalInterestsCommandHandler(
             _userRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            NullLogger<UpdateCulturalInterestsCommandHandler>.Instance);
     }
 
     private User CreateTestUser()

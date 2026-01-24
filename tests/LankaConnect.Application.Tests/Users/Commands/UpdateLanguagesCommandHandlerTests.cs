@@ -7,6 +7,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Users.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -28,7 +29,8 @@ public class UpdateLanguagesCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _handler = new UpdateLanguagesCommandHandler(
             _userRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            NullLogger<UpdateLanguagesCommandHandler>.Instance);
     }
 
     private User CreateTestUser()

@@ -6,6 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -30,7 +31,8 @@ public class UploadProfilePhotoCommandHandlerTests
         _handler = new UploadProfilePhotoCommandHandler(
             _userRepository.Object,
             _imageService.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            NullLogger<UploadProfilePhotoCommandHandler>.Instance);
     }
 
     private IFormFile CreateMockImageFile(string fileName = "profile.jpg", long size = 1024000)

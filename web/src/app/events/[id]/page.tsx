@@ -108,10 +108,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Payment pending state - user clicked "Proceed to Payment" but hasn't completed payment yet
   // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
   // Phase 6A.79 Part 3 Fix 2: API returns STRING values, not numeric enums - compare to strings
+  // Phase 6A.79 Part 3 Fix 3: Backend sets status='Confirmed' immediately, even before payment
+  // So payment pending = Confirmed status + Pending payment
   const isPaymentPending = !!userRsvp &&
     !isLoadingRegistration &&
-    registrationDetails?.status === 'Pending' &&  // Compare to string, not numeric enum
-    registrationDetails?.paymentStatus === 'Pending';
+    registrationDetails?.status === 'Confirmed' &&  // Backend confirms registration immediately
+    registrationDetails?.paymentStatus === 'Pending';  // But payment is still pending
 
   // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
   console.log('[EventDetail] 🔍 Registration state debug:', {
@@ -134,6 +136,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       paymentCompleted: registrationDetails?.paymentStatus === 'Completed',
       paymentNotRequired: registrationDetails?.paymentStatus === 'NotRequired',
       paymentPending: registrationDetails?.paymentStatus === 'Pending',
+      // Phase 6A.79 Part 3 Fix 3: Payment pending combination
+      confirmedButPaymentPending: registrationDetails?.status === 'Confirmed' && registrationDetails?.paymentStatus === 'Pending',
     }
   });
 

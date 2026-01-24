@@ -13,6 +13,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
 /// Phase 6A.24: Handles AnonymousRegistrationConfirmedEvent to send confirmation email to anonymous attendees.
+/// Phase 6A.80: Updated to reuse member FreeEventRegistration template for consistency and maintainability.
 /// For paid events, email is sent by PaymentCompletedEventHandler after payment.
 /// </summary>
 public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<AnonymousRegistrationConfirmedEvent>>
@@ -87,57 +88,70 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     return;
                 }
 
-            // Prepare attendee details for email
-            var attendeeDetails = new List<Dictionary<string, object>>();
-            if (registration.HasDetailedAttendees())
-            {
-                foreach (var attendee in registration.Attendees)
+                // Phase 6A.80: Get contact name from first attendee or fallback to "Guest"
+                var contactName = registration.HasDetailedAttendees() && registration.Attendees.Any()
+                    ? registration.Attendees.First().Name
+                    : "Guest";
+
+                // Phase 6A.80: Prepare attendee details HTML (same format as member handler)
+                var attendeeDetailsHtml = new System.Text.StringBuilder();
+                var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
+
+                if (hasAttendeeDetails)
                 {
-                    attendeeDetails.Add(new Dictionary<string, object>
+                    foreach (var attendee in registration.Attendees)
                     {
-                        { "Name", attendee.Name },
-                        { "AgeCategory", attendee.AgeCategory.ToString() },
-                        { "Gender", attendee.Gender?.ToString() ?? "" }
-                    });
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                    }
                 }
-            }
 
-            // Get contact name from first attendee or fallback
-            var contactName = registration.HasDetailedAttendees() && registration.Attendees.Any()
-                ? registration.Attendees.First().Name
-                : "Guest";
+                // Phase 6A.80: Get event's primary image URL (same as member handler)
+                var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+                var eventImageUrl = primaryImage?.ImageUrl ?? "";
+                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Prepare email parameters with enhanced attendee details
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", contactName },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
-                { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
-                { "Quantity", domainEvent.Quantity },
-                { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
-                // Add attendee details
-                { "Attendees", attendeeDetails },
-                { "HasAttendeeDetails", attendeeDetails.Any() }
-            };
+                // Phase 6A.80: Format date/time range properly (same as member handler)
+                var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
 
-            // Add contact information if available
-            if (registration.Contact != null)
-            {
-                parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                parameters["HasContactInfo"] = true;
-            }
-            else
-            {
-                parameters["HasContactInfo"] = false;
-            }
+                // Phase 6A.80: Prepare email parameters - ALIGNED WITH MEMBER HANDLER
+                // Using FreeEventRegistration template parameters
+                var parameters = new Dictionary<string, object>
+                {
+                    { "UserName", contactName },
+                    { "EventTitle", @event.Title.Value },
+                    { "EventDateTime", eventDateTimeRange },
+                    { "EventLocation", GetEventLocationString(@event) },
+                    { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                    { "HasAttendeeDetails", hasAttendeeDetails },
+                    // Phase 6A.80: Add event image support
+                    { "EventImageUrl", eventImageUrl },
+                    { "HasEventImage", hasEventImage }
+                };
 
-                // Send templated email to the attendee email
+                // Add contact information if available
+                if (registration.Contact != null)
+                {
+                    parameters["ContactEmail"] = registration.Contact.Email;
+                    parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
+                    parameters["HasContactInfo"] = true;
+                }
+                else
+                {
+                    parameters["ContactEmail"] = "";
+                    parameters["ContactPhone"] = "";
+                    parameters["HasContactInfo"] = false;
+                }
+
+                // Phase 6A.80: Add organizer contact details (same as member handler)
+                parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
+                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
+                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
+                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+
+                // Phase 6A.80: Reuse FreeEventRegistration template (same as member handler)
                 var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.AnonymousRsvpConfirmation,
+                    EmailTemplateNames.FreeEventRegistration,
                     domainEvent.AttendeeEmail,
                     parameters,
                     cancellationToken);
@@ -154,7 +168,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 {
                     _logger.LogInformation(
                         "AnonymousRegistrationConfirmed COMPLETE: Email sent successfully - Email={Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                        domainEvent.AttendeeEmail, attendeeDetails.Count, stopwatch.ElapsedMilliseconds);
+                        domainEvent.AttendeeEmail, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -173,6 +187,51 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     "AnonymousRegistrationConfirmed FAILED: Exception occurred - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
                     domainEvent.EventId, domainEvent.AttendeeEmail, stopwatch.ElapsedMilliseconds);
             }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.80: Safely extracts event location string with defensive null handling.
+    /// Copied from RegistrationConfirmedEventHandler for consistency.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
+    }
+
+    /// <summary>
+    /// Phase 6A.80: Formats event date/time range for display.
+    /// Copied from RegistrationConfirmedEventHandler for consistency.
+    /// Examples:
+    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
+    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
+        {
+            // Same day event
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
         }
     }
 }

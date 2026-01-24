@@ -10,13 +10,15 @@ namespace LankaConnect.Application.Common.Constants;
 public static class EmailTemplateNames
 {
     /// <summary>
-    /// Free event registration confirmation email.
+    /// Free event registration confirmation email (member and anonymous users).
+    /// Phase 6A.80: Updated to support both member and anonymous registrations.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
     /// </summary>
     public const string FreeEventRegistration = "template-free-event-registration-confirmation";
 
     /// <summary>
-    /// Paid event registration confirmation email (sent after payment).
+    /// Paid event registration confirmation email (sent after payment, member and anonymous users).
+    /// Phase 6A.80: Updated to support both member and anonymous registrations.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
     ///           {Amount}, {Currency}, {TicketUrl}, {QRCode}
     /// </summary>
@@ -122,13 +124,9 @@ public static class EmailTemplateNames
     /// </summary>
     public const string Welcome = "template-welcome";
 
-    /// <summary>
-    /// RSVP confirmation for anonymous (non-registered) event attendees.
-    /// Variables: {UserName}, {EventTitle}, {EventStartDate}, {EventStartTime}, {EventEndDate},
-    ///           {EventLocation}, {Quantity}, {RegistrationDate}, {Attendees}, {HasAttendeeDetails},
-    ///           {ContactEmail}, {ContactPhone}, {HasContactInfo}
-    /// </summary>
-    public const string AnonymousRsvpConfirmation = "template-anonymous-rsvp-confirmation";
+    // ❌ Phase 6A.80: REMOVED AnonymousRsvpConfirmation
+    // Anonymous users now use FreeEventRegistration template (same as members)
+    // This eliminates duplication and ensures consistent experience
 
     /// <summary>
     /// Organizer role approval notification email.
@@ -139,6 +137,7 @@ public static class EmailTemplateNames
     /// <summary>
     /// Gets all template names as a collection.
     /// Useful for validation, seeding, and documentation.
+    /// Phase 6A.80: Removed AnonymousRsvpConfirmation - now using FreeEventRegistration for anonymous users.
     /// </summary>
     public static IReadOnlyCollection<string> All { get; } = new[]
     {
@@ -160,7 +159,7 @@ public static class EmailTemplateNames
         PasswordReset,
         PasswordChangeConfirmation,
         Welcome,
-        AnonymousRsvpConfirmation,
+        // AnonymousRsvpConfirmation, // ❌ Phase 6A.80: REMOVED - using FreeEventRegistration instead
         OrganizerRoleApproval
     };
 
@@ -183,8 +182,8 @@ public static class EmailTemplateNames
     {
         return templateName switch
         {
-            FreeEventRegistration => "Free event registration confirmation email",
-            PaidEventRegistration => "Paid event registration confirmation email (with ticket)",
+            FreeEventRegistration => "Free event registration confirmation email (member and anonymous)",
+            PaidEventRegistration => "Paid event registration confirmation email with ticket (member and anonymous)",
             EventReminder => "Event reminder sent before event starts",
             MemberEmailVerification => "Member email verification email",
             SignupCommitmentConfirmation => "Signup commitment confirmation (I Will Attend)",
@@ -201,7 +200,7 @@ public static class EmailTemplateNames
             PasswordReset => "Password reset email with reset link",
             PasswordChangeConfirmation => "Password change confirmation email",
             Welcome => "Welcome email after email verification",
-            AnonymousRsvpConfirmation => "RSVP confirmation for anonymous attendees",
+            // AnonymousRsvpConfirmation => "RSVP confirmation for anonymous attendees", // ❌ Phase 6A.80: REMOVED
             OrganizerRoleApproval => "Organizer role approval notification",
             _ => "Unknown template"
         };

@@ -201,7 +201,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     request.Email,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);
-                return Result<ResetPasswordResponse>.Failure($"An unexpected error occurred: {ex.Message}");
+                return Result<ResetPasswordResponse>.Failure("An error occurred while resetting password");
             }
         }
     }

@@ -1,9 +1,29 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-24 - Phase 6A.X Observability Batch 3A: Domain Event Handlers ✅ COMPLETE*
+*Last Updated: 2026-01-24 - CRITICAL FIX: Race Condition in Free Event Registration Status ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Batch 3A ✅ COMPLETE
+## 🎯 Current Session Status - CRITICAL FIX: Race Condition Fix ✅ COMPLETE
+
+### CRITICAL BUG FIX - Race Condition: Free Event Registration Status Not Showing - 2026-01-24
+
+**Status**: ✅ **DEPLOYED TO STAGING** (Build: 0 errors, Deployment: Success)
+**Severity**: 🔴 CRITICAL - All Free Event Registrations Broken
+
+**Bug**: User registered for free event successfully, but event details page didn't show "You're Registered!" message.
+
+**Root Cause**: Payment bypass fix (commit 91087a8f) introduced race condition - `isUserRegistered` checks `registrationDetails.paymentStatus` before data loads.
+
+**Fix**: Add `!isLoadingRegistration` check to wait for data before evaluating status.
+
+**Files Changed**:
+- ✅ `web/src/app/events/[id]/page.tsx` (+2 loading state checks)
+
+**Deployment**: Commit `6efb009a` - Deployed 2026-01-24 03:45 UTC
+
+---
+
+## ⏸️ Previous Session - Phase 6A.X Observability Batch 3A ✅ COMPLETE
 
 ### PHASE 6A.X OBSERVABILITY - BATCH 3A: DOMAIN EVENT HANDLERS - 2026-01-24
 

@@ -7,7 +7,29 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X OBSERVABILITY BATCH 3A: DOMAIN EVENT HANDLERS COMPLETE (2026-01-24)
+## ✅ CURRENT STATUS - CRITICAL FIX: RACE CONDITION IN FREE EVENT REGISTRATION (2026-01-24)
+**Date**: 2026-01-24
+**Session**: CRITICAL BUG FIX - Race Condition: Free Event Registration Status Not Showing
+**Status**: ✅ COMPLETE & DEPLOYED TO STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED TO AZURE STAGING
+**Severity**: 🔴 CRITICAL
+
+**Bug**: User registered for free event 0458806b-8672-4ad5-a7cb-f5346f1b282a, but event details page didn't show "You're Registered!"
+
+**Root Cause**: Payment bypass fix introduced race condition - checking `registrationDetails.paymentStatus` before data loads.
+
+**Fix**: Add `!isLoadingRegistration` check to prevent evaluating undefined data.
+
+**Files Changed**:
+- ✅ `web/src/app/events/[id]/page.tsx` (+2 loading state checks)
+
+**Git Commit**: `6efb009a`
+**Deployment**: Azure Staging - Success (2026-01-24 03:45 UTC)
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X OBSERVABILITY BATCH 3A: DOMAIN EVENT HANDLERS COMPLETE (2026-01-24)
 **Date**: 2026-01-24
 **Session**: Phase 6A.X Observability - Batch 3A: Domain Event Handlers
 **Status**: ✅ COMPLETE

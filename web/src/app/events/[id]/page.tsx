@@ -16,7 +16,7 @@ import { EditRegistrationModal, type EditRegistrationData } from '@/presentation
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -92,8 +92,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     !!userRsvp
   );
 
-  // Fix: Check registration status - user is only "registered" if status is NOT "Cancelled"
-  const isUserRegistered = !!userRsvp && registrationDetails?.status !== RegistrationStatus.Cancelled;
+  // Fix: Check registration status - user is only "registered" if status is Confirmed AND payment is completed/not required
+  // CRITICAL BUG FIX: Prevent showing "You're Registered" for pending payments
+  const isUserRegistered = !!userRsvp &&
+    registrationDetails?.status === RegistrationStatus.Confirmed &&
+    (registrationDetails?.paymentStatus === PaymentStatus.Completed ||
+     registrationDetails?.paymentStatus === PaymentStatus.NotRequired);
+
+  // Payment pending state - user clicked "Proceed to Payment" but hasn't completed payment yet
+  const isPaymentPending = !!userRsvp &&
+    registrationDetails?.status === RegistrationStatus.Pending &&
+    registrationDetails?.paymentStatus === PaymentStatus.Pending;
+
+  console.log('[EventDetail] Registration state:', {
+    hasUserRsvp: !!userRsvp,
+    registrationStatus: registrationDetails?.status,
+    paymentStatus: registrationDetails?.paymentStatus,
+    isUserRegistered,
+    isPaymentPending
+  });
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -868,6 +885,127 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                ) : isPaymentPending ? (
+                  // CRITICAL FIX: Show payment pending state for users who started registration but haven't completed payment
+                  <div className="space-y-4">
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
+                          Payment Pending
+                        </h3>
+                      </div>
+                      <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
+                        Your registration is pending payment. Please complete your payment to confirm your registration.
+                      </p>
+
+                      {/* Payment Instructions */}
+                      <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
+                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
+                          Click the button below to complete your payment and secure your spot at this event.
+                        </p>
+
+                        {/* Registration Details (if available) */}
+                        {registrationDetails && (
+                          <div className="mb-3 p-3 bg-orange-100 dark:bg-orange-900/30 rounded">
+                            <p className="text-xs font-semibold text-orange-900 dark:text-orange-200 mb-2">
+                              REGISTRATION DETAILS
+                            </p>
+                            <div className="space-y-1 text-xs text-orange-800 dark:text-orange-300">
+                              {registrationDetails.contactEmail && (
+                                <p>
+                                  <span className="font-medium">Email:</span> {registrationDetails.contactEmail}
+                                </p>
+                              )}
+                              {registrationDetails.quantity && (
+                                <p>
+                                  <span className="font-medium">Attendees:</span> {registrationDetails.quantity}
+                                </p>
+                              )}
+                              {registrationDetails.totalPriceAmount && (
+                                <p>
+                                  <span className="font-medium">Amount:</span> {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount.toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          className="w-full"
+                          style={{
+                            backgroundColor: '#FF7900',
+                            color: '#FFFFFF'
+                          }}
+                          onClick={async () => {
+                            try {
+                              console.log('[PaymentPending] User clicked Complete Payment button');
+                              console.log('[PaymentPending] Registration ID:', registrationDetails?.id);
+
+                              // WORKAROUND: Re-register to get a new Stripe checkout URL
+                              // The backend will detect existing registration and return checkout URL
+                              const successUrl = `${window.location.origin}/events/${id}?payment=success`;
+                              const cancelUrl = `${window.location.origin}/events/${id}?payment=cancelled`;
+
+                              console.log('[PaymentPending] Calling registration endpoint to get new checkout URL');
+                              const checkoutUrl = await rsvpMutation.mutateAsync({
+                                eventId: id,
+                                userId: user!.userId!,
+                                quantity: registrationDetails!.quantity,
+                                attendees: registrationDetails!.attendees,
+                                email: registrationDetails!.contactEmail || undefined,
+                                phoneNumber: registrationDetails!.contactPhone || undefined,
+                                address: registrationDetails!.contactAddress || undefined,
+                                successUrl,
+                                cancelUrl,
+                              });
+
+                              if (checkoutUrl) {
+                                console.log('[PaymentPending] Redirecting to Stripe checkout:', checkoutUrl);
+                                window.location.href = checkoutUrl;
+                              } else {
+                                console.error('[PaymentPending] No checkout URL returned');
+                                alert('Failed to retrieve payment link. Please contact support.');
+                              }
+                            } catch (error: any) {
+                              console.error('[PaymentPending] Failed to retrieve checkout URL:', error);
+                              alert('Failed to retrieve payment link. Please try again or contact support.');
+                            }
+                          }}
+                        >
+                          Complete Payment
+                        </Button>
+
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 text-center">
+                          Your registration will be cancelled automatically if payment is not completed within 30 minutes.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Cancel Registration Option */}
+                    <div className="flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        style={{ borderColor: '#EF4444', color: '#EF4444' }}
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to cancel this registration? You will need to register again if you change your mind.')) {
+                            try {
+                              console.log('[PaymentPending] Cancelling pending registration');
+                              await eventsRepository.cancelRsvp(id, false);
+                              console.log('[PaymentPending] Successfully cancelled - reloading page');
+                              window.location.reload();
+                            } catch (error: any) {
+                              console.error('[PaymentPending] Failed to cancel registration:', error);
+                              alert('Failed to cancel registration. Please try again.');
+                            }
+                          }
+                        }}
+                      >
+                        Cancel Registration
+                      </Button>
                     </div>
                   </div>
                 ) : hasStarted ? (

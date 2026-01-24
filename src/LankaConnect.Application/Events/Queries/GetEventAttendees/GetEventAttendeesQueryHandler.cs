@@ -96,11 +96,14 @@ public class GetEventAttendeesQueryHandler
                 // Phase 6A.55: Use direct LINQ projection to avoid materializing JSONB with null AgeCategory
                 // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
                 // This pattern projects directly to DTO, allowing nullable AgeCategory to be handled gracefully
+                // Phase 6A.81: CRITICAL - Only include CONFIRMED registrations (exclude Preliminary/Abandoned)
                 var attendeeDtos = await _context.Registrations
             .AsNoTracking()
             .Where(r => r.EventId == request.EventId)
-            .Where(r => r.Status != RegistrationStatus.Cancelled &&
-                       r.Status != RegistrationStatus.Refunded)
+            .Where(r => r.Status == RegistrationStatus.Confirmed ||
+                       r.Status == RegistrationStatus.Waitlisted ||
+                       r.Status == RegistrationStatus.CheckedIn ||
+                       r.Status == RegistrationStatus.Attended)
             .OrderBy(r => r.CreatedAt)
             .Select(r => new EventAttendeeDto
             {

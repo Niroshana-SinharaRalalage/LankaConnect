@@ -269,6 +269,11 @@ public class PaymentsController : ControllerBase
                     await HandleCheckoutSessionCompletedAsync(stripeEvent);
                     break;
 
+                // Phase 6A.81: Handle expired checkout sessions
+                case "checkout.session.expired":
+                    await HandleCheckoutSessionExpiredAsync(stripeEvent);
+                    break;
+
                 // Future: Add more event types as needed
                 // case "payment_intent.payment_failed":
                 //     await HandlePaymentFailedAsync(stripeEvent);
@@ -371,6 +376,11 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.52] [Webhook-4] Registration loaded - CorrelationId: {CorrelationId}, PaymentStatus: {PaymentStatus}, CurrentStripePaymentIntentId: {StripePaymentIntentId}",
                 correlationId, registration.PaymentStatus, registration.StripePaymentIntentId);
 
+            // Phase 6A.81: Log registration state BEFORE payment completion
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-State] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}, CheckoutExpiresAt: {ExpiresAt}",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus, registration.CheckoutSessionExpiresAt?.ToString("o") ?? "null");
+
             // Verify registration belongs to the expected event (security check)
             if (registration.EventId != eventId)
             {
@@ -396,6 +406,11 @@ public class PaymentsController : ControllerBase
                     correlationId, registrationId, completeResult.Error);
                 return;
             }
+
+            // Phase 6A.81: Log registration state AFTER payment completion (Preliminary → Confirmed)
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-State] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Confirmed",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus);
 
             // Phase 6A.52: Log domain events AFTER CompletePayment
             _logger.LogInformation(
@@ -426,6 +441,109 @@ public class PaymentsController : ControllerBase
         {
             _logger.LogError(ex, "Error handling checkout.session.completed webhook - Type: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
                 ex.GetType().FullName, ex.Message, ex.InnerException?.Message ?? "None");
+            throw; // Re-throw to trigger outer catch block with HTTP 500
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.81: Handles checkout.session.expired webhook to mark abandoned registrations
+    /// This is part of the Three-State Registration Lifecycle to prevent payment bypass.
+    /// When Stripe checkout expires (24h), mark registration as Abandoned to allow retry.
+    /// </summary>
+    private async Task HandleCheckoutSessionExpiredAsync(Stripe.Event stripeEvent)
+    {
+        var correlationId = Guid.NewGuid();
+
+        try
+        {
+            var session = stripeEvent.Data.Object as Session;
+            if (session == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81] [Webhook-Expired-ERROR] Checkout session data is null - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                    correlationId, stripeEvent.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-Expired-1] Processing checkout.session.expired - CorrelationId: {CorrelationId}, SessionId: {SessionId}, StripeEventId: {StripeEventId}",
+                correlationId, session.Id, stripeEvent.Id);
+
+            // Extract metadata
+            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
+                !Guid.TryParse(registrationIdStr, out var registrationId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81] [Webhook-Expired-WARN] Missing registration_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
+                !Guid.TryParse(eventIdStr, out var eventId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81] [Webhook-Expired-WARN] Missing event_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-Expired-2] Metadata extracted - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}",
+                correlationId, eventId, registrationId);
+
+            // Load registration
+            var registration = await _registrationRepository.GetByIdAsync(registrationId);
+            if (registration == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81] [Webhook-Expired-WARN] Registration not found (might already be processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-Expired-3] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus);
+
+            // Verify registration belongs to the expected event (security check)
+            if (registration.EventId != eventId)
+            {
+                _logger.LogError(
+                    "[Phase 6A.81] [Webhook-Expired-ERROR] Event mismatch - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, ActualEventId: {ActualEventId}, ExpectedEventId: {ExpectedEventId}",
+                    correlationId, registrationId, registration.EventId, eventId);
+                return;
+            }
+
+            // Mark as abandoned (Preliminary → Abandoned)
+            var abandonResult = registration.MarkAbandoned();
+
+            if (abandonResult.IsFailure)
+            {
+                // This is expected if registration was already completed or abandoned
+                _logger.LogWarning(
+                    "[Phase 6A.81] [Webhook-Expired-INFO] MarkAbandoned failed (expected if already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
+                    correlationId, registrationId, registration.Status, abandonResult.Error);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-Expired-4] After MarkAbandoned - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Abandoned",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus);
+
+            // Save changes
+            _registrationRepository.Update(registration);
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[Phase 6A.81] [Webhook-Expired-SUCCESS] Checkout session expired, registration marked as Abandoned - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AbandonedAt: {AbandonedAt}",
+                correlationId, eventId, registrationId, registration.AbandonedAt?.ToString("o") ?? "null");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.81] [Webhook-Expired-ERROR] Error handling checkout.session.expired webhook - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
+                correlationId, ex.GetType().FullName, ex.Message);
             throw; // Re-throw to trigger outer catch block with HTTP 500
         }
     }

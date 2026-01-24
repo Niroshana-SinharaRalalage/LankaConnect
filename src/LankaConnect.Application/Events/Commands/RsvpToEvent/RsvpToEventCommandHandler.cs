@@ -173,6 +173,15 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // Session 23: Handle payment for paid events
         var registration = @event.Registrations.Last();  // Get the just-created registration
 
+        // Phase 6A.81: Log registration state for observability
+        _logger.LogInformation(
+            "HandleMultiAttendeeRsvp: Registration created - RegistrationId={RegistrationId}, Status={Status}, PaymentStatus={PaymentStatus}, IsPaidEvent={IsPaidEvent}, ExpiresAt={ExpiresAt}",
+            registration.Id,
+            registration.Status,
+            registration.PaymentStatus,
+            !@event.IsFree(),
+            registration.CheckoutSessionExpiresAt?.ToString("o") ?? "null");
+
         // Phase 6A.X: Calculate and store revenue breakdown for paid events
         if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
         {

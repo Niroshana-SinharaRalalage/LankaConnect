@@ -280,23 +280,35 @@ public class Event : BaseEntity
         // For anonymous users: check by email (case-insensitive)
         if (userId.HasValue)
         {
-            // Authenticated user - check if already registered (not cancelled/refunded)
+            // Phase 6A.81: Authenticated user - check if already registered (not cancelled/refunded/preliminary/abandoned)
+            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
             var existingRegistration = _registrations.FirstOrDefault(r =>
                 r.UserId == userId &&
                 r.Status != RegistrationStatus.Cancelled &&
-                r.Status != RegistrationStatus.Refunded);
+                r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
+                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
+                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+#pragma warning restore CS0618
 
             if (existingRegistration != null)
                 return Result.Failure("You are already registered for this event. To change your registration details, please cancel your current registration first.");
         }
         else
         {
-            // Anonymous user - check by email (case-insensitive)
+            // Phase 6A.81: Anonymous user - check by email (case-insensitive)
+            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
             var existingRegistration = _registrations.FirstOrDefault(r =>
                 r.Contact != null &&
                 r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase) &&
                 r.Status != RegistrationStatus.Cancelled &&
-                r.Status != RegistrationStatus.Refunded);
+                r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
+                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
+                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+#pragma warning restore CS0618
 
             if (existingRegistration != null)
                 return Result.Failure("This email is already registered for this event. Each email can only register once.");
@@ -331,17 +343,26 @@ public class Event : BaseEntity
         _registrations.Add(registrationResult.Value);
         MarkAsUpdated();
 
-        // Raise appropriate domain event
-        if (userId.HasValue)
+        // Phase 6A.81: CRITICAL - Only raise confirmation events for Confirmed registrations
+        // For Preliminary registrations (paid events waiting for payment), domain events will be
+        // raised by the CompletePayment() method after webhook confirms payment
+        var registration = registrationResult.Value;
+        if (registration.Status == RegistrationStatus.Confirmed)
         {
-            // Authenticated user registration
-            RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeList.Count, DateTime.UtcNow));
+            // Raise appropriate domain event (triggers confirmation email)
+            if (userId.HasValue)
+            {
+                // Authenticated user registration - FREE event or immediate confirmation
+                RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeList.Count, DateTime.UtcNow));
+            }
+            else
+            {
+                // Anonymous registration - FREE event or immediate confirmation
+                RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeList.Count, DateTime.UtcNow));
+            }
         }
-        else
-        {
-            // Anonymous registration
-            RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeList.Count, DateTime.UtcNow));
-        }
+        // Phase 6A.81: For Preliminary registrations, NO domain event raised here
+        // Email will be sent after payment completes via PaymentCompletedEvent
 
         return Result.Success();
     }

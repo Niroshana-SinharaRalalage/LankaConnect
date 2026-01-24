@@ -128,11 +128,15 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
 
             try
             {
+                // Phase 6A.81: CRITICAL - Only include CONFIRMED registrations (exclude Preliminary/Abandoned)
+                // Use whitelist approach to ensure we only get registrations that should be displayed
                 var result = await _dbSet
                     .AsNoTracking()
                     .Where(r => r.UserId == userId &&
-                               r.Status != RegistrationStatus.Cancelled &&
-                               r.Status != RegistrationStatus.Refunded)
+                               (r.Status == RegistrationStatus.Confirmed ||
+                                r.Status == RegistrationStatus.Waitlisted ||
+                                r.Status == RegistrationStatus.CheckedIn ||
+                                r.Status == RegistrationStatus.Attended))
                     .OrderByDescending(r => r.CreatedAt)
                     .ToListAsync(cancellationToken);
 

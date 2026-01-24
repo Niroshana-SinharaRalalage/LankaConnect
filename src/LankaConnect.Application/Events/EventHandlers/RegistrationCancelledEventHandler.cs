@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -35,25 +37,41 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling RegistrationCancelledEvent for Event {EventId}, User {UserId}",
-            domainEvent.EventId, domainEvent.AttendeeId);
-
-        try
+        using (LogContext.PushProperty("Operation", "RegistrationCancelled"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("AttendeeId", domainEvent.AttendeeId))
         {
-            // Retrieve user and event data
-            var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
-            if (user == null)
-            {
-                _logger.LogWarning("User {UserId} not found for RegistrationCancelledEvent", domainEvent.AttendeeId);
-                return;
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
+            _logger.LogInformation(
+                "RegistrationCancelled START: Event={EventId}, User={UserId}",
+                domainEvent.EventId, domainEvent.AttendeeId);
+
+            try
             {
-                _logger.LogWarning("Event {EventId} not found for RegistrationCancelledEvent", domainEvent.EventId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Retrieve user and event data
+                var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationCancelled: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationCancelled: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             // Prepare email parameters
             var parameters = new Dictionary<string, object>
@@ -66,29 +84,45 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 { "Reason", "User cancelled registration" }
             };
 
-            // Send templated email
-            // Phase 6A.79: Use EmailTemplateNames constant
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.RegistrationCancellation,
-                user.Email.Value,
-                parameters,
-                cancellationToken);
+                // Send templated email
+                // Phase 6A.79: Use EmailTemplateNames constant
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    EmailTemplateNames.RegistrationCancellation,
+                    user.Email.Value,
+                    parameters,
+                    cancellationToken);
 
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send RSVP cancellation email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "RegistrationCancelled FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        user.Email.Value, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "RegistrationCancelled COMPLETE: Email sent successfully - Email={Email}, Duration={ElapsedMs}ms",
+                        user.Email.Value, stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation("RSVP cancellation email sent successfully to {Email}", user.Email.Value);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "RegistrationCancelled CANCELED: Operation was canceled - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling RegistrationCancelledEvent for Event {EventId}, User {UserId}",
-                domainEvent.EventId, domainEvent.AttendeeId);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "RegistrationCancelled FAILED: Exception occurred - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 }

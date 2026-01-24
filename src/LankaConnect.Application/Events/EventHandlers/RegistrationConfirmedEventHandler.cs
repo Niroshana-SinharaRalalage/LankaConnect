@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -7,6 +8,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -42,45 +44,63 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
-            domainEvent.EventId, domainEvent.AttendeeId);
-
-        try
+        using (LogContext.PushProperty("Operation", "RegistrationConfirmed"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("AttendeeId", domainEvent.AttendeeId))
         {
-            // Retrieve user and event data
-            var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
-            if (user == null)
-            {
-                _logger.LogWarning("User {UserId} not found for RegistrationConfirmedEvent", domainEvent.AttendeeId);
-                return;
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning("Event {EventId} not found for RegistrationConfirmedEvent", domainEvent.EventId);
-                return;
-            }
+            _logger.LogInformation(
+                "RegistrationConfirmed START: Event={EventId}, User={UserId}, Quantity={Quantity}",
+                domainEvent.EventId, domainEvent.AttendeeId, domainEvent.Quantity);
 
-            // Phase 6A.24: Fetch registration to get attendee details and check if paid event
-            var registration = await _registrationRepository.GetByEventAndUserAsync(
-                domainEvent.EventId, domainEvent.AttendeeId, cancellationToken);
-
-            if (registration == null)
+            try
             {
-                _logger.LogWarning("Registration not found for Event {EventId}, User {UserId}",
-                    domainEvent.EventId, domainEvent.AttendeeId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                // Retrieve user and event data
+                var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
-            // Phase 6A.24: Skip email for paid events - PaymentCompletedEventHandler will send it after payment
-            if (registration.PaymentStatus == PaymentStatus.Pending)
-            {
-                _logger.LogInformation(
-                    "Skipping email for paid event {EventId}, User {UserId} - waiting for payment completion",
-                    domainEvent.EventId, domainEvent.AttendeeId);
-                return;
-            }
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Phase 6A.24: Fetch registration to get attendee details and check if paid event
+                var registration = await _registrationRepository.GetByEventAndUserAsync(
+                    domainEvent.EventId, domainEvent.AttendeeId, cancellationToken);
+
+                if (registration == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: Registration not found - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Phase 6A.24: Skip email for paid events - PaymentCompletedEventHandler will send it after payment
+                if (registration.PaymentStatus == PaymentStatus.Pending)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "RegistrationConfirmed: Skipping paid event - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             // Phase 6A.40: Prepare attendee details for email - show actual attendee names
             var attendeeDetailsHtml = new System.Text.StringBuilder();
@@ -145,23 +165,37 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 parameters,
                 cancellationToken);
 
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send RSVP confirmation email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "RegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        user.Email.Value, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "RegistrationConfirmed COMPLETE: Email sent successfully - Email={Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                        user.Email.Value, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation("RSVP confirmation email sent successfully to {Email} with {AttendeeCount} attendees",
-                    user.Email.Value, domainEvent.Quantity);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "RegistrationConfirmed CANCELED: Operation was canceled - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex,
-                "Error handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
-                domainEvent.EventId, domainEvent.AttendeeId);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "RegistrationConfirmed FAILED: Exception occurred - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 

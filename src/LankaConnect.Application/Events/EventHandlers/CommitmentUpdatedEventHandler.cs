@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -36,31 +38,42 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
     {
         var domainEvent = notification.DomainEvent;
 
-        try
+        using (LogContext.PushProperty("Operation", "CommitmentUpdated"))
+        using (LogContext.PushProperty("EntityType", "SignUpCommitment"))
+        using (LogContext.PushProperty("UserId", domainEvent.UserId))
+        using (LogContext.PushProperty("SignUpItemId", domainEvent.SignUpItemId))
         {
+            var stopwatch = Stopwatch.StartNew();
+
             _logger.LogInformation(
-                "[Phase 6A.51+] Processing CommitmentUpdatedEvent: User {UserId} updated commitment for '{ItemDescription}' from {OldQuantity} to {NewQuantity}",
+                "CommitmentUpdated START: UserId={UserId}, ItemDescription={ItemDescription}, OldQuantity={OldQuantity}, NewQuantity={NewQuantity}",
                 domainEvent.UserId, domainEvent.ItemDescription, domainEvent.OldQuantity, domainEvent.NewQuantity);
 
-            // Get user details
-            var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
-            if (user == null)
+            try
             {
-                _logger.LogWarning(
-                    "[Phase 6A.51+] User {UserId} not found for commitment update confirmation email",
-                    domainEvent.UserId);
-                return; // Fail-silent: don't throw to prevent transaction rollback
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Get event details via repository navigation method
-            var @event = await _eventRepository.GetEventBySignUpItemIdAsync(domainEvent.SignUpItemId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.51+] Event not found for SignUpItem {SignUpItemId}",
-                    domainEvent.SignUpItemId);
-                return; // Fail-silent
-            }
+                // Get user details
+                var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "CommitmentUpdated: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.UserId, stopwatch.ElapsedMilliseconds);
+                    return; // Fail-silent: don't throw to prevent transaction rollback
+                }
+
+                // Get event details via repository navigation method
+                var @event = await _eventRepository.GetEventBySignUpItemIdAsync(domainEvent.SignUpItemId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "CommitmentUpdated: Event not found - SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms",
+                        domainEvent.SignUpItemId, stopwatch.ElapsedMilliseconds);
+                    return; // Fail-silent
+                }
 
             // Build template parameters
             var templateData = new Dictionary<string, object>
@@ -75,32 +88,44 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." } // Default instruction
             };
 
-            // Send templated email
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.SignupCommitmentUpdate,
-                user.Email.Value,
-                templateData,
-                cancellationToken);
+                // Send templated email
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    EmailTemplateNames.SignupCommitmentUpdate,
+                    user.Email.Value,
+                    templateData,
+                    cancellationToken);
 
-            if (result.IsSuccess)
-            {
-                _logger.LogInformation(
-                    "[Phase 6A.51+] Commitment update confirmation email sent to {Email} for event {EventId}",
-                    user.Email.Value, @event.Id);
+                stopwatch.Stop();
+
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation(
+                        "CommitmentUpdated COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        user.Email.Value, @event.Id, stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "CommitmentUpdated FAILED: Email sending failed - Email={Email}, Error={Error}, Duration={ElapsedMs}ms",
+                        user.Email.Value, result.Error, stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogError(
-                    "[Phase 6A.51+] Failed to send commitment update confirmation email to {Email}: {Error}",
-                    user.Email.Value, result.Error);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "CommitmentUpdated CANCELED: Operation was canceled - UserId={UserId}, SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, domainEvent.SignUpItemId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex,
-                "[Phase 6A.51+] Error sending commitment update confirmation email for User {UserId}, SignUpItem {SignUpItemId}",
-                domainEvent.UserId, domainEvent.SignUpItemId);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "CommitmentUpdated FAILED: Exception occurred - UserId={UserId}, SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, domainEvent.SignUpItemId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 }

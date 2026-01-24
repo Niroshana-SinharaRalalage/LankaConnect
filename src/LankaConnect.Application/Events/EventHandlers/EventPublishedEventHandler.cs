@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -7,7 +9,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using System.Globalization;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -44,22 +46,30 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation(
-            "[Phase 6A] EventPublishedEventHandler INVOKED - Event {EventId}, Published By {PublishedBy} at {PublishedAt}",
-            domainEvent.EventId, domainEvent.PublishedBy, domainEvent.PublishedAt);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventPublished"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Resolve email recipients using domain service
-            var recipients = await _recipientService.ResolveRecipientsAsync(domainEvent.EventId, cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
 
-            if (!recipients.EmailAddresses.Any())
+            _logger.LogInformation(
+                "EventPublished START: EventId={EventId}, PublishedBy={PublishedBy}, PublishedAt={PublishedAt}",
+                domainEvent.EventId, domainEvent.PublishedBy, domainEvent.PublishedAt);
+
+            try
             {
-                _logger.LogInformation(
-                    "No email recipients found for event {EventId}. Skipping notification email.",
-                    domainEvent.EventId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                // Resolve email recipients using domain service
+                var recipients = await _recipientService.ResolveRecipientsAsync(domainEvent.EventId, cancellationToken);
+
+                if (!recipients.EmailAddresses.Any())
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "EventPublished: No recipients found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             _logger.LogInformation(
                 "Resolved {RecipientCount} unique email recipients for event {EventId}. " +
@@ -125,21 +135,33 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 }
             }
 
-            _logger.LogInformation(
-                "Event notification emails completed for event {EventId}. Success: {SuccessCount}, Failed: {FailCount}. " +
-                "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
-                domainEvent.EventId, successCount, failCount,
-                recipients.Breakdown.EmailGroupCount,
-                recipients.Breakdown.MetroAreaSubscribers,
-                recipients.Breakdown.StateLevelSubscribers,
-                recipients.Breakdown.AllLocationsSubscribers);
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex,
-                "Error handling EventPublishedEvent for Event {EventId}",
-                domainEvent.EventId);
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "EventPublished COMPLETE: Emails sent - EventId={EventId}, Success={SuccessCount}, Failed={FailCount}, Total={Total}, Duration={ElapsedMs}ms, " +
+                    "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+                    domainEvent.EventId, successCount, failCount, recipients.EmailAddresses.Count, stopwatch.ElapsedMilliseconds,
+                    recipients.Breakdown.EmailGroupCount,
+                    recipients.Breakdown.MetroAreaSubscribers,
+                    recipients.Breakdown.StateLevelSubscribers,
+                    recipients.Breakdown.AllLocationsSubscribers);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "EventPublished CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventPublished FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -53,7 +54,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -78,7 +79,7 @@ public class SendPasswordResetCommandHandlerTests
         // Verify email was sent with correct template
         _mockEmailService.Verify(
             e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.Is<Dictionary<string, object>>(d =>
                     d.ContainsKey("UserName") &&
@@ -241,7 +242,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -261,7 +262,7 @@ public class SendPasswordResetCommandHandlerTests
         // Verify email WAS sent (rate limiting bypassed)
         _mockEmailService.Verify(
             e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
@@ -285,7 +286,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -320,7 +321,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -352,7 +353,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))
@@ -386,7 +387,7 @@ public class SendPasswordResetCommandHandlerTests
 
         _mockEmailService
             .Setup(e => e.SendTemplatedEmailAsync(
-                "template-password-reset",
+                EmailTemplateNames.PasswordReset,
                 email,
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()))

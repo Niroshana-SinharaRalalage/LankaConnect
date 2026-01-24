@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -36,38 +38,54 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling AnonymousRegistrationConfirmedEvent for Event {EventId}, Email {Email}",
-            domainEvent.EventId, domainEvent.AttendeeEmail);
-
-        try
+        using (LogContext.PushProperty("Operation", "AnonymousRegistrationConfirmed"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("AttendeeEmail", domainEvent.AttendeeEmail))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning("Event {EventId} not found for AnonymousRegistrationConfirmedEvent", domainEvent.EventId);
-                return;
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            // Fetch registration to get attendee details and check if paid event
-            var registration = await _registrationRepository.GetAnonymousByEventAndEmailAsync(
-                domainEvent.EventId, domainEvent.AttendeeEmail, cancellationToken);
+            _logger.LogInformation(
+                "AnonymousRegistrationConfirmed START: Event={EventId}, Email={Email}, Quantity={Quantity}",
+                domainEvent.EventId, domainEvent.AttendeeEmail, domainEvent.Quantity);
 
-            if (registration == null)
+            try
             {
-                _logger.LogWarning("Anonymous registration not found for Event {EventId}, Email {Email}",
-                    domainEvent.EventId, domainEvent.AttendeeEmail);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Skip email for paid events - PaymentCompletedEventHandler will send it after payment
-            if (registration.PaymentStatus == PaymentStatus.Pending)
-            {
-                _logger.LogInformation(
-                    "Skipping email for paid event {EventId}, Email {Email} - waiting for payment completion",
-                    domainEvent.EventId, domainEvent.AttendeeEmail);
-                return;
-            }
+                // Retrieve event data
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "AnonymousRegistrationConfirmed: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Fetch registration to get attendee details and check if paid event
+                var registration = await _registrationRepository.GetAnonymousByEventAndEmailAsync(
+                    domainEvent.EventId, domainEvent.AttendeeEmail, cancellationToken);
+
+                if (registration == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "AnonymousRegistrationConfirmed: Registration not found - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeEmail, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Skip email for paid events - PaymentCompletedEventHandler will send it after payment
+                if (registration.PaymentStatus == PaymentStatus.Pending)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "AnonymousRegistrationConfirmed: Skipping paid event - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeEmail, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             // Prepare attendee details for email
             var attendeeDetails = new List<Dictionary<string, object>>();
@@ -117,29 +135,44 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 parameters["HasContactInfo"] = false;
             }
 
-            // Send templated email to the attendee email
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.AnonymousRsvpConfirmation,
-                domainEvent.AttendeeEmail,
-                parameters,
-                cancellationToken);
+                // Send templated email to the attendee email
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    EmailTemplateNames.AnonymousRsvpConfirmation,
+                    domainEvent.AttendeeEmail,
+                    parameters,
+                    cancellationToken);
 
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send RSVP confirmation email to anonymous user {Email}: {Errors}",
-                    domainEvent.AttendeeEmail, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "AnonymousRegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "AnonymousRegistrationConfirmed COMPLETE: Email sent successfully - Email={Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeEmail, attendeeDetails.Count, stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation("RSVP confirmation email sent successfully to anonymous user {Email} with {AttendeeCount} attendees",
-                    domainEvent.AttendeeEmail, attendeeDetails.Count);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "AnonymousRegistrationConfirmed CANCELED: Operation was canceled - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeEmail, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling AnonymousRegistrationConfirmedEvent for Event {EventId}, Email {Email}",
-                domainEvent.EventId, domainEvent.AttendeeEmail);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "AnonymousRegistrationConfirmed FAILED: Exception occurred - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeEmail, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Events.Repositories;
@@ -89,7 +90,7 @@ public class EventReminderJobTests
 
         // Assert - Phase 6A.57: Now sends 3 reminders (7d, 2d, 1d) per registration
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-event-reminder",
+            EmailTemplateNames.EventReminder,
             userEmail,
             It.Is<Dictionary<string, object>>(p =>
                 p.ContainsKey("AttendeeName") &&
@@ -129,7 +130,7 @@ public class EventReminderJobTests
 
         // Assert - Phase 6A.57: Now sends 3 reminders (7d, 2d, 1d) per registration
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-event-reminder",
+            EmailTemplateNames.EventReminder,
             contactEmail,
             It.Is<Dictionary<string, object>>(p =>
                 p.ContainsKey("EventTitle") &&

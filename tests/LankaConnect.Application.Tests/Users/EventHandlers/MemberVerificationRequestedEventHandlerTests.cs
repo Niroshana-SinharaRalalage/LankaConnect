@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Users.EventHandlers;
 using LankaConnect.Domain.Common;
@@ -68,7 +69,7 @@ public class MemberVerificationRequestedEventHandlerTests
 
         // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-membership-email-verification",
+            EmailTemplateNames.MemberEmailVerification,
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("Email") &&
@@ -113,7 +114,7 @@ public class MemberVerificationRequestedEventHandlerTests
 
         // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-membership-email-verification",
+            EmailTemplateNames.MemberEmailVerification,
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("UserName") &&
@@ -152,7 +153,7 @@ public class MemberVerificationRequestedEventHandlerTests
 
         // Assert - Phase 6A.76: Updated to use new template name
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-membership-email-verification",
+            EmailTemplateNames.MemberEmailVerification,
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("UserName") &&

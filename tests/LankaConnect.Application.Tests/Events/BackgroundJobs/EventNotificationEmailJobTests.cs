@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Events.Repositories;
@@ -179,7 +180,7 @@ public class EventNotificationEmailJobTests
         // Should send to 4 recipients (2 from groups + 2 from registrations)
         _mockEmailService.Verify(
             x => x.SendTemplatedEmailAsync(
-                "template-event-details-publication",
+                EmailTemplateNames.EventDetails,
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
@@ -229,11 +230,11 @@ public class EventNotificationEmailJobTests
 
         // One succeeds, one fails
         _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync("template-event-details-publication", "success@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SendTemplatedEmailAsync(EmailTemplateNames.EventDetails, "success@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync("template-event-details-publication", "fail@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SendTemplatedEmailAsync(EmailTemplateNames.EventDetails, "fail@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure("SMTP error"));
 
         // Act
@@ -242,7 +243,7 @@ public class EventNotificationEmailJobTests
         // Assert
         _mockEmailService.Verify(
             x => x.SendTemplatedEmailAsync(
-                "template-event-details-publication",
+                EmailTemplateNames.EventDetails,
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),

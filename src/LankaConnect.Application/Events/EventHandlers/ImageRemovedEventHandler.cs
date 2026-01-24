@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -31,37 +33,65 @@ public class ImageRemovedEventHandler : INotificationHandler<DomainEventNotifica
     {
         var domainEvent = notification.DomainEvent;
 
-        try
+        using (LogContext.PushProperty("Operation", "ImageRemoved"))
+        using (LogContext.PushProperty("EntityType", "EventImage"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("ImageId", domainEvent.ImageId))
         {
+            var stopwatch = Stopwatch.StartNew();
+
             _logger.LogInformation(
-                "Processing ImageRemovedFromEventDomainEvent: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}",
+                "ImageRemoved START: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}",
                 domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName);
 
-            // Construct blob URL from blob name using Azure Blob Storage service
-            var imageUrl = _blobStorageService.GetBlobUrl(domainEvent.BlobName);
-
-            // Delete image from Azure Blob Storage
-            var deleteResult = await _imageService.DeleteImageAsync(imageUrl, cancellationToken);
-
-            if (deleteResult.IsFailure)
+            try
             {
-                _logger.LogWarning(
-                    "Failed to delete blob from storage: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}, Errors={Errors}",
-                    domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName, string.Join(", ", deleteResult.Errors));
-            }
-            else
-            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Construct blob URL from blob name using Azure Blob Storage service
+                var imageUrl = _blobStorageService.GetBlobUrl(domainEvent.BlobName);
+
                 _logger.LogInformation(
-                    "Successfully deleted blob from storage: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}",
-                    domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName);
+                    "ImageRemoved: Constructed blob URL - BlobUrl={BlobUrl}",
+                    imageUrl);
+
+                // Delete image from Azure Blob Storage
+                var deleteResult = await _imageService.DeleteImageAsync(imageUrl, cancellationToken);
+
+                stopwatch.Stop();
+
+                if (deleteResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "ImageRemoved: Failed to delete blob from storage - EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName, string.Join(", ", deleteResult.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "ImageRemoved COMPLETE: Blob deleted successfully - EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName, stopwatch.ElapsedMilliseconds);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent: Log error but don't throw (image metadata already removed from database)
-            _logger.LogError(ex,
-                "Unexpected error deleting blob from storage: EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}",
-                domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName);
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "ImageRemoved CANCELED: Operation was canceled - EventId={EventId}, ImageId={ImageId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.ImageId, stopwatch.ElapsedMilliseconds);
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                // Fail-silent: Log error but don't throw (image metadata already removed from database)
+                _logger.LogError(ex,
+                    "ImageRemoved FAILED: Unexpected error deleting blob - EventId={EventId}, ImageId={ImageId}, BlobName={BlobName}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    domainEvent.EventId, domainEvent.ImageId, domainEvent.BlobName, stopwatch.ElapsedMilliseconds, ex.Message);
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
 using LankaConnect.Application.Interfaces;
@@ -83,7 +84,7 @@ public class EventApprovedEventHandlerTests
 
         // Assert - Phase 6A.75: Verify templated email is used
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-event-approval",
+            EmailTemplateNames.EventApproval,
             organizerEmail,
             It.Is<Dictionary<string, object>>(p =>
                 p["OrganizerName"].ToString() == "John Organizer" &&
@@ -127,7 +128,7 @@ public class EventApprovedEventHandlerTests
         _emailUrlHelper.Verify(x => x.BuildEventManageUrl(eventId), Times.Once);
 
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            "template-event-approval",
+            EmailTemplateNames.EventApproval,
             organizerEmail,
             It.Is<Dictionary<string, object>>(p =>
                 p.ContainsKey("EventUrl") &&

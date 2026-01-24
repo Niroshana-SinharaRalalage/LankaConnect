@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -6,7 +8,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using System.Globalization;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -47,12 +49,21 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         var domainEvent = notification.DomainEvent;
         var correlationId = Guid.NewGuid(); // Phase 6A.52: Correlation ID for end-to-end tracing
 
-        _logger.LogInformation(
-            "[Phase 6A.52] [PaymentEmail-START] PaymentCompletedEventHandler invoked - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, Amount: {Amount}, Email: {Email}, PaymentIntent: {PaymentIntent}",
-            correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid, domainEvent.ContactEmail, domainEvent.PaymentIntentId);
-
-        try
+        using (LogContext.PushProperty("Operation", "PaymentCompleted"))
+        using (LogContext.PushProperty("EntityType", "Payment"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("RegistrationId", domainEvent.RegistrationId))
+        using (LogContext.PushProperty("CorrelationId", correlationId))
         {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "PaymentCompleted START: CorrelationId={CorrelationId}, EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}, Email={Email}, PaymentIntent={PaymentIntent}",
+                correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.AmountPaid, domainEvent.ContactEmail, domainEvent.PaymentIntentId);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
             // Phase 6A.52: Step 1 - Retrieve event data
             _logger.LogInformation(
                 "[Phase 6A.52] [PaymentEmail-1] Loading event - CorrelationId: {CorrelationId}, EventId: {EventId}",
@@ -307,27 +318,39 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 "[Phase 6A.52] [PaymentEmail-15] Sending email - CorrelationId: {CorrelationId}, To: {RecipientEmail}, Subject: {Subject}, HasAttachment: {HasAttachment}",
                 correlationId, recipientEmail, emailMessage.Subject, pdfAttachment != null);
 
-            var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+                var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
 
-            if (result.IsFailure)
-            {
-                _logger.LogError(
-                    "[Phase 6A.52] [PaymentEmail-ERROR] Failed to send email - CorrelationId: {CorrelationId}, RecipientEmail: {Email}, Errors: {Errors}",
-                    correlationId, recipientEmail, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "PaymentCompleted FAILED: Email sending failed - CorrelationId={CorrelationId}, RecipientEmail={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        correlationId, recipientEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "PaymentCompleted COMPLETE: Email sent successfully - CorrelationId={CorrelationId}, RecipientEmail={Email}, RegistrationId={RegistrationId}, AttendeeCount={AttendeeCount}, HasTicket={HasTicket}, Duration={ElapsedMs}ms",
+                        correlationId, recipientEmail, domainEvent.RegistrationId, registration.Attendees.Count, parameters["HasTicket"], stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(
-                    "[Phase 6A.52] [PaymentEmail-SUCCESS] Email sent successfully - CorrelationId: {CorrelationId}, RecipientEmail: {Email}, RegistrationId: {RegistrationId}, AttendeeCount: {AttendeeCount}, HasTicket: {HasTicket}",
-                    correlationId, recipientEmail, domainEvent.RegistrationId, registration.Attendees.Count, parameters["HasTicket"]);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "PaymentCompleted CANCELED: Operation was canceled - CorrelationId={CorrelationId}, EventId={EventId}, RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
+                    correlationId, domainEvent.EventId, domainEvent.RegistrationId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Phase 6A.52: Enhanced exception logging with full context
-            _logger.LogError(ex,
-                "[Phase 6A.52] [PaymentEmail-EXCEPTION] Unhandled exception in PaymentCompletedEventHandler - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, Email: {Email}, ExceptionType: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
-                correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.ContactEmail, ex.GetType().FullName, ex.Message, ex.StackTrace);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Phase 6A.52: Enhanced exception logging with full context (fail-silent)
+                _logger.LogError(ex,
+                    "PaymentCompleted FAILED: Unhandled exception - CorrelationId={CorrelationId}, EventId={EventId}, RegistrationId={RegistrationId}, Email={Email}, Duration={ElapsedMs}ms",
+                    correlationId, domainEvent.EventId, domainEvent.RegistrationId, domainEvent.ContactEmail, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 

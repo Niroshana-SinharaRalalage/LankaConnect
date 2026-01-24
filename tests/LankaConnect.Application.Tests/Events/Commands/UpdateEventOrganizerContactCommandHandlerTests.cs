@@ -37,7 +37,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -68,7 +68,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -97,7 +97,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -127,7 +127,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -155,7 +155,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = Guid.NewGuid();
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -183,7 +183,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -211,7 +211,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -239,7 +239,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(
@@ -268,7 +268,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var eventId = @event.Id;
 
         _mockEventRepository
-            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@event);
 
         var command = new UpdateEventOrganizerContactCommand(

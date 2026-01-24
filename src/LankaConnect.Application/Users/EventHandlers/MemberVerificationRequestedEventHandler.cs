@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Users.EventHandlers;
 
@@ -35,57 +37,77 @@ public class MemberVerificationRequestedEventHandler
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation(
-            "[Phase 6A.53] Handling MemberVerificationRequestedEvent for User {UserId}",
-            domainEvent.UserId);
-
-        try
+        using (LogContext.PushProperty("Operation", "MemberVerificationRequested"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("UserId", domainEvent.UserId))
+        using (LogContext.PushProperty("Email", domainEvent.Email))
         {
-            // Generate verification URL
-            var verificationUrl = _urlsService.GetEmailVerificationUrl(domainEvent.VerificationToken);
-
-            // Phase 6A.53 Fix: Build user name from FirstName and LastName
-            var userName = BuildUserName(domainEvent.FirstName, domainEvent.LastName);
-
-            var parameters = new Dictionary<string, object>
-            {
-                { "Email", domainEvent.Email },
-                { "VerificationUrl", verificationUrl },
-                { "ExpirationHours", 24 },
-                { "UserName", userName }
-            };
+            var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[Phase 6A.53] Sending member-email-verification to {Email} ({UserName}), VerificationUrl: {VerificationUrl}",
-                domainEvent.Email, userName, verificationUrl);
+                "MemberVerificationRequested START: UserId={UserId}, Email={Email}",
+                domainEvent.UserId, domainEvent.Email);
 
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.MemberEmailVerification,
-                domainEvent.Email,
-                parameters,
-                cancellationToken);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            if (result.IsFailure)
-            {
-                _logger.LogError(
-                    "[Phase 6A.53] Failed to send verification email to {Email}: {Errors}",
-                    domainEvent.Email,
-                    string.Join(", ", result.Errors));
-            }
-            else
-            {
+                // Generate verification URL
+                var verificationUrl = _urlsService.GetEmailVerificationUrl(domainEvent.VerificationToken);
+
+                // Phase 6A.53 Fix: Build user name from FirstName and LastName
+                var userName = BuildUserName(domainEvent.FirstName, domainEvent.LastName);
+
+                var parameters = new Dictionary<string, object>
+                {
+                    { "Email", domainEvent.Email },
+                    { "VerificationUrl", verificationUrl },
+                    { "ExpirationHours", 24 },
+                    { "UserName", userName }
+                };
+
                 _logger.LogInformation(
-                    "[Phase 6A.53] ✅ Verification email sent successfully to {Email}",
-                    domainEvent.Email);
+                    "MemberVerificationRequested: Sending verification email - Email={Email}, UserName={UserName}",
+                    domainEvent.Email, userName);
+
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    EmailTemplateNames.MemberEmailVerification,
+                    domainEvent.Email,
+                    parameters,
+                    cancellationToken);
+
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "MemberVerificationRequested FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.Email, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "MemberVerificationRequested COMPLETE: Email sent successfully - Email={Email}, Duration={ElapsedMs}ms",
+                        domainEvent.Email, stopwatch.ElapsedMilliseconds);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            // FAIL-SILENT: Log but don't throw (ARCHITECT-REQUIRED)
-            _logger.LogError(ex,
-                "[Phase 6A.53] Error handling MemberVerificationRequestedEvent for User {UserId}",
-                domainEvent.UserId);
-            // Do NOT re-throw - prevents transaction rollback
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "MemberVerificationRequested CANCELED: Operation was canceled - UserId={UserId}, Email={Email}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, domainEvent.Email, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // FAIL-SILENT: Log but don't throw (ARCHITECT-REQUIRED)
+                _logger.LogError(ex,
+                    "MemberVerificationRequested FAILED: Exception occurred - UserId={UserId}, Email={Email}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, domainEvent.Email, stopwatch.ElapsedMilliseconds);
+                // Do NOT re-throw - prevents transaction rollback
+            }
         }
     }
 

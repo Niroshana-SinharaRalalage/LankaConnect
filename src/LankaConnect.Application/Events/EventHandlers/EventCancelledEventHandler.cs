@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using Hangfire;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Domain.Events.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -40,35 +42,51 @@ public class EventCancelledEventHandler : INotificationHandler<DomainEventNotifi
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation(
-            "[Phase 6A.64] EventCancelledEventHandler INVOKED - Event {EventId}, Cancelled At {CancelledAt}",
-            domainEvent.EventId, domainEvent.CancelledAt);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventCancelled"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Phase 6A.64: Queue background job instead of sending emails synchronously
-            // This returns immediately (< 1ms), and Hangfire executes the job asynchronously
-            var jobId = _backgroundJobClient.Enqueue<EventCancellationEmailJob>(
-                job => job.ExecuteAsync(domainEvent.EventId, domainEvent.Reason));
+            var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[Phase 6A.64] Queued EventCancellationEmailJob for event {EventId} with job ID {JobId}. " +
-                "Emails will be sent asynchronously in background.",
-                domainEvent.EventId, jobId);
+                "EventCancelled START: EventId={EventId}, CancelledAt={CancelledAt}, Reason={Reason}",
+                domainEvent.EventId, domainEvent.CancelledAt, domainEvent.Reason);
 
-            // Return immediately - email sending happens in background
-            return Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            // The event status change will still persist even if job queueing fails
-            _logger.LogError(ex,
-                "[Phase 6A.64] ERROR queueing EventCancellationEmailJob for Event {EventId}. " +
-                "Emails will NOT be sent.",
-                domainEvent.EventId);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.CompletedTask;
+                // Phase 6A.64: Queue background job instead of sending emails synchronously
+                // This returns immediately (< 1ms), and Hangfire executes the job asynchronously
+                var jobId = _backgroundJobClient.Enqueue<EventCancellationEmailJob>(
+                    job => job.ExecuteAsync(domainEvent.EventId, domainEvent.Reason));
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "EventCancelled COMPLETE: Job queued - EventId={EventId}, JobId={JobId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, jobId, stopwatch.ElapsedMilliseconds);
+
+                return Task.CompletedTask;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "EventCancelled CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventCancelled FAILED: Job queueing failed - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+
+                return Task.CompletedTask;
+            }
         }
     }
 }

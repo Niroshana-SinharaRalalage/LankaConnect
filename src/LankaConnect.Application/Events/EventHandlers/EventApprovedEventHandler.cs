@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -39,31 +41,41 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation(
-            "[Phase 6A.75] Processing EventApprovedEvent for Event {EventId}",
-            domainEvent.EventId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventApproved"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.75] Event {EventId} not found for EventApprovedEvent, skipping email",
-                    domainEvent.EventId);
-                return;
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            // Retrieve organizer's user details
-            var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
-            if (organizer == null)
+            _logger.LogInformation(
+                "EventApproved START: EventId={EventId}, ApprovedAt={ApprovedAt}",
+                domainEvent.EventId, domainEvent.ApprovedAt);
+
+            try
             {
-                _logger.LogWarning(
-                    "[Phase 6A.75] Organizer {OrganizerId} not found for EventApprovedEvent, skipping email",
-                    @event.OrganizerId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Retrieve event data
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "EventApproved: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Retrieve organizer's user details
+                var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+                if (organizer == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "EventApproved: Organizer not found - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        @event.OrganizerId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             var organizerName = $"{organizer.FirstName} {organizer.LastName}";
 
@@ -84,36 +96,48 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 { "EventManageUrl", eventManageUrl }
             };
 
-            _logger.LogInformation(
-                "[Phase 6A.75] Sending event approval email to {Email} for Event {EventId} ({EventTitle})",
-                organizer.Email.Value, domainEvent.EventId, @event.Title.Value);
-
-            // Phase 6A.75: Use templated email instead of inline HTML
-            var result = await _emailService.SendTemplatedEmailAsync(
-                "template-event-approval",
-                organizer.Email.Value,
-                parameters,
-                cancellationToken);
-
-            if (result.IsSuccess)
-            {
                 _logger.LogInformation(
-                    "[Phase 6A.75] Event approval email sent successfully to {Email} for Event {EventId}",
-                    organizer.Email.Value, domainEvent.EventId);
+                    "EventApproved: Sending approval email - To={Email}, EventId={EventId}, EventTitle={EventTitle}",
+                    organizer.Email.Value, domainEvent.EventId, @event.Title.Value);
+
+                // Phase 6A.75: Use templated email instead of inline HTML
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    "template-event-approval",
+                    organizer.Email.Value,
+                    parameters,
+                    cancellationToken);
+
+                stopwatch.Stop();
+
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation(
+                        "EventApproved COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        organizer.Email.Value, domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "EventApproved FAILED: Email sending failed - Email={Email}, EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        organizer.Email.Value, domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogError(
-                    "[Phase 6A.75] Failed to send event approval email to {Email} for Event {EventId}: {Errors}",
-                    organizer.Email.Value, domainEvent.EventId, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "EventApproved CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex,
-                "[Phase 6A.75] Error handling EventApprovedEvent for Event {EventId}",
-                domainEvent.EventId);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventApproved FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 

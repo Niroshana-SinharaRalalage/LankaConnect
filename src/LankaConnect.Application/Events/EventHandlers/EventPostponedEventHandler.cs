@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -38,102 +40,156 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling EventPostponedEvent for Event {EventId}", domainEvent.EventId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventPostponed"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "EventPostponed START: EventId={EventId}, PostponedAt={PostponedAt}, Reason={Reason}",
+                domainEvent.EventId, domainEvent.PostponedAt, domainEvent.Reason);
+
+            try
             {
-                _logger.LogWarning("Event {EventId} not found for EventPostponedEvent", domainEvent.EventId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Get all confirmed registrations for this event
-            var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
-            var confirmedRegistrations = registrations
-                .Where(r => r.Status == RegistrationStatus.Confirmed)
-                .ToList();
-
-            if (!confirmedRegistrations.Any())
-            {
-                _logger.LogInformation("No confirmed registrations found for Event {EventId}, skipping email notifications",
-                    domainEvent.EventId);
-                return;
-            }
-
-            _logger.LogInformation("Found {Count} confirmed registrations for Event {EventId}, preparing bulk email",
-                confirmedRegistrations.Count, domainEvent.EventId);
-
-            // Prepare bulk email messages
-            var emailMessages = new List<EmailMessageDto>();
-
-            foreach (var registration in confirmedRegistrations)
-            {
-                // Skip anonymous registrations - they don't have email in user repository
-                if (!registration.UserId.HasValue)
-                {
-                    _logger.LogInformation("Skipping anonymous registration {RegistrationId} for postponed event notification",
-                        registration.Id);
-                    continue;
-                }
-
-                var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
-                if (user == null)
-                {
-                    _logger.LogWarning("User {UserId} not found for registration {RegistrationId}",
-                        registration.UserId.Value, registration.Id);
-                    continue;
-                }
-
-                var parameters = new Dictionary<string, object>
-                {
-                    { "UserName", $"{user.FirstName} {user.LastName}" },
-                    { "EventTitle", @event.Title.Value },
-                    { "OriginalStartDate", domainEvent.PostponedAt.ToString("MMMM dd, yyyy") },
-                    { "OriginalStartTime", domainEvent.PostponedAt.ToString("h:mm tt") },
-                    { "Reason", domainEvent.Reason },
-                    { "PostponedAt", domainEvent.PostponedAt.ToString("MMMM dd, yyyy h:mm tt") }
-                };
-
-                var emailMessage = new EmailMessageDto
-                {
-                    ToEmail = user.Email.Value,
-                    ToName = $"{user.FirstName} {user.LastName}",
-                    Subject = $"Event Postponed: {@event.Title.Value}",
-                    HtmlBody = GenerateEventPostponedHtml(parameters),
-                    Priority = 1 // High priority
-                };
-
-                emailMessages.Add(emailMessage);
-            }
-
-            if (!emailMessages.Any())
-            {
-                _logger.LogWarning("No email messages prepared for Event {EventId}", domainEvent.EventId);
-                return;
-            }
-
-            // Send bulk emails
-            var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
-
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send event postponement bulk emails for Event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
-            }
-            else
-            {
+                // Retrieve event data
                 _logger.LogInformation(
-                    "Event postponement bulk emails sent: {Successful} successful, {Failed} failed out of {Total} total",
-                    result.Value.SuccessfulSends, result.Value.FailedSends, result.Value.TotalEmails);
+                    "EventPostponed: Loading event - EventId={EventId}",
+                    domainEvent.EventId);
+
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "EventPostponed: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "EventPostponed: Event loaded - EventTitle={EventTitle}",
+                    @event.Title.Value);
+
+                // Get all confirmed registrations for this event
+                var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
+                var confirmedRegistrations = registrations
+                    .Where(r => r.Status == RegistrationStatus.Confirmed)
+                    .ToList();
+
+                if (!confirmedRegistrations.Any())
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "EventPostponed: No confirmed registrations found, skipping notifications - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "EventPostponed: Found confirmed registrations - Count={Count}",
+                    confirmedRegistrations.Count);
+
+                // Prepare bulk email messages
+                var emailMessages = new List<EmailMessageDto>();
+
+                foreach (var registration in confirmedRegistrations)
+                {
+                    // Skip anonymous registrations - they don't have email in user repository
+                    if (!registration.UserId.HasValue)
+                    {
+                        _logger.LogInformation(
+                            "EventPostponed: Skipping anonymous registration - RegistrationId={RegistrationId}",
+                            registration.Id);
+                        continue;
+                    }
+
+                    var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                    if (user == null)
+                    {
+                        _logger.LogWarning(
+                            "EventPostponed: User not found for registration - UserId={UserId}, RegistrationId={RegistrationId}",
+                            registration.UserId.Value, registration.Id);
+                        continue;
+                    }
+
+                    var parameters = new Dictionary<string, object>
+                    {
+                        { "UserName", $"{user.FirstName} {user.LastName}" },
+                        { "EventTitle", @event.Title.Value },
+                        { "OriginalStartDate", domainEvent.PostponedAt.ToString("MMMM dd, yyyy") },
+                        { "OriginalStartTime", domainEvent.PostponedAt.ToString("h:mm tt") },
+                        { "Reason", domainEvent.Reason },
+                        { "PostponedAt", domainEvent.PostponedAt.ToString("MMMM dd, yyyy h:mm tt") }
+                    };
+
+                    var emailMessage = new EmailMessageDto
+                    {
+                        ToEmail = user.Email.Value,
+                        ToName = $"{user.FirstName} {user.LastName}",
+                        Subject = $"Event Postponed: {@event.Title.Value}",
+                        HtmlBody = GenerateEventPostponedHtml(parameters),
+                        Priority = 1 // High priority
+                    };
+
+                    emailMessages.Add(emailMessage);
+                }
+
+                if (!emailMessages.Any())
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "EventPostponed: No email messages prepared - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "EventPostponed: Sending bulk emails - EmailCount={EmailCount}",
+                    emailMessages.Count);
+
+                // Send bulk emails
+                var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
+
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "EventPostponed FAILED: Bulk email sending failed - EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "EventPostponed COMPLETE: Emails sent successfully - EventId={EventId}, Successful={Successful}, Failed={Failed}, Total={Total}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, result.Value.SuccessfulSends, result.Value.FailedSends, result.Value.TotalEmails, stopwatch.ElapsedMilliseconds);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling EventPostponedEvent for Event {EventId}", domainEvent.EventId);
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "EventPostponed CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventPostponed FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+            }
         }
     }
 

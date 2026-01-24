@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -41,31 +43,74 @@ public class CommitmentCancelledEventHandler
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation(
-            "[CommitmentCancelled] Handling deletion for CommitmentId={CommitmentId}, UserId={UserId}, SignUpItemId={SignUpItemId}",
-            domainEvent.CommitmentId, domainEvent.UserId, domainEvent.SignUpItemId);
-
-        // Find the commitment entity in EF Core's change tracker or database
-        // Using FindAsync is optimal because it checks local cache first
-        var commitment = await _context.SignUpCommitments
-            .FindAsync(new object[] { domainEvent.CommitmentId }, cancellationToken);
-
-        if (commitment != null)
+        using (LogContext.PushProperty("Operation", "CommitmentCancelled"))
+        using (LogContext.PushProperty("EntityType", "SignUpCommitment"))
+        using (LogContext.PushProperty("CommitmentId", domainEvent.CommitmentId))
+        using (LogContext.PushProperty("UserId", domainEvent.UserId))
         {
-            // Explicitly mark as deleted in EF Core change tracker
-            // This is what ChangeTracker.DetectChanges() cannot do for private collections
-            _context.SignUpCommitments.Remove(commitment);
+            var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[CommitmentCancelled] Marked commitment {CommitmentId} as deleted (UserId={UserId})",
-                domainEvent.CommitmentId, domainEvent.UserId);
-        }
-        else
-        {
-            // This shouldn't happen in normal flow, but log as warning for diagnostics
-            _logger.LogWarning(
-                "[CommitmentCancelled] Commitment {CommitmentId} not found in database (UserId={UserId})",
-                domainEvent.CommitmentId, domainEvent.UserId);
+                "CommitmentCancelled START: CommitmentId={CommitmentId}, UserId={UserId}, SignUpItemId={SignUpItemId}",
+                domainEvent.CommitmentId, domainEvent.UserId, domainEvent.SignUpItemId);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Find the commitment entity in EF Core's change tracker or database
+                // Using FindAsync is optimal because it checks local cache first
+                _logger.LogInformation(
+                    "CommitmentCancelled: Searching for commitment entity - CommitmentId={CommitmentId}",
+                    domainEvent.CommitmentId);
+
+                var commitment = await _context.SignUpCommitments
+                    .FindAsync(new object[] { domainEvent.CommitmentId }, cancellationToken);
+
+                if (commitment != null)
+                {
+                    // Explicitly mark as deleted in EF Core change tracker
+                    // This is what ChangeTracker.DetectChanges() cannot do for private collections
+                    _context.SignUpCommitments.Remove(commitment);
+
+                    _logger.LogInformation(
+                        "CommitmentCancelled: Commitment marked as deleted - CommitmentId={CommitmentId}, UserId={UserId}",
+                        domainEvent.CommitmentId, domainEvent.UserId);
+                }
+                else
+                {
+                    // This shouldn't happen in normal flow, but log as warning for diagnostics
+                    _logger.LogWarning(
+                        "CommitmentCancelled: Commitment not found in database - CommitmentId={CommitmentId}, UserId={UserId}",
+                        domainEvent.CommitmentId, domainEvent.UserId);
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "CommitmentCancelled COMPLETE: CommitmentId={CommitmentId}, Found={Found}, Duration={ElapsedMs}ms",
+                    domainEvent.CommitmentId, commitment != null, stopwatch.ElapsedMilliseconds);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "CommitmentCancelled CANCELED: Operation was canceled - CommitmentId={CommitmentId}, Duration={ElapsedMs}ms",
+                    domainEvent.CommitmentId, stopwatch.ElapsedMilliseconds);
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CommitmentCancelled FAILED: Exception occurred - CommitmentId={CommitmentId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    domainEvent.CommitmentId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
     }
 }

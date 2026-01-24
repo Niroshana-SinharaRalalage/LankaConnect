@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
@@ -5,6 +6,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
@@ -34,62 +36,116 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling EventRejectedEvent for Event {EventId}", domainEvent.EventId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventRejected"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "EventRejected START: EventId={EventId}, RejectedAt={RejectedAt}, Reason={Reason}",
+                domainEvent.EventId, domainEvent.RejectedAt, domainEvent.Reason);
+
+            try
             {
-                _logger.LogWarning("Event {EventId} not found for EventRejectedEvent", domainEvent.EventId);
-                return;
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Retrieve event data
+                _logger.LogInformation(
+                    "EventRejected: Loading event - EventId={EventId}",
+                    domainEvent.EventId);
+
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "EventRejected: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "EventRejected: Event loaded - EventTitle={EventTitle}, OrganizerId={OrganizerId}",
+                    @event.Title.Value, @event.OrganizerId);
+
+                // Retrieve organizer's user details
+                var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+                if (organizer == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "EventRejected: Organizer not found - OrganizerId={OrganizerId}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        @event.OrganizerId, domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "EventRejected: Organizer loaded - Email={Email}",
+                    organizer.Email.Value);
+
+                var organizerName = $"{organizer.FirstName} {organizer.LastName}";
+                var parameters = new Dictionary<string, object>
+                {
+                    { "EventTitle", @event.Title.Value },
+                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
+                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "Reason", domainEvent.Reason },
+                    { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "OrganizerName", organizerName }
+                };
+
+                var emailMessage = new EmailMessageDto
+                {
+                    ToEmail = organizer.Email.Value,
+                    ToName = organizerName,
+                    Subject = $"Event Requires Changes: {@event.Title.Value}",
+                    HtmlBody = GenerateEventRejectedHtml(parameters),
+                    Priority = 1 // High priority
+                };
+
+                _logger.LogInformation(
+                    "EventRejected: Sending rejection email - To={Email}",
+                    organizer.Email.Value);
+
+                var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+
+                stopwatch.Stop();
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(
+                        "EventRejected FAILED: Email sending failed - EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "EventRejected COMPLETE: Email sent successfully - EventId={EventId}, To={Email}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, organizer.Email.Value, stopwatch.ElapsedMilliseconds);
+                }
             }
-
-            // Retrieve organizer's user details
-            var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
-            if (organizer == null)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("Organizer {OrganizerId} not found for EventRejectedEvent", @event.OrganizerId);
-                return;
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "EventRejected CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+
+                throw;
             }
-
-            var organizerName = $"{organizer.FirstName} {organizer.LastName}";
-            var parameters = new Dictionary<string, object>
+            catch (Exception ex)
             {
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "Reason", domainEvent.Reason },
-                { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "OrganizerName", organizerName }
-            };
+                stopwatch.Stop();
 
-            var emailMessage = new EmailMessageDto
-            {
-                ToEmail = organizer.Email.Value,
-                ToName = organizerName,
-                Subject = $"Event Requires Changes: {@event.Title.Value}",
-                HtmlBody = GenerateEventRejectedHtml(parameters),
-                Priority = 1 // High priority
-            };
-
-            var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
-
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send event rejection email for Event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventRejected FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
             }
-            else
-            {
-                _logger.LogInformation("Event rejection email sent successfully for Event {EventId}", domainEvent.EventId);
-            }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling EventRejectedEvent for Event {EventId}", domainEvent.EventId);
         }
     }
 

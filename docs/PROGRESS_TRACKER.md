@@ -1,9 +1,9 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-24 - CRITICAL FIX: Payment Bypass Bug - Paid Event Registration Without Payment ✅ COMPLETE*
+*Last Updated: 2026-01-24 - Unit Test Fixes for Phase 6A.79 Email Template Deployment ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - CRITICAL FIX: Payment Bypass Bug ✅ COMPLETE
+## 🎯 Current Session Status - Unit Test Fixes for Phase 6A.79 ✅ COMPLETE
 
 ### CRITICAL BUG FIX - Payment Bypass: Users Could Register for Paid Events Without Completing Payment - 2026-01-24
 
@@ -95,6 +95,95 @@ const isUserRegistered = !!userRsvp &&
 3. Verify "Complete Payment" button works
 4. Verify payment completion updates status correctly
 5. Plan backend validation enhancements
+
+---
+
+### PHASE 6A.79 HOTFIX - Unit Test Fixes for Email Template Deployment - 2026-01-24
+
+**Status**: ✅ **COMPLETE & DEPLOYED TO STAGING** (Build: 0 errors, Tests: 1190 passed / 0 failed)
+
+**Background**:
+Phase 6A.79 successfully deployed email template parameter fixes (EmailTemplateNames constants),
+but subsequent deployments failed due to 10 unit test failures. These failures were NOT caused by
+Phase 6A.79, but by pre-existing issues from observability enhancements (Batch 2D/2E).
+
+**Test Failure Analysis**:
+
+**1. Password Reset Tests (2 failures)** - Introduced by Observability Batch 2D:
+- `SendPasswordResetCommandHandlerTests.Handle_WhenDatabaseThrowsException_ShouldReturnFailure`
+- `ResetPasswordCommandHandlerTests.Handle_WhenDatabaseThrowsException_ShouldReturnFailure`
+- **Root Cause**: Observability logging changed exception handling from `return Result.Failure()` to `throw;`
+- **Tests Expected**: Handler catches exception and returns `Result.Failure()`
+- **Tests Got**: Unhandled exception thrown
+
+**2. UpdateEventOrganizerContact Tests (8 failures)** - Mock Setup Issue:
+- All tests failing with "Event not found" error
+- **Root Cause**: Handler calls `GetByIdAsync(id, trackChanges: true, cancellationToken)` (3 params)
+- **Mocks Setup**: `GetByIdAsync(id, It.IsAny<CancellationToken>())` (2 params only)
+- **Fix**: Update mocks to include `trackChanges` parameter
+
+**3. Test Template Names** - Found but already fixed by previous commit:
+- 5 test files using hardcoded template names instead of constants
+- Already fixed with `EmailTemplateNames` constants in separate commit
+- No action needed
+
+**Solutions Implemented**:
+
+**1. Fixed Password Reset Exception Handling** (2 files):
+- `SendPasswordResetCommandHandler.cs`: Changed `throw;` to `return Result.Failure("An error occurred while sending password reset email")`
+- `ResetPasswordCommandHandler.cs`: Changed `throw;` to `return Result.Failure("An error occurred while resetting password")`
+- Maintains observability logging while preserving expected failure handling pattern
+
+**2. Fixed UpdateEventOrganizerContact Test Mocks**:
+- Updated all mock setups: `.Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))`
+- Added `trackChanges` parameter to match actual repository interface signature
+
+**Files Changed**:
+1. `src/LankaConnect.Application/Communications/Commands/SendPasswordReset/SendPasswordResetCommandHandler.cs` (1 line)
+2. `src/LankaConnect.Application/Communications/Commands/ResetPassword/ResetPasswordCommandHandler.cs` (1 line)
+3. `tests/LankaConnect.Application.Tests/Events/Commands/UpdateEventOrganizerContactCommandHandlerTests.cs` (8 mock setups)
+
+**Test Results**:
+- **Before Fix**: Failed: 10, Passed: 1180, Skipped: 1, Total: 1191
+- **After Fix**: Failed: 0, Passed: 1190, Skipped: 1, Total: 1191
+- **Improvement**: 100% test pass rate achieved ✅
+
+**Build & Deployment**:
+- ✅ Build: 0 errors, 0 warnings
+- ✅ Unit Tests: 1190 passed, 0 failed
+- ✅ Commit: `68eecf37` - "fix(tests): Fix password reset exception handling for test compatibility"
+- ✅ Pushed to develop: 2026-01-24 03:15 UTC
+- ✅ Azure Staging Deployment: Success (GitHub Actions run 21308255466)
+
+**Impact Assessment**:
+- ✅ No regression in Phase 6A.79 email template fixes
+- ✅ All email templates still use EmailTemplateNames constants correctly
+- ✅ Password reset handlers maintain proper error handling pattern
+- ✅ UpdateEventOrganizerContact tests verify domain logic correctly
+- ✅ Zero tolerance test policy restored (no failing tests allowed)
+
+**Lessons Learned**:
+1. Observability enhancements must preserve existing error handling patterns
+2. Test mocks must match exact method signatures including all parameters
+3. Mock parameter changes should trigger test updates in same commit
+4. Pre-existing test failures can block subsequent deployments
+
+**Git Commits**:
+- Main Fix: `68eecf37` - "fix(tests): Fix password reset exception handling for test compatibility"
+- Related: Test file fixes already committed by team (NullLogger additions)
+
+**Deployment Timeline**:
+- Issue Identified: 2026-01-24 02:52 UTC (Phase 6A.79 Part 2 deployment failed)
+- Root Cause Analysis: 2026-01-24 02:55 UTC
+- Fixes Implemented: 2026-01-24 03:10 UTC
+- Tests Verified Locally: 2026-01-24 03:12 UTC (1190/1190 passed)
+- Pushed to Develop: 2026-01-24 03:15 UTC
+- Deployed Successfully: 2026-01-24 03:21 UTC
+
+**Next Steps**:
+- ✅ Monitor staging deployment health
+- ✅ Verify Phase 6A.79 email template functionality unchanged
+- ✅ Consider adding CI check to prevent `throw;` in Result-based handlers
 
 ---
 

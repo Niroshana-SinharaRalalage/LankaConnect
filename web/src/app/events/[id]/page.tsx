@@ -15,6 +15,7 @@ import { MediaGallery } from '@/presentation/components/features/events/MediaGal
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -74,6 +75,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isUpdatingRegistration, setIsUpdatingRegistration] = useState(false);
   // Phase 6A.28: User choice for deleting signup commitments
   const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
+  // Phase 6A.80: Success dialog for anonymous registration
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successEmail, setSuccessEmail] = useState<string>('');
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -257,9 +261,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         }
 
         // Free event - show success message and reload
-        // Phase 6A.25 Fix: For anonymous registration, we still need to refresh
-        // since there's no React Query mutation handling cache invalidation
-        window.location.reload();
+        // Phase 6A.80: Show success dialog before reload for better UX
+        setSuccessEmail(data.email);
+        setShowSuccessDialog(true);
+        // Dialog close handler will trigger reload
       }
 
       setIsProcessing(false);
@@ -1180,6 +1185,60 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         onSave={handleEditRegistration}
         isSubmitting={isUpdatingRegistration}
       />
+
+      {/* Phase 6A.80: Success Dialog for Anonymous Registration */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registration Successful!</DialogTitle>
+            <DialogDescription>
+              Your registration for {event?.title} has been confirmed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <svg
+                className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-900 mb-2">
+                  Check your email
+                </p>
+                <p className="text-sm text-green-800">
+                  A confirmation email will be sent to <strong>{successEmail}</strong> within 2-6 minutes.
+                </p>
+                <p className="text-xs text-green-700 mt-2">
+                  Please check your inbox and spam folder if you don't see it right away.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false);
+                window.location.reload();
+              }}
+              style={{
+                backgroundColor: '#FF7900',
+                color: '#FFFFFF'
+              }}
+            >
+              Got it!
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -597,7 +597,7 @@ export function useUserRsvpForEvent(
  */
 export function useUserRegistrationDetails(
   eventId: string | undefined,
-  isUserRegistered: boolean = false,
+  hasUserRsvp: boolean = false,  // Phase 6A.79 Part 3: Renamed for clarity
   options?: Omit<UseQueryOptions<RegistrationDetailsDto | null, ApiError>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
@@ -633,7 +633,7 @@ export function useUserRegistrationDetails(
         throw error;
       }
     },
-    enabled: !!eventId && isUserRegistered, // Only fetch if user is registered
+    enabled: !!eventId && hasUserRsvp, // Phase 6A.79 Part 3: Fetch whenever userRsvp exists (any status)
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
     // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario

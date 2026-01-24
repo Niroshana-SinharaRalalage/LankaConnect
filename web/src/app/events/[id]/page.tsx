@@ -87,9 +87,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Fetch full registration details with attendee information
   // Fetch details whenever userRsvp exists (even if cancelled status)
+  // Phase 6A.79 Part 3 Fix: Pass !!userRsvp directly to enable fetching when RSVP exists
+  // This was causing a catch-22: isUserRegistered depends on registrationDetails,
+  // but registrationDetails wouldn't fetch until isUserRegistered was true
   const { data: registrationDetails, isLoading: isLoadingRegistration } = useUserRegistrationDetails(
     user?.userId ? id : undefined,
-    !!userRsvp
+    !!userRsvp  // ✅ Correct: Enable whenever userRsvp exists, not when isUserRegistered is true
   );
 
   // Fix: Check registration status - user is only "registered" if status is Confirmed AND payment is completed/not required
@@ -108,13 +111,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     registrationDetails?.status === RegistrationStatus.Pending &&
     registrationDetails?.paymentStatus === PaymentStatus.Pending;
 
-  console.log('[EventDetail] Registration state:', {
+  // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
+  console.log('[EventDetail] 🔍 Registration state debug:', {
+    eventId: id,
+    userId: user?.userId,
     hasUserRsvp: !!userRsvp,
+    userRsvpData: userRsvp,
     isLoadingRegistration,
+    registrationDetailsData: registrationDetails,
     registrationStatus: registrationDetails?.status,
+    registrationStatusName: registrationDetails?.status !== undefined ? RegistrationStatus[registrationDetails.status] : 'undefined',
     paymentStatus: registrationDetails?.paymentStatus,
+    paymentStatusName: registrationDetails?.paymentStatus !== undefined ? PaymentStatus[registrationDetails.paymentStatus] : 'undefined',
     isUserRegistered,
-    isPaymentPending
+    isPaymentPending,
+    // Show what values are being compared
+    statusCheck: {
+      isConfirmed: registrationDetails?.status === RegistrationStatus.Confirmed,
+      isPending: registrationDetails?.status === RegistrationStatus.Pending,
+      paymentCompleted: registrationDetails?.paymentStatus === PaymentStatus.Completed,
+      paymentNotRequired: registrationDetails?.paymentStatus === PaymentStatus.NotRequired,
+      paymentPending: registrationDetails?.paymentStatus === PaymentStatus.Pending,
+    }
   });
 
   // RSVP mutation

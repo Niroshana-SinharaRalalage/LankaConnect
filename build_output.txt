@@ -1,24 +1,15 @@
   Determining projects to restore...
-  Restored c:\Work\LankaConnect\src\LankaConnect.Domain\LankaConnect.Domain.csproj (in 180 ms).
-  Restored C:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj (in 1.06 sec).
-  Restored c:\Work\LankaConnect\tests\LankaConnect.IntegrationTests\LankaConnect.IntegrationTests.csproj (in 1.29 sec).
-  Restored c:\Work\LankaConnect\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj (in 1.28 sec).
-  Restored c:\Work\LankaConnect\tests\LankaConnect.Application.Tests\LankaConnect.Application.Tests.csproj (in 1.28 sec).
-  Restored c:\Work\LankaConnect\tests\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj (in 1.28 sec).
-  Restored c:\Work\LankaConnect\src\LankaConnect.API\LankaConnect.API.csproj (in 1.28 sec).
+  All projects are up-to-date for restore.
   LankaConnect.Domain -> C:\Work\LankaConnect\src\LankaConnect.Domain\bin\Debug\net8.0\LankaConnect.Domain.dll
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\UserCommittedToSignUpEventHandler.cs(60,55): error CS1061: 'IApplicationDbContext' does not contain a definition for 'Events' and no accessible extension method 'Events' accepting a first argument of type 'IApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\UserCommittedToSignUpEventHandler.cs(60,68): error CS1061: 'SignUpList' does not contain a definition for 'EventId' and no accessible extension method 'EventId' accepting a first argument of type 'SignUpList' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\CommitmentUpdatedEventHandler.cs(61,55): error CS1061: 'IApplicationDbContext' does not contain a definition for 'Events' and no accessible extension method 'Events' accepting a first argument of type 'IApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\CommitmentUpdatedEventHandler.cs(61,68): error CS1061: 'SignUpList' does not contain a definition for 'EventId' and no accessible extension method 'EventId' accepting a first argument of type 'SignUpList' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+  LankaConnect.Application -> C:\Work\LankaConnect\src\LankaConnect.Application\bin\Debug\net8.0\LankaConnect.Application.dll
+  LankaConnect.Infrastructure -> C:\Work\LankaConnect\src\LankaConnect.Infrastructure\bin\Debug\net8.0\LankaConnect.Infrastructure.dll
+  LankaConnect.TestUtilities -> C:\Work\LankaConnect\tests\LankaConnect.TestUtilities\bin\Debug\net8.0\LankaConnect.TestUtilities.dll
+  LankaConnect.API -> C:\Work\LankaConnect\src\LankaConnect.API\bin\Debug\net8.0\LankaConnect.API.dll
+  LankaConnect.Application.Tests -> C:\Work\LankaConnect\tests\LankaConnect.Application.Tests\bin\Debug\net8.0\LankaConnect.Application.Tests.dll
+  LankaConnect.IntegrationTests -> C:\Work\LankaConnect\tests\LankaConnect.IntegrationTests\bin\Debug\net8.0\LankaConnect.IntegrationTests.dll
 
-Build FAILED.
-
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\UserCommittedToSignUpEventHandler.cs(60,55): error CS1061: 'IApplicationDbContext' does not contain a definition for 'Events' and no accessible extension method 'Events' accepting a first argument of type 'IApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\UserCommittedToSignUpEventHandler.cs(60,68): error CS1061: 'SignUpList' does not contain a definition for 'EventId' and no accessible extension method 'EventId' accepting a first argument of type 'SignUpList' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\CommitmentUpdatedEventHandler.cs(61,55): error CS1061: 'IApplicationDbContext' does not contain a definition for 'Events' and no accessible extension method 'Events' accepting a first argument of type 'IApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
-c:\Work\LankaConnect\src\LankaConnect.Application\Events\EventHandlers\CommitmentUpdatedEventHandler.cs(61,68): error CS1061: 'SignUpList' does not contain a definition for 'EventId' and no accessible extension method 'EventId' accepting a first argument of type 'SignUpList' could be found (are you missing a using directive or an assembly reference?) [c:\Work\LankaConnect\src\LankaConnect.Application\LankaConnect.Application.csproj]
+Build succeeded.
     0 Warning(s)
-    4 Error(s)
+    0 Error(s)
 
-Time Elapsed 00:00:54.81
+Time Elapsed 00:02:13.08

@@ -7,12 +7,70 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.80: ANONYMOUS EMAIL UX IMPROVEMENTS COMPLETE (2026-01-24)
+## ✅ CURRENT STATUS - PHASE 6A.81 WEEK 2: APPLICATION LAYER COMPLETE (2026-01-24)
+**Date**: 2026-01-24
+**Session**: Phase 6A.81 Week 2 - Three-State Registration Lifecycle (Application Layer)
+**Status**: ✅ COMPLETE & DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Workflow #21321684392
+**Priority**: 🔴 CRITICAL - Payment Bypass Security Fix
+**Commit**: fd63f72e
+
+**Phase 6A.81 Overview**: Payment Bypass Bug Fix - Three-State Registration Lifecycle
+- **Week 1**: ✅ Domain model + database migration COMPLETE
+- **Week 2**: ✅ Application layer + webhook handlers COMPLETE
+- **Week 3**: ⏳ Background jobs + frontend UI PENDING
+- **Week 4**: ⏳ Integration testing + production deployment PENDING
+
+**Week 2 Changes**:
+
+**1. Event Domain Logic** ([Event.cs](../src/LankaConnect.Domain/Events/Event.cs)):
+- Fixed duplicate registration check to exclude Preliminary/Abandoned states (allows email retry)
+- Fixed premature domain events - only raise confirmation events for Confirmed registrations
+- Prevents confirmation emails from being sent before payment completes
+
+**2. Command Handler Logging**:
+- Added comprehensive logging to `RegisterAnonymousAttendeeCommandHandler.cs`
+- Added comprehensive logging to `RsvpToEventCommandHandler.cs`
+- Logs track RegistrationId, Status, PaymentStatus, CheckoutSessionExpiresAt
+
+**3. Stripe Webhook Handlers** ([PaymentsController.cs](../src/LankaConnect.API/Controllers/PaymentsController.cs)):
+- Enhanced `HandleCheckoutSessionCompletedAsync` with Phase 6A.81 state logging
+- Created new `HandleCheckoutSessionExpiredAsync` handler (Preliminary → Abandoned)
+- Correlation-based logging (Guid.NewGuid()) for end-to-end request tracing
+- Handles idempotency and state validation
+
+**4. Capacity Calculation Queries**:
+- Updated `GetEventAttendeesQueryHandler` to use whitelist approach
+- Updated `RegistrationRepository.GetByUserAsync` to exclude Preliminary/Abandoned
+- Only includes Confirmed/Waitlisted/CheckedIn/Attended registrations
+
+**Files Modified**: 6 files, 181 insertions, 17 deletions
+
+**Azure Deployment**:
+- URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- Health Check: ✅ PASSED (PostgreSQL: Healthy, EF Core: Healthy)
+- Migration: Already applied (from Week 1)
+- Container: fd63f72e
+
+**Documentation**:
+- [PHASE_6A81_WEEK2_COMPLETION_SUMMARY.md](./PHASE_6A81_WEEK2_COMPLETION_SUMMARY.md) - Complete implementation summary
+- [PHASE_6A_81_PAYMENT_BYPASS_BUG_RCA_ARCHITECTURE.md](./PHASE_6A_81_PAYMENT_BYPASS_BUG_RCA_ARCHITECTURE.md) - Full RCA and 4-week plan
+
+**Next Steps (Week 3)**:
+1. Create cleanup background job (mark expired Preliminary as Abandoned after 25h)
+2. Update frontend TypeScript types (add Preliminary/Abandoned to RegistrationStatus)
+3. Update frontend UI (Payment Pending card, Complete Payment button, Checkout Expired alert)
+4. Manual testing via browser
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.80: ANONYMOUS EMAIL UX IMPROVEMENTS COMPLETE (2026-01-24)
 **Date**: 2026-01-24
 **Session**: Phase 6A.80 - Anonymous Registration Email Template Consolidation & UI Success Message
-**Status**: ✅ COMPLETE & PUSHED TO DEVELOP
+**Status**: ✅ COMPLETE & DEPLOYED TO AZURE STAGING
 **Build Status**: ✅ 0 errors, 0 warnings
-**Deployment**: ⏳ PENDING - Waiting for GitHub Actions deployment
+**Deployment**: ✅ DEPLOYED
 **Priority**: HIGH - User Experience Enhancement
 
 **Issues Addressed**:
@@ -20,36 +78,9 @@
 2. ✅ Email delivery verification (SQL tools created)
 3. ✅ NO UI success message after anonymous registration
 
-**Key Changes**:
-
-**Backend (Already Deployed)**:
-- Migration `20260124060707_Phase6A80_RemoveAnonymousRsvpTemplate.cs`
-  - Deleted `template-anonymous-rsvp-confirmation` template
-  - Updated descriptions to note member templates support anonymous users
-- `AnonymousRegistrationConfirmedEventHandler.cs` now uses `EmailTemplateNames.FreeEventRegistration`
-- `EmailTemplateNames.cs` constants updated (removed AnonymousRsvpConfirmation)
-
-**Frontend (Just Pushed)**:
-- `web/src/app/events/[id]/page.tsx:18,78-80,263-267,1189-1241`
-  - Added success dialog modal with:
-    - Success icon and title
-    - Event title confirmation
-    - Email notification message (2-6 minutes delivery)
-    - Spam folder reminder
-    - "Got it!" button triggering reload
-
-**Documentation & Tools**:
-- `docs/PHASE_6A_80_EMAIL_VERIFICATION_GUIDE.md` - Quick reference SQL queries
-- `scripts/check_anonymous_template.sql` - 7-part verification script
-- `docs/PHASE_6A_80_ANONYMOUS_EMAIL_ISSUES_RCA.md` - Complete RCA
-
 **Git Commits**:
 - Backend: `8050e7ab` (Phase 6A.80 migration & handler)
 - Frontend: `2ae48fab` (UI success dialog)
-
-**User Testing**: Emails confirmed working (5-minute delay normal), UI fix awaiting deployment
-
-**Next Steps**: Monitor GitHub Actions for staging deployment, then test UI success message
 
 ---
 

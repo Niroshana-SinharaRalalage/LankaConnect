@@ -1,13 +1,79 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-24 - Phase 6A.80 Part 2: UI Success Dialog ✅ COMPLETE & PUSHED*
+*Last Updated: 2026-01-24 - Phase 6A.81 Week 2: Application Layer ✅ COMPLETE & DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.80 Part 2: UI Success Dialog ✅ COMPLETE & PUSHED
+## 🎯 Current Session Status - Phase 6A.81 Week 2: Application Layer ✅ COMPLETE & DEPLOYED
+
+### PHASE 6A.81 WEEK 2: THREE-STATE REGISTRATION LIFECYCLE - APPLICATION LAYER - 2026-01-24
+
+**Status**: ✅ **COMPLETE & DEPLOYED TO AZURE STAGING** (Build: 0 errors, Workflow: #21321684392)
+
+**Commit**: fd63f72e65dbb0a5f9090ecb674615afbc0b9e21
+
+**Priority**: 🔴 CRITICAL - Payment Bypass Security Vulnerability Fix
+
+**Phase 6A.81 Overview**: Payment Bypass Bug Fix - Three-State Registration Lifecycle
+- **Week 1**: ✅ Domain model + database migration COMPLETE (Session 31)
+- **Week 2**: ✅ Application layer + webhook handlers COMPLETE (This session)
+- **Week 3**: ⏳ Background jobs + frontend UI PENDING
+- **Week 4**: ⏳ Integration testing + production deployment PENDING
+
+**Week 2 Implementation**:
+
+1. ✅ **Event Domain Logic** ([Event.cs](../src/LankaConnect.Domain/Events/Event.cs) Lines 281-385)
+   - Fixed duplicate registration check to exclude Preliminary/Abandoned states
+   - Allows users to retry registration after payment failure/abandonment
+   - Fixed premature domain event firing - only raise confirmation events for Confirmed registrations
+   - Prevents confirmation emails from being sent before payment completes
+
+2. ✅ **Command Handler Logging**
+   - [RegisterAnonymousAttendeeCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/RegisterAnonymousAttendee/RegisterAnonymousAttendeeCommandHandler.cs) Lines 271-278
+   - [RsvpToEventCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs) Lines 176-183
+   - Added comprehensive logging tracking RegistrationId, Status, PaymentStatus, CheckoutSessionExpiresAt
+   - Enables end-to-end observability for payment flow debugging
+
+3. ✅ **Stripe Webhook Handlers** ([PaymentsController.cs](../src/LankaConnect.API/Controllers/PaymentsController.cs) Lines 183, 379-549)
+   - Enhanced `HandleCheckoutSessionCompletedAsync` with Phase 6A.81 state logging
+   - Created new `HandleCheckoutSessionExpiredAsync` handler to mark abandoned registrations
+   - Correlation-based logging (Guid.NewGuid()) for end-to-end request tracing
+   - Handles idempotency and state validation (Preliminary → Confirmed, Preliminary → Abandoned)
+
+4. ✅ **Capacity Calculation Queries**
+   - [GetEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetEventAttendees/GetEventAttendeesQueryHandler.cs) Lines 99-107
+   - [RegistrationRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs) Lines 131-141
+   - Changed from blacklist to whitelist approach
+   - Only includes Confirmed/Waitlisted/CheckedIn/Attended registrations
+   - Excludes Preliminary and Abandoned to prevent unpaid registrations from appearing
+
+**Files Modified**: 6 files, 181 insertions, 17 deletions
+
+**Azure Deployment**:
+- URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- Health Check: ✅ PASSED (PostgreSQL: Healthy, EF Core: Healthy)
+- Database Migration: Already applied (from Week 1 - 20260124_Phase6A81_PreliminaryRegistrationStatus.cs)
+- Container Image: fd63f72e
+
+**Documentation**:
+- [PHASE_6A81_WEEK2_COMPLETION_SUMMARY.md](./PHASE_6A81_WEEK2_COMPLETION_SUMMARY.md) - Complete implementation details
+- [PHASE_6A_81_PAYMENT_BYPASS_BUG_RCA_ARCHITECTURE.md](./PHASE_6A_81_PAYMENT_BYPASS_BUG_RCA_ARCHITECTURE.md) - Full RCA and 4-week plan
+- [verify_phase6a81_migration.sql](../scripts/verify_phase6a81_migration.sql) - Database verification script
+
+**Next Steps (Week 3)**:
+1. Create cleanup background job (Hangfire) to mark expired Preliminary registrations as Abandoned after 25h
+2. Update frontend TypeScript types (add Preliminary/Abandoned to RegistrationStatus enum)
+3. Update frontend UI:
+   - Add "Payment Pending" card for Preliminary registrations
+   - Add "Complete Payment" button with Stripe checkout URL
+   - Add "Checkout Expired" alert for Abandoned registrations
+   - Update RegistrationBadge component
+4. Manual testing via browser (full E2E flow)
+
+---
 
 ### PHASE 6A.80 PART 2: UI SUCCESS DIALOG FOR ANONYMOUS REGISTRATION - 2026-01-24
 
-**Status**: ✅ **COMPLETE & PUSHED TO DEVELOP** (Build: 0 errors, Deployment: Pending GitHub Actions)
+**Status**: ✅ **COMPLETE & DEPLOYED TO AZURE STAGING** (Build: 0 errors)
 
 **User Issue #3**: Anonymous users registering for events saw immediate page reload with NO confirmation message. Users had no feedback about successful registration or email delivery.
 

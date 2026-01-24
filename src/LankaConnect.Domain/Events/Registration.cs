@@ -28,6 +28,19 @@ public class Registration : BaseEntity
     public string? StripeCheckoutSessionId { get; private set; }
     public string? StripePaymentIntentId { get; private set; }
 
+    // Phase 6A.81: Payment lifecycle tracking
+    /// <summary>
+    /// Timestamp when Stripe checkout session expires (24 hours from creation).
+    /// Set only for Preliminary registrations (paid events waiting for payment).
+    /// </summary>
+    public DateTime? CheckoutSessionExpiresAt { get; private set; }
+
+    /// <summary>
+    /// Timestamp when registration was marked as Abandoned (checkout expired or cancelled).
+    /// Used for audit trail and soft delete after 30 days.
+    /// </summary>
+    public DateTime? AbandonedAt { get; private set; }
+
     // Phase 6A.X: Revenue breakdown components for reporting and reconciliation
     public Money? SalesTaxAmount { get; private set; }
     public Money? StripeFeeAmount { get; private set; }  // Estimated at registration, actual after payment
@@ -128,9 +141,11 @@ public class Registration : BaseEntity
             Quantity = attendeeList.Count,  // Maintain backward compatibility
             Contact = contact,
             TotalPrice = totalPrice,
-            // Session 23: If paid event, start as Pending until payment completes
-            Status = isPaidEvent ? RegistrationStatus.Pending : RegistrationStatus.Confirmed,
-            PaymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired
+            // Phase 6A.81: If paid event, start as Preliminary until payment completes (Three-State Lifecycle)
+            Status = isPaidEvent ? RegistrationStatus.Preliminary : RegistrationStatus.Confirmed,
+            PaymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired,
+            // Phase 6A.81: Set checkout expiration for paid events (Stripe expires at 24h, we check at 25h)
+            CheckoutSessionExpiresAt = isPaidEvent ? DateTime.UtcNow.AddHours(24) : null
         };
 
         registration._attendees.AddRange(attendeeList);
@@ -202,7 +217,8 @@ public class Registration : BaseEntity
         if (Status != RegistrationStatus.CheckedIn)
             return Result.Failure("Only checked-in registrations can be completed");
 
-        Status = RegistrationStatus.Completed;
+        // Phase 6A.81: Use Attended instead of deprecated Completed
+        Status = RegistrationStatus.Attended;
         MarkAsUpdated();
         return Result.Success();
     }
@@ -237,19 +253,38 @@ public class Registration : BaseEntity
 
     /// <summary>
     /// Completes payment when Stripe webhook confirms successful payment.
-    /// Phase 6A.24: Now raises PaymentCompletedEvent for email and ticket generation.
+    /// Phase 6A.24: Raises PaymentCompletedEvent for email and ticket generation.
+    /// Phase 6A.81: Updated to enforce Three-State Lifecycle - only Preliminary registrations can complete payment.
     /// </summary>
     public Result CompletePayment(string paymentIntentId)
     {
+        // Phase 6A.81: Validation - payment intent ID required
         if (string.IsNullOrWhiteSpace(paymentIntentId))
             return Result.Failure("Payment intent ID cannot be empty");
 
-        if (PaymentStatus != PaymentStatus.Pending)
-            return Result.Failure($"Cannot complete payment with status {PaymentStatus}. Only Pending payments can be completed.");
+        // Phase 6A.81: Critical validation - registration must be in Preliminary state
+        // This prevents double-payment and ensures proper state machine flow
+        if (Status != RegistrationStatus.Preliminary)
+        {
+            return Result.Failure(
+                $"Cannot complete payment for registration with status {Status}. " +
+                $"Only Preliminary registrations can transition to Confirmed via payment completion. " +
+                $"RegistrationId={Id}, EventId={EventId}");
+        }
 
+        // Phase 6A.81: Validate payment status is still Pending
+        if (PaymentStatus != PaymentStatus.Pending)
+        {
+            return Result.Failure(
+                $"Cannot complete payment with PaymentStatus {PaymentStatus}. " +
+                $"Only Pending payments can be completed. RegistrationId={Id}");
+        }
+
+        // Phase 6A.81: State transition - Preliminary → Confirmed
         StripePaymentIntentId = paymentIntentId;
         PaymentStatus = PaymentStatus.Completed;
-        Status = RegistrationStatus.Confirmed;  // Confirm registration when payment succeeds
+        Status = RegistrationStatus.Confirmed;
+        CheckoutSessionExpiresAt = null;  // Clear expiration as payment is complete
         MarkAsUpdated();
 
         // Phase 6A.24: Raise PaymentCompletedEvent to trigger email and ticket generation
@@ -295,6 +330,43 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Refunded;
         Status = RegistrationStatus.Refunded;
         MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.81: Marks registration as Abandoned when Stripe checkout expires or user cancels.
+    /// This is part of the Three-State Lifecycle to prevent payment bypass.
+    /// Abandoned registrations:
+    /// - Do NOT consume event capacity
+    /// - Do NOT block email from re-registering
+    /// - Are soft-deleted after 30 days for audit trail
+    /// </summary>
+    public Result MarkAbandoned()
+    {
+        // Phase 6A.81: Only Preliminary registrations can be abandoned
+        // This prevents accidental abandonment of confirmed/paid registrations
+        if (Status != RegistrationStatus.Preliminary)
+        {
+            return Result.Failure(
+                $"Cannot abandon registration with status {Status}. " +
+                $"Only Preliminary registrations can be marked as Abandoned. " +
+                $"RegistrationId={Id}, EventId={EventId}");
+        }
+
+        // Phase 6A.81: Validate payment is still pending (defensive check)
+        if (PaymentStatus != PaymentStatus.Pending)
+        {
+            return Result.Failure(
+                $"Cannot abandon registration with PaymentStatus {PaymentStatus}. " +
+                $"Expected Pending payment status. RegistrationId={Id}");
+        }
+
+        // Phase 6A.81: State transition - Preliminary → Abandoned
+        Status = RegistrationStatus.Abandoned;
+        PaymentStatus = PaymentStatus.Failed;  // Mark payment as failed since it was never completed
+        AbandonedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+
         return Result.Success();
     }
 
@@ -389,20 +461,43 @@ public class Registration : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.81: Updated state machine to include Three-State Lifecycle transitions
+    /// </summary>
+#pragma warning disable CS0618 // Type or member is obsolete (Pending and Completed are deprecated but supported for backward compatibility)
     private static bool IsValidTransition(RegistrationStatus from, RegistrationStatus to)
     {
         return (from, to) switch
         {
+            // Phase 6A.81: Preliminary state transitions (NEW)
+            (RegistrationStatus.Preliminary, RegistrationStatus.Confirmed) => true,  // Payment completed
+            (RegistrationStatus.Preliminary, RegistrationStatus.Abandoned) => true,  // Checkout expired
+            (RegistrationStatus.Preliminary, RegistrationStatus.Cancelled) => true,  // User cancels before payment
+
+            // Backward compatibility: Pending (deprecated)
             (RegistrationStatus.Pending, RegistrationStatus.Confirmed) => true,
             (RegistrationStatus.Pending, RegistrationStatus.Cancelled) => true,
+
+            // Confirmed state transitions
             (RegistrationStatus.Confirmed, RegistrationStatus.Waitlisted) => true,
             (RegistrationStatus.Confirmed, RegistrationStatus.CheckedIn) => true,
             (RegistrationStatus.Confirmed, RegistrationStatus.Cancelled) => true,
+
+            // Waitlisted transitions
             (RegistrationStatus.Waitlisted, RegistrationStatus.Confirmed) => true,
             (RegistrationStatus.Waitlisted, RegistrationStatus.Cancelled) => true,
-            (RegistrationStatus.CheckedIn, RegistrationStatus.Completed) => true,
+
+            // Check-in to completion
+            // Note: Attended and Completed have same value (5), so only one pattern needed
+            (RegistrationStatus.CheckedIn, RegistrationStatus.Attended) => true,
+
+            // Cancelled to refunded
             (RegistrationStatus.Cancelled, RegistrationStatus.Refunded) => true,
+
+            // Phase 6A.81: Abandoned is a terminal state (no transitions out)
+
             _ => false
         };
     }
+#pragma warning restore CS0618
 }

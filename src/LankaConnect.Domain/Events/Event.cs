@@ -450,10 +450,14 @@ public class Event : BaseEntity
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
-        // Find the user's active registration (Confirmed or Pending)
+        // Phase 6A.81: Find the user's active registration (Confirmed, Preliminary, or legacy Pending)
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
         var registration = _registrations.FirstOrDefault(r =>
             r.UserId == userId &&
-            (r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Pending));
+            (r.Status == RegistrationStatus.Confirmed ||
+             r.Status == RegistrationStatus.Preliminary ||
+             r.Status == RegistrationStatus.Pending));  // Support legacy Pending
+#pragma warning restore CS0618
 
         if (registration == null)
             return Result.Failure("User does not have an active registration for this event");

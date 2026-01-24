@@ -94,18 +94,23 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Fix: Check registration status - user is only "registered" if status is Confirmed AND payment is completed/not required
   // CRITICAL BUG FIX: Prevent showing "You're Registered" for pending payments
+  // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
   const isUserRegistered = !!userRsvp &&
+    !isLoadingRegistration &&
     registrationDetails?.status === RegistrationStatus.Confirmed &&
     (registrationDetails?.paymentStatus === PaymentStatus.Completed ||
      registrationDetails?.paymentStatus === PaymentStatus.NotRequired);
 
   // Payment pending state - user clicked "Proceed to Payment" but hasn't completed payment yet
+  // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
   const isPaymentPending = !!userRsvp &&
+    !isLoadingRegistration &&
     registrationDetails?.status === RegistrationStatus.Pending &&
     registrationDetails?.paymentStatus === PaymentStatus.Pending;
 
   console.log('[EventDetail] Registration state:', {
     hasUserRsvp: !!userRsvp,
+    isLoadingRegistration,
     registrationStatus: registrationDetails?.status,
     paymentStatus: registrationDetails?.paymentStatus,
     isUserRegistered,

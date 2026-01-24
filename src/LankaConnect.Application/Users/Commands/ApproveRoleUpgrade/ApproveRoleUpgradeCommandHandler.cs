@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Notifications.Enums;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Users.Commands.ApproveRoleUpgrade;
 
@@ -42,48 +44,136 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
 
     public async Task<Result> Handle(ApproveRoleUpgradeCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-
-        if (user == null)
-            return Result.Failure("User not found");
-
-        // Capture the role being approved before the state changes
-        var approvedRole = user.PendingUpgradeRole;
-
-        // Approve the role upgrade (updates Role, clears PendingUpgradeRole)
-        var approvalResult = user.ApproveRoleUpgrade();
-        if (approvalResult.IsFailure)
-            return approvalResult;
-
-        // Phase 6A.6: Create in-app notification for approved role upgrade
-        var notificationTitle = $"Role Upgrade Approved";
-        var notificationMessage = user.Role == UserRole.EventOrganizer
-            ? $"Congratulations! Your request to become an Event Organizer has been approved. You now have a 6-month free trial to explore all Event Organizer features."
-            : $"Congratulations! Your role has been upgraded to {user.Role}.";
-
-        var notificationResult = Notification.Create(
-            user.Id,
-            notificationTitle,
-            notificationMessage,
-            NotificationType.RoleUpgradeApproved,
-            user.Id.ToString(),
-            "User"
-        );
-
-        if (notificationResult.IsSuccess)
+        using (LogContext.PushProperty("Operation", "ApproveRoleUpgrade"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("UserId", request.UserId))
         {
-            await _notificationRepository.AddAsync(notificationResult.Value, cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "ApproveRoleUpgrade START: UserId={UserId}",
+                request.UserId);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "ApproveRoleUpgrade FAILED: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("User not found");
+                }
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade: User loaded - UserId={UserId}, Email={Email}, CurrentRole={CurrentRole}, PendingUpgradeRole={PendingUpgradeRole}",
+                    user.Id, user.Email.Value, user.Role, user.PendingUpgradeRole);
+
+                // Capture the role being approved before the state changes
+                var approvedRole = user.PendingUpgradeRole;
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade: Approving role upgrade - UserId={UserId}, FromRole={FromRole}, ToRole={ToRole}",
+                    user.Id, user.Role, approvedRole);
+
+                // Approve the role upgrade (updates Role, clears PendingUpgradeRole)
+                var approvalResult = user.ApproveRoleUpgrade();
+                if (approvalResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "ApproveRoleUpgrade FAILED: Domain validation failed - UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.UserId, approvalResult.Error, stopwatch.ElapsedMilliseconds);
+
+                    return approvalResult;
+                }
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade: Domain method succeeded - UserId={UserId}, NewRole={NewRole}",
+                    user.Id, user.Role);
+
+                // Phase 6A.6: Create in-app notification for approved role upgrade
+                var notificationTitle = $"Role Upgrade Approved";
+                var notificationMessage = user.Role == UserRole.EventOrganizer
+                    ? $"Congratulations! Your request to become an Event Organizer has been approved. You now have a 6-month free trial to explore all Event Organizer features."
+                    : $"Congratulations! Your role has been upgraded to {user.Role}.";
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade: Creating notification - UserId={UserId}, NotificationType={NotificationType}",
+                    user.Id, NotificationType.RoleUpgradeApproved);
+
+                var notificationResult = Notification.Create(
+                    user.Id,
+                    notificationTitle,
+                    notificationMessage,
+                    NotificationType.RoleUpgradeApproved,
+                    user.Id.ToString(),
+                    "User"
+                );
+
+                if (notificationResult.IsSuccess)
+                {
+                    await _notificationRepository.AddAsync(notificationResult.Value, cancellationToken);
+
+                    _logger.LogInformation(
+                        "ApproveRoleUpgrade: Notification created successfully - NotificationId={NotificationId}",
+                        notificationResult.Value.Id);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "ApproveRoleUpgrade: Notification creation failed - UserId={UserId}, Errors={Errors}",
+                        user.Id, string.Join(", ", notificationResult.Errors));
+                }
+
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                // Phase 6A.75: Send email notification for EventOrganizer role approval
+                if (user.Role == UserRole.EventOrganizer)
+                {
+                    _logger.LogInformation(
+                        "ApproveRoleUpgrade: Sending EventOrganizer approval email - UserId={UserId}",
+                        user.Id);
+
+                    await SendOrganizerApprovalEmailAsync(user, cancellationToken);
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade COMPLETE: UserId={UserId}, NewRole={NewRole}, NotificationCreated={NotificationCreated}, Duration={ElapsedMs}ms",
+                    request.UserId, user.Role, notificationResult.IsSuccess, stopwatch.ElapsedMilliseconds);
+
+                return Result.Success();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "ApproveRoleUpgrade CANCELED: Operation was canceled - UserId={UserId}, Duration={ElapsedMs}ms",
+                    request.UserId, stopwatch.ElapsedMilliseconds);
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "ApproveRoleUpgrade FAILED: Exception occurred - UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
-
-        await _unitOfWork.CommitAsync(cancellationToken);
-
-        // Phase 6A.75: Send email notification for EventOrganizer role approval
-        if (user.Role == UserRole.EventOrganizer)
-        {
-            await SendOrganizerApprovalEmailAsync(user, cancellationToken);
-        }
-
-        return Result.Success();
     }
 
     /// <summary>

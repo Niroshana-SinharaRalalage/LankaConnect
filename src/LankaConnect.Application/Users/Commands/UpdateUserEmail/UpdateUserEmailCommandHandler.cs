@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Users.Commands.UpdateUserEmail;
 
@@ -37,83 +39,155 @@ public class UpdateUserEmailCommandHandler : IRequestHandler<UpdateUserEmailComm
 
     public async Task<Result<UpdateUserEmailResponse>> Handle(UpdateUserEmailCommand request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "UpdateUserEmail"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("UserId", request.UserId))
+        using (LogContext.PushProperty("NewEmail", request.NewEmail))
         {
-            _logger.LogInformation("Updating email for user {UserId} to {NewEmail}",
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "UpdateUserEmail START: UserId={UserId}, NewEmail={NewEmail}",
                 request.UserId, request.NewEmail);
 
-            // Get user
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-            if (user == null)
+            try
             {
-                _logger.LogWarning("User not found with ID {UserId}", request.UserId);
-                return Result<UpdateUserEmailResponse>.Failure("User not found");
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Check if email is same as current
-            if (user.Email.Value.Equals(request.NewEmail, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInformation("Email unchanged for user {UserId}", request.UserId);
+                // Get user
+                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateUserEmail FAILED: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UpdateUserEmailResponse>.Failure("User not found");
+                }
+
+                _logger.LogInformation(
+                    "UpdateUserEmail: User loaded - UserId={UserId}, CurrentEmail={CurrentEmail}, IsVerified={IsVerified}",
+                    user.Id, user.Email.Value, user.IsEmailVerified);
+
+                // Check if email is same as current
+                if (user.Email.Value.Equals(request.NewEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "UpdateUserEmail COMPLETE: Email unchanged - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UpdateUserEmailResponse>.Success(new UpdateUserEmailResponse
+                    {
+                        Email = user.Email.Value,
+                        IsVerified = user.IsEmailVerified,
+                        VerificationSentAt = null,
+                        Message = "Email unchanged"
+                    });
+                }
+
+                // Parse and validate new email
+                var emailResult = Email.Create(request.NewEmail);
+                if (emailResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateUserEmail FAILED: Invalid email format - UserId={UserId}, NewEmail={NewEmail}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.UserId, request.NewEmail, emailResult.Errors.FirstOrDefault(), stopwatch.ElapsedMilliseconds);
+
+                    return Result<UpdateUserEmailResponse>.Failure(emailResult.Errors.FirstOrDefault() ?? "Invalid email format");
+                }
+
+                var newEmail = emailResult.Value;
+
+                _logger.LogInformation(
+                    "UpdateUserEmail: Email format validated - NewEmail={NewEmail}",
+                    newEmail.Value);
+
+                // Check if email is already in use by another user
+                var existingUser = await _userRepository.GetByEmailAsync(newEmail, cancellationToken);
+                if (existingUser != null && existingUser.Id != request.UserId)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateUserEmail FAILED: Email already in use - UserId={UserId}, NewEmail={NewEmail}, ExistingUserId={ExistingUserId}, Duration={ElapsedMs}ms",
+                        request.UserId, request.NewEmail, existingUser.Id, stopwatch.ElapsedMilliseconds);
+
+                    return Result<UpdateUserEmailResponse>.Failure("Email is already in use by another account");
+                }
+
+                _logger.LogInformation(
+                    "UpdateUserEmail: Email uniqueness verified - NewEmail={NewEmail}",
+                    newEmail.Value);
+
+                // Update email using domain method
+                var changeEmailResult = user.ChangeEmail(newEmail);
+                if (changeEmailResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "UpdateUserEmail FAILED: Domain validation failed - UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.UserId, changeEmailResult.Errors.FirstOrDefault(), stopwatch.ElapsedMilliseconds);
+
+                    return Result<UpdateUserEmailResponse>.Failure(changeEmailResult.Errors.FirstOrDefault() ?? "Failed to change email");
+                }
+
+                _logger.LogInformation(
+                    "UpdateUserEmail: Domain method succeeded - UserId={UserId}, NewEmail={NewEmail}",
+                    user.Id, newEmail.Value);
+
+                // Phase 6A.70: Generate verification token (triggers domain event)
+                // This will send verification email automatically via MemberVerificationRequestedEvent handler
+                user.GenerateEmailVerificationToken();
+
+                _logger.LogInformation(
+                    "UpdateUserEmail: Email verification token generated - UserId={UserId}",
+                    user.Id);
+
+                // Save changes
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "UpdateUserEmail COMPLETE: Email updated and verification sent - UserId={UserId}, NewEmail={NewEmail}, Duration={ElapsedMs}ms",
+                    request.UserId, request.NewEmail, stopwatch.ElapsedMilliseconds);
+
+                // Return response
                 return Result<UpdateUserEmailResponse>.Success(new UpdateUserEmailResponse
                 {
                     Email = user.Email.Value,
                     IsVerified = user.IsEmailVerified,
-                    VerificationSentAt = null,
-                    Message = "Email unchanged"
+                    VerificationSentAt = DateTime.UtcNow,
+                    Message = $"Email updated to {user.Email.Value}. Verification email sent. Please check your inbox."
                 });
             }
-
-            // Parse and validate new email
-            var emailResult = Email.Create(request.NewEmail);
-            if (emailResult.IsFailure)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("Invalid email format for user {UserId}: {Error}",
-                    request.UserId, emailResult.Errors.FirstOrDefault());
-                return Result<UpdateUserEmailResponse>.Failure(emailResult.Errors.FirstOrDefault() ?? "Invalid email format");
+                stopwatch.Stop();
+
+                _logger.LogWarning(
+                    "UpdateUserEmail CANCELED: Operation was canceled - UserId={UserId}, Duration={ElapsedMs}ms",
+                    request.UserId, stopwatch.ElapsedMilliseconds);
+
+                throw;
             }
-
-            var newEmail = emailResult.Value;
-
-            // Check if email is already in use by another user
-            var existingUser = await _userRepository.GetByEmailAsync(newEmail, cancellationToken);
-            if (existingUser != null && existingUser.Id != request.UserId)
+            catch (Exception ex)
             {
-                _logger.LogWarning("Email {Email} is already in use by another user", request.NewEmail);
-                return Result<UpdateUserEmailResponse>.Failure("Email is already in use by another account");
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "UpdateUserEmail FAILED: Exception occurred - UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                return Result<UpdateUserEmailResponse>.Failure("An error occurred while updating email");
             }
-
-            // Update email using domain method
-            var changeEmailResult = user.ChangeEmail(newEmail);
-            if (changeEmailResult.IsFailure)
-            {
-                _logger.LogWarning("Failed to change email for user {UserId}: {Error}",
-                    request.UserId, changeEmailResult.Errors.FirstOrDefault());
-                return Result<UpdateUserEmailResponse>.Failure(changeEmailResult.Errors.FirstOrDefault() ?? "Failed to change email");
-            }
-
-            // Phase 6A.70: Generate verification token (triggers domain event)
-            // This will send verification email automatically via MemberVerificationRequestedEvent handler
-            user.GenerateEmailVerificationToken();
-
-            // Save changes
-            await _unitOfWork.CommitAsync(cancellationToken);
-
-            _logger.LogInformation("Email updated successfully for user {UserId}. Verification email sent to {NewEmail}",
-                request.UserId, request.NewEmail);
-
-            // Return response
-            return Result<UpdateUserEmailResponse>.Success(new UpdateUserEmailResponse
-            {
-                Email = user.Email.Value,
-                IsVerified = user.IsEmailVerified,
-                VerificationSentAt = DateTime.UtcNow,
-                Message = $"Email updated to {user.Email.Value}. Verification email sent. Please check your inbox."
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating email for user {UserId}", request.UserId);
-            return Result<UpdateUserEmailResponse>.Failure("An error occurred while updating email");
         }
     }
 }

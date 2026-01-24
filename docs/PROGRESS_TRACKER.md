@@ -1,9 +1,59 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-24 - Phase 6A.X Observability Batch 3B: Background Jobs ✅ COMPLETE*
+*Last Updated: 2026-01-24 - Phase 6A.79 Part 3: Registration Status Catch-22 Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Observability Batch 3B ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.79 Part 3: Registration Status Catch-22 Fix ✅ COMPLETE
+
+### PHASE 6A.79 PART 3: REGISTRATION STATUS CATCH-22 FIX - 2026-01-24
+
+**Status**: ✅ **COMPLETE** (Build: 0 errors, Deployed to Staging)
+
+**Original Issue**: Free event registration successful but "You're Registered!" message not showing on event details page.
+
+**Root Cause Analysis**:
+```typescript
+// BROKEN: useUserRegistrationDetails hook
+enabled: !!eventId && isUserRegistered  // ❌ Catch-22!
+
+// The problem:
+// - isUserRegistered depends on registrationDetails being loaded
+// - But hook won't fetch until isUserRegistered is true
+// - Result: Hook never fetches, registrationDetails stays undefined forever
+```
+
+**Impact**:
+- Free event registrations never showed "You're Registered!" confirmation
+- Payment pending states never showed orange warning
+- UI always displayed registration form even for registered users
+- Applied to ALL event types (free, paid, pending payment)
+
+**Fix**:
+1. ✅ Renamed hook parameter: `isUserRegistered` → `hasUserRsvp` (clarity)
+2. ✅ Changed enabled condition: `isUserRegistered` → `hasUserRsvp`
+3. ✅ Hook now fetches whenever `userRsvp` exists (any status: Pending, Confirmed, Cancelled, etc.)
+4. ✅ Added comprehensive debug logging with status enum names and comparison checks
+
+**Files Changed**:
+- `web/src/presentation/hooks/useEvents.ts:598-636` - Fixed hook enabled condition
+- `web/src/app/events/[id]/page.tsx:114-136` - Enhanced logging with detailed status checks
+
+**Testing**:
+- ✅ Build: 0 errors
+- ✅ Deployment: Successful to staging
+- ⏳ Awaiting user verification on staging environment
+
+**Git Commits**:
+- `acb3a903` - fix(phase-6a79-part3): Fix catch-22 in registration status detection
+
+**Next Steps**:
+- User testing on staging with event 0458806b-8672-4ad5-a7cb-f5346f1b282a
+- Verify browser console logs show correct registration state
+- Confirm "You're Registered!" message displays for free event
+
+---
+
+## 🎯 Previous Session - Phase 6A.X Observability Batch 3B ✅ COMPLETE
 
 ### PHASE 6A.X OBSERVABILITY - BATCH 3B: BACKGROUND JOBS - 2026-01-24
 

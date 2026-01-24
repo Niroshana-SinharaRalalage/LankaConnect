@@ -7,33 +7,48 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X OBSERVABILITY BATCH 3B: BACKGROUND JOBS COMPLETE (2026-01-24)
+## ✅ CURRENT STATUS - PHASE 6A.79 PART 3: CATCH-22 BUG FIX COMPLETE (2026-01-24)
+**Date**: 2026-01-24
+**Session**: Phase 6A.79 Part 3 - Registration Status Catch-22 Fix
+**Status**: ✅ COMPLETE
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED TO AZURE STAGING
+**Severity**: 🔴 CRITICAL - Affected ALL event registrations
+
+**Bug**: Free event registration successful but "You're Registered!" message never showing on event details page.
+
+**Root Cause**: Catch-22 in `useUserRegistrationDetails` hook:
+```typescript
+// BROKEN CODE:
+enabled: !!eventId && isUserRegistered  // ❌ Catch-22!
+
+// Problem:
+// - isUserRegistered depends on registrationDetails being loaded
+// - But hook won't fetch until isUserRegistered is true
+// - Result: registrationDetails never loads, UI broken forever
+```
+
+**Fix Applied**:
+1. Renamed hook parameter: `isUserRegistered` → `hasUserRsvp` (clarity)
+2. Changed enabled condition to use `hasUserRsvp` (passed as `!!userRsvp`)
+3. Hook now fetches whenever userRsvp exists (any status)
+4. Added comprehensive debug logging with enum names and comparisons
+
+**Files Changed**:
+- `web/src/presentation/hooks/useEvents.ts:598-636` - Fixed hook enabled condition
+- `web/src/app/events/[id]/page.tsx:114-136` - Enhanced logging
+
+**Git Commit**: `acb3a903`
+
+**Next Steps**: User testing on staging with event 0458806b-8672-4ad5-a7cb-f5346f1b282a
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X OBSERVABILITY BATCH 3B: BACKGROUND JOBS (2026-01-24)
 **Date**: 2026-01-24
 **Session**: Phase 6A.X Observability - Batch 3B: Background Jobs
 **Status**: ✅ COMPLETE
-**Build Status**: ✅ 0 errors, 0 warnings
-**Jobs Enhanced**: 6 Background Jobs (Hangfire)
-**Deployment**: Pushed to develop (auto-deploy to staging)
-
-**Objective**: Add comprehensive structured logging to all Background Jobs for production observability and Hangfire monitoring.
-
-**Pattern Applied**:
-- Serilog LogContext enrichment (Operation, EntityType, EntityId)
-- System.Diagnostics.Stopwatch for performance tracking
-- START/COMPLETE/CANCELED/FAILED logging pattern
-- **No LogDebug** - Only LogInformation, LogWarning, LogError
-
-**Jobs Enhanced (6 total)**:
-1. ExpiredBadgeCleanupJob - Badge expiration cleanup
-2. EventStatusUpdateJob - Event status transitions
-3. EventReminderJob - Event reminder emails (Phase 6A.71)
-4. EventCancellationEmailJob - Event cancellation notifications (Phase 6A.64)
-5. EventNotificationEmailJob - Manual event notifications (Phase 6A.61)
-6. NewsletterEmailJob - Newsletter distribution (Phase 6A.74)
-
 **Git Commit**: `9f43c508`
-
-**Next Steps**: Continue Phase 6A.X Observability with remaining handler types
 
 ---
 

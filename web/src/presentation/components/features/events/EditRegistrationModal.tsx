@@ -65,7 +65,8 @@ export function EditRegistrationModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Determine if this is a paid registration (cannot change attendee count)
-  const isPaidRegistration = registration?.paymentStatus === 1; // PaymentStatus.Completed
+  // Phase 6A.79 Part 3: API returns string values, not numeric enums
+  const isPaidRegistration = registration?.paymentStatus === 'Completed';
   const originalAttendeeCount = registration?.attendees?.length || registration?.quantity || 1;
 
   // Calculate max attendees allowed

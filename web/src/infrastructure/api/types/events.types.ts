@@ -605,13 +605,14 @@ export interface AttendeeDto {
  * Registration details DTO with attendee information
  * Fix 1: Enhanced registration status detection
  * Matches backend RegistrationDetailsDto
+ * Phase 6A.79 Part 3: .NET serializes enums as strings, not numbers
  */
 export interface RegistrationDetailsDto {
   id: string;
   eventId: string;
   userId?: string | null;
   quantity: number;
-  status: RegistrationStatus;
+  status: 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded';  // String values from .NET API
   createdAt: string;
   updatedAt?: string | null;
 
@@ -624,7 +625,7 @@ export interface RegistrationDetailsDto {
   contactAddress?: string | null;
 
   // Payment information
-  paymentStatus: PaymentStatus;
+  paymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | 'NotRequired';  // String values from .NET API
   totalPriceAmount?: number | null;
   totalPriceCurrency?: string | null;
 }

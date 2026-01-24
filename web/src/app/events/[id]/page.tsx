@@ -98,18 +98,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Fix: Check registration status - user is only "registered" if status is Confirmed AND payment is completed/not required
   // CRITICAL BUG FIX: Prevent showing "You're Registered" for pending payments
   // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
+  // Phase 6A.79 Part 3 Fix 2: API returns STRING values, not numeric enums - compare to strings
   const isUserRegistered = !!userRsvp &&
     !isLoadingRegistration &&
-    registrationDetails?.status === RegistrationStatus.Confirmed &&
-    (registrationDetails?.paymentStatus === PaymentStatus.Completed ||
-     registrationDetails?.paymentStatus === PaymentStatus.NotRequired);
+    registrationDetails?.status === 'Confirmed' &&  // Compare to string, not numeric enum
+    (registrationDetails?.paymentStatus === 'Completed' ||
+     registrationDetails?.paymentStatus === 'NotRequired');
 
   // Payment pending state - user clicked "Proceed to Payment" but hasn't completed payment yet
   // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
+  // Phase 6A.79 Part 3 Fix 2: API returns STRING values, not numeric enums - compare to strings
   const isPaymentPending = !!userRsvp &&
     !isLoadingRegistration &&
-    registrationDetails?.status === RegistrationStatus.Pending &&
-    registrationDetails?.paymentStatus === PaymentStatus.Pending;
+    registrationDetails?.status === 'Pending' &&  // Compare to string, not numeric enum
+    registrationDetails?.paymentStatus === 'Pending';
 
   // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
   console.log('[EventDetail] 🔍 Registration state debug:', {
@@ -120,18 +122,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     isLoadingRegistration,
     registrationDetailsData: registrationDetails,
     registrationStatus: registrationDetails?.status,
-    registrationStatusName: registrationDetails?.status !== undefined ? RegistrationStatus[registrationDetails.status] : 'undefined',
+    registrationStatusName: registrationDetails?.status ?? 'undefined',  // Already a string from API
     paymentStatus: registrationDetails?.paymentStatus,
-    paymentStatusName: registrationDetails?.paymentStatus !== undefined ? PaymentStatus[registrationDetails.paymentStatus] : 'undefined',
+    paymentStatusName: registrationDetails?.paymentStatus ?? 'undefined',  // Already a string from API
     isUserRegistered,
     isPaymentPending,
-    // Show what values are being compared
+    // Show what values are being compared (Phase 6A.79 Part 3: Compare to strings)
     statusCheck: {
-      isConfirmed: registrationDetails?.status === RegistrationStatus.Confirmed,
-      isPending: registrationDetails?.status === RegistrationStatus.Pending,
-      paymentCompleted: registrationDetails?.paymentStatus === PaymentStatus.Completed,
-      paymentNotRequired: registrationDetails?.paymentStatus === PaymentStatus.NotRequired,
-      paymentPending: registrationDetails?.paymentStatus === PaymentStatus.Pending,
+      isConfirmed: registrationDetails?.status === 'Confirmed',
+      isPending: registrationDetails?.status === 'Pending',
+      paymentCompleted: registrationDetails?.paymentStatus === 'Completed',
+      paymentNotRequired: registrationDetails?.paymentStatus === 'NotRequired',
+      paymentPending: registrationDetails?.paymentStatus === 'Pending',
     }
   });
 
@@ -607,16 +609,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <Card className="border-2" style={{ borderColor: '#FF7900' }}>
               <CardHeader>
                 <CardTitle>
+                  {/* Phase 6A.79 Part 3: String comparison instead of enum */}
                   {isUserRegistered
                     ? 'Your Registration'
-                    : registrationDetails?.status === RegistrationStatus.Cancelled
+                    : registrationDetails?.status === 'Cancelled'
                     ? 'Registration Cancelled'
                     : 'Register for this Event'}
                 </CardTitle>
                 <CardDescription>
                   {isUserRegistered
                     ? 'You are already registered for this event!'
-                    : registrationDetails?.status === RegistrationStatus.Cancelled
+                    : registrationDetails?.status === 'Cancelled'
                     ? hasStarted
                       ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
                       : 'Your registration for this event has been cancelled. You can register again if you wish.'
@@ -628,7 +631,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {registrationDetails?.status === RegistrationStatus.Cancelled ? (
+                {/* Phase 6A.79 Part 3: String comparison instead of enum */}
+                {registrationDetails?.status === 'Cancelled' ? (
                   // Show cancelled status with option to re-register
                   <div className="space-y-6">
                     <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg">

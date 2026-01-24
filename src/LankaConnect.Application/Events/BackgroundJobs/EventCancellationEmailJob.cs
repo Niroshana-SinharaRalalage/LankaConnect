@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
@@ -5,6 +6,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
@@ -58,14 +60,18 @@ public class EventCancellationEmailJob
     /// <param name="cancellationReason">The reason for cancellation provided by the organizer</param>
     public async Task ExecuteAsync(Guid eventId, string cancellationReason)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        _logger.LogInformation(
-            "[Phase 6A.64] EventCancellationEmailJob STARTED - Event {EventId}, Reason: {Reason}",
-            eventId, cancellationReason);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventCancellationEmail"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", eventId))
         {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "[Phase 6A.64] EventCancellationEmailJob START: EventId={EventId}, Reason={Reason}",
+                eventId, cancellationReason);
+
+            try
+            {
             // 1. Retrieve event data
             var @event = await _eventRepository.GetByIdAsync(eventId, CancellationToken.None);
             if (@event == null)
@@ -268,18 +274,28 @@ public class EventCancellationEmailJob
                 eventId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 allRecipients.Count > 0 ? emailStopwatch.ElapsedMilliseconds / allRecipients.Count : 0);
 
-            stopwatch.Stop();
-            _logger.LogInformation(
-                "[Phase 6A.64] EventCancellationEmailJob COMPLETED for event {EventId}. Total time: {TotalMs}ms",
-                eventId, stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            // Let exception bubble up so Hangfire can retry the job
-            _logger.LogError(ex,
-                "[Phase 6A.64] FATAL ERROR in EventCancellationEmailJob for Event {EventId}. Hangfire will retry.",
-                eventId);
-            throw; // Re-throw for Hangfire retry mechanism
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[Phase 6A.64] EventCancellationEmailJob COMPLETE: Duration={TotalMs}ms, EventId={EventId}",
+                    stopwatch.ElapsedMilliseconds, eventId);
+            }
+            catch (OperationCanceledException) when (CancellationToken.None.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[Phase 6A.64] EventCancellationEmailJob CANCELED: Duration={ElapsedMs}ms, EventId={EventId}",
+                    stopwatch.ElapsedMilliseconds, eventId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Let exception bubble up so Hangfire can retry the job
+                _logger.LogError(ex,
+                    "[Phase 6A.64] EventCancellationEmailJob FAILED: Duration={ElapsedMs}ms, EventId={EventId}",
+                    stopwatch.ElapsedMilliseconds, eventId);
+                throw; // Re-throw for Hangfire retry mechanism
+            }
         }
     }
 

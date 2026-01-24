@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Services;
@@ -7,6 +8,7 @@ using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.BackgroundJobs;
 
@@ -60,14 +62,18 @@ public class NewsletterEmailJob
     /// <param name="newsletterId">The ID of the newsletter to send</param>
     public async Task ExecuteAsync(Guid newsletterId)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        _logger.LogInformation(
-            "[Phase 6A.74] NewsletterEmailJob STARTED - Newsletter {NewsletterId}",
-            newsletterId);
-
-        try
+        using (LogContext.PushProperty("Operation", "NewsletterEmail"))
+        using (LogContext.PushProperty("EntityType", "Newsletter"))
+        using (LogContext.PushProperty("NewsletterId", newsletterId))
         {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "[Phase 6A.74] NewsletterEmailJob START: NewsletterId={NewsletterId}",
+                newsletterId);
+
+            try
+            {
             // 1. Retrieve newsletter data
             var newsletter = await _newsletterRepository.GetByIdAsync(newsletterId, CancellationToken.None);
             if (newsletter == null)
@@ -357,18 +363,28 @@ public class NewsletterEmailJob
                 }
             }
 
-            stopwatch.Stop();
-            _logger.LogInformation(
-                "[Phase 6A.74] NewsletterEmailJob COMPLETED for newsletter {NewsletterId}. Total time: {TotalMs}ms",
-                newsletterId, stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            // Let exception bubble up so Hangfire can retry the job
-            _logger.LogError(ex,
-                "[Phase 6A.74] FATAL ERROR in NewsletterEmailJob for Newsletter {NewsletterId}. Hangfire will retry.",
-                newsletterId);
-            throw; // Re-throw for Hangfire retry mechanism
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[Phase 6A.74] NewsletterEmailJob COMPLETE: Duration={TotalMs}ms, NewsletterId={NewsletterId}",
+                    stopwatch.ElapsedMilliseconds, newsletterId);
+            }
+            catch (OperationCanceledException) when (CancellationToken.None.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[Phase 6A.74] NewsletterEmailJob CANCELED: Duration={ElapsedMs}ms, NewsletterId={NewsletterId}",
+                    stopwatch.ElapsedMilliseconds, newsletterId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Let exception bubble up so Hangfire can retry the job
+                _logger.LogError(ex,
+                    "[Phase 6A.74] NewsletterEmailJob FAILED: Duration={ElapsedMs}ms, NewsletterId={NewsletterId}",
+                    stopwatch.ElapsedMilliseconds, newsletterId);
+                throw; // Re-throw for Hangfire retry mechanism
+            }
         }
     }
 

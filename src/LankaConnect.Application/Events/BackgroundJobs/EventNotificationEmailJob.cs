@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -9,6 +10,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
@@ -57,12 +59,19 @@ public class EventNotificationEmailJob
     /// <param name="cancellationToken">Cancellation token</param>
     public async Task ExecuteAsync(Guid historyId, CancellationToken cancellationToken)
     {
-        var correlationId = Guid.NewGuid().ToString()[..8];
-        _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Starting event notification job for history {HistoryId}",
-            correlationId, historyId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventNotificationEmail"))
+        using (LogContext.PushProperty("EntityType", "EventNotificationHistory"))
+        using (LogContext.PushProperty("HistoryId", historyId))
         {
+            var stopwatch = Stopwatch.StartNew();
+            var correlationId = Guid.NewGuid().ToString()[..8];
+
+            _logger.LogInformation(
+                "[Phase 6A.61][{CorrelationId}] EventNotificationEmailJob START: HistoryId={HistoryId}",
+                correlationId, historyId);
+
+            try
+            {
             // 1. Load history record and event
             var history = await _historyRepository.GetByIdAsync(historyId, cancellationToken);
             if (history == null)
@@ -246,22 +255,40 @@ public class EventNotificationEmailJob
                         correlationId);
                 }
 
-                // CRITICAL: Return successfully WITHOUT throwing - prevents Hangfire retry loop
-                return;
+                    // CRITICAL: Return successfully WITHOUT throwing - prevents Hangfire retry loop
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    stopwatch.Stop();
+                    _logger.LogError(ex,
+                        "[Phase 6A.61][{CorrelationId}] UNEXPECTED EXCEPTION when committing history {HistoryId}. " +
+                        "Exception Type: {ExceptionType}, Message: {Message}, Duration={ElapsedMs}ms",
+                        correlationId, historyId, ex.GetType().FullName, ex.Message, stopwatch.ElapsedMilliseconds);
+                    throw; // Re-throw for Hangfire retry
+                }
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[Phase 6A.61][{CorrelationId}] EventNotificationEmailJob COMPLETE: Duration={ElapsedMs}ms, HistoryId={HistoryId}, Success={Success}, Failed={Failed}",
+                    correlationId, stopwatch.ElapsedMilliseconds, historyId, successCount, failedCount);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[Phase 6A.61][{CorrelationId}] EventNotificationEmailJob CANCELED: Duration={ElapsedMs}ms, HistoryId={HistoryId}",
+                    correlationId, stopwatch.ElapsedMilliseconds, historyId);
+                throw;
             }
             catch (Exception ex)
             {
+                stopwatch.Stop();
                 _logger.LogError(ex,
-                    "[Phase 6A.61][{CorrelationId}] UNEXPECTED EXCEPTION when committing history {HistoryId}. " +
-                    "Exception Type: {ExceptionType}, Message: {Message}",
-                    correlationId, historyId, ex.GetType().FullName, ex.Message);
-                throw; // Re-throw for Hangfire retry
+                    "[Phase 6A.61][{CorrelationId}] EventNotificationEmailJob FAILED: Duration={ElapsedMs}ms, HistoryId={HistoryId}",
+                    correlationId, stopwatch.ElapsedMilliseconds, historyId);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[Phase 6A.61][{CorrelationId}] Fatal error in notification job", correlationId);
-            throw;
         }
     }
 

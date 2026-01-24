@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
@@ -29,25 +31,37 @@ public class EventStatusUpdateJob
 
     public async Task ExecuteAsync()
     {
-        _logger.LogInformation("EventStatusUpdateJob: Starting event status update job execution at {Time}", DateTime.UtcNow);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventStatusUpdate"))
+        using (LogContext.PushProperty("EntityType", "Event"))
         {
-            var now = DateTime.UtcNow;
-            var updatedCount = 0;
+            var stopwatch = Stopwatch.StartNew();
 
-            // 1. Mark Published events as Active if start date has arrived
-            updatedCount += await MarkEventsAsActiveAsync(now);
+            _logger.LogInformation("EventStatusUpdateJob START: Beginning event status update");
 
-            // 2. Mark Active events as Completed if end date has passed
-            updatedCount += await MarkEventsAsCompletedAsync(now);
+            try
+            {
+                var now = DateTime.UtcNow;
+                var updatedCount = 0;
 
-            _logger.LogInformation("EventStatusUpdateJob: Completed event status update job. Updated {Count} events at {Time}",
-                updatedCount, DateTime.UtcNow);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "EventStatusUpdateJob: Fatal error during event status update job execution");
+                // 1. Mark Published events as Active if start date has arrived
+                updatedCount += await MarkEventsAsActiveAsync(now);
+
+                // 2. Mark Active events as Completed if end date has passed
+                updatedCount += await MarkEventsAsCompletedAsync(now);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "EventStatusUpdateJob COMPLETE: Duration={ElapsedMs}ms, EventsUpdated={Count}",
+                    stopwatch.ElapsedMilliseconds, updatedCount);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "EventStatusUpdateJob FAILED: Duration={ElapsedMs}ms",
+                    stopwatch.ElapsedMilliseconds);
+                throw; // Re-throw for Hangfire retry
+            }
         }
     }
 

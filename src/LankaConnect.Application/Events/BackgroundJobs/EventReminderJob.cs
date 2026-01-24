@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
@@ -6,6 +7,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
@@ -40,31 +42,47 @@ public class EventReminderJob
 
     public async Task ExecuteAsync()
     {
-        var correlationId = Guid.NewGuid().ToString("N")[..8];
-        _logger.LogInformation(
-            "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Starting execution at {Time}",
-            correlationId, DateTime.UtcNow);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventReminder"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
         {
-            var now = DateTime.UtcNow;
-
-            // Phase 6A.71: Send 3 types of reminders (7 days, 2 days, 1 day)
-            // Use 2-hour windows to prevent duplicates while running hourly
-            await SendRemindersForWindowAsync(now, 167, 169, "7day", "in 1 week", "Your event is coming up next week. Mark your calendar!", correlationId, CancellationToken.None);
-            await SendRemindersForWindowAsync(now, 47, 49, "2day", "in 2 days", "Your event is just 2 days away. Don't forget!", correlationId, CancellationToken.None);
-            await SendRemindersForWindowAsync(now, 23, 25, "1day", "tomorrow", "Your event is tomorrow! We look forward to seeing you there.", correlationId, CancellationToken.None);
+            var stopwatch = Stopwatch.StartNew();
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
 
             _logger.LogInformation(
-                "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Completed execution at {Time}",
-                correlationId, DateTime.UtcNow);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "[Phase 6A.71] [{CorrelationId}] EventReminderJob: Fatal error during execution",
+                "[Phase 6A.71] [{CorrelationId}] EventReminderJob START: Beginning event reminder processing",
                 correlationId);
-            throw;  // Phase 6A.61+ Fix: Re-throw for Hangfire retry
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Phase 6A.71: Send 3 types of reminders (7 days, 2 days, 1 day)
+                // Use 2-hour windows to prevent duplicates while running hourly
+                await SendRemindersForWindowAsync(now, 167, 169, "7day", "in 1 week", "Your event is coming up next week. Mark your calendar!", correlationId, CancellationToken.None);
+                await SendRemindersForWindowAsync(now, 47, 49, "2day", "in 2 days", "Your event is just 2 days away. Don't forget!", correlationId, CancellationToken.None);
+                await SendRemindersForWindowAsync(now, 23, 25, "1day", "tomorrow", "Your event is tomorrow! We look forward to seeing you there.", correlationId, CancellationToken.None);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob COMPLETE: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+            }
+            catch (OperationCanceledException) when (CancellationToken.None.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob CANCELED: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob FAILED: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+                throw;  // Phase 6A.61+ Fix: Re-throw for Hangfire retry
+            }
         }
     }
 

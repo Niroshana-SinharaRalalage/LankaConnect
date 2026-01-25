@@ -1,9 +1,77 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-25 - Phase 6A.81 Week 3: Background Jobs & Frontend UI ✅ COMPLETE & DEPLOYED*
+*Last Updated: 2026-01-25 - Phase 6A.83 Part 1: Email Template Parameter Fixes ⏳ PART 1 COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.81 Week 3: Background Jobs & Frontend UI ✅ COMPLETE & DEPLOYED
+## 🎯 Current Session Status - Phase 6A.83 Part 1: Email Template Parameter Fixes ⏳ PART 1 COMPLETE (3/19 templates fixed)
+
+### PHASE 6A.83 PART 1: COMPREHENSIVE EMAIL TEMPLATE PARAMETER VERIFICATION - 2026-01-25
+
+**Status**: ⏳ **PART 1 COMPLETE** (3/19 templates fixed) | **PART 2 PENDING SQL VERIFICATION**
+
+**Commit**: 5c6abbd0
+
+**Priority**: 🔴 CRITICAL - Email Template Rendering Bug
+
+**User Report**: Literal Handlebars parameters (`{{HasOrganizerContact}}`, `{{OrganizerContactName}}`, etc.) appearing in multiple email templates instead of actual values.
+
+**Root Cause**: TWO distinct parameter mismatch patterns:
+1. **Wrong Parameter Names**: Handlers send `OrganizerContactName` but templates expect `OrganizerName`
+2. **Missing Parameters**: Handlers don't send required parameters like `EventDetailsUrl`, `CommitmentType`
+
+**Part 1 Implementation - 3 Handlers Fixed**:
+
+1. ✅ **EventReminderJob.cs** - Lines 218-233, 393-408
+   - [src/LankaConnect.Application/Events/BackgroundJobs/EventReminderJob.cs](../src/LankaConnect.Application/Events/BackgroundJobs/EventReminderJob.cs)
+   - **Issue**: Sent `OrganizerContactName`, `OrganizerContactEmail`, `OrganizerContactPhone`
+   - **Fixed**: Now sends `OrganizerName`, `OrganizerEmail`, `OrganizerPhone`
+   - **Pattern**: Applied EventPublishedEventHandler Phase 6A.82 pattern
+   - **Impact**: Event reminder emails will show actual organizer names instead of `{{OrganizerName}}`
+
+2. ✅ **MemberVerificationRequestedEventHandler.cs** - Line 65
+   - [src/LankaConnect.Application/Users/EventHandlers/MemberVerificationRequestedEventHandler.cs](../src/LankaConnect.Application/Users/EventHandlers/MemberVerificationRequestedEventHandler.cs)
+   - **Issue**: Sent `ExpirationHours: 24` (number)
+   - **Fixed**: Now sends `TokenExpiry: "24 hours"` (formatted string)
+   - **Impact**: Email verification emails will show "24 hours" instead of `{{TokenExpiry}}`
+
+3. ✅ **UserCommittedToSignUpEventHandler.cs** - Lines 23-93
+   - [src/LankaConnect.Application/Events/EventHandlers/UserCommittedToSignUpEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/UserCommittedToSignUpEventHandler.cs)
+   - **Changes**:
+     - Added IEmailUrlHelper injection for building EventDetailsUrl
+     - Renamed parameter: `ItemDescription` → `SignupItem`
+     - Added missing parameter: `EventDetailsUrl`
+     - Added missing parameter: `CommitmentType = "Item Contribution"`
+   - **Impact**: Signup commitment emails will show clickable event links instead of `{{EventDetailsUrl}}`
+
+**Build Status**: ✅ 0 errors, 0 warnings
+
+**Files Modified**: 3 files (3 handlers)
+
+**Documentation Created**:
+- ✅ [RCA & Implementation Plan](../.claude/plans/rippling-hopping-frog.md) - Comprehensive 6-phase plan
+- ✅ [EMAIL_TEMPLATE_HANDLER_MAPPING.md](./EMAIL_TEMPLATE_HANDLER_MAPPING.md) - Complete template-to-handler mapping (19 templates)
+- ✅ [verify_all_email_templates.sql](../scripts/verify_all_email_templates.sql) - 4-part verification script
+
+**Templates Status**:
+- ✅ 3 templates VERIFIED & FIXED (EventReminder, MemberEmailVerification, SignupCommitmentConfirmation)
+- ⏳ 16 templates PENDING SQL verification
+
+**Next Steps (Part 2)**:
+1. ⏳ **USER ACTION REQUIRED**: Run SQL verification script on staging database:
+   ```sql
+   -- Execute scripts/verify_all_email_templates.sql Part 2 (lines 33-65)
+   -- This will identify recent emails with literal Handlebars parameters
+   ```
+2. ⏳ Analyze SQL results to identify remaining parameter mismatches
+3. ⏳ Fix all remaining handlers (estimated 10-13 files)
+4. ⏳ Deploy to staging and test via API
+5. ⏳ Update EMAIL_TEMPLATE_HANDLER_MAPPING.md with all ✅ VERIFIED
+
+**Deployment**: ⏳ PENDING DEPLOYMENT TO AZURE STAGING (waiting for Part 2 completion)
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.81 Week 3: Background Jobs & Frontend UI ✅ COMPLETE & DEPLOYED
 
 ### PHASE 6A.81 WEEK 3: THREE-STATE REGISTRATION LIFECYCLE - BACKGROUND JOBS & FRONTEND - 2026-01-25
 

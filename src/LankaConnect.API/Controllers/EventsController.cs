@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
+using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
@@ -2042,6 +2044,49 @@ public class EventsController : BaseController<EventsController>
                 "[Phase 6A.76] API: Event reminder queued successfully for event {EventId}, recipients={Count}",
                 id, result.Value);
             return Accepted(new { recipientCount = result.Value });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Resend registration confirmation email to specific attendee (Organizer action)
+    /// Allows organizers to manually resend confirmation emails from Attendees tab
+    /// Works for both free and paid event registrations via shared email service
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="registrationId">Registration ID</param>
+    /// <returns>Success message if email sent</returns>
+    [HttpPost("{id:guid}/attendees/{registrationId:guid}/resend-confirmation")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResendAttendeeConfirmation(Guid id, Guid registrationId)
+    {
+        // Get organizer ID from claims
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var organizerId))
+        {
+            Logger.LogWarning("Resend attendee confirmation attempted without valid user ID claim");
+            return Unauthorized();
+        }
+
+        Logger.LogInformation(
+            "[Phase 6A.X] API: Resending attendee confirmation - EventId={EventId}, RegistrationId={RegistrationId}, OrganizerId={OrganizerId}",
+            id, registrationId, organizerId);
+
+        var command = new ResendAttendeeConfirmationCommand(id, registrationId, organizerId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "[Phase 6A.X] API: Attendee confirmation resent successfully - RegistrationId={RegistrationId}",
+                registrationId);
+            return Ok(new { message = "Confirmation email resent successfully" });
         }
 
         return HandleResult(result);

@@ -270,6 +270,9 @@ public static class DependencyInjection
         // Phase 6A.35/6A.37: Add Email Branding Service for CID inline image embedding
         services.AddScoped<IEmailBrandingService, EmailBrandingService>();
 
+        // Phase 6A.X: Add Registration Email Service for shared email logic
+        services.AddScoped<IRegistrationEmailService, RegistrationEmailService>();
+
         // Add Email Queue Processor (Background Service)
         services.AddHostedService<EmailQueueProcessor>();
 

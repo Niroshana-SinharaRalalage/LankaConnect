@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -19,17 +20,20 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
     private readonly IEmailService _emailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl
     private readonly ILogger<RegistrationCancelledEventHandler> _logger;
 
     public RegistrationCancelledEventHandler(
         IEmailService emailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Added for EventDetailsUrl
         ILogger<RegistrationCancelledEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl
         _logger = logger;
     }
 
@@ -73,13 +77,15 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     return;
                 }
 
-            // Prepare email parameters
+            // Phase 6A.83 Part 3: Add missing EventLocation and EventDetailsUrl parameters
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", $"{user.FirstName} {user.LastName}" },
                 { "EventTitle", @event.Title.Value },
                 { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
                 { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                { "EventLocation", GetEventLocationString(@event) },  // Phase 6A.83: Added missing parameter
+                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "CancellationDate", domainEvent.CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
                 { "Reason", "User cancelled registration" }
             };
@@ -124,5 +130,28 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
             }
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.83: Helper method to safely extract event location string
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+        var state = @event.Location.Address.State;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+        return string.Join(", ", parts);
     }
 }

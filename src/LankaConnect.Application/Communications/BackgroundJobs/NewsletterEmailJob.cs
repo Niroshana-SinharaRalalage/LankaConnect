@@ -129,6 +129,7 @@ public class NewsletterEmailJob
             // 3. Get event details if newsletter is linked to an event
             string? eventTitle = null;
             string? eventDate = null;
+            string? eventDescription = null;  // Phase 6A.83: Added eventDescription
             string? eventLocation = null;
             bool hasSignUpLists = false;
 
@@ -139,6 +140,7 @@ public class NewsletterEmailJob
                 {
                     eventTitle = @event.Title?.Value ?? "Untitled Event";
                     eventDate = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
+                    eventDescription = @event.Description?.Value ?? "";  // Phase 6A.83: Extract event description
                     eventLocation = GetEventLocationString(@event);
                     hasSignUpLists = @event.HasSignUpLists();
 
@@ -151,6 +153,7 @@ public class NewsletterEmailJob
             // 4. Prepare template parameters
             // Phase 6A.74 Part 10 Issue #3: Template uses 'NewsletterContent', not 'NewsletterDescription'
             // Phase 6A.74 Part 14 Fix: EventId must be truthy for Handlebars {{#if EventId}} - use newsletter.EventId.HasValue
+            // Phase 6A.83 Part 2: Fix parameter names to match template expectations
             var parameters = new Dictionary<string, object>
             {
                 ["NewsletterTitle"] = newsletter.Title?.Value ?? "Untitled Newsletter",
@@ -159,7 +162,8 @@ public class NewsletterEmailJob
                 ["IsEventNewsletter"] = newsletter.EventId.HasValue,
                 ["EventId"] = newsletter.EventId.HasValue ? newsletter.EventId.Value : (object)false, // Handlebars {{#if}} needs truthy/falsy
                 ["EventTitle"] = eventTitle ?? "",
-                ["EventDate"] = eventDate ?? "",
+                ["EventDateTime"] = eventDate ?? "",  // Phase 6A.83: Changed from EventDate to EventDateTime
+                ["EventDescription"] = eventDescription ?? "",  // Phase 6A.83: Added missing EventDescription
                 ["EventLocation"] = eventLocation ?? "",
                 ["EventDetailsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}" : "",
                 ["HasSignUpLists"] = hasSignUpLists, // Phase 6A.74 Part 14 Fix: Actually check if event has sign-up lists

@@ -46,20 +46,20 @@ SELECT
     -- Extract literal parameters from HTML body
     (
         SELECT string_agg(DISTINCT matches[1], ', ')
-        FROM regexp_matches(em.html_body, '\{\{([A-Za-z]+)\}\}', 'g') AS matches
+        FROM regexp_matches(em.html_content, '\{\{([A-Za-z]+)\}\}', 'g') AS matches
         LIMIT 10
     ) as html_literal_params,
     -- Extract literal parameters from text body
     (
         SELECT string_agg(DISTINCT matches[1], ', ')
-        FROM regexp_matches(em.text_body, '\{\{([A-Za-z]+)\}\}', 'g') AS matches
+        FROM regexp_matches(em.text_content, '\{\{([A-Za-z]+)\}\}', 'g') AS matches
         LIMIT 10
     ) as text_literal_params
 FROM communications.email_messages em
 WHERE em."CreatedAt" >= NOW() - INTERVAL '7 days'
     AND (
-        em.html_body LIKE '%{{%'
-        OR em.text_body LIKE '%{{%'
+        em.html_content LIKE '%{{%'
+        OR em.text_content LIKE '%{{%'
         OR em.subject LIKE '%{{%'
     )
 ORDER BY em."CreatedAt" DESC;

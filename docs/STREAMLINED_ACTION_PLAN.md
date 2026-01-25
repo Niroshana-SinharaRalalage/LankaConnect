@@ -7,14 +7,14 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.83 PART 1: EMAIL TEMPLATE PARAMETER FIXES (2026-01-25)
+## ✅ CURRENT STATUS - PHASE 6A.83 PART 2: NEWSLETTER TEMPLATE FIX (2026-01-25)
 **Date**: 2026-01-25
-**Session**: Phase 6A.83 Part 1 - Comprehensive Email Template Parameter Verification
-**Status**: ⏳ PART 1 COMPLETE (3/19 templates fixed) | ⏳ PART 2 PENDING SQL VERIFICATION
+**Session**: Phase 6A.83 Part 2 - Fix Newsletter Template Parameter Mismatches
+**Status**: ⏳ PART 2 COMPLETE (4/19 templates fixed) | ⏳ DEPLOYING TO STAGING
 **Build Status**: ✅ 0 errors, 0 warnings
-**Deployment**: ⏳ PENDING DEPLOYMENT TO AZURE STAGING
+**Deployment**: ⏳ IN PROGRESS - GitHub Actions deploying to Azure staging
 **Priority**: 🔴 CRITICAL - Email Template Rendering Bug
-**Commit**: 5c6abbd0
+**Commit**: 2eabc659
 
 **User Report**: Literal Handlebars parameters (`{{HasOrganizerContact}}`, `{{OrganizerName}}`) appearing in emails instead of actual values.
 
@@ -33,17 +33,23 @@
    - Added: `EventDetailsUrl` parameter (missing)
    - Added: `CommitmentType` parameter (missing)
 
+**Part 2 Changes (1 Handler Fixed)**:
+4. ✅ [NewsletterEmailJob.cs](../src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs) (Lines 132, 143, 165-166)
+   - Fixed: `EventDate` → `EventDateTime` (template expects EventDateTime)
+   - Added: `EventDescription` parameter (was completely missing)
+   - User screenshot showed literal `{{EventDateTime}}` and `{{EventDescription}}` in newsletter
+
 **Documentation**:
 - ✅ [RCA Plan](../.claude/plans/rippling-hopping-frog.md) - Comprehensive analysis
 - ✅ [EMAIL_TEMPLATE_HANDLER_MAPPING.md](./EMAIL_TEMPLATE_HANDLER_MAPPING.md) - Template-to-handler mapping
 - ✅ [verify_all_email_templates.sql](../scripts/verify_all_email_templates.sql) - 4-part verification script
 
-**Next Steps (Part 2)**:
-1. ⏳ User runs SQL verification script on staging database
-2. ⏳ Identify remaining 13 templates with parameter mismatches
-3. ⏳ Fix all remaining handlers based on SQL results
-4. ⏳ Deploy to staging and test via API
-5. ⏳ Update EMAIL_TEMPLATE_HANDLER_MAPPING.md with all ✅ VERIFIED
+**Next Steps (Part 3)**:
+1. ⏳ Wait for Azure staging deployment to complete
+2. ⏳ User tests newsletter email to verify fix works
+3. ⏳ Continue systematic verification of remaining 15 templates
+4. ⏳ Fix any remaining handlers with parameter mismatches
+5. ⏳ Final deployment and testing
 
 ---
 

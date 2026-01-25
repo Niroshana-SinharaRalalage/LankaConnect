@@ -20,7 +20,7 @@ Prevents literal Handlebars like `{{ParameterName}}` from appearing in emails.
 | 10 | template-event-details-publication | EventNotificationEmailJob | ✅ VERIFIED | Lines 295-351 complete |
 | 11 | template-event-cancellation-notifications | EventCancellationEmailJob | ⏳ PENDING | Need to verify |
 | 12 | template-event-approval | EventApprovedEventHandler | ⏳ PENDING | Need to verify |
-| 13 | template-newsletter-notification | NewsletterEmailJob | ⏳ PENDING | Need to verify |
+| 13 | template-newsletter-notification | NewsletterEmailJob | ✅ FIXED | Phase 6A.83 Part 2 - Fixed parameter names |
 | 14 | template-newsletter-subscription-confirmation | SubscribeToNewsletterCommandHandler | ⏳ PENDING | Need to verify |
 | 15 | template-password-reset | SendPasswordResetCommandHandler | ⏳ PENDING | Need to verify |
 | 16 | template-password-change-confirmation | ResetPasswordCommandHandler | ⏳ PENDING | Need to verify |
@@ -265,17 +265,24 @@ Prevents literal Handlebars like `{{ParameterName}}` from appearing in emails.
 ### 13. template-newsletter-notification
 
 **Used By**:
-- [NewsletterEmailJob.cs](../src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs)
+- [NewsletterEmailJob.cs:Lines 155-170](../src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs#L155-L170)
 
-**Template Parameters Expected**: (Run SQL)
-- NewsletterTitle
-- NewsletterContent
-- UnsubscribeUrl
+**Template Parameters Expected**: (From user screenshot Phase 6A.83)
+- NewsletterTitle, NewsletterContent
+- EventId, IsEventNewsletter
+- EventTitle, EventDateTime, EventDescription, EventLocation
+- EventDetailsUrl, HasSignUpLists, SignUpListsUrl
+- DashboardUrl
 
-**Handler Parameters Sent**: (Check job)
-- TO BE CHECKED
+**Handler Parameters Sent**: ✅ ALL MATCHED (Phase 6A.83 Part 2)
+- Lines 163-165: Fixed EventDate → EventDateTime
+- Line 166: Added missing EventDescription parameter
 
-**Status**: ⏳ PENDING
+**Issues Fixed**:
+1. EventDate → EventDateTime (template expects EventDateTime)
+2. Missing EventDescription (now extracted from event.Description)
+
+**Status**: ✅ FIXED in Phase 6A.83 Part 2
 
 ---
 

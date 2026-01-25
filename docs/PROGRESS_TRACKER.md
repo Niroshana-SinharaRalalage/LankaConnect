@@ -1,15 +1,15 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-25 - Phase 6A.83 Part 1: Email Template Parameter Fixes ⏳ PART 1 COMPLETE*
+*Last Updated: 2026-01-25 - Phase 6A.83 Part 2: Newsletter Template Fix ⏳ PART 2 COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.83 Part 1: Email Template Parameter Fixes ⏳ PART 1 COMPLETE (3/19 templates fixed)
+## 🎯 Current Session Status - Phase 6A.83 Part 2: Newsletter Template Fix ⏳ PART 2 COMPLETE (4/19 templates fixed)
 
-### PHASE 6A.83 PART 1: COMPREHENSIVE EMAIL TEMPLATE PARAMETER VERIFICATION - 2026-01-25
+### PHASE 6A.83 PART 2: NEWSLETTER TEMPLATE PARAMETER FIX - 2026-01-25
 
-**Status**: ⏳ **PART 1 COMPLETE** (3/19 templates fixed) | **PART 2 PENDING SQL VERIFICATION**
+**Status**: ⏳ **PART 2 COMPLETE** (4/19 templates fixed) | **DEPLOYING TO AZURE STAGING**
 
-**Commit**: 5c6abbd0
+**Commit**: 2eabc659 (Part 2 Newsletter fix)
 
 **Priority**: 🔴 CRITICAL - Email Template Rendering Bug
 
@@ -43,9 +43,23 @@
      - Added missing parameter: `CommitmentType = "Item Contribution"`
    - **Impact**: Signup commitment emails will show clickable event links instead of `{{EventDetailsUrl}}`
 
+**Part 2 Implementation - 1 Handler Fixed (Newsletter)**:
+
+4. ✅ **NewsletterEmailJob.cs** - Lines 132, 143, 165-166
+   - [src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs](../src/LankaConnect.Application/Communications/BackgroundJobs/NewsletterEmailJob.cs)
+   - **User Evidence**: Screenshot showed literal `{{EventDateTime}}` and `{{EventDescription}}` in newsletter about "Christmas Dinner Dance 2025"
+   - **Issue 1**: Handler sent `EventDate` but template expects `EventDateTime`
+   - **Issue 2**: Handler completely missing `EventDescription` parameter
+   - **Fixed**:
+     - Line 132: Added `string? eventDescription = null;` variable
+     - Line 143: Extract `eventDescription = @event.Description?.Value ?? "";`
+     - Line 165: Changed `EventDate` → `EventDateTime`
+     - Line 166: Added `EventDescription` parameter with extracted value
+   - **Impact**: Newsletter emails will show actual event descriptions and dates instead of literal parameters
+
 **Build Status**: ✅ 0 errors, 0 warnings
 
-**Files Modified**: 3 files (3 handlers)
+**Files Modified**: 4 files (4 handlers total across Part 1 & Part 2)
 
 **Documentation Created**:
 - ✅ [RCA & Implementation Plan](../.claude/plans/rippling-hopping-frog.md) - Comprehensive 6-phase plan
@@ -53,21 +67,21 @@
 - ✅ [verify_all_email_templates.sql](../scripts/verify_all_email_templates.sql) - 4-part verification script
 
 **Templates Status**:
-- ✅ 3 templates VERIFIED & FIXED (EventReminder, MemberEmailVerification, SignupCommitmentConfirmation)
-- ⏳ 16 templates PENDING SQL verification
+- ✅ 4 templates VERIFIED & FIXED:
+  1. EventReminder (Phase 6A.83 Part 1)
+  2. MemberEmailVerification (Phase 6A.83 Part 1)
+  3. SignupCommitmentConfirmation (Phase 6A.83 Part 1)
+  4. NewsletterNotification (Phase 6A.83 Part 2)
+- ⏳ 15 templates PENDING verification
 
-**Next Steps (Part 2)**:
-1. ⏳ **USER ACTION REQUIRED**: Run SQL verification script on staging database:
-   ```sql
-   -- Execute scripts/verify_all_email_templates.sql Part 2 (lines 33-65)
-   -- This will identify recent emails with literal Handlebars parameters
-   ```
-2. ⏳ Analyze SQL results to identify remaining parameter mismatches
-3. ⏳ Fix all remaining handlers (estimated 10-13 files)
-4. ⏳ Deploy to staging and test via API
-5. ⏳ Update EMAIL_TEMPLATE_HANDLER_MAPPING.md with all ✅ VERIFIED
+**Next Steps (Part 3)**:
+1. ⏳ Wait for Azure staging deployment to complete (GitHub Actions workflow running)
+2. ⏳ **USER ACTION**: Test newsletter email to verify `{{EventDateTime}}` and `{{EventDescription}}` now show actual values
+3. ⏳ Continue systematic verification of remaining 15 templates
+4. ⏳ Fix any remaining handlers with parameter mismatches
+5. ⏳ Final comprehensive testing
 
-**Deployment**: ⏳ PENDING DEPLOYMENT TO AZURE STAGING (waiting for Part 2 completion)
+**Deployment**: ⏳ IN PROGRESS - GitHub Actions deploying commit 2eabc659 to Azure staging
 
 ---
 

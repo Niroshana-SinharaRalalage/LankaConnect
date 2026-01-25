@@ -127,6 +127,23 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 ["EventUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             };
 
+            // Phase 6A.82: Add organizer contact if opted in (matches EventNotificationEmailJob pattern)
+            if (@event.HasOrganizerContact())
+            {
+                parameters["HasOrganizerContact"] = true;
+                parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+
+                if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
+                    parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+
+                if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
+                    parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+            }
+            else
+            {
+                parameters["HasOrganizerContact"] = false;
+            }
+
             // Phase 6A.39: Send email to each recipient using database-based template
             // Using the same pattern as RegistrationConfirmedEventHandler for consistency
             var successCount = 0;

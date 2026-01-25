@@ -243,6 +243,11 @@ public static class DependencyInjection
 
         // Add Email Services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+
+        // Phase 6A.82: Register Email Notification Settings
+        services.Configure<Application.Common.Configuration.EmailNotificationSettings>(
+            configuration.GetSection(Application.Common.Configuration.EmailNotificationSettings.SectionName));
+
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
 
         // Phase 6A.76: Contact Us Feature - Register Contact Settings

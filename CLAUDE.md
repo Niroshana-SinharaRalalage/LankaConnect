@@ -1,4 +1,255 @@
-# Claude Code Configuration - SPARC Development Environment
+# Claude Code Configuration - LankaConnect Development
+
+**CRITICAL: This file is read at the start of EVERY conversation and by EVERY spawned agent.**
+**ALL rules here are MANDATORY and MUST be followed without exception.**
+
+---
+
+# PART A: LANKACONNECT PROJECT RULES (MANDATORY)
+
+## 🚨 SECTION 1: SENIOR ENGINEER MINDSET (ALWAYS ACTIVE)
+
+**Role:** Think and act as a **Senior Software Engineer** at all times.
+
+### Core Principles:
+1. ✅ **Handle issues systematically** - No shortcuts, no quick patches
+2. ✅ **Apply durable fixes** - Build for maintainability, not just immediate resolution
+3. ✅ **Question everything** - If unsure about design/scope/impact, consult architect or ask user
+4. ✅ **Reuse before create** - Search codebase for similar implementations before writing new code
+5. ✅ **Never break existing functionality** - Especially UI components (very fragile)
+
+---
+
+## 🚨 SECTION 2: TEST-DRIVEN DEVELOPMENT (TDD) - MANDATORY
+
+**ABSOLUTE REQUIREMENT: Write tests FIRST, then implementation.**
+
+### TDD Process (Red-Green-Refactor):
+1. **RED**: Write failing test for new feature
+2. **GREEN**: Write minimal code to make test pass
+3. **REFACTOR**: Clean up code while keeping tests green
+
+### TDD Rules:
+- ✅ **Zero tolerance for compilation errors** - Fix ALL errors before proceeding
+- ✅ **Small, testable steps** - Iterate incrementally
+- ✅ **90% test coverage minimum** - Measure with `dotnet test /p:CollectCoverage=true`
+- ✅ **Tests must pass before commit** - Run `dotnet test` before every git commit
+
+---
+
+## 🚨 SECTION 3: UI/UX BEST PRACTICES (MANDATORY)
+
+**CRITICAL: LankaConnect has established UI patterns. NEVER deviate without user approval.**
+
+### UI Consistency Rules:
+1. ✅ **Follow existing component patterns** - Check `/web/src/presentation/components/` before creating new components
+2. ✅ **Use design system** - Refer to [UI_STYLE_GUIDE.md](./docs/UI_STYLE_GUIDE.md) for colors, spacing, typography
+3. ✅ **Accessibility first** - All inputs must have labels, all interactive elements must be keyboard-accessible
+4. ✅ **Mobile-first responsive design** - Test on mobile breakpoints (320px, 768px, 1024px)
+5. ✅ **Loading states** - All async operations must show loading indicators
+6. ✅ **Error boundaries** - All pages must have error boundaries for graceful failure
+
+### UI Change Protocol:
+**Before changing ANY UI component:**
+1. Read the component file to understand current behavior
+2. Search for ALL usages: `grep -r "ComponentName" web/src/`
+3. Test changes in ALL contexts where component is used
+4. Add unit tests for new props/behavior
+5. Get user approval if changing visual appearance
+
+---
+
+## 🚨 SECTION 4: OBSERVABILITY & ERROR HANDLING (MANDATORY)
+
+**CRITICAL: All code must be traceable and debuggable in production.**
+
+### Logging Requirements:
+```csharp
+// ✅ CORRECT: Structured logging with context
+_logger.LogInformation(
+    "Creating order {OrderId} for user {UserId} with {ItemCount} items",
+    orderId, userId, items.Count);
+
+try
+{
+    var order = await _orderRepository.CreateAsync(orderData);
+    _logger.LogInformation("Order {OrderId} created successfully", order.Id);
+    return order;
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex,
+        "Failed to create order for user {UserId}. Items: {ItemCount}",
+        userId, items.Count);
+    throw;
+}
+```
+
+### Try-Catch Requirements:
+- ✅ **Wrap ALL external calls** - Database, HTTP, file I/O must have try-catch
+- ✅ **Log before rethrowing** - Always log exception with context before `throw;`
+- ✅ **Never swallow exceptions** - Empty catch blocks are FORBIDDEN
+- ✅ **Use specific exceptions** - Catch specific types when possible
+
+---
+
+## 🚨 SECTION 5: DATABASE MIGRATIONS (EF CORE - MANDATORY)
+
+**CRITICAL: ALL database changes MUST use EF Core migrations.**
+
+### Migration Workflow:
+```bash
+# 1. Create migration (ALWAYS name descriptively)
+dotnet ef migrations add AddMarketplaceProductsTable --project src/LankaConnect.Infrastructure
+
+# 2. Review generated migration code
+# 3. Test migration locally
+dotnet ef database update --project src/LankaConnect.Infrastructure
+
+# 4. Verify migration succeeded
+# 5. Commit migration files
+git add src/LankaConnect.Infrastructure/Data/Migrations/
+git commit -m "Add marketplace products table migration"
+```
+
+### Migration Rules:
+- ✅ **Never edit existing migrations** - Create new migration if changes needed
+- ✅ **Always test Down() method** - Ensure rollback works
+- ✅ **Use schema names** - All tables must specify schema: `modelBuilder.ToTable("products", "marketplace");`
+- ✅ **Check for conflicts** - Pull latest from develop before creating migration
+
+---
+
+## 🚨 SECTION 6: AZURE STAGING DEPLOYMENT (MANDATORY)
+
+**CRITICAL: LankaConnect deploys to Azure staging after EVERY change.**
+
+### Deployment Workflow:
+
+#### Backend Changes:
+```bash
+# 1-3: Make changes, write tests, run tests locally
+dotnet test
+
+# 4-5: Commit and push
+git add . && git commit -m "feat(marketplace): Add product catalog API"
+git push origin feature/marketplace-module
+
+# 6: GitHub Actions runs deploy-staging.yml automatically
+
+# 7: Test deployed API
+curl -X 'POST' \
+  'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"niroshhh@gmail.com","password":"12!@qwASzx","rememberMe":true,"ipAddress":"string"}'
+```
+
+### Post-Deployment Verification (MANDATORY):
+- [ ] API endpoint returns expected response
+- [ ] Database migrations applied successfully
+- [ ] No errors in container logs
+- [ ] Frontend page loads without errors
+
+---
+
+## 🚨 SECTION 7: DOCUMENTATION SYNCHRONIZATION (MANDATORY)
+
+**CRITICAL: Update tracking docs BEFORE marking task complete.**
+
+### After EVERY implementation, update ALL 3 documents:
+1. **PROGRESS_TRACKER.md** - Add new entry with date, changes made
+2. **STREAMLINED_ACTION_PLAN.md** - Update action item status
+3. **TASK_SYNCHRONIZATION_STRATEGY.md** - Update phase overview
+
+---
+
+## 🚨 SECTION 8: STATUS REPORTING (MANDATORY - BE HONEST)
+
+**CRITICAL: Never claim success without verification.**
+
+### Status Checklist (Complete ALL before reporting success):
+- [ ] Code committed and pushed
+- [ ] Tests passing (90%+ coverage)
+- [ ] Deployment succeeded
+- [ ] Database migrations applied
+- [ ] API tested with curl
+- [ ] UI tested in browser
+- [ ] Logs checked (no errors)
+- [ ] Documentation updated
+
+---
+
+## 🚨 SECTION 9: MODULE DEVELOPMENT STANDARDS (MANDATORY)
+
+**CRITICAL: All modules MUST follow Clean Architecture + DDD patterns.**
+
+### Module Structure (Exact Pattern):
+```
+src/LankaConnect.[ModuleName]/
+├── [ModuleName].Domain/        # Aggregates, Entities, ValueObjects
+├── [ModuleName].Application/   # Commands, Queries, Handlers
+├── [ModuleName].Infrastructure/ # Data, Repositories, Migrations
+├── [ModuleName].API/           # Controllers, DTOs, Filters
+└── [ModuleName].Tests/         # Domain, Application, Infra, API tests
+```
+
+### Module Boundaries (STRICT):
+- ✅ **Module can reference:** `LankaConnect.Shared` only
+- ❌ **Module CANNOT reference:** Other modules directly
+- ❌ **No cross-module database queries**
+- ❌ **No shared entities**
+
+---
+
+## 🚨 SECTION 10: UI STYLE GUIDE COMPLIANCE (MANDATORY)
+
+**CRITICAL: Refer to [UI_STYLE_GUIDE.md](./docs/UI_STYLE_GUIDE.md) for ALL UI work.**
+
+Before Building ANY UI Component:
+1. Check if similar component exists
+2. Read UI_STYLE_GUIDE.md for design tokens
+3. Use existing components when possible
+4. Get user approval if deviating from style guide
+
+---
+
+## 🚨 SECTION 11: GIT WORKFLOW FOR PARALLEL DEVELOPMENT
+
+### Git Worktree Setup (Prevents Conflicts):
+```bash
+# Agent 1: Events module
+git worktree add ../lc-events feature/events-module
+
+# Agent 2: Marketplace module
+git worktree add ../lc-marketplace feature/marketplace-module
+```
+
+### Before Merging to Develop:
+1. Pull latest develop
+2. Rebase feature branch
+3. Resolve conflicts (if any)
+4. Run ALL tests
+5. Push and create PR
+
+---
+
+## 🚨 SECTION 12: PRE-COMPLETION CHECKLIST
+
+**MANDATORY: Complete ALL items before reporting task complete.**
+
+- [ ] Code follows Clean Architecture + DDD
+- [ ] Tests written FIRST (TDD), 90%+ coverage
+- [ ] All tests passing locally
+- [ ] Code committed with descriptive message
+- [ ] Deployed to Azure staging successfully
+- [ ] API tested / UI tested
+- [ ] Azure logs checked (no errors)
+- [ ] All 3 PRIMARY docs updated
+- [ ] Status report includes verification
+
+---
+
+# PART B: CLAUDE FLOW & SPARC METHODOLOGY
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
@@ -26,7 +277,6 @@
   Task("Coder agent", "Implement core features...", "coder")
   Task("Tester agent", "Create comprehensive tests...", "tester")
   Task("Reviewer agent", "Review code quality...", "reviewer")
-  Task("Architect agent", "Design system architecture...", "system-architect")
 ```
 
 **MCP tools are ONLY for coordination setup:**
@@ -42,11 +292,12 @@
 - `/docs` - Documentation and markdown files
 - `/config` - Configuration files
 - `/scripts` - Utility scripts
-- `/examples` - Example code
+
+---
 
 ## 🚨 CRITICAL: REQUIREMENT DOCUMENTATION PROTOCOL (Phase 6A Prevention System)
 
-**PROBLEM**: Phase 6A revealed requirements discussed in conversation but NEVER documented in PRIMARY tracking docs, causing missed implementations (7-role system, BusinessOwner features, etc.).
+**PROBLEM**: Phase 6A revealed requirements discussed in conversation but NEVER documented in PRIMARY tracking docs, causing missed implementations.
 
 **SOLUTION**: Three-part prevention system to ensure requirement gaps are caught early.
 
@@ -60,77 +311,20 @@
 **Red Flags to Look For**:
 - "I discussed this before..." = Requirement in conversation history only
 - "We talked about..." = Not documented in PRIMARY docs
-- Planning conversation with no follow-up documentation = ISSUE
 
 ### Part 2: Phase Number Management (CRITICAL)
 
 **Before assigning ANY new phase number**:
 1. ✅ Check [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) for next available number
-2. ✅ Verify number not used in PROGRESS_TRACKER.md, STREAMLINED_ACTION_PLAN.md, TASK_SYNCHRONIZATION_STRATEGY.md
+2. ✅ Verify number not used in tracking docs
 3. ✅ **Record assignment in master index BEFORE implementation starts**
-4. ✅ Document in phase summary after completion
-
-**Phase Number Change History**:
-- If reassigning existing phase numbers, update PHASE_6A_MASTER_INDEX.md "Change History" section
-- Search ALL references in existing documents and update them
-- Update phase summary documents' "Next Steps" sections
-- This prevents future conflicts and confusion
 
 ### Part 3: Documentation Synchronization (BEFORE COMPLETION)
 
 **PRIMARY Tracking Documents** (MUST STAY IN SYNC):
-1. [PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md) - Current session status + historical log
-2. [STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md) - Action items + phases
-3. [TASK_SYNCHRONIZATION_STRATEGY.md](./docs/TASK_SYNCHRONIZATION_STRATEGY.md) - Phase overview + status
-
-**At END of each Phase**:
-1. ✅ Create PHASE_[X]_[FEATURE]_SUMMARY.md with implementation details
-2. ✅ Update all 3 PRIMARY docs with:
-   - ✅ Phase status (Complete/Blocked/Deferred)
-   - ✅ Feature details and deliverables
-   - ✅ Links to summary document
-   - ✅ Links to master index
-3. ✅ Update [Master Requirements Specification.md](./docs/Master%20Requirements%20Specification.md) if user-facing features
-4. ✅ Update [PROJECT_CONTENT.md](./docs/PROJECT_CONTENT.md) with status
-5. ✅ Reference [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) at top of tracking docs
-
-### Prevention Checklist
-
-**When user mentions a requirement**:
-- [ ] Requirement is in conversation history
-- [ ] Requirement documented in at least one PRIMARY doc
-- [ ] If new feature, phase number is in master index
-- [ ] If phase number reassigned, change history updated
-
-**Before starting implementation**:
-- [ ] Conversation history reviewed for undocumented planning
-- [ ] All requirements captured in PROGRESS_TRACKER.md
-- [ ] Phase number assigned and recorded in master index
-- [ ] No ambiguity in scope or deliverables
-
-**Before calling task complete**:
-- [ ] Summary documentation created
-- [ ] All 3 PRIMARY docs updated with links to summary
-- [ ] Master index reflects current status
-- [ ] No requirement gaps remain undocumented
-- [ ] Build status verified (0 errors)
-
-### Example: How This Prevents Phase 6A Issues
-
-**Phase 6A Problem**: 7-role system discussed in conversation, but:
-- Not in PROGRESS_TRACKER.md
-- Not in STREAMLINED_ACTION_PLAN.md
-- Phase numbers 6A.8/6A.9 got reassigned without documenting original features
-- BusinessOwner role was discussed but UI disabled without clear documentation
-
-**Phase 6A Solution** (Implemented 2025-11-12):
-1. ✅ Created [PHASE_6A_MASTER_INDEX.md](./docs/PHASE_6A_MASTER_INDEX.md) as single source of truth
-2. ✅ Documented phase number changes (6A.8/6A.9 reassignment)
-3. ✅ Reserved 6A.10/6A.11 for deferred features
-4. ✅ Created 7 summary documents for all phases
-5. ✅ Updated all 3 PRIMARY docs with master index reference
-6. ✅ Added complete 7-role specification to Master Requirements
-7. ✅ This document ensures it never happens again
+1. [PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md) - Current session status
+2. [STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md) - Action items
+3. [TASK_SYNCHRONIZATION_STRATEGY.md](./docs/TASK_SYNCHRONIZATION_STRATEGY.md) - Phase overview
 
 ---
 
@@ -138,7 +332,7 @@
 
 This project is an **AI-powered listing application** built using:
 - **Clean Architecture**: Domain-centered design with dependency inversion
-- **Domain-Driven Design (DDD)**: Rich domain models with aggregates, value objects, and domain services
+- **Domain-Driven Design (DDD)**: Rich domain models with aggregates, value objects, domain services
 - **Test-Driven Development (TDD)**: Red-Green-Refactor with 90% test coverage
 - **SPARC Methodology**: Systematic development workflow with Claude-Flow orchestration
 
@@ -151,155 +345,47 @@ src/
 └── presentation/    # Controllers, UI, API endpoints
 ```
 
-### DDD Components
-- **Aggregates**: Core business entities with consistency boundaries
-- **Value Objects**: Immutable objects representing descriptive aspects
-- **Domain Services**: Business logic that doesn't belong to entities
-- **Repositories**: Abstract data access interfaces
-- **Domain Events**: Side effects of business operations
-
-## SPARC Commands
-
-### Core Commands
-- `npx claude-flow sparc modes` - List available modes
-- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
-- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
-- `npx claude-flow sparc info <mode>` - Get mode details
-
-### Batchtools Commands
-- `npx claude-flow sparc batch <modes> "<task>"` - Parallel execution
-- `npx claude-flow sparc pipeline "<task>"` - Full pipeline processing
-- `npx claude-flow sparc concurrent <mode> "<tasks-file>"` - Multi-task processing
-
-### Build Commands
-- `npm run build` - Build project
-- `npm run test` - Run tests
-- `npm run lint` - Linting
-- `npm run typecheck` - Type checking
+---
 
 ## SPARC Workflow Phases
 
-1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
-2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
-3. **Architecture** - System design (`sparc run architect`)
-4. **Refinement** - TDD implementation (`sparc tdd`)
-5. **Completion** - Integration (`sparc run integration`)
+1. **Specification** - Requirements analysis
+2. **Pseudocode** - Algorithm design
+3. **Architecture** - System design
+4. **Refinement** - TDD implementation
+5. **Completion** - Integration
 
-## Code Style & Best Practices
+---
 
-- **Modular Design**: Files under 500 lines
-- **Environment Safety**: Never hardcode secrets
-- **Test-First**: Write tests before implementation
-- **Clean Architecture**: Separate concerns
-- **Documentation**: Keep updated
+## 🚀 Available Agents
 
-## 🚀 Available Agents (54 Total)
-
-### Core Development
-`coder`, `reviewer`, `tester`, `planner`, `researcher`
-
-### Swarm Coordination
-`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`, `collective-intelligence-coordinator`, `swarm-memory-manager`
-
-### Consensus & Distributed
-`byzantine-coordinator`, `raft-manager`, `gossip-coordinator`, `consensus-builder`, `crdt-synchronizer`, `quorum-manager`, `security-manager`
-
-### Performance & Optimization
-`perf-analyzer`, `performance-benchmarker`, `task-orchestrator`, `memory-coordinator`, `smart-agent`
-
-### GitHub & Repository
-`github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
+### Core Development (Essential)
+`coder`, `reviewer`, `tester`, `planner`, `researcher`, `backend-dev`, `system-architect`, `code-analyzer`, `api-docs`, `cicd-engineer`, `perf-analyzer`
 
 ### SPARC Methodology
 `sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
 
-### Specialized Development
-`backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`
-
-### Testing & Validation
-`tdd-london-swarm`, `production-validator`
-
-### Migration & Planning
-`migration-planner`, `swarm-init`
+---
 
 ## 🎯 Claude Code vs MCP Tools
 
 ### Claude Code Handles ALL EXECUTION:
-- **Task tool**: Spawn and run agents concurrently for actual work
-- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
+- **Task tool**: Spawn and run agents concurrently
+- File operations (Read, Write, Edit, Glob, Grep)
 - Code generation and programming
 - Bash commands and system operations
-- Implementation work
-- Project navigation and analysis
 - TodoWrite and task management
-- Git operations
-- Package management
-- Testing and debugging
+- Git operations, testing, debugging
 
 ### MCP Tools ONLY COORDINATE:
 - Swarm initialization (topology setup)
 - Agent type definitions (coordination patterns)
 - Task orchestration (high-level planning)
-- Memory management
-- Neural features
-- Performance tracking
-- GitHub integration
+- Memory management, performance tracking
 
 **KEY**: MCP coordinates the strategy, Claude Code's Task tool executes with real agents.
 
-## 🚀 Quick Setup
-
-```bash
-# Add Claude Flow MCP server
-claude mcp add claude-flow npx claude-flow@alpha mcp start
-```
-
-## MCP Tool Categories
-
-### Coordination
-`swarm_init`, `agent_spawn`, `task_orchestrate`
-
-### Monitoring
-`swarm_status`, `agent_list`, `agent_metrics`, `task_status`, `task_results`
-
-### Memory & Neural
-`memory_usage`, `neural_status`, `neural_train`, `neural_patterns`
-
-### GitHub Integration
-`github_swarm`, `repo_analyze`, `pr_enhance`, `issue_triage`, `code_review`
-
-### System
-`benchmark_run`, `features_detect`, `swarm_monitor`
-
-## 🚀 Agent Execution Flow with Claude Code
-
-### The Correct Pattern:
-
-1. **Optional**: Use MCP tools to set up coordination topology
-2. **REQUIRED**: Use Claude Code's Task tool to spawn agents that do actual work
-3. **REQUIRED**: Each agent runs hooks for coordination
-4. **REQUIRED**: Batch all operations in single messages
-
-### Example Full-Stack Development:
-
-```javascript
-// Single message with all agent spawning via Claude Code's Task tool
-[Parallel Agent Execution]:
-  Task("Backend Developer", "Build REST API with Express. Use hooks for coordination.", "backend-dev")
-  Task("Frontend Developer", "Create React UI. Coordinate with backend via memory.", "coder")
-  Task("Database Architect", "Design PostgreSQL schema. Store schema in memory.", "code-analyzer")
-  Task("Test Engineer", "Write Jest tests. Check memory for API contracts.", "tester")
-  Task("DevOps Engineer", "Setup Docker and CI/CD. Document in memory.", "cicd-engineer")
-  Task("Security Auditor", "Review authentication. Report findings via hooks.", "reviewer")
-  
-  // All todos batched together
-  TodoWrite { todos: [...8-10 todos...] }
-  
-  // All file operations together
-  Write "backend/server.js"
-  Write "frontend/App.jsx"
-  Write "database/schema.sql"
-```
+---
 
 ## 📋 Agent Coordination Protocol
 
@@ -323,55 +409,46 @@ npx claude-flow@alpha hooks post-task --task-id "[task]"
 npx claude-flow@alpha hooks session-end --export-metrics true
 ```
 
+---
+
 ## 🎯 Concurrent Execution Examples
 
 ### ✅ CORRECT WORKFLOW: MCP Coordinates, Claude Code Executes
 
 ```javascript
-// Step 1: MCP tools set up coordination (optional, for complex tasks)
-[Single Message - Coordination Setup]:
-  mcp__claude-flow__swarm_init { topology: "mesh", maxAgents: 6 }
-  mcp__claude-flow__agent_spawn { type: "researcher" }
-  mcp__claude-flow__agent_spawn { type: "coder" }
-  mcp__claude-flow__agent_spawn { type: "tester" }
-
-// Step 2: Claude Code Task tool spawns ACTUAL agents that do the work
-[Single Message - Parallel Agent Execution]:
-  // Claude Code's Task tool spawns real agents concurrently
-  Task("Research agent", "Analyze API requirements and best practices. Check memory for prior decisions.", "researcher")
-  Task("Coder agent", "Implement REST endpoints with authentication. Coordinate via hooks.", "coder")
-  Task("Database agent", "Design and implement database schema. Store decisions in memory.", "code-analyzer")
+// Single Message - Parallel Agent Execution
+[Parallel Execution]:
+  Task("Research agent", "Analyze API requirements. Check memory for prior decisions.", "researcher")
+  Task("Coder agent", "Implement REST endpoints. Coordinate via hooks.", "coder")
+  Task("Database agent", "Design database schema. Store decisions in memory.", "code-analyzer")
   Task("Tester agent", "Create comprehensive test suite with 90% coverage.", "tester")
   Task("Reviewer agent", "Review code quality and security. Document findings.", "reviewer")
-  
+
   // Batch ALL todos in ONE call
   TodoWrite { todos: [
-    {id: "1", content: "Research API patterns", status: "in_progress", priority: "high"},
-    {id: "2", content: "Design database schema", status: "in_progress", priority: "high"},
-    {id: "3", content: "Implement authentication", status: "pending", priority: "high"},
-    {id: "4", content: "Build REST endpoints", status: "pending", priority: "high"},
-    {id: "5", content: "Write unit tests", status: "pending", priority: "medium"},
-    {id: "6", content: "Integration tests", status: "pending", priority: "medium"},
-    {id: "7", content: "API documentation", status: "pending", priority: "low"},
-    {id: "8", content: "Performance optimization", status: "pending", priority: "low"}
+    {id: "1", content: "Research API patterns", status: "in_progress"},
+    {id: "2", content: "Design database schema", status: "in_progress"},
+    {id: "3", content: "Implement authentication", status: "pending"},
+    {id: "4", content: "Build REST endpoints", status: "pending"},
+    {id: "5", content: "Write unit tests", status: "pending"},
+    {id: "6", content: "Integration tests", status: "pending"}
   ]}
-  
+
   // Parallel file operations
-  Bash "mkdir -p app/{src,tests,docs,config}"
-  Write "app/package.json"
-  Write "app/src/server.js"
-  Write "app/tests/server.test.js"
+  Write "app/src/server.ts"
+  Write "app/tests/server.test.ts"
   Write "app/docs/API.md"
 ```
 
 ### ❌ WRONG (Multiple Messages):
 ```javascript
-Message 1: mcp__claude-flow__swarm_init
-Message 2: Task("agent 1")
-Message 3: TodoWrite { todos: [single todo] }
-Message 4: Write "file.js"
+Message 1: Task("agent 1")
+Message 2: TodoWrite { todos: [single todo] }
+Message 3: Write "file.js"
 // This breaks parallel coordination!
 ```
+
+---
 
 ## Performance Benefits
 
@@ -380,62 +457,59 @@ Message 4: Write "file.js"
 - **2.8-4.4x speed improvement**
 - **27+ neural models**
 
-## Hooks Integration
+---
 
-### Pre-Operation
-- Auto-assign agents by file type
-- Validate commands for safety
-- Prepare resources automatically
-- Optimize topology by complexity
-- Cache searches
+## 🎯 PROJECT-SPECIFIC INFORMATION
 
-### Post-Operation
-- Auto-format code
-- Train neural patterns
-- Update memory
-- Analyze performance
-- Track token usage
+### Tech Stack:
+- **Backend**: .NET 8, C#, Clean Architecture, DDD, EF Core 8, PostgreSQL
+- **Frontend**: Next.js 16, React 19, TypeScript, Zustand, TailwindCSS
+- **Database**: PostgreSQL with schema separation (events, marketplace, business, forum)
+- **Deployment**: Azure Container Apps (staging + production)
+- **CI/CD**: GitHub Actions (deploy-staging.yml, deploy-ui-staging.yml)
 
-### Session Management
-- Generate summaries
-- Persist state
-- Track metrics
-- Restore context
-- Export workflows
-
-## Advanced Features (v2.0.0)
-
-- 🚀 Automatic Topology Selection
-- ⚡ Parallel Execution (2.8-4.4x speed)
-- 🧠 Neural Training
-- 📊 Bottleneck Analysis
-- 🤖 Smart Auto-Spawning
-- 🛡️ Self-Healing Workflows
-- 💾 Cross-Session Memory
-- 🔗 GitHub Integration
-
-## Integration Tips
-
-1. Start with basic swarm init
-2. Scale agents gradually
-3. Use memory for context
-4. Monitor progress regularly
-5. Train patterns from success
-6. Enable hooks automation
-7. Use GitHub tools first
-
-## Support
-
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
+### Azure Staging URLs:
+- **Backend API**: `https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io`
+- **Test Credentials**: Email: `niroshhh@gmail.com`, Password: `12!@qwASzx`
 
 ---
 
-Remember: **Claude Flow coordinates, Claude Code creates!**
+## 📚 REFERENCE DOCUMENTS
 
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
-Never save working files, text/mds and tests to the root folder.
+All agents MUST read these documents before starting work:
+
+1. **[UI_STYLE_GUIDE.md](./docs/UI_STYLE_GUIDE.md)** - UI consistency
+2. **[PARALLEL_AGENT_COORDINATION.md](./docs/PARALLEL_AGENT_COORDINATION.md)** - Coordination strategy
+3. **[REVISED_MODULAR_MONOLITH_STRATEGY.md](./docs/REVISED_MODULAR_MONOLITH_STRATEGY.md)** - Architecture
+4. **[PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md)** - Current status
+5. **[STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md)** - Action items
+
+---
+
+## ❌ COMMON MISTAKES TO AVOID
+
+1. ❌ **Skipping tests** - Tests are MANDATORY
+2. ❌ **Committing without testing** - Always run tests first
+3. ❌ **Breaking existing UI** - Test ALL usages
+4. ❌ **Empty try-catch blocks** - Always log exceptions
+5. ❌ **Cross-module dependencies** - Modules must be independent
+6. ❌ **Skipping deployment verification** - Always test deployed API
+7. ❌ **Claiming success without proof** - Verify EVERY checklist item
+
+---
+
+## ✅ SUCCESS CRITERIA
+
+A task is ONLY complete when:
+- ✅ Code follows all patterns defined in this file
+- ✅ Tests written first (TDD) and passing (90%+ coverage)
+- ✅ Deployed to Azure staging successfully
+- ✅ Verified working in staging environment
+- ✅ All documentation updated
+- ✅ Checklist completed with evidence
+
+---
+
+**Remember: This file is LAW. Follow it without exception. If something is unclear, ASK the user.**
+
+**Last Updated**: 2026-01-24

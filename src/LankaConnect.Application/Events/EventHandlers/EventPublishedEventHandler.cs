@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Configuration;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
@@ -9,6 +10,7 @@ using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
@@ -19,6 +21,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// Sends email to consolidated list of event email groups and location-matched newsletter subscribers.
 /// Phase 6A.39: Refactored to use IEmailService.SendTemplatedEmailAsync (database-based templates)
 /// instead of IEmailTemplateService (filesystem-based) for consistency with other handlers.
+/// Phase 6A.82: Added feature flag to disable automatic email sending on publish.
 /// </summary>
 public class EventPublishedEventHandler : INotificationHandler<DomainEventNotification<EventPublishedEvent>>
 {
@@ -26,6 +29,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEventRepository _eventRepository;
     private readonly IEmailService _emailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly EmailNotificationSettings _emailNotificationSettings;
     private readonly ILogger<EventPublishedEventHandler> _logger;
 
     public EventPublishedEventHandler(
@@ -33,12 +37,14 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         IEventRepository eventRepository,
         IEmailService emailService,
         IEmailUrlHelper emailUrlHelper,
+        IOptions<EmailNotificationSettings> emailNotificationSettings,
         ILogger<EventPublishedEventHandler> logger)
     {
         _recipientService = recipientService;
         _eventRepository = eventRepository;
         _emailService = emailService;
         _emailUrlHelper = emailUrlHelper;
+        _emailNotificationSettings = emailNotificationSettings.Value;
         _logger = logger;
     }
 
@@ -59,6 +65,18 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                // Phase 6A.82: Check if automatic email sending is enabled
+                if (!_emailNotificationSettings.SendOnEventPublish)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "EventPublished SKIPPED: Automatic email notifications disabled - EventId={EventId}, Duration={ElapsedMs}ms. " +
+                        "Organizers can manually send notifications using 'Send Notification' button.",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
                 // Resolve email recipients using domain service
                 var recipients = await _recipientService.ResolveRecipientsAsync(domainEvent.EventId, cancellationToken);
 

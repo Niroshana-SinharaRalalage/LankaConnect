@@ -59,6 +59,9 @@ public class EmailSettings
 
     // Organizer email settings (Phase 6A.50)
     public OrganizerEmailSettings OrganizerEmail { get; set; } = new();
+
+    // Automatic notification settings (Phase 6A.82)
+    public AutomaticNotificationSettings AutomaticNotifications { get; set; } = new();
 }
 
 /// <summary>
@@ -128,4 +131,18 @@ public sealed class OrganizerEmailSettings
     /// Prevents extremely large email content
     /// </summary>
     public int MaxEmailBodyLength { get; set; } = 5000;
+}
+
+/// <summary>
+/// Settings for automatic email notifications.
+/// Phase 6A.82 - Disable Automatic Event Publication Emails
+/// </summary>
+public sealed class AutomaticNotificationSettings
+{
+    /// <summary>
+    /// Whether to send automatic notification emails when an event is published (default: false)
+    /// When false, organizers must use the manual "Send Notification" button.
+    /// When true, emails are sent automatically when event status changes from Draft to Published.
+    /// </summary>
+    public bool SendOnEventPublish { get; set; } = false;
 }

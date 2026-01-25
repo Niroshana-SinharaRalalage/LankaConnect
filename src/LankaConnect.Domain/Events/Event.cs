@@ -718,6 +718,7 @@ public class Event : BaseEntity
     /// <summary>
     /// Checks if event is free (no ticket price or zero ticket price)
     /// Supports legacy single pricing, dual pricing, and group tiered pricing
+    /// Phase 6A.81 Security Fix: Returns FALSE (paid) if pricing is not configured to prevent payment bypass
     /// </summary>
     public bool IsFree()
     {
@@ -730,7 +731,15 @@ public class Event : BaseEntity
             return Pricing.AdultPrice.IsZero;
 
         // Legacy single pricing
-        return TicketPrice == null || TicketPrice.IsZero;
+        if (TicketPrice != null)
+            return TicketPrice.IsZero;
+
+        // Phase 6A.81 Security Fix: If both Pricing and TicketPrice are null, default to FALSE (paid)
+        // This prevents payment bypass vulnerability for events with misconfigured/missing pricing
+        // Rationale: CalculatePriceForAttendees() will fail with "Event pricing is not configured" error,
+        // preventing registration creation, which is safer than allowing free bypass
+        // Events with truly free pricing MUST explicitly set TicketPrice or Pricing to $0
+        return false;
     }
 
     /// <summary>

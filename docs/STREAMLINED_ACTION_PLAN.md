@@ -7,7 +7,51 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.83 PART 2: NEWSLETTER TEMPLATE FIX (2026-01-25)
+## ✅ CURRENT STATUS - PHASE 6A.X: RESEND CONFIRMATION BACKEND (2026-01-25)
+**Date**: 2026-01-25
+**Session**: Phase 6A.X - Resend Registration Confirmation + QR Code Display (Backend Part 1)
+**Status**: ✅ BACKEND COMMITTED | ⏳ FRONTEND PENDING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ⏳ PENDING - Ready to push to feature branch
+**Priority**: 🟡 MEDIUM - Organizer UX Enhancement
+**Commit**: d8c60f10
+
+**Feature Overview**: Two-part feature for attendee management table:
+1. **Resend Registration Confirmation** - Allow event organizers to manually resend registration emails
+2. **QR Code Display** - Show ticket codes and QR codes for paid events (PENDING)
+
+**Backend Implementation (COMPLETED)**:
+- ✅ Created `IRegistrationEmailService` interface for shared email logic
+- ✅ Implemented `RegistrationEmailService` consolidating 200+ lines from 4 handlers
+- ✅ Created `ResendAttendeeConfirmationCommand/Handler` with organizer authorization
+- ✅ Added API endpoint: `POST /api/events/{id}/attendees/{registrationId}/resend-confirmation`
+- ✅ Registered service in DependencyInjection.cs
+- ✅ TDD tests written (needs helper method fixes)
+
+**Architecture Decision**: Shared Service Layer approach eliminates code duplication by extracting email logic into reusable service.
+
+**Files Added** (6 files):
+- src/LankaConnect.Application/Common/Interfaces/IRegistrationEmailService.cs
+- src/LankaConnect.Application/Events/Commands/ResendAttendeeConfirmation/*.cs (3 files)
+- src/LankaConnect.Infrastructure/Services/RegistrationEmailService.cs
+- tests/LankaConnect.Infrastructure.Tests/Services/RegistrationEmailServiceTests.cs
+
+**Files Modified** (3 files):
+- src/LankaConnect.API/Controllers/EventsController.cs (endpoint)
+- src/LankaConnect.Infrastructure/DependencyInjection.cs (service registration)
+- src/LankaConnect.Application/Events/EventHandlers/RegistrationCancelledEventHandler.cs (fix using)
+
+**Next Steps**:
+1. ⏳ Push to feature branch and deploy to Azure staging
+2. ⏳ Add backend tests for ResendAttendeeConfirmationCommandHandler
+3. ⏳ Add TicketCode to EventAttendeeDto (QR Code feature)
+4. ⏳ Update GetEventAttendeesQueryHandler with LEFT JOIN
+5. ⏳ Update CSV/Excel export services
+6. ⏳ Frontend implementation (repository, hooks, dialogs, modals)
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.83 PART 2: NEWSLETTER TEMPLATE FIX (2026-01-25)
 **Date**: 2026-01-25
 **Session**: Phase 6A.83 Part 2 - Fix Newsletter Template Parameter Mismatches
 **Status**: ⏳ PART 2 COMPLETE (4/19 templates fixed) | ⏳ DEPLOYING TO STAGING

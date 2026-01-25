@@ -452,6 +452,16 @@ try
                 TimeZone = TimeZoneInfo.Utc
             });
 
+        // Phase 6A.81: Cleanup Abandoned Registrations Job - Runs hourly to mark expired Preliminary registrations as Abandoned
+        recurringJobManager.AddOrUpdate<CleanupAbandonedRegistrationsJob>(
+            "cleanup-abandoned-registrations-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
         logger.LogInformation("Hangfire recurring jobs registered successfully");
     }
 

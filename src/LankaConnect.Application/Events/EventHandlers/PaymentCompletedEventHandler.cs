@@ -3,6 +3,7 @@ using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -24,6 +25,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
 
     public PaymentCompletedEventHandler(
@@ -33,6 +35,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
         ILogger<PaymentCompletedEventHandler> logger)
     {
         _emailService = emailService;
@@ -41,6 +44,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _emailUrlHelper = emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
         _logger = logger;
     }
 
@@ -166,21 +170,22 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
             {
                 { "UserName", recipientName },
                 { "EventTitle", @event.Title.Value },
-                // Phase 6A.43: Use date range format matching free event template
-                { "EventDateTime", FormatEventDateTimeRange(@event.StartDate, @event.EndDate) },
+                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
+                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
                 { "EventLocation", GetEventLocationString(@event) },
                 { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                // Attendee details - names only (no age)
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                 { "HasAttendeeDetails", hasAttendeeDetails },
-                // Event image
                 { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage },
-                // Payment details
-                // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
-                { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
+                { "TotalAmount", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
+                { "Quantity", registration.Attendees.Count },
+                { "TicketType", @event.IsFree() ? "Free Entry" : "General Admission" },
+                { "OrderNumber", domainEvent.PaymentIntentId },
                 { "PaymentIntentId", domainEvent.PaymentIntentId },
-                { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") }
+                { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
+                { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
             };
 
             // Add contact information if available
@@ -217,6 +222,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 parameters["HasTicket"] = true;
                 parameters["TicketCode"] = ticketResult.Value.TicketCode;
                 parameters["TicketExpiryDate"] = @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy");
+                parameters["TicketUrl"] = _emailUrlHelper.BuildTicketViewUrl(ticketResult.Value.TicketId);
 
                 // Get PDF bytes for email attachment
                 _logger.LogInformation(
@@ -244,6 +250,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     "[Phase 6A.52] [PaymentEmail-WARN] Failed to generate ticket - CorrelationId: {CorrelationId}, Errors: {Errors}",
                     correlationId, string.Join(", ", ticketResult.Errors));
                 parameters["HasTicket"] = false;
+                parameters["TicketUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
             }
 
             // Phase 6A.52: Step 5 - Render email template

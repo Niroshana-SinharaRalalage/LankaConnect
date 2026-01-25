@@ -150,11 +150,12 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 {
                     try
                     {
+                        // Phase 6A.83 Part 3: Fix parameter name to match template expectation
                         var templateParameters = new Dictionary<string, object>
                         {
                             { "UserName", user.FullName },
                             { "UserEmail", user.Email.Value },
-                            { "ChangeDate", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC") },
+                            { "ChangedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },  // Phase 6A.83: Changed from ChangeDate to ChangedAt
                             { "CompanyName", "LankaConnect" },
                             { "SupportEmail", "support@lankaconnect.com" },
                             { "LoginUrl", "https://lankaconnect.com/login" }

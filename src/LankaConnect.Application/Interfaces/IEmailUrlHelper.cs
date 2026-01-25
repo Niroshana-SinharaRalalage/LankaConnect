@@ -60,4 +60,11 @@ public interface IEmailUrlHelper
     /// <param name="token">The unsubscribe token.</param>
     /// <returns>The complete unsubscribe URL.</returns>
     string BuildUnsubscribeUrl(string token);
+
+    /// <summary>
+    /// Builds the ticket view URL.
+    /// </summary>
+    /// <param name="ticketId">The ticket ID.</param>
+    /// <returns>The complete ticket view URL.</returns>
+    string BuildTicketViewUrl(Guid ticketId);
 }

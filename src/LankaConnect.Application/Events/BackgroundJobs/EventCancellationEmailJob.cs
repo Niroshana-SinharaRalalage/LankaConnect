@@ -4,6 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
+using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -204,19 +205,17 @@ public class EventCancellationEmailJob
                 "[TEMP-DIAGNOSTIC] Event {EventId} cancellation email recipients: {Recipients}",
                 eventId, string.Join(", ", allRecipients.OrderBy(e => e)));
 
-            // 6. Prepare template parameters
-            var parameters = new Dictionary<string, object>
+            // 6. Prepare base template parameters
+            var baseParameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
-                ["EventDate"] = FormatEventDateTimeRange(@event.StartDate, @event.EndDate),
+                ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
+                ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
-                ["DashboardUrl"] = _urlsService.FrontendBaseUrl,
-                // Phase 6A.X: Organizer Contact Details
-                ["HasOrganizerContact"] = @event.HasOrganizerContact(),
-                ["OrganizerContactName"] = @event.OrganizerContactName ?? "",
-                ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "",
-                ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? ""
+                ["RefundInfo"] = @event.IsFree() ? "No refund applicable for free events." : "Refunds will be processed within 5-7 business days.",
+                ["OrganizerEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
+                ["DashboardUrl"] = _urlsService.FrontendBaseUrl
             };
 
             // 7. Send templated email to each recipient
@@ -233,10 +232,17 @@ public class EventCancellationEmailJob
                 {
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
+                    var recipientParameters = new Dictionary<string, object>(baseParameters);
+                    var emailResult = Email.Create(email);
+                    var user = emailResult.IsSuccess
+                        ? await _userRepository.GetByEmailAsync(emailResult.Value, CancellationToken.None)
+                        : null;
+                    recipientParameters["UserName"] = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
+
                     var result = await _emailService.SendTemplatedEmailAsync(
                         EmailTemplateNames.EventCancellation,
                         email,
-                        parameters,
+                        recipientParameters,
                         CancellationToken.None);
 
                     singleEmailStopwatch.Stop();

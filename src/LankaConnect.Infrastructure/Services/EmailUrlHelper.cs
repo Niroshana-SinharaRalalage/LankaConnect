@@ -124,6 +124,22 @@ public class EmailUrlHelper : IEmailUrlHelper
         return $"{frontendBaseUrl}{unsubscribePath}?token={Uri.EscapeDataString(token)}";
     }
 
+    public string BuildTicketViewUrl(Guid ticketId)
+    {
+        if (ticketId == Guid.Empty)
+        {
+            throw new ArgumentException("Ticket ID cannot be empty.", nameof(ticketId));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var ticketViewPath = _configuration["ApplicationUrls:TicketViewPath"] ?? "/tickets/{ticketId}";
+
+        // Replace the {ticketId} placeholder with the actual ID
+        var path = ticketViewPath.Replace("{ticketId}", ticketId.ToString());
+
+        return $"{frontendBaseUrl}{path}";
+    }
+
     private string GetFrontendBaseUrl()
     {
         var url = _configuration["ApplicationUrls:FrontendBaseUrl"];

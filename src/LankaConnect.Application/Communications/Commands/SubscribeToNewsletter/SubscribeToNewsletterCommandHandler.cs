@@ -206,12 +206,13 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 var confirmPath = _configuration["ApplicationUrls:NewsletterConfirmPath"] ?? "/newsletter/confirm";
                 var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
 
+                // Phase 6A.83 Part 3: Fix parameter name to match template expectation
                 var emailParameters = new Dictionary<string, object>
                 {
                     { "Email", request.Email },
                     { "ConfirmationToken", subscriber.ConfirmationToken! },
                     { "ConfirmationLink", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
-                    { "UnsubscribeLink", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
+                    { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },  // Phase 6A.83: Changed from UnsubscribeLink to UnsubscribeUrl
                     { "MetroAreasText", metroAreaDescription },
                     { "CompanyName", "LankaConnect" },
                     { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }

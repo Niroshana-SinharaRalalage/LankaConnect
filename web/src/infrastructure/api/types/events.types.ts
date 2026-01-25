@@ -37,15 +37,59 @@ export enum EventCategory {
 
 /**
  * Registration status enum matching backend LankaConnect.Domain.Events.Enums.RegistrationStatus
+ * Phase 6A.81: Updated to support Three-State Registration Lifecycle for payment security
  */
 export enum RegistrationStatus {
-  Pending = 0,
-  Confirmed = 1,
-  Waitlisted = 2,
-  CheckedIn = 3,
-  Completed = 4,
-  Cancelled = 5,
-  Refunded = 6,
+  /**
+   * Phase 6A.81: NEW - Temporary state while waiting for payment confirmation
+   * - Does NOT consume event capacity
+   * - Does NOT block email from re-registering
+   * - Auto-expires after 25 hours (Stripe checkout expires at 24h)
+   * - Used for paid events only
+   */
+  Preliminary = 0,
+
+  /**
+   * DEPRECATED: Use Preliminary instead for backward compatibility
+   */
+  Pending = 1,
+
+  /**
+   * Payment completed (for paid events) OR registration completed (for free events)
+   * - Consumes event capacity
+   * - Blocks email from re-registering
+   * - Triggers confirmation email
+   */
+  Confirmed = 2,
+
+  Waitlisted = 3,
+  CheckedIn = 4,
+
+  /**
+   * Event attendance completed - user attended the event
+   */
+  Attended = 5,
+
+  /**
+   * DEPRECATED: Use Attended instead for clarity
+   * Same value as Attended for backward compatibility
+   */
+  Completed = 5,
+
+  Cancelled = 6,
+
+  /**
+   * Phase 6A.81: Kept for backward compatibility with existing refunded registrations
+   */
+  Refunded = 7,
+
+  /**
+   * Phase 6A.81: NEW - Stripe checkout session expired or user never completed payment
+   * - Does NOT consume event capacity
+   * - Does NOT block email from re-registering
+   * - Auto soft-deleted after 30 days for audit trail
+   */
+  Abandoned = 8,
 }
 
 /**
@@ -612,7 +656,8 @@ export interface RegistrationDetailsDto {
   eventId: string;
   userId?: string | null;
   quantity: number;
-  status: 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded';  // String values from .NET API
+  /** Phase 6A.81: Updated with Preliminary and Abandoned states for payment security */
+  status: 'Preliminary' | 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded' | 'Abandoned' | 'Attended';  // String values from .NET API
   createdAt: string;
   updatedAt?: string | null;
 

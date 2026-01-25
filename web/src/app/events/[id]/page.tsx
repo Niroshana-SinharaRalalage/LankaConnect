@@ -109,15 +109,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     (registrationDetails?.paymentStatus === 'Completed' ||
      registrationDetails?.paymentStatus === 'NotRequired');
 
-  // Payment pending state - user clicked "Proceed to Payment" but hasn't completed payment yet
+  // Phase 6A.81: Payment pending state - registration created but payment not yet completed
+  // Preliminary status = waiting for Stripe payment (checkout session active, expires in 24h)
   // RACE CONDITION FIX: Wait for registrationDetails to load before checking status
   // Phase 6A.79 Part 3 Fix 2: API returns STRING values, not numeric enums - compare to strings
-  // Phase 6A.79 Part 3 Fix 3: Backend sets status='Confirmed' immediately, even before payment
-  // So payment pending = Confirmed status + Pending payment
   const isPaymentPending = !!userRsvp &&
     !isLoadingRegistration &&
-    registrationDetails?.status === 'Confirmed' &&  // Backend confirms registration immediately
-    registrationDetails?.paymentStatus === 'Pending';  // But payment is still pending
+    registrationDetails?.status === 'Preliminary';  // Phase 6A.81: New Preliminary status for unpaid registrations
+
+  // Phase 6A.81: Abandoned state - checkout session expired (user didn't complete payment within 24h)
+  // Allows user to retry registration with same email
+  const isAbandoned = !!userRsvp &&
+    !isLoadingRegistration &&
+    registrationDetails?.status === 'Abandoned';
 
   // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
   console.log('[EventDetail] 🔍 Registration state debug:', {
@@ -133,15 +137,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     paymentStatusName: registrationDetails?.paymentStatus ?? 'undefined',  // Already a string from API
     isUserRegistered,
     isPaymentPending,
+    isAbandoned,  // Phase 6A.81: New state
     // Show what values are being compared (Phase 6A.79 Part 3: Compare to strings)
     statusCheck: {
       isConfirmed: registrationDetails?.status === 'Confirmed',
-      isPending: registrationDetails?.status === 'Pending',
+      isPreliminary: registrationDetails?.status === 'Preliminary',  // Phase 6A.81: New state
+      isAbandoned: registrationDetails?.status === 'Abandoned',  // Phase 6A.81: New state
+      isPending: registrationDetails?.status === 'Pending',  // Deprecated
       paymentCompleted: registrationDetails?.paymentStatus === 'Completed',
       paymentNotRequired: registrationDetails?.paymentStatus === 'NotRequired',
       paymentPending: registrationDetails?.paymentStatus === 'Pending',
-      // Phase 6A.79 Part 3 Fix 3: Payment pending combination
-      confirmedButPaymentPending: registrationDetails?.status === 'Confirmed' && registrationDetails?.paymentStatus === 'Pending',
     }
   });
 
@@ -1015,7 +1020,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </Button>
 
                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 text-center">
-                          Your registration will be cancelled automatically if payment is not completed within 30 minutes.
+                          Phase 6A.81: Your checkout session expires in 24 hours. Complete payment to confirm your registration.
                         </p>
                       </div>
                     </div>
@@ -1041,6 +1046,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         }}
                       >
                         Cancel Registration
+                      </Button>
+                    </div>
+                  </div>
+                ) : isAbandoned ? (
+                  // Phase 6A.81: Abandoned state - checkout session expired, user can retry
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          Checkout Session Expired
+                        </h3>
+                      </div>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                        Your previous checkout session expired after 24 hours without payment completion.
+                      </p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                        You can register again to get a new checkout link and complete your registration.
+                      </p>
+
+                      <Button
+                        className="w-full mt-3"
+                        onClick={() => {
+                          // Clear the abandoned registration and allow re-registration
+                          window.location.reload();
+                        }}
+                      >
+                        Register Again
                       </Button>
                     </div>
                   </div>

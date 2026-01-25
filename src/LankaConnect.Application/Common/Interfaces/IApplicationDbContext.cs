@@ -35,6 +35,7 @@ public interface IApplicationDbContext
     DbSet<SignUpItem> SignUpItems { get; } // Phase 6A.16: Required for cascade deletion
     DbSet<SignUpCommitment> SignUpCommitments { get; } // Phase 6A.16: Cascade deletion
     DbSet<Registration> Registrations { get; }
+    DbSet<Ticket> Tickets { get; } // Phase 6A.X: QR Code Display feature
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }

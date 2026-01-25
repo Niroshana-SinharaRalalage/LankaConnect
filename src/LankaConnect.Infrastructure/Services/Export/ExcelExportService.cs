@@ -331,12 +331,12 @@ public class ExcelExportService : IExcelExportService
 
             headersList.Add("Net Amount");
             headersList.Add("Currency");
+            // Phase 6A.X: Ticket Code column for paid events only
+            headersList.Add("Ticket Code");
         }
 
         headersList.AddRange(new[]
         {
-            "Ticket Code",
-            "QR Code",
             "Registration Date",
             "Status"
         });
@@ -459,10 +459,10 @@ public class ExcelExportService : IExcelExportService
                 col++;
 
                 sheet.Cell(row, col++).Value = attendee.Currency ?? "—";
-            }
 
-            sheet.Cell(row, col++).Value = attendee.TicketCode ?? "—";
-            sheet.Cell(row, col++).Value = attendee.QrCodeData ?? "—";
+                // Phase 6A.X: Ticket Code column for paid events only
+                sheet.Cell(row, col++).Value = attendee.TicketCode ?? "—";
+            }
 
             // Format date
             sheet.Cell(row, col).Value = attendee.CreatedAt;

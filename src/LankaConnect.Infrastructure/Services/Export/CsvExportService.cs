@@ -59,10 +59,10 @@ public class CsvExportService : ICsvExportService
 
             csv.WriteField("NetAmount");
             csv.WriteField("Currency");
+            // Phase 6A.X: Ticket Code column for paid events only
+            csv.WriteField("TicketCode");
         }
 
-        csv.WriteField("TicketCode");
-        csv.WriteField("QRCode");
         csv.WriteField("RegistrationDate");
         csv.WriteField("Status");
         csv.NextRecord();
@@ -117,10 +117,10 @@ public class CsvExportService : ICsvExportService
 
                 csv.WriteField(a.NetAmount?.ToString("F2") ?? "");  // Net amount (organizer payout)
                 csv.WriteField(a.Currency ?? "");
+                // Phase 6A.X: Ticket Code column for paid events only
+                csv.WriteField(a.TicketCode ?? "");
             }
 
-            csv.WriteField(a.TicketCode ?? "");
-            csv.WriteField(a.QrCodeData ?? "");
             csv.WriteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
             csv.WriteField(a.Status.ToString());
             csv.NextRecord();
@@ -164,10 +164,9 @@ public class CsvExportService : ICsvExportService
                     ? $"{attendees.TotalOrganizerPayout:F2}"
                     : (netRevenue > 0 ? $"{netRevenue:F2}" : "0.00"));  // Net revenue (use breakdown if available, otherwise legacy)
                 csv.WriteField(currency);  // Currency
+                csv.WriteField("");  // TicketCode
             }
 
-            csv.WriteField("");  // TicketCode
-            csv.WriteField("");  // QRCode
             csv.WriteField("");  // RegistrationDate
             csv.WriteField("");  // Status
             csv.NextRecord();

@@ -97,73 +97,76 @@ public class GetEventAttendeesQueryHandler
                 // .Include(r => r.Attendees) fails when JSONB has {"age_category": null}
                 // This pattern projects directly to DTO, allowing nullable AgeCategory to be handled gracefully
                 // Phase 6A.81: CRITICAL - Only include CONFIRMED registrations (exclude Preliminary/Abandoned)
-                var attendeeDtos = await _context.Registrations
-            .AsNoTracking()
-            .Where(r => r.EventId == request.EventId)
-            .Where(r => r.Status == RegistrationStatus.Confirmed ||
-                       r.Status == RegistrationStatus.Waitlisted ||
-                       r.Status == RegistrationStatus.CheckedIn ||
-                       r.Status == RegistrationStatus.Attended)
-            .OrderBy(r => r.CreatedAt)
-            .Select(r => new EventAttendeeDto
-            {
-                RegistrationId = r.Id,
-                UserId = r.UserId,
-                Status = r.Status,
-                PaymentStatus = r.PaymentStatus,
-                CreatedAt = r.CreatedAt,
+                // Phase 6A.X: LEFT JOIN with Tickets table to populate TicketCode and QrCodeData
+                var attendeeDtos = await (
+                    from r in _context.Registrations.AsNoTracking()
+                    where r.EventId == request.EventId
+                    where r.Status == RegistrationStatus.Confirmed ||
+                          r.Status == RegistrationStatus.Waitlisted ||
+                          r.Status == RegistrationStatus.CheckedIn ||
+                          r.Status == RegistrationStatus.Attended
+                    join t in _context.Tickets on r.Id equals t.RegistrationId into tickets
+                    from ticket in tickets.DefaultIfEmpty()
+                    orderby r.CreatedAt
+                    select new EventAttendeeDto
+                    {
+                        RegistrationId = r.Id,
+                        UserId = r.UserId,
+                        Status = r.Status,
+                        PaymentStatus = r.PaymentStatus,
+                        CreatedAt = r.CreatedAt,
 
-                ContactEmail = r.Contact != null ? r.Contact.Email : string.Empty,
-                ContactPhone = r.Contact != null ? r.Contact.PhoneNumber : string.Empty,
-                ContactAddress = r.Contact != null ? r.Contact.Address : null,
+                        ContactEmail = r.Contact != null ? r.Contact.Email : string.Empty,
+                        ContactPhone = r.Contact != null ? r.Contact.PhoneNumber : string.Empty,
+                        ContactAddress = r.Contact != null ? r.Contact.Address : null,
 
-                // Phase 6A.55: Direct LINQ projection handles null AgeCategory gracefully
-                // DTO has nullable AgeCategory (Phase 6A.48), so null values don't crash
-                Attendees = r.Attendees.Select(a => new AttendeeDetailsDto
-                {
-                    Name = a.Name,
-                    AgeCategory = a.AgeCategory, // DTO is nullable (Phase 6A.48)
-                    Gender = a.Gender
-                }).ToList(),
+                        // Phase 6A.55: Direct LINQ projection handles null AgeCategory gracefully
+                        // DTO has nullable AgeCategory (Phase 6A.48), so null values don't crash
+                        Attendees = r.Attendees.Select(a => new AttendeeDetailsDto
+                        {
+                            Name = a.Name,
+                            AgeCategory = a.AgeCategory, // DTO is nullable (Phase 6A.48)
+                            Gender = a.Gender
+                        }).ToList(),
 
-                TotalAttendees = r.Attendees.Count(),
+                        TotalAttendees = r.Attendees.Count(),
 
-                // Phase 6A.55: Count only non-null Adult/Child values
-                // Null values are excluded from counts (safer than guessing)
-                AdultCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult),
-                ChildCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Child),
+                        // Phase 6A.55: Count only non-null Adult/Child values
+                        // Null values are excluded from counts (safer than guessing)
+                        AdultCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult),
+                        ChildCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Child),
 
-                // Gender distribution with full names (Phase 6A.45 fix - avoid Excel formula interpretation)
-                GenderDistribution = string.Join(", ",
-                    r.Attendees
-                        .Where(a => a.Gender.HasValue)
-                        .GroupBy(a => a.Gender!.Value)
-                        .Select(g => $"{g.Count()} {g.Key}")
-                ),
+                        // Gender distribution with full names (Phase 6A.45 fix - avoid Excel formula interpretation)
+                        GenderDistribution = string.Join(", ",
+                            r.Attendees
+                                .Where(a => a.Gender.HasValue)
+                                .GroupBy(a => a.Gender!.Value)
+                                .Select(g => $"{g.Count()} {g.Key}")
+                        ),
 
-                TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
+                        TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
 
-                // Phase 6A.X: Use actual breakdown from Registration columns (set by SetRevenueBreakdown)
-                // For registrations without breakdown data, NetAmount uses legacy 5% calculation
-                SalesTaxAmount = r.SalesTaxAmount != null ? r.SalesTaxAmount.Amount : null,
-                StripeFeeAmount = r.StripeFeeAmount != null ? r.StripeFeeAmount.Amount : null,
-                PlatformCommissionAmount = r.PlatformCommissionAmount != null ? r.PlatformCommissionAmount.Amount : null,
-                OrganizerPayoutAmount = r.OrganizerPayoutAmount != null ? r.OrganizerPayoutAmount.Amount : null,
-                SalesTaxRate = r.SalesTaxRate,
+                        // Phase 6A.X: Use actual breakdown from Registration columns (set by SetRevenueBreakdown)
+                        // For registrations without breakdown data, NetAmount uses legacy 5% calculation
+                        SalesTaxAmount = r.SalesTaxAmount != null ? r.SalesTaxAmount.Amount : null,
+                        StripeFeeAmount = r.StripeFeeAmount != null ? r.StripeFeeAmount.Amount : null,
+                        PlatformCommissionAmount = r.PlatformCommissionAmount != null ? r.PlatformCommissionAmount.Amount : null,
+                        OrganizerPayoutAmount = r.OrganizerPayoutAmount != null ? r.OrganizerPayoutAmount.Amount : null,
+                        SalesTaxRate = r.SalesTaxRate,
 
-                // NetAmount: Use actual breakdown if available, otherwise legacy calculation
-                NetAmount = r.OrganizerPayoutAmount != null
-                    ? r.OrganizerPayoutAmount.Amount
-                    : (r.TotalPrice != null ? r.TotalPrice.Amount * (1 - _commissionSettings.EventTicketCommissionRate) : null),
+                        // NetAmount: Use actual breakdown if available, otherwise legacy calculation
+                        NetAmount = r.OrganizerPayoutAmount != null
+                            ? r.OrganizerPayoutAmount.Amount
+                            : (r.TotalPrice != null ? r.TotalPrice.Amount * (1 - _commissionSettings.EventTicketCommissionRate) : null),
 
-                Currency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
+                        Currency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
 
-                // Ticket info - will be enhanced when Ticket entity integration is complete
-                TicketCode = null,
-                QrCodeData = null,
-                HasTicket = false
-            })
-            .ToListAsync(cancellationToken);
+                        // Phase 6A.X: Ticket info from LEFT JOIN (null for free events or tickets not yet generated)
+                        TicketCode = ticket != null ? ticket.TicketCode : null,
+                        QrCodeData = ticket != null ? ticket.QrCodeData : null,
+                        HasTicket = ticket != null
+                    }
+                ).ToListAsync(cancellationToken);
 
         // Phase 6A.X FIX: Calculate breakdown ON-THE-FLY for old registrations without breakdown data
         // This ensures ALL events show detailed breakdown (not just new ones created after fix deployment)

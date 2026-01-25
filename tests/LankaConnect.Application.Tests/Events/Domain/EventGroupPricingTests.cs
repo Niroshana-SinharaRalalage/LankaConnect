@@ -169,7 +169,9 @@ public class EventGroupPricingTests
     {
         // Arrange
         var @event = CreateValidEvent();
-        // Don't set any pricing - event is free
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        @event.SetDualPricing(pricing);
 
         var attendees = new List<AttendeeDetails>
         {
@@ -297,7 +299,9 @@ public class EventGroupPricingTests
     {
         // Arrange
         var @event = CreateValidEvent();
-        // No pricing set
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        @event.SetDualPricing(pricing);
 
         // Act & Assert
         @event.IsFree().Should().BeTrue();

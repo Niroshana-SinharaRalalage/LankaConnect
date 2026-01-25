@@ -68,13 +68,14 @@ public class MemberVerificationRequestedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Phase 6A.76: Updated to use new template name
+        // Phase 6A.83: Parameter name changed from ExpirationHours to TokenExpiry to match template
         _emailService.Verify(x => x.SendTemplatedEmailAsync(
             EmailTemplateNames.MemberEmailVerification,
             email,
             It.Is<Dictionary<string, object>>(dict =>
                 dict.ContainsKey("Email") &&
                 dict.ContainsKey("VerificationUrl") &&
-                dict.ContainsKey("ExpirationHours") &&
+                dict.ContainsKey("TokenExpiry") &&
                 dict.ContainsKey("UserName") &&
                 dict["Email"].ToString() == email &&
                 dict["VerificationUrl"].ToString() == verificationUrl &&

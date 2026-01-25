@@ -46,6 +46,11 @@ public class UpdateRegistrationDetailsCommandHandlerTests
 
         var eventResult = Event.Create(title, description, startDate, endDate, organizerId, 100);
         var @event = eventResult.Value;
+
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        @event.SetDualPricing(pricing);
+
         @event.Publish();
 
         // Register the user with multi-attendee format

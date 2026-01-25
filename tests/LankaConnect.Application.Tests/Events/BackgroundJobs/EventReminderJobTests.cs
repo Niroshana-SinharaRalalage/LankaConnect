@@ -303,6 +303,10 @@ public class EventReminderJobTests
         var idProperty = typeof(BaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        eventObj.SetDualPricing(pricing);
+
         // Publish the event so registrations can be added
         eventObj.Publish();
 

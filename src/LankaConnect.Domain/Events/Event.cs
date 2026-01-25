@@ -334,7 +334,7 @@ public class Event : BaseEntity
             userId,
             attendeeList,
             contact,
-            totalPrice,
+            totalPrice!,
             isPaidEvent);
 
         if (registrationResult.IsFailure)

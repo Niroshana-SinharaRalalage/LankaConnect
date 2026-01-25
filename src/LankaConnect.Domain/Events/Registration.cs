@@ -133,6 +133,11 @@ public class Registration : BaseEntity
         if (totalPrice == null)
             return Result<Registration>.Failure("Total price is required");
 
+        // Phase 6A.81: Determine status based on payment requirement
+        var status = isPaidEvent ? RegistrationStatus.Preliminary : RegistrationStatus.Confirmed;
+        var paymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired;
+        var expiresAt = isPaidEvent ? DateTime.UtcNow.AddHours(24) : (DateTime?)null;
+
         var registration = new Registration
         {
             EventId = eventId,
@@ -142,13 +147,22 @@ public class Registration : BaseEntity
             Contact = contact,
             TotalPrice = totalPrice,
             // Phase 6A.81: If paid event, start as Preliminary until payment completes (Three-State Lifecycle)
-            Status = isPaidEvent ? RegistrationStatus.Preliminary : RegistrationStatus.Confirmed,
-            PaymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired,
+            Status = status,
+            PaymentStatus = paymentStatus,
             // Phase 6A.81: Set checkout expiration for paid events (Stripe expires at 24h, we check at 25h)
-            CheckoutSessionExpiresAt = isPaidEvent ? DateTime.UtcNow.AddHours(24) : null
+            CheckoutSessionExpiresAt = expiresAt
         };
 
         registration._attendees.AddRange(attendeeList);
+
+        // Phase 6A.81 DIAGNOSTIC: Log registration creation (debugging EF Core default value issue)
+        // This log should show Status=Preliminary for paid events BEFORE database save
+        Console.WriteLine(
+            $"[Registration.CreateWithAttendees] Created registration: " +
+            $"Id={registration.Id}, Status={registration.Status} (int: {(int)registration.Status}), " +
+            $"PaymentStatus={registration.PaymentStatus}, isPaidEvent={isPaidEvent}, " +
+            $"TotalPrice={totalPrice?.Amount}, ExpiresAt={expiresAt?.ToString("o") ?? "null"}");
+
         return Result<Registration>.Success(registration);
     }
 

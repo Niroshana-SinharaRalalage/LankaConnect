@@ -356,8 +356,18 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
+            // Phase 6A.81 DIAGNOSTIC: Log status BEFORE SaveChanges
+            _logger.LogInformation(
+                "HandleMultiAttendeeRegistration: BEFORE SaveChanges (PAID) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
+                registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
+
             // Save changes with checkout session ID
             await _unitOfWork.CommitAsync(cancellationToken);
+
+            // Phase 6A.81 DIAGNOSTIC: Log status AFTER SaveChanges
+            _logger.LogInformation(
+                "HandleMultiAttendeeRegistration: AFTER SaveChanges (PAID) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
+                registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
 
             stopwatch.Stop();
 
@@ -371,7 +381,18 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         // FREE event - save and return null (no payment needed)
         // Domain event will trigger confirmation email
+
+        // Phase 6A.81 DIAGNOSTIC: Log status BEFORE SaveChanges (free event)
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: BEFORE SaveChanges (FREE) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
+            registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
+
         await _unitOfWork.CommitAsync(cancellationToken);
+
+        // Phase 6A.81 DIAGNOSTIC: Log status AFTER SaveChanges (free event)
+        _logger.LogInformation(
+            "HandleMultiAttendeeRegistration: AFTER SaveChanges (FREE) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
+            registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
 
         stopwatch.Stop();
 

@@ -164,11 +164,12 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasDefaultValue(1);
 
         // Configure enum
+        // Phase 6A.81 FIX: Removed HasDefaultValue to let application code control Status
+        // Default value was overriding domain logic (Preliminary → Confirmed)
         builder.Property(r => r.Status)
             .HasConversion<string>()
             .HasMaxLength(20)
-            .IsRequired()
-            .HasDefaultValue(RegistrationStatus.Confirmed);
+            .IsRequired();
 
         // Configure audit fields
         builder.Property(r => r.CreatedAt)

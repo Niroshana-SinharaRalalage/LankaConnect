@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;  // Phase 6A.83: Added for IEmailUrlHelper
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -20,17 +21,20 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
     private readonly IEmailService _emailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl
     private readonly ILogger<UserCommittedToSignUpEventHandler> _logger;
 
     public UserCommittedToSignUpEventHandler(
         IEmailService emailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Inject URL helper
         ILogger<UserCommittedToSignUpEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;  // Phase 6A.83
         _logger = logger;
     }
 
@@ -80,11 +84,13 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
             {
                 { "UserName", user.FirstName },
                 { "EventTitle", @event.Title },
-                { "ItemDescription", domainEvent.ItemDescription },
+                { "SignupItem", domainEvent.ItemDescription },  // Phase 6A.83: Renamed from ItemDescription
                 { "Quantity", domainEvent.Quantity },
-                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern - fixed placeholder name
+                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
-                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." } // Default instruction
+                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
+                { "CommitmentType", "Item Contribution" },  // Phase 6A.83: Added missing parameter
+                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." }
             };
 
                 // Send templated email

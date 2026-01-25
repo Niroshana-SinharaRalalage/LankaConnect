@@ -212,13 +212,25 @@ public class EventReminderJob
                             { "HoursUntilEvent", hoursUntilEvent },
                             { "ReminderTimeframe", reminderTimeframe },
                             { "ReminderMessage", reminderMessage },
-                            { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                            // Phase 6A.X: Organizer Contact Details
-                            { "HasOrganizerContact", @event.HasOrganizerContact() },
-                            { "OrganizerContactName", @event.OrganizerContactName ?? "" },
-                            { "OrganizerContactEmail", @event.OrganizerContactEmail ?? "" },
-                            { "OrganizerContactPhone", @event.OrganizerContactPhone ?? "" }
+                            { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
                         };
+
+                        // Phase 6A.83: Organizer Contact - Fix parameter names to match template expectations
+                        if (@event.HasOrganizerContact())
+                        {
+                            parameters["HasOrganizerContact"] = true;
+                            parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+
+                            if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
+                                parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+
+                            if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
+                                parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+                        }
+                        else
+                        {
+                            parameters["HasOrganizerContact"] = false;
+                        }
 
                         var result = await _emailService.SendTemplatedEmailAsync(
                             EmailTemplateNames.EventReminder,
@@ -387,13 +399,25 @@ public class EventReminderJob
                         { "HoursUntilEvent", hoursUntilEvent },
                         { "ReminderTimeframe", reminderTimeframe },
                         { "ReminderMessage", reminderMessage },
-                        { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                        // Phase 6A.X: Organizer Contact Details
-                        { "HasOrganizerContact", @event.HasOrganizerContact() },
-                        { "OrganizerContactName", @event.OrganizerContactName ?? "" },
-                        { "OrganizerContactEmail", @event.OrganizerContactEmail ?? "" },
-                        { "OrganizerContactPhone", @event.OrganizerContactPhone ?? "" }
+                        { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
                     };
+
+                    // Phase 6A.83: Organizer Contact - Fix parameter names to match template expectations
+                    if (@event.HasOrganizerContact())
+                    {
+                        parameters["HasOrganizerContact"] = true;
+                        parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+
+                        if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
+                            parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+
+                        if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
+                            parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+                    }
+                    else
+                    {
+                        parameters["HasOrganizerContact"] = false;
+                    }
 
                     var result = await _emailService.SendTemplatedEmailAsync(
                         EmailTemplateNames.EventReminder,

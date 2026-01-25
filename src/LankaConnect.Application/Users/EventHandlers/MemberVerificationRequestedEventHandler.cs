@@ -62,7 +62,7 @@ public class MemberVerificationRequestedEventHandler
                 {
                     { "Email", domainEvent.Email },
                     { "VerificationUrl", verificationUrl },
-                    { "ExpirationHours", 24 },
+                    { "TokenExpiry", "24 hours" },  // Phase 6A.83: Fix parameter name to match template
                     { "UserName", userName }
                 };
 

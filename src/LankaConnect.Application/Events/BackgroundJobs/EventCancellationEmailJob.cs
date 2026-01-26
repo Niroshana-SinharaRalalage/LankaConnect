@@ -214,7 +214,10 @@ public class EventCancellationEmailJob
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
                 ["RefundInfo"] = @event.IsFree() ? "No refund applicable for free events." : "Refunds will be processed within 5-7 business days.",
-                ["OrganizerEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
+                // Phase 6A.83 Part 3: Use OrganizerContact* parameters (template expects these exact names)
+                ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
+                ["OrganizerContactName"] = @event.OrganizerContactName ?? "LankaConnect Support",
+                ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "",
                 ["DashboardUrl"] = _urlsService.FrontendBaseUrl
             };
 

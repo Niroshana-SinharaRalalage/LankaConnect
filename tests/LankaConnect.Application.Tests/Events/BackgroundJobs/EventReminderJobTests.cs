@@ -6,6 +6,7 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.Enums;
@@ -24,6 +25,7 @@ public class EventReminderJobTests
     private readonly Mock<IEmailService> _emailService;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<IEventReminderRepository> _eventReminderRepository;
+    private readonly Mock<ITicketRepository> _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
     private readonly Mock<ILogger<EventReminderJob>> _logger;
     private readonly EventReminderJob _job;
 
@@ -34,6 +36,7 @@ public class EventReminderJobTests
         _emailService = new Mock<IEmailService>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _eventReminderRepository = new Mock<IEventReminderRepository>();
+        _ticketRepository = new Mock<ITicketRepository>();  // Phase 6A.83 Part 3: Added for ticket parameter support
         _logger = new Mock<ILogger<EventReminderJob>>();
 
         // Phase 6A.71: Setup IEmailUrlHelper mock to return test URL
@@ -46,12 +49,18 @@ public class EventReminderJobTests
             .Setup(x => x.IsReminderAlreadySentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
+        // Phase 6A.83 Part 3: Setup ITicketRepository mock to return null by default (most events are free)
+        _ticketRepository
+            .Setup(x => x.GetByRegistrationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LankaConnect.Domain.Events.Entities.Ticket?)null);
+
         _job = new EventReminderJob(
             _eventRepository.Object,
             _userRepository.Object,
             _emailService.Object,
             _emailUrlHelper.Object,
             _eventReminderRepository.Object,
+            _ticketRepository.Object,  // Phase 6A.83 Part 3: Added for ticket parameter support
             _logger.Object);
     }
 

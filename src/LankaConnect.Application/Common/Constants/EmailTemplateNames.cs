@@ -25,6 +25,16 @@ public static class EmailTemplateNames
     public const string PaidEventRegistration = "template-paid-event-registration-confirmation-with-ticket";
 
     /// <summary>
+    /// Phase 6A.81 Part 3: Email sent when Preliminary registration created (payment pending).
+    /// Notifies user to complete payment within 24 hours.
+    /// User decision: Immediate sending (not delayed).
+    /// Variables: {UserName}, {EventTitle}, {EventStartDate}, {EventStartTime}, {EventLocation},
+    ///           {AttendeeCount}, {TotalAmount}, {Currency}, {PaymentLink}, {ExpiresAt},
+    ///           {HoursRemaining}, {RegistrationId}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string PreliminaryRegistrationPayment = "template-preliminary-registration-payment-pending";
+
+    /// <summary>
     /// Event reminder email (sent before event starts).
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
     /// </summary>
@@ -143,6 +153,7 @@ public static class EmailTemplateNames
     {
         FreeEventRegistration,
         PaidEventRegistration,
+        PreliminaryRegistrationPayment, // Phase 6A.81 Part 3
         EventReminder,
         MemberEmailVerification,
         SignupCommitmentConfirmation,
@@ -184,6 +195,7 @@ public static class EmailTemplateNames
         {
             FreeEventRegistration => "Free event registration confirmation email (member and anonymous)",
             PaidEventRegistration => "Paid event registration confirmation email with ticket (member and anonymous)",
+            PreliminaryRegistrationPayment => "Preliminary registration email for pending payment (Phase 6A.81 Part 3)",
             EventReminder => "Event reminder sent before event starts",
             MemberEmailVerification => "Member email verification email",
             SignupCommitmentConfirmation => "Signup commitment confirmation (I Will Attend)",

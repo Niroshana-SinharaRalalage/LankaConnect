@@ -6,9 +6,7 @@ using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
-using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SubscribeToNewsletter;
@@ -23,7 +21,6 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     private readonly INewsletterSubscriberRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
-    private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<SubscribeToNewsletterCommandHandler> _logger;
     private readonly IConfiguration _configuration;
 
@@ -31,70 +28,14 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         INewsletterSubscriberRepository repository,
         IUnitOfWork unitOfWork,
         IEmailService emailService,
-        IApplicationDbContext dbContext,
         ILogger<SubscribeToNewsletterCommandHandler> logger,
         IConfiguration configuration)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _emailService = emailService;
-        _dbContext = dbContext;
         _logger = logger;
         _configuration = configuration;
-    }
-
-    /// <summary>
-    /// Phase 6A.85 Part 3: Populate all metro areas when ReceiveAllLocations = true
-    /// Same logic as CreateNewsletterCommandHandler to maintain architectural consistency
-    /// </summary>
-    private async Task<IEnumerable<Guid>> PopulateMetroAreasIfNeededAsync(
-        List<Guid>? requestedMetroAreaIds,
-        bool receiveAllLocations,
-        CancellationToken cancellationToken)
-    {
-        // If user selected specific metros, use them as-is
-        if (requestedMetroAreaIds != null && requestedMetroAreaIds.Any())
-        {
-            _logger.LogInformation(
-                "[Phase 6A.85 Part 3] Subscriber selected {Count} specific metro area(s)",
-                requestedMetroAreaIds.Count);
-            return requestedMetroAreaIds;
-        }
-
-        // If ReceiveAllLocations = true, query all active metros from database
-        if (receiveAllLocations)
-        {
-            _logger.LogInformation(
-                "[Phase 6A.85 Part 3] Subscriber selected 'All Locations' - querying all active metro areas");
-
-            try
-            {
-                var dbContext = _dbContext as DbContext
-                    ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-                var allMetroAreaIds = await dbContext.Set<MetroArea>()
-                    .Where(m => m.IsActive)
-                    .Select(m => m.Id)
-                    .ToListAsync(cancellationToken);
-
-                _logger.LogInformation(
-                    "[Phase 6A.85 Part 3] Successfully populated {Count} metro areas for 'All Locations' subscriber",
-                    allMetroAreaIds.Count);
-
-                return allMetroAreaIds;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "[Phase 6A.85 Part 3] FAILED to query metro areas for 'All Locations' subscriber");
-                throw;
-            }
-        }
-
-        // Fallback: no metros selected (shouldn't happen due to validation)
-        _logger.LogWarning(
-            "[Phase 6A.85 Part 3] No metro areas specified and receiveAllLocations=false. Returning empty list.");
-        return new List<Guid>();
     }
 
     public async Task<Result<SubscribeToNewsletterResponse>> Handle(
@@ -170,15 +111,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                     // For inactive subscribers, create a new subscription instead of reactivating
                     // This ensures a fresh confirmation token and follows the domain model
-                    // Phase 6A.85 Part 3: Populate all metros when ReceiveAllLocations = true
-                    var metroAreaIds = await PopulateMetroAreasIfNeededAsync(
-                        request.MetroAreaIds,
-                        request.ReceiveAllLocations,
-                        cancellationToken);
+                    // Phase 6A.64: Convert single metro area ID to collection for new API
+                    var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
 
                     var reactivateResult = NewsletterSubscriber.Create(
                         email,
-                        metroAreaIds.ToList(),
+                        metroAreaIds,
                         request.ReceiveAllLocations);
 
                     if (!reactivateResult.IsSuccess)
@@ -211,15 +149,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                         "SubscribeToNewsletter: Creating new subscriber - Email={Email}",
                         request.Email);
 
-                    // Phase 6A.85 Part 3: Populate all metros when ReceiveAllLocations = true
-                    var metroAreaIds = await PopulateMetroAreasIfNeededAsync(
-                        request.MetroAreaIds,
-                        request.ReceiveAllLocations,
-                        cancellationToken);
+                    // Phase 6A.64: Convert single metro area ID to collection for new API
+                    var metroAreaIds = request.MetroAreaIds ?? (metroAreaId.HasValue ? new List<Guid> { metroAreaId.Value } : new List<Guid>());
 
                     var createResult = NewsletterSubscriber.Create(
                         email,
-                        metroAreaIds.ToList(),
+                        metroAreaIds,
                         request.ReceiveAllLocations);
 
                     if (!createResult.IsSuccess)

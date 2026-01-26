@@ -29,6 +29,9 @@ public interface IStripePaymentService
 
     // Session 23: Event ticket payment integration
     Task<Result<string>> CreateEventCheckoutSessionAsync(CreateEventCheckoutSessionRequest request, CancellationToken cancellationToken = default);
+
+    // Phase 6A.81 Part 3: Retrieve checkout URL from existing session
+    Task<Result<string>> GetCheckoutSessionUrlAsync(string sessionId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

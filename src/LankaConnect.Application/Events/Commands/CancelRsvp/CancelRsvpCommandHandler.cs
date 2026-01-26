@@ -134,22 +134,51 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             request.EventId, request.UserId);
                     }
 
-                    // Phase 6A.45: Hard delete the registration from database
-                    _logger.LogInformation(
-                        "CancelRsvp: Hard deleting registration - RegId={RegId}, EventId={EventId}, UserId={UserId}",
-                        registration.Id, request.EventId, request.UserId);
+                    // Phase 6A.81 Part 3: Different handling for Preliminary vs Confirmed registrations
+                    if (registration.Status == RegistrationStatus.Preliminary)
+                    {
+                        // Preliminary registrations: Mark as Abandoned (preserve audit trail)
+                        _logger.LogInformation(
+                            "[Phase 6A.81-Part3] Marking Preliminary registration as Abandoned - RegId={RegId}, EventId={EventId}, UserId={UserId}",
+                            registration.Id, request.EventId, request.UserId);
 
-                    _registrationRepository.Remove(registration);
+                        var abandonResult = registration.MarkAbandoned();
+                        if (abandonResult.IsFailure)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogError(
+                                "[Phase 6A.81-Part3] Failed to abandon Preliminary registration - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
+                                registration.Id, abandonResult.Error, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure(abandonResult.Error);
+                        }
 
-                    // Phase 6A.62 Fix: Raise domain event for email notification
-                    // The original CancelRegistration domain method was bypassed due to EF Core navigation issues,
-                    // but we still need to trigger the email notification via the domain event.
-                    @event.RaiseRegistrationCancelledEvent(request.UserId);
-                    _eventRepository.Update(@event);
+                        _registrationRepository.Update(registration);
 
-                    _logger.LogInformation(
-                        "CancelRsvp: Raised RegistrationCancelledEvent for email notification - EventId={EventId}, UserId={UserId}",
-                        request.EventId, request.UserId);
+                        _logger.LogInformation(
+                            "[Phase 6A.81-Part3] Preliminary registration marked as Abandoned successfully - RegId={RegId}, EventId={EventId}, UserId={UserId}",
+                            registration.Id, request.EventId, request.UserId);
+
+                        // No cancellation email for Preliminary (they never got confirmation email)
+                    }
+                    else
+                    {
+                        // Confirmed/other registrations: Hard delete (existing behavior from Phase 6A.45)
+                        _logger.LogInformation(
+                            "CancelRsvp: Hard deleting registration - RegId={RegId}, EventId={EventId}, UserId={UserId}, Status={Status}",
+                            registration.Id, request.EventId, request.UserId, registration.Status);
+
+                        _registrationRepository.Remove(registration);
+
+                        // Phase 6A.62 Fix: Raise domain event for email notification
+                        // The original CancelRegistration domain method was bypassed due to EF Core navigation issues,
+                        // but we still need to trigger the email notification via the domain event.
+                        @event.RaiseRegistrationCancelledEvent(request.UserId);
+                        _eventRepository.Update(@event);
+
+                        _logger.LogInformation(
+                            "CancelRsvp: Raised RegistrationCancelledEvent for email notification - EventId={EventId}, UserId={UserId}",
+                            request.EventId, request.UserId);
+                    }
 
                     // Save changes
                     await _unitOfWork.CommitAsync(cancellationToken);

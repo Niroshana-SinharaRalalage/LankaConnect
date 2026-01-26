@@ -13,13 +13,16 @@ public class GetUserRegistrationForEventQueryHandler
     : IQueryHandler<GetUserRegistrationForEventQuery, RegistrationDetailsDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IStripePaymentService _stripePaymentService;
     private readonly ILogger<GetUserRegistrationForEventQueryHandler> _logger;
 
     public GetUserRegistrationForEventQueryHandler(
         IApplicationDbContext context,
+        IStripePaymentService stripePaymentService,
         ILogger<GetUserRegistrationForEventQueryHandler> logger)
     {
         _context = context;
+        _stripePaymentService = stripePaymentService;
         _logger = logger;
     }
 
@@ -67,6 +70,7 @@ public class GetUserRegistrationForEventQueryHandler
                 // This fixes the multi-attendee re-registration issue (Session 30)
                 // Phase 6A.41: Fixed to return NEWEST registration (OrderByDescending)
                 // Phase 6A.47: Added AsNoTracking() to fix JSON projection error
+                // Phase 6A.81 Part 3: Include Preliminary for payment pending UI
                 var registration = await _context.Registrations
                     .AsNoTracking()
                     .Where(r => r.EventId == request.EventId &&
@@ -102,9 +106,43 @@ public class GetUserRegistrationForEventQueryHandler
                         // Payment information
                         PaymentStatus = r.PaymentStatus,
                         TotalPriceAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
-                        TotalPriceCurrency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null
+                        TotalPriceCurrency = r.TotalPrice != null ? r.TotalPrice.Currency.ToString() : null,
+
+                        // Phase 6A.81 Part 3: Checkout session data (URL populated below for Preliminary)
+                        StripeCheckoutSessionId = r.StripeCheckoutSessionId,
+                        CheckoutSessionExpiresAt = r.CheckoutSessionExpiresAt,
+                        StripeCheckoutUrl = null  // Populated after query for Preliminary status
                     })
                     .FirstOrDefaultAsync(cancellationToken);
+
+                // Phase 6A.81 Part 3: Retrieve checkout URL from Stripe for Preliminary registrations
+                if (registration != null &&
+                    registration.Status == RegistrationStatus.Preliminary &&
+                    !string.IsNullOrWhiteSpace(registration.StripeCheckoutSessionId))
+                {
+                    _logger.LogDebug(
+                        "[Phase 6A.81-Part3] Retrieving checkout URL for Preliminary registration - RegistrationId={RegistrationId}, SessionId={SessionId}",
+                        registration.Id, registration.StripeCheckoutSessionId);
+
+                    var checkoutUrlResult = await _stripePaymentService.GetCheckoutSessionUrlAsync(
+                        registration.StripeCheckoutSessionId,
+                        cancellationToken);
+
+                    if (checkoutUrlResult.IsSuccess)
+                    {
+                        registration = registration with { StripeCheckoutUrl = checkoutUrlResult.Value };
+
+                        _logger.LogDebug(
+                            "[Phase 6A.81-Part3] Checkout URL retrieved successfully - RegistrationId={RegistrationId}",
+                            registration.Id);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[Phase 6A.81-Part3] Failed to retrieve checkout URL - RegistrationId={RegistrationId}, Error={Error}",
+                            registration.Id, checkoutUrlResult.Error);
+                    }
+                }
 
                 stopwatch.Stop();
 

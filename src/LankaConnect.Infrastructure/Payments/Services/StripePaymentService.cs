@@ -146,6 +146,87 @@ public class StripePaymentService : IStripePaymentService
     }
 
     /// <summary>
+    /// Phase 6A.81 Part 3: Retrieves the checkout URL from an existing Stripe Checkout Session.
+    /// Used to display payment link in UI and email without creating duplicate sessions.
+    /// Architect decision: Retrieve from Stripe at query time (not store in DB) for security.
+    /// User concern: Payment link should be invalid after payment completes (Stripe handles this automatically).
+    /// </summary>
+    public async Task<Result<string>> GetCheckoutSessionUrlAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.81-Part3] Retrieving Stripe checkout URL - SessionId={SessionId}",
+                sessionId);
+
+            if (string.IsNullOrWhiteSpace(sessionId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81-Part3] Cannot retrieve checkout URL: SessionId is empty");
+                return Result<string>.Failure("Session ID cannot be empty");
+            }
+
+            var sessionService = new SessionService(_stripeClient);
+            var session = await sessionService.GetAsync(sessionId, null, null, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogError(
+                    "[Phase 6A.81-Part3] Stripe session not found - SessionId={SessionId}",
+                    sessionId);
+                return Result<string>.Failure("Checkout session not found");
+            }
+
+            // Check session status - Stripe auto-invalidates URLs after 24h or successful payment
+            if (session.Status == "expired")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81-Part3] Stripe session expired - SessionId={SessionId}, ExpiresAt={ExpiresAt}",
+                    sessionId, session.ExpiresAt);
+                return Result<string>.Failure("Checkout session has expired (24 hours)");
+            }
+
+            if (session.Status == "complete")
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.81-Part3] Stripe session already completed - SessionId={SessionId}",
+                    sessionId);
+                return Result<string>.Failure("Checkout session already completed. Payment link cannot be reused.");
+            }
+
+            if (string.IsNullOrWhiteSpace(session.Url))
+            {
+                _logger.LogError(
+                    "[Phase 6A.81-Part3] Stripe session has no URL - SessionId={SessionId}, Status={Status}",
+                    sessionId, session.Status);
+                return Result<string>.Failure("Checkout session URL not available");
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81-Part3] Checkout URL retrieved successfully - SessionId={SessionId}, Status={Status}, UrlLength={UrlLength}",
+                sessionId, session.Status, session.Url.Length);
+
+            return Result<string>.Success(session.Url);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.81-Part3] Stripe error retrieving checkout URL - SessionId={SessionId}, StripeCode={Code}, Error={Error}",
+                sessionId, ex.StripeError?.Code, ex.Message);
+            return Result<string>.Failure($"Stripe error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.81-Part3] Unexpected error retrieving checkout URL - SessionId={SessionId}",
+                sessionId);
+            return Result<string>.Failure("Failed to retrieve checkout URL");
+        }
+    }
+
+    /// <summary>
     /// Gets or creates a Stripe customer for the given user
     /// Reuses existing customer management logic from Phase 6A.4
     /// </summary>

@@ -28,6 +28,26 @@ public record RegistrationDetailsDto
     public PaymentStatus PaymentStatus { get; init; }
     public decimal? TotalPriceAmount { get; init; }
     public string? TotalPriceCurrency { get; init; }
+
+    // Phase 6A.81 Part 3: Checkout session information for Preliminary registrations
+    /// <summary>
+    /// Stripe checkout session ID (stored in DB). Used to retrieve checkout URL from Stripe.
+    /// Null if not Preliminary or no session created.
+    /// </summary>
+    public string? StripeCheckoutSessionId { get; init; }
+
+    /// <summary>
+    /// Stripe checkout URL for resuming payment (only for Preliminary status).
+    /// Retrieved from Stripe at query time for security (not stored in DB).
+    /// Null if registration is not Preliminary or session ID is missing.
+    /// </summary>
+    public string? StripeCheckoutUrl { get; init; }
+
+    /// <summary>
+    /// Timestamp when the Stripe checkout session expires (24 hours from creation).
+    /// Used for countdown timer in UI. Null if not Preliminary or no session created.
+    /// </summary>
+    public DateTime? CheckoutSessionExpiresAt { get; init; }
 }
 
 /// <summary>

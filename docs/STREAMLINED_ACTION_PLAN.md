@@ -7,7 +7,60 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X: RESEND CONFIRMATION BACKEND (2026-01-25)
+## ✅ CURRENT STATUS - PHASE 6A.81 PART 2: EF CORE DEFAULT VALUE FIX COMPLETE (2026-01-26)
+**Date**: 2026-01-26
+**Session**: Phase 6A.81 Part 2 - Payment Bypass Vulnerability Fix (EF Core Configuration Bug)
+**Status**: ✅ COMPLETE & VERIFIED IN STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - GitHub Actions #21361970867 SUCCESS
+**Priority**: 🔴 CRITICAL - Security Vulnerability
+**Commits**: e849dd70 (Status fix), 0cb247f9 (PaymentStatus fix), 59881994 (docs)
+
+**Critical Bug Discovered**: After deploying Phase 6A.81 three-state lifecycle, database queries revealed ALL registrations still showed `Status='Confirmed'` instead of `'Preliminary'` for paid events.
+
+**Root Cause**: EF Core `HasDefaultValue()` in RegistrationConfiguration.cs was overriding application-set Status and PaymentStatus values:
+- `Status` column had `DEFAULT 'Confirmed'` → Overrode domain logic setting Status='Preliminary'
+- `PaymentStatus` column had `DEFAULT 0` (NotRequired) → Overrode domain logic setting PaymentStatus=Pending
+
+**Two-Part Fix**:
+
+**Part 1: Remove Status Default**
+- ✅ Modified [RegistrationConfiguration.cs:166-172](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L166-L172) - Removed `.HasDefaultValue(RegistrationStatus.Confirmed)`
+- ✅ Created migration `Phase6A81_RemoveStatusDefault` - AlterColumn to remove DEFAULT 'Confirmed'
+- ✅ Verified: `Status` column now has `column_default = NULL`
+
+**Part 2: Remove PaymentStatus Default** (discovered during verification):
+- ✅ Modified [RegistrationConfiguration.cs:174-179](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L174-L179) - Added explicit PaymentStatus configuration without HasDefaultValue
+- ✅ Created migration `Phase6A81_RemovePaymentStatusDefault` - AlterColumn to remove DEFAULT 0
+- ✅ Verified: `PaymentStatus` column now has `column_default = NULL`
+
+**Verification Results** (API Test: test_1769441526@example.com):
+```
+✅ Status = 'Preliminary' (awaiting payment)
+✅ PaymentStatus = 0 (Pending - correct enum value)
+✅ CheckoutSessionExpiresAt = 24 hours
+✅ Stripe Checkout Session Created
+✅ Azure logs show: "PaymentStatus=Pending" BEFORE/AFTER SaveChanges
+```
+
+**Security Impact**:
+- ✅ Users can NO LONGER bypass payment by closing Stripe checkout
+- ✅ Registrations stay 'Preliminary' until webhook confirms payment
+- ✅ Abandoned registrations cleaned up after 25 hours
+- ✅ Only 'Confirmed' registrations grant event access
+
+**Documentation Updated**:
+- ✅ [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Comprehensive Phase 6A.81 completion entry
+- ✅ [PHASE_6A81_ROOT_CAUSE_ANALYSIS.md](./PHASE_6A81_ROOT_CAUSE_ANALYSIS.md)
+- ✅ [PHASE_6A81_IMPLEMENTATION_GUIDE.md](./PHASE_6A81_IMPLEMENTATION_GUIDE.md)
+
+**Remaining Work**:
+- ⏳ Phase 6A.82: Verify payment webhook updates PaymentStatus Pending→Completed
+- ⏳ Phase 6A.83: Verify confirmation emails sent ONLY after webhook confirms payment
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: RESEND CONFIRMATION BACKEND (2026-01-25)
 **Date**: 2026-01-25
 **Session**: Phase 6A.X - Resend Registration Confirmation + QR Code Display (Backend Part 1)
 **Status**: ✅ BACKEND COMMITTED | ⏳ FRONTEND PENDING

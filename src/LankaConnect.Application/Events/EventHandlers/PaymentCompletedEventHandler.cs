@@ -178,6 +178,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 { "HasAttendeeDetails", hasAttendeeDetails },
                 { "EventImageUrl", eventImageUrl },
                 { "HasEventImage", hasEventImage },
+                // Phase 6A.83 Part 3: Template expects BOTH AmountPaid AND TotalAmount
+                { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
                 { "TotalAmount", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
                 { "Quantity", registration.Attendees.Count },
                 { "TicketType", @event.IsFree() ? "Free Entry" : "General Admission" },
@@ -200,6 +202,22 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 parameters["ContactEmail"] = "";
                 parameters["ContactPhone"] = "";
                 parameters["HasContactInfo"] = false;
+            }
+
+            // Phase 6A.83 Part 3: Add organizer contact parameters (template expects these exact names)
+            if (@event.HasOrganizerContact())
+            {
+                parameters["HasOrganizerContact"] = true;
+                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
+                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
+                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+            }
+            else
+            {
+                parameters["HasOrganizerContact"] = false;
+                parameters["OrganizerContactName"] = "";
+                parameters["OrganizerContactEmail"] = "";
+                parameters["OrganizerContactPhone"] = "";
             }
 
             // Phase 6A.52: Step 4 - Generate ticket with QR code

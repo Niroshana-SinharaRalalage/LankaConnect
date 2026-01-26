@@ -1,9 +1,100 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-25 - Phase 6A.X: Resend Confirmation Backend ✅ COMMITTED*
+*Last Updated: 2026-01-26 - Phase 6A.81: Payment Bypass Vulnerability Fix ✅ COMPLETE & VERIFIED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X: Resend Confirmation + QR Code Display (Backend Part 1) ✅ BACKEND COMMITTED
+## 🎯 Current Session Status - Phase 6A.81: Payment Bypass Vulnerability Fix ✅ COMPLETE & VERIFIED
+
+### PHASE 6A.81: PAYMENT BYPASS VULNERABILITY FIX - COMPLETE - 2026-01-26
+
+**Status**: ✅ **COMPLETE & VERIFIED IN STAGING**
+
+**Commits**:
+- e849dd70 - fix(phase-6a81-part1): Remove Status DEFAULT 'Confirmed'
+- 0cb247f9 - fix(phase-6a81-part2): Remove PaymentStatus DEFAULT 0
+
+**Priority**: 🔴 **CRITICAL** - Security Vulnerability
+
+**Security Issue**: Users could bypass payment for paid events by closing the Stripe checkout window, yet still receive a "Confirmed" registration that granted event access.
+
+**Root Cause Analysis**:
+1. **EF Core Configuration Override**: Database default values were overriding application-set Status and PaymentStatus
+   - Status column had `DEFAULT 'Confirmed'`
+   - PaymentStatus column had `DEFAULT 0` (NotRequired)
+2. **Investigation Process**:
+   - Initial hypothesis: Event.IsFree() returning wrong value → **DISPROVEN** (EventRepository not loading Pricing was red herring)
+   - Database query revealed: ALL registrations showed Status='Confirmed' even for paid events
+   - Console.WriteLine diagnostic showed: Application code set Status='Preliminary' correctly
+   - **Key Discovery**: EF Core `HasDefaultValue()` in RegistrationConfiguration.cs was overriding domain logic on INSERT
+3. **Two-Part Fix Required**:
+   - Part 1: Remove Status default value (commit e849dd70)
+   - Part 2: Remove PaymentStatus default value (commit 0cb247f9) - discovered during verification testing
+
+**Technical Implementation**:
+
+**Part 1: Status Default Removal**
+- **Modified**: [RegistrationConfiguration.cs:166-172](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L166-L172)
+  - Removed `.HasDefaultValue(RegistrationStatus.Confirmed)`
+  - Added comment explaining Phase 6A.81 fix
+- **Migration**: [Phase6A81_RemoveStatusDefault.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260125232907_Phase6A81_RemoveStatusDefault.cs)
+  - AlterColumn to remove DEFAULT 'Confirmed' from events.registrations.Status
+- **Result**: Status column now has `column_default = NULL`
+
+**Part 2: PaymentStatus Default Removal**
+- **Modified**: [RegistrationConfiguration.cs:174-179](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L174-L179)
+  - Added explicit PaymentStatus configuration without HasDefaultValue
+  - `builder.Property(r => r.PaymentStatus).HasConversion<int>().IsRequired();`
+- **Migration**: [Phase6A81_RemovePaymentStatusDefault.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260126143710_Phase6A81_RemovePaymentStatusDefault.cs)
+  - AlterColumn to remove DEFAULT 0 from events.registrations.PaymentStatus
+- **Result**: PaymentStatus column now has `column_default = NULL`
+
+**Diagnostic Logging Added**:
+- [Registration.cs:158-164](../src/LankaConnect.Domain/Events/Registration.cs#L158-L164): Console.WriteLine showing Status/PaymentStatus at creation
+- [RegisterAnonymousAttendeeCommandHandler.cs:360-370](../src/LankaConnect.Application/Events/Commands/RegisterAnonymousAttendee/RegisterAnonymousAttendeeCommandHandler.cs#L360-L370): Structured logging BEFORE/AFTER SaveChanges
+
+**Verification Results** (2026-01-26 15:32 UTC):
+```
+Registration ID: 3e58287d-792a-49bf-8524-49a10e0cce6c
+Event: Christmas Dinner Dance 2025 (Adult: $100, Child: $50)
+Test: 1 Adult + 1 Child = $150
+
+✅ Status = 'Preliminary' (correct - awaiting payment)
+✅ PaymentStatus = 0 (Pending - enum value correct)
+✅ CheckoutSessionExpiresAt = 2026-01-27 15:32:08 (24 hours)
+✅ Stripe Checkout Session Created
+✅ Application logs show: "PaymentStatus=Pending" BEFORE and AFTER SaveChanges
+✅ Database migrations applied successfully
+```
+
+**Three-State Registration Lifecycle Now Working**:
+1. **Preliminary** (Status=Preliminary, PaymentStatus=Pending): Registration created, Stripe checkout session active, awaits payment completion
+2. **Confirmed** (Status=Confirmed, PaymentStatus=Completed OR NotRequired): Payment verified by webhook OR free event registered
+3. **Abandoned** (Status=Abandoned): Checkout session expired (25 hours) without payment - cleaned up by background job
+
+**Security Impact**:
+- ✅ **FIXED**: Users can NO LONGER bypass payment by closing Stripe checkout
+- ✅ Registrations remain in 'Preliminary' state until webhook confirms payment
+- ✅ Abandoned registrations (closed checkout without paying) automatically cleaned up after 25 hours
+- ✅ Only 'Confirmed' registrations grant event access and receive confirmation emails
+
+**Testing Evidence**:
+- Database column defaults verified: Both Status and PaymentStatus have `NULL` default
+- API test performed: New registration correctly created with Preliminary/Pending status
+- Azure logs verified: Application code sets correct values before database write
+- EF Core migrations history confirmed: Both migrations applied successfully
+
+**Related Documentation**:
+- [PHASE_6A81_ROOT_CAUSE_ANALYSIS.md](./PHASE_6A81_ROOT_CAUSE_ANALYSIS.md)
+- [PHASE_6A81_IMPLEMENTATION_GUIDE.md](./PHASE_6A81_IMPLEMENTATION_GUIDE.md)
+- [PHASE_6A81_EXECUTIVE_SUMMARY.md](./PHASE_6A81_EXECUTIVE_SUMMARY.md)
+
+**Remaining Work**:
+- Phase 6A.82: Verify payment webhook correctly updates PaymentStatus from Pending → Completed
+- Phase 6A.83: Verify registration confirmation emails sent ONLY after payment webhook confirms (not before)
+
+---
+
+## 📋 Previous Session - Phase 6A.X: Resend Confirmation + QR Code Display (Backend Part 1) ✅ BACKEND COMMITTED
 
 ### PHASE 6A.X: RESEND REGISTRATION CONFIRMATION + QR CODE DISPLAY - BACKEND IMPLEMENTATION - 2026-01-25
 

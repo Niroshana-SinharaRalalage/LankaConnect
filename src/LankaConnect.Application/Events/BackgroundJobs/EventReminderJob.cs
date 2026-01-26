@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -22,6 +23,7 @@ public class EventReminderJob
     private readonly IEmailService _emailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEventReminderRepository _eventReminderRepository;
+    private readonly ITicketRepository _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
     private readonly ILogger<EventReminderJob> _logger;
 
     public EventReminderJob(
@@ -30,6 +32,7 @@ public class EventReminderJob
         IEmailService emailService,
         IEmailUrlHelper emailUrlHelper,
         IEventReminderRepository eventReminderRepository,
+        ITicketRepository ticketRepository,  // Phase 6A.83 Part 3: Added for ticket parameter support
         ILogger<EventReminderJob> logger)
     {
         _eventRepository = eventRepository;
@@ -37,6 +40,7 @@ public class EventReminderJob
         _emailService = emailService;
         _emailUrlHelper = emailUrlHelper;
         _eventReminderRepository = eventReminderRepository;
+        _ticketRepository = ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
         _logger = logger;
     }
 
@@ -215,21 +219,34 @@ public class EventReminderJob
                             { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
                         };
 
-                        // Phase 6A.83: Organizer Contact - Fix parameter names to match template expectations
+                        // Phase 6A.83 REVERT: Use OrganizerContact* parameters (templates expect these exact names)
                         if (@event.HasOrganizerContact())
                         {
                             parameters["HasOrganizerContact"] = true;
-                            parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+                            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
 
                             if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                                parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+                                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail;
 
                             if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                                parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+                                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone;
                         }
                         else
                         {
                             parameters["HasOrganizerContact"] = false;
+                        }
+
+                        // Phase 6A.83 Part 3: Fetch ticket for registration (paid events only)
+                        var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
+                        if (ticket != null)
+                        {
+                            parameters["TicketCode"] = ticket.TicketCode ?? "";
+                            parameters["TicketExpiryDate"] = ticket.ExpiresAt.ToString("MMMM dd, yyyy");
+                        }
+                        else
+                        {
+                            parameters["TicketCode"] = "";
+                            parameters["TicketExpiryDate"] = "";
                         }
 
                         var result = await _emailService.SendTemplatedEmailAsync(
@@ -402,21 +419,34 @@ public class EventReminderJob
                         { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
                     };
 
-                    // Phase 6A.83: Organizer Contact - Fix parameter names to match template expectations
+                    // Phase 6A.83 Part 3: REVERT - Use OrganizerContact* parameters (templates expect these exact names)
                     if (@event.HasOrganizerContact())
                     {
                         parameters["HasOrganizerContact"] = true;
-                        parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+                        parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
 
                         if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                            parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+                            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail;
 
                         if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                            parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+                            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone;
                     }
                     else
                     {
                         parameters["HasOrganizerContact"] = false;
+                    }
+
+                    // Phase 6A.83 Part 3: Fetch ticket for registration (paid events only)
+                    var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
+                    if (ticket != null)
+                    {
+                        parameters["TicketCode"] = ticket.TicketCode ?? "";
+                        parameters["TicketExpiryDate"] = ticket.ExpiresAt.ToString("MMMM dd, yyyy");
+                    }
+                    else
+                    {
+                        parameters["TicketCode"] = "";
+                        parameters["TicketExpiryDate"] = "";
                     }
 
                     var result = await _emailService.SendTemplatedEmailAsync(

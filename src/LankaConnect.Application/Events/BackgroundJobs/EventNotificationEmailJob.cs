@@ -340,17 +340,17 @@ public class EventNotificationEmailJob
             data["HasSignUpLists"] = false;
         }
 
-        // Add organizer contact if opted in
+        // Phase 6A.83 Part 3: REVERT - Use OrganizerContact* parameters (templates expect these exact names)
         if (@event.HasOrganizerContact())
         {
             data["HasOrganizerContact"] = true;
-            data["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+            data["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
 
             if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                data["OrganizerEmail"] = @event.OrganizerContactEmail;
+                data["OrganizerContactEmail"] = @event.OrganizerContactEmail;
 
             if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                data["OrganizerPhone"] = @event.OrganizerContactPhone;
+                data["OrganizerContactPhone"] = @event.OrganizerContactPhone;
         }
         else
         {

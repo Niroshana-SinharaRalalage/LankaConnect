@@ -127,17 +127,17 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 ["EventUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             };
 
-            // Phase 6A.82: Add organizer contact if opted in (matches EventNotificationEmailJob pattern)
+            // Phase 6A.83 Part 3: REVERT - Use OrganizerContact* parameters (templates expect these exact names)
             if (@event.HasOrganizerContact())
             {
                 parameters["HasOrganizerContact"] = true;
-                parameters["OrganizerName"] = @event.OrganizerContactName ?? "Event Organizer";
+                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
 
                 if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                    parameters["OrganizerEmail"] = @event.OrganizerContactEmail;
+                    parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail;
 
                 if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                    parameters["OrganizerPhone"] = @event.OrganizerContactPhone;
+                    parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone;
             }
             else
             {

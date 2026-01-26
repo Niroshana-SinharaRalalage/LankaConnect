@@ -4,6 +4,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -162,6 +163,84 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
                     request.IncludeNewsletterSubscribers,
                     request.TargetAllLocations);
 
+                // Phase 6A.85: CRITICAL BUG FIX - Populate ALL metro areas when targetAllLocations = true
+                // Root Cause: Newsletter.MetroAreaIds must contain all metros for matching logic to work:
+                //   Newsletter.MetroAreaIds ∩ Subscriber.MetroAreaIds = Matched Recipients
+                // When targetAllLocations = true but MetroAreaIds is empty, NO matches occur → 0 emails sent
+                IEnumerable<Guid>? metroAreaIds = request.MetroAreaIds;
+
+                if (request.TargetAllLocations && (metroAreaIds == null || !metroAreaIds.Any()))
+                {
+                    _logger.LogInformation(
+                        "[Phase 6A.85] Newsletter targets all locations - querying all active metro areas from database");
+
+                    try
+                    {
+                        var dbContext = _dbContext as DbContext
+                            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+                        var allMetroAreaIds = await dbContext.Set<MetroArea>()
+                            .Where(m => m.IsActive)
+                            .Select(m => m.Id)
+                            .ToListAsync(cancellationToken);
+
+                        metroAreaIds = allMetroAreaIds;
+
+                        _logger.LogInformation(
+                            "[Phase 6A.85] Successfully populated {Count} metro areas for target_all_locations newsletter",
+                            allMetroAreaIds.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogError(ex,
+                            "[Phase 6A.85] FAILED to query metro areas for target_all_locations newsletter - Duration={ElapsedMs}ms",
+                            stopwatch.ElapsedMilliseconds);
+                        return Result<Guid>.Failure("Failed to load metro areas for newsletter targeting all locations");
+                    }
+                }
+                else if (request.TargetAllLocations && metroAreaIds != null && metroAreaIds.Any())
+                {
+                    // Edge case: targetAllLocations=true but user somehow provided specific metros
+                    // Log warning but use the database query (targetAllLocations is authoritative)
+                    _logger.LogWarning(
+                        "[Phase 6A.85] Newsletter has targetAllLocations=true AND specific metro IDs provided ({Count}). " +
+                        "This is unexpected. Re-querying all active metros as targetAllLocations is authoritative.",
+                        metroAreaIds.Count());
+
+                    try
+                    {
+                        var dbContext = _dbContext as DbContext
+                            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+                        var allMetroAreaIds = await dbContext.Set<MetroArea>()
+                            .Where(m => m.IsActive)
+                            .Select(m => m.Id)
+                            .ToListAsync(cancellationToken);
+
+                        metroAreaIds = allMetroAreaIds;
+
+                        _logger.LogInformation(
+                            "[Phase 6A.85] Replaced {ProvidedCount} provided metros with {AllCount} active metros",
+                            request.MetroAreaIds?.Count() ?? 0,
+                            allMetroAreaIds.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogError(ex,
+                            "[Phase 6A.85] FAILED to query metro areas - Duration={ElapsedMs}ms",
+                            stopwatch.ElapsedMilliseconds);
+                        return Result<Guid>.Failure("Failed to load metro areas for newsletter");
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "[Phase 6A.85] Newsletter targets specific locations - using provided {Count} metro area(s)",
+                        metroAreaIds?.Count() ?? 0);
+                }
+
                 var newsletterResult = Newsletter.Create(
                     titleResult.Value,
                     descriptionResult.Value,
@@ -169,7 +248,7 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
                     request.EmailGroupIds ?? new List<Guid>(),
                     request.IncludeNewsletterSubscribers,
                     request.EventId,
-                    request.MetroAreaIds,
+                    metroAreaIds,  // Phase 6A.85: Use populated metros (not request.MetroAreaIds)
                     request.TargetAllLocations,
                     request.IsAnnouncementOnly);  // Phase 6A.74 Part 14: Pass announcement-only flag
 

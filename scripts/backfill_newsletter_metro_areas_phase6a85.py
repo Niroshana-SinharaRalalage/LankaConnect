@@ -23,16 +23,23 @@ USAGE:
     python scripts/backfill_newsletter_metro_areas_phase6a85.py --execute
 """
 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+import io
+
+# Fix Windows console encoding for Unicode characters
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 import psycopg2
 from psycopg2 import sql
 import argparse
 from datetime import datetime
 from typing import List, Tuple
 
-# DATABASE CONNECTION
-# Replace with your actual connection string
-# For production: Use environment variable or secrets manager
-DATABASE_URL = "postgresql://user:password@host:5432/lankaconnect"
+# DATABASE CONNECTION - Azure Staging
+DATABASE_URL = "host=lankaconnect-staging-db.postgres.database.azure.com dbname=LankaConnectDB user=adminuser password=1qaz!QAZ sslmode=require"
 
 
 def get_connection():
@@ -60,11 +67,11 @@ def find_broken_newsletters(cursor) -> List[Tuple[str, str, bool]]:
             n.is_announcement_only,
             n.status,
             n.created_at
-        FROM events.newsletters n
+        FROM communications.newsletters n
         WHERE n.target_all_locations = TRUE
           AND NOT EXISTS (
               SELECT 1
-              FROM events.newsletter_metro_areas nma
+              FROM communications.newsletter_metro_areas nma
               WHERE nma.newsletter_id = n.id
           )
         ORDER BY n.created_at DESC
@@ -131,7 +138,7 @@ def backfill_newsletter(
 
     # Execute bulk insert with conflict handling
     cursor.executemany("""
-        INSERT INTO events.newsletter_metro_areas (newsletter_id, metro_area_id)
+        INSERT INTO communications.newsletter_metro_areas (newsletter_id, metro_area_id)
         VALUES (%s, %s)
         ON CONFLICT (newsletter_id, metro_area_id) DO NOTHING
     """, values)
@@ -152,11 +159,11 @@ def validate_fix(cursor) -> bool:
     # Check 1: No broken newsletters remain
     cursor.execute("""
         SELECT COUNT(*)
-        FROM events.newsletters n
+        FROM communications.newsletters n
         WHERE n.target_all_locations = TRUE
           AND NOT EXISTS (
               SELECT 1
-              FROM events.newsletter_metro_areas nma
+              FROM communications.newsletter_metro_areas nma
               WHERE nma.newsletter_id = n.id
           )
     """)
@@ -175,8 +182,8 @@ def validate_fix(cursor) -> bool:
             n.id,
             n.title,
             COUNT(nma.metro_area_id) AS metro_count
-        FROM events.newsletters n
-        LEFT JOIN events.newsletter_metro_areas nma ON n.id = nma.newsletter_id
+        FROM communications.newsletters n
+        LEFT JOIN communications.newsletter_metro_areas nma ON n.id = nma.newsletter_id
         WHERE n.target_all_locations = TRUE
         GROUP BY n.id, n.title
         HAVING COUNT(nma.metro_area_id) != (
@@ -200,8 +207,8 @@ def validate_fix(cursor) -> bool:
             n.status,
             COUNT(*) AS count,
             COUNT(nma.metro_area_id) / COUNT(*) AS avg_metros_per_newsletter
-        FROM events.newsletters n
-        LEFT JOIN events.newsletter_metro_areas nma ON n.id = nma.newsletter_id
+        FROM communications.newsletters n
+        LEFT JOIN communications.newsletter_metro_areas nma ON n.id = nma.newsletter_id
         WHERE n.target_all_locations = TRUE
         GROUP BY n.status
         ORDER BY n.status

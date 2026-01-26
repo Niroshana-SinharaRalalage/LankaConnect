@@ -233,10 +233,15 @@ public class NewsletterRecipientService : INewsletterRecipientService
         Newsletter newsletter,
         CancellationToken cancellationToken)
     {
-        // Location Targeting Logic:
+        // Location Targeting Logic (Phase 6A.85 Fix):
         // 1. If EventId is set: Use Event's MetroAreaId
-        // 2. If TargetAllLocations is true: Get ALL confirmed active subscribers
-        // 3. If MetroAreaIds are set: Get subscribers matching ANY metro area
+        // 2. If MetroAreaIds are set: Get subscribers matching ANY metro area (includes "All Locations" case)
+        // 3. If TargetAllLocations is true BUT no metros: Fallback to receive_all_locations subscribers
+        //
+        // CRITICAL: Phase 6A.85 fix populates ALL 84 metros when targetAllLocations=true
+        // So we must check MetroAreaIds.Any() BEFORE checking TargetAllLocations boolean
+        // Otherwise, we'll query for receive_all_locations=true (which has 0 subscribers)
+        // instead of using metro intersection matching (which works correctly)
 
         // Case 1: Event-based newsletter
         if (newsletter.EventId.HasValue)
@@ -245,19 +250,26 @@ public class NewsletterRecipientService : INewsletterRecipientService
             return await GetSubscribersForEventAsync(newsletter.EventId.Value, cancellationToken);
         }
 
-        // Case 2: Target all locations
-        if (newsletter.TargetAllLocations)
-        {
-            _logger.LogInformation("[Phase 6A.74] Newsletter targets all locations");
-            return await GetAllLocationSubscribersAsync(cancellationToken);
-        }
-
-        // Case 3: Specific metro areas
+        // Case 2: Metro area targeting (includes "All Locations" when all 84 metros populated)
+        // Phase 6A.85: This is now the PRIMARY path for targetAllLocations=true newsletters
         if (newsletter.MetroAreaIds.Any())
         {
-            _logger.LogInformation("[Phase 6A.74] Newsletter targets specific metro areas: [{MetroAreaIds}]",
-                string.Join(", ", newsletter.MetroAreaIds));
+            _logger.LogInformation(
+                "[Phase 6A.85] Newsletter targets {Count} metro area(s). TargetAllLocations={TargetAllLocations}",
+                newsletter.MetroAreaIds.Count,
+                newsletter.TargetAllLocations);
+
             return await GetSubscribersByMetroAreasAsync(newsletter.MetroAreaIds, cancellationToken);
+        }
+
+        // Case 3: Fallback for "All Locations" if metros weren't populated (should not happen post-Phase 6A.85)
+        if (newsletter.TargetAllLocations)
+        {
+            _logger.LogWarning(
+                "[Phase 6A.85] Newsletter has TargetAllLocations=true but no MetroAreaIds. " +
+                "This indicates a bug - Phase 6A.85 fix should populate all 84 metros. " +
+                "Falling back to receive_all_locations subscribers (legacy behavior).");
+            return await GetAllLocationSubscribersAsync(cancellationToken);
         }
 
         // No location targeting specified (should not happen due to domain validation)

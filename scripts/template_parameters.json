@@ -1,0 +1,306 @@
+[
+  {
+    "template_name": "template-event-approval",
+    "parameters": [
+      "ApprovedAt",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventManageUrl",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "EventUrl",
+      "OrganizerName"
+    ],
+    "param_count": 9
+  },
+  {
+    "template_name": "template-event-cancellation-notifications",
+    "parameters": [
+      "CancellationReason",
+      "ContactEmail",
+      "DashboardUrl",
+      "EventDate",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "OrganizerEmail",
+      "RefundInfo",
+      "UserName"
+    ],
+    "param_count": 14
+  },
+  {
+    "template_name": "template-event-details-publication",
+    "parameters": [
+      "ContactEmail",
+      "EventCity",
+      "EventDateTime",
+      "EventDescription",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventState",
+      "EventTitle",
+      "EventUrl",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "OrganizerName",
+      "SignUpListsUrl",
+      "TicketPrice",
+      "UserName"
+    ],
+    "param_count": 18
+  },
+  {
+    "template_name": "template-event-registration-cancellation",
+    "parameters": [
+      "CancellationDate",
+      "ContactEmail",
+      "EventDateTime",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "UserName"
+    ],
+    "param_count": 12
+  },
+  {
+    "template_name": "template-event-reminder",
+    "parameters": [
+      "AttendeeName",
+      "ContactEmail",
+      "EventDescription",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "Location",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "ReminderMessage",
+      "ReminderTimeframe",
+      "TicketCode",
+      "TicketExpiryDate",
+      "UserName"
+    ],
+    "param_count": 17
+  },
+  {
+    "template_name": "template-free-event-registration-confirmation",
+    "parameters": [
+      "Attendees",
+      "ContactEmail",
+      "ContactPhone",
+      "EventDateTime",
+      "EventDescription",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "OrganizerEmail",
+      "OrganizerName",
+      "UserName"
+    ],
+    "param_count": 16
+  },
+  {
+    "template_name": "template-membership-email-verification",
+    "parameters": [
+      "ExpirationHours",
+      "UserName",
+      "VerificationUrl"
+    ],
+    "param_count": 3
+  },
+  {
+    "template_name": "template-new-event-publication",
+    "parameters": [
+      "ContactEmail",
+      "EventCity",
+      "EventDateTime",
+      "EventDescription",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventState",
+      "EventTitle",
+      "EventUrl",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "OrganizerName",
+      "SignUpListsUrl",
+      "TicketPrice"
+    ],
+    "param_count": 17
+  },
+  {
+    "template_name": "template-newsletter-notification",
+    "parameters": [
+      "DashboardUrl",
+      "EventDateTime",
+      "EventDescription",
+      "EventDetailsUrl",
+      "EventLocation",
+      "NewsletterContent",
+      "NewsletterTitle",
+      "SignUpListsUrl",
+      "UnsubscribeLink",
+      "UnsubscribeUrl"
+    ],
+    "param_count": 10
+  },
+  {
+    "template_name": "template-newsletter-subscription-confirmation",
+    "parameters": [
+      "ConfirmationLink",
+      "Email",
+      "MetroAreasText",
+      "UnsubscribeLink",
+      "UnsubscribeUrl"
+    ],
+    "param_count": 5
+  },
+  {
+    "template_name": "template-organizer-role-approval",
+    "parameters": [
+      "DashboardUrl",
+      "UserName"
+    ],
+    "param_count": 2
+  },
+  {
+    "template_name": "template-paid-event-registration-confirmation-with-ticket",
+    "parameters": [
+      "AmountPaid",
+      "Attendees",
+      "ContactEmail",
+      "ContactPhone",
+      "EventDateTime",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "OrderNumber",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "PaymentDate",
+      "PaymentIntentId",
+      "Quantity",
+      "TicketCode",
+      "TicketExpiryDate",
+      "TicketType",
+      "TicketUrl",
+      "TotalAmount",
+      "UserName"
+    ],
+    "param_count": 22
+  },
+  {
+    "template_name": "template-password-change-confirmation",
+    "parameters": [
+      "ChangedAt",
+      "UserName"
+    ],
+    "param_count": 2
+  },
+  {
+    "template_name": "template-password-reset",
+    "parameters": [
+      "ResetLink",
+      "UserName"
+    ],
+    "param_count": 2
+  },
+  {
+    "template_name": "template-signup-list-commitment-cancellation",
+    "parameters": [
+      "EventDate",
+      "EventDetailsUrl",
+      "EventLocation",
+      "EventTitle",
+      "ItemDescription",
+      "ItemName",
+      "Quantity",
+      "UserName"
+    ],
+    "param_count": 8
+  },
+  {
+    "template_name": "template-signup-list-commitment-confirmation",
+    "parameters": [
+      "ContactEmail",
+      "EventDateTime",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "EventUrl",
+      "ItemDescription",
+      "ItemName",
+      "ManageCommitmentUrl",
+      "Notes",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "Quantity",
+      "SignUpListsUrl",
+      "UserName"
+    ],
+    "param_count": 17
+  },
+  {
+    "template_name": "template-signup-list-commitment-update",
+    "parameters": [
+      "ContactEmail",
+      "EventDateTime",
+      "EventLocation",
+      "EventStartDate",
+      "EventStartTime",
+      "EventTitle",
+      "EventUrl",
+      "ItemDescription",
+      "ItemName",
+      "ManageCommitmentUrl",
+      "Notes",
+      "OrganizerContactEmail",
+      "OrganizerContactName",
+      "OrganizerContactPhone",
+      "Quantity",
+      "SignUpListsUrl",
+      "UserName"
+    ],
+    "param_count": 17
+  },
+  {
+    "template_name": "template-welcome",
+    "parameters": [
+      "DashboardUrl",
+      "Email",
+      "Name",
+      "SiteUrl",
+      "UserName"
+    ],
+    "param_count": 5
+  }
+]

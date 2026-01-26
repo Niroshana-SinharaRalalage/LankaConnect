@@ -1,13 +1,17 @@
 {
-  "userId": "5e782b4d-29ed-4e1d-9039-6c8f698aeea9",
-  "quantity": 1,
+  "eventId": "d543629f-a5ba-4475-b124-3d0fc5200f2f",
   "attendees": [
     {
-      "name": "Test User",
-      "age": 30
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "niroshhh@gmail.com",
+      "phone": "8609780124",
+      "age": 30,
+      "gender": "Male",
+      "isPrimaryContact": true,
+      "emergencyContactName": "Emergency Contact",
+      "emergencyContactPhone": "1234567890"
     }
   ],
-  "email": "niroshhh@gmail.com",
-  "phoneNumber": "+1234567890",
-  "address": "123 Test Street"
+  "specialRequests": "Testing Phase 6A.81 - Three-State Registration Lifecycle"
 }

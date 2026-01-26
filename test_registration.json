@@ -1,0 +1,17 @@
+{
+  "name": "Phase 6A.81 Test",
+  "age": 35,
+  "email": "test+phase6a81-final@example.com",
+  "phoneNumber": "8609780124",
+  "address": "Test Address, Cleveland, OH",
+  "quantity": 1,
+  "attendees": [
+    {
+      "name": "Test Attendee",
+      "ageCategory": "Adult",
+      "gender": "Male"
+    }
+  ],
+  "successUrl": "https://lankaconnect-staging.azurewebsites.net/payment-success",
+  "cancelUrl": "https://lankaconnect-staging.azurewebsites.net/payment-cancel"
+}

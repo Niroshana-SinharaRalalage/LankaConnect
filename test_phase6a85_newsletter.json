@@ -1,0 +1,10 @@
+{
+  "title": "Phase 6A.85 Test Newsletter - All Locations",
+  "description": "Testing fix for all locations bug. This newsletter should populate all 84 metro areas.",
+  "emailGroupIds": [],
+  "includeNewsletterSubscribers": true,
+  "targetAllLocations": true,
+  "metroAreaIds": null,
+  "eventId": null,
+  "isAnnouncementOnly": false
+}

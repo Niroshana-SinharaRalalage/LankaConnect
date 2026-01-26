@@ -20,6 +20,7 @@ public class TicketService : ITicketService
     private readonly IQrCodeService _qrCodeService;
     private readonly IPdfTicketService _pdfTicketService;
     private readonly BlobServiceClient _blobServiceClient;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<TicketService> _logger;
     private readonly string _containerName;
 
@@ -30,6 +31,7 @@ public class TicketService : ITicketService
         IQrCodeService qrCodeService,
         IPdfTicketService pdfTicketService,
         BlobServiceClient blobServiceClient,
+        IUnitOfWork unitOfWork,
         IConfiguration configuration,
         ILogger<TicketService> logger)
     {
@@ -39,6 +41,7 @@ public class TicketService : ITicketService
         _qrCodeService = qrCodeService;
         _pdfTicketService = pdfTicketService;
         _blobServiceClient = blobServiceClient;
+        _unitOfWork = unitOfWork;
         _logger = logger;
         _containerName = configuration["AzureStorage:TicketsContainer"] ?? "tickets";
     }
@@ -170,6 +173,18 @@ public class TicketService : ITicketService
 
             // Save ticket
             await _ticketRepository.AddAsync(ticket, cancellationToken);
+
+            // CRITICAL Phase 6A.X: Commit immediately to persist ticket independently of email sending
+            // This ensures tickets are saved even if email sending fails later
+            _logger.LogInformation(
+                "[Phase 6A.X] Committing ticket {TicketCode} to database - RegistrationId={RegistrationId}, EventId={EventId}",
+                ticket.TicketCode, registrationId, eventId);
+
+            var changeCount = await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.X] Ticket persisted to database - TicketId={TicketId}, TicketCode={TicketCode}, ChangeCount={ChangeCount}",
+                ticket.Id, ticket.TicketCode, changeCount);
 
             _logger.LogInformation("Successfully generated ticket {TicketCode} for Registration {RegistrationId}",
                 ticket.TicketCode, registrationId);

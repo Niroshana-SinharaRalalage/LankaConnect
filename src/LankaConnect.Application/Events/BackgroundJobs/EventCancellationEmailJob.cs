@@ -211,6 +211,8 @@ public class EventCancellationEmailJob
                 ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
                 ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
                 ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
+                // Phase 6A.83 Part 3: Add EventDateTime (template expects combined date+time)
+                ["EventDateTime"] = @event.StartDate.ToString("MMMM dd, yyyy 'at' h:mm tt"),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
                 ["RefundInfo"] = @event.IsFree() ? "No refund applicable for free events." : "Refunds will be processed within 5-7 business days.",
@@ -218,6 +220,8 @@ public class EventCancellationEmailJob
                 ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
                 ["OrganizerContactName"] = @event.OrganizerContactName ?? "LankaConnect Support",
                 ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "",
+                // Phase 6A.83 Part 3: Also send old parameter name for backward compatibility (template has duplicates)
+                ["OrganizerEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
                 ["DashboardUrl"] = _urlsService.FrontendBaseUrl
             };
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -20,17 +21,20 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
     private readonly IEmailService _emailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
     public CommitmentUpdatedEventHandler(
         IEmailService emailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -76,16 +80,18 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 }
 
             // Build template parameters
+            // Phase 6A.83 Part 3: Fix parameter names to match template expectations
             var templateData = new Dictionary<string, object>
             {
                 { "UserName", user.FirstName },
-                { "EventTitle", @event.Title },
-                { "ItemDescription", domainEvent.ItemDescription },
+                { "EventTitle", @event.Title?.Value ?? "Untitled Event" },  // Phase 6A.83: Extract Value from value object
+                { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
                 { "OldQuantity", domainEvent.OldQuantity },
-                { "NewQuantity", domainEvent.NewQuantity },
-                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern - fixed placeholder name
+                { "Quantity", domainEvent.NewQuantity },  // Phase 6A.83: Changed from NewQuantity to Quantity
+                { "EventDateTime", @event.StartDate.ToString("f") },
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
-                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." } // Default instruction
+                { "ManageCommitmentUrl", $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" },  // Phase 6A.83: Added missing parameter
+                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." }
             };
 
                 // Send templated email

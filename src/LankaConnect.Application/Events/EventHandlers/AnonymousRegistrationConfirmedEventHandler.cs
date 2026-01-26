@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
@@ -21,17 +22,20 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
     private readonly IEmailService _emailService;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<AnonymousRegistrationConfirmedEventHandler> _logger;
 
     public AnonymousRegistrationConfirmedEventHandler(
         IEmailService emailService,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<AnonymousRegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -115,18 +119,23 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
 
                 // Phase 6A.80: Prepare email parameters - ALIGNED WITH MEMBER HANDLER
                 // Using FreeEventRegistration template parameters
+                // Phase 6A.83 Part 3: Split EventDateTime into separate date and time fields per user request
                 var parameters = new Dictionary<string, object>
                 {
                     { "UserName", contactName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventDateTime", eventDateTimeRange },
+                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },  // Phase 6A.83: Split date
+                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },  // Phase 6A.83: Split time
                     { "EventLocation", GetEventLocationString(@event) },
                     { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                     { "HasAttendeeDetails", hasAttendeeDetails },
                     // Phase 6A.80: Add event image support
                     { "EventImageUrl", eventImageUrl },
-                    { "HasEventImage", hasEventImage }
+                    { "HasEventImage", hasEventImage },
+                    // Phase 6A.83 Part 3: Add required URLs per user request
+                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
+                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
                 };
 
                 // Add contact information if available

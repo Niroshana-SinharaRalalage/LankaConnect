@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -25,17 +26,20 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
     private readonly IEmailService _emailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentCancelledEmailHandler> _logger;
 
     public CommitmentCancelledEmailHandler(
         IEmailService emailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentCancelledEmailHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -76,14 +80,16 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
             }
 
             // Build template parameters using event data (not database queries)
+            // Phase 6A.83 Part 3: Fix parameter names to match template expectations
             var templateData = new Dictionary<string, object>
             {
                 { "UserName", user.FirstName },
-                { "EventTitle", @event.Title },
-                { "ItemDescription", domainEvent.ItemDescription },  // From event, not DB
-                { "Quantity", domainEvent.Quantity },                // From event, not DB
-                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern
+                { "EventTitle", @event.Title?.Value ?? "Untitled Event" },  // Phase 6A.83: Extract Value from value object
+                { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
+                { "Quantity", domainEvent.Quantity },
+                { "EventDateTime", @event.StartDate.ToString("f") },
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
+                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "PickupInstructions", "No pickup/delivery needed as this commitment has been cancelled." }
             };
 

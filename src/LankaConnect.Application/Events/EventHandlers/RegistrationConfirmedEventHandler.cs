@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
@@ -24,6 +25,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
 
     public RegistrationConfirmedEventHandler(
@@ -31,12 +33,14 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -123,18 +127,23 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
 
             // Prepare email parameters
+            // Phase 6A.83 Part 3: Split EventDateTime into separate date and time fields per user request
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", $"{user.FirstName} {user.LastName}" },
                 { "EventTitle", @event.Title.Value },
-                { "EventDateTime", eventDateTimeRange },
+                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },  // Phase 6A.83: Split date
+                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },  // Phase 6A.83: Split time
                 { "EventLocation", GetEventLocationString(@event) },
                 { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                 { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                 { "HasAttendeeDetails", hasAttendeeDetails },
                 // Phase 6A.38: Pass event image URL for direct embedding
                 { "EventImageUrl", eventImageUrl },
-                { "HasEventImage", hasEventImage }
+                { "HasEventImage", hasEventImage },
+                // Phase 6A.83 Part 3: Add required URLs per user request
+                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
+                { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
             };
 
             // Phase 6A.40: Add registrant's contact information (what they provided during registration)

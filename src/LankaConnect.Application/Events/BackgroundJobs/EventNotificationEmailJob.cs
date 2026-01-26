@@ -141,7 +141,8 @@ public class EventNotificationEmailJob
                 correlationId, recipients.Count);
 
             // 4. Build template parameters (removed intermediate UpdateSendStatistics to prevent DbUpdateConcurrencyException)
-            var templateData = BuildTemplateData(@event);
+            // Phase 6A.83 Part 3: Build base template data (UserName will be added per-recipient in loop)
+            var baseTemplateData = BuildTemplateData(@event);
 
             // Phase 6A.61+ RCA: Diagnostic logging using LogError to bypass log filtering
             _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] STARTING EMAIL SEND - Template: event-details, RecipientCount: {RecipientCount}, EventTitle: {EventTitle}",
@@ -149,7 +150,7 @@ public class EventNotificationEmailJob
 
             // Log template data for debugging
             _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Template Data Keys: {Keys}",
-                correlationId, string.Join(", ", templateData.Keys));
+                correlationId, string.Join(", ", baseTemplateData.Keys));
 
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Sending to {RecipientCount} recipients",
                 correlationId, recipients.Count);
@@ -166,10 +167,18 @@ public class EventNotificationEmailJob
                     _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Sending email {Index}/{Total} to: {Email}",
                         correlationId, emailIndex, recipients.Count, email);
 
+                    // Phase 6A.83 Part 3: Create per-recipient template data with personalized UserName
+                    var recipientTemplateData = new Dictionary<string, object>(baseTemplateData);
+                    var emailResult = Domain.Shared.ValueObjects.Email.Create(email);
+                    var user = emailResult.IsSuccess
+                        ? await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken)
+                        : null;
+                    recipientTemplateData["UserName"] = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
+
                     var result = await _emailService.SendTemplatedEmailAsync(
                         EmailTemplateNames.EventDetails,
                         email,
-                        templateData,
+                        recipientTemplateData,
                         cancellationToken);
 
                     if (result.IsSuccess)

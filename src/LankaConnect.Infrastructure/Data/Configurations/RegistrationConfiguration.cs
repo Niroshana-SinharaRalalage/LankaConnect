@@ -171,6 +171,13 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasMaxLength(20)
             .IsRequired();
 
+        // Phase 6A.81 FIX: Configure PaymentStatus without default value
+        // Database had DEFAULT 0 (NotRequired) which overrode domain logic
+        // Application code should control PaymentStatus (Pending for paid events, NotRequired for free)
+        builder.Property(r => r.PaymentStatus)
+            .HasConversion<int>()
+            .IsRequired();
+
         // Configure audit fields
         builder.Property(r => r.CreatedAt)
             .IsRequired()

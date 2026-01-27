@@ -63,7 +63,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
 
       - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           username: ${{ secrets.ACR_USERNAME_STAGING }}

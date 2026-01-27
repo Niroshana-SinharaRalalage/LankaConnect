@@ -76,7 +76,7 @@ public class CsvExportServiceLineEndingTests
                     Currency = "USD",
                     TicketCode = "TICK-002",
                     QrCodeData = "QR-002",
-                    Status = RegistrationStatus.Pending,
+                    Status = RegistrationStatus.Preliminary,
                     CreatedAt = DateTime.UtcNow,
                     Attendees = new List<AttendeeDetailsDto>
                     {

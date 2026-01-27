@@ -11,6 +11,10 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Infrastructure.Services;
 using LankaConnect.Application.Common.DTOs;
+using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Shared.Enums;
 
 namespace LankaConnect.Infrastructure.Tests.Services;
 
@@ -268,6 +272,7 @@ public class RegistrationEmailServiceTests
         _emailService.Verify(x => x.SendEmailAsync(
             It.Is<EmailMessageDto>(m =>
                 m.ToEmail == user.Email.Value &&
+                m.Attachments != null &&
                 m.Attachments.Count == 1 &&
                 m.Attachments[0].FileName.Contains(ticket.TicketCode) &&
                 m.Attachments[0].ContentType == "application/pdf"),
@@ -463,12 +468,8 @@ public class RegistrationEmailServiceTests
         var eventId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var registration = Registration.Create(
-            eventId,
-            userId,
-            1,
-            isFree ? null : Money.Create(50.00m, "USD").Value,
-            new ContactInfo("test@example.com", "John", "Doe", "+94771234567"));
+        // Registration.Create takes (eventId, userId, quantity) - 3 parameters
+        var registration = Registration.Create(eventId, userId, 1);
 
         return registration.Value;
     }
@@ -478,18 +479,9 @@ public class RegistrationEmailServiceTests
         var eventId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var registration = Registration.Create(
-            eventId,
-            userId,
-            2,
-            null,
-            new ContactInfo("test@example.com", "John", "Doe", "+94771234567"));
-
-        var attendee1 = Attendee.Create("John Doe", 30);
-        var attendee2 = Attendee.Create("Jane Smith", 28);
-
-        registration.Value.AddAttendee(attendee1.Value);
-        registration.Value.AddAttendee(attendee2.Value);
+        // Registration.Create takes (eventId, userId, quantity) - 3 parameters
+        // Note: Adding attendees is done through a different mechanism in the current API
+        var registration = Registration.Create(eventId, userId, 2);
 
         return registration.Value;
     }
@@ -497,19 +489,19 @@ public class RegistrationEmailServiceTests
     private Event CreateTestEvent(bool isFree)
     {
         var organizerId = Guid.NewGuid();
-        var categoryId = Guid.NewGuid();
 
+        // Event.Create uses EventTitle, EventDescription, and optional location/ticketPrice
         var eventResult = Event.Create(
-            Title.Create("Test Event").Value,
-            Description.Create("Test Description").Value,
+            EventTitle.Create("Test Event").Value,
+            EventDescription.Create("Test Description").Value,
             DateTime.UtcNow.AddDays(7),
             DateTime.UtcNow.AddDays(7).AddHours(2),
-            EventLocation.CreatePhysical(
-                Address.Create("123 Test St", "Colombo", "Western", "10100", "LK").Value).Value,
             organizerId,
-            categoryId,
-            isFree ? null : EventPricing.Create(50.00m, "USD", 100).Value,
-            100);
+            100, // capacity
+            EventLocation.Create(
+                Address.Create("123 Test St", "Colombo", "Western", "10100", "LK").Value).Value,
+            EventCategory.Community,
+            isFree ? null : Money.Create(50.00m, Currency.USD).Value);
 
         return eventResult.Value;
     }

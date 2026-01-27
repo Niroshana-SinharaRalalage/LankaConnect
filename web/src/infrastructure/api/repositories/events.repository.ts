@@ -954,6 +954,24 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.X: Resend registration confirmation email to specific attendee (Organizer action)
+   * Allows organizers to manually resend confirmation emails from Attendees tab
+   * Works for both free and paid event registrations
+   * @param eventId - Event ID (GUID)
+   * @param registrationId - Registration ID (GUID)
+   * @returns Success message
+   */
+  async resendAttendeeConfirmation(
+    eventId: string,
+    registrationId: string
+  ): Promise<{ message: string }> {
+    return await apiClient.post<{ message: string }>(
+      `${this.basePath}/${eventId}/attendees/${registrationId}/resend-confirmation`,
+      {} // Empty body - IDs are in URL
+    );
+  }
+
+  /**
    * Phase 6A.61: Get event notification history
    * @param eventId - Event ID (GUID)
    * @returns List of notification history records

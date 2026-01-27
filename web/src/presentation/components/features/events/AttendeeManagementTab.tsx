@@ -27,6 +27,8 @@ import {
   Mail,
   Phone,
   MapPin,
+  RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -34,6 +36,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventAttendees, useExportEventAttendees } from '@/presentation/hooks/useEvents';
 import { RegistrationStatus, PaymentStatus, AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 import type { EventAttendeeDto } from '@/infrastructure/api/types/events.types';
+import { ResendConfirmationDialog } from './ResendConfirmationDialog';
+import { QRCodeModal } from './QRCodeModal';
 
 /**
  * Props for AttendeeManagementTab
@@ -149,6 +153,25 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
 
+  // Phase 6A.X: Resend confirmation dialog state
+  const [resendDialogOpen, setResendDialogOpen] = useState(false);
+  const [selectedAttendee, setSelectedAttendee] = useState<{
+    name: string;
+    email: string;
+    registrationId: string;
+  } | null>(null);
+
+  // Phase 6A.X: QR Code modal state
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<{
+    ticketCode: string;
+    qrCodeData: string;
+    eventTitle: string;
+    eventDate?: string;
+    attendeeName: string;
+    attendeeEmail: string;
+  } | null>(null);
+
   // Fetch attendees
   const { data: attendeesData, isLoading, error } = useEventAttendees(eventId);
   const exportMutation = useExportEventAttendees();
@@ -188,6 +211,31 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // Phase 6A.X: Handler for resend email button
+  const handleResendClick = (attendee: EventAttendeeDto) => {
+    setSelectedAttendee({
+      name: attendee.mainAttendeeName,
+      email: attendee.contactEmail,
+      registrationId: attendee.registrationId,
+    });
+    setResendDialogOpen(true);
+  };
+
+  // Phase 6A.X: Handler for QR code click
+  const handleQrCodeClick = (attendee: EventAttendeeDto) => {
+    if (!attendee.ticketCode || !attendee.qrCodeData) return;
+
+    setSelectedTicket({
+      ticketCode: attendee.ticketCode,
+      qrCodeData: attendee.qrCodeData,
+      eventTitle: attendeesData?.eventTitle || '',
+      eventDate: attendeesData?.eventStartDate,
+      attendeeName: attendee.mainAttendeeName,
+      attendeeEmail: attendee.contactEmail,
+    });
+    setQrModalOpen(true);
   };
 
   // Loading state
@@ -400,9 +448,13 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                       <>
                         <th className="text-left p-3 text-sm font-semibold text-neutral-700">Payment</th>
                         <th className="text-left p-3 text-sm font-semibold text-neutral-700">Net Amount</th>
+                        {/* Phase 6A.X: Ticket Code column for paid events */}
+                        <th className="text-left p-3 text-sm font-semibold text-neutral-700">Ticket Code</th>
                       </>
                     )}
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Status</th>
+                    {/* Phase 6A.X: Actions column for resend confirmation */}
+                    <th className="text-left p-3 text-sm font-semibold text-neutral-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -462,6 +514,21 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                                 {/* Phase 6A.71: Show NET amount (after commission) instead of GROSS */}
                                 {attendee.netAmount ? `$${attendee.netAmount.toFixed(2)}` : '—'}
                               </td>
+                              {/* Phase 6A.X: Ticket Code column - clickable to show QR modal */}
+                              <td className="p-3">
+                                {attendee.ticketCode ? (
+                                  <button
+                                    onClick={() => handleQrCodeClick(attendee)}
+                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-sm font-mono"
+                                    title="Click to view QR code"
+                                  >
+                                    <QrCode className="h-4 w-4" />
+                                    {attendee.ticketCode}
+                                  </button>
+                                ) : (
+                                  <span className="text-neutral-400 text-sm">No ticket</span>
+                                )}
+                              </td>
                             </>
                           )}
                           <td className="p-3">
@@ -469,13 +536,29 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                               {getRegistrationStatusLabel(attendee.status)}
                             </Badge>
                           </td>
+                          {/* Phase 6A.X: Actions column - resend confirmation button */}
+                          <td className="p-3">
+                            {attendee.status === RegistrationStatus.Confirmed && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleResendClick(attendee)}
+                                className="flex items-center gap-1 text-xs hover:bg-neutral-100"
+                                title="Resend registration confirmation email"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                                Resend
+                              </Button>
+                            )}
+                          </td>
                         </tr>
 
                         {/* Expanded Row - Attendee Details */}
                         {isExpanded && (
                           <tr className="bg-neutral-50 border-b border-neutral-100">
-                            {/* Phase 6A.71: Adjust colSpan for conditional columns (9 for free events, 11 for paid) */}
-                            <td colSpan={isFreeEvent ? 9 : 11} className="p-6">
+                            {/* Phase 6A.X: Updated colSpan for new columns - Ticket Code (paid) + Actions (all) */}
+                            {/* Free events: 10 columns (added Actions), Paid events: 13 columns (added Ticket Code + Actions) */}
+                            <td colSpan={isFreeEvent ? 10 : 13} className="p-6">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Left Column - Attendee Details */}
                                 <div>
@@ -553,8 +636,9 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                 {attendees.length > 0 && (
                   <tfoot className="sticky bottom-0 bg-neutral-100 border-t-2 border-neutral-300">
                     <tr>
-                      {/* Phase 6A.71: Adjust colSpan for conditional columns (9 for free events, 11 for paid) */}
-                      <td colSpan={isFreeEvent ? 9 : 11} className="p-4">
+                      {/* Phase 6A.X: Updated colSpan for new columns - Ticket Code (paid) + Actions (all) */}
+                      {/* Free events: 10 columns (added Actions), Paid events: 13 columns (added Ticket Code + Actions) */}
+                      <td colSpan={isFreeEvent ? 10 : 13} className="p-4">
                         <div className="flex justify-end items-center gap-8">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-neutral-700">Total Registrations:</span>
@@ -585,6 +669,26 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Phase 6A.X: Resend Confirmation Dialog */}
+      <ResendConfirmationDialog
+        open={resendDialogOpen}
+        onOpenChange={setResendDialogOpen}
+        attendee={selectedAttendee}
+        eventId={eventId}
+      />
+
+      {/* Phase 6A.X: QR Code Modal */}
+      <QRCodeModal
+        open={qrModalOpen}
+        onOpenChange={setQrModalOpen}
+        ticketCode={selectedTicket?.ticketCode || null}
+        qrCodeData={selectedTicket?.qrCodeData || null}
+        eventTitle={selectedTicket?.eventTitle || ''}
+        eventDate={selectedTicket?.eventDate}
+        attendeeName={selectedTicket?.attendeeName || ''}
+        attendeeEmail={selectedTicket?.attendeeEmail || ''}
+      />
     </div>
   );
 }

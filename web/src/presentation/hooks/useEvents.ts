@@ -851,6 +851,29 @@ export function useEventReminderHistory(eventId: string) {
   });
 }
 
+// ==================== Phase 6A.X: Resend Attendee Confirmation ====================
+
+/**
+ * Phase 6A.X: Hook to resend registration confirmation email to specific attendee (Organizer action)
+ * Allows organizers to manually resend confirmation emails from Attendees tab
+ * Works for both free and paid event registrations
+ */
+export function useResendAttendeeConfirmation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { eventId: string; registrationId: string }) =>
+      eventsRepository.resendAttendeeConfirmation(data.eventId, data.registrationId),
+    onSuccess: (_data, variables) => {
+      // Invalidate event attendees list to refresh any email-related state
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', variables.eventId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to resend attendee confirmation:', error);
+    }
+  });
+}
+
 /**
  * Export all hooks
  */
@@ -875,4 +898,5 @@ export default {
   useEventNotificationHistory,
   useSendEventReminder,
   useEventReminderHistory,
+  useResendAttendeeConfirmation,
 };

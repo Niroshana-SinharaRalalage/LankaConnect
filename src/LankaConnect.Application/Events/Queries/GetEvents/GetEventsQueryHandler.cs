@@ -140,6 +140,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     /// <summary>
     /// Gets filtered events based on status, city, or defaults to all visible events
     /// Phase 6A.59: Changed default from Published-only to all except Draft/UnderReview
+    /// Phase 6A.88: Added IncludeAllStatuses flag to control Draft/UnderReview visibility
     /// This allows cancelled events to be visible to users
     /// </summary>
     private async Task<IReadOnlyList<Event>> GetFilteredEventsAsync(
@@ -149,22 +150,45 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         // If status filter is provided, use repository method
         if (request.Status.HasValue)
         {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using status filter - Status={Status}",
+                request.Status.Value);
             return await _eventRepository.GetEventsByStatusAsync(request.Status.Value, cancellationToken);
         }
 
         // If city filter is provided, use repository method
         if (!string.IsNullOrWhiteSpace(request.City))
         {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using city filter - City={City}",
+                request.City);
             return await _eventRepository.GetEventsByCityAsync(request.City, cancellationToken: cancellationToken);
         }
 
-        // Phase 6A.59: Get ALL events except Draft and UnderReview
+        // Get all events from repository
+        var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
+
+        // Phase 6A.88: If IncludeAllStatuses is true, return ALL events (for organizer's Event Management)
+        if (request.IncludeAllStatuses)
+        {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: IncludeAllStatuses=true, returning all {EventCount} events including Draft/UnderReview",
+                allEvents.Count);
+            return allEvents.ToList();
+        }
+
+        // Phase 6A.59: Default behavior - exclude Draft and UnderReview for public listings
         // This includes Published, Active, Cancelled, Completed, Archived, Postponed
         // Cancelled events will show with CANCELLED badge in UI
-        var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
-        return allEvents
+        var filteredEvents = allEvents
             .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
             .ToList();
+
+        _logger.LogDebug(
+            "GetFilteredEventsAsync: IncludeAllStatuses=false (default), filtered from {TotalCount} to {FilteredCount} events (excluded Draft/UnderReview)",
+            allEvents.Count, filteredEvents.Count);
+
+        return filteredEvents;
     }
 
     /// <summary>

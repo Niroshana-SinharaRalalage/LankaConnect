@@ -11,6 +11,7 @@ namespace LankaConnect.Application.Events.Queries.GetEvents;
 /// - For authenticated users without preferences: Sort by user's location
 /// - For anonymous users: Sort by provided coordinates
 /// Phase 6A.47: Added SearchTerm for full-text search integration
+/// Phase 6A.88: Added IncludeAllStatuses to control Draft/UnderReview visibility
 /// </summary>
 public record GetEventsQuery(
     EventStatus? Status = null,
@@ -24,5 +25,11 @@ public record GetEventsQuery(
     decimal? Latitude = null,
     decimal? Longitude = null,
     List<Guid>? MetroAreaIds = null,
-    string? SearchTerm = null
+    string? SearchTerm = null,
+    /// <summary>
+    /// Phase 6A.88: When true, includes Draft and UnderReview events.
+    /// Default is false (public listings exclude Draft/UnderReview).
+    /// Set to true for organizer's Event Management view.
+    /// </summary>
+    bool IncludeAllStatuses = false
 ) : IQuery<IReadOnlyList<EventDto>>;

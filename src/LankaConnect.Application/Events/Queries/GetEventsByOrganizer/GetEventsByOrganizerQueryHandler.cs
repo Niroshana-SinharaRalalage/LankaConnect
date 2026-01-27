@@ -87,13 +87,15 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
                     }
 
                     // Use GetEventsQuery with filters
+                    // Phase 6A.88: Set IncludeAllStatuses=true so organizer sees Draft/UnderReview events
                     var getEventsQuery = new GetEventsQuery(
                         SearchTerm: request.SearchTerm,
                         Category: request.Category,
                         StartDateFrom: request.StartDateFrom,
                         StartDateTo: request.StartDateTo,
                         State: request.State,
-                        MetroAreaIds: request.MetroAreaIds
+                        MetroAreaIds: request.MetroAreaIds,
+                        IncludeAllStatuses: true  // Phase 6A.88: Organizer sees ALL their events including Draft
                     );
 
                     var eventsResult = await _mediator.Send(getEventsQuery, cancellationToken);
@@ -148,7 +150,8 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
                 var eventIds = allEvents.Select(e => e.Id).Distinct().ToList();
 
                 // Delegate to GetEventsQuery without filters
-                var getAllQuery = new GetEventsQuery();
+                // Phase 6A.88: Set IncludeAllStatuses=true so organizer sees Draft/UnderReview events
+                var getAllQuery = new GetEventsQuery(IncludeAllStatuses: true);
                 var allEventsResult = await _mediator.Send(getAllQuery, cancellationToken);
 
                 if (allEventsResult.IsFailure)

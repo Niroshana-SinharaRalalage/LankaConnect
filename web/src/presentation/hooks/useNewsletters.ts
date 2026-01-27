@@ -18,6 +18,7 @@ import {
   UseQueryOptions,
   UseMutationOptions,
 } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 import { newslettersRepository } from '@/infrastructure/api/repositories/newsletters.repository';
 import type {
@@ -443,7 +444,10 @@ export function usePublishNewsletter() {
  * Features:
  * - Queues background job (202 Accepted)
  * - Automatic cache invalidation
+ * - Toast notifications for user feedback (Phase 6A.86)
  * - Proper error handling
+ *
+ * Phase 6A.86: Added immediate toast feedback and status updates
  *
  * @param options - Additional React Query mutation options
  *
@@ -452,7 +456,7 @@ export function usePublishNewsletter() {
  * const sendNewsletter = useSendNewsletter();
  *
  * await sendNewsletter.mutateAsync('newsletter-123');
- * // Newsletter queued for sending
+ * // Newsletter queued for sending - user sees toast notification
  * ```
  */
 export function useSendNewsletter() {
@@ -461,6 +465,12 @@ export function useSendNewsletter() {
   return useMutation({
     mutationFn: (id: string) => newslettersRepository.sendNewsletter(id),
     onSuccess: (_data, id) => {
+      // Phase 6A.86: Immediate user feedback via toast
+      toast.success(
+        'Newsletter email queued successfully! Sending in background...',
+        { duration: 4000 }
+      );
+
       // Invalidate affected queries immediately
       queryClient.invalidateQueries({ queryKey: newsletterKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
@@ -474,6 +484,13 @@ export function useSendNewsletter() {
         queryClient.invalidateQueries({ queryKey: newsletterKeys.myNewsletters() });
         queryClient.invalidateQueries({ queryKey: newsletterKeys.all });
       }, 5000); // 5 second delay for background job to complete
+    },
+    onError: (error: any) => {
+      // Phase 6A.86: Error feedback via toast
+      toast.error(
+        error?.message || 'Failed to send newsletter email. Please try again.',
+        { duration: 5000 }
+      );
     },
   });
 }

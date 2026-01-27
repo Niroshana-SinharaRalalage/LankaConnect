@@ -10,6 +10,7 @@ export interface NewsletterCardProps {
   newsletter: NewsletterDto;
   onClick?: () => void;
   actionButtons?: React.ReactNode;
+  isSending?: boolean; // Phase 6A.86: Track if newsletter is currently being sent
 }
 
 /**
@@ -17,8 +18,9 @@ export interface NewsletterCardProps {
  * Displays individual newsletter with status, metadata, and action buttons
  * Phase 6A.74: Newsletter Feature
  * Phase 6A.74 Part 10: Fixed HTML tag stripping for description preview
+ * Phase 6A.86: Added visual "Sending..." banner for user feedback
  */
-export function NewsletterCard({ newsletter, onClick, actionButtons }: NewsletterCardProps) {
+export function NewsletterCard({ newsletter, onClick, actionButtons, isSending = false }: NewsletterCardProps) {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -79,6 +81,40 @@ export function NewsletterCard({ newsletter, onClick, actionButtons }: Newslette
         </h3>
         <NewsletterStatusBadge status={newsletter.status} />
       </div>
+
+      {/* Phase 6A.86: Sending Status Banner */}
+      {isSending && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+          <div className="flex items-center gap-3">
+            <svg
+              className="animate-spin h-5 w-5 text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <div>
+              <p className="font-medium text-blue-900">Sending email in background...</p>
+              <p className="text-sm text-blue-700">
+                This may take a few minutes. Status will update automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Description - Phase 6A.74 Part 10: Strip HTML tags for preview */}
       <p className="text-sm text-gray-600 line-clamp-2 mb-3">

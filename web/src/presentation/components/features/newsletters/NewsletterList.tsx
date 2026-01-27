@@ -29,6 +29,7 @@ export interface NewsletterListProps {
  * Follows EventsList pattern but simplified for newsletter management
  * Phase 6A.74: Newsletter Feature
  * Phase 6A.74 Part 10: Fixed status comparison for string/enum handling
+ * Phase 6A.86: Added visual feedback for newsletters being sent in background
  */
 export function NewsletterList({
   newsletters,
@@ -44,6 +45,10 @@ export function NewsletterList({
   const [publishingId, setPublishingId] = React.useState<string | null>(null);
   const [sendingId, setSendingId] = React.useState<string | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  // Phase 6A.86: Track recently sent newsletters for visual feedback
+  // Keep newsletters in "sending" state for 10 seconds to show banner
+  const [recentlySent, setRecentlySent] = React.useState<Set<string>>(new Set());
 
   // Action handlers with loading states
   const handlePublish = async (newsletterId: string, e: React.MouseEvent) => {
@@ -65,6 +70,18 @@ export function NewsletterList({
     setSendingId(newsletterId);
     try {
       await onSendNewsletter(newsletterId);
+
+      // Phase 6A.86: Mark as recently sent for visual feedback
+      setRecentlySent((prev) => new Set([...prev, newsletterId]));
+
+      // Remove from recently sent after 10 seconds
+      setTimeout(() => {
+        setRecentlySent((prev) => {
+          const next = new Set(prev);
+          next.delete(newsletterId);
+          return next;
+        });
+      }, 10000); // 10 seconds
     } finally {
       setSendingId(null);
     }
@@ -215,6 +232,7 @@ export function NewsletterList({
             newsletter={newsletter}
             onClick={onNewsletterClick ? () => onNewsletterClick(newsletter.id) : undefined}
             actionButtons={actionButtons}
+            isSending={recentlySent.has(newsletter.id)} // Phase 6A.86: Show sending banner
           />
         );
       })}

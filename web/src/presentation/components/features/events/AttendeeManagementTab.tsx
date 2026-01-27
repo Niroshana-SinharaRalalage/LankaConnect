@@ -538,7 +538,10 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                           </td>
                           {/* Phase 6A.X: Actions column - resend confirmation button */}
                           <td className="p-3">
-                            {attendee.status === RegistrationStatus.Confirmed && (
+                            {/* Phase 6A.X: Check for status = 1 because getRegistrationStatusLabel has shifted mapping
+                                status = 1 displays as "Confirmed" in the UI (even though enum says Confirmed = 2)
+                                This matches the Phase 6A.74 pattern for status comparison handling */}
+                            {Number(attendee.status) === 1 && (
                               <Button
                                 variant="ghost"
                                 size="sm"

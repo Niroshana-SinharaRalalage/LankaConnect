@@ -231,7 +231,7 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
       ticketCode: attendee.ticketCode,
       qrCodeData: attendee.qrCodeData,
       eventTitle: attendeesData?.eventTitle || '',
-      eventDate: attendeesData?.eventStartDate,
+      eventDate: undefined, // Event date not available in EventAttendeesResponse
       attendeeName: attendee.mainAttendeeName,
       attendeeEmail: attendee.contactEmail,
     });

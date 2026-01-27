@@ -13,8 +13,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         {
             // Phase 6A.86: Backfill IsFreeEvent flag for existing free events
             // Set IsFreeEvent = true for events with NULL pricing (both TicketPrice and Pricing are NULL)
+            // Note: Table name is lowercase "events" not "Events" in PostgreSQL
             migrationBuilder.Sql(@"
-                UPDATE events.""Events""
+                UPDATE events.events
                 SET
                     ""IsFreeEvent"" = true,
                     ""UpdatedAt"" = NOW()
@@ -127,7 +128,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Phase 6A.86: Rollback - Set IsFreeEvent back to false for events that were backfilled
             // NOTE: This is a best-effort rollback. Events created AFTER this migration won't be affected.
             migrationBuilder.Sql(@"
-                UPDATE events.""Events""
+                UPDATE events.events
                 SET
                     ""IsFreeEvent"" = false,
                     ""UpdatedAt"" = NOW()

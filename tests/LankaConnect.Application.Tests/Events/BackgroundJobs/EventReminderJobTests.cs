@@ -3,6 +3,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -23,6 +25,7 @@ public class EventReminderJobTests
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;  // Phase 6A.87: Added for typed email support
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<IEventReminderRepository> _eventReminderRepository;
     private readonly Mock<ITicketRepository> _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
@@ -34,6 +37,7 @@ public class EventReminderJobTests
         _eventRepository = new Mock<IEventRepository>();
         _userRepository = new Mock<IUserRepository>();
         _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Added for typed email support
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _eventReminderRepository = new Mock<IEventReminderRepository>();
         _ticketRepository = new Mock<ITicketRepository>();  // Phase 6A.83 Part 3: Added for ticket parameter support
@@ -54,10 +58,19 @@ public class EventReminderJobTests
             .Setup(x => x.GetByRegistrationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((LankaConnect.Domain.Events.Entities.Ticket?)null);
 
+        // Phase 6A.87: Setup ITypedEmailService mock to return success by default
+        _typedEmailService
+            .Setup(x => x.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+
         _job = new EventReminderJob(
             _eventRepository.Object,
             _userRepository.Object,
             _emailService.Object,
+            _typedEmailService.Object,  // Phase 6A.87: Added for typed email support
             _emailUrlHelper.Object,
             _eventReminderRepository.Object,
             _ticketRepository.Object,  // Phase 6A.83 Part 3: Added for ticket parameter support

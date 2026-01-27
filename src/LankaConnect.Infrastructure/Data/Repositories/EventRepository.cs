@@ -542,18 +542,59 @@ public class EventRepository : Repository<Event>, IEventRepository
         // search_vector is snake_case (has explicit HasColumnName), Status/Category/StartDate are PascalCase (EF defaults)
         // Phase 6A.59 FIX: Include Cancelled events in search results so users can see them
         // Phase 6A.59 FIX 7: Use string enum values (Status/Category stored as VARCHAR via HasConversion<string>())
-        var whereConditions = new List<string>
-        {
-            "e.search_vector @@ websearch_to_tsquery('english', {0})",
-            @"e.""Status"" IN ({1}, {2})" // Allow both Published and Cancelled
-        };
+        // Phase 6A.89: Enhanced search with prefix matching and ILIKE fallback
 
-        var parameters = new List<object>
+        var parameters = new List<object>();
+        var whereConditions = new List<string>();
+
+        // Phase 6A.89: Determine search strategy based on search term characteristics
+        var trimmedSearchTerm = searchTerm.Trim();
+        var isSingleWord = !trimmedSearchTerm.Contains(' ');
+        var isShortTerm = trimmedSearchTerm.Length < 4;
+
+        _repoLogger.LogInformation("[SEARCH-1A] Search term analysis - Term: {Term}, IsSingleWord: {IsSingleWord}, IsShortTerm: {IsShortTerm}",
+            trimmedSearchTerm, isSingleWord, isShortTerm);
+
+        // Build the full-text search condition based on term type
+        if (isSingleWord)
         {
-            searchTerm,
-            EventStatus.Published.ToString(),  // "Published" - string enum value
-            EventStatus.Cancelled.ToString()   // "Cancelled" - string enum value (user wants to see these)
-        };
+            // Phase 6A.89: For single words, use prefix matching with to_tsquery
+            // This allows "Goss" to match "Gossip", "Mont" to match "Monthly", etc.
+            var prefixSearchTerm = trimmedSearchTerm.ToLowerInvariant() + ":*";
+            parameters.Add(prefixSearchTerm);
+
+            if (isShortTerm)
+            {
+                // Phase 6A.89: For very short terms (<4 chars), add ILIKE fallback
+                // This catches edge cases where the prefix might not be recognized as valid
+                parameters.Add($"%{trimmedSearchTerm}%");
+                whereConditions.Add($@"(e.search_vector @@ to_tsquery('english', {{0}}) OR e.title ILIKE {{1}})");
+
+                _repoLogger.LogInformation("[SEARCH-1B] Using prefix search WITH ILIKE fallback for short term: {Term}", trimmedSearchTerm);
+            }
+            else
+            {
+                // Prefix search only (term is long enough to be meaningful)
+                whereConditions.Add("e.search_vector @@ to_tsquery('english', {0})");
+
+                _repoLogger.LogInformation("[SEARCH-1C] Using prefix search for single word: {Term}", trimmedSearchTerm);
+            }
+        }
+        else
+        {
+            // Phase 6A.89: For multi-word queries, use websearch_to_tsquery for natural language support
+            parameters.Add(trimmedSearchTerm);
+            whereConditions.Add("e.search_vector @@ websearch_to_tsquery('english', {0})");
+
+            _repoLogger.LogInformation("[SEARCH-1D] Using websearch_to_tsquery for multi-word: {Term}", trimmedSearchTerm);
+        }
+
+        // Add status filter
+        var statusParamIndex1 = parameters.Count;
+        var statusParamIndex2 = parameters.Count + 1;
+        whereConditions.Add($@"e.""Status"" IN ({{{statusParamIndex1}}}, {{{statusParamIndex2}}})");
+        parameters.Add(EventStatus.Published.ToString());  // "Published" - string enum value
+        parameters.Add(EventStatus.Cancelled.ToString());   // "Cancelled" - string enum value (user wants to see these)
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",
             string.Join(" AND ", whereConditions), string.Join(", ", parameters));
@@ -588,10 +629,24 @@ public class EventRepository : Repository<Event>, IEventRepository
         // Count query needs all parameters used in WHERE clause
         var whereClauseParameterCount = parameters.Count;
 
-        // Phase 6A.59 FIX 3: Duplicate searchTerm parameter for ORDER BY clause
-        // EF Core FromSqlRaw doesn't support using same parameter index twice
+        // Phase 6A.89: Duplicate searchTerm parameter for ORDER BY clause
+        // Use the same tsquery function as in WHERE clause for consistent ranking
         var searchTermIndexForOrderBy = parameters.Count;
-        parameters.Add(searchTerm); // Duplicate searchTerm for ORDER BY
+        string orderByRankExpression;
+
+        if (isSingleWord)
+        {
+            // For single words, use to_tsquery with prefix for ranking
+            var prefixSearchTerm = trimmedSearchTerm.ToLowerInvariant() + ":*";
+            parameters.Add(prefixSearchTerm);
+            orderByRankExpression = $"ts_rank(e.search_vector, to_tsquery('english', {{{searchTermIndexForOrderBy}}}))";
+        }
+        else
+        {
+            // For multi-word, use websearch_to_tsquery for ranking
+            parameters.Add(trimmedSearchTerm);
+            orderByRankExpression = $"ts_rank(e.search_vector, websearch_to_tsquery('english', {{{searchTermIndexForOrderBy}}}))";
+        }
 
         // Query for events with ranking
         // Phase 6A.59 FIX 6: Build parameter placeholders for LIMIT and OFFSET
@@ -603,7 +658,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             SELECT e.*
             FROM events.events e
             WHERE {whereClause}
-            ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', {{{searchTermIndexForOrderBy}}})) DESC, e.""StartDate"" ASC
+            ORDER BY {orderByRankExpression} DESC, e.""StartDate"" ASC
             LIMIT {{{limitIndex}}} OFFSET {{{offsetIndex}}}";
 
         parameters.Add(limit);

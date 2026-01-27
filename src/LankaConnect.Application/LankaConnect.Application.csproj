@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

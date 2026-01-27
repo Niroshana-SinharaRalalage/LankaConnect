@@ -1,9 +1,87 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-27 - Phase 6A.88: Draft Events Visibility Fix ✅ COMPLETE - DEPLOYED TO STAGING*
+*Last Updated: 2026-01-27 - Phase 6A.87: Hybrid Email System - Phase 1 Foundation ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.88: Draft Events Visibility Fix ✅ COMPLETE - DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.87: Hybrid Email System - Phase 1 Foundation ✅ COMPLETE
+
+### PHASE 6A.87: HYBRID EMAIL SYSTEM - PHASE 1 FOUNDATION - COMPLETE - 2026-01-27
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - ALL 81 TESTS PASSING**
+
+**Commits**:
+- 89c5fbeb - feat(phase-6a86): Phase 1 Day 1 - Create shared email infrastructure foundation
+- aa977450 - feat(phase-6a87): Phase 1 Day 2 - Add base parameter contracts
+- 4202fac5 - feat(phase-6a87): Phase 1 Day 3 - Add TypedEmailServiceAdapter with feature flag logic
+- 221e3549 - feat(phase-6a87): Phase 1 Day 4 - Add EmailServiceBridge and DI registration
+
+**Priority**: 🔴 **STRATEGIC** - Email System Architecture Overhaul
+
+**Context**:
+User reported recurring literal `{{Parameter}}` issues in production emails despite multiple tactical fixes.
+After comprehensive architecture review, user approved hybrid email system with:
+- Strongly-typed parameter contracts (compile-time safety)
+- Feature flags for gradual rollout with instant rollback
+- Integration with Option 3 (metrics dashboard + real-time alerting)
+
+**What Was Implemented (Week 1 - Foundation)**:
+
+| Day | Components | Tests |
+|-----|-----------|-------|
+| Day 1 | IEmailParameters, EmailFeatureFlags, IEmailLogger, IEmailMetrics | 45 |
+| Day 2 | UserEmailParams, EventEmailParams, OrganizerEmailParams | 21 |
+| Day 3 | ITypedEmailService, TypedEmailServiceAdapter | 15 |
+| Day 4 | EmailServiceBridgeAdapter, DI extensions, Default implementations | - |
+| Day 5 | Test coverage verification, documentation | - |
+| **Total** | **Complete foundation for typed email system** | **81** |
+
+**Key Features**:
+- ✅ Type-safe parameters - Compile-time verification prevents {{Parameter}} issues
+- ✅ Feature flags - Global + per-handler control with instant rollback (<30 sec)
+- ✅ Correlation IDs - End-to-end email traceability
+- ✅ Metrics collection - Dashboard-ready (success rates, durations, migration progress)
+- ✅ Backward compatible - Zero breaking changes, existing system unchanged
+- ✅ DI registration - Ready for integration in Startup.cs
+
+**Project Structure Created**:
+```
+LankaConnect.Shared/Email/
+├── Contracts/       # IEmailParameters, UserEmailParams, EventEmailParams, OrganizerEmailParams
+├── Configuration/   # EmailFeatureFlags
+├── Observability/   # IEmailLogger, IEmailMetrics
+├── Services/        # ITypedEmailService, TypedEmailServiceAdapter, IEmailServiceBridge
+└── Extensions/      # EmailServiceExtensions (DI registration)
+
+LankaConnect.Application/Common/
+├── Services/        # EmailServiceBridgeAdapter
+└── Extensions/      # EmailBridgeExtensions
+```
+
+**Configuration (appsettings.json)**:
+```json
+"EmailFeatureFlags": {
+  "UseTypedParameters": false,
+  "EnableLogging": true,
+  "EnableValidation": true,
+  "HandlerOverrides": {
+    "EventReminderJob": true
+  }
+}
+```
+
+**Next Steps (Week 2)**:
+- [ ] Pilot handler migration: EventReminderJob
+- [ ] Enable feature flag override for pilot handler
+- [ ] Test in staging with real email sends
+- [ ] Monitor metrics dashboard
+
+**Related Documentation**:
+- [PHASE_6A87_DAY1_FOUNDATION_SUMMARY.md](./PHASE_6A87_DAY1_FOUNDATION_SUMMARY.md)
+- [HYBRID_EMAIL_SYSTEM_IMPLEMENTATION_PLAN.md](./email-template-architecture/HYBRID_EMAIL_SYSTEM_IMPLEMENTATION_PLAN.md)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.88: Draft Events Visibility Fix ✅ COMPLETE - DEPLOYED TO STAGING
 
 ### PHASE 6A.88: DRAFT EVENTS VISIBILITY IN EVENT MANAGEMENT - COMPLETE - 2026-01-27
 
@@ -163,12 +241,16 @@ SQL script provided to clean up existing duplicate Preliminary registrations. Ke
 
 ## 🎯 Previous Session Status - Phase 6A.86: Explicit IsFreeEvent Flag Implementation ✅ COMPLETE - DEPLOYED TO STAGING
 
-### PHASE 6A.86: EXPLICIT ISFREEEVENT FLAG - COMPLETE - 2026-01-27
+### PHASE 6A.86: EXPLICIT ISFREEEVENT FLAG + BACKFILL MIGRATION - COMPLETE - 2026-01-27
 
-**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED**
 
 **Commits**:
 - 0ff888e9 - feat(phase-6a86): Add explicit IsFreeEvent flag to eliminate NULL pricing ambiguity
+- badaa016 - fix(phase-6a86): Fix IsFreeEvent constructor logic (NULL = paid for security)
+- 2e20dc41 - fix(phase-6a86): Fix SQL table name to lowercase `events.events`
+- af95bd14 - fix(phase-6a86): Fix migration JSONB column syntax for TicketPrice and Pricing
+- 952078ba - fix(phase-6a86): Remove DeletedAt condition - column doesn't exist
 
 **Priority**: 🔴 **CRITICAL** - User-Facing Bug Fix (Free Events Showing as "Paid Events")
 
@@ -193,11 +275,18 @@ Implement explicit state pattern with `IsFreeEvent` boolean property as the sour
 - Updated `SetGroupPricing()` to check if all tiers are zero
 - Added security validation in `CalculatePriceForAttendees()` to prevent paid events with NULL pricing
 
-**Database Migration**
-- Created `AddIsFreeEventFlagToEvent` migration (20260127033214)
-- Adds `IsFreeEvent` boolean column to `events.events` table
-- Default value: `false` (safer default - assumes paid unless explicitly marked free)
-- Existing events will default to paid; truly free events can be backfilled with SQL script if needed
+**Database Migrations**
+- **Migration 1: AddIsFreeEventFlagToEvent** (20260127033214)
+  - Adds `IsFreeEvent` boolean column to `events.events` table
+  - Default value: `false` (safer default - assumes paid unless explicitly marked free)
+
+- **Migration 2: Phase6A86_BackfillIsFreeEventFlag** (20260127050952)
+  - Backfills `IsFreeEvent = true` for existing free events (NULL pricing)
+  - SQL: `UPDATE events.events SET "IsFreeEvent" = true WHERE ticket_price IS NULL AND pricing IS NULL`
+  - Required multiple fixes for PostgreSQL naming conventions:
+    - Fixed table name: `events."Events"` → `events.events` (PostgreSQL lowercase)
+    - Fixed column names: Use JSONB column names `ticket_price`, `pricing` instead of C# property names
+    - Removed non-existent `DeletedAt` column from query
 
 **Tests** ([EventIsFreeEventFlagTests.cs](../tests/LankaConnect.Application.Tests/Events/Domain/EventIsFreeEventFlagTests.cs))
 - Created comprehensive test suite with **15 tests** (all PASSING ✅)
@@ -230,22 +319,29 @@ Implement explicit state pattern with `IsFreeEvent` boolean property as the sour
 - ✅ All 15 Phase 6A.86 tests PASSING
 - ✅ Build succeeded (0 errors, 0 warnings)
 - ✅ Deployed to Azure staging successfully
-- ⏳ API testing pending (will verify after deployment completes)
+- ✅ API verification completed successfully
+
+**API Verification Results** (2026-01-27):
+```
+GET /api/events (Public)
+Event isFree distribution after backfill:
+- 20 events with "isFree": false (paid events)
+- 17 events with "isFree": true (free events - backfilled)
+```
+✅ Backfill migration successfully updated free events to show correct labels
 
 **Files Modified**:
 - `src/LankaConnect.Domain/Events/Event.cs` (+91 lines, new property and methods)
 - `src/LankaConnect.Infrastructure/Data/Migrations/20260127033214_AddIsFreeEventFlagToEvent.cs` (NEW)
 - `src/LankaConnect.Infrastructure/Data/Migrations/20260127033214_AddIsFreeEventFlagToEvent.Designer.cs` (NEW)
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260127050952_Phase6A86_BackfillIsFreeEventFlag.cs` (NEW - backfill migration)
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260127050952_Phase6A86_BackfillIsFreeEventFlag.Designer.cs` (NEW)
 - `src/LankaConnect.Infrastructure/Migrations/AppDbContextModelSnapshot.cs` (UPDATED)
 - `tests/LankaConnect.Application.Tests/Events/Domain/EventIsFreeEventFlagTests.cs` (NEW - 326 lines)
 - `docs/PHASE_6A86_FREE_EVENTS_BUG_RCA.md` (NEW)
 - `docs/PHASE_6A86_PROPER_FIX_EXPLICIT_FLAG.md` (NEW)
 
-**Next Steps**:
-- Monitor GitHub Actions deployment to staging
-- Test API endpoint to verify `isFree` flag in EventDto
-- Check staging UI to verify free events display "Free Event" label
-- Update STREAMLINED_ACTION_PLAN.md
+**Completed** ✅
 
 ---
 

@@ -38,6 +38,16 @@ public class Event : BaseEntity
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
     public RevenueBreakdown? RevenueBreakdown { get; private set; } // Phase 6A.X: Detailed revenue breakdown for paid events
 
+    /// <summary>
+    /// Phase 6A.86: Explicit flag indicating whether this event is free
+    /// Source of truth for free/paid determination (eliminates NULL pricing ambiguity)
+    /// Benefits:
+    /// - Unambiguous intent (NULL pricing no longer means "free")
+    /// - Security: Prevents payment bypass vulnerabilities
+    /// - Simplicity: Single boolean instead of complex price checking
+    /// </summary>
+    public bool IsFreeEvent { get; private set; }
+
     // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
     public string? OrganizerContactName { get; private set; }
@@ -716,35 +726,54 @@ public class Event : BaseEntity
     #region Pricing Management (Epic 2 Phase 2 + Session 21)
 
     /// <summary>
-    /// Checks if event is free (no ticket price or zero ticket price)
-    /// Supports legacy single pricing, dual pricing, and group tiered pricing
-    /// Phase 6A.81 Security Fix: Returns FALSE (paid) if pricing is not configured to prevent payment bypass
+    /// Checks if event is free
+    /// Phase 6A.86: Returns explicit IsFreeEvent flag (source of truth)
+    /// No longer computes from pricing amounts (eliminates NULL ambiguity)
     /// </summary>
-    public bool IsFree()
+    public bool IsFree() => IsFreeEvent;
+
+    /// <summary>
+    /// Phase 6A.86: Marks event as free
+    /// Sets IsFreeEvent flag and optionally sets $0 pricing for display
+    /// </summary>
+    public Result SetAsFreeEvent()
     {
-        // Phase 6D: Group tiered pricing - never free if tiers are configured
-        if (Pricing != null && Pricing.Type == PricingType.GroupTiered)
-            return !Pricing.HasGroupTiers;
+        IsFreeEvent = true;
 
-        // New dual pricing system (Single or AgeDual)
-        if (Pricing != null)
-            return Pricing.AdultPrice.IsZero;
+        // Optional: Set explicit $0 pricing for display/reporting purposes
+        var zeroPrice = Money.Create(0m, Shared.Enums.Currency.USD);
+        if (zeroPrice.IsSuccess)
+        {
+            TicketPrice = zeroPrice.Value;
+        }
 
-        // Legacy single pricing
-        if (TicketPrice != null)
-            return TicketPrice.IsZero;
+        MarkAsUpdated();
 
-        // Phase 6A.81 Security Fix: If both Pricing and TicketPrice are null, default to FALSE (paid)
-        // This prevents payment bypass vulnerability for events with misconfigured/missing pricing
-        // Rationale: CalculatePriceForAttendees() will fail with "Event pricing is not configured" error,
-        // preventing registration creation, which is safer than allowing free bypass
-        // Events with truly free pricing MUST explicitly set TicketPrice or Pricing to $0
-        return false;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.86: Sets single ticket pricing and updates IsFreeEvent flag
+    /// Replaces legacy pricing setter with flag management
+    /// </summary>
+    /// <param name="ticketPrice">Ticket price (use Money.Zero for free events)</param>
+    public Result SetPricing(Money? ticketPrice)
+    {
+        if (ticketPrice == null)
+            return Result.Failure("Ticket price cannot be null. Use SetAsFreeEvent() for free events.");
+
+        TicketPrice = ticketPrice;
+        IsFreeEvent = ticketPrice.IsZero;
+
+        MarkAsUpdated();
+
+        return Result.Success();
     }
 
     /// <summary>
     /// Sets dual pricing for event (adult + optional child pricing)
     /// Session 21: Dual Ticket Pricing feature
+    /// Phase 6A.86: Now updates IsFreeEvent flag based on pricing
     /// </summary>
     /// <param name="pricing">Ticket pricing configuration with adult and optional child prices</param>
     public Result SetDualPricing(TicketPricing pricing)
@@ -753,6 +782,18 @@ public class Event : BaseEntity
             return Result.Failure("Pricing cannot be null");
 
         Pricing = pricing;
+
+        // Phase 6A.86: Update IsFreeEvent flag based on pricing type
+        if (pricing.Type == PricingType.GroupTiered)
+        {
+            // For group-tiered pricing, check if all tiers are free
+            IsFreeEvent = pricing.GroupTiers.All(tier => tier.PricePerPerson.IsZero);
+        }
+        else
+        {
+            // For single/dual pricing, check adult price
+            IsFreeEvent = pricing.AdultPrice.IsZero;
+        }
 
         // Session 33: Create a NEW Money instance for backward compatibility
         // CRITICAL: Do NOT share the same Money object reference between TicketPrice and Pricing.AdultPrice
@@ -776,6 +817,7 @@ public class Event : BaseEntity
 
     /// <summary>
     /// Phase 6D: Sets group-based tiered pricing for the event
+    /// Phase 6A.86: Now updates IsFreeEvent flag based on tier pricing
     /// </summary>
     /// <param name="pricing">Ticket pricing configuration with group tiers</param>
     public Result SetGroupPricing(TicketPricing? pricing)
@@ -787,6 +829,9 @@ public class Event : BaseEntity
             return Result.Failure("Only GroupTiered pricing type is allowed for SetGroupPricing");
 
         Pricing = pricing;
+
+        // Phase 6A.86: Check if all tiers are free (all prices are zero)
+        IsFreeEvent = pricing.GroupTiers.All(tier => tier.PricePerPerson.IsZero);
 
         // Set TicketPrice to null for group pricing (not applicable)
         TicketPrice = null;
@@ -831,6 +876,14 @@ public class Event : BaseEntity
         {
             var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, Shared.Enums.Currency.USD).Value;
             return Result<Money>.Success(freePrice);
+        }
+
+        // Phase 6A.86: Security validation - Paid events MUST have pricing configured
+        if (!IsFreeEvent && Pricing == null && TicketPrice == null)
+        {
+            throw new InvalidOperationException(
+                "Paid event pricing is not configured. Events marked as paid must have explicit pricing set. " +
+                "Use SetPricing(), SetDualPricing(), or SetGroupPricing() to configure pricing.");
         }
 
         // Calculate based on pricing configuration

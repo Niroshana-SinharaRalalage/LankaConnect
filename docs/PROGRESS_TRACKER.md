@@ -1,9 +1,85 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-27 - Phase 6A.86: Explicit IsFreeEvent Flag Implementation ✅ COMPLETE - DEPLOYED TO STAGING*
+*Last Updated: 2026-01-27 - Phase 6A.81 Part 4: Duplicate Preliminary Registration Fix ✅ COMPLETE - DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.86: Explicit IsFreeEvent Flag Implementation ✅ COMPLETE - DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.81 Part 4: Duplicate Registration Fix ✅ COMPLETE - DEPLOYED TO STAGING
+
+### PHASE 6A.81 PART 4: DUPLICATE PRELIMINARY REGISTRATION FIX - COMPLETE - 2026-01-27
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED**
+
+**Commits**:
+- 3eacfe34 - fix(phase-6a81-part4): Prevent duplicate Preliminary registrations - reuse existing checkout sessions
+- badaa016 - fix(phase-6a86): Fix IsFreeEvent constructor logic (includes GetByUserAsync fix)
+
+**Priority**: 🔴 **CRITICAL** - User-Facing Bug Fix (Payment Pending UI Not Showing)
+
+**Problem**:
+Users who register for a paid event, are redirected to Stripe checkout, but abandon the checkout (close browser) could re-register creating **duplicate Preliminary registrations**. Additionally, when returning to the event page, the "Payment Pending" UI with countdown timer was NOT displayed - instead showing the registration form.
+
+**Root Cause** (from [RCA_DUPLICATE_PRELIMINARY_REGISTRATIONS.md](./RCA_DUPLICATE_PRELIMINARY_REGISTRATIONS.md)):
+- `RegistrationRepository.GetByUserAsync` excluded `Preliminary` registrations from its whitelist query
+- This broke the frontend data chain: `useUserRsvpForEvent` returned undefined → `registrationDetails` not fetched → `isPaymentPending = false` → Registration form shown instead of Payment Pending UI
+- Evidence: User had 3 duplicate Preliminary registrations for the same event (d543629f-a5ba-4475-b124-3d0fc5200f2f)
+
+**Solution**:
+Two-part fix addressing both backend prevention and UI detection:
+
+**Fix 1: Add Preliminary to GetByUserAsync whitelist** ([RegistrationRepository.cs:131-142](../src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs#L131-L142))
+```csharp
+// Phase 6A.81 Part 4 FIX: Include Preliminary to show Payment Pending UI
+.Where(r => r.UserId == userId &&
+           (r.Status == RegistrationStatus.Preliminary ||  // Phase 6A.81: Payment pending
+            r.Status == RegistrationStatus.Confirmed ||
+            r.Status == RegistrationStatus.Waitlisted ||
+            r.Status == RegistrationStatus.CheckedIn ||
+            r.Status == RegistrationStatus.Attended))
+```
+
+**Fix 2: Reuse existing checkout sessions** ([RsvpToEventCommandHandler.cs:160-198](../src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs#L160-L198))
+- Before creating new registration, check for existing Preliminary registration
+- If found, retrieve and return existing Stripe checkout URL
+- Prevents duplicate registrations at the command handler level
+
+**API Verification Results** (2026-01-27):
+```json
+GET /api/events/d543629f-a5ba-4475-b124-3d0fc5200f2f/my-registration
+{
+  "id": "b5ecbb4a-ca5b-4b2c-9848-e9b1386e3505",
+  "status": "Preliminary",
+  "paymentStatus": "Pending",
+  "stripeCheckoutSessionId": "https://checkout.stripe.com/...",
+  "checkoutSessionExpiresAt": "2026-01-28T04:52:23.441096Z"
+}
+```
+✅ Preliminary registration now returned correctly via my-registration endpoint
+
+**Impact**:
+- ✅ Payment Pending UI now shows when user has Preliminary registration
+- ✅ Countdown timer displays time remaining for checkout completion
+- ✅ "Complete Payment" button redirects to existing Stripe session
+- ✅ Duplicate registrations prevented at command handler level
+- ✅ Users can no longer bypass payment by closing Stripe tab and re-registering
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs` (+12 lines - added Preliminary to whitelist with comments)
+- `src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs` (+38 lines - duplicate prevention logic)
+- `docs/RCA_DUPLICATE_PRELIMINARY_REGISTRATIONS.md` (NEW - comprehensive root cause analysis)
+- `scripts/cleanup_duplicate_preliminary_registrations_phase6a81part4.sql` (NEW - database cleanup script)
+
+**Database Cleanup**:
+SQL script provided to clean up existing duplicate Preliminary registrations. Keeps latest registration, deletes older duplicates for same user/event pair.
+
+**Testing**:
+- ✅ 74 registration-related tests passing
+- ✅ Build succeeded (0 errors)
+- ✅ Deployed to Azure staging
+- ✅ API endpoint verified returning Preliminary registrations
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.86: Explicit IsFreeEvent Flag Implementation ✅ COMPLETE - DEPLOYED TO STAGING
 
 ### PHASE 6A.86: EXPLICIT ISFREEEVENT FLAG - COMPLETE - 2026-01-27
 

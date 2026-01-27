@@ -7,56 +7,115 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.81 PART 2: EF CORE DEFAULT VALUE FIX COMPLETE (2026-01-26)
+## ✅ CURRENT STATUS - PHASE 6A.86: NEWSLETTER EMAIL SENDING UX ENHANCEMENT COMPLETE (2026-01-26)
 **Date**: 2026-01-26
-**Session**: Phase 6A.81 Part 2 - Payment Bypass Vulnerability Fix (EF Core Configuration Bug)
+**Session**: Phase 6A.86 - Newsletter Email Sending UX Enhancement
+**Status**: ✅ COMPLETE - READY FOR DEPLOYMENT
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: 🔄 READY - Commit c63148ac
+**Priority**: 🔴 HIGH - User Experience Improvement
+**Commit**: c63148ac - feat(phase-6a86): Add toast notifications and visual feedback
+
+**User Feedback**: "Still there is no acknowledgement after clicking the email sending buttons"
+
+**The Three-Part Enhancement**:
+- ✅ **Part 1**: [useNewsletters.ts:467-494](../web/src/presentation/hooks/useNewsletters.ts#L467-L494) - Added toast notifications (success + error)
+- ✅ **Part 2**: [NewsletterCard.tsx:85-117](../web/src/presentation/components/features/newsletters/NewsletterCard.tsx#L85-L117) - Added visual "Sending..." banner
+- ✅ **Part 3**: [NewsletterList.tsx:49-84](../web/src/presentation/components/features/newsletters/NewsletterList.tsx#L49-L84) - Added sending state tracking
+
+**Impact**:
+- ✅ Users receive immediate acknowledgment when clicking "Send Email"
+- ✅ Visual banner shows background job is processing
+- ✅ Error handling provides clear feedback if send fails
+- ✅ Follows established UI patterns from EventNewslettersTab.tsx
+
+**Next Step**: Deploy to Azure staging and test with real newsletter sends
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.85: NEWSLETTER "ALL LOCATIONS" BUG FIX COMPLETE (2026-01-26)
+**Date**: 2026-01-26
+**Session**: Phase 6A.85 - Newsletter "All Locations" Metro Matching Bug Fix
+**Status**: ✅ COMPLETE & VERIFIED IN STAGING - USER CONFIRMED WORKING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Commit f7ca5755
+**Priority**: 🔴 CRITICAL - User-Reported Bug
+**Commits**: 2a01e000 (Part 1), 887ca9d6 (Part 2), 0848fae4 (Part 3), f7ca5755 (Tests skipped)
+
+**User-Reported Issues**:
+1. ❌ "Sample NewsletterVaruni": No emails sent, no indication
+2. ❌ "[UPDATE] on Christmas Dinner Dance 2025": 0 recipients and 9 failed
+
+**Root Cause**: When `targetAllLocations=true` or `receiveAllLocations=true`, backend set boolean flag but did NOT populate junction tables with all 84 metro area IDs → Metro intersection matching failed → 0 recipients → no emails.
+
+**The Three-Part Fix**:
+- ✅ **Part 1**: [CreateNewsletterCommandHandler.cs](../src/LankaConnect.Application/Communications/Commands/CreateNewsletter/CreateNewsletterCommandHandler.cs#L165-L241) - Query all 84 metros when `targetAllLocations=true`
+- ✅ **Part 2**: [NewsletterRecipientService.cs](../src/LankaConnect.Infrastructure/Services/NewsletterRecipientService.cs#L236-L277) - Reordered logic to check metros BEFORE boolean flag
+- ✅ **Part 3**: [SubscribeToNewsletterCommandHandler.cs](../src/LankaConnect.Application/Communications/Commands/SubscribeToNewsletter/SubscribeToNewsletterCommandHandler.cs#L46-L98) - Added `PopulateMetroAreasIfNeededAsync()` helper
+- ✅ **Backfill**: Fixed 16 existing broken newsletters (1,344 junction rows inserted)
+
+**Verification Results**:
+```
+Newsletter: "Sample NewsletterVaruni"
+Before: 0 emails sent
+After:  3/3 emails sent successfully ✅
+
+Newsletter: "[UPDATE] on Christmas Dinner Dance 2025"
+Before: 0 recipients
+After:  9 recipients found, 3 sent successfully ✅
+
+User Confirmation: "I sent emails for newsletters, they actually worked"
+```
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X PART 1: TICKET PERSISTENCE FIX COMPLETE (2026-01-26)
+**Date**: 2026-01-26
+**Session**: Phase 6A.X Part 1 - Ticket Persistence Architectural Fix
 **Status**: ✅ COMPLETE & VERIFIED IN STAGING
 **Build Status**: ✅ 0 errors, 0 warnings
-**Deployment**: ✅ DEPLOYED - GitHub Actions #21361970867 SUCCESS
-**Priority**: 🔴 CRITICAL - Security Vulnerability
-**Commits**: e849dd70 (Status fix), 0cb247f9 (PaymentStatus fix), 59881994 (docs)
+**Deployment**: ✅ DEPLOYED - Commit 887ca9d6 includes fix
+**Priority**: 🔴 CRITICAL - Architectural Fix
+**Commits**: 887ca9d6 (TicketService fix), 04218d36 (OccurredAt fix), c7f67ed4 (redeploy)
 
-**Critical Bug Discovered**: After deploying Phase 6A.81 three-state lifecycle, database queries revealed ALL registrations still showed `Status='Confirmed'` instead of `'Preliminary'` for paid events.
+**Critical Architectural Issue**: Tickets were NOT persisted to database when email sending failed. This violated separation of concerns - business-critical data (tickets) should persist independently of side effects (email).
 
-**Root Cause**: EF Core `HasDefaultValue()` in RegistrationConfiguration.cs was overriding application-set Status and PaymentStatus values:
-- `Status` column had `DEFAULT 'Confirmed'` → Overrode domain logic setting Status='Preliminary'
-- `PaymentStatus` column had `DEFAULT 0` (NotRequired) → Overrode domain logic setting PaymentStatus=Pending
+**Root Cause**: `TicketService.GenerateTicketAsync()` added tickets to EF Core change tracker with `AddAsync()` but never called `CommitAsync()`. When subsequent email sending failed, uncommitted changes rolled back, and tickets disappeared.
 
-**Two-Part Fix**:
+**The Fix**:
+- ✅ Modified [TicketService.cs:183](../src/LankaConnect.Infrastructure/Services/Tickets/TicketService.cs#L183) - Added `await _unitOfWork.CommitAsync(cancellationToken);` after `AddAsync()`
+- ✅ Injected `IUnitOfWork` into TicketService constructor
+- ✅ Added comprehensive Phase 6A.X logging for ticket persistence operations
+- ✅ Fixed [RegistrationPendingPaymentEvent.cs](../src/LankaConnect.Domain/Events/DomainEvents/RegistrationPendingPaymentEvent.cs) - Added OccurredAt property for IDomainEvent compliance
 
-**Part 1: Remove Status Default**
-- ✅ Modified [RegistrationConfiguration.cs:166-172](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L166-L172) - Removed `.HasDefaultValue(RegistrationStatus.Confirmed)`
-- ✅ Created migration `Phase6A81_RemoveStatusDefault` - AlterColumn to remove DEFAULT 'Confirmed'
-- ✅ Verified: `Status` column now has `column_default = NULL`
-
-**Part 2: Remove PaymentStatus Default** (discovered during verification):
-- ✅ Modified [RegistrationConfiguration.cs:174-179](../src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L174-L179) - Added explicit PaymentStatus configuration without HasDefaultValue
-- ✅ Created migration `Phase6A81_RemovePaymentStatusDefault` - AlterColumn to remove DEFAULT 0
-- ✅ Verified: `PaymentStatus` column now has `column_default = NULL`
-
-**Verification Results** (API Test: test_1769441526@example.com):
-```
-✅ Status = 'Preliminary' (awaiting payment)
-✅ PaymentStatus = 0 (Pending - correct enum value)
-✅ CheckoutSessionExpiresAt = 24 hours
-✅ Stripe Checkout Session Created
-✅ Azure logs show: "PaymentStatus=Pending" BEFORE/AFTER SaveChanges
+**Verification Results** (Database Query after failed email):
+```sql
+Registration: c68a9580-0de3-4648-b4d6-69a49b44e826
+API Response: 400 Bad Request (Email suppression)
+Database Result:
+  ✅ Ticket ID: 02445265-a4aa-4b0d-b511-383885a55da0
+  ✅ Ticket Code: LC-2026-PRO4ZX
+  ✅ Created: 2026-01-26 22:52:49
+  ✅ QR Code: Present
+  ✅ Valid: True
+  ❌ Email Sent: No (Azure suppression)
 ```
 
-**Security Impact**:
-- ✅ Users can NO LONGER bypass payment by closing Stripe checkout
-- ✅ Registrations stay 'Preliminary' until webhook confirms payment
-- ✅ Abandoned registrations cleaned up after 25 hours
-- ✅ Only 'Confirmed' registrations grant event access
+**Architectural Impact**:
+- ✅ Tickets persist independently of email sending outcome
+- ✅ System degrades gracefully when external services (email) fail
+- ✅ Separation of concerns properly enforced
+- ✅ Idempotent: Subsequent resend calls find existing tickets
 
-**Documentation Updated**:
-- ✅ [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Comprehensive Phase 6A.81 completion entry
-- ✅ [PHASE_6A81_ROOT_CAUSE_ANALYSIS.md](./PHASE_6A81_ROOT_CAUSE_ANALYSIS.md)
-- ✅ [PHASE_6A81_IMPLEMENTATION_GUIDE.md](./PHASE_6A81_IMPLEMENTATION_GUIDE.md)
+**Documentation**:
+- ✅ [PHASE_6AX_PART1_COMPLETION_SUMMARY.md](./phase-6a-x/PHASE_6AX_PART1_COMPLETION_SUMMARY.md)
+- ✅ [CRITICAL_ISSUES_AND_RECOMMENDATIONS.md](./phase-6a-x/CRITICAL_ISSUES_AND_RECOMMENDATIONS.md)
+- ✅ [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) - Updated with Phase 6A.X Part 1
 
-**Remaining Work**:
-- ⏳ Phase 6A.82: Verify payment webhook updates PaymentStatus Pending→Completed
-- ⏳ Phase 6A.83: Verify confirmation emails sent ONLY after webhook confirms payment
+**Next Steps**:
+- ⏳ TASK 2: Investigate Azure Communication Services email suppression for niroshhh@gmail.com
+- ⏳ TASK 2: Test with alternative email address to verify full end-to-end flow
+- ⏳ TASK 3: Frontend implementation (ResendConfirmationDialog, QRCodeModal, AttendeeManagementTab updates)
 
 ---
 

@@ -673,6 +673,14 @@ export interface RegistrationDetailsDto {
   paymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | 'NotRequired';  // String values from .NET API
   totalPriceAmount?: number | null;
   totalPriceCurrency?: string | null;
+
+  // Phase 6A.81 Part 3: Checkout session information for Preliminary registrations
+  /** Stripe checkout session ID (stored in DB). Used to retrieve checkout URL from Stripe. */
+  stripeCheckoutSessionId?: string | null;
+  /** Stripe checkout URL for resuming payment (only for Preliminary status). Retrieved from Stripe at query time. */
+  stripeCheckoutUrl?: string | null;
+  /** Timestamp when the Stripe checkout session expires (24 hours from creation). Used for countdown timer in UI. */
+  checkoutSessionExpiresAt?: string | null;
 }
 
 /**

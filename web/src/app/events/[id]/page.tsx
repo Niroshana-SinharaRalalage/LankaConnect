@@ -15,6 +15,7 @@ import { MediaGallery } from '@/presentation/components/features/events/MediaGal
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
+import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
@@ -942,6 +943,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         Your registration is pending payment. Please complete your payment to confirm your registration.
                       </p>
 
+                      {/* Phase 6A.81 Part 3: Countdown Timer for Checkout Session Expiration */}
+                      {registrationDetails?.checkoutSessionExpiresAt && (
+                        <div className="mb-3 flex justify-center">
+                          <CheckoutCountdownTimer
+                            expiresAt={registrationDetails.checkoutSessionExpiresAt}
+                            onExpired={() => {
+                              console.log('[CheckoutCountdown] Session expired - refreshing registration status');
+                              // Refresh will update status to Abandoned via backend logic
+                              window.location.reload();
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Payment Instructions */}
                       <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
                         <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
@@ -980,48 +995,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             backgroundColor: '#FF7900',
                             color: '#FFFFFF'
                           }}
-                          onClick={async () => {
-                            try {
-                              console.log('[PaymentPending] User clicked Complete Payment button');
-                              console.log('[PaymentPending] Registration ID:', registrationDetails?.id);
+                          onClick={() => {
+                            // Phase 6A.81 Part 3: Use stripeCheckoutUrl from registrationDetails
+                            const checkoutUrl = registrationDetails?.stripeCheckoutUrl;
 
-                              // WORKAROUND: Re-register to get a new Stripe checkout URL
-                              // The backend will detect existing registration and return checkout URL
-                              const successUrl = `${window.location.origin}/events/${id}?payment=success`;
-                              const cancelUrl = `${window.location.origin}/events/${id}?payment=cancelled`;
-
-                              console.log('[PaymentPending] Calling registration endpoint to get new checkout URL');
-                              const checkoutUrl = await rsvpMutation.mutateAsync({
-                                eventId: id,
-                                userId: user!.userId!,
-                                quantity: registrationDetails!.quantity,
-                                attendees: registrationDetails!.attendees,
-                                email: registrationDetails!.contactEmail || undefined,
-                                phoneNumber: registrationDetails!.contactPhone || undefined,
-                                address: registrationDetails!.contactAddress || undefined,
-                                successUrl,
-                                cancelUrl,
-                              });
-
-                              if (checkoutUrl) {
-                                console.log('[PaymentPending] Redirecting to Stripe checkout:', checkoutUrl);
-                                window.location.href = checkoutUrl;
-                              } else {
-                                console.error('[PaymentPending] No checkout URL returned');
-                                alert('Failed to retrieve payment link. Please contact support.');
-                              }
-                            } catch (error: any) {
-                              console.error('[PaymentPending] Failed to retrieve checkout URL:', error);
-                              alert('Failed to retrieve payment link. Please try again or contact support.');
+                            if (checkoutUrl) {
+                              console.log('[PaymentPending] Redirecting to Stripe checkout:', checkoutUrl);
+                              window.location.href = checkoutUrl;
+                            } else {
+                              console.error('[PaymentPending] No checkout URL available in registration details');
+                              alert('Payment link not available. Please refresh the page or contact support.');
                             }
                           }}
+                          disabled={!registrationDetails?.stripeCheckoutUrl}
                         >
                           Complete Payment
                         </Button>
 
-                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 text-center">
-                          Phase 6A.81: Your checkout session expires in 24 hours. Complete payment to confirm your registration.
-                        </p>
+                        {registrationDetails?.checkoutSessionExpiresAt && (
+                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 text-center">
+                            Complete payment before countdown expires to secure your spot.
+                          </p>
+                        )}
                       </div>
                     </div>
 

@@ -157,6 +157,46 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         if (contactResult.IsFailure)
             return Result<string?>.Failure(contactResult.Error);
 
+        // Phase 6A.81 Part 4 FIX: Check for existing Preliminary registration to prevent duplicates
+        // If user already has a Preliminary registration (payment not completed), reuse it
+        var existingPreliminary = @event.Registrations.FirstOrDefault(r =>
+            r.UserId == request.UserId &&
+            r.Status == Domain.Events.Enums.RegistrationStatus.Preliminary);
+
+        if (existingPreliminary != null && !@event.IsFree())
+        {
+            _logger.LogInformation(
+                "Found existing Preliminary registration - RegistrationId={RegistrationId}, UserId={UserId}, EventId={EventId}. Retrieving existing checkout URL.",
+                existingPreliminary.Id, request.UserId, @event.Id);
+
+            // Retrieve existing Stripe checkout URL (Phase 6A.81 Part 2)
+            if (string.IsNullOrEmpty(existingPreliminary.StripeCheckoutSessionId))
+            {
+                _logger.LogError(
+                    "Existing Preliminary registration missing checkout session ID - RegistrationId={RegistrationId}",
+                    existingPreliminary.Id);
+                return Result<string?>.Failure("Existing registration is in invalid state. Please contact support.");
+            }
+
+            var checkoutUrlResult = await _stripePaymentService.GetCheckoutSessionUrlAsync(
+                existingPreliminary.StripeCheckoutSessionId,
+                cancellationToken);
+
+            if (checkoutUrlResult.IsFailure)
+            {
+                _logger.LogError(
+                    "Failed to retrieve checkout URL for existing Preliminary registration - RegistrationId={RegistrationId}, Error={Error}",
+                    existingPreliminary.Id, checkoutUrlResult.Error);
+                return Result<string?>.Failure($"Failed to retrieve payment link: {checkoutUrlResult.Error}");
+            }
+
+            _logger.LogInformation(
+                "Successfully retrieved existing checkout URL - RegistrationId={RegistrationId}, URL exists={HasUrl}",
+                existingPreliminary.Id, !string.IsNullOrEmpty(checkoutUrlResult.Value));
+
+            return Result<string?>.Success(checkoutUrlResult.Value);
+        }
+
         // Use new domain method to register multiple attendees for authenticated user
         var registerResult = @event.RegisterWithAttendees(
             userId: request.UserId,

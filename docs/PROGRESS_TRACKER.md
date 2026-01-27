@@ -1,9 +1,91 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-27 - Phase 6A.81 Part 4: Duplicate Preliminary Registration Fix ✅ COMPLETE - DEPLOYED TO STAGING*
+*Last Updated: 2026-01-27 - Phase 6A.88: Draft Events Visibility Fix ✅ COMPLETE - DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.81 Part 4: Duplicate Registration Fix ✅ COMPLETE - DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.88: Draft Events Visibility Fix ✅ COMPLETE - DEPLOYED TO STAGING
+
+### PHASE 6A.88: DRAFT EVENTS VISIBILITY IN EVENT MANAGEMENT - COMPLETE - 2026-01-27
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED**
+
+**Commits**:
+- a1d7a658 - fix(phase-6a88): Enable Draft events visibility in Event Management
+
+**Priority**: 🟡 **MEDIUM** - User-Facing Bug Fix (Unpublished Events Not Visible to Organizer)
+
+**Problem**:
+After creating a new event and navigating back to the Event Management tab without publishing it, organizers could not see the newly created Draft event in their Event Management page. The event was correctly saved to the database with `Status = Draft`, but the `/api/events/my-events` endpoint was filtering it out.
+
+**Root Cause** (from [RCA_UNPUBLISHED_EVENTS_NOT_VISIBLE.md](./RCA_UNPUBLISHED_EVENTS_NOT_VISIBLE.md)):
+- `GetEventsByOrganizerQueryHandler` delegated to `GetEventsQuery` for filtering
+- `GetEventsQuery` was designed for **public listings** and filtered out Draft/UnderReview events
+- This caused organizer's own Draft events to be hidden in Event Management
+
+**Solution**:
+Added `IncludeAllStatuses` flag to `GetEventsQuery` to control Draft/UnderReview visibility:
+
+**Fix 1: Add IncludeAllStatuses parameter to GetEventsQuery** ([GetEventsQuery.cs](../src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQuery.cs))
+```csharp
+// Phase 6A.88: When true, includes Draft and UnderReview events.
+// Default is false (public listings exclude Draft/UnderReview).
+bool IncludeAllStatuses = false
+```
+
+**Fix 2: Conditional filter in GetEventsQueryHandler** ([GetEventsQueryHandler.cs:171-191](../src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs#L171-L191))
+```csharp
+// Phase 6A.88: If IncludeAllStatuses is true, return ALL events
+if (request.IncludeAllStatuses)
+{
+    return allEvents.ToList();
+}
+// Default: exclude Draft and UnderReview for public listings
+return allEvents.Where(e => e.Status != EventStatus.Draft &&
+                            e.Status != EventStatus.UnderReview).ToList();
+```
+
+**Fix 3: Pass IncludeAllStatuses=true in GetEventsByOrganizerQueryHandler** ([GetEventsByOrganizerQueryHandler.cs:98,152](../src/LankaConnect.Application/Events/Queries/GetEventsByOrganizer/GetEventsByOrganizerQueryHandler.cs))
+```csharp
+var getEventsQuery = new GetEventsQuery(
+    // ... existing params ...
+    IncludeAllStatuses: true  // Organizer sees ALL their events including Draft
+);
+```
+
+**API Verification Results** (2026-01-27):
+```
+GET /api/events/my-events (Organizer - Authenticated)
+✅ Returns Draft events: "Monthly Dhana December 2025" with status="Draft"
+
+GET /api/events (Public)
+✅ Does NOT return Draft events: 35 Published, 1 Completed, 1 Cancelled, 0 Draft
+```
+
+**Impact**:
+- ✅ Organizers can now see their Draft events in Event Management page
+- ✅ Organizers can see their UnderReview events in Event Management page
+- ✅ Public `/api/events` endpoint continues to exclude Draft/UnderReview events
+- ✅ All existing filters (Search, Category, Date, Location) continue to work
+- ✅ No breaking changes - default behavior preserved
+
+**Files Modified**:
+- `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQuery.cs` (+9 lines - added IncludeAllStatuses parameter)
+- `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` (+30 lines - conditional filter logic)
+- `src/LankaConnect.Application/Events/Queries/GetEventsByOrganizer/GetEventsByOrganizerQueryHandler.cs` (+7 lines - pass IncludeAllStatuses=true)
+- `tests/LankaConnect.Application.Tests/Events/Queries/GetEventsQueryHandlerTests.cs` (NEW - 8 tests)
+- `tests/LankaConnect.Application.Tests/Events/Queries/GetEventsByOrganizerQueryHandlerTests.cs` (NEW - 7 tests)
+- `docs/RCA_UNPUBLISHED_EVENTS_NOT_VISIBLE.md` (NEW - comprehensive root cause analysis)
+
+**Testing**:
+- ✅ 15 new unit tests for Draft/UnderReview visibility
+- ✅ All 1235 tests passing (no regression)
+- ✅ Build succeeded (0 errors)
+- ✅ Deployed to Azure staging
+- ✅ API endpoints verified
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.81 Part 4: Duplicate Registration Fix ✅ COMPLETE - DEPLOYED TO STAGING
 
 ### PHASE 6A.81 PART 4: DUPLICATE PRELIMINARY REGISTRATION FIX - COMPLETE - 2026-01-27
 

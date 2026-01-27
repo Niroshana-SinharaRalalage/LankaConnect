@@ -7,7 +7,45 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.86: NEWSLETTER EMAIL SENDING UX ENHANCEMENT COMPLETE (2026-01-26)
+## ✅ CURRENT STATUS - PHASE 6A.88: DRAFT EVENTS VISIBILITY FIX COMPLETE (2026-01-27)
+**Date**: 2026-01-27
+**Session**: Phase 6A.88 - Draft Events Visibility in Event Management
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Commit a1d7a658
+**Priority**: 🟡 MEDIUM - User-Facing Bug Fix
+**Commit**: a1d7a658 - fix(phase-6a88): Enable Draft events visibility in Event Management
+
+**User-Reported Issue**: "Once I create a new event and navigate back to Event Management tab without publishing it, I am unable see that event in event management page."
+
+**Root Cause**: `GetEventsByOrganizerQueryHandler` delegated to `GetEventsQuery` which was designed for public listings and filtered out Draft/UnderReview events.
+
+**The Fix**:
+- ✅ **GetEventsQuery.cs**: Added `IncludeAllStatuses` parameter (default: false for backward compatibility)
+- ✅ **GetEventsQueryHandler.cs**: Conditional filter - only exclude Draft/UnderReview when `IncludeAllStatuses=false`
+- ✅ **GetEventsByOrganizerQueryHandler.cs**: Pass `IncludeAllStatuses=true` so organizers see all their events
+
+**API Verification Results**:
+```
+GET /api/events/my-events (Organizer - Authenticated)
+✅ Returns Draft events: "Monthly Dhana December 2025" with status="Draft"
+
+GET /api/events (Public)
+✅ Does NOT return Draft events: 35 Published, 1 Completed, 1 Cancelled, 0 Draft
+```
+
+**Impact**:
+- ✅ Organizers can now see their Draft events in Event Management page
+- ✅ Public `/api/events` endpoint continues to exclude Draft events (no regression)
+- ✅ All existing filters continue to work
+
+**Testing**: 15 new unit tests, all 1235 tests passing
+
+**RCA Document**: [RCA_UNPUBLISHED_EVENTS_NOT_VISIBLE.md](./RCA_UNPUBLISHED_EVENTS_NOT_VISIBLE.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.86: NEWSLETTER EMAIL SENDING UX ENHANCEMENT COMPLETE (2026-01-26)
 **Date**: 2026-01-26
 **Session**: Phase 6A.86 - Newsletter Email Sending UX Enhancement
 **Status**: ✅ COMPLETE - READY FOR DEPLOYMENT

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Dialog, DialogContent } from '@/presentation/components/ui/Dialog';
@@ -20,15 +20,31 @@ interface MediaGalleryProps {
  * - Lightbox modal for full-screen viewing
  * - Image/video carousel navigation
  * - Dark mode support
+ *
+ * SCRUM-21 FIX: Images and videos are sorted by displayOrder using memoized arrays
+ * to ensure consistent ordering between thumbnail grid and lightbox display.
  */
 export function MediaGallery({ images = [], videos = [], className = '' }: MediaGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
 
-  // Combine images and videos for total media count
-  const totalImages = images.length;
-  const totalVideos = videos.length;
+  // SCRUM-21 FIX: Sort images once and use consistently for both thumbnails and lightbox
+  // This prevents the index mismatch bug where clicking a sorted thumbnail showed the wrong image
+  const sortedImages = useMemo(
+    () => [...images].sort((a, b) => a.displayOrder - b.displayOrder),
+    [images]
+  );
+
+  // SCRUM-21 FIX: Sort videos once and use consistently for both thumbnails and lightbox
+  const sortedVideos = useMemo(
+    () => [...videos].sort((a, b) => a.displayOrder - b.displayOrder),
+    [videos]
+  );
+
+  // Use sorted array lengths for total media count
+  const totalImages = sortedImages.length;
+  const totalVideos = sortedVideos.length;
   const totalMedia = totalImages + totalVideos;
 
   if (totalMedia === 0) {
@@ -77,9 +93,8 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
               Photos ({totalImages})
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {[...images]
-                .sort((a, b) => a.displayOrder - b.displayOrder)
-                .map((image, index) => (
+              {/* SCRUM-21 FIX: Use pre-sorted array instead of inline sort */}
+              {sortedImages.map((image, index) => (
                   <button
                     key={image.id}
                     onClick={() => openImageLightbox(index)}
@@ -107,9 +122,8 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
               Videos ({totalVideos})
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {[...videos]
-                .sort((a, b) => a.displayOrder - b.displayOrder)
-                .map((video, index) => (
+              {/* SCRUM-21 FIX: Use pre-sorted array instead of inline sort */}
+              {sortedVideos.map((video, index) => (
                   <button
                     key={video.id}
                     onClick={() => openVideoLightbox(index)}
@@ -169,23 +183,23 @@ export function MediaGallery({ images = [], videos = [], className = '' }: Media
               </>
             )}
 
-            {/* Media Content */}
+            {/* Media Content - SCRUM-21 FIX: Use sorted arrays for consistent index access */}
             <div className="w-full h-full flex items-center justify-center p-12">
-              {mediaType === 'image' && images[currentIndex] && (
+              {mediaType === 'image' && sortedImages[currentIndex] && (
                 <img
-                  src={images[currentIndex].imageUrl}
-                  alt={`Event photo ${images[currentIndex].displayOrder}`}
+                  src={sortedImages[currentIndex].imageUrl}
+                  alt={`Event photo ${sortedImages[currentIndex].displayOrder}`}
                   className="max-w-full max-h-full object-contain"
                 />
               )}
 
-              {mediaType === 'video' && videos[currentIndex] && (
+              {mediaType === 'video' && sortedVideos[currentIndex] && (
                 <video
-                  src={videos[currentIndex].videoUrl}
+                  src={sortedVideos[currentIndex].videoUrl}
                   controls
                   autoPlay
                   className="max-w-full max-h-full"
-                  poster={videos[currentIndex].thumbnailUrl}
+                  poster={sortedVideos[currentIndex].thumbnailUrl}
                 >
                   Your browser does not support the video tag.
                 </video>

@@ -22,8 +22,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     ""UpdatedAt"" = NOW()
                 WHERE
                     ticket_price IS NULL
-                    AND pricing IS NULL
-                    AND ""DeletedAt"" IS NULL;
+                    AND pricing IS NULL;
             ");
 
             migrationBuilder.UpdateData(
@@ -135,8 +134,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     ""UpdatedAt"" = NOW()
                 WHERE
                     ticket_price IS NULL
-                    AND pricing IS NULL
-                    AND ""DeletedAt"" IS NULL;
+                    AND pricing IS NULL;
             ");
 
             migrationBuilder.UpdateData(

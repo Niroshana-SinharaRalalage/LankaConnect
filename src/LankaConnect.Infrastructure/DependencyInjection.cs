@@ -29,7 +29,9 @@ using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Services;
 using LankaConnect.Application.Communications.BackgroundJobs;
+using LankaConnect.Application.Common.Extensions;
 using LankaConnect.Application.Common.Options;
+using LankaConnect.Shared.Email.Extensions;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
@@ -263,6 +265,13 @@ public static class DependencyInjection
         // Now: IEmailTemplateService → AzureEmailService (database templates)
         services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<IEmailService>() as IEmailTemplateService
             ?? throw new InvalidOperationException("IEmailService must implement IEmailTemplateService"));
+
+        // Phase 6A.87: Register Typed Email Services for hybrid email system
+        // - ITypedEmailService enables strongly-typed email parameters with compile-time safety
+        // - IEmailServiceBridge connects TypedEmailServiceAdapter to existing IEmailService
+        // - Feature flags control gradual migration per handler
+        services.AddTypedEmailServices(configuration);
+        services.AddEmailServiceBridge();
 
         // Phase 6A.37: Add HttpClient for email branding service to download images
         services.AddHttpClient();

@@ -100,25 +100,17 @@ public class EventReminderJobTests
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
-            It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
         // Act
         await _job.ExecuteAsync();
 
-        // Assert - Phase 6A.57: Now sends 3 reminders (7d, 2d, 1d) per registration
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.EventReminder,
-            userEmail,
-            It.Is<Dictionary<string, object>>(p =>
-                p.ContainsKey("AttendeeName") &&
-                p["AttendeeName"].ToString() == "Jane Attendee" &&
-                p.ContainsKey("EventTitle") &&
-                p["EventTitle"].ToString() == eventTitle),
+        // Assert - Phase 6A.87: Now uses ITypedEmailService with EventReminderEmailParams
+        // Phase 6A.57: Sends 3 reminders (7d, 2d, 1d) per registration
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventReminderEmailParams>(p =>
+                p.AttendeeName == "Jane Attendee" &&
+                p.EventTitle == eventTitle &&
+                p.AttendeeEmail == userEmail),
+            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
@@ -140,23 +132,16 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Event> { mockEvent });
 
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
-            It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
         // Act
         await _job.ExecuteAsync();
 
-        // Assert - Phase 6A.57: Now sends 3 reminders (7d, 2d, 1d) per registration
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.EventReminder,
-            contactEmail,
-            It.Is<Dictionary<string, object>>(p =>
-                p.ContainsKey("EventTitle") &&
-                p["EventTitle"].ToString() == eventTitle),
+        // Assert - Phase 6A.87: Now uses ITypedEmailService with EventReminderEmailParams
+        // Phase 6A.57: Sends 3 reminders (7d, 2d, 1d) per registration
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventReminderEmailParams>(p =>
+                p.EventTitle == eventTitle &&
+                p.AttendeeEmail == contactEmail),
+            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
@@ -174,11 +159,10 @@ public class EventReminderJobTests
         // Act
         await _job.ExecuteAsync();
 
-        // Assert
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
+        // Assert - Phase 6A.87: Verify no typed emails sent
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -205,12 +189,11 @@ public class EventReminderJobTests
         // Act - Should not throw
         var act = async () => await _job.ExecuteAsync();
 
-        // Assert
+        // Assert - Phase 6A.87: Verify no typed emails sent
         await act.Should().NotThrowAsync();
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -239,28 +222,28 @@ public class EventReminderJobTests
         _userRepository.Setup(x => x.GetByIdAsync(userId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user2);
 
-        // Phase 6A.57: First email fails, second should still be sent
+        // Phase 6A.87: First email fails, second should still be sent
         // With 3 time windows, we expect 3 calls per registration = 6 total
         var callCount = 0;
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
                 callCount++;
-                return callCount == 1 ? Result.Failure("Email failed") : Result.Success();
+                return callCount == 1
+                    ? TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email failed" })
+                    : TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100);
             });
 
         // Act
         await _job.ExecuteAsync();
 
         // Assert - Both registrations should be attempted (3 windows × 2 registrations = 6 calls)
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(6));
     }
 

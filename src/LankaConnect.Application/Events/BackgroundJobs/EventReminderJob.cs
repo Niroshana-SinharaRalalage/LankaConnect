@@ -7,6 +7,8 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -21,15 +23,19 @@ public class EventReminderJob
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service for pilot migration
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEventReminderRepository _eventReminderRepository;
     private readonly ITicketRepository _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
     private readonly ILogger<EventReminderJob> _logger;
 
+    private const string HandlerName = "EventReminderJob";  // Phase 6A.87: For feature flag lookup
+
     public EventReminderJob(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service for pilot migration
         IEmailUrlHelper emailUrlHelper,
         IEventReminderRepository eventReminderRepository,
         ITicketRepository ticketRepository,  // Phase 6A.83 Part 3: Added for ticket parameter support
@@ -38,6 +44,7 @@ public class EventReminderJob
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _emailUrlHelper = emailUrlHelper;
         _eventReminderRepository = eventReminderRepository;
         _ticketRepository = ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
@@ -203,57 +210,54 @@ public class EventReminderJob
                             continue;
                         }
 
-                        // Phase 6A.71: Use database template with configuration-based URLs
+                        // Phase 6A.87: Use typed email parameters for compile-time safety
                         var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
-                        var parameters = new Dictionary<string, object>
-                        {
-                            { "AttendeeName", toName },
-                            { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
-                            { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                            { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                            { "Location", @event.Location?.Address.ToString() ?? "Location TBD" },
-                            { "Quantity", registration.Quantity },
-                            { "HoursUntilEvent", hoursUntilEvent },
-                            { "ReminderTimeframe", reminderTimeframe },
-                            { "ReminderMessage", reminderMessage },
-                            { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
-                        };
+                        var emailParams = EventReminderEmailParams.Create(
+                            eventId: @event.Id,
+                            registrationId: registration.Id,
+                            attendeeName: toName,
+                            attendeeEmail: toEmail,
+                            eventTitle: @event.Title?.Value ?? "Untitled Event",
+                            eventStartDate: @event.StartDate,
+                            eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                            location: @event.Location?.Address.ToString() ?? "Location TBD",
+                            quantity: registration.Quantity,
+                            hoursUntilEvent: hoursUntilEvent,
+                            reminderTimeframe: reminderTimeframe,
+                            reminderMessage: reminderMessage,
+                            eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+                        );
 
-                        // Phase 6A.83 REVERT: Use OrganizerContact* parameters (templates expect these exact names)
+                        // Phase 6A.87: Add organizer contact if available
                         if (@event.HasOrganizerContact())
                         {
-                            parameters["HasOrganizerContact"] = true;
-                            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
-
-                            if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail;
-
-                            if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone;
-                        }
-                        else
-                        {
-                            parameters["HasOrganizerContact"] = false;
+                            emailParams.WithOrganizerContact(
+                                name: @event.OrganizerContactName ?? "Event Organizer",
+                                email: @event.OrganizerContactEmail,
+                                phone: @event.OrganizerContactPhone
+                            );
                         }
 
-                        // Phase 6A.83 Part 3: Fetch ticket for registration (paid events only)
+                        // Phase 6A.87: Add ticket info if available (paid events only)
                         var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
                         if (ticket != null)
                         {
-                            parameters["TicketCode"] = ticket.TicketCode ?? "";
-                            parameters["TicketExpiryDate"] = ticket.ExpiresAt.ToString("MMMM dd, yyyy");
-                        }
-                        else
-                        {
-                            parameters["TicketCode"] = "";
-                            parameters["TicketExpiryDate"] = "";
+                            emailParams.WithTicket(
+                                ticketCode: ticket.TicketCode,
+                                expiryDate: ticket.ExpiresAt.ToString("MMMM dd, yyyy")
+                            );
                         }
 
-                        var result = await _emailService.SendTemplatedEmailAsync(
-                            EmailTemplateNames.EventReminder,
-                            toEmail,
-                            parameters,
+                        // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                        var typedResult = await _typedEmailService.SendEmailAsync(
+                            emailParams,
+                            HandlerName,
                             cancellationToken);
+
+                        // Convert to Result pattern for existing logic compatibility
+                        var result = typedResult.Success
+                            ? LankaConnect.Domain.Common.Result.Success()
+                            : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
 
                         if (result.IsSuccess)
                         {
@@ -403,57 +407,54 @@ public class EventReminderJob
                         continue;
                     }
 
-                    // Phase 6A.71: Use database template with configuration-based URLs
+                    // Phase 6A.87: Use typed email parameters for compile-time safety
                     var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
-                    var parameters = new Dictionary<string, object>
-                    {
-                        { "AttendeeName", toName },
-                        { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
-                        { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                        { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                        { "Location", @event.Location?.Address.ToString() ?? "Location TBD" },
-                        { "Quantity", registration.Quantity },
-                        { "HoursUntilEvent", hoursUntilEvent },
-                        { "ReminderTimeframe", reminderTimeframe },
-                        { "ReminderMessage", reminderMessage },
-                        { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }
-                    };
+                    var emailParams = EventReminderEmailParams.Create(
+                        eventId: @event.Id,
+                        registrationId: registration.Id,
+                        attendeeName: toName,
+                        attendeeEmail: toEmail,
+                        eventTitle: @event.Title?.Value ?? "Untitled Event",
+                        eventStartDate: @event.StartDate,
+                        eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                        location: @event.Location?.Address.ToString() ?? "Location TBD",
+                        quantity: registration.Quantity,
+                        hoursUntilEvent: hoursUntilEvent,
+                        reminderTimeframe: reminderTimeframe,
+                        reminderMessage: reminderMessage,
+                        eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+                    );
 
-                    // Phase 6A.83 Part 3: REVERT - Use OrganizerContact* parameters (templates expect these exact names)
+                    // Phase 6A.87: Add organizer contact if available
                     if (@event.HasOrganizerContact())
                     {
-                        parameters["HasOrganizerContact"] = true;
-                        parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
-
-                        if (!string.IsNullOrWhiteSpace(@event.OrganizerContactEmail))
-                            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail;
-
-                        if (!string.IsNullOrWhiteSpace(@event.OrganizerContactPhone))
-                            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone;
-                    }
-                    else
-                    {
-                        parameters["HasOrganizerContact"] = false;
+                        emailParams.WithOrganizerContact(
+                            name: @event.OrganizerContactName ?? "Event Organizer",
+                            email: @event.OrganizerContactEmail,
+                            phone: @event.OrganizerContactPhone
+                        );
                     }
 
-                    // Phase 6A.83 Part 3: Fetch ticket for registration (paid events only)
+                    // Phase 6A.87: Add ticket info if available (paid events only)
                     var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
                     if (ticket != null)
                     {
-                        parameters["TicketCode"] = ticket.TicketCode ?? "";
-                        parameters["TicketExpiryDate"] = ticket.ExpiresAt.ToString("MMMM dd, yyyy");
-                    }
-                    else
-                    {
-                        parameters["TicketCode"] = "";
-                        parameters["TicketExpiryDate"] = "";
+                        emailParams.WithTicket(
+                            ticketCode: ticket.TicketCode,
+                            expiryDate: ticket.ExpiresAt.ToString("MMMM dd, yyyy")
+                        );
                     }
 
-                    var result = await _emailService.SendTemplatedEmailAsync(
-                        EmailTemplateNames.EventReminder,
-                        toEmail,
-                        parameters,
+                    // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                    var typedResult = await _typedEmailService.SendEmailAsync(
+                        emailParams,
+                        HandlerName,
                         cancellationToken);
+
+                    // Convert to Result pattern for existing logic compatibility
+                    var result = typedResult.Success
+                        ? LankaConnect.Domain.Common.Result.Success()
+                        : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
 
                     if (result.IsSuccess)
                     {

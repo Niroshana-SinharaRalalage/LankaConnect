@@ -168,6 +168,19 @@ public class StripePaymentService : IStripePaymentService
                 return Result<string>.Failure("Session ID cannot be empty");
             }
 
+            // Phase 6A.81 Part 4 FIX: Handle legacy data where full URL was stored instead of session ID
+            // Bug origin: CreateEventCheckoutSessionAsync returned session.Url (full URL) instead of session.Id
+            // This URL was then stored in StripeCheckoutSessionId field (misnamed)
+            // Fix: Detect if input is already a checkout URL and return it directly
+            if (sessionId.StartsWith("https://checkout.stripe.com", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.81-Part4] Detected legacy checkout URL in StripeCheckoutSessionId field - returning directly. " +
+                    "UrlLength={UrlLength}",
+                    sessionId.Length);
+                return Result<string>.Success(sessionId);
+            }
+
             var sessionService = new SessionService(_stripeClient);
             var session = await sessionService.GetAsync(sessionId, null, null, cancellationToken);
 

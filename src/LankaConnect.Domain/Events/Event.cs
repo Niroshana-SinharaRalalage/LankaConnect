@@ -92,6 +92,10 @@ public class Event : BaseEntity
         Location = location;
         Category = category;
         TicketPrice = ticketPrice;
+        // Phase 6A.86: Set IsFreeEvent flag based on ticket price
+        // Only explicit $0 price means free event
+        // NULL ticket price defaults to PAID for security (Phase 6A.81 security fix)
+        IsFreeEvent = ticketPrice != null && ticketPrice.IsZero;
     }
 
     public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,

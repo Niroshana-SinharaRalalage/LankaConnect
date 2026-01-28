@@ -131,12 +131,18 @@ public class DefaultEmailLogger : IEmailLogger
 /// <summary>
 /// Default implementation of IEmailMetrics with in-memory storage.
 /// For production, consider using Application Insights or Prometheus.
+/// Phase 6A.87 Week 3: Enhanced with dashboard API support methods.
 /// </summary>
 public class DefaultEmailMetrics : IEmailMetrics
 {
     private readonly Dictionary<string, TemplateMetrics> _templateMetrics = new();
     private readonly Dictionary<string, HandlerMetrics> _handlerMetrics = new();
+    private readonly List<EmailFailureRecord> _failedEmails = new();
+    private readonly List<ValidationFailureRecord> _validationFailures = new();
     private readonly object _lock = new();
+
+    // Maximum number of failure records to keep (prevent memory growth)
+    private const int MaxFailureRecords = 1000;
 
     public void RecordEmailSent(string templateName, int durationMs, bool success)
     {
@@ -221,6 +227,91 @@ public class DefaultEmailMetrics : IEmailMetrics
         {
             _templateMetrics.Clear();
             _handlerMetrics.Clear();
+            _failedEmails.Clear();
+            _validationFailures.Clear();
+        }
+    }
+
+    // ================================================================
+    // Phase 6A.87 Week 3: Dashboard API support methods
+    // ================================================================
+
+    public IReadOnlyDictionary<string, TemplateMetrics> GetAllTemplateStats()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return new Dictionary<string, TemplateMetrics>(_templateMetrics);
+        }
+    }
+
+    public IReadOnlyDictionary<string, HandlerMetrics> GetAllHandlerStats()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return new Dictionary<string, HandlerMetrics>(_handlerMetrics);
+        }
+    }
+
+    public void RecordFailedEmail(string correlationId, string templateName, string recipientEmail, string errorMessage, string handlerName)
+    {
+        lock (_lock)
+        {
+            // Trim old records if limit exceeded
+            if (_failedEmails.Count >= MaxFailureRecords)
+            {
+                _failedEmails.RemoveAt(0);
+            }
+
+            _failedEmails.Add(new EmailFailureRecord
+            {
+                CorrelationId = correlationId,
+                TemplateName = templateName,
+                RecipientEmail = recipientEmail,
+                ErrorMessage = errorMessage,
+                HandlerName = handlerName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public IReadOnlyList<EmailFailureRecord> GetFailedEmails()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return _failedEmails.ToList();
+        }
+    }
+
+    public void RecordValidationFailureDetails(string correlationId, string templateName, List<string> missingParameters, string handlerName)
+    {
+        lock (_lock)
+        {
+            // Trim old records if limit exceeded
+            if (_validationFailures.Count >= MaxFailureRecords)
+            {
+                _validationFailures.RemoveAt(0);
+            }
+
+            _validationFailures.Add(new ValidationFailureRecord
+            {
+                CorrelationId = correlationId,
+                TemplateName = templateName,
+                MissingParameters = new List<string>(missingParameters),
+                HandlerName = handlerName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public IReadOnlyList<ValidationFailureRecord> GetValidationFailures()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return _validationFailures.ToList();
         }
     }
 

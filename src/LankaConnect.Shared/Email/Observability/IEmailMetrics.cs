@@ -81,6 +81,56 @@ public interface IEmailMetrics
     /// Resets all metrics (primarily for testing, but could be used for daily/weekly resets).
     /// </summary>
     void ResetMetrics();
+
+    // ================================================================
+    // Phase 6A.87 Week 3: Dashboard API support methods
+    // ================================================================
+
+    /// <summary>
+    /// Gets metrics for ALL recorded templates.
+    /// Used by dashboard to show per-template statistics table.
+    /// </summary>
+    /// <returns>Dictionary of template name to metrics</returns>
+    IReadOnlyDictionary<string, TemplateMetrics> GetAllTemplateStats();
+
+    /// <summary>
+    /// Gets metrics for ALL recorded handlers.
+    /// Used by dashboard to track staged rollout progress across all handlers.
+    /// </summary>
+    /// <returns>Dictionary of handler name to metrics</returns>
+    IReadOnlyDictionary<string, HandlerMetrics> GetAllHandlerStats();
+
+    /// <summary>
+    /// Records a failed email send with detailed information for troubleshooting.
+    /// </summary>
+    /// <param name="correlationId">Correlation ID for tracing</param>
+    /// <param name="templateName">Template that failed</param>
+    /// <param name="recipientEmail">Intended recipient</param>
+    /// <param name="errorMessage">Error message</param>
+    /// <param name="handlerName">Handler that initiated the send</param>
+    void RecordFailedEmail(string correlationId, string templateName, string recipientEmail, string errorMessage, string handlerName);
+
+    /// <summary>
+    /// Gets list of failed email sends for dashboard display.
+    /// </summary>
+    /// <returns>List of failed email records</returns>
+    IReadOnlyList<EmailFailureRecord> GetFailedEmails();
+
+    /// <summary>
+    /// Records a parameter validation failure with details about missing parameters.
+    /// CRITICAL: Tracks the literal {{Parameter}} issues we're trying to eliminate.
+    /// </summary>
+    /// <param name="correlationId">Correlation ID for tracing</param>
+    /// <param name="templateName">Template with validation failure</param>
+    /// <param name="missingParameters">List of missing/invalid parameters</param>
+    /// <param name="handlerName">Handler that had the validation error</param>
+    void RecordValidationFailureDetails(string correlationId, string templateName, List<string> missingParameters, string handlerName);
+
+    /// <summary>
+    /// Gets list of parameter validation failures for dashboard display.
+    /// </summary>
+    /// <returns>List of validation failure records</returns>
+    IReadOnlyList<ValidationFailureRecord> GetValidationFailures();
 }
 
 /// <summary>
@@ -135,4 +185,35 @@ public class GlobalMetrics
     /// </summary>
     public double GlobalSuccessRate =>
         TotalEmailsSent > 0 ? (double)TotalSuccesses / TotalEmailsSent * 100 : 0;
+}
+
+// ================================================================
+// Phase 6A.87 Week 3: Dashboard API support records
+// ================================================================
+
+/// <summary>
+/// Record of a failed email send attempt.
+/// Used by dashboard to display failure list for troubleshooting.
+/// </summary>
+public class EmailFailureRecord
+{
+    public string CorrelationId { get; set; } = string.Empty;
+    public string TemplateName { get; set; } = string.Empty;
+    public string RecipientEmail { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
+    public string HandlerName { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+}
+
+/// <summary>
+/// Record of a parameter validation failure.
+/// Used by dashboard to track and alert on {{Parameter}} issues.
+/// </summary>
+public class ValidationFailureRecord
+{
+    public string CorrelationId { get; set; } = string.Empty;
+    public string TemplateName { get; set; } = string.Empty;
+    public List<string> MissingParameters { get; set; } = new();
+    public string HandlerName { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
 }

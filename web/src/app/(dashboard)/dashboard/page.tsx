@@ -36,6 +36,7 @@ import { approvalsRepository } from '@/infrastructure/api/repositories/approvals
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
 import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
+import { UserManagementTab } from '@/presentation/components/features/admin/users';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
@@ -568,6 +569,16 @@ function DashboardContent() {
                                 <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
                               )}
                             </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'user-management',
+                        label: 'User Management',
+                        icon: Users,
+                        content: (
+                          <div className="max-h-[700px] overflow-y-auto">
+                            <UserManagementTab />
                           </div>
                         ),
                       },

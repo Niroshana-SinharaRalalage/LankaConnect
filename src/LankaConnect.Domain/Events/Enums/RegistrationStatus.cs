@@ -55,5 +55,14 @@ public enum RegistrationStatus
     /// - Does NOT block email from re-registering
     /// - Auto soft-deleted after 30 days for audit trail
     /// </summary>
-    Abandoned = 8
+    Abandoned = 8,
+
+    /// <summary>
+    /// Phase 6A.91: NEW - User has requested a refund, waiting for Stripe to process
+    /// - Consumes event capacity until refund completes
+    /// - User can withdraw request to return to Confirmed status
+    /// - Transitions to Refunded once Stripe webhook confirms completion
+    /// - Cannot be cancelled after event start time
+    /// </summary>
+    RefundRequested = 9
 }

@@ -32,6 +32,9 @@ public interface IStripePaymentService
 
     // Phase 6A.81 Part 3: Retrieve checkout URL from existing session
     Task<Result<string>> GetCheckoutSessionUrlAsync(string sessionId, CancellationToken cancellationToken = default);
+
+    // Phase 6A.91: Create refund for a completed payment
+    Task<Result<StripeRefundResult>> CreateRefundAsync(CreateRefundRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -360,4 +363,72 @@ public class CreateEventCheckoutSessionRequest
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
     public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.91: Request to create a Stripe refund for a completed payment
+/// </summary>
+public class CreateRefundRequest
+{
+    /// <summary>
+    /// The Stripe PaymentIntent ID to refund (stored in Registration.StripePaymentIntentId)
+    /// </summary>
+    public required string PaymentIntentId { get; init; }
+
+    /// <summary>
+    /// The registration ID for this refund (used for idempotency and audit trail)
+    /// </summary>
+    public Guid RegistrationId { get; init; }
+
+    /// <summary>
+    /// The amount to refund in the smallest currency unit (e.g., cents for USD)
+    /// If null, refunds the full amount
+    /// </summary>
+    public long? AmountInCents { get; init; }
+
+    /// <summary>
+    /// The reason for the refund (for Stripe dashboard and reporting)
+    /// </summary>
+    public string Reason { get; init; } = "requested_by_customer";
+
+    /// <summary>
+    /// Optional metadata to attach to the refund
+    /// </summary>
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.91: Result of a Stripe refund operation
+/// </summary>
+public class StripeRefundResult
+{
+    /// <summary>
+    /// The Stripe Refund ID (e.g., re_xxx)
+    /// </summary>
+    public required string RefundId { get; init; }
+
+    /// <summary>
+    /// The status of the refund (succeeded, pending, failed, canceled)
+    /// </summary>
+    public required string Status { get; init; }
+
+    /// <summary>
+    /// The amount refunded in cents
+    /// </summary>
+    public long AmountRefunded { get; init; }
+
+    /// <summary>
+    /// The currency of the refund
+    /// </summary>
+    public string Currency { get; init; } = "usd";
+
+    /// <summary>
+    /// When the refund was created
+    /// </summary>
+    public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Whether the refund succeeded
+    /// </summary>
+    public bool IsSucceeded => Status == "succeeded";
 }

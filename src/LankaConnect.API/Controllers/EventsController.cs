@@ -13,6 +13,7 @@ using LankaConnect.Application.Events.Commands.PostponeEvent;
 using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
+using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
@@ -640,6 +641,36 @@ public class EventsController : BaseController<EventsController>
 
         var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments);
         var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Withdraw a pending refund request and restore registration to Confirmed status.
+    /// Phase 6A.91: Allows users to cancel their refund request before it completes.
+    /// </summary>
+    /// <param name="id">The event ID</param>
+    /// <returns>Success if refund request was withdrawn</returns>
+    [HttpPost("{id:guid}/rsvp/withdraw-refund")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> WithdrawRefundRequest(Guid id)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("[Phase 6A.91] User {UserId} withdrawing refund request for event {EventId}",
+            userId, id);
+
+        var command = new WithdrawRefundRequestCommand(id, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation("[Phase 6A.91] Refund request withdrawn successfully - EventId: {EventId}, UserId: {UserId}",
+                id, userId);
+        }
 
         return HandleResult(result);
     }

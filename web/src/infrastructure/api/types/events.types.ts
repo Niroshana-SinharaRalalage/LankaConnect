@@ -90,6 +90,14 @@ export enum RegistrationStatus {
    * - Auto soft-deleted after 30 days for audit trail
    */
   Abandoned = 8,
+
+  /**
+   * Phase 6A.91: NEW - Refund requested but not yet completed
+   * - User cancelled paid confirmed registration
+   * - Stripe refund initiated, awaiting confirmation
+   * - User can withdraw request to restore Confirmed status
+   */
+  RefundRequested = 9,
 }
 
 /**
@@ -656,8 +664,8 @@ export interface RegistrationDetailsDto {
   eventId: string;
   userId?: string | null;
   quantity: number;
-  /** Phase 6A.81: Updated with Preliminary and Abandoned states for payment security */
-  status: 'Preliminary' | 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded' | 'Abandoned' | 'Attended';  // String values from .NET API
+  /** Phase 6A.81/6A.91: Updated with Preliminary, Abandoned, and RefundRequested states for payment security */
+  status: 'Preliminary' | 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded' | 'Abandoned' | 'Attended' | 'RefundRequested';  // String values from .NET API
   createdAt: string;
   updatedAt?: string | null;
 

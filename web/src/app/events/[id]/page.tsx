@@ -124,6 +124,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     !isLoadingRegistration &&
     registrationDetails?.status === 'Abandoned';
 
+  // Phase 6A.91: RefundRequested state - user requested refund, awaiting Stripe confirmation
+  // User can withdraw request to restore Confirmed status before event starts
+  const isRefundRequested = !!userRsvp &&
+    !isLoadingRegistration &&
+    registrationDetails?.status === 'RefundRequested';
+
+  // Phase 6A.91: Check if this was a paid registration (for button text)
+  const isPaidRegistration = registrationDetails?.paymentStatus === 'Completed';
+
   // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
   console.log('[EventDetail] 🔍 Registration state debug:', {
     eventId: id,
@@ -139,11 +148,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     isUserRegistered,
     isPaymentPending,
     isAbandoned,  // Phase 6A.81: New state
+    isRefundRequested,  // Phase 6A.91: New state
+    isPaidRegistration,  // Phase 6A.91: For button text
     // Show what values are being compared (Phase 6A.79 Part 3: Compare to strings)
     statusCheck: {
       isConfirmed: registrationDetails?.status === 'Confirmed',
       isPreliminary: registrationDetails?.status === 'Preliminary',  // Phase 6A.81: New state
       isAbandoned: registrationDetails?.status === 'Abandoned',  // Phase 6A.81: New state
+      isRefundRequested: registrationDetails?.status === 'RefundRequested',  // Phase 6A.91: New state
       isPending: registrationDetails?.status === 'Pending',  // Deprecated
       paymentCompleted: registrationDetails?.paymentStatus === 'Completed',
       paymentNotRequired: registrationDetails?.paymentStatus === 'NotRequired',
@@ -838,17 +850,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </Button>
 
                       {!showCancelConfirm ? (
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                          onClick={() => {
-                            console.log('[CancelRsvp] User clicked Cancel Registration button');
-                            setShowCancelConfirm(true);
-                          }}
-                        >
-                          Cancel Registration
-                        </Button>
+                        <div className="flex-1 relative group">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            style={{
+                              borderColor: hasStarted ? '#9CA3AF' : '#EF4444',
+                              color: hasStarted ? '#9CA3AF' : '#EF4444',
+                              cursor: hasStarted ? 'not-allowed' : 'pointer',
+                              opacity: hasStarted ? 0.6 : 1
+                            }}
+                            disabled={hasStarted}
+                            onClick={() => {
+                              console.log('[CancelRsvp] User clicked Cancel Registration button');
+                              setShowCancelConfirm(true);
+                            }}
+                          >
+                            {isPaidRegistration ? 'Cancel Registration and Refund' : 'Cancel Registration'}
+                          </Button>
+                          {/* Phase 6A.91: Tooltip explaining why button is disabled */}
+                          {hasStarted && (
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                              Cancellation is not available after the event has started
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="flex-1 space-y-3">
                           {/* Phase 6A.28: User choice for signup commitments */}
@@ -927,6 +953,81 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                ) : isRefundRequested ? (
+                  // Phase 6A.91: Refund requested state - show status and withdrawal option
+                  <div className="space-y-4">
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100">
+                          Refund Requested
+                        </h3>
+                      </div>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                        Your refund request is being processed. The refund will be credited to your original payment method.
+                      </p>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-4">
+                        Note: Refunds typically appear on your statement within 5-10 business days.
+                      </p>
+
+                      {/* Registration Details (if available) */}
+                      {registrationDetails && (
+                        <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded">
+                          <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2">
+                            REFUND DETAILS
+                          </p>
+                          <div className="space-y-1 text-xs text-yellow-800 dark:text-yellow-300">
+                            {registrationDetails.totalPriceAmount && (
+                              <p>
+                                <span className="font-medium">Refund Amount:</span> {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount.toFixed(2)}
+                              </p>
+                            )}
+                            {registrationDetails.contactEmail && (
+                              <p>
+                                <span className="font-medium">Email:</span> {registrationDetails.contactEmail}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Withdraw Refund Request Button */}
+                      <div className="flex justify-center relative group">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          style={{
+                            borderColor: hasStarted ? '#9CA3AF' : '#10B981',
+                            color: hasStarted ? '#9CA3AF' : '#10B981',
+                            cursor: hasStarted ? 'not-allowed' : 'pointer',
+                            opacity: hasStarted ? 0.6 : 1
+                          }}
+                          disabled={hasStarted}
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to withdraw your refund request? Your registration will be restored and you will keep your spot at the event.')) {
+                              try {
+                                console.log('[WithdrawRefund] Withdrawing refund request');
+                                await eventsRepository.withdrawRefundRequest(id);
+                                console.log('[WithdrawRefund] Successfully withdrew refund request - reloading page');
+                                window.location.reload();
+                              } catch (error: any) {
+                                console.error('[WithdrawRefund] Failed to withdraw refund request:', error);
+                                alert('Failed to withdraw refund request. Please try again.');
+                              }
+                            }
+                          }}
+                        >
+                          Withdraw Refund Request
+                        </Button>
+                        {/* Phase 6A.91: Tooltip explaining why button is disabled */}
+                        {hasStarted && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            Withdrawal is not available after the event has started
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : isPaymentPending ? (
@@ -1021,11 +1122,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     {/* Cancel Registration Option */}
-                    <div className="flex justify-center">
+                    <div className="flex justify-center relative group">
                       <Button
                         variant="outline"
                         size="sm"
-                        style={{ borderColor: '#EF4444', color: '#EF4444' }}
+                        style={{
+                          borderColor: hasStarted ? '#9CA3AF' : '#EF4444',
+                          color: hasStarted ? '#9CA3AF' : '#EF4444',
+                          cursor: hasStarted ? 'not-allowed' : 'pointer',
+                          opacity: hasStarted ? 0.6 : 1
+                        }}
+                        disabled={hasStarted}
                         onClick={async () => {
                           if (confirm('Are you sure you want to cancel this registration? You will need to register again if you change your mind.')) {
                             try {
@@ -1042,6 +1149,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       >
                         Cancel Registration
                       </Button>
+                      {/* Phase 6A.91: Tooltip explaining why button is disabled */}
+                      {hasStarted && (
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          Cancellation is not available after the event has started
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : isAbandoned ? (

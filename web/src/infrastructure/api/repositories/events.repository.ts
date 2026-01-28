@@ -284,6 +284,16 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.91: Withdraw a pending refund request
+   * Transitions registration from RefundRequested back to Confirmed
+   * Only allowed before event has started
+   * @param eventId - The event ID
+   */
+  async withdrawRefundRequest(eventId: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/rsvp/withdraw-refund`);
+  }
+
+  /**
    * Update RSVP quantity
    * Changes number of attendees for registration
    */

@@ -274,10 +274,10 @@ public class PaymentsController : ControllerBase
                     await HandleCheckoutSessionExpiredAsync(stripeEvent);
                     break;
 
-                // Future: Add more event types as needed
-                // case "payment_intent.payment_failed":
-                //     await HandlePaymentFailedAsync(stripeEvent);
-                //     break;
+                // Phase 6A.91: Handle refund completion
+                case "charge.refunded":
+                    await HandleChargeRefundedAsync(stripeEvent);
+                    break;
 
                 default:
                     _logger.LogInformation("Unhandled webhook event type {EventType}, skipping", stripeEvent.Type);
@@ -543,6 +543,105 @@ public class PaymentsController : ControllerBase
         {
             _logger.LogError(ex,
                 "[Phase 6A.81] [Webhook-Expired-ERROR] Error handling checkout.session.expired webhook - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
+                correlationId, ex.GetType().FullName, ex.Message);
+            throw; // Re-throw to trigger outer catch block with HTTP 500
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.91: Handles charge.refunded webhook to complete refund workflow.
+    /// Transitions registration from RefundRequested to Refunded state.
+    /// </summary>
+    private async Task HandleChargeRefundedAsync(Stripe.Event stripeEvent)
+    {
+        var correlationId = Guid.NewGuid();
+
+        try
+        {
+            var charge = stripeEvent.Data.Object as Charge;
+            if (charge == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.91] [Webhook-Refund-ERROR] Charge data is null - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                    correlationId, stripeEvent.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-1] Processing charge.refunded - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, StripeEventId: {StripeEventId}, AmountRefunded: {AmountRefunded}",
+                correlationId, charge.Id, stripeEvent.Id, charge.AmountRefunded);
+
+            // Get the latest refund from the charge (the one that triggered this webhook)
+            var latestRefund = charge.Refunds?.Data?.FirstOrDefault();
+            if (latestRefund == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.91] [Webhook-Refund-WARN] No refunds found on charge - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
+                    correlationId, charge.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-2] Refund found - CorrelationId: {CorrelationId}, RefundId: {RefundId}, RefundStatus: {Status}, RefundAmount: {Amount}",
+                correlationId, latestRefund.Id, latestRefund.Status, latestRefund.Amount);
+
+            // Extract registration_id from refund metadata (we store it when creating refund)
+            if (latestRefund.Metadata == null ||
+                !latestRefund.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
+                !Guid.TryParse(registrationIdStr, out var registrationId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.91] [Webhook-Refund-WARN] Missing registration_id in refund metadata - CorrelationId: {CorrelationId}, RefundId: {RefundId}",
+                    correlationId, latestRefund.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-3] Metadata extracted - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                correlationId, registrationId);
+
+            // Load registration
+            var registration = await _registrationRepository.GetByIdAsync(registrationId);
+            if (registration == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.91] [Webhook-Refund-WARN] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus);
+
+            // Complete refund (RefundRequested → Refunded)
+            var completeRefundResult = registration.CompleteRefund(latestRefund.Id);
+
+            if (completeRefundResult.IsFailure)
+            {
+                // This may be expected if refund was already processed (idempotency)
+                _logger.LogWarning(
+                    "[Phase 6A.91] [Webhook-Refund-INFO] CompleteRefund failed (may be already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
+                    correlationId, registrationId, registration.Status, completeRefundResult.Error);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-5] After CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, StripeRefundId: {RefundId}, Transition: RefundRequested→Refunded",
+                correlationId, registrationId, registration.Status, registration.PaymentStatus, latestRefund.Id);
+
+            // Save changes and dispatch RefundCompletedEvent
+            _registrationRepository.Update(registration);
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[Phase 6A.91] [Webhook-Refund-SUCCESS] Refund completed successfully - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, StripeRefundId: {RefundId}, RefundCompletedAt: {RefundCompletedAt}",
+                correlationId, registrationId, latestRefund.Id, registration.RefundCompletedAt?.ToString("o") ?? "null");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.91] [Webhook-Refund-ERROR] Error handling charge.refunded webhook - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
                 correlationId, ex.GetType().FullName, ex.Message);
             throw; // Re-throw to trigger outer catch block with HTTP 500
         }

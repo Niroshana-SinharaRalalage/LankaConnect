@@ -13,17 +13,20 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
     public CancelRsvpCommandHandler(
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -59,6 +62,18 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                 _logger.LogInformation(
                     "CancelRsvp: Event loaded - EventId={EventId}, Title={Title}, Status={Status}",
                     @event.Id, @event.Title.Value, @event.Status);
+
+                // Phase 6A.91: Check if event has started - cannot cancel after event starts
+                if (@event.StartDate <= DateTime.UtcNow)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "[Phase 6A.91] CancelRsvp FAILED: Cannot cancel after event has started - EventId={EventId}, StartDate={StartDate}, Now={Now}, Duration={ElapsedMs}ms",
+                        request.EventId, @event.StartDate, DateTime.UtcNow, stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure("Cannot cancel registration after the event has started");
+                }
 
                 // Find active registration using GetByEventAndUserAsync (read-only query)
                 var registrationReadOnly = await _registrationRepository.GetByEventAndUserAsync(request.EventId, request.UserId, cancellationToken);
@@ -160,12 +175,81 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 
                         // No cancellation email for Preliminary (they never got confirmation email)
                     }
+                    else if (registration.Status == RegistrationStatus.Confirmed &&
+                             registration.PaymentStatus == PaymentStatus.Completed)
+                    {
+                        // Phase 6A.91: Paid confirmed registration - initiate refund workflow
+                        _logger.LogInformation(
+                            "[Phase 6A.91] Initiating refund workflow for paid registration - RegId={RegId}, EventId={EventId}, UserId={UserId}, PaymentIntentId={PaymentIntentId}",
+                            registration.Id, request.EventId, request.UserId, registration.StripePaymentIntentId);
+
+                        // Validate PaymentIntentId exists for Stripe refund
+                        if (string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
+                        {
+                            stopwatch.Stop();
+                            _logger.LogError(
+                                "[Phase 6A.91] Cannot process refund: Missing StripePaymentIntentId - RegId={RegId}, Duration={ElapsedMs}ms",
+                                registration.Id, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure("Cannot process refund: Payment information not found. Please contact support.");
+                        }
+
+                        // Initiate Stripe refund
+                        var refundRequest = new CreateRefundRequest
+                        {
+                            PaymentIntentId = registration.StripePaymentIntentId,
+                            RegistrationId = registration.Id,
+                            AmountInCents = registration.TotalPrice != null
+                                ? (long)(registration.TotalPrice.Amount * 100)
+                                : null,
+                            Reason = "requested_by_customer",
+                            Metadata = new Dictionary<string, string>
+                            {
+                                ["event_id"] = request.EventId.ToString(),
+                                ["user_id"] = request.UserId.ToString(),
+                                ["event_title"] = @event.Title.Value
+                            }
+                        };
+
+                        var refundResult = await _stripePaymentService.CreateRefundAsync(refundRequest, cancellationToken);
+
+                        if (refundResult.IsFailure)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogError(
+                                "[Phase 6A.91] Stripe refund failed - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
+                                registration.Id, refundResult.Error, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure($"Refund failed: {refundResult.Error}");
+                        }
+
+                        _logger.LogInformation(
+                            "[Phase 6A.91] Stripe refund initiated successfully - RegId={RegId}, StripeRefundId={RefundId}, Status={Status}",
+                            registration.Id, refundResult.Value.RefundId, refundResult.Value.Status);
+
+                        // Transition registration to RefundRequested state
+                        var requestRefundResult = registration.RequestRefund();
+                        if (requestRefundResult.IsFailure)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogError(
+                                "[Phase 6A.91] Failed to transition to RefundRequested - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
+                                registration.Id, requestRefundResult.Error, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure(requestRefundResult.Error);
+                        }
+
+                        _registrationRepository.Update(registration);
+
+                        _logger.LogInformation(
+                            "[Phase 6A.91] Registration transitioned to RefundRequested - RegId={RegId}, EventId={EventId}, UserId={UserId}",
+                            registration.Id, request.EventId, request.UserId);
+
+                        // Note: RefundRequestedEvent is raised by domain method, triggers email notification
+                    }
                     else
                     {
-                        // Confirmed/other registrations: Hard delete (existing behavior from Phase 6A.45)
+                        // Free confirmed/other registrations: Hard delete (existing behavior from Phase 6A.45)
                         _logger.LogInformation(
-                            "CancelRsvp: Hard deleting registration - RegId={RegId}, EventId={EventId}, UserId={UserId}, Status={Status}",
-                            registration.Id, request.EventId, request.UserId, registration.Status);
+                            "CancelRsvp: Hard deleting registration - RegId={RegId}, EventId={EventId}, UserId={UserId}, Status={Status}, PaymentStatus={PaymentStatus}",
+                            registration.Id, request.EventId, request.UserId, registration.Status, registration.PaymentStatus);
 
                         _registrationRepository.Remove(registration);
 

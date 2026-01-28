@@ -240,6 +240,116 @@ public class StripePaymentService : IStripePaymentService
     }
 
     /// <summary>
+    /// Phase 6A.91: Creates a Stripe refund for a completed payment.
+    /// This is called when a user requests a refund for a paid event registration.
+    ///
+    /// Stripe Refund Process:
+    /// 1. API call is synchronous - refund object returned immediately
+    /// 2. Status is usually "succeeded" for immediate refunds
+    /// 3. charge.refunded webhook will be sent for confirmation
+    /// 4. Customer sees refund on statement in 5-10 business days
+    ///
+    /// Idempotency: Uses RegistrationId as idempotency key to prevent duplicate refunds.
+    /// </summary>
+    public async Task<Result<StripeRefundResult>> CreateRefundAsync(
+        CreateRefundRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.91] Creating Stripe refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, AmountInCents={AmountInCents}",
+                request.PaymentIntentId,
+                request.RegistrationId,
+                request.AmountInCents);
+
+            if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
+            {
+                _logger.LogWarning("[Phase 6A.91] Cannot create refund: PaymentIntentId is empty");
+                return Result<StripeRefundResult>.Failure("Payment intent ID is required for refund");
+            }
+
+            var refundService = new RefundService(_stripeClient);
+
+            // Build refund options
+            var refundOptions = new RefundCreateOptions
+            {
+                PaymentIntent = request.PaymentIntentId,
+                Reason = request.Reason,
+                Metadata = request.Metadata ?? new Dictionary<string, string>()
+            };
+
+            // Add registration ID to metadata for tracking
+            refundOptions.Metadata["registration_id"] = request.RegistrationId.ToString();
+            refundOptions.Metadata["refund_source"] = "lankaconnect_user_request";
+
+            // If partial refund amount specified, include it
+            if (request.AmountInCents.HasValue && request.AmountInCents.Value > 0)
+            {
+                refundOptions.Amount = request.AmountInCents.Value;
+            }
+
+            // Use RegistrationId as idempotency key to prevent duplicate refunds
+            var requestOptions = new RequestOptions
+            {
+                IdempotencyKey = $"refund_{request.RegistrationId}"
+            };
+
+            // Create the refund
+            var refund = await refundService.CreateAsync(refundOptions, requestOptions, cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.91] Stripe refund created successfully - RefundId={RefundId}, Status={Status}, Amount={Amount}, PaymentIntentId={PaymentIntentId}",
+                refund.Id,
+                refund.Status,
+                refund.Amount,
+                request.PaymentIntentId);
+
+            var result = new StripeRefundResult
+            {
+                RefundId = refund.Id,
+                Status = refund.Status,
+                AmountRefunded = refund.Amount,
+                Currency = refund.Currency,
+                CreatedAt = refund.Created
+            };
+
+            return Result<StripeRefundResult>.Success(result);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.91] Stripe error creating refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, StripeCode={Code}, Error={Error}",
+                request.PaymentIntentId,
+                request.RegistrationId,
+                ex.StripeError?.Code,
+                ex.Message);
+
+            // Handle specific error cases
+            if (ex.StripeError?.Code == "charge_already_refunded")
+            {
+                return Result<StripeRefundResult>.Failure("This payment has already been refunded.");
+            }
+
+            if (ex.StripeError?.Code == "insufficient_funds")
+            {
+                return Result<StripeRefundResult>.Failure(
+                    "Refund cannot be processed due to insufficient Stripe balance. Please contact support.");
+            }
+
+            return Result<StripeRefundResult>.Failure($"Payment refund failed: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.91] Unexpected error creating refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}",
+                request.PaymentIntentId,
+                request.RegistrationId);
+            return Result<StripeRefundResult>.Failure("Failed to process refund request");
+        }
+    }
+
+    /// <summary>
     /// Gets or creates a Stripe customer for the given user
     /// Reuses existing customer management logic from Phase 6A.4
     /// </summary>

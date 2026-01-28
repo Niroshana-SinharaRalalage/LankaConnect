@@ -74,7 +74,7 @@ export function UsersTable({
 
   const canManageUser = (user: AdminUserDto) => {
     // Cannot manage self
-    if (user.id === currentUserId) return false;
+    if (user.userId === currentUserId) return false;
     // Admin cannot manage AdminManager or other Admins
     return true; // Backend enforces role hierarchy
   };
@@ -150,7 +150,7 @@ export function UsersTable({
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {users.map((user) => (
-            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+            <tr key={user.userId} className="hover:bg-gray-50 transition-colors">
               {/* User Info */}
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
@@ -223,18 +223,18 @@ export function UsersTable({
                   {canManageUser(user) && (
                     <div className="relative">
                       <button
-                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        onClick={() => setOpenMenuId(openMenuId === user.userId ? null : user.userId)}
                         className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                        disabled={loadingUserId === user.id}
+                        disabled={loadingUserId === user.userId}
                       >
-                        {loadingUserId === user.id ? (
+                        {loadingUserId === user.userId ? (
                           <div className="w-4 h-4 border-2 border-gray-300 border-t-[#8B1538] rounded-full animate-spin" />
                         ) : (
                           <MoreVertical className="w-4 h-4" />
                         )}
                       </button>
 
-                      {openMenuId === user.id && (
+                      {openMenuId === user.userId && (
                         <>
                           {/* Backdrop to close menu */}
                           <div
@@ -247,7 +247,7 @@ export function UsersTable({
                               {user.isActive ? (
                                 <button
                                   onClick={() => {
-                                    onDeactivate(user.id);
+                                    onDeactivate(user.userId);
                                     setOpenMenuId(null);
                                   }}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -258,7 +258,7 @@ export function UsersTable({
                               ) : (
                                 <button
                                   onClick={() => {
-                                    onActivate(user.id);
+                                    onActivate(user.userId);
                                     setOpenMenuId(null);
                                   }}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -272,7 +272,7 @@ export function UsersTable({
                               {isLocked(user) ? (
                                 <button
                                   onClick={() => {
-                                    onUnlock(user.id);
+                                    onUnlock(user.userId);
                                     setOpenMenuId(null);
                                   }}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -299,7 +299,7 @@ export function UsersTable({
                               {!user.isEmailVerified && (
                                 <button
                                   onClick={() => {
-                                    onResendVerification(user.id);
+                                    onResendVerification(user.userId);
                                     setOpenMenuId(null);
                                   }}
                                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -312,7 +312,7 @@ export function UsersTable({
                               {/* Force Password Reset */}
                               <button
                                 onClick={() => {
-                                  onForcePasswordReset(user.id);
+                                  onForcePasswordReset(user.userId);
                                   setOpenMenuId(null);
                                 }}
                                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -328,7 +328,7 @@ export function UsersTable({
                   )}
 
                   {/* Self indicator */}
-                  {user.id === currentUserId && (
+                  {user.userId === currentUserId && (
                     <span className="text-xs text-gray-400 italic ml-2">(You)</span>
                   )}
                 </div>

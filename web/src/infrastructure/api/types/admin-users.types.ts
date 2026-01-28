@@ -4,7 +4,7 @@
  */
 
 export interface AdminUserDto {
-  id: string;
+  userId: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -13,29 +13,38 @@ export interface AdminUserDto {
   identityProvider: string;
   isActive: boolean;
   isEmailVerified: boolean;
+  isAccountLocked: boolean;
   accountLockedUntil: string | null;
   lastLoginAt: string | null;
   createdAt: string;
-  phone: string | null;
-  location: UserLocationDto | null;
+  profilePhotoUrl: string | null;
 }
 
 export interface UserLocationDto {
-  metroAreaId: string | null;
-  metroAreaName: string | null;
-  state: string | null;
   city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  country: string | null;
 }
 
 export interface AdminUserDetailsDto extends AdminUserDto {
+  phoneNumber: string | null;
+  bio: string | null;
+  failedLoginAttempts: number;
   updatedAt: string | null;
+  pendingUpgradeRole: string | null;
+  upgradeRequestedAt: string | null;
+  location: UserLocationDto | null;
 }
 
 export interface AdminUserStatisticsDto {
   totalUsers: number;
   activeUsers: number;
+  inactiveUsers: number;
   lockedAccounts: number;
-  countsByRole: Record<string, number>;
+  unverifiedEmails: number;
+  usersByRole: Record<string, number>;
+  pendingUpgradeRequests: number;
 }
 
 export interface PagedResultDto<T> {

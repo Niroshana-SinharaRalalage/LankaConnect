@@ -119,10 +119,10 @@ export function UserManagementTab() {
 
   const handleLock = async (lockUntil: string, reason?: string) => {
     if (!selectedUser) return;
-    setLoadingUserId(selectedUser.id);
+    setLoadingUserId(selectedUser.userId);
     try {
       await lockMutation.mutateAsync({
-        userId: selectedUser.id,
+        userId: selectedUser.userId,
         request: { lockUntil, reason },
       });
       setIsLockModalOpen(false);
@@ -203,7 +203,7 @@ export function UserManagementTab() {
           <StatCard
             icon={Users}
             label="Admins"
-            value={(statistics.countsByRole['Admin'] || 0) + (statistics.countsByRole['AdminManager'] || 0)}
+            value={(statistics.usersByRole?.['Admin'] || 0) + (statistics.usersByRole?.['AdminManager'] || 0)}
             color="purple"
           />
         </div>

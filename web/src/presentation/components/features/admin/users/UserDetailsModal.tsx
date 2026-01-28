@@ -4,12 +4,12 @@
  */
 
 import { X, User, Mail, Phone, MapPin, Shield, Calendar, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import type { AdminUserDto } from '@/infrastructure/api/types/admin-users.types';
+import type { AdminUserDto, AdminUserDetailsDto } from '@/infrastructure/api/types/admin-users.types';
 import { ROLE_BADGE_COLORS } from '@/infrastructure/api/types/admin-users.types';
 
 interface UserDetailsModalProps {
   isOpen: boolean;
-  user: AdminUserDto | null;
+  user: (AdminUserDto & Partial<AdminUserDetailsDto>) | null;
   onClose: () => void;
 }
 
@@ -146,11 +146,11 @@ export function UserDetailsModal({ isOpen, user, onClose }: UserDetailsModalProp
               }
             />
 
-            {user.phone && (
+            {user.phoneNumber && (
               <DetailRow
                 icon={Phone}
                 label="Phone Number"
-                value={user.phone}
+                value={user.phoneNumber}
               />
             )}
 
@@ -160,9 +160,9 @@ export function UserDetailsModal({ isOpen, user, onClose }: UserDetailsModalProp
                 label="Location"
                 value={
                   <div>
-                    {user.location.metroAreaName && <span>{user.location.metroAreaName}</span>}
-                    {user.location.city && <span>, {user.location.city}</span>}
-                    {user.location.state && <span className="text-gray-500"> ({user.location.state})</span>}
+                    {user.location.city && <span>{user.location.city}</span>}
+                    {user.location.state && <span>, {user.location.state}</span>}
+                    {user.location.country && <span className="text-gray-500"> ({user.location.country})</span>}
                   </div>
                 }
               />

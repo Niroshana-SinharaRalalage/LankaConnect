@@ -144,6 +144,52 @@ public static class EmailTemplateNames
     /// </summary>
     public const string OrganizerRoleApproval = "template-organizer-role-approval";
 
+    // ============================================
+    // Phase 6A.90: Admin User Management & Support/Feedback System Templates
+    // ============================================
+
+    /// <summary>
+    /// Support ticket received confirmation email (auto-sent when contact form submitted).
+    /// Phase 6A.90: Admin Support/Feedback System
+    /// Variables: {Name}, {ReferenceId}, {Subject}, {Message}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string SupportTicketConfirmation = "template-support-ticket-confirmation";
+
+    /// <summary>
+    /// Support ticket reply notification email (sent when admin replies to ticket).
+    /// Phase 6A.90: Admin Support/Feedback System
+    /// Variables: {Name}, {ReferenceId}, {Subject}, {ReplyContent}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string SupportTicketReply = "template-support-ticket-reply";
+
+    /// <summary>
+    /// Account locked by admin notification email.
+    /// Phase 6A.90: Admin User Management
+    /// Variables: {UserName}, {LockUntil}, {Reason}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string AccountLockedByAdmin = "template-account-locked-by-admin";
+
+    /// <summary>
+    /// Account unlocked by admin notification email.
+    /// Phase 6A.90: Admin User Management
+    /// Variables: {UserName}, {LoginUrl}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string AccountUnlockedByAdmin = "template-account-unlocked-by-admin";
+
+    /// <summary>
+    /// Account activated by admin notification email.
+    /// Phase 6A.90: Admin User Management
+    /// Variables: {UserName}, {LoginUrl}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string AccountActivatedByAdmin = "template-account-activated-by-admin";
+
+    /// <summary>
+    /// Account deactivated by admin notification email.
+    /// Phase 6A.90: Admin User Management
+    /// Variables: {UserName}, {SupportEmail}, {Year}
+    /// </summary>
+    public const string AccountDeactivatedByAdmin = "template-account-deactivated-by-admin";
+
     /// <summary>
     /// Gets all template names as a collection.
     /// Useful for validation, seeding, and documentation.
@@ -171,7 +217,14 @@ public static class EmailTemplateNames
         PasswordChangeConfirmation,
         Welcome,
         // AnonymousRsvpConfirmation, // ❌ Phase 6A.80: REMOVED - using FreeEventRegistration instead
-        OrganizerRoleApproval
+        OrganizerRoleApproval,
+        // Phase 6A.90: Admin User Management & Support/Feedback System
+        SupportTicketConfirmation,
+        SupportTicketReply,
+        AccountLockedByAdmin,
+        AccountUnlockedByAdmin,
+        AccountActivatedByAdmin,
+        AccountDeactivatedByAdmin
     };
 
     /// <summary>
@@ -214,6 +267,13 @@ public static class EmailTemplateNames
             Welcome => "Welcome email after email verification",
             // AnonymousRsvpConfirmation => "RSVP confirmation for anonymous attendees", // ❌ Phase 6A.80: REMOVED
             OrganizerRoleApproval => "Organizer role approval notification",
+            // Phase 6A.90: Admin User Management & Support/Feedback System
+            SupportTicketConfirmation => "Support ticket received confirmation email",
+            SupportTicketReply => "Support ticket reply notification email",
+            AccountLockedByAdmin => "Account locked by admin notification email",
+            AccountUnlockedByAdmin => "Account unlocked by admin notification email",
+            AccountActivatedByAdmin => "Account activated by admin notification email",
+            AccountDeactivatedByAdmin => "Account deactivated by admin notification email",
             _ => "Unknown template"
         };
     }

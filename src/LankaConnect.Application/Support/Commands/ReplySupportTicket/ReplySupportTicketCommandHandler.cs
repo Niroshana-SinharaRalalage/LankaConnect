@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -165,6 +166,8 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                 { "Subject", ticket.Subject },
                 { "ReplyContent", replyContent },
                 { "AdminName", adminName },
+                { "SupportEmail", "support@lankaconnect.com" },
+                { "Year", DateTime.UtcNow.Year.ToString() },
                 { "RepliedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") + " UTC" }
             };
 
@@ -173,7 +176,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                 ticket.Email.Value, ticket.ReferenceId);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-support-ticket-reply",
+                EmailTemplateNames.SupportTicketReply,
                 ticket.Email.Value,
                 parameters,
                 cancellationToken);

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -124,6 +125,9 @@ public class CreateSupportTicketCommandHandler : ICommandHandler<CreateSupportTi
                 { "Name", ticket.Name },
                 { "ReferenceId", ticket.ReferenceId },
                 { "Subject", ticket.Subject },
+                { "Message", ticket.Message },
+                { "SupportEmail", "support@lankaconnect.com" },
+                { "Year", DateTime.UtcNow.Year.ToString() },
                 { "SubmittedAt", ticket.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") + " UTC" }
             };
 
@@ -132,7 +136,7 @@ public class CreateSupportTicketCommandHandler : ICommandHandler<CreateSupportTi
                 ticket.Email.Value, ticket.ReferenceId);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-support-ticket-confirmation",
+                EmailTemplateNames.SupportTicketConfirmation,
                 ticket.Email.Value,
                 parameters,
                 cancellationToken);

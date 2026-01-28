@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -179,7 +180,8 @@ public class AdminDeactivateUserCommandHandler : ICommandHandler<AdminDeactivate
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", user.FullName },
-                { "SupportEmail", "support@lankaconnect.com" }
+                { "SupportEmail", "support@lankaconnect.com" },
+                { "Year", DateTime.UtcNow.Year.ToString() }
             };
 
             _logger.LogInformation(
@@ -187,7 +189,7 @@ public class AdminDeactivateUserCommandHandler : ICommandHandler<AdminDeactivate
                 user.Email.Value);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-account-deactivated",
+                EmailTemplateNames.AccountDeactivatedByAdmin,
                 user.Email.Value,
                 parameters,
                 cancellationToken);

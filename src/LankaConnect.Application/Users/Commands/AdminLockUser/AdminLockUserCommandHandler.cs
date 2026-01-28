@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -180,7 +181,9 @@ public class AdminLockUserCommandHandler : ICommandHandler<AdminLockUserCommand>
             {
                 { "UserName", user.FullName },
                 { "LockUntil", lockUntil.ToString("MMMM dd, yyyy h:mm tt") + " UTC" },
-                { "Reason", reason ?? "Violation of terms of service" }
+                { "Reason", reason ?? "Violation of terms of service" },
+                { "SupportEmail", "support@lankaconnect.com" },
+                { "Year", DateTime.UtcNow.Year.ToString() }
             };
 
             _logger.LogInformation(
@@ -188,7 +191,7 @@ public class AdminLockUserCommandHandler : ICommandHandler<AdminLockUserCommand>
                 user.Email.Value);
 
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-account-locked-by-admin",
+                EmailTemplateNames.AccountLockedByAdmin,
                 user.Email.Value,
                 parameters,
                 cancellationToken);

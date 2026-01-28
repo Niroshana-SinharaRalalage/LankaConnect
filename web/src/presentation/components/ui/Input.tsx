@@ -9,9 +9,29 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
  * Input Component
  * Reusable input component with error states and accessibility
  * Follows UI/UX best practices
+ *
+ * GitHub Issue #19 Fix: Number inputs prevent scroll from changing values
+ * When a number input is focused and user scrolls, the page scrolls normally
+ * instead of changing the input value.
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = 'text', error, ...props }, ref) => {
+  ({ className, type = 'text', error, onWheel, ...props }, ref) => {
+    // GitHub Issue #19: Prevent scroll wheel from changing number input values
+    // This is a common UX issue where scrolling while focused on a number input
+    // accidentally changes the value instead of scrolling the page
+    const handleWheel = React.useCallback(
+      (e: React.WheelEvent<HTMLInputElement>) => {
+        if (type === 'number') {
+          // Blur the input to prevent scroll from changing the value
+          // The page will scroll normally after blur
+          e.currentTarget.blur();
+        }
+        // Call any existing onWheel handler
+        onWheel?.(e);
+      },
+      [type, onWheel]
+    );
+
     return (
       <input
         type={type}
@@ -21,6 +41,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onWheel={handleWheel}
         aria-invalid={error ? 'true' : undefined}
         {...props}
       />

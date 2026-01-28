@@ -57,3 +57,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* GitHub Issue #19: Hide number input spinner arrows
+ * Prevents accidental value changes from scroll wheel and removes visual clutter
+ * All numeric inputs now behave like plain text inputs visually
+ */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

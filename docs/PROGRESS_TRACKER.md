@@ -1,9 +1,72 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-27 - Phase 6A.89: Text Search Prefix Matching ✅ COMPLETE*
+*Last Updated: 2026-01-27 - SCRUM-21: Event Image Lightbox Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.89: Text Search Prefix Matching ✅ COMPLETE
+## 🎯 Current Session Status - SCRUM-21: Event Image Lightbox Fix ✅ COMPLETE
+
+### SCRUM-21: EVENT IMAGE CLICK SHOWS WRONG IMAGE - COMPLETE - 2026-01-27
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - 20 TESTS PASSING**
+
+**Commits**:
+- c03d8eb2 - fix(SCRUM-21): Fix image lightbox showing wrong image when thumbnail clicked
+
+**Priority**: 🟡 **MEDIUM** - User-Facing Bug Fix (Image Gallery UX)
+
+**Problem**:
+As a registered user, when viewing event details and clicking on an event image thumbnail in the gallery, the lightbox modal displayed a DIFFERENT image than the one clicked.
+
+**Root Cause** (from [RCA_SCRUM21_EVENT_IMAGE_CLICK_WRONG_IMAGE.md](./RCA_SCRUM21_EVENT_IMAGE_CLICK_WRONG_IMAGE.md)):
+Array index mismatch between sorted thumbnail grid and unsorted lightbox array access:
+- **Thumbnail grid**: Images sorted by `displayOrder` for display, click handler captured index from SORTED array
+- **Lightbox display**: Used `images[currentIndex]` accessing the ORIGINAL UNSORTED array
+- **Result**: Clicking thumbnail at sorted position N showed image from unsorted position N (wrong image)
+
+**Solution**:
+Use memoized sorted arrays consistently for both thumbnail display AND lightbox access:
+
+```tsx
+// SCRUM-21 FIX: Sort images once and use consistently
+const sortedImages = useMemo(
+  () => [...images].sort((a, b) => a.displayOrder - b.displayOrder),
+  [images]
+);
+
+// Use sortedImages for BOTH thumbnail rendering AND lightbox display
+{sortedImages.map((image, index) => (
+  <button onClick={() => openImageLightbox(index)}>
+    <img src={image.imageUrl} />
+  </button>
+))}
+
+// Lightbox uses same sorted array
+{sortedImages[currentIndex] && (
+  <img src={sortedImages[currentIndex].imageUrl} />
+)}
+```
+
+**Files Modified**:
+- [MediaGallery.tsx](../web/src/presentation/components/features/events/MediaGallery.tsx) - Added `useMemo` sorted arrays, updated thumbnail grid and lightbox
+- [MediaGallery.test.tsx](../web/src/presentation/components/features/events/__tests__/MediaGallery.test.tsx) - NEW: 20 comprehensive tests
+
+**Testing**:
+- ✅ 20 unit tests covering sorted display, lightbox click, navigation, counter
+- ✅ Tests verify clicking thumbnail N shows image N in lightbox
+- ✅ Tests verify prev/next navigation follows sorted order
+- ✅ All tests passing
+
+**Verification**:
+| Action | Before | After |
+|--------|--------|-------|
+| Click thumbnail 1 (displayOrder: 1) | Wrong image shown | ✅ Correct image |
+| Click thumbnail 2 (displayOrder: 2) | Wrong image shown | ✅ Correct image |
+| Navigate next from image 1 | Wrong sequence | ✅ Shows image 2 |
+| Navigate prev from image 3 | Wrong sequence | ✅ Shows image 2 |
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.89: Text Search Prefix Matching ✅ COMPLETE
 
 ### PHASE 6A.89: TEXT SEARCH PREFIX MATCHING AND ILIKE FALLBACK - COMPLETE - 2026-01-27
 

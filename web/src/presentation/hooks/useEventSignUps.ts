@@ -27,6 +27,7 @@ import type {
   AddSignUpItemRequest,
   UpdateSignUpItemRequest,
   CommitToSignUpItemRequest,
+  CommitToSignUpItemAnonymousRequest,
   // Phase 6A.27: Open Sign-Up Items
   AddOpenSignUpItemRequest,
   AddOpenSignUpItemAnonymousRequest,
@@ -601,6 +602,57 @@ export function useCommitToSignUpItem() {
   });
 }
 
+/**
+ * useCommitToSignUpItemAnonymous Hook
+ *
+ * GitHub Issue #41: Mutation hook for anonymous users to commit to a sign-up item
+ * Uses React Query cache invalidation instead of page reload to preserve scroll position
+ *
+ * Phase 6A.23: Supports anonymous sign-up workflow
+ * Email must be registered for the event (member or anonymous)
+ *
+ * Features:
+ * - Proper cache invalidation (no page reload needed)
+ * - Returns commitment ID
+ * - Automatic cache refresh
+ *
+ * @example
+ * ```tsx
+ * const commitAnonymous = useCommitToSignUpItemAnonymous();
+ *
+ * await commitAnonymous.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789',
+ *   contactEmail: 'user@example.com',
+ *   quantity: 1,
+ *   notes: 'Will bring brown rice',
+ *   contactName: 'John Doe',
+ *   contactPhone: '555-1234'
+ * });
+ * ```
+ */
+export function useCommitToSignUpItemAnonymous() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    } & CommitToSignUpItemAnonymousRequest) =>
+      eventsRepository.commitToSignUpItemAnonymous(eventId, signupId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
 // ==================== PHASE 6A.27: OPEN SIGN-UP ITEM HOOKS ====================
 
 /**
@@ -822,6 +874,7 @@ export default {
   useUpdateSignUpItem,
   useRemoveSignUpItem,
   useCommitToSignUpItem,
+  useCommitToSignUpItemAnonymous, // GitHub Issue #41
   // Phase 6A.27: Open Sign-Up Items
   useAddOpenSignUpItem,
   useUpdateOpenSignUpItem,

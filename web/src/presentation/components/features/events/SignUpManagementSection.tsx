@@ -29,6 +29,7 @@ import {
   useAddSignUpList,
   useRemoveSignUpList,
   useCommitToSignUpItem,
+  useCommitToSignUpItemAnonymous, // GitHub Issue #41
   // Phase 6A.27: Open Sign-Up Items
   useAddOpenSignUpItem,
   useAddOpenSignUpItemAnonymous,
@@ -47,7 +48,6 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
@@ -116,6 +116,7 @@ export function SignUpManagementSection({
   const commitToSignUp = useCommitToSignUp();
   const cancelCommitment = useCancelCommitment();
   const commitToSignUpItem = useCommitToSignUpItem();
+  const commitToSignUpItemAnonymous = useCommitToSignUpItemAnonymous(); // GitHub Issue #41
   const removeSignUpListMutation = useRemoveSignUpList();
 
   // Phase 6A.27: Open sign-up item mutations
@@ -262,22 +263,20 @@ export function SignUpManagementSection({
 
   // Phase 6A.23: Handle anonymous commit to specific item
   // Used when user is not logged in but is registered for event
+  // GitHub Issue #41: Uses React Query mutation for proper cache invalidation (no page reload)
   const handleCommitToItemAnonymous = async (data: AnonymousCommitmentFormData) => {
-    await eventsRepository.commitToSignUpItemAnonymous(
+    await commitToSignUpItemAnonymous.mutateAsync({
       eventId,
-      data.signUpListId,
-      data.itemId,
-      {
-        contactEmail: data.contactEmail,
-        quantity: data.quantity,
-        notes: data.notes,
-        contactName: data.contactName,
-        contactPhone: data.contactPhone,
-      }
-    );
-    // Invalidate cache to refresh sign-up lists
-    // Note: Since we're using direct repository call, we need to manually trigger a refetch
-    window.location.reload();
+      signupId: data.signUpListId,
+      itemId: data.itemId,
+      contactEmail: data.contactEmail,
+      quantity: data.quantity,
+      notes: data.notes,
+      contactName: data.contactName,
+      contactPhone: data.contactPhone,
+    });
+    // Cache is automatically invalidated by the mutation hook
+    // No page reload needed - scroll position is preserved
   };
 
   // Handle cancel sign-up item commitment (Phase 6A.20)

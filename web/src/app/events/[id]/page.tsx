@@ -428,7 +428,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const spotsLeft = event.capacity - event.currentRegistrations;
   const hasStarted = new Date(event.startDate) <= new Date();
   // GitHub Issue #37: Check if event is cancelled to hide registration section
-  const isCancelled = event.status === EventStatus.Cancelled;
+  // Note: Backend may return status as string "Cancelled" or enum number 4
+  const isCancelled = (event.status as unknown) === 'Cancelled' || event.status === EventStatus.Cancelled;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">

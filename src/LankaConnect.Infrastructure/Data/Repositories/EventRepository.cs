@@ -669,11 +669,14 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         try
         {
+            // Issue #21 Fix: Include Registrations to ensure CurrentRegistrations is calculated correctly
+            // Without this Include, the Registrations collection is empty and CurrentRegistrations returns 0
             var events = await _dbSet
                 .FromSqlRaw(eventsSql, parameters.ToArray())
                 .AsNoTracking()
                 .Include(e => e.Images)
                 .Include(e => e.Videos)
+                .Include(e => e.Registrations)
                 .ToListAsync(cancellationToken);
 
             _repoLogger.LogInformation("[SEARCH-7] Events query succeeded - Found {EventCount} events", events.Count);

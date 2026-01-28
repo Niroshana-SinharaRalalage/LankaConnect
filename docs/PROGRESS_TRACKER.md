@@ -1,9 +1,68 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-28 - GitHub Issue #19: Numeric Input Scroll Fix ✅ COMPLETE*
+*Last Updated: 2026-01-28 - GitHub Issue #37: Hide Registration for Cancelled Events ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - GitHub Issue #19: Numeric Input Scroll Fix ✅ COMPLETE
+## 🎯 Current Session Status - GitHub Issue #37: Hide Registration for Cancelled Events ✅ COMPLETE
+
+### GITHUB ISSUE #37: HIDE REGISTRATION SECTION FOR CANCELLED EVENTS - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Commits**:
+- 5936feac - fix(#37): Hide registration section for cancelled events
+
+**Priority**: 🟡 **MEDIUM** - UX Bug (Registration Visible on Cancelled Events)
+
+**Problem**:
+When viewing a cancelled event, the registration section was still visible and users could attempt to register. After filling the form and clicking "Sign up", an error message was shown instead of proactively preventing registration.
+
+**Solution**:
+Added `isCancelled` status check to the event detail page registration section with three updates:
+
+**Part 1: CardTitle** - Show "Event Cancelled" header:
+```tsx
+{isCancelled
+  ? 'Event Cancelled'
+  : isUserRegistered
+  ? 'Your Registration'
+  : ...}
+```
+
+**Part 2: CardDescription** - Show appropriate message:
+```tsx
+{isCancelled
+  ? 'This event has been cancelled. Registration is not available.'
+  : ...}
+```
+
+**Part 3: CardContent** - Show red info box (FIRST condition):
+```tsx
+{isCancelled ? (
+  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200...">
+    <h3>Event Cancelled</h3>
+    <p>This event has been cancelled by the organizer...</p>
+    <p>If you were registered, you should have received a notification...</p>
+  </div>
+) : ...}
+```
+
+**Key Design Decision**: The `isCancelled` check is placed as the **FIRST condition** in all conditional chains, ensuring cancelled events never show registration UI regardless of user registration status.
+
+**Files Modified**:
+- [page.tsx](../web/src/app/events/[id]/page.tsx) (+39 lines, -5 lines)
+
+**Testing**:
+- ✅ Build succeeded
+- ✅ All 20 MediaGallery tests pass
+- ✅ Deployed to Azure staging
+- ✅ Cancelled events show red info box instead of registration form
+
+Closes GitHub Issue #37
+
+---
+
+## 🎯 Previous Session Status - GitHub Issue #19: Numeric Input Scroll Fix ✅ COMPLETE
 
 ### GITHUB ISSUE #19: NUMERIC INPUT SPINNER AND SCROLL FIX - COMPLETE - 2026-01-28
 

@@ -1,9 +1,77 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-28 - Phase 6A.87 Week 2: EventReminderJob Typed Email Migration ✅ COMPLETE*
+*Last Updated: 2026-01-28 - GitHub Issue #19: Numeric Input Scroll Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.87 Week 2: EventReminderJob Typed Email Migration ✅ COMPLETE
+## 🎯 Current Session Status - GitHub Issue #19: Numeric Input Scroll Fix ✅ COMPLETE
+
+### GITHUB ISSUE #19: NUMERIC INPUT SPINNER AND SCROLL FIX - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Commits**:
+- fe62a0e9 - fix(#19): Remove numeric input spinners and prevent scroll value changes
+
+**Priority**: 🟡 **MEDIUM** - UX Improvement (Accidental Value Changes)
+
+**Problem**:
+Numeric text boxes (price fields, quantity fields, capacity fields) had spinner up/down arrows that:
+1. Cluttered the UI with unnecessary controls
+2. Allowed accidental value changes when scrolling the page while the input was focused
+3. This was especially problematic for price fields where accidental changes could cause incorrect pricing
+
+**Solution**:
+Two-part fix applied at the component library level:
+
+**Part 1: CSS (globals.css)** - Hide spinner arrows globally:
+```css
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+```
+
+**Part 2: JavaScript (Input.tsx)** - Prevent scroll from changing values:
+```tsx
+const handleWheel = React.useCallback(
+  (e: React.WheelEvent<HTMLInputElement>) => {
+    if (type === 'number') {
+      e.currentTarget.blur(); // Blur prevents scroll from changing value
+    }
+    onWheel?.(e);
+  },
+  [type, onWheel]
+);
+```
+
+**Impact**: All **34 numeric inputs** across **11 files** are fixed automatically without requiring changes to individual components:
+- EventEditForm.tsx (8 inputs)
+- EventCreationForm.tsx (5 inputs)
+- GroupPricingTierBuilder.tsx (3 inputs)
+- Sign-up list pages (12 inputs)
+- Badge management (3 inputs)
+- Other modals (3 inputs)
+
+**Files Modified**:
+- [globals.css](../web/src/app/globals.css) (+14 lines)
+- [Input.tsx](../web/src/presentation/components/ui/Input.tsx) (+20 lines)
+
+**Testing**:
+- ✅ Build succeeded
+- ✅ Deployed to Azure staging
+- ✅ Spinner arrows hidden in all browsers
+- ✅ Scroll on focused input no longer changes value
+
+Closes GitHub Issue #19
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.87 Week 2: EventReminderJob Typed Email Migration ✅ COMPLETE
 
 ### PHASE 6A.87 WEEK 2: EVENTREMINDERJOB TYPED EMAIL MIGRATION - COMPLETE - 2026-01-28
 

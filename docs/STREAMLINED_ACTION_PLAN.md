@@ -7,7 +7,31 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.88: DRAFT EVENTS VISIBILITY FIX COMPLETE (2026-01-27)
+## ✅ CURRENT STATUS - PHASE 6A.87 WEEK 2: EVENTREMINDERJOB TYPED EMAIL MIGRATION COMPLETE (2026-01-28)
+**Date**: 2026-01-28
+**Session**: Phase 6A.87 Week 2 - EventReminderJob Typed Email Migration
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - ALL TESTS PASSING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - GitHub Actions deploy-staging.yml
+**Priority**: 🟢 ENHANCEMENT - Hybrid Email System Pilot Migration
+**Tests**: 28 new + 1344 total passing (109 Shared + 1235 Application)
+
+**Objective**: Migrate EventReminderJob from Dictionary<string, object> to strongly-typed EventReminderEmailParams with feature flag control.
+
+**Implementation**:
+- ✅ **EventReminderEmailParams.cs** - Strongly-typed parameters for template-event-reminder
+- ✅ **EventReminderJob.cs** - Updated to use ITypedEmailService
+- ✅ **Feature Flags** - EventReminderJob: true in HandlerOverrides
+- ✅ **DI Registration** - AddTypedEmailServices() + AddEmailServiceBridge()
+
+**Verification**:
+- ✅ Reminder jobs trigger successfully (Jobs 4364, 4368, 4369)
+- ✅ De-duplication working (skips already-sent reminders)
+- ✅ All unit tests passing
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.88: DRAFT EVENTS VISIBILITY FIX COMPLETE (2026-01-27)
 **Date**: 2026-01-27
 **Session**: Phase 6A.88 - Draft Events Visibility in Event Management
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED

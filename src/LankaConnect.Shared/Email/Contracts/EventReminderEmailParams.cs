@@ -127,6 +127,12 @@ public class EventReminderEmailParams : IEmailParameters
     #region Optional Properties - Ticket Info
 
     /// <summary>
+    /// Whether the registration has a ticket (for paid events).
+    /// This controls the {{#HasTicket}} conditional in the email template.
+    /// </summary>
+    public bool HasTicket { get; set; } = false;
+
+    /// <summary>
     /// Ticket code for paid events.
     /// </summary>
     public string TicketCode { get; set; } = string.Empty;
@@ -166,6 +172,8 @@ public class EventReminderEmailParams : IEmailParameters
             { "OrganizerContactPhone", OrganizerContactPhone },
 
             // Ticket parameters (always include, even if empty)
+            // HasTicket controls {{#HasTicket}} conditional in Handlebars template
+            { "HasTicket", HasTicket },
             { "TicketCode", TicketCode },
             { "TicketExpiryDate", TicketExpiryDate }
         };
@@ -266,11 +274,13 @@ public class EventReminderEmailParams : IEmailParameters
 
     /// <summary>
     /// Returns a new instance with ticket information set.
+    /// Sets HasTicket = true to enable {{#HasTicket}} conditional in email template.
     /// </summary>
     public EventReminderEmailParams WithTicket(
         string? ticketCode,
         string? expiryDate)
     {
+        HasTicket = true;
         TicketCode = ticketCode ?? string.Empty;
         TicketExpiryDate = expiryDate ?? string.Empty;
         return this;

@@ -126,10 +126,12 @@ public class EventReminderEmailParamsTests
     {
         // Arrange & Act
         var emailParams = CreateValidParams();
+        emailParams.HasTicket = true;
         emailParams.TicketCode = "TKT-ABC123";
         emailParams.TicketExpiryDate = "February 15, 2026";
 
         // Assert
+        emailParams.HasTicket.Should().BeTrue();
         emailParams.TicketCode.Should().Be("TKT-ABC123");
         emailParams.TicketExpiryDate.Should().Be("February 15, 2026");
     }
@@ -147,6 +149,7 @@ public class EventReminderEmailParamsTests
         emailParams.TicketCode.Should().Be("");
         emailParams.TicketExpiryDate.Should().Be("");
         emailParams.HasOrganizerContact.Should().BeFalse();
+        emailParams.HasTicket.Should().BeFalse();
     }
 
     #endregion
@@ -208,6 +211,7 @@ public class EventReminderEmailParamsTests
     {
         // Arrange
         var emailParams = CreateValidParams();
+        emailParams.HasTicket = true;
         emailParams.TicketCode = "TKT-ABC123";
         emailParams.TicketExpiryDate = "February 15, 2026";
 
@@ -215,10 +219,26 @@ public class EventReminderEmailParamsTests
         var dict = emailParams.ToDictionary();
 
         // Assert
+        dict.Should().ContainKey("HasTicket");
         dict.Should().ContainKey("TicketCode");
         dict.Should().ContainKey("TicketExpiryDate");
+        dict["HasTicket"].Should().Be(true);
         dict["TicketCode"].Should().Be("TKT-ABC123");
         dict["TicketExpiryDate"].Should().Be("February 15, 2026");
+    }
+
+    [Fact]
+    public void EventReminderEmailParams_ToDictionary_HasTicketShouldBeFalseByDefault()
+    {
+        // Arrange
+        var emailParams = CreateValidParams();
+
+        // Act
+        var dict = emailParams.ToDictionary();
+
+        // Assert - HasTicket should be false when not set
+        dict.Should().ContainKey("HasTicket");
+        dict["HasTicket"].Should().Be(false);
     }
 
     [Fact]
@@ -509,7 +529,8 @@ public class EventReminderEmailParamsTests
             expiryDate: "February 15, 2026"
         );
 
-        // Assert
+        // Assert - WithTicket should set HasTicket = true
+        withTicket.HasTicket.Should().BeTrue();
         withTicket.TicketCode.Should().Be("TKT-ABC123");
         withTicket.TicketExpiryDate.Should().Be("February 15, 2026");
     }

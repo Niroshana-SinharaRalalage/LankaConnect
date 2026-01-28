@@ -427,6 +427,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isFull = event.currentRegistrations >= event.capacity;
   const spotsLeft = event.capacity - event.currentRegistrations;
   const hasStarted = new Date(event.startDate) <= new Date();
+  // GitHub Issue #37: Check if event is cancelled to hide registration section
+  const isCancelled = event.status === EventStatus.Cancelled;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -636,15 +638,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <Card className="border-2" style={{ borderColor: '#FF7900' }}>
               <CardHeader>
                 <CardTitle>
-                  {/* Phase 6A.79 Part 3: String comparison instead of enum */}
-                  {isUserRegistered
+                  {/* GitHub Issue #37: Show "Event Cancelled" for cancelled events */}
+                  {isCancelled
+                    ? 'Event Cancelled'
+                    : isUserRegistered
                     ? 'Your Registration'
                     : registrationDetails?.status === 'Cancelled'
                     ? 'Registration Cancelled'
                     : 'Register for this Event'}
                 </CardTitle>
                 <CardDescription>
-                  {isUserRegistered
+                  {/* GitHub Issue #37: Show cancelled event message first */}
+                  {isCancelled
+                    ? 'This event has been cancelled. Registration is not available.'
+                    : isUserRegistered
                     ? 'You are already registered for this event!'
                     : registrationDetails?.status === 'Cancelled'
                     ? hasStarted
@@ -658,8 +665,35 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Phase 6A.79 Part 3: String comparison instead of enum */}
-                {registrationDetails?.status === 'Cancelled' ? (
+                {/* GitHub Issue #37: Show cancelled event info box FIRST */}
+                {isCancelled ? (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        className="h-5 w-5 text-red-600 dark:text-red-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      <h3 className="text-lg font-semibold text-red-900 dark:text-red-100">
+                        Event Cancelled
+                      </h3>
+                    </div>
+                    <p className="text-sm text-red-800 dark:text-red-200">
+                      This event has been cancelled by the organizer. Registration is no longer available.
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-2">
+                      If you were registered for this event, you should have received a notification about the cancellation.
+                    </p>
+                  </div>
+                ) : registrationDetails?.status === 'Cancelled' ? (
                   // Show cancelled status with option to re-register
                   <div className="space-y-6">
                     <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg">

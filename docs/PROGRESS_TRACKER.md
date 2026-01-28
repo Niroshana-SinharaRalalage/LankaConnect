@@ -18933,3 +18933,57 @@ internal static EmailSubject FromDatabase(string value)
 ---
 
 *Phase 6A.41 completed 2025-12-24 - Email sending fix deployed to staging*
+
+---
+
+## 🎯 Current Session Status - Phase 6A.90: Admin User Management & Support System ⏳ IN PROGRESS
+
+### PHASE 6A.90: ADMIN USER MANAGEMENT & SUPPORT/FEEDBACK SYSTEM - IN PROGRESS - 2026-01-28
+
+**Objective**: Implement two new admin dashboard tabs:
+1. **User Management Tab** - Manage users (activate/deactivate, lock/unlock, resend verification, force password reset)
+2. **Support/Feedback Tab** - Handle contact form submissions with ticket management
+
+### Part 1: Domain Foundation ✅ COMPLETE - DEPLOYED TO STAGING
+
+**Architect Review**: Plan approved with required modifications for domain events, AdminAuditLog, role hierarchy protection.
+
+**Domain Layer Created**:
+- `SupportTicketStatus.cs` and `SupportTicketPriority.cs` enums
+- `SupportTicketReply.cs` and `SupportTicketNote.cs` value objects
+- 4 domain events for SupportTicket (Created, Replied, StatusChanged, Assigned)
+- 4 domain events for User admin actions (Deactivated, Activated, Locked, Unlocked by Admin)
+- `SupportTicket.cs` aggregate root with factory method and domain methods
+- `AdminAuditLog.cs` entity with factory methods for user and ticket actions
+
+**Infrastructure Layer Created**:
+- `SupportTicketConfiguration.cs` EF Core configuration with owned entities
+- `AdminAuditLogConfiguration.cs` EF Core configuration
+- `SupportTicketRepository.cs` with comprehensive logging
+- `AdminAuditLogRepository.cs` with comprehensive logging
+- Migration `20260128014731_Phase6A89_AddSupportTicketsAndAdminAuditLog.cs`
+
+**User Entity Extended**:
+- Added `LockAccountByAdmin()`, `UnlockAccountByAdmin()`, `DeactivateByAdmin()`, `ActivateByAdmin()` methods
+- Each method raises corresponding domain event for audit logging and email notifications
+
+**Database Schema Created** (support schema):
+- `support_tickets` table with indexes
+- `support_ticket_replies` table
+- `support_ticket_notes` table
+- `admin_audit_logs` table with performance indexes
+
+**Deployment**:
+- ✅ Committed: `0251cbee feat(phase-6a89): Add domain foundation for Admin User Management & Support System`
+- ✅ Pushed to develop branch
+- ✅ GitHub Actions workflow completed successfully
+- ✅ Deployed to Azure staging
+
+### Part 2: User Management Backend ⏳ IN PROGRESS
+
+**Next Steps**:
+- Extend IUserRepository with paged queries
+- Create Commands: DeactivateUser, ActivateUser, LockUser, UnlockUser
+- Create Queries: GetUsersPaged, GetUserDetails, GetUserStatistics
+- Create AdminUsersController
+

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Users.Enums;
 using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 using System.Diagnostics;
 using Serilog.Context;
@@ -325,6 +326,211 @@ public class UserRepository : Repository<User>, IUserRepository
                     "AddAsync FAILED: EntityId={EntityId}, Email={Email}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
                     entity.Id,
                     entity.Email.Value,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    // Phase 6A.90: Admin user management methods
+
+    /// <summary>
+    /// Phase 6A.90: Get paginated list of users with filtering for admin management
+    /// </summary>
+    public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        UserRole? roleFilter = null,
+        bool? isActiveFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetPaged"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("Page", page))
+        using (LogContext.PushProperty("PageSize", pageSize))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetPagedAsync START: Page={Page}, PageSize={PageSize}, SearchTerm={SearchTerm}, RoleFilter={RoleFilter}, IsActiveFilter={IsActiveFilter}",
+                page, pageSize, searchTerm, roleFilter, isActiveFilter);
+
+            try
+            {
+                var query = _dbSet.AsNoTracking();
+
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var term = searchTerm.Trim().ToLower();
+                    query = query.Where(u =>
+                        u.FirstName.ToLower().Contains(term) ||
+                        u.LastName.ToLower().Contains(term) ||
+                        u.Email.Value.ToLower().Contains(term) ||
+                        (u.FirstName + " " + u.LastName).ToLower().Contains(term));
+                }
+
+                if (roleFilter.HasValue)
+                    query = query.Where(u => u.Role == roleFilter.Value);
+
+                if (isActiveFilter.HasValue)
+                    query = query.Where(u => u.IsActive == isActiveFilter.Value);
+
+                // Get total count for pagination
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                // Get paged items ordered by created date descending (newest first)
+                var items = await query
+                    .OrderByDescending(u => u.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetPagedAsync COMPLETE: Page={Page}, ItemCount={ItemCount}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
+                    page, items.Count, totalCount, stopwatch.ElapsedMilliseconds);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetPagedAsync FAILED: Page={Page}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    page,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get user counts grouped by role for admin statistics
+    /// </summary>
+    public async Task<Dictionary<UserRole, int>> GetUserCountsByRoleAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetCountsByRole"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetUserCountsByRoleAsync START");
+
+            try
+            {
+                var counts = await _dbSet
+                    .AsNoTracking()
+                    .GroupBy(u => u.Role)
+                    .Select(g => new { Role = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Role, x => x.Count, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetUserCountsByRoleAsync COMPLETE: RoleCount={RoleCount}, Duration={ElapsedMs}ms",
+                    counts.Count, stopwatch.ElapsedMilliseconds);
+
+                return counts;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetUserCountsByRoleAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of active users
+    /// </summary>
+    public async Task<int> GetActiveUsersCountAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetActiveUsersCount"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetActiveUsersCountAsync START");
+
+            try
+            {
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(u => u.IsActive, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetActiveUsersCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetActiveUsersCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of locked accounts
+    /// </summary>
+    public async Task<int> GetLockedAccountsCountAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetLockedAccountsCount"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetLockedAccountsCountAsync START");
+
+            try
+            {
+                var now = DateTime.UtcNow;
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(u => u.AccountLockedUntil != null && u.AccountLockedUntil > now, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetLockedAccountsCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetLockedAccountsCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
                     stopwatch.ElapsedMilliseconds,
                     ex.Message,
                     (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");

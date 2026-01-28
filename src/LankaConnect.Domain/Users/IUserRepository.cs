@@ -1,5 +1,6 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Domain.Users.Enums;
 
 namespace LankaConnect.Domain.Users;
 
@@ -31,4 +32,39 @@ public interface IUserRepository : IRepository<User>
     /// Used by EventCancelledEventHandler to fetch all recipient emails in a single query
     /// </summary>
     Task<Dictionary<Guid, string>> GetEmailsByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default);
+
+    // Phase 6A.90: Admin user management methods
+
+    /// <summary>
+    /// Phase 6A.90: Get paginated list of users with filtering for admin management
+    /// </summary>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <param name="searchTerm">Optional search term for name/email</param>
+    /// <param name="roleFilter">Optional filter by role</param>
+    /// <param name="isActiveFilter">Optional filter by active status</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Tuple of items and total count for pagination</returns>
+    Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        UserRole? roleFilter = null,
+        bool? isActiveFilter = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.90: Get user counts grouped by role for admin statistics
+    /// </summary>
+    Task<Dictionary<UserRole, int>> GetUserCountsByRoleAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of active users
+    /// </summary>
+    Task<int> GetActiveUsersCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of locked accounts
+    /// </summary>
+    Task<int> GetLockedAccountsCountAsync(CancellationToken cancellationToken = default);
 }

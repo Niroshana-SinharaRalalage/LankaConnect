@@ -23,16 +23,27 @@ public interface ISupportTicketRepository
     Task<(IReadOnlyList<SupportTicket> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,
+        string? searchTerm = null,
         SupportTicketStatus? statusFilter = null,
         SupportTicketPriority? priorityFilter = null,
         Guid? assignedToFilter = null,
-        string? searchTerm = null,
+        bool? unassignedOnly = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets ticket counts by status for statistics
     /// </summary>
     Task<Dictionary<SupportTicketStatus, int>> GetCountsByStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.90: Gets ticket counts by priority for statistics
+    /// </summary>
+    Task<Dictionary<SupportTicketPriority, int>> GetCountsByPriorityAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.90: Gets count of unassigned tickets
+    /// </summary>
+    Task<int> GetUnassignedCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a new support ticket

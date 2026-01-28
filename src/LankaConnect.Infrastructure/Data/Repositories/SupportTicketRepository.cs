@@ -115,10 +115,11 @@ public class SupportTicketRepository : ISupportTicketRepository
     public async Task<(IReadOnlyList<SupportTicket> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,
+        string? searchTerm = null,
         SupportTicketStatus? statusFilter = null,
         SupportTicketPriority? priorityFilter = null,
         Guid? assignedToFilter = null,
-        string? searchTerm = null,
+        bool? unassignedOnly = null,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetPaged"))
@@ -129,12 +130,12 @@ public class SupportTicketRepository : ISupportTicketRepository
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogDebug(
-                "GetPagedAsync START: Page={Page}, PageSize={PageSize}, StatusFilter={StatusFilter}, PriorityFilter={PriorityFilter}",
-                page, pageSize, statusFilter, priorityFilter);
+                "GetPagedAsync START: Page={Page}, PageSize={PageSize}, StatusFilter={StatusFilter}, PriorityFilter={PriorityFilter}, UnassignedOnly={UnassignedOnly}",
+                page, pageSize, statusFilter, priorityFilter, unassignedOnly);
 
             try
             {
-                var query = _dbSet.AsNoTracking();
+                IQueryable<SupportTicket> query = _dbSet.AsNoTracking();
 
                 // Apply filters
                 if (statusFilter.HasValue)
@@ -145,6 +146,9 @@ public class SupportTicketRepository : ISupportTicketRepository
 
                 if (assignedToFilter.HasValue)
                     query = query.Where(t => t.AssignedToUserId == assignedToFilter.Value);
+
+                if (unassignedOnly == true)
+                    query = query.Where(t => t.AssignedToUserId == null);
 
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
@@ -159,8 +163,10 @@ public class SupportTicketRepository : ISupportTicketRepository
                 // Get total count
                 var totalCount = await query.CountAsync(cancellationToken);
 
-                // Get paged items ordered by created date descending (newest first)
+                // Get paged items with replies (for reply count) ordered by created date descending (newest first)
                 var items = await query
+                    .AsSplitQuery()
+                    .Include(t => t.Replies)
                     .OrderByDescending(t => t.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
@@ -218,6 +224,80 @@ public class SupportTicketRepository : ISupportTicketRepository
 
                 _logger.LogError(ex,
                     "GetCountsByStatusAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
+    }
+
+    public async Task<Dictionary<SupportTicketPriority, int>> GetCountsByPriorityAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetCountsByPriority"))
+        using (LogContext.PushProperty("EntityType", "SupportTicket"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("GetCountsByPriorityAsync START");
+
+            try
+            {
+                var counts = await _dbSet
+                    .AsNoTracking()
+                    .GroupBy(t => t.Priority)
+                    .Select(g => new { Priority = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Priority, x => x.Count, cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetCountsByPriorityAsync COMPLETE: PriorityCount={PriorityCount}, Duration={ElapsedMs}ms",
+                    counts.Count, stopwatch.ElapsedMilliseconds);
+
+                return counts;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetCountsByPriorityAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
+    }
+
+    public async Task<int> GetUnassignedCountAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetUnassignedCount"))
+        using (LogContext.PushProperty("EntityType", "SupportTicket"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogDebug("GetUnassignedCountAsync START");
+
+            try
+            {
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(t => t.AssignedToUserId == null, cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetUnassignedCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetUnassignedCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     stopwatch.ElapsedMilliseconds, ex.Message);
 
                 throw;

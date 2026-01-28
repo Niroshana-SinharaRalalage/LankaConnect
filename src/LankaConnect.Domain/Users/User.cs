@@ -838,4 +838,82 @@ public class User : BaseEntity
         return Result.Success();
     }
 
+    // Phase 6A.89: Admin account management methods
+
+    /// <summary>
+    /// Phase 6A.89: Locks account by admin until specified date.
+    /// Different from automatic lock after failed login attempts.
+    /// </summary>
+    /// <param name="lockUntil">Date until which the account will be locked</param>
+    /// <param name="reason">Optional reason for the lock (for audit trail)</param>
+    public Result LockAccountByAdmin(DateTime lockUntil, string? reason = null)
+    {
+        if (lockUntil <= DateTime.UtcNow)
+            return Result.Failure("Lock date must be in the future");
+
+        // Business rule: Cannot lock an already locked account
+        if (IsAccountLocked)
+            return Result.Failure("Account is already locked");
+
+        AccountLockedUntil = lockUntil;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserAccountLockedByAdminEvent(
+            Id, Email.Value, lockUntil, reason));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Unlocks account by admin.
+    /// Clears the lock and resets failed login attempts.
+    /// </summary>
+    public Result UnlockAccountByAdmin()
+    {
+        if (!AccountLockedUntil.HasValue || AccountLockedUntil <= DateTime.UtcNow)
+            return Result.Failure("Account is not currently locked");
+
+        AccountLockedUntil = null;
+        FailedLoginAttempts = 0; // Reset failed attempts
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserAccountUnlockedByAdminEvent(Id, Email.Value));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Deactivates user by admin.
+    /// Prevents user from logging in or performing any actions.
+    /// </summary>
+    public Result DeactivateByAdmin()
+    {
+        if (!IsActive)
+            return Result.Failure("User is already deactivated");
+
+        IsActive = false;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserDeactivatedByAdminEvent(Id, Email.Value, FullName));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Activates user by admin.
+    /// Allows user to login and perform actions again.
+    /// </summary>
+    public Result ActivateByAdmin()
+    {
+        if (IsActive)
+            return Result.Failure("User is already active");
+
+        IsActive = true;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserActivatedByAdminEvent(Id, Email.Value, FullName));
+
+        return Result.Success();
+    }
+
 }

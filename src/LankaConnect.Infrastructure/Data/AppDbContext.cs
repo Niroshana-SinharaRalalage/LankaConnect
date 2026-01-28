@@ -11,6 +11,7 @@ using LankaConnect.Domain.Analytics;
 using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.ReferenceData.Entities;
+using LankaConnect.Domain.Support;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Infrastructure.Data.Configurations.ReferenceData;
@@ -103,6 +104,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Tax Reference Data - Phase 6A.X
     public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
 
+    // Support Entity Sets - Phase 6A.89
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>(); // Phase 6A.89: Support/Feedback System
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>(); // Phase 6A.89: Admin Audit Logging
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -170,6 +175,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Tax entity configurations (Phase 6A.X)
         modelBuilder.ApplyConfiguration(new StateTaxRateConfiguration()); // Phase 6A.X: US State Sales Tax Rates
+
+        // Support entity configurations (Phase 6A.89)
+        modelBuilder.ApplyConfiguration(new SupportTicketConfiguration()); // Phase 6A.89: Support/Feedback System
+        modelBuilder.ApplyConfiguration(new AdminAuditLogConfiguration()); // Phase 6A.89: Admin Audit Logging
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -276,7 +285,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
             typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
             typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data
-            typeof(LankaConnect.Domain.Tax.StateTaxRate) // Phase 6A.X: US State Sales Tax Rates
+            typeof(LankaConnect.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
+            typeof(SupportTicket), // Phase 6A.89: Support/Feedback System
+            typeof(AdminAuditLog) // Phase 6A.89: Admin Audit Logging
         };
 
         // Get all types from Domain assembly that aren't in our configured list

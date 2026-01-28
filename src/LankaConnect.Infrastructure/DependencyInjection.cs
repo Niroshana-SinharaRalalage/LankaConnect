@@ -40,6 +40,7 @@ using LankaConnect.Domain.Payments;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Tax.Repositories;
+using LankaConnect.Domain.Support;
 using Stripe;
 using Serilog;
 
@@ -176,6 +177,10 @@ public static class DependencyInjection
 
         // Add Reference Data Repository (Phase 6A.47)
         services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
+
+        // Phase 6A.89: Add Support/Feedback Repositories
+        services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+        services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
 
         // Phase 6A.X: Add Tax and Revenue Breakdown Services
         services.AddScoped<IStateTaxRateRepository, StateTaxRateRepository>();

@@ -1,9 +1,51 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-28 - Phase 6A.91: Paid Event Refund Workflow ✅ COMPLETE*
+*Last Updated: 2026-01-28 - GitHub Issue #21: Fix Event Search Registration Count ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.91: Paid Event Refund Workflow ✅ COMPLETE
+## 🎯 Current Session Status - GitHub Issue #21: Fix Event Search Registration Count ✅ COMPLETE
+
+### GITHUB ISSUE #21: EVENT MANAGEMENT LIST SHOWS INCORRECT REGISTERED COUNT - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Commit**: 195d082a - fix(#21): Include Registrations in SearchAsync to show correct registered count
+
+**Priority**: 🟡 **MEDIUM** - UI/Data Display Bug
+
+**Problem**:
+When a user logged in and searched for events in the Event Management tab, the registered count shown in the results list was always 0, regardless of actual registrations.
+
+**Root Cause Analysis**:
+The `SearchAsync` method in `EventRepository.cs` was **missing `.Include(e => e.Registrations)`**. Without loading the Registrations navigation property, the `CurrentRegistrations` computed property (which counts confirmed registrations) returned 0.
+
+Other repository methods like `GetByOrganizerAsync` and `GetAllAsync` correctly included Registrations, so the bug only manifested when using the search functionality.
+
+**Solution**:
+Added `.Include(e => e.Registrations)` to the SearchAsync method in EventRepository.cs:
+
+```csharp
+var events = await _dbSet
+    .FromSqlRaw(eventsSql, parameters.ToArray())
+    .AsNoTracking()
+    .Include(e => e.Images)
+    .Include(e => e.Videos)
+    .Include(e => e.Registrations)  // <-- FIX ADDED
+    .ToListAsync(cancellationToken);
+```
+
+**Testing**:
+- ✅ 37 event query unit tests passing (no regressions)
+- ✅ Backend deployed to Azure staging
+- ✅ API verified: `/api/Events/my-events?searchTerm=Christmas` now returns correct `currentRegistrations: 10`
+- ✅ GitHub Issue #21 closed
+
+**Files Modified**: 1 file
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` (lines 672-680)
+
+---
+
+## 🎯 Previous Session Status - Phase 6A.91: Paid Event Refund Workflow ✅ COMPLETE
 
 ### PHASE 6A.91: PAID EVENT REFUND WORKFLOW - COMPLETE - 2026-01-28
 

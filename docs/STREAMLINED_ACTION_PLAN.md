@@ -7,7 +7,28 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.87 WEEK 2: EVENTREMINDERJOB TYPED EMAIL MIGRATION COMPLETE (2026-01-28)
+## ✅ CURRENT STATUS - GITHUB ISSUE #21: FIX EVENT SEARCH REGISTRATION COUNT COMPLETE (2026-01-28)
+**Date**: 2026-01-28
+**Session**: GitHub Issue #21 - Event Management List Shows Incorrect Registered Count
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Commit 195d082a
+**Priority**: 🟡 MEDIUM - UI/Data Display Bug
+**Tests**: 37 event query tests passing (no regressions)
+
+**Problem**: When searching for events in the Event Management tab, the registered count was always 0.
+
+**Root Cause**: `SearchAsync` method in `EventRepository.cs` was missing `.Include(e => e.Registrations)`, causing `CurrentRegistrations` to return 0.
+
+**Fix**: Added `.Include(e => e.Registrations)` to the SearchAsync method.
+
+**Verification**:
+- ✅ API: `/api/Events/my-events?searchTerm=Christmas` returns `currentRegistrations: 10`
+- ✅ GitHub Issue #21 closed
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.87 WEEK 2: EVENTREMINDERJOB TYPED EMAIL MIGRATION COMPLETE (2026-01-28)
 **Date**: 2026-01-28
 **Session**: Phase 6A.87 Week 2 - EventReminderJob Typed Email Migration
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - ALL TESTS PASSING

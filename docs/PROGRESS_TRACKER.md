@@ -1,9 +1,67 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-28 - GitHub Issue #21: Fix Event Search Registration Count ✅ COMPLETE*
+*Last Updated: 2026-01-28 - GitHub Issue #31: Replace Ugly Confirm Dialogs ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - GitHub Issue #21: Fix Event Search Registration Count ✅ COMPLETE
+## 🎯 Current Session Status - GitHub Issue #31: Replace Ugly Confirm Dialogs ✅ COMPLETE
+
+### GITHUB ISSUE #31: UGLY ALERT WHEN CANCELLING SIGNUP - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Commit**: ece7c3dc - fix(#31): Replace browser confirm() with styled ConfirmDialog
+
+**Priority**: 🟡 **MEDIUM** - UX Improvement (Ugly Browser Dialogs)
+
+**Problem**:
+When cancelling a signup commitment in the SignUpManagementSection, the component used native browser `confirm()` dialogs which look ugly and don't match the LankaConnect design system.
+
+**Locations Fixed** (3 confirm() calls replaced):
+1. `handleCancel()` - Cancel commitment (legacy sign-ups)
+2. `handleCancelSignUp()` - Cancel sign-up for predefined items
+3. `handleCancelOpenItem()` - Cancel open item sign-up
+
+**Solution**:
+Replaced all browser `confirm()` calls with the existing `ConfirmDialog` component (Phase 6A.74 Part 10 Issue #2) using a unified dialog pattern:
+
+**Implementation Highlights**:
+```tsx
+// Unified cancel dialog state with type discriminator
+type CancelDialogType = 'commitment' | 'signUpItem' | 'openItem';
+interface CancelDialogState {
+  open: boolean;
+  type: CancelDialogType | null;
+  signUpListId: string;
+  itemId?: string;
+}
+
+// Single ConfirmDialog with dynamic content based on cancel type
+<ConfirmDialog
+  variant="warning"  // Amber color for cancel actions
+  confirmLabel="Yes, Cancel"
+  cancelLabel="No, Keep It"
+  ...
+/>
+```
+
+**Design Decisions**:
+- `variant="warning"` (amber) for cancel actions - indicates caution but not destructive
+- Clear descriptive messages per action type
+- Loading state tied to mutation `isPending`
+- Single dialog instance reduces bundle size
+
+**Files Modified**:
+- [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) (+129 lines, -82 lines)
+
+**Testing**:
+- ✅ Build succeeded
+- ✅ Deployed to Azure staging
+
+Closes GitHub Issue #31
+
+---
+
+## 🎯 Previous Session Status - GitHub Issue #21: Fix Event Search Registration Count ✅ COMPLETE
 
 ### GITHUB ISSUE #21: EVENT MANAGEMENT LIST SHOWS INCORRECT REGISTERED COUNT - COMPLETE - 2026-01-28
 

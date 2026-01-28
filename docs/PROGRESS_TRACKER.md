@@ -1,9 +1,69 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-28 - GitHub Issue #37: Hide Registration for Cancelled Events ✅ COMPLETE*
+*Last Updated: 2026-01-28 - Phase 6A.91: Paid Event Refund Workflow ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - GitHub Issue #37: Hide Registration for Cancelled Events ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.91: Paid Event Refund Workflow ✅ COMPLETE
+
+### PHASE 6A.91: PAID EVENT REFUND WORKFLOW - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Commit**: 0a7d34de - feat(phase-6a91): Implement paid event refund workflow
+
+**Priority**: 🔴 **HIGH** - Payment Security/UX Bug
+
+**Problem**:
+When a user cancels a paid confirmed registration, the system incorrectly showed "Payment Pending" status instead of handling refunds properly. The `CancelRsvpCommandHandler` hard-deleted all confirmed registrations without checking `PaymentStatus` or initiating Stripe refunds.
+
+**Solution**:
+Complete refund workflow implementation with:
+
+1. **New `RefundRequested` status** (RegistrationStatus = 9) for async refund processing
+2. **Stripe Refund API integration** using stored `StripePaymentIntentId`
+3. **charge.refunded webhook handler** to confirm completion and transition to Refunded
+4. **Differentiated cancellation behavior**:
+   - Free events: Hard delete (existing behavior)
+   - Paid events: Initiate Stripe refund and transition to RefundRequested
+5. **Time-based restriction**: Users cannot cancel after event start date
+6. **Withdrawal option**: User can withdraw refund request to restore Confirmed status
+
+**State Machine**:
+```
+Confirmed (Paid) → [Cancel] → RefundRequested → [Stripe webhook] → Refunded
+                                    ↓ [Withdraw]
+                               Confirmed
+```
+
+**Backend Changes**:
+- Domain: `RefundRequested = 9` enum, refund fields, domain methods & events
+- Application: Modified `CancelRsvpCommandHandler`, new `WithdrawRefundRequestCommand`
+- Infrastructure: `CreateRefundAsync()` in StripePaymentService with idempotency
+- API: `charge.refunded` webhook, `POST /api/events/{id}/rsvp/withdraw-refund`
+- Database: Migration for 4 new columns (refund_requested_at, etc.)
+
+**Frontend Changes**:
+- Cancel button shows "Cancel Registration and Refund" for paid events
+- Buttons disabled after event start with tooltip explanation
+- New RefundRequested status section with "Withdraw Refund Request" button
+
+**Testing**:
+- ✅ 21 unit tests for refund state transitions (all passing)
+- ✅ Backend deployed to Azure staging
+- ✅ Frontend deployed to Azure staging
+- ✅ API endpoints verified working (withdraw-refund returns 400 for validation)
+
+**Files Modified**: 19 files (6,611 additions, 36 deletions)
+- Domain: RegistrationStatus.cs, Registration.cs, 3 new domain events
+- Application: CancelRsvpCommandHandler.cs, new WithdrawRefundRequest command
+- Infrastructure: StripePaymentService.cs, new migration
+- API: PaymentsController.cs, EventsController.cs
+- Frontend: page.tsx, events.repository.ts, events.types.ts
+- Tests: RegistrationRefundWorkflowTests.cs (21 tests)
+
+---
+
+## 🎯 Previous Session Status - GitHub Issue #37: Hide Registration for Cancelled Events ✅ COMPLETE
 
 ### GITHUB ISSUE #37: HIDE REGISTRATION SECTION FOR CANCELLED EVENTS - COMPLETE - 2026-01-28
 

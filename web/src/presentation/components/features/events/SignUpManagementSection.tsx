@@ -50,6 +50,7 @@ import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 
 /**
  * Props for SignUpManagementSection
@@ -86,9 +87,21 @@ export function SignUpManagementSection({
   // Tab state for multiple sign-up lists
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-  // Cancel sign-up state
-  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
+  // GitHub Issue #31: Unified cancel dialog state (replaces ugly browser confirm())
+  type CancelDialogType = 'commitment' | 'signUpItem' | 'openItem';
+  interface CancelDialogState {
+    open: boolean;
+    type: CancelDialogType | null;
+    signUpListId: string;
+    itemId?: string;
+  }
+  const [cancelDialog, setCancelDialog] = useState<CancelDialogState>({
+    open: false,
+    type: null,
+    signUpListId: '',
+    itemId: undefined,
+  });
+  const [isCancelPending, setIsCancelPending] = useState(false);
 
   // Phase 6A.27: Open sign-up item modal state
   const [openItemModalOpen, setOpenItemModalOpen] = useState(false);
@@ -120,6 +133,73 @@ export function SignUpManagementSection({
       setActiveTabId(signUpLists[0].id);
     }
   }, [signUpLists]);
+
+  // GitHub Issue #31: Helper function to get dialog content based on cancel type
+  const getCancelDialogContent = (type: CancelDialogType | null) => {
+    switch (type) {
+      case 'commitment':
+        return {
+          title: 'Cancel Commitment',
+          description: 'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
+        };
+      case 'signUpItem':
+        return {
+          title: 'Cancel Sign-Up',
+          description: 'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
+        };
+      case 'openItem':
+        return {
+          title: 'Cancel Sign-Up',
+          description: 'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
+        };
+      default:
+        return { title: '', description: '' };
+    }
+  };
+
+  // GitHub Issue #31: Unified cancel confirm handler
+  const handleCancelConfirm = async () => {
+    if (!cancelDialog.type || !userId) return;
+
+    setIsCancelPending(true);
+    try {
+      switch (cancelDialog.type) {
+        case 'commitment':
+          await cancelCommitment.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            userId,
+          });
+          break;
+        case 'signUpItem':
+          await commitToSignUpItem.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            itemId: cancelDialog.itemId!,
+            userId,
+            quantity: 0, // Signal full cancellation
+            notes: '',
+            contactName: '',
+            contactEmail: '',
+            contactPhone: '',
+          });
+          break;
+        case 'openItem':
+          await cancelOpenSignUpItem.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            itemId: cancelDialog.itemId!,
+          });
+          break;
+      }
+    } catch (error) {
+      console.error(`Failed to cancel ${cancelDialog.type}:`, error);
+      // Error is handled by mutation's onError or we can add toast here
+    } finally {
+      setIsCancelPending(false);
+      setCancelDialog({ open: false, type: null, signUpListId: '', itemId: undefined });
+    }
+  };
 
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
@@ -153,26 +233,15 @@ export function SignUpManagementSection({
     }
   };
 
-  // Handle cancel commitment
-  const handleCancel = async (signUpId: string) => {
-    if (!userId) {
-      return;
-    }
-
-    if (!confirm('Are you sure you want to cancel your commitment?')) {
-      return;
-    }
-
-    try {
-      await cancelCommitment.mutateAsync({
-        eventId,
-        signupId: signUpId,
-        userId,
-      });
-    } catch (err) {
-      console.error('Failed to cancel commitment:', err);
-      alert('Failed to cancel commitment. Please try again.');
-    }
+  // Handle cancel commitment - GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancel = (signUpId: string) => {
+    if (!userId) return;
+    setCancelDialog({
+      open: true,
+      type: 'commitment',
+      signUpListId: signUpId,
+      itemId: undefined,
+    });
   };
 
   // Handle commit to specific item (category-based) via modal
@@ -212,41 +281,18 @@ export function SignUpManagementSection({
   };
 
   // Handle cancel sign-up item commitment (Phase 6A.20)
-  const handleCancelSignUp = async (signUpListId: string, itemId: string) => {
+  // GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancelSignUp = (signUpListId: string, itemId: string) => {
     if (!userId) {
       alert('Please log in to cancel sign-ups');
       return;
     }
-
-    if (!confirm('Are you sure you want to cancel your sign-up for this item?')) {
-      return;
-    }
-
-    try {
-      setIsCancelling(true);
-      setCancelConfirmId(itemId);
-
-      // Call API with quantity = 0 to signal cancellation
-      await commitToSignUpItem.mutateAsync({
-        eventId,
-        signupId: signUpListId,
-        itemId: itemId,
-        userId: userId,
-        quantity: 0, // Signal full cancellation
-        notes: '',
-        contactName: '',
-        contactEmail: '',
-        contactPhone: '',
-      });
-
-      setCancelConfirmId(null);
-    } catch (error) {
-      console.error('Failed to cancel sign-up:', error);
-      alert('Failed to cancel sign-up. Please try again.');
-      setCancelConfirmId(null);
-    } finally {
-      setIsCancelling(false);
-    }
+    setCancelDialog({
+      open: true,
+      type: 'signUpItem',
+      signUpListId,
+      itemId,
+    });
   };
 
   // Open commitment modal - Phase 6A.23: Available for ALL users (logged in or not)
@@ -408,34 +454,18 @@ export function SignUpManagementSection({
   };
 
   // Handle direct cancel of open item from list
-  const handleCancelOpenItem = async (signUpListId: string, itemId: string) => {
+  // GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancelOpenItem = (signUpListId: string, itemId: string) => {
     if (!userId) {
       alert('Please log in to cancel sign-ups');
       return;
     }
-
-    if (!confirm('Are you sure you want to cancel your sign-up for this item?')) {
-      return;
-    }
-
-    try {
-      setIsCancelling(true);
-      setCancelConfirmId(itemId);
-
-      await cancelOpenSignUpItem.mutateAsync({
-        eventId,
-        signupId: signUpListId,
-        itemId: itemId,
-      });
-
-      setCancelConfirmId(null);
-    } catch (error) {
-      console.error('Failed to cancel open item sign-up:', error);
-      alert('Failed to cancel sign-up. Please try again.');
-      setCancelConfirmId(null);
-    } finally {
-      setIsCancelling(false);
-    }
+    setCancelDialog({
+      open: true,
+      type: 'openItem',
+      signUpListId,
+      itemId,
+    });
   };
 
   // Loading state
@@ -696,14 +726,14 @@ export function SignUpManagementSection({
                                       {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
                                     </Button>
                                     {/* Cancel button - Show only if user has commitment */}
+                                    {/* GitHub Issue #31: Button now opens styled dialog */}
                                     {userItemCommitment && (
                                       <Button
                                         onClick={() => handleCancelSignUp(signUpList.id, item.id)}
                                         size="sm"
                                         variant="destructive"
-                                        disabled={isCancelling && cancelConfirmId === item.id}
                                       >
-                                        {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
+                                        Cancel Sign Up
                                       </Button>
                                     )}
                                   </div>
@@ -795,13 +825,13 @@ export function SignUpManagementSection({
                                     >
                                       Update Sign Up
                                     </Button>
+                                    {/* GitHub Issue #31: Button now opens styled dialog */}
                                     <Button
                                       onClick={() => handleCancelOpenItem(signUpList.id, item.id)}
                                       size="sm"
                                       variant="destructive"
-                                      disabled={isCancelling && cancelConfirmId === item.id}
                                     >
-                                      {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
+                                      Cancel Sign Up
                                     </Button>
                                   </div>
                                 )}
@@ -974,6 +1004,23 @@ export function SignUpManagementSection({
         onSubmit={handleOpenItemSubmit}
         onCancel={editingOpenItem ? handleOpenItemCancel : undefined}
         isSubmitting={addOpenSignUpItem.isPending || updateOpenSignUpItem.isPending || cancelOpenSignUpItem.isPending}
+      />
+
+      {/* GitHub Issue #31: Unified Cancel Confirmation Dialog */}
+      <ConfirmDialog
+        open={cancelDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelDialog({ open: false, type: null, signUpListId: '', itemId: undefined });
+          }
+        }}
+        title={getCancelDialogContent(cancelDialog.type).title}
+        description={getCancelDialogContent(cancelDialog.type).description}
+        confirmLabel="Yes, Cancel"
+        cancelLabel="No, Keep It"
+        onConfirm={handleCancelConfirm}
+        variant="warning"
+        isLoading={isCancelPending}
       />
     </div>
   );

@@ -1,9 +1,70 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-27 - SCRUM-21: Event Image Lightbox Fix ✅ COMPLETE*
+*Last Updated: 2026-01-27 - Phase 6A.81 Part 4: stripeCheckoutUrl NULL Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - SCRUM-21: Event Image Lightbox Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.81 Part 4: stripeCheckoutUrl NULL Fix ✅ COMPLETE
+
+### PHASE 6A.81 PART 4: STRIPE CHECKOUT URL NULL FIX - COMPLETE - 2026-01-27
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED**
+
+**Commits**:
+- 5b1d5c83 - fix(phase-6a81-part4): Fix stripeCheckoutUrl NULL by detecting legacy URL data
+
+**Priority**: 🔴 **CRITICAL** - Payment Flow Bug Fix (Payment Pending UI Broken)
+
+**Problem**:
+Payment Pending UI was displaying but the "Complete Payment" button was disabled because `stripeCheckoutUrl` was always NULL, even when the user had a valid Preliminary registration with an unexpired checkout session.
+
+**Root Cause** (from [RCA_PAYMENT_PENDING_UI_NOT_SHOWING.md](./RCA_PAYMENT_PENDING_UI_NOT_SHOWING.md)):
+
+**Data Storage Bug Origin**:
+- `CreateEventCheckoutSessionAsync` returned `session.Url` (full URL) instead of `session.Id`
+- This URL was stored in `StripeCheckoutSessionId` field (misnamed)
+- Database contained: `https://checkout.stripe.com/c/pay/cs_test_xxx...`
+- Should have been: `cs_test_xxx...`
+
+**Retrieval Failure**:
+- `GetCheckoutSessionUrlAsync` tried to call `sessionService.GetAsync(sessionId, ...)` with the full URL
+- Stripe API expects session ID like `cs_test_xxx`, NOT a URL
+- Stripe API call failed, `stripeCheckoutUrl` stayed NULL
+
+**Solution**:
+Detect if input is already a checkout URL and return it directly instead of calling Stripe API:
+
+```csharp
+// Phase 6A.81 Part 4 FIX: Handle legacy data where full URL was stored instead of session ID
+if (sessionId.StartsWith("https://checkout.stripe.com", StringComparison.OrdinalIgnoreCase))
+{
+    _logger.LogInformation(
+        "[Phase 6A.81-Part4] Detected legacy checkout URL in StripeCheckoutSessionId field - returning directly");
+    return Result<string>.Success(sessionId);
+}
+```
+
+**Files Modified**:
+- [StripePaymentService.cs](../src/LankaConnect.Infrastructure/Payments/Services/StripePaymentService.cs) - Added URL detection in `GetCheckoutSessionUrlAsync`
+- [RCA_PAYMENT_PENDING_UI_NOT_SHOWING.md](./RCA_PAYMENT_PENDING_UI_NOT_SHOWING.md) - NEW: Comprehensive root cause analysis
+
+**API Verification** (2026-01-27):
+```
+BEFORE FIX:
+stripeCheckoutUrl: NULL
+
+AFTER FIX:
+stripeCheckoutUrl: EXISTS (https://checkout.stripe.com/c/pay/cs_test_...)
+```
+
+**Impact**:
+- ✅ Payment Pending UI "Complete Payment" button now works
+- ✅ Users can complete their abandoned payments
+- ✅ No database migration required
+- ✅ Backwards compatible with existing data
+
+---
+
+## 🎯 Previous Session Status - SCRUM-21: Event Image Lightbox Fix ✅ COMPLETE
 
 ### SCRUM-21: EVENT IMAGE CLICK SHOWS WRONG IMAGE - COMPLETE - 2026-01-27
 

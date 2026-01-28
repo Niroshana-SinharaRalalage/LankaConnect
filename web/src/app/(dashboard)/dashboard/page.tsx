@@ -23,7 +23,8 @@ import {
   FolderOpen,
   Bell,
   Mail,
-  Plus
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
@@ -37,6 +38,7 @@ import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentatio
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
 import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
 import { UserManagementTab } from '@/presentation/components/features/admin/users';
+import { SupportTab } from '@/presentation/components/features/admin/support';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
@@ -579,6 +581,16 @@ function DashboardContent() {
                         content: (
                           <div className="max-h-[700px] overflow-y-auto">
                             <UserManagementTab />
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'support',
+                        label: 'Support/Feedback',
+                        icon: MessageSquare,
+                        content: (
+                          <div className="max-h-[700px] overflow-y-auto">
+                            <SupportTab />
                           </div>
                         ),
                       },

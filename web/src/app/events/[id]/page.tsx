@@ -17,6 +17,7 @@ import { TicketSection } from '@/presentation/components/features/events/TicketS
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
@@ -79,6 +80,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
+  // GitHub Issue #31: Replace native confirm()/alert() with styled dialogs
+  const [showWithdrawRefundDialog, setShowWithdrawRefundDialog] = useState(false);
+  const [showCancelPendingDialog, setShowCancelPendingDialog] = useState(false);
+  const [withdrawRefundError, setWithdrawRefundError] = useState<string | null>(null);
+  const [cancelPendingError, setCancelPendingError] = useState<string | null>(null);
+  const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -1040,18 +1047,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             opacity: hasStarted ? 0.6 : 1
                           }}
                           disabled={hasStarted}
-                          onClick={async () => {
-                            if (confirm('Are you sure you want to withdraw your refund request? Your registration will be restored and you will keep your spot at the event.')) {
-                              try {
-                                console.log('[WithdrawRefund] Withdrawing refund request');
-                                await eventsRepository.withdrawRefundRequest(id);
-                                console.log('[WithdrawRefund] Successfully withdrew refund request - reloading page');
-                                window.location.reload();
-                              } catch (error: any) {
-                                console.error('[WithdrawRefund] Failed to withdraw refund request:', error);
-                                alert('Failed to withdraw refund request. Please try again.');
-                              }
-                            }
+                          onClick={() => {
+                            setWithdrawRefundError(null);
+                            setShowWithdrawRefundDialog(true);
                           }}
                         >
                           Withdraw Refund Request
@@ -1063,6 +1061,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                         )}
                       </div>
+                      {/* GitHub Issue #31: Styled error display instead of alert() */}
+                      {withdrawRefundError && (
+                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+                          Failed to withdraw refund request: {withdrawRefundError}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : isPaymentPending ? (
@@ -1140,7 +1144,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               window.location.href = checkoutUrl;
                             } else {
                               console.error('[PaymentPending] No checkout URL available in registration details');
-                              alert('Payment link not available. Please refresh the page or contact support.');
+                              setPaymentLinkError('Payment link not available. Please refresh the page or contact support.');
                             }
                           }}
                           disabled={!registrationDetails?.stripeCheckoutUrl}
@@ -1152,6 +1156,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 text-center">
                             Complete payment before countdown expires to secure your spot.
                           </p>
+                        )}
+
+                        {/* GitHub Issue #31: Styled error display instead of alert() */}
+                        {paymentLinkError && (
+                          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+                            {paymentLinkError}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1168,18 +1179,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           opacity: hasStarted ? 0.6 : 1
                         }}
                         disabled={hasStarted}
-                        onClick={async () => {
-                          if (confirm('Are you sure you want to cancel this registration? You will need to register again if you change your mind.')) {
-                            try {
-                              console.log('[PaymentPending] Cancelling pending registration');
-                              await eventsRepository.cancelRsvp(id, false);
-                              console.log('[PaymentPending] Successfully cancelled - reloading page');
-                              window.location.reload();
-                            } catch (error: any) {
-                              console.error('[PaymentPending] Failed to cancel registration:', error);
-                              alert('Failed to cancel registration. Please try again.');
-                            }
-                          }
+                        onClick={() => {
+                          setCancelPendingError(null);
+                          setShowCancelPendingDialog(true);
                         }}
                       >
                         Cancel Registration
@@ -1191,6 +1193,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </div>
                       )}
                     </div>
+                    {/* GitHub Issue #31: Styled error display instead of alert() */}
+                    {cancelPendingError && (
+                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+                        Failed to cancel registration: {cancelPendingError}
+                      </div>
+                    )}
                   </div>
                 ) : isAbandoned ? (
                   // Phase 6A.81: Abandoned state - checkout session expired, user can retry
@@ -1415,6 +1423,53 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* GitHub Issue #31: Styled confirmation dialogs to replace browser confirm() */}
+      <ConfirmDialog
+        open={showWithdrawRefundDialog}
+        onOpenChange={setShowWithdrawRefundDialog}
+        title="Withdraw Refund Request"
+        description="Are you sure you want to withdraw your refund request? Your registration will be restored and you will keep your spot at the event."
+        confirmLabel="Yes, Withdraw Request"
+        cancelLabel="No, Keep Refund Request"
+        variant="info"
+        onConfirm={async () => {
+          try {
+            console.log('[WithdrawRefund] Withdrawing refund request');
+            await eventsRepository.withdrawRefundRequest(id);
+            console.log('[WithdrawRefund] Successfully withdrew refund request - reloading page');
+            window.location.reload();
+          } catch (error: any) {
+            console.error('[WithdrawRefund] Failed to withdraw refund request:', error);
+            const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || error?.message || 'Unknown error';
+            setWithdrawRefundError(errorMessage);
+            setShowWithdrawRefundDialog(false);
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={showCancelPendingDialog}
+        onOpenChange={setShowCancelPendingDialog}
+        title="Cancel Registration"
+        description="Are you sure you want to cancel this registration? You will need to register again if you change your mind."
+        confirmLabel="Yes, Cancel Registration"
+        cancelLabel="No, Keep Registration"
+        variant="danger"
+        onConfirm={async () => {
+          try {
+            console.log('[PaymentPending] Cancelling pending registration');
+            await eventsRepository.cancelRsvp(id, false);
+            console.log('[PaymentPending] Successfully cancelled - reloading page');
+            window.location.reload();
+          } catch (error: any) {
+            console.error('[PaymentPending] Failed to cancel registration:', error);
+            const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || error?.message || 'Unknown error';
+            setCancelPendingError(errorMessage);
+            setShowCancelPendingDialog(false);
+          }
+        }}
+      />
     </div>
   );
 }

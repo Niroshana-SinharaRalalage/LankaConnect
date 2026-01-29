@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import {
   useAdminUsers,
@@ -23,6 +23,7 @@ import { USER_ROLES } from '@/infrastructure/api/types/admin-users.types';
 import { UsersTable } from './UsersTable';
 import { UserDetailsModal } from './UserDetailsModal';
 import { LockUserModal } from './LockUserModal';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 
 export function UserManagementTab() {
   const { user: currentUser } = useAuthStore();
@@ -41,6 +42,18 @@ export function UserManagementTab() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+
+  // GitHub Issue #31: Replace native confirm()/alert() with styled components
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Auto-dismiss notification after 5 seconds
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
 
   // Debounced search
   const [searchInput, setSearchInput] = useState('');
@@ -87,16 +100,23 @@ export function UserManagementTab() {
     setIsDetailsModalOpen(true);
   };
 
-  const handleDeactivate = async (userId: string) => {
-    if (!confirm('Are you sure you want to deactivate this user?')) return;
-    setLoadingUserId(userId);
+  const handleDeactivate = (userId: string) => {
+    setActionUserId(userId);
+    setShowDeactivateDialog(true);
+  };
+
+  const confirmDeactivate = async () => {
+    if (!actionUserId) return;
+    setLoadingUserId(actionUserId);
     try {
-      await deactivateMutation.mutateAsync(userId);
+      await deactivateMutation.mutateAsync(actionUserId);
+      showNotification('success', 'User deactivated successfully.');
     } catch (error) {
       console.error('Failed to deactivate user:', error);
-      alert('Failed to deactivate user. Please try again.');
+      showNotification('error', 'Failed to deactivate user. Please try again.');
     } finally {
       setLoadingUserId(null);
+      setActionUserId(null);
     }
   };
 
@@ -104,9 +124,10 @@ export function UserManagementTab() {
     setLoadingUserId(userId);
     try {
       await activateMutation.mutateAsync(userId);
+      showNotification('success', 'User activated successfully.');
     } catch (error) {
       console.error('Failed to activate user:', error);
-      alert('Failed to activate user. Please try again.');
+      showNotification('error', 'Failed to activate user. Please try again.');
     } finally {
       setLoadingUserId(null);
     }
@@ -127,9 +148,10 @@ export function UserManagementTab() {
       });
       setIsLockModalOpen(false);
       setSelectedUser(null);
+      showNotification('success', 'User account locked successfully.');
     } catch (error) {
       console.error('Failed to lock user:', error);
-      alert('Failed to lock user. Please try again.');
+      showNotification('error', 'Failed to lock user. Please try again.');
     } finally {
       setLoadingUserId(null);
     }
@@ -139,9 +161,10 @@ export function UserManagementTab() {
     setLoadingUserId(userId);
     try {
       await unlockMutation.mutateAsync(userId);
+      showNotification('success', 'User account unlocked successfully.');
     } catch (error) {
       console.error('Failed to unlock user:', error);
-      alert('Failed to unlock user. Please try again.');
+      showNotification('error', 'Failed to unlock user. Please try again.');
     } finally {
       setLoadingUserId(null);
     }
@@ -151,26 +174,32 @@ export function UserManagementTab() {
     setLoadingUserId(userId);
     try {
       await resendVerificationMutation.mutateAsync(userId);
-      alert('Verification email sent successfully.');
+      showNotification('success', 'Verification email sent successfully.');
     } catch (error) {
       console.error('Failed to resend verification:', error);
-      alert('Failed to send verification email. Please try again.');
+      showNotification('error', 'Failed to send verification email. Please try again.');
     } finally {
       setLoadingUserId(null);
     }
   };
 
-  const handleForcePasswordReset = async (userId: string) => {
-    if (!confirm('Are you sure you want to force a password reset for this user?')) return;
-    setLoadingUserId(userId);
+  const handleForcePasswordReset = (userId: string) => {
+    setActionUserId(userId);
+    setShowPasswordResetDialog(true);
+  };
+
+  const confirmPasswordReset = async () => {
+    if (!actionUserId) return;
+    setLoadingUserId(actionUserId);
     try {
-      await forcePasswordResetMutation.mutateAsync(userId);
-      alert('Password reset email sent successfully.');
+      await forcePasswordResetMutation.mutateAsync(actionUserId);
+      showNotification('success', 'Password reset email sent successfully.');
     } catch (error) {
       console.error('Failed to force password reset:', error);
-      alert('Failed to send password reset email. Please try again.');
+      showNotification('error', 'Failed to send password reset email. Please try again.');
     } finally {
       setLoadingUserId(null);
+      setActionUserId(null);
     }
   };
 
@@ -297,6 +326,7 @@ export function UserManagementTab() {
               onForcePasswordReset={handleForcePasswordReset}
               loadingUserId={loadingUserId}
               currentUserId={currentUser?.userId || ''}
+              currentUserRole={currentUser?.role || ''}
             />
 
             {/* Pagination */}
@@ -350,6 +380,55 @@ export function UserManagementTab() {
           setSelectedUser(null);
         }}
         onConfirm={handleLock}
+        isLoading={!!loadingUserId}
+      />
+
+      {/* GitHub Issue #31: Styled notification display instead of alert() */}
+      {notification && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+            notification.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          ) : (
+            <XCircle className="w-5 h-5 text-red-600" />
+          )}
+          <span className="text-sm font-medium">{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* GitHub Issue #31: Styled confirmation dialogs */}
+      <ConfirmDialog
+        open={showDeactivateDialog}
+        onOpenChange={setShowDeactivateDialog}
+        title="Deactivate User"
+        description="Are you sure you want to deactivate this user? They will no longer be able to access the platform."
+        confirmLabel="Yes, Deactivate"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDeactivate}
+        isLoading={!!loadingUserId}
+      />
+
+      <ConfirmDialog
+        open={showPasswordResetDialog}
+        onOpenChange={setShowPasswordResetDialog}
+        title="Force Password Reset"
+        description="Are you sure you want to force a password reset for this user? They will receive an email with instructions to reset their password."
+        confirmLabel="Yes, Send Reset Email"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={confirmPasswordReset}
         isLoading={!!loadingUserId}
       />
     </div>

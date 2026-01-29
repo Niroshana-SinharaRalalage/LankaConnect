@@ -31,6 +31,7 @@ interface UsersTableProps {
   onForcePasswordReset: (userId: string) => void;
   loadingUserId: string | null;
   currentUserId: string;
+  currentUserRole: string;
 }
 
 export function UsersTable({
@@ -44,6 +45,7 @@ export function UsersTable({
   onForcePasswordReset,
   loadingUserId,
   currentUserId,
+  currentUserRole,
 }: UsersTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -75,8 +77,15 @@ export function UsersTable({
   const canManageUser = (user: AdminUserDto) => {
     // Cannot manage self
     if (user.userId === currentUserId) return false;
-    // Admin cannot manage AdminManager or other Admins
-    return true; // Backend enforces role hierarchy
+
+    // Role hierarchy protection:
+    // - Nobody can manage AdminManager users
+    if (user.role === 'AdminManager') return false;
+
+    // - Admin cannot manage other Admin users (only AdminManager can)
+    if (currentUserRole === 'Admin' && user.role === 'Admin') return false;
+
+    return true;
   };
 
   const getRoleBadgeStyle = (role: string) => {

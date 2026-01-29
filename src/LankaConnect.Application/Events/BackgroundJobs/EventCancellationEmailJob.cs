@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
@@ -21,6 +22,9 @@ namespace LankaConnect.Application.Events.BackgroundJobs;
 /// 3. Location-matched newsletter subscribers (metro → state → all locations)
 /// 4. Sign-up list committed users (Phase 6A.75)
 ///
+/// Phase 6A.92: Auto-refund feature - automatically processes refunds for all paid registrations
+/// when an event is cancelled by the organizer.
+///
 /// Performance: Sends emails to unlimited recipients without blocking the API response.
 /// Retry: Hangfire automatically retries failed jobs (default: 10 attempts with exponential backoff).
 /// Monitoring: View job status and failures in Hangfire Dashboard (/hangfire).
@@ -33,6 +37,8 @@ public class EventCancellationEmailJob
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IApplicationUrlsService _urlsService;
+    private readonly IStripePaymentService _stripePaymentService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EventCancellationEmailJob> _logger;
 
     public EventCancellationEmailJob(
@@ -42,6 +48,8 @@ public class EventCancellationEmailJob
         IUserRepository userRepository,
         IEmailService emailService,
         IApplicationUrlsService urlsService,
+        IStripePaymentService stripePaymentService,
+        IUnitOfWork unitOfWork,
         ILogger<EventCancellationEmailJob> logger)
     {
         _eventRepository = eventRepository;
@@ -50,6 +58,8 @@ public class EventCancellationEmailJob
         _userRepository = userRepository;
         _emailService = emailService;
         _urlsService = urlsService;
+        _stripePaymentService = stripePaymentService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -101,6 +111,9 @@ public class EventCancellationEmailJob
 
             _logger.LogInformation("[Phase 6A.64] Retrieved {Count} confirmed registrations in {ElapsedMs}ms",
                 confirmedRegistrations.Count, registrationStopwatch.ElapsedMilliseconds);
+
+            // Phase 6A.92: Process auto-refunds for all paid registrations
+            var refundResults = await ProcessAutoRefundsAsync(eventId, @event.Title?.Value ?? "Event", confirmedRegistrations);
 
             var registrationEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -215,7 +228,7 @@ public class EventCancellationEmailJob
                 ["EventDateTime"] = @event.StartDate.ToString("MMMM dd, yyyy 'at' h:mm tt"),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
-                ["RefundInfo"] = @event.IsFree() ? "No refund applicable for free events." : "Refunds will be processed within 5-7 business days.",
+                ["RefundInfo"] = GetRefundInfoMessage(@event.IsFree(), refundResults),
                 // Phase 6A.83 Part 3: Use OrganizerContact* parameters (template expects these exact names)
                 ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
                 ["OrganizerContactName"] = @event.OrganizerContactName ?? "LankaConnect Support",
@@ -353,5 +366,198 @@ public class EventCancellationEmailJob
             // Multi-day event
             return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.92: Processes automatic refunds for all paid registrations when an event is cancelled.
+    /// This method processes each paid registration and attempts to issue a Stripe refund.
+    /// Failed refunds are logged but do not block other refunds or email notifications.
+    /// </summary>
+    private async Task<RefundProcessingResult> ProcessAutoRefundsAsync(
+        Guid eventId,
+        string eventTitle,
+        List<Registration> confirmedRegistrations)
+    {
+        var result = new RefundProcessingResult();
+        var refundStopwatch = Stopwatch.StartNew();
+
+        // Filter for paid registrations that need refunds
+        var paidRegistrations = confirmedRegistrations
+            .Where(r => r.PaymentStatus == PaymentStatus.Completed &&
+                        !string.IsNullOrWhiteSpace(r.StripePaymentIntentId))
+            .ToList();
+
+        if (!paidRegistrations.Any())
+        {
+            _logger.LogInformation(
+                "[Phase 6A.92] No paid registrations to refund for event {EventId}",
+                eventId);
+            return result;
+        }
+
+        _logger.LogInformation(
+            "[Phase 6A.92] Starting auto-refund processing for {Count} paid registrations, EventId={EventId}",
+            paidRegistrations.Count, eventId);
+
+        foreach (var registration in paidRegistrations)
+        {
+            try
+            {
+                var singleRefundStopwatch = Stopwatch.StartNew();
+
+                // Calculate refund amount in cents
+                var amountInCents = registration.TotalPrice != null
+                    ? (long)(registration.TotalPrice.Amount * 100)
+                    : (long?)null;
+
+                var refundRequest = new CreateRefundRequest
+                {
+                    PaymentIntentId = registration.StripePaymentIntentId!,
+                    RegistrationId = registration.Id,
+                    AmountInCents = amountInCents,
+                    Reason = "event_cancelled",
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = eventId.ToString(),
+                        ["event_title"] = eventTitle,
+                        ["refund_type"] = "auto_refund_event_cancelled",
+                        ["user_id"] = registration.UserId?.ToString() ?? "anonymous"
+                    }
+                };
+
+                _logger.LogInformation(
+                    "[Phase 6A.92] Processing refund for registration {RegId}, PaymentIntentId={PaymentIntentId}, Amount={Amount}",
+                    registration.Id, registration.StripePaymentIntentId, registration.TotalPrice?.Amount ?? 0);
+
+                var refundResult = await _stripePaymentService.CreateRefundAsync(refundRequest, CancellationToken.None);
+
+                singleRefundStopwatch.Stop();
+
+                if (refundResult.IsSuccess)
+                {
+                    // Transition registration through refund workflow
+                    // Step 1: Request refund (Confirmed -> RefundRequested)
+                    var requestResult = registration.RequestRefund();
+                    if (requestResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "[Phase 6A.92] RequestRefund failed for registration {RegId}: {Error}",
+                            registration.Id, requestResult.Error);
+                    }
+                    else
+                    {
+                        // Step 2: Complete refund (RefundRequested -> Refunded)
+                        var completeResult = registration.CompleteRefund(refundResult.Value.RefundId);
+                        if (completeResult.IsFailure)
+                        {
+                            _logger.LogWarning(
+                                "[Phase 6A.92] CompleteRefund failed for registration {RegId}: {Error}",
+                                registration.Id, completeResult.Error);
+                        }
+                    }
+
+                    _registrationRepository.Update(registration);
+
+                    result.SuccessCount++;
+                    result.TotalRefundedAmount += registration.TotalPrice?.Amount ?? 0;
+
+                    _logger.LogInformation(
+                        "[Phase 6A.92] Refund successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms",
+                        registration.Id, refundResult.Value.RefundId,
+                        registration.TotalPrice?.Amount ?? 0, singleRefundStopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    result.FailedCount++;
+                    result.FailedRegistrationIds.Add(registration.Id);
+
+                    _logger.LogError(
+                        "[Phase 6A.92] Refund failed - RegId={RegId}, PaymentIntentId={PaymentIntentId}, Error={Error}, Duration={ElapsedMs}ms",
+                        registration.Id, registration.StripePaymentIntentId,
+                        refundResult.Error, singleRefundStopwatch.ElapsedMilliseconds);
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FailedCount++;
+                result.FailedRegistrationIds.Add(registration.Id);
+
+                _logger.LogError(ex,
+                    "[Phase 6A.92] Exception processing refund for registration {RegId}, PaymentIntentId={PaymentIntentId}",
+                    registration.Id, registration.StripePaymentIntentId);
+            }
+        }
+
+        // Commit all registration updates
+        if (result.SuccessCount > 0)
+        {
+            try
+            {
+                await _unitOfWork.CommitAsync(CancellationToken.None);
+                _logger.LogInformation(
+                    "[Phase 6A.92] Committed {Count} registration refund updates to database",
+                    result.SuccessCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[Phase 6A.92] Failed to commit registration refund updates. " +
+                    "Stripe refunds were processed but database may be out of sync. " +
+                    "Manual reconciliation may be required.");
+            }
+        }
+
+        refundStopwatch.Stop();
+
+        _logger.LogInformation(
+            "[Phase 6A.92] Auto-refund processing completed for event {EventId}. " +
+            "Success: {SuccessCount}, Failed: {FailedCount}, TotalRefunded: ${TotalAmount:F2}, Duration: {ElapsedMs}ms",
+            eventId, result.SuccessCount, result.FailedCount,
+            result.TotalRefundedAmount, refundStopwatch.ElapsedMilliseconds);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Phase 6A.92: Generates the refund info message for the cancellation email.
+    /// </summary>
+    private static string GetRefundInfoMessage(bool isFreeEvent, RefundProcessingResult refundResults)
+    {
+        if (isFreeEvent)
+        {
+            return "No refund applicable for free events.";
+        }
+
+        if (refundResults.SuccessCount == 0 && refundResults.FailedCount == 0)
+        {
+            return "No paid registrations required refunds.";
+        }
+
+        if (refundResults.FailedCount == 0)
+        {
+            return $"Your refund of ${refundResults.TotalRefundedAmount:F2} has been processed. " +
+                   "Please allow 5-10 business days for the refund to appear on your statement.";
+        }
+
+        if (refundResults.SuccessCount == 0)
+        {
+            return "We encountered an issue processing your refund. " +
+                   "Our team has been notified and will process your refund manually within 5-7 business days. " +
+                   "Please contact support if you have questions.";
+        }
+
+        return $"Refunds have been processed. " +
+               "Please allow 5-10 business days for the refund to appear on your statement.";
+    }
+
+    /// <summary>
+    /// Phase 6A.92: Tracks the results of auto-refund processing.
+    /// </summary>
+    private class RefundProcessingResult
+    {
+        public int SuccessCount { get; set; }
+        public int FailedCount { get; set; }
+        public decimal TotalRefundedAmount { get; set; }
+        public List<Guid> FailedRegistrationIds { get; } = new();
     }
 }

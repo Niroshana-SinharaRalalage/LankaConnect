@@ -7,6 +7,8 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Configuration;
+using LankaConnect.Shared.Email.Contracts;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -26,7 +28,10 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
+    private readonly EmailFeatureFlags _featureFlags;  // Phase 6A.87: Added for typed parameters migration
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
+
+    private const string HandlerName = nameof(PaymentCompletedEventHandler);
 
     public PaymentCompletedEventHandler(
         IEmailService emailService,
@@ -36,6 +41,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
+        EmailFeatureFlags featureFlags,  // Phase 6A.87: Added for typed parameters migration
         ILogger<PaymentCompletedEventHandler> logger)
     {
         _emailService = emailService;
@@ -45,6 +51,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _emailUrlHelper = emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
+        _featureFlags = featureFlags;  // Phase 6A.87: Added for typed parameters migration
         _logger = logger;
     }
 
@@ -158,66 +165,146 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 }
             }
 
-            // Phase 6A.43: Prepare email parameters aligned with free event template
-            var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
+            // Phase 6A.87: Check feature flag for typed parameters
+            var useTypedParameters = _featureFlags.IsEnabledForHandler(HandlerName);
+            _logger.LogInformation(
+                "[Phase 6A.87] Using typed parameters: {UseTypedParameters} for handler: {HandlerName}",
+                useTypedParameters, HandlerName);
 
             // Get event's primary image URL (direct URL, no CID)
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
-            var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", recipientName },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventLocation", GetEventLocationString(@event) },
-                { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                { "HasAttendeeDetails", hasAttendeeDetails },
-                { "EventImageUrl", eventImageUrl },
-                { "HasEventImage", hasEventImage },
-                // Phase 6A.83 Part 3: Template expects BOTH AmountPaid AND TotalAmount
-                { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
-                { "TotalAmount", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
-                { "Quantity", registration.Attendees.Count },
-                { "TicketType", @event.IsFree() ? "Free Entry" : "General Admission" },
-                { "OrderNumber", domainEvent.PaymentIntentId },
-                { "PaymentIntentId", domainEvent.PaymentIntentId },
-                { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
-            };
+            Dictionary<string, object> parameters;
 
-            // Add contact information if available
-            if (registration.Contact != null)
+            if (useTypedParameters)
             {
-                parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                parameters["HasContactInfo"] = true;
+                // Phase 6A.87: Use typed TicketConfirmationEmailParams
+                var typedParams = TicketConfirmationEmailParams.Create(
+                    eventId: @event.Id,
+                    registrationId: registration.Id,
+                    userName: recipientName,
+                    contactEmail: recipientEmail,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                    eventLocation: GetEventLocationString(@event),
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                    amountPaid: domainEvent.AmountPaid,
+                    paymentIntentId: domainEvent.PaymentIntentId,
+                    paymentDate: domainEvent.PaymentCompletedAt,
+                    quantity: registration.Attendees.Count);
+
+                // Set ticket type
+                typedParams.TicketType = @event.IsFree() ? "Free Entry" : "General Admission";
+                typedParams.RegistrationDate = domainEvent.PaymentCompletedAt;
+
+                // Set signup lists URL if event has signup lists
+                if (@event.HasSignUpLists())
+                {
+                    typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                }
+
+                // Set attendee details
+                if (registration.HasDetailedAttendees() && registration.Attendees.Any())
+                {
+                    typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
+                }
+
+                // Set event image
+                typedParams.WithEventImage(eventImageUrl);
+
+                // Set contact information
+                if (registration.Contact != null)
+                {
+                    typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+                }
+
+                // Set organizer contact
+                if (@event.HasOrganizerContact())
+                {
+                    typedParams.WithOrganizerContact(
+                        @event.OrganizerContactName,
+                        @event.OrganizerContactEmail,
+                        @event.OrganizerContactPhone);
+                }
+
+                // Validate if validation is enabled
+                if (_featureFlags.EnableValidation)
+                {
+                    if (!typedParams.Validate(out var validationErrors))
+                    {
+                        _logger.LogError(
+                            "[Phase 6A.87] [PaymentEmail-VALIDATION-ERROR] Parameter validation failed - CorrelationId: {CorrelationId}, Errors: {Errors}",
+                            correlationId, string.Join(", ", validationErrors));
+                        // Continue anyway - validation is advisory during migration
+                    }
+                }
+
+                // Convert to dictionary for template rendering
+                parameters = typedParams.ToDictionary();
+                _logger.LogInformation(
+                    "[Phase 6A.87] [PaymentEmail-TYPED] Built typed parameters - CorrelationId: {CorrelationId}, ParameterCount: {ParameterCount}",
+                    correlationId, parameters.Count);
             }
             else
             {
-                parameters["ContactEmail"] = "";
-                parameters["ContactPhone"] = "";
-                parameters["HasContactInfo"] = false;
-            }
+                // Legacy: Use Dictionary approach
+                var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
+                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Phase 6A.83 Part 3: Add organizer contact parameters (template expects these exact names)
-            if (@event.HasOrganizerContact())
-            {
-                parameters["HasOrganizerContact"] = true;
-                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
-                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
-            }
-            else
-            {
-                parameters["HasOrganizerContact"] = false;
-                parameters["OrganizerContactName"] = "";
-                parameters["OrganizerContactEmail"] = "";
-                parameters["OrganizerContactPhone"] = "";
+                parameters = new Dictionary<string, object>
+                {
+                    { "UserName", recipientName },
+                    { "EventTitle", @event.Title.Value },
+                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
+                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "EventLocation", GetEventLocationString(@event) },
+                    { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                    { "HasAttendeeDetails", hasAttendeeDetails },
+                    { "EventImageUrl", eventImageUrl },
+                    { "HasEventImage", hasEventImage },
+                    { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
+                    { "TotalAmount", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
+                    { "Quantity", registration.Attendees.Count },
+                    { "TicketType", @event.IsFree() ? "Free Entry" : "General Admission" },
+                    { "OrderNumber", domainEvent.PaymentIntentId },
+                    { "PaymentIntentId", domainEvent.PaymentIntentId },
+                    { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
+                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
+                };
+
+                // Add contact information if available
+                if (registration.Contact != null)
+                {
+                    parameters["ContactEmail"] = registration.Contact.Email;
+                    parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
+                    parameters["HasContactInfo"] = true;
+                }
+                else
+                {
+                    parameters["ContactEmail"] = "";
+                    parameters["ContactPhone"] = "";
+                    parameters["HasContactInfo"] = false;
+                }
+
+                // Add organizer contact parameters
+                if (@event.HasOrganizerContact())
+                {
+                    parameters["HasOrganizerContact"] = true;
+                    parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
+                    parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
+                    parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+                }
+                else
+                {
+                    parameters["HasOrganizerContact"] = false;
+                    parameters["OrganizerContactName"] = "";
+                    parameters["OrganizerContactEmail"] = "";
+                    parameters["OrganizerContactPhone"] = "";
+                }
             }
 
             // Phase 6A.52: Step 4 - Generate ticket with QR code

@@ -7,6 +7,8 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Configuration;
+using LankaConnect.Shared.Email.Contracts;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -26,7 +28,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly EmailFeatureFlags _featureFlags;  // Phase 6A.87: Added for typed parameters migration
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
+
+    private const string HandlerName = nameof(RegistrationConfirmedEventHandler);
 
     public RegistrationConfirmedEventHandler(
         IEmailService emailService,
@@ -34,6 +39,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IEmailUrlHelper emailUrlHelper,
+        EmailFeatureFlags featureFlags,  // Phase 6A.87: Added for typed parameters migration
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
@@ -41,6 +47,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _emailUrlHelper = emailUrlHelper;
+        _featureFlags = featureFlags;  // Phase 6A.87: Added for typed parameters migration
         _logger = logger;
     }
 
@@ -108,9 +115,9 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             // Phase 6A.40: Prepare attendee details for email - show actual attendee names
             var attendeeDetailsHtml = new System.Text.StringBuilder();
-            var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
+            var hasAttendeeDetailsLocal = registration.HasDetailedAttendees() && registration.Attendees.Any();
 
-            if (hasAttendeeDetails)
+            if (hasAttendeeDetailsLocal)
             {
                 foreach (var attendee in registration.Attendees)
                 {
@@ -121,50 +128,119 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             // Phase 6A.38: Get event's primary image URL (direct URL, no CID)
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
-            var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Phase 6A.40: Format date/time range properly
-            var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
+            // Phase 6A.87: Check feature flag for typed parameters
+            var useTypedParameters = _featureFlags.IsEnabledForHandler(HandlerName);
+            _logger.LogInformation(
+                "[Phase 6A.87] Using typed parameters: {UseTypedParameters} for handler: {HandlerName}",
+                useTypedParameters, HandlerName);
 
-            // Prepare email parameters
-            // Phase 6A.83 Part 3: Split EventDateTime into separate date and time fields per user request
-            var parameters = new Dictionary<string, object>
+            Dictionary<string, object> parameters;
+
+            if (useTypedParameters)
             {
-                { "UserName", $"{user.FirstName} {user.LastName}" },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },  // Phase 6A.83: Split date
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },  // Phase 6A.83: Split time
-                { "EventLocation", GetEventLocationString(@event) },
-                { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
-                { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                { "HasAttendeeDetails", hasAttendeeDetails },
-                // Phase 6A.38: Pass event image URL for direct embedding
-                { "EventImageUrl", eventImageUrl },
-                { "HasEventImage", hasEventImage },
-                // Phase 6A.83 Part 3: Add required URLs per user request
-                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
-            };
+                // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
+                var typedParams = FreeEventRegistrationEmailParams.Create(
+                    eventId: @event.Id,
+                    registrationId: registration.Id,
+                    userName: $"{user.FirstName} {user.LastName}",
+                    userEmail: user.Email.Value,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                    eventLocation: GetEventLocationString(@event),
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                    registrationDate: domainEvent.RegistrationDate);
 
-            // Phase 6A.40: Add registrant's contact information (what they provided during registration)
-            if (registration.Contact != null)
-            {
-                parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber;
-                parameters["HasContactInfo"] = true;
+                // Set signup lists URL if event has signup lists
+                if (@event.HasSignUpLists())
+                {
+                    typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                }
+
+                // Set attendee details
+                if (hasAttendeeDetailsLocal)
+                {
+                    typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
+                }
+
+                // Set event image
+                typedParams.WithEventImage(eventImageUrl);
+
+                // Set contact information
+                if (registration.Contact != null)
+                {
+                    typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+                }
+
+                // Set organizer contact
+                if (@event.HasOrganizerContact())
+                {
+                    typedParams.WithOrganizerContact(
+                        @event.OrganizerContactName,
+                        @event.OrganizerContactEmail,
+                        @event.OrganizerContactPhone);
+                }
+
+                // Validate if validation is enabled
+                if (_featureFlags.EnableValidation)
+                {
+                    if (!typedParams.Validate(out var validationErrors))
+                    {
+                        _logger.LogError(
+                            "[Phase 6A.87] [FreeRegistration-VALIDATION-ERROR] Parameter validation failed - Errors: {Errors}",
+                            string.Join(", ", validationErrors));
+                        // Continue anyway - validation is advisory during migration
+                    }
+                }
+
+                // Convert to dictionary for template rendering
+                parameters = typedParams.ToDictionary();
+                _logger.LogInformation(
+                    "[Phase 6A.87] [FreeRegistration-TYPED] Built typed parameters - ParameterCount: {ParameterCount}",
+                    parameters.Count);
             }
             else
             {
-                parameters["ContactEmail"] = "";
-                parameters["ContactPhone"] = "";
-                parameters["HasContactInfo"] = false;
-            }
+                // Legacy: Use Dictionary approach
+                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Phase 6A.X: Organizer Contact Details - for event inquiries
-            parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
-            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
-            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+                parameters = new Dictionary<string, object>
+                {
+                    { "UserName", $"{user.FirstName} {user.LastName}" },
+                    { "EventTitle", @event.Title.Value },
+                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
+                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "EventLocation", GetEventLocationString(@event) },
+                    { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
+                    { "HasAttendeeDetails", hasAttendeeDetailsLocal },
+                    { "EventImageUrl", eventImageUrl },
+                    { "HasEventImage", hasEventImage },
+                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
+                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
+                };
+
+                // Add registrant's contact information
+                if (registration.Contact != null)
+                {
+                    parameters["ContactEmail"] = registration.Contact.Email;
+                    parameters["ContactPhone"] = registration.Contact.PhoneNumber;
+                    parameters["HasContactInfo"] = true;
+                }
+                else
+                {
+                    parameters["ContactEmail"] = "";
+                    parameters["ContactPhone"] = "";
+                    parameters["HasContactInfo"] = false;
+                }
+
+                // Add organizer contact parameters
+                parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
+                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
+                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
+                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+            }
 
             // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
             // Phase 6A.79: Use EmailTemplateNames constant

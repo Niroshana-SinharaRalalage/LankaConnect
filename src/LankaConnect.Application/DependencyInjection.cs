@@ -6,6 +6,7 @@ using FluentValidation;
 using LankaConnect.Application.Common.Behaviors;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Application.ReferenceData.Services;
 
 namespace LankaConnect.Application;
@@ -43,6 +44,9 @@ public static class DependencyInjection
         // Register application services
         // Phase 6A.47: Reference data service with caching
         services.AddScoped<IReferenceDataService, ReferenceDataService>();
+
+        // Phase 6A.92: Register shared refund service
+        services.AddScoped<IRegistrationRefundService, RegistrationRefundService>();
 
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer

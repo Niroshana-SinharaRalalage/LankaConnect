@@ -2,6 +2,7 @@ using FluentAssertions;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -29,6 +30,7 @@ public class EventCancellationEmailJobAutoRefundTests
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<IApplicationUrlsService> _mockUrlsService;
+    private readonly Mock<IRegistrationRefundService> _mockRefundService;
     private readonly Mock<IStripePaymentService> _mockStripePaymentService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<EventCancellationEmailJob>> _mockLogger;
@@ -42,6 +44,7 @@ public class EventCancellationEmailJobAutoRefundTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockEmailService = new Mock<IEmailService>();
         _mockUrlsService = new Mock<IApplicationUrlsService>();
+        _mockRefundService = new Mock<IRegistrationRefundService>();
         _mockStripePaymentService = new Mock<IStripePaymentService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<EventCancellationEmailJob>>();
@@ -55,6 +58,7 @@ public class EventCancellationEmailJobAutoRefundTests
             _mockUserRepository.Object,
             _mockEmailService.Object,
             _mockUrlsService.Object,
+            _mockRefundService.Object,
             _mockStripePaymentService.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);
@@ -194,16 +198,14 @@ public class EventCancellationEmailJobAutoRefundTests
             .Setup(x => x.GetEmailsByUserIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { { userId, "test@test.com" } });
 
-        _mockStripePaymentService
-            .Setup(x => x.CreateRefundAsync(It.Is<CreateRefundRequest>(r => r.PaymentIntentId == paymentIntentId), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<StripeRefundResult>.Success(new StripeRefundResult
-            {
-                RefundId = refundId,
-                Status = "succeeded",
-                AmountRefunded = 2500,
-                Currency = "usd",
-                CreatedAt = DateTime.UtcNow
-            }));
+        // Mock the refund service (now uses shared service instead of calling Stripe directly)
+        _mockRefundService
+            .Setup(x => x.ProcessRefundAsync(
+                It.Is<Registration>(r => r.Id == registrationId),
+                "event_cancelled",
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<RefundResult>.Success(new RefundResult(refundId, 25.00m)));
 
         _mockUnitOfWork
             .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
@@ -218,13 +220,12 @@ public class EventCancellationEmailJobAutoRefundTests
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
-        // Assert
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(
-                It.Is<CreateRefundRequest>(r =>
-                    r.PaymentIntentId == paymentIntentId &&
-                    r.AmountInCents == 2500 &&
-                    r.Reason == "event_cancelled"),
+        // Assert - Verify refund service was called (not Stripe directly)
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(
+                It.Is<Registration>(r => r.Id == registrationId),
+                "event_cancelled",
+                It.IsAny<Dictionary<string, string>>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -265,9 +266,9 @@ public class EventCancellationEmailJobAutoRefundTests
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
-        // Assert - Stripe should never be called for free events
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()),
+        // Assert - Refund service should never be called for free events
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -301,16 +302,15 @@ public class EventCancellationEmailJobAutoRefundTests
             .Setup(x => x.GetEmailsByUserIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(registrations.ToDictionary(r => r.UserId!.Value, r => $"user{r.UserId}@test.com"));
 
-        _mockStripePaymentService
-            .Setup(x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<StripeRefundResult>.Success(new StripeRefundResult
-            {
-                RefundId = $"re_test_{Guid.NewGuid()}",
-                Status = "succeeded",
-                AmountRefunded = 2500,
-                Currency = "usd",
-                CreatedAt = DateTime.UtcNow
-            }));
+        // Mock refund service for all registrations
+        _mockRefundService
+            .Setup(x => x.ProcessRefundAsync(
+                It.IsAny<Registration>(),
+                "event_cancelled",
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Registration reg, string reason, Dictionary<string, string> metadata, CancellationToken ct) =>
+                Result<RefundResult>.Success(new RefundResult($"re_test_{reg.Id}", reg.TotalPrice?.Amount ?? 0)));
 
         _mockUnitOfWork
             .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
@@ -325,9 +325,9 @@ public class EventCancellationEmailJobAutoRefundTests
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
-        // Assert - Stripe should be called 3 times (once per paid registration)
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()),
+        // Assert - Refund service should be called 3 times (once per paid registration)
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Exactly(3));
 
         _mockRegistrationRepository.Verify(x => x.Update(It.IsAny<Registration>()), Times.Exactly(3));
@@ -359,21 +359,22 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(registrations.ToDictionary(r => r.UserId!.Value, r => $"user{r.UserId}@test.com"));
 
         // First refund fails
-        _mockStripePaymentService
-            .Setup(x => x.CreateRefundAsync(It.Is<CreateRefundRequest>(r => r.PaymentIntentId == "pi_test_1"), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<StripeRefundResult>.Failure("Charge has already been refunded"));
+        _mockRefundService
+            .Setup(x => x.ProcessRefundAsync(
+                It.Is<Registration>(r => r.Id == reg1.Id),
+                "event_cancelled",
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<RefundResult>.Failure("Charge has already been refunded"));
 
         // Second refund succeeds
-        _mockStripePaymentService
-            .Setup(x => x.CreateRefundAsync(It.Is<CreateRefundRequest>(r => r.PaymentIntentId == "pi_test_2"), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<StripeRefundResult>.Success(new StripeRefundResult
-            {
-                RefundId = "re_test_2",
-                Status = "succeeded",
-                AmountRefunded = 3500,
-                Currency = "usd",
-                CreatedAt = DateTime.UtcNow
-            }));
+        _mockRefundService
+            .Setup(x => x.ProcessRefundAsync(
+                It.Is<Registration>(r => r.Id == reg2.Id),
+                "event_cancelled",
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<RefundResult>.Success(new RefundResult("re_test_2", 35.00m)));
 
         _mockUnitOfWork
             .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
@@ -389,8 +390,8 @@ public class EventCancellationEmailJobAutoRefundTests
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
         // Assert - Both refunds should be attempted
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()),
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
         // Only the second registration should be updated (the successful one)
@@ -439,9 +440,9 @@ public class EventCancellationEmailJobAutoRefundTests
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
-        // Assert - Stripe should not be called for registration without PaymentIntentId
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()),
+        // Assert - Refund service should not be called for registration without PaymentIntentId
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -459,8 +460,8 @@ public class EventCancellationEmailJobAutoRefundTests
         await _job.ExecuteAsync(eventId, "Event cancelled");
 
         // Assert
-        _mockStripePaymentService.Verify(
-            x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()),
+        _mockRefundService.Verify(
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
         _mockEmailService.Verify(
             x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()),
@@ -492,18 +493,16 @@ public class EventCancellationEmailJobAutoRefundTests
             .Setup(x => x.GetEmailsByUserIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { { userId, "test@test.com" } });
 
-        CreateRefundRequest? capturedRequest = null;
-        _mockStripePaymentService
-            .Setup(x => x.CreateRefundAsync(It.IsAny<CreateRefundRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<CreateRefundRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(Result<StripeRefundResult>.Success(new StripeRefundResult
-            {
-                RefundId = "re_test",
-                Status = "succeeded",
-                AmountRefunded = 5000,
-                Currency = "usd",
-                CreatedAt = DateTime.UtcNow
-            }));
+        // Capture metadata passed to refund service
+        Dictionary<string, string>? capturedMetadata = null;
+        _mockRefundService
+            .Setup(x => x.ProcessRefundAsync(
+                It.IsAny<Registration>(),
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Registration, string, Dictionary<string, string>, CancellationToken>((reg, reason, metadata, _) => capturedMetadata = metadata)
+            .ReturnsAsync(Result<RefundResult>.Success(new RefundResult("re_test", 50.00m)));
 
         _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         SetupEmptyRecipients();
@@ -515,11 +514,11 @@ public class EventCancellationEmailJobAutoRefundTests
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
 
         // Assert
-        capturedRequest.Should().NotBeNull();
-        capturedRequest!.Metadata.Should().ContainKey("event_id");
-        capturedRequest.Metadata.Should().ContainKey("event_title");
-        capturedRequest.Metadata.Should().ContainKey("refund_type");
-        capturedRequest.Metadata!["refund_type"].Should().Be("auto_refund_event_cancelled");
+        capturedMetadata.Should().NotBeNull();
+        capturedMetadata!.Should().ContainKey("event_id");
+        capturedMetadata!.Should().ContainKey("event_title");
+        capturedMetadata!.Should().ContainKey("refund_type");
+        capturedMetadata!["refund_type"]!.Should().Be("auto_refund_event_cancelled");
     }
 
     #endregion

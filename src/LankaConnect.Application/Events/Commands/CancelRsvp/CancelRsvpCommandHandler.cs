@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -13,20 +14,20 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IStripePaymentService _stripePaymentService;
+    private readonly IRegistrationRefundService _refundService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
     public CancelRsvpCommandHandler(
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IStripePaymentService stripePaymentService,
+        IRegistrationRefundService refundService,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _stripePaymentService = stripePaymentService;
+        _refundService = refundService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -178,69 +179,40 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                     else if (registration.Status == RegistrationStatus.Confirmed &&
                              registration.PaymentStatus == PaymentStatus.Completed)
                     {
-                        // Phase 6A.91: Paid confirmed registration - initiate refund workflow
+                        // Phase 6A.92: Paid confirmed registration - use shared refund service
                         _logger.LogInformation(
-                            "[Phase 6A.91] Initiating refund workflow for paid registration - RegId={RegId}, EventId={EventId}, UserId={UserId}, PaymentIntentId={PaymentIntentId}",
-                            registration.Id, request.EventId, request.UserId, registration.StripePaymentIntentId);
+                            "[Phase 6A.92] Initiating refund via shared service - RegId={RegId}, EventId={EventId}, UserId={UserId}",
+                            registration.Id, request.EventId, request.UserId);
 
-                        // Validate PaymentIntentId exists for Stripe refund
-                        if (string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
+                        var metadata = new Dictionary<string, string>
                         {
-                            stopwatch.Stop();
-                            _logger.LogError(
-                                "[Phase 6A.91] Cannot process refund: Missing StripePaymentIntentId - RegId={RegId}, Duration={ElapsedMs}ms",
-                                registration.Id, stopwatch.ElapsedMilliseconds);
-                            return Result.Failure("Cannot process refund: Payment information not found. Please contact support.");
-                        }
-
-                        // Initiate Stripe refund
-                        var refundRequest = new CreateRefundRequest
-                        {
-                            PaymentIntentId = registration.StripePaymentIntentId,
-                            RegistrationId = registration.Id,
-                            AmountInCents = registration.TotalPrice != null
-                                ? (long)(registration.TotalPrice.Amount * 100)
-                                : null,
-                            Reason = "requested_by_customer",
-                            Metadata = new Dictionary<string, string>
-                            {
-                                ["event_id"] = request.EventId.ToString(),
-                                ["user_id"] = request.UserId.ToString(),
-                                ["event_title"] = @event.Title.Value
-                            }
+                            ["event_id"] = request.EventId.ToString(),
+                            ["user_id"] = request.UserId.ToString(),
+                            ["event_title"] = @event.Title.Value,
+                            ["refund_type"] = "user_initiated_cancellation"
                         };
 
-                        var refundResult = await _stripePaymentService.CreateRefundAsync(refundRequest, cancellationToken);
+                        // Use shared refund service - handles Stripe call and RequestRefund() transition
+                        var refundResult = await _refundService.ProcessRefundAsync(
+                            registration,
+                            "requested_by_customer",
+                            metadata,
+                            cancellationToken);
 
                         if (refundResult.IsFailure)
                         {
                             stopwatch.Stop();
                             _logger.LogError(
-                                "[Phase 6A.91] Stripe refund failed - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
+                                "[Phase 6A.92] Refund failed - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
                                 registration.Id, refundResult.Error, stopwatch.ElapsedMilliseconds);
                             return Result.Failure($"Refund failed: {refundResult.Error}");
-                        }
-
-                        _logger.LogInformation(
-                            "[Phase 6A.91] Stripe refund initiated successfully - RegId={RegId}, StripeRefundId={RefundId}, Status={Status}",
-                            registration.Id, refundResult.Value.RefundId, refundResult.Value.Status);
-
-                        // Transition registration to RefundRequested state
-                        var requestRefundResult = registration.RequestRefund();
-                        if (requestRefundResult.IsFailure)
-                        {
-                            stopwatch.Stop();
-                            _logger.LogError(
-                                "[Phase 6A.91] Failed to transition to RefundRequested - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
-                                registration.Id, requestRefundResult.Error, stopwatch.ElapsedMilliseconds);
-                            return Result.Failure(requestRefundResult.Error);
                         }
 
                         _registrationRepository.Update(registration);
 
                         _logger.LogInformation(
-                            "[Phase 6A.91] Registration transitioned to RefundRequested - RegId={RegId}, EventId={EventId}, UserId={UserId}",
-                            registration.Id, request.EventId, request.UserId);
+                            "[Phase 6A.92] Refund request successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}. Webhook will complete the refund.",
+                            registration.Id, refundResult.Value.StripeRefundId, refundResult.Value.AmountRefunded);
 
                         // Note: RefundRequestedEvent is raised by domain method, triggers email notification
                     }

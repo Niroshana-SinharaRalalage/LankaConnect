@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -37,7 +38,8 @@ public class EventCancellationEmailJob
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IApplicationUrlsService _urlsService;
-    private readonly IStripePaymentService _stripePaymentService;
+    private readonly IRegistrationRefundService _refundService;
+    private readonly IStripePaymentService _stripePaymentService;  // Phase 6A.92: Added for auto-refund
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EventCancellationEmailJob> _logger;
 
@@ -48,7 +50,8 @@ public class EventCancellationEmailJob
         IUserRepository userRepository,
         IEmailService emailService,
         IApplicationUrlsService urlsService,
-        IStripePaymentService stripePaymentService,
+        IRegistrationRefundService refundService,
+        IStripePaymentService stripePaymentService,  // Phase 6A.92: Added for auto-refund
         IUnitOfWork unitOfWork,
         ILogger<EventCancellationEmailJob> logger)
     {
@@ -58,7 +61,8 @@ public class EventCancellationEmailJob
         _userRepository = userRepository;
         _emailService = emailService;
         _urlsService = urlsService;
-        _stripePaymentService = stripePaymentService;
+        _refundService = refundService;
+        _stripePaymentService = stripePaymentService;  // Phase 6A.92: Added for auto-refund
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -370,7 +374,7 @@ public class EventCancellationEmailJob
 
     /// <summary>
     /// Phase 6A.92: Processes automatic refunds for all paid registrations when an event is cancelled.
-    /// This method processes each paid registration and attempts to issue a Stripe refund.
+    /// Uses the shared IRegistrationRefundService for webhook-based refund processing.
     /// Failed refunds are logged but do not block other refunds or email notifications.
     /// </summary>
     private async Task<RefundProcessingResult> ProcessAutoRefundsAsync(
@@ -405,66 +409,41 @@ public class EventCancellationEmailJob
             {
                 var singleRefundStopwatch = Stopwatch.StartNew();
 
-                // Calculate refund amount in cents
-                var amountInCents = registration.TotalPrice != null
-                    ? (long)(registration.TotalPrice.Amount * 100)
-                    : (long?)null;
-
-                var refundRequest = new CreateRefundRequest
+                // Build metadata for the refund
+                var metadata = new Dictionary<string, string>
                 {
-                    PaymentIntentId = registration.StripePaymentIntentId!,
-                    RegistrationId = registration.Id,
-                    AmountInCents = amountInCents,
-                    Reason = "event_cancelled",
-                    Metadata = new Dictionary<string, string>
-                    {
-                        ["event_id"] = eventId.ToString(),
-                        ["event_title"] = eventTitle,
-                        ["refund_type"] = "auto_refund_event_cancelled",
-                        ["user_id"] = registration.UserId?.ToString() ?? "anonymous"
-                    }
+                    ["event_id"] = eventId.ToString(),
+                    ["event_title"] = eventTitle,
+                    ["refund_type"] = "auto_refund_event_cancelled",
+                    ["user_id"] = registration.UserId?.ToString() ?? "anonymous"
                 };
 
                 _logger.LogInformation(
                     "[Phase 6A.92] Processing refund for registration {RegId}, PaymentIntentId={PaymentIntentId}, Amount={Amount}",
                     registration.Id, registration.StripePaymentIntentId, registration.TotalPrice?.Amount ?? 0);
 
-                var refundResult = await _stripePaymentService.CreateRefundAsync(refundRequest, CancellationToken.None);
+                // Use shared refund service - it handles Stripe call and RequestRefund() transition
+                // The charge.refunded webhook will complete the transition to Refunded
+                var refundResult = await _refundService.ProcessRefundAsync(
+                    registration,
+                    "event_cancelled",
+                    metadata,
+                    CancellationToken.None);
 
                 singleRefundStopwatch.Stop();
 
                 if (refundResult.IsSuccess)
                 {
-                    // Transition registration through refund workflow
-                    // Step 1: Request refund (Confirmed -> RefundRequested)
-                    var requestResult = registration.RequestRefund();
-                    if (requestResult.IsFailure)
-                    {
-                        _logger.LogWarning(
-                            "[Phase 6A.92] RequestRefund failed for registration {RegId}: {Error}",
-                            registration.Id, requestResult.Error);
-                    }
-                    else
-                    {
-                        // Step 2: Complete refund (RefundRequested -> Refunded)
-                        var completeResult = registration.CompleteRefund(refundResult.Value.RefundId);
-                        if (completeResult.IsFailure)
-                        {
-                            _logger.LogWarning(
-                                "[Phase 6A.92] CompleteRefund failed for registration {RegId}: {Error}",
-                                registration.Id, completeResult.Error);
-                        }
-                    }
-
                     _registrationRepository.Update(registration);
 
                     result.SuccessCount++;
-                    result.TotalRefundedAmount += registration.TotalPrice?.Amount ?? 0;
+                    result.TotalRefundedAmount += refundResult.Value.AmountRefunded;
+                    result.RefundedRegistrationIds.Add(registration.Id);
 
                     _logger.LogInformation(
-                        "[Phase 6A.92] Refund successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms",
-                        registration.Id, refundResult.Value.RefundId,
-                        registration.TotalPrice?.Amount ?? 0, singleRefundStopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.92] Refund request successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms. Webhook will complete refund.",
+                        registration.Id, refundResult.Value.StripeRefundId,
+                        refundResult.Value.AmountRefunded, singleRefundStopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
@@ -519,35 +498,22 @@ public class EventCancellationEmailJob
     }
 
     /// <summary>
-    /// Phase 6A.92: Generates the refund info message for the cancellation email.
+    /// Phase 6A.92: Generates the refund info message for the mass cancellation email.
+    /// For paid events with registrations, this message directs users to expect a separate
+    /// refund notification email with specific details about their refund.
     /// </summary>
     private static string GetRefundInfoMessage(bool isFreeEvent, RefundProcessingResult refundResults)
     {
         if (isFreeEvent)
         {
-            return "No refund applicable for free events.";
+            return string.Empty; // No refund info needed for free events
         }
 
-        if (refundResults.SuccessCount == 0 && refundResults.FailedCount == 0)
-        {
-            return "No paid registrations required refunds.";
-        }
-
-        if (refundResults.FailedCount == 0)
-        {
-            return $"Your refund of ${refundResults.TotalRefundedAmount:F2} has been processed. " +
-                   "Please allow 5-10 business days for the refund to appear on your statement.";
-        }
-
-        if (refundResults.SuccessCount == 0)
-        {
-            return "We encountered an issue processing your refund. " +
-                   "Our team has been notified and will process your refund manually within 5-7 business days. " +
-                   "Please contact support if you have questions.";
-        }
-
-        return $"Refunds have been processed. " +
-               "Please allow 5-10 business days for the refund to appear on your statement.";
+        // For paid events, always mention that registered users will receive a separate refund email
+        // This applies whether or not there are any paid registrations, since the recipient
+        // of this mass email may or may not be a registered user with a paid ticket
+        return "If you were registered for this event and made a payment, you will receive a separate email " +
+               "with details about your refund. Please allow 5-10 business days for refunds to be processed.";
     }
 
     /// <summary>
@@ -559,5 +525,9 @@ public class EventCancellationEmailJob
         public int FailedCount { get; set; }
         public decimal TotalRefundedAmount { get; set; }
         public List<Guid> FailedRegistrationIds { get; } = new();
+        /// <summary>
+        /// Registration IDs that were successfully refunded (for refund notification emails).
+        /// </summary>
+        public List<Guid> RefundedRegistrationIds { get; } = new();
     }
 }

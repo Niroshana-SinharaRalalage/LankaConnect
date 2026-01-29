@@ -74,6 +74,21 @@ public static class EmailTemplateNames
     public const string RegistrationCancellation = "template-event-registration-cancellation";
 
     /// <summary>
+    /// Phase 6A.92: Refund requested notification email.
+    /// Sent when a refund is initiated (event cancelled or user cancellation).
+    /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {RefundAmount}, {OrganizerContactName},
+    ///           {OrganizerContactEmail}, {OrganizerContactPhone}, {SupportEmail}
+    /// </summary>
+    public const string RefundRequested = "template-refund-requested";
+
+    /// <summary>
+    /// Phase 6A.92: Refund completed notification email.
+    /// Sent when a refund has been processed by Stripe (webhook confirmation).
+    /// Variables: {UserName}, {EventTitle}, {RefundAmount}, {StripeRefundId}, {SupportEmail}
+    /// </summary>
+    public const string RefundCompleted = "template-refund-completed";
+
+    /// <summary>
     /// Event published notification email.
     /// Variables: {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl}
     /// </summary>
@@ -206,6 +221,8 @@ public static class EmailTemplateNames
         SignupCommitmentUpdate,
         SignupCommitmentCancellation,
         RegistrationCancellation,
+        RefundRequested, // Phase 6A.92
+        RefundCompleted, // Phase 6A.92
         EventPublished,
         EventDetails,
         EventCancellation,
@@ -255,6 +272,8 @@ public static class EmailTemplateNames
             SignupCommitmentUpdate => "Signup commitment update notification",
             SignupCommitmentCancellation => "Signup commitment cancellation notification",
             RegistrationCancellation => "Registration cancellation confirmation",
+            RefundRequested => "Refund requested notification (Phase 6A.92)",
+            RefundCompleted => "Refund completed confirmation (Phase 6A.92)",
             EventPublished => "New event publication notification",
             EventDetails => "Event details publication notification",
             EventCancellation => "Event cancellation notification",

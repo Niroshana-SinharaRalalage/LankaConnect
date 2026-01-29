@@ -56,6 +56,20 @@ public class CancelEventCommandHandler : ICommandHandler<CancelEventCommand>
                     "CancelEvent: Event loaded - EventId={EventId}, CurrentStatus={Status}, DomainEventsCount={DomainEventCount}",
                     request.EventId, @event.Status, @event.GetDomainEvents().Count);
 
+                // Phase 6A.92: Validate paid events have organizer contact published
+                // This ensures users can contact the organizer regarding refunds
+                if (!@event.IsFree() && !@event.HasOrganizerContact())
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CancelEvent FAILED: Paid event missing organizer contact - EventId={EventId}, IsFree={IsFree}, HasContact={HasContact}, Duration={ElapsedMs}ms",
+                        request.EventId, @event.IsFree(), @event.HasOrganizerContact(), stopwatch.ElapsedMilliseconds);
+
+                    return Result.Failure(
+                        "In order to cancel a paid event, the organizer must publish contact details in the Event Management page first.");
+                }
+
                 // Use domain method to cancel
                 var cancelResult = @event.Cancel(request.CancellationReason ?? "No reason provided");
                 if (cancelResult.IsFailure)

@@ -40,13 +40,16 @@ export function ResendConfirmationDialog({
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   // Reset status when dialog opens/closes
+  // Note: resendMutation.reset is stable from useMutation, so we only need to depend on 'open'
+  // Including resendMutation in deps would cause infinite re-renders as mutation object is recreated each render
   React.useEffect(() => {
     if (!open) {
       setStatus('idle');
       setErrorMessage(null);
       resendMutation.reset();
     }
-  }, [open, resendMutation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleConfirm = async () => {
     if (!attendee) return;

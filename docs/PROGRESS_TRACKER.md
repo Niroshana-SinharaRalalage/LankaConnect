@@ -63,6 +63,57 @@ curl https://lankaconnect-api-staging.../api/admin/email-metrics/migration-progr
 
 ---
 
+## 🎯 GitHub Issue #41: Scroll Position Reset After Anonymous Sign-Up ✅ COMPLETE
+
+### GITHUB ISSUE #41: SCROLLING ISSUE AFTER SIGNUP - COMPLETE - 2026-01-28
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - QA READY**
+
+**Commit**: c574a587 - fix(#41): Use React Query mutation for anonymous sign-up commit
+
+**Priority**: 🟡 **MEDIUM** - UX Bug (Scroll Reset)
+
+**Problem**:
+After signing up for a list of signup items as an anonymous user, when the modal closes, the page scrolls to the top instead of staying at the current scroll position.
+
+**Root Cause**:
+The `handleCommitToItemAnonymous` function in `SignUpManagementSection.tsx` was using `window.location.reload()` after committing. This caused a full page reload, which always starts at the top of the page.
+
+```tsx
+// BEFORE (Bug)
+const handleCommitToItemAnonymous = async (data: AnonymousCommitmentFormData) => {
+  await eventsRepository.commitToSignUpItemAnonymous(...);
+  window.location.reload(); // <-- Causes scroll reset
+};
+```
+
+**Solution**:
+Created a new React Query mutation hook `useCommitToSignUpItemAnonymous` that properly invalidates the cache after success, eliminating the need for a page reload.
+
+```tsx
+// AFTER (Fixed)
+const handleCommitToItemAnonymous = async (data: AnonymousCommitmentFormData) => {
+  await commitToSignUpItemAnonymous.mutateAsync({
+    eventId,
+    signupId: data.signUpListId,
+    itemId: data.itemId,
+    ...data,
+  });
+  // Cache is automatically invalidated - no page reload needed
+};
+```
+
+**Files Modified**:
+- [useEventSignUps.ts](../web/src/presentation/hooks/useEventSignUps.ts) - Added `useCommitToSignUpItemAnonymous` hook (+53 lines)
+- [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) - Use new hook, removed reload (+14 lines, -17 lines)
+
+**Testing**:
+- ✅ Build succeeded
+- ✅ TypeScript compilation passed
+- ✅ Deployed to Azure staging (both backend and UI)
+
+---
+
 ## 🎯 Previous Session Status - GitHub Issue #31: Replace Ugly Confirm Dialogs ✅ COMPLETE
 
 ### GITHUB ISSUE #31: UGLY ALERT WHEN CANCELLING SIGNUP - COMPLETE - 2026-01-28

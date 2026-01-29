@@ -42,22 +42,34 @@ export function CheckoutCountdownTimer({
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(
     calculateTimeRemaining(expiresAt)
   );
+  // Phase 6A.91 Fix: Track if we've already called onExpired to prevent infinite loops
+  const [hasCalledExpired, setHasCalledExpired] = useState(false);
 
   useEffect(() => {
+    // Phase 6A.91 Fix: If already expired on mount, don't set up interval
+    // This prevents infinite reload loops when the page loads with an expired session
+    const initialRemaining = calculateTimeRemaining(expiresAt);
+    if (initialRemaining.isExpired) {
+      // Already expired on mount - don't trigger reload, just show expired state
+      setTimeRemaining(initialRemaining);
+      return;
+    }
+
     // Update countdown every second
     const intervalId = setInterval(() => {
       const remaining = calculateTimeRemaining(expiresAt);
       setTimeRemaining(remaining);
 
-      // Trigger callback when expired
-      if (remaining.isExpired && onExpired) {
+      // Trigger callback when expired (only once, and only if it wasn't expired on mount)
+      if (remaining.isExpired && onExpired && !hasCalledExpired) {
+        setHasCalledExpired(true);
         onExpired();
         clearInterval(intervalId);
       }
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [expiresAt, onExpired]);
+  }, [expiresAt, onExpired, hasCalledExpired]);
 
   if (timeRemaining.isExpired) {
     return (

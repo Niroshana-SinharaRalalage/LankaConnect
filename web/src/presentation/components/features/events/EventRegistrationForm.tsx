@@ -8,6 +8,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
 
 /**
  * Event Registration Form Component
@@ -215,10 +216,11 @@ export function EventRegistrationForm({
 
   // Validation - BOTH authenticated and anonymous users need contact info
   // Phase 6A.43: Updated validation to use AgeCategory instead of age
+  // GitHub Issue #30: Updated phone validation to require minimum 7 digits
   const errors = {
     address: touched.address && !address.trim() ? 'Address is required' : '',
     email: touched.email && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
-    phoneNumber: touched.phoneNumber && (!phoneNumber.trim() || !/^\+?[\d\s\-()]+$/.test(phoneNumber)) ? 'Valid phone number is required' : '',
+    phoneNumber: touched.phoneNumber ? validatePhoneNumber(phoneNumber).error || '' : '',
     attendees: attendees.map((attendee, index) => {
       if (!touched.attendees[index]) return { name: '', ageCategory: '' };
       return {
@@ -230,12 +232,12 @@ export function EventRegistrationForm({
 
   // BOTH authenticated and anonymous users must provide all fields
   // Phase 6A.43: Updated to validate AgeCategory instead of age
+  // GitHub Issue #30: Use centralized phone validation
   const isFormValid =
     address.trim() &&
     email.trim() &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-    phoneNumber.trim() &&
-    /^\+?[\d\s\-()]+$/.test(phoneNumber) &&
+    isValidPhoneNumber(phoneNumber) &&
     attendees.every(a => a.name.trim() && a.ageCategory !== '');
 
   const handleSubmit = async (e: React.FormEvent) => {

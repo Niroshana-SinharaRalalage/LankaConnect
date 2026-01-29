@@ -27,6 +27,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { AlertCircle, Plus, Trash2, User } from 'lucide-react';
 import type { RegistrationDetailsDto, AttendeeDto, PaymentStatus } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { validatePhoneNumber } from '@/presentation/lib/validators/phone';
 
 interface EditRegistrationModalProps {
   open: boolean;
@@ -184,11 +185,10 @@ export function EditRegistrationModal({
       newErrors.email = 'Invalid email format';
     }
 
-    // Validate phone
-    if (!phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (phoneNumber.length > 30) {
-      newErrors.phoneNumber = 'Phone number cannot exceed 30 characters';
+    // Validate phone - GitHub Issue #30: Use centralized phone validation
+    const phoneValidation = validatePhoneNumber(phoneNumber);
+    if (!phoneValidation.isValid) {
+      newErrors.phoneNumber = phoneValidation.error || 'Invalid phone number';
     }
 
     // Validate address (optional, but has max length)

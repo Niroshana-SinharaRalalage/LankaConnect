@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { SignUpItemCategory, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -404,13 +405,12 @@ export function SignUpCommitmentModal({
               >
                 Phone Number (Optional)
               </label>
-              <input
+              {/* GitHub Issue #30: PhoneInput restricts invalid characters */}
+              <PhoneInput
                 id="phone"
-                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="+1 (555) 123-4567"
+                onChange={setPhone}
+                placeholder="+1-234-567-8901"
               />
             </div>
 

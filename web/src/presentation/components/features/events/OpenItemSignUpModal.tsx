@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import type { SignUpItemDto } from '@/infrastructure/api/types/events.types';
 
@@ -397,7 +398,7 @@ export function OpenItemSignUpModal({
                   )}
                 </div>
 
-                {/* Contact Phone */}
+                {/* Contact Phone - GitHub Issue #30: PhoneInput restricts invalid characters */}
                 <div>
                   <label
                     htmlFor="contactPhone"
@@ -405,13 +406,11 @@ export function OpenItemSignUpModal({
                   >
                     Phone Number (Optional)
                   </label>
-                  <input
+                  <PhoneInput
                     id="contactPhone"
-                    type="tel"
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="+1 (555) 123-4567"
+                    onChange={setContactPhone}
+                    placeholder="+1-234-567-8901"
                   />
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/presentation/components/ui/Input';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { Button } from '@/presentation/components/ui/Button';
 import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
@@ -489,19 +490,18 @@ export function EventRegistrationForm({
             )}
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number - GitHub Issue #30: PhoneInput restricts invalid characters */}
           <div>
             <label className="block text-sm font-medium mb-2 text-neutral-700">
               Phone Number <span className="text-red-500">*</span>
             </label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={setPhoneNumber}
               onBlur={() => setTouched({ ...touched, phoneNumber: true })}
               error={!!errors.phoneNumber}
               disabled={isProcessing}
-              placeholder="+1-123-456-7890"
+              placeholder="+1-234-567-8901"
               className="w-full"
             />
             {errors.phoneNumber && (
@@ -539,19 +539,18 @@ export function EventRegistrationForm({
             )}
           </div>
 
-          {/* Phone Number - Pre-filled but editable */}
+          {/* Phone Number - Pre-filled but editable - GitHub Issue #30: PhoneInput restricts invalid characters */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2 text-neutral-700">
               Phone Number <span className="text-red-500">*</span>
             </label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={setPhoneNumber}
               onBlur={() => setTouched({ ...touched, phoneNumber: true })}
               error={!!errors.phoneNumber}
               disabled={isProcessing}
-              placeholder="+1-123-456-7890"
+              placeholder="+1-234-567-8901"
               className="w-full"
             />
             {errors.phoneNumber && (

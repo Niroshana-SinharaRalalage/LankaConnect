@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { AlertCircle, Plus, Trash2, User } from 'lucide-react';
 import type { RegistrationDetailsDto, AttendeeDto, PaymentStatus } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
@@ -425,7 +426,7 @@ export function EditRegistrationModal({
                   {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
                 </div>
 
-                {/* Phone */}
+                {/* Phone - GitHub Issue #30: PhoneInput restricts invalid characters */}
                 <div>
                   <label
                     htmlFor="phone"
@@ -433,24 +434,19 @@ export function EditRegistrationModal({
                   >
                     Phone Number *
                   </label>
-                  <input
+                  <PhoneInput
                     id="phone"
-                    type="tel"
                     value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value);
+                    onChange={(value) => {
+                      setPhoneNumber(value);
                       if (errors.phoneNumber) {
                         const newErrors = { ...errors };
                         delete newErrors.phoneNumber;
                         setErrors(newErrors);
                       }
                     }}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.phoneNumber
-                        ? 'border-red-500 focus:ring-red-500'
-                        : 'border-neutral-300 dark:border-neutral-600 focus:ring-blue-500'
-                    } focus:outline-none focus:ring-2`}
-                    placeholder="+1 (555) 123-4567"
+                    error={!!errors.phoneNumber}
+                    placeholder="+1-234-567-8901"
                   />
                   {errors.phoneNumber && (
                     <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>

@@ -63,6 +63,49 @@ curl https://lankaconnect-api-staging.../api/admin/email-metrics/migration-progr
 
 ---
 
+## 🎯 GitHub Issue #30: Phone Number Validation Missing ✅ COMPLETE
+
+### GITHUB ISSUE #30: PHONE NUMBER NOT VALIDATED - COMPLETE - 2026-01-29
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - QA READY**
+
+**Commit**: 8f0b40ce - fix(#30): Add proper phone number validation
+
+**Priority**: 🟡 **MEDIUM** - Validation Bug
+
+**Problem**:
+When entering a mandatory phone number in the event registration form, it was not properly validated and users could proceed with invalid inputs like `()`, `---`, or just spaces.
+
+**Root Cause**:
+The phone validation regex `/^\+?[\d\s\-()]+$/` was too permissive - it only required one or more formatting characters but didn't require any actual digits.
+
+**Solution**:
+Created centralized phone validation utility in `web/src/presentation/lib/validators/phone.ts` with:
+- Minimum 7 digits required (shortest valid phone)
+- Maximum 15 digits allowed (E.164 standard)
+- Allows formatting: +, spaces, hyphens, parentheses
+- Plus sign only at start, max one
+- Descriptive error messages
+
+```typescript
+// Example validation
+validatePhoneNumber('()');      // { isValid: false, error: 'Phone number must have at least 7 digits' }
+validatePhoneNumber('+1-234-567-8901');  // { isValid: true }
+```
+
+**Files Created/Modified**:
+- [phone.ts](../web/src/presentation/lib/validators/phone.ts) (NEW) - Validation utility
+- [phone.test.ts](../web/src/presentation/lib/validators/__tests__/phone.test.ts) (NEW) - Unit tests
+- [EventRegistrationForm.tsx](../web/src/presentation/components/features/events/EventRegistrationForm.tsx) - Use new validation
+- [EditRegistrationModal.tsx](../web/src/presentation/components/features/events/EditRegistrationModal.tsx) - Use new validation
+
+**Testing**:
+- ✅ Build succeeded
+- ✅ TypeScript compilation passed
+- ✅ Deployed to Azure staging (both backend and UI)
+
+---
+
 ## 🎯 GitHub Issue #41: Scroll Position Reset After Anonymous Sign-Up ✅ COMPLETE
 
 ### GITHUB ISSUE #41: SCROLLING ISSUE AFTER SIGNUP - COMPLETE - 2026-01-28

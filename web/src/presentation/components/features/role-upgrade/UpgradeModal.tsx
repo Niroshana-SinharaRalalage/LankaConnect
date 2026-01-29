@@ -26,13 +26,17 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const requestUpgrade = useRequestRoleUpgrade();
 
-  // Reset state when modal opens/closes
+  // Reset state when modal OPENS (not closes) to ensure clean state
+  // This prevents isPending from being stuck if user closed modal during a previous submission
+  // Note: requestUpgrade.reset is stable from useMutation, so we only need to depend on 'isOpen'
+  // Including requestUpgrade in deps would cause infinite re-renders as mutation object is recreated each render
   React.useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setReason('');
       setShowSuccess(false);
       requestUpgrade.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {

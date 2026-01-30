@@ -24,7 +24,8 @@ import {
   Bell,
   Mail,
   Plus,
-  MessageSquare
+  MessageSquare,
+  Activity,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
@@ -39,6 +40,7 @@ import { EmailGroupsTab } from '@/presentation/components/features/email-groups'
 import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
 import { UserManagementTab } from '@/presentation/components/features/admin/users';
 import { SupportTab } from '@/presentation/components/features/admin/support';
+import { EmailMetricsTab } from '@/presentation/components/features/admin/email-metrics';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
@@ -611,6 +613,16 @@ function DashboardContent() {
                         content: (
                           // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
                           <NewslettersTab />
+                        ),
+                      },
+                      {
+                        id: 'email-metrics',
+                        label: 'Email Metrics',
+                        icon: Activity,
+                        content: (
+                          <div className="max-h-[700px] overflow-y-auto">
+                            <EmailMetricsTab />
+                          </div>
                         ),
                       },
                       {

@@ -201,7 +201,15 @@ public static class DependencyInjection
 
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
         // Note: EmailSettings is configured below with SimpleEmailService
-        services.AddScoped<IEmailService, AzureEmailService>();
+        // Phase 6A.87: Wrap with MetricsRecordingEmailServiceDecorator to capture metrics for ALL email sends
+        services.AddScoped<AzureEmailService>();
+        services.AddScoped<IEmailService>(provider =>
+        {
+            var azureEmailService = provider.GetRequiredService<AzureEmailService>();
+            var metrics = provider.GetRequiredService<LankaConnect.Shared.Email.Observability.IEmailMetrics>();
+            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Email.Services.MetricsRecordingEmailServiceDecorator>>();
+            return new Email.Services.MetricsRecordingEmailServiceDecorator(azureEmailService, metrics, logger);
+        });
 
         // Phase 6A.47/6A.53: Add ApplicationUrlsService for email verification URLs
         services.AddScoped<IApplicationUrlsService, ApplicationUrlsService>();
@@ -268,8 +276,8 @@ public static class DependencyInjection
         // This ensures all emails (free and paid) use database-stored templates consistently
         // Previously: IEmailTemplateService → RazorEmailTemplateService (filesystem templates)
         // Now: IEmailTemplateService → AzureEmailService (database templates)
-        services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<IEmailService>() as IEmailTemplateService
-            ?? throw new InvalidOperationException("IEmailService must implement IEmailTemplateService"));
+        // Phase 6A.87: Since IEmailService is now wrapped with decorator, get AzureEmailService directly
+        services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<AzureEmailService>());
 
         // Phase 6A.87: Register Typed Email Services for hybrid email system
         // - ITypedEmailService enables strongly-typed email parameters with compile-time safety

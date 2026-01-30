@@ -52,6 +52,20 @@ export function GroupPricingTierBuilder({
   });
   const [tierErrors, setTierErrors] = useState<string | null>(null);
 
+  // Phase 6A.X Issue #34: Check if tiers cover the full event capacity
+  const tiersCoverCapacity = useMemo(() => {
+    if (!eventCapacity || eventCapacity <= 0 || tiers.length === 0) return true;
+
+    const sorted = [...tiers].sort((a, b) => a.minAttendees - b.minAttendees);
+    const lastTier = sorted[sorted.length - 1];
+
+    // If last tier is unlimited (no max), it covers everything
+    if (!lastTier.maxAttendees) return true;
+
+    // Otherwise, check if it reaches capacity
+    return lastTier.maxAttendees >= eventCapacity;
+  }, [tiers, eventCapacity]);
+
   // Calculate suggested minAttendees for next tier
   const suggestedMinAttendees = (): number => {
     if (tiers.length === 0) return 1;
@@ -370,6 +384,25 @@ export function GroupPricingTierBuilder({
             <Plus className="h-4 w-4 mr-1" />
             Add Your First Tier
           </Button>
+        </div>
+      )}
+
+      {/* Phase 6A.X Issue #34: Warning when tiers don't cover full capacity */}
+      {!tiersCoverCapacity && eventCapacity && sortedTiers.length > 0 && !showAddForm && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-amber-700">
+            <p className="font-semibold">Warning: Incomplete tier coverage</p>
+            <p className="mt-1">
+              Your pricing tiers only cover up to{' '}
+              <strong>{sortedTiers[sortedTiers.length - 1]?.maxAttendees || 0}</strong> attendees,
+              but your event capacity is <strong>{eventCapacity}</strong>.
+            </p>
+            <p className="mt-1">
+              Groups larger than your last tier will see no pricing and cannot register.
+              Either make your last tier unlimited (leave max blank) or extend it to {eventCapacity}.
+            </p>
+          </div>
         </div>
       )}
 

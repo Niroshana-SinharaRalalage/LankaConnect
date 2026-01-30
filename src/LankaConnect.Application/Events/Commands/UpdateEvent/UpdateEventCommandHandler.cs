@@ -184,9 +184,15 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 tiers.Add(tierResult.Value);
             }
 
-            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency);
+            // Phase 6A.X Issue #34: Use overloaded method with capacity to validate tier coverage
+            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency, request.Capacity);
             if (groupPricingResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent VALIDATION FAILED: Group pricing tiers do not cover capacity for EventId={EventId} - Error={Error}",
+                    request.EventId, groupPricingResult.Error);
                 return Result.Failure(groupPricingResult.Error);
+            }
 
             pricing = groupPricingResult.Value;
             isGroupPricing = true;

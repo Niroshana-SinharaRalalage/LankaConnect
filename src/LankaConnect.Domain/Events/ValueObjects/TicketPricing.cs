@@ -183,6 +183,38 @@ public class TicketPricing : ValueObject
     }
 
     /// <summary>
+    /// Phase 6A.X Issue #34: Creates group-based tiered pricing with capacity validation
+    /// Ensures that the last tier either:
+    /// 1. Is unlimited (no maxAttendees), OR
+    /// 2. Has maxAttendees >= eventCapacity
+    /// </summary>
+    /// <param name="tiers">List of pricing tiers</param>
+    /// <param name="currency">Currency for all tiers</param>
+    /// <param name="eventCapacity">Event maximum capacity - tiers must cover this range</param>
+    public static Result<TicketPricing> CreateGroupTiered(List<GroupPricingTier>? tiers, Currency currency, int eventCapacity)
+    {
+        // First, call existing validation
+        var baseResult = CreateGroupTiered(tiers, currency);
+        if (baseResult.IsFailure)
+            return baseResult;
+
+        // Additional validation: Last tier must cover event capacity
+        var sortedTiers = tiers!.OrderBy(t => t.MinAttendees).ToList();
+        var lastTier = sortedTiers.Last();
+
+        // If last tier is not unlimited, its maxAttendees must cover capacity
+        if (lastTier.MaxAttendees.HasValue && lastTier.MaxAttendees.Value < eventCapacity)
+        {
+            return Result<TicketPricing>.Failure(
+                $"Pricing tiers do not cover the full event capacity. " +
+                $"The last tier ends at {lastTier.MaxAttendees.Value} attendees but event capacity is {eventCapacity}. " +
+                $"Either extend the last tier to cover {eventCapacity} attendees, or make it unlimited (no maximum).");
+        }
+
+        return baseResult;
+    }
+
+    /// <summary>
     /// Legacy Create method for backward compatibility (Single or AgeDual pricing)
     /// </summary>
     public static Result<TicketPricing> Create(Money? adultPrice, Money? childPrice, int? childAgeLimit)

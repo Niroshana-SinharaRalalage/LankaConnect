@@ -214,7 +214,16 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             "[Phase 6A.92] Refund request successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}. Webhook will complete the refund.",
                             registration.Id, refundResult.Value.StripeRefundId, refundResult.Value.AmountRefunded);
 
-                        // Note: RefundRequestedEvent is raised by domain method, triggers email notification
+                        // Phase 6A.93: Also raise RegistrationCancelledEvent for paid cancellations
+                        // This triggers BOTH emails:
+                        // 1. RegistrationCancelledEventHandler -> Cancellation confirmation email
+                        // 2. RefundRequestedEventHandler -> Refund request acknowledgment email (already raised by RequestRefund())
+                        @event.RaiseRegistrationCancelledEvent(request.UserId);
+                        _eventRepository.Update(@event);
+
+                        _logger.LogInformation(
+                            "[Phase 6A.93] Raised RegistrationCancelledEvent for cancellation email - EventId={EventId}, UserId={UserId}. User will receive two emails: cancellation + refund.",
+                            request.EventId, request.UserId);
                     }
                     else
                     {

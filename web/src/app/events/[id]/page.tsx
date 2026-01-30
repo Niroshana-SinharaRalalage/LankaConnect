@@ -88,6 +88,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
   // Phase 6A.91 Fix: Track when user wants to re-register after abandoned checkout
   const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
+  // Phase 6A.93 Fix: Track when user wants to re-register while refund is in progress
+  const [retryAfterRefund, setRetryAfterRefund] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -943,6 +945,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </label>
                           </div>
 
+                          {/* Phase 6A.93: Notification about two emails for paid registrations */}
+                          {isPaidRegistration && (
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <svg
+                                  className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <p className="text-xs text-blue-800">
+                                  You will receive <strong>two emails</strong>: one confirming your cancellation, and another with refund details.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Action buttons */}
                           <div className="flex gap-2">
                             <Button
@@ -1000,77 +1026,132 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 ) : isRefundRequested ? (
-                  // Phase 6A.91: Refund requested state - show status and withdrawal option
-                  <div className="space-y-4">
-                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100">
-                          Refund Requested
-                        </h3>
+                  // Phase 6A.93: Refund requested state - show status with register again option
+                  retryAfterRefund ? (
+                    // User clicked "Register Again" - show the registration form
+                    <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Your previous registration has a refund in progress. Complete the form below to create a new registration.
+                        </p>
                       </div>
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
-                        Your refund request is being processed. The refund will be credited to your original payment method.
-                      </p>
-                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-4">
-                        Note: Refunds typically appear on your statement within 5-10 business days.
-                      </p>
-
-                      {/* Registration Details (if available) */}
-                      {registrationDetails && (
-                        <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded">
-                          <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2">
-                            REFUND DETAILS
+                      {!isFull ? (
+                        <EventRegistrationForm
+                          eventId={id}
+                          spotsLeft={spotsLeft}
+                          isFree={event.isFree}
+                          ticketPrice={event.ticketPriceAmount ?? undefined}
+                          hasDualPricing={event.hasDualPricing}
+                          adultPrice={event.adultPriceAmount ?? undefined}
+                          childPrice={event.childPriceAmount ?? undefined}
+                          childAgeLimit={event.childAgeLimit ?? undefined}
+                          hasGroupPricing={event.hasGroupPricing}
+                          groupPricingTiers={event.groupPricingTiers}
+                          isProcessing={isProcessing}
+                          onSubmit={handleRegistration}
+                          error={error}
+                        />
+                      ) : (
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                          <p className="text-sm text-orange-800">
+                            This event is currently full.
                           </p>
-                          <div className="space-y-1 text-xs text-yellow-800 dark:text-yellow-300">
-                            {registrationDetails.totalPriceAmount && (
-                              <p>
-                                <span className="font-medium">Refund Amount:</span> {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount.toFixed(2)}
-                              </p>
-                            )}
-                            {registrationDetails.contactEmail && (
-                              <p>
-                                <span className="font-medium">Email:</span> {registrationDetails.contactEmail}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Withdraw Refund Request Button */}
-                      <div className="flex justify-center relative group">
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          style={{
-                            borderColor: hasStarted ? '#9CA3AF' : '#10B981',
-                            color: hasStarted ? '#9CA3AF' : '#10B981',
-                            cursor: hasStarted ? 'not-allowed' : 'pointer',
-                            opacity: hasStarted ? 0.6 : 1
-                          }}
-                          disabled={hasStarted}
-                          onClick={() => {
-                            setWithdrawRefundError(null);
-                            setShowWithdrawRefundDialog(true);
-                          }}
-                        >
-                          Withdraw Refund Request
-                        </Button>
-                        {/* Phase 6A.91: Tooltip explaining why button is disabled */}
-                        {hasStarted && (
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                            Withdrawal is not available after the event has started
-                          </div>
-                        )}
-                      </div>
-                      {/* GitHub Issue #31: Styled error display instead of alert() */}
-                      {withdrawRefundError && (
-                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
-                          Failed to withdraw refund request: {withdrawRefundError}
                         </div>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    // Show "Refund in Progress" status with options
+                    <div className="space-y-4">
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100">
+                            Refund in Progress
+                          </h3>
+                        </div>
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                          Your refund request is being processed. The refund will be credited to your original payment method.
+                        </p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-4">
+                          Note: Refunds typically appear on your statement within 5-10 business days.
+                        </p>
+
+                        {/* Registration Details (if available) */}
+                        {registrationDetails && (
+                          <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded">
+                            <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2">
+                              REFUND DETAILS
+                            </p>
+                            <div className="space-y-1 text-xs text-yellow-800 dark:text-yellow-300">
+                              {registrationDetails.totalPriceAmount && (
+                                <p>
+                                  <span className="font-medium">Refund Amount:</span> {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount.toFixed(2)}
+                                </p>
+                              )}
+                              {registrationDetails.contactEmail && (
+                                <p>
+                                  <span className="font-medium">Email:</span> {registrationDetails.contactEmail}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="space-y-3">
+                          {/* Withdraw Refund Request Button */}
+                          <div className="flex justify-center relative group">
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              style={{
+                                borderColor: hasStarted ? '#9CA3AF' : '#10B981',
+                                color: hasStarted ? '#9CA3AF' : '#10B981',
+                                cursor: hasStarted ? 'not-allowed' : 'pointer',
+                                opacity: hasStarted ? 0.6 : 1
+                              }}
+                              disabled={hasStarted}
+                              onClick={() => {
+                                setWithdrawRefundError(null);
+                                setShowWithdrawRefundDialog(true);
+                              }}
+                            >
+                              Withdraw Refund Request
+                            </Button>
+                            {hasStarted && (
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                Withdrawal is not available after the event has started
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Phase 6A.93: Register Again Button */}
+                          {!hasStarted && !isFull && (
+                            <Button
+                              className="w-full"
+                              style={{
+                                backgroundColor: '#FF7900',
+                                color: '#FFFFFF'
+                              }}
+                              onClick={() => {
+                                console.log('[RefundRequested] User clicked Register Again - showing registration form');
+                                setRetryAfterRefund(true);
+                              }}
+                            >
+                              Register Again
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* GitHub Issue #31: Styled error display instead of alert() */}
+                        {withdrawRefundError && (
+                          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+                            Failed to withdraw refund request: {withdrawRefundError}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
                 ) : isPaymentPending ? (
                   // CRITICAL FIX: Show payment pending state for users who started registration but haven't completed payment
                   <div className="space-y-4">

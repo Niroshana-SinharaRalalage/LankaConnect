@@ -131,12 +131,14 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
                 // Phase 6A.81 Part 4 FIX: Include Preliminary to show Payment Pending UI
                 // IMPORTANT: Preliminary must be included so frontend can detect existing unpaid registrations
                 // and show the Payment Pending UI with countdown timer instead of registration form.
+                // Phase 6A.93 FIX: Include RefundRequested to show "Refund in Progress" UI
                 // Excluded: Abandoned (expired), Cancelled, Refunded, Pending (deprecated)
                 var result = await _dbSet
                     .AsNoTracking()
                     .Where(r => r.UserId == userId &&
                                (r.Status == RegistrationStatus.Preliminary ||  // Phase 6A.81: Payment pending
                                 r.Status == RegistrationStatus.Confirmed ||
+                                r.Status == RegistrationStatus.RefundRequested ||  // Phase 6A.93: Refund in progress
                                 r.Status == RegistrationStatus.Waitlisted ||
                                 r.Status == RegistrationStatus.CheckedIn ||
                                 r.Status == RegistrationStatus.Attended))

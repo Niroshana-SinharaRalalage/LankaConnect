@@ -296,11 +296,13 @@ public class Event : BaseEntity
         {
             // Phase 6A.81: Authenticated user - check if already registered (not cancelled/refunded/preliminary/abandoned)
             // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
 #pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
             var existingRegistration = _registrations.FirstOrDefault(r =>
                 r.UserId == userId &&
                 r.Status != RegistrationStatus.Cancelled &&
                 r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
                 r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
                 r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
                 r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
@@ -313,12 +315,14 @@ public class Event : BaseEntity
         {
             // Phase 6A.81: Anonymous user - check by email (case-insensitive)
             // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
 #pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
             var existingRegistration = _registrations.FirstOrDefault(r =>
                 r.Contact != null &&
                 r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase) &&
                 r.Status != RegistrationStatus.Cancelled &&
                 r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
                 r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
                 r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
                 r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations

@@ -86,6 +86,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [withdrawRefundError, setWithdrawRefundError] = useState<string | null>(null);
   const [cancelPendingError, setCancelPendingError] = useState<string | null>(null);
   const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
+  // Phase 6A.91 Fix: Track when user wants to re-register after abandoned checkout
+  const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -1202,32 +1204,61 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 ) : isAbandoned ? (
                   // Phase 6A.81: Abandoned state - checkout session expired, user can retry
-                  <div className="space-y-4">
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          Checkout Session Expired
-                        </h3>
+                  // Phase 6A.91 Fix: Show registration form when user clicks "Register Again"
+                  retryAfterAbandoned ? (
+                    // User clicked "Register Again" - show the registration form
+                    <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Your previous checkout expired. Complete the form below to get a new payment link.
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                        Your previous checkout session expired after 24 hours without payment completion.
-                      </p>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                        You can register again to get a new checkout link and complete your registration.
-                      </p>
-
-                      <Button
-                        className="w-full mt-3"
-                        onClick={() => {
-                          // Clear the abandoned registration and allow re-registration
-                          window.location.reload();
-                        }}
-                      >
-                        Register Again
-                      </Button>
+                      <EventRegistrationForm
+                        eventId={id}
+                        spotsLeft={spotsLeft}
+                        isFree={event.isFree}
+                        ticketPrice={event.ticketPriceAmount ?? undefined}
+                        hasDualPricing={event.hasDualPricing}
+                        adultPrice={event.adultPriceAmount ?? undefined}
+                        childPrice={event.childPriceAmount ?? undefined}
+                        childAgeLimit={event.childAgeLimit ?? undefined}
+                        hasGroupPricing={event.hasGroupPricing}
+                        groupPricingTiers={event.groupPricingTiers}
+                        isProcessing={isProcessing}
+                        onSubmit={handleRegistration}
+                        error={error}
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    // Show "Checkout Session Expired" banner with "Register Again" button
+                    <div className="space-y-4">
+                      <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            Checkout Session Expired
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                          Your previous checkout session expired after 24 hours without payment completion.
+                        </p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                          You can register again to get a new checkout link and complete your registration.
+                        </p>
+
+                        <Button
+                          className="w-full mt-3"
+                          onClick={() => {
+                            // Phase 6A.91 Fix: Show registration form instead of reloading
+                            console.log('[Abandoned] User clicked Register Again - showing registration form');
+                            setRetryAfterAbandoned(true);
+                          }}
+                        >
+                          Register Again
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 ) : hasStarted ? (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">

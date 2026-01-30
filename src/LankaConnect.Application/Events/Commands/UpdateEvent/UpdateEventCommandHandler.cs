@@ -143,6 +143,25 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         // Session 33: Check if group pricing tiers are provided (highest priority)
         if (request.GroupPricingTiers != null && request.GroupPricingTiers.Count > 0)
         {
+            // Phase 6A.X Issue #22: Validate tier max attendees against event capacity
+            foreach (var tierRequest in request.GroupPricingTiers)
+            {
+                if (tierRequest.MaxAttendees.HasValue && tierRequest.MaxAttendees.Value > request.Capacity)
+                {
+                    _logger.LogWarning(
+                        "UpdateEvent VALIDATION FAILED: Tier maxAttendees ({TierMax}) exceeds event capacity ({Capacity}) for EventId={EventId}",
+                        tierRequest.MaxAttendees.Value, request.Capacity, request.EventId);
+                    return Result.Failure($"Pricing tier maximum ({tierRequest.MaxAttendees.Value}) cannot exceed event capacity ({request.Capacity})");
+                }
+                if (tierRequest.MinAttendees > request.Capacity)
+                {
+                    _logger.LogWarning(
+                        "UpdateEvent VALIDATION FAILED: Tier minAttendees ({TierMin}) exceeds event capacity ({Capacity}) for EventId={EventId}",
+                        tierRequest.MinAttendees, request.Capacity, request.EventId);
+                    return Result.Failure($"Pricing tier minimum ({tierRequest.MinAttendees}) cannot exceed event capacity ({request.Capacity})");
+                }
+            }
+
             // Build GroupPricingTier objects from request
             var tiers = new List<GroupPricingTier>();
             var currency = request.GroupPricingTiers[0].Currency; // Use currency from first tier

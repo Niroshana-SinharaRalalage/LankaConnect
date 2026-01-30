@@ -27,6 +27,8 @@ interface GroupPricingTierBuilderProps {
   onChange: (tiers: GroupPricingTierFormData[]) => void;
   defaultCurrency: Currency;
   errors?: string;
+  /** Phase 6A.X Issue #22: Event capacity for tier validation */
+  eventCapacity?: number;
 }
 
 export function GroupPricingTierBuilder({
@@ -34,6 +36,7 @@ export function GroupPricingTierBuilder({
   onChange,
   defaultCurrency,
   errors,
+  eventCapacity,
 }: GroupPricingTierBuilderProps) {
   // Phase 6A.47: Fetch currencies from reference data API
   const { data: currencies } = useCurrencies();
@@ -88,6 +91,18 @@ export function GroupPricingTierBuilder({
     if (newTier.pricePerPerson > 10000) {
       setTierErrors('Price per person cannot exceed $10,000');
       return false;
+    }
+
+    // Phase 6A.X Issue #22: Validate tier max attendees against event capacity
+    if (eventCapacity && eventCapacity > 0) {
+      if (newTier.maxAttendees && newTier.maxAttendees > eventCapacity) {
+        setTierErrors(`Tier maximum (${newTier.maxAttendees}) cannot exceed event capacity (${eventCapacity})`);
+        return false;
+      }
+      if (newTier.minAttendees > eventCapacity) {
+        setTierErrors(`Tier minimum (${newTier.minAttendees}) cannot exceed event capacity (${eventCapacity})`);
+        return false;
+      }
     }
 
     // Check for overlaps with existing tiers

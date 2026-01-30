@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -136,13 +137,28 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Phase 6A.75: Send email notification for EventOrganizer role approval
+                // Phase 6A.75-Fix: Using LogError for diagnostics to bypass log level filtering
+                _logger.LogError(
+                    "[DIAG-ISSUE45] ApproveRoleUpgrade: Checking role for email - UserId={UserId}, CurrentRole={CurrentRole}, IsEventOrganizer={IsEventOrganizer}",
+                    user.Id, user.Role, user.Role == UserRole.EventOrganizer);
+
                 if (user.Role == UserRole.EventOrganizer)
                 {
-                    _logger.LogInformation(
-                        "ApproveRoleUpgrade: Sending EventOrganizer approval email - UserId={UserId}",
-                        user.Id);
+                    _logger.LogError(
+                        "[DIAG-ISSUE45] ApproveRoleUpgrade: CONDITION PASSED - Sending EventOrganizer approval email - UserId={UserId}, Email={Email}",
+                        user.Id, user.Email.Value);
 
                     await SendOrganizerApprovalEmailAsync(user, cancellationToken);
+
+                    _logger.LogError(
+                        "[DIAG-ISSUE45] ApproveRoleUpgrade: Email method completed - UserId={UserId}",
+                        user.Id);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "[DIAG-ISSUE45] ApproveRoleUpgrade: CONDITION FAILED - Not sending email - UserId={UserId}, CurrentRole={CurrentRole}",
+                        user.Id, user.Role);
                 }
 
                 stopwatch.Stop();
@@ -178,6 +194,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
 
     /// <summary>
     /// Phase 6A.75: Sends organizer role approval email using database template.
+    /// Phase 6A.75-Fix: Added Year parameter required by template footer.
     /// Fail-silent pattern: Logs error but doesn't fail the command if email fails.
     /// </summary>
     private async Task SendOrganizerApprovalEmailAsync(User user, CancellationToken cancellationToken)
@@ -187,33 +204,37 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
             var userName = $"{user.FirstName} {user.LastName}";
             var dashboardUrl = $"{_urlsService.FrontendBaseUrl}/dashboard";
 
+            // Phase 6A.75-Fix: Added Year parameter required by email template footer
             var parameters = new Dictionary<string, object>
             {
                 { "UserName", userName },
                 { "ApprovedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
-                { "DashboardUrl", dashboardUrl }
+                { "DashboardUrl", dashboardUrl },
+                { "Year", DateTime.UtcNow.Year.ToString() }  // Required for template footer
             };
 
-            _logger.LogInformation(
-                "[Phase 6A.75] Sending organizer role approval email to {Email} for user {UserId}",
-                user.Email.Value, user.Id);
+            // Using LogError for diagnostics to bypass log level filtering
+            _logger.LogError(
+                "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: Preparing to send - Email={Email}, UserId={UserId}, Template={Template}, Parameters={Parameters}",
+                user.Email.Value, user.Id, EmailTemplateNames.OrganizerRoleApproval, string.Join(", ", parameters.Keys));
 
+            // Phase 6A.75-Fix: Use constant instead of magic string
             var result = await _emailService.SendTemplatedEmailAsync(
-                "template-organizer-role-approval",
+                EmailTemplateNames.OrganizerRoleApproval,
                 user.Email.Value,
                 parameters,
                 cancellationToken);
 
             if (result.IsSuccess)
             {
-                _logger.LogInformation(
-                    "[Phase 6A.75] Organizer role approval email sent successfully to {Email}",
+                _logger.LogError(
+                    "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: SUCCESS - Email sent to {Email}",
                     user.Email.Value);
             }
             else
             {
                 _logger.LogError(
-                    "[Phase 6A.75] Failed to send organizer role approval email to {Email}: {Errors}",
+                    "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: FAILED - Email={Email}, Errors={Errors}",
                     user.Email.Value, string.Join(", ", result.Errors));
             }
         }
@@ -221,8 +242,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         {
             // Fail-silent: Log error but don't throw to prevent command failure
             _logger.LogError(ex,
-                "[Phase 6A.75] Error sending organizer role approval email to user {UserId}",
-                user.Id);
+                "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: EXCEPTION - UserId={UserId}, Error={ErrorMessage}",
+                user.Id, ex.Message);
         }
     }
 }

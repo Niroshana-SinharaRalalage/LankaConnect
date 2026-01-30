@@ -155,7 +155,8 @@ public static class EmailTemplateNames
 
     /// <summary>
     /// Organizer role approval notification email.
-    /// Variables: {UserName}, {ApprovedAt}, {DashboardUrl}
+    /// Phase 6A.75-Fix: Added Year parameter required by template footer.
+    /// Variables: {UserName}, {ApprovedAt}, {DashboardUrl}, {Year}
     /// </summary>
     public const string OrganizerRoleApproval = "template-organizer-role-approval";
 

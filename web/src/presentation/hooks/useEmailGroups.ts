@@ -24,16 +24,20 @@ import type {
   UpdateEmailGroupRequest,
 } from '@/infrastructure/api/types/email-groups.types';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 /**
  * Query Keys for Email Groups
  * Centralized query key management for cache invalidation
+ * Phase 6A.X Issue #47: Added userId to list query key to prevent cache collision between users
  */
 export const emailGroupKeys = {
   all: ['emailGroups'] as const,
   lists: () => [...emailGroupKeys.all, 'list'] as const,
-  list: (includeAll: boolean) =>
-    [...emailGroupKeys.lists(), { includeAll }] as const,
+  // Phase 6A.X Issue #47: Include userId in query key to ensure each user gets their own cache
+  // This prevents User B from seeing User A's cached email groups after login/logout
+  list: (includeAll: boolean, userId: string | null) =>
+    [...emailGroupKeys.lists(), { includeAll, userId }] as const,
   details: () => [...emailGroupKeys.all, 'detail'] as const,
   detail: (id: string) => [...emailGroupKeys.details(), id] as const,
 };
@@ -42,6 +46,7 @@ export const emailGroupKeys = {
  * useEmailGroups Hook
  *
  * Fetches email groups for the current user (or all for admins)
+ * Phase 6A.X Issue #47: Now includes userId in query key to prevent cache collision between users
  *
  * @param includeAll - If true and user is admin, returns all groups across platform
  * @param options - Additional React Query options
@@ -59,11 +64,18 @@ export function useEmailGroups(
     'queryKey' | 'queryFn'
   >
 ) {
+  // Phase 6A.X Issue #47: Get current user ID to include in query key
+  // This ensures each user has their own cache and prevents cross-user data leakage
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.userId ?? null;
+
   return useQuery({
-    queryKey: emailGroupKeys.list(includeAll),
+    queryKey: emailGroupKeys.list(includeAll, userId),
     queryFn: () => emailGroupsRepository.getEmailGroups(includeAll),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+    // Only fetch if user is authenticated
+    enabled: !!userId,
     ...options,
   });
 }

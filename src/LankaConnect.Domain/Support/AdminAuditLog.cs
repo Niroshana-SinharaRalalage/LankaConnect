@@ -164,6 +164,9 @@ public static class AdminAuditActions
     public const string UserActivated = "USER_ACTIVATED";
     public const string UserPasswordReset = "USER_PASSWORD_RESET";
     public const string UserVerificationResent = "USER_VERIFICATION_RESENT";
+    // Phase 6A.X Issue #46: Role upgrade audit actions
+    public const string RoleUpgradeApproved = "ROLE_UPGRADE_APPROVED";
+    public const string RoleUpgradeRejected = "ROLE_UPGRADE_REJECTED";
 
     // Support ticket actions
     public const string TicketReplied = "TICKET_REPLIED";

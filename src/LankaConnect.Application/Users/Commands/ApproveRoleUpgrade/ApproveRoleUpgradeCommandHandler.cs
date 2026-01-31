@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.Text.Json;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Notifications;
@@ -17,11 +19,14 @@ namespace LankaConnect.Application.Users.Commands.ApproveRoleUpgrade;
 /// Phase 6A.5: Approves pending role upgrade and starts free trial for Event Organizers
 /// Phase 6A.6: Creates in-app notification when role upgrade is approved
 /// Phase 6A.75: Sends email notification when EventOrganizer role is approved
+/// Phase 6A.X Issue #46: Added admin audit logging for traceability
 /// </summary>
 public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgradeCommand>
 {
     private readonly IUserRepository _userRepository;
     private readonly INotificationRepository _notificationRepository;
+    private readonly IAdminAuditLogRepository _auditLogRepository;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IUnitOfWork _unitOfWork;
@@ -30,6 +35,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
     public ApproveRoleUpgradeCommandHandler(
         IUserRepository userRepository,
         INotificationRepository notificationRepository,
+        IAdminAuditLogRepository auditLogRepository,
+        ICurrentUserService currentUserService,
         IEmailService emailService,
         IApplicationUrlsService urlsService,
         IUnitOfWork unitOfWork,
@@ -37,6 +44,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
     {
         _userRepository = userRepository;
         _notificationRepository = notificationRepository;
+        _auditLogRepository = auditLogRepository;
+        _currentUserService = currentUserService;
         _emailService = emailService;
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
@@ -101,10 +110,12 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                     user.Id, user.Role);
 
                 // Phase 6A.6: Create in-app notification for approved role upgrade
+                // Phase 6A.X Issue #46: Added timestamp for traceability
+                var approvalTimestamp = DateTime.UtcNow.ToString("MMMM dd, yyyy 'at' h:mm tt 'UTC'");
                 var notificationTitle = $"Role Upgrade Approved";
                 var notificationMessage = user.Role == UserRole.EventOrganizer
-                    ? $"Congratulations! Your request to become an Event Organizer has been approved. You now have a 6-month free trial to explore all Event Organizer features."
-                    : $"Congratulations! Your role has been upgraded to {user.Role}.";
+                    ? $"Congratulations! Your request to become an Event Organizer has been approved on {approvalTimestamp}. You now have a 6-month free trial to explore all Event Organizer features."
+                    : $"Congratulations! Your role has been upgraded to {user.Role} on {approvalTimestamp}.";
 
                 _logger.LogInformation(
                     "ApproveRoleUpgrade: Creating notification - UserId={UserId}, NotificationType={NotificationType}",
@@ -134,38 +145,52 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                         user.Id, string.Join(", ", notificationResult.Errors));
                 }
 
+                // Phase 6A.X Issue #46: Create admin audit log entry for role approval
+                var auditDetails = JsonSerializer.Serialize(new
+                {
+                    TargetUserId = user.Id,
+                    TargetUserEmail = user.Email.Value,
+                    FromRole = approvedRole?.ToString() ?? "None",
+                    ToRole = user.Role.ToString(),
+                    ApprovedAt = DateTime.UtcNow
+                });
+
+                var auditLog = AdminAuditLog.CreateForUserAction(
+                    _currentUserService.UserId,
+                    AdminAuditActions.RoleUpgradeApproved,
+                    user.Id,
+                    auditDetails,
+                    null,
+                    null
+                );
+
+                await _auditLogRepository.AddAsync(auditLog, cancellationToken);
+
+                _logger.LogInformation(
+                    "ApproveRoleUpgrade: Admin audit log created - AdminUserId={AdminUserId}, TargetUserId={TargetUserId}",
+                    _currentUserService.UserId, user.Id);
+
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Phase 6A.75: Send email notification for EventOrganizer role approval
-                // Phase 6A.75-Fix: Using LogError for diagnostics to bypass log level filtering
-                _logger.LogError(
-                    "[DIAG-ISSUE45] ApproveRoleUpgrade: Checking role for email - UserId={UserId}, CurrentRole={CurrentRole}, IsEventOrganizer={IsEventOrganizer}",
-                    user.Id, user.Role, user.Role == UserRole.EventOrganizer);
-
                 if (user.Role == UserRole.EventOrganizer)
                 {
-                    _logger.LogError(
-                        "[DIAG-ISSUE45] ApproveRoleUpgrade: CONDITION PASSED - Sending EventOrganizer approval email - UserId={UserId}, Email={Email}",
+                    _logger.LogInformation(
+                        "ApproveRoleUpgrade: Sending EventOrganizer approval email - UserId={UserId}, Email={Email}",
                         user.Id, user.Email.Value);
 
                     await SendOrganizerApprovalEmailAsync(user, cancellationToken);
 
-                    _logger.LogError(
-                        "[DIAG-ISSUE45] ApproveRoleUpgrade: Email method completed - UserId={UserId}",
+                    _logger.LogInformation(
+                        "ApproveRoleUpgrade: Email method completed - UserId={UserId}",
                         user.Id);
-                }
-                else
-                {
-                    _logger.LogError(
-                        "[DIAG-ISSUE45] ApproveRoleUpgrade: CONDITION FAILED - Not sending email - UserId={UserId}, CurrentRole={CurrentRole}",
-                        user.Id, user.Role);
                 }
 
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "ApproveRoleUpgrade COMPLETE: UserId={UserId}, NewRole={NewRole}, NotificationCreated={NotificationCreated}, Duration={ElapsedMs}ms",
-                    request.UserId, user.Role, notificationResult.IsSuccess, stopwatch.ElapsedMilliseconds);
+                    "ApproveRoleUpgrade COMPLETE: UserId={UserId}, NewRole={NewRole}, NotificationCreated={NotificationCreated}, AdminUserId={AdminUserId}, Duration={ElapsedMs}ms",
+                    request.UserId, user.Role, notificationResult.IsSuccess, _currentUserService.UserId, stopwatch.ElapsedMilliseconds);
 
                 return Result.Success();
             }

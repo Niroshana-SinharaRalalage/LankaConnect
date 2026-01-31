@@ -154,6 +154,38 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     correlationId, recipientName);
             }
 
+            // Phase 6A.X Issue #29: Validate ContactEmail is not empty/whitespace
+            // For guest users, the email must be valid for the confirmation email to be sent
+            if (string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                _logger.LogWarning(
+                    "[Issue29] ContactEmail is empty/whitespace from domain event - CorrelationId: {CorrelationId}, " +
+                    "RegistrationId: {RegistrationId}. Attempting recovery from registration entity.",
+                    correlationId, domainEvent.RegistrationId);
+
+                // Recovery: Attempt to get email from registration entity (already loaded)
+                recipientEmail = registration.Contact?.Email
+                                 ?? registration.AttendeeInfo?.Email?.Value
+                                 ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(recipientEmail))
+                {
+                    _logger.LogError(
+                        "[Issue29] CRITICAL: Cannot determine recipient email after recovery - " +
+                        "CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, " +
+                        "HasContact: {HasContact}, HasAttendeeInfo: {HasAttendeeInfo}. " +
+                        "Payment completed but NO email will be sent. Manual intervention required.",
+                        correlationId, domainEvent.RegistrationId,
+                        registration.Contact != null, registration.AttendeeInfo != null);
+                    return; // Fail-silent: don't throw, just return
+                }
+
+                _logger.LogInformation(
+                    "[Issue29] Successfully recovered email from registration - CorrelationId: {CorrelationId}, " +
+                    "RecoveredEmail: {RecoveredEmail}",
+                    correlationId, recipientEmail);
+            }
+
             // Phase 6A.43: Format attendee details - names only (no age) to match free event template
             var attendeeDetailsHtml = new System.Text.StringBuilder();
 

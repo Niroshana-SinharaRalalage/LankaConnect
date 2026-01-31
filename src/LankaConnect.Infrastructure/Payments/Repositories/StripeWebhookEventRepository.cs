@@ -67,7 +67,23 @@ public class StripeWebhookEventRepository : IStripeWebhookEventRepository
                 "[Phase 6A.X] [WebhookRepo-2] Found webhook event - EventId: {EventId}, CurrentProcessed: {Processed}",
                 eventId, webhookEvent.Processed);
 
+            // Get entity state BEFORE modification
+            var stateBefore = _context.Entry(webhookEvent).State;
+            _logger.LogInformation(
+                "[Phase 6A.X] [WebhookRepo-2a] Entity state BEFORE MarkAsProcessed - EventId: {EventId}, State: {State}",
+                eventId, stateBefore);
+
             webhookEvent.MarkAsProcessed();
+
+            // Phase 6A.X FIX: Explicitly mark entity as Modified to ensure EF Core persists changes
+            // After nested CommitAsync in domain event handlers, EF Core's change tracking snapshot
+            // may not detect property changes. Explicitly setting Modified state forces the save.
+            _context.Entry(webhookEvent).State = EntityState.Modified;
+
+            var stateAfter = _context.Entry(webhookEvent).State;
+            _logger.LogInformation(
+                "[Phase 6A.X] [WebhookRepo-2b] Entity state AFTER explicit Modified - EventId: {EventId}, State: {State}",
+                eventId, stateAfter);
 
             _logger.LogInformation(
                 "[Phase 6A.X] [WebhookRepo-3] About to SaveChangesAsync - EventId: {EventId}, TrackedEntities: {TrackedCount}",

@@ -1,9 +1,82 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-31 - Phase 6A.X Issue #47: Email Groups Cache Fix ✅ COMPLETE*
+*Last Updated: 2026-01-31 - Phase 6A.X Issue #43: Back to Dashboard Button Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #47: Email Groups Cache Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issue #43: Back to Dashboard Button Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #43: BACK TO DASHBOARD BUTTON FIX - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#43](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/43) - Back to Dashboard button not working from Attendees tab
+
+**Priority**: 🟡 **BUG FIX** - Navigation Issue
+
+**Root Cause Analysis**:
+z-index stacking context conflict between sticky table headers (z-10) in AttendeeManagementTab and the navigation buttons container (no explicit z-index). The sticky `<thead>` and `<tfoot>` elements with `z-10` could intercept pointer events when the table was scrollable.
+
+**Fix Applied**:
+1. **manage/page.tsx**: Added `relative z-20` to navigation buttons container to ensure it's above sticky table elements
+2. **AttendeeManagementTab.tsx**: Added `style={{ isolation: 'isolate' }}` to table container to contain sticky elements' stacking context
+
+**Files Changed**:
+- `web/src/app/events/[id]/manage/page.tsx`
+- `web/src/presentation/components/features/events/AttendeeManagementTab.tsx`
+
+**Commits**:
+- `d29c465f` - fix(#43): Fix Back to Dashboard button not working from Attendees tab
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging (workflow run 21552515159)
+
+**Testing Required**:
+1. Navigate to Dashboard → Click "Manage" on any event
+2. Go to Attendees tab
+3. Click "Back to Dashboard" button
+4. Verify navigation to /dashboard works correctly
+5. Test with populated attendee list (scroll table, then try button)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #42: Upgrade Button Disabled Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #42: UPGRADE BUTTON DISABLED STATE FIX - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#42](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/42) - 'Upgrade to Event Organizer' button is disabled
+
+**Priority**: 🟡 **BUG FIX** - UI Visual State Issue
+
+**Root Cause Analysis**:
+Inline `style={{ background: 'linear-gradient(...)' }}` on the submit button in UpgradeModal overrode Tailwind's `disabled:opacity-50` styling. Both enabled and disabled states displayed the same gradient, making users unable to distinguish when the button became enabled.
+
+**Fix Applied**:
+Replaced inline styles with Tailwind gradient classes that support state variants:
+- `bg-gradient-to-br from-[#FF7900] to-[#8B1538]` - Base gradient
+- `hover:from-[#FF8C1A] hover:to-[#9C1A40]` - Hover feedback
+- `disabled:from-[#FF7900]/50 disabled:to-[#8B1538]/50` - Muted when disabled
+- `disabled:cursor-not-allowed` - Cursor feedback
+
+**Files Changed**:
+- `web/src/presentation/components/features/role-upgrade/UpgradeModal.tsx`
+
+**Commits**:
+- `83a6bb22` - fix(#42): Fix disabled button visual state in UpgradeModal
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging (workflow run 21552498036)
+
+**Testing Required**:
+1. Open Upgrade to Event Organizer modal
+2. Verify button appears muted/disabled with < 20 characters
+3. Type 20+ characters, verify button becomes bright and hover works
+4. Verify cursor changes between enabled/disabled states
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #47: Email Groups Cache Fix ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #47: EMAIL GROUPS VISIBILITY FIX - 2026-01-31
 

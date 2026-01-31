@@ -7,7 +7,54 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #47 EMAIL GROUPS CACHE FIX COMPLETE (2026-01-31)
+## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #42 UPGRADE BUTTON DISABLED FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #42 Upgrade Button Disabled
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit 83a6bb22
+**Priority**: 🟡 BUG FIX - UI Visual State
+**GitHub Issue**: [#42](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/42)
+
+**Objective**: Fix 'Upgrade to Event Organizer' button appearing disabled even after entering text.
+
+**Root Cause**: Inline `style={{ background: gradient }}` overrode Tailwind's `disabled:opacity-50`, making enabled/disabled states visually identical.
+
+**Fix Applied**:
+- ✅ **UpgradeModal.tsx**: Replaced inline styles with Tailwind gradient classes supporting state variants
+
+**QA Testing Required**:
+1. Open modal, verify button muted with < 20 chars
+2. Type 20+ chars, verify button becomes bright with hover effect
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #43 BACK TO DASHBOARD BUTTON FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #43 Back to Dashboard Button
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit d29c465f
+**Priority**: 🟡 BUG FIX - Navigation Issue
+**GitHub Issue**: [#43](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/43)
+
+**Objective**: Fix "Back to Dashboard" button not working from Attendees tab in event management page.
+
+**Root Cause**: z-index stacking context conflict between sticky table headers (z-10) in AttendeeManagementTab and the navigation buttons container (no explicit z-index). The sticky elements could intercept pointer events.
+
+**Fix Applied**:
+- ✅ **manage/page.tsx**: Added `relative z-20` to navigation buttons container
+- ✅ **AttendeeManagementTab.tsx**: Added `isolation:isolate` to table container
+
+**QA Testing Required**:
+1. Navigate to Dashboard → Manage Event → Attendees tab
+2. Click "Back to Dashboard" button
+3. Verify navigation works correctly
+4. Test with both empty and populated attendee lists
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #47 EMAIL GROUPS CACHE FIX COMPLETE (2026-01-31)
 **Date**: 2026-01-31
 **Session**: Phase 6A.X - Issue #47 Email Groups Visibility
 **Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY

@@ -603,34 +603,43 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.91] [Webhook-Refund-2] Refund found - CorrelationId: {CorrelationId}, RefundId: {RefundId}, RefundStatus: {Status}, RefundAmount: {Amount}",
                 correlationId, latestRefund.Id, latestRefund.Status, latestRefund.Amount);
 
-            // Extract registration_id from refund metadata (we store it when creating refund)
-            if (latestRefund.Metadata == null ||
-                !latestRefund.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
-                !Guid.TryParse(registrationIdStr, out var registrationId))
+            // Phase 6A.X FIX: Try to find registration via metadata first, then fallback to PaymentIntentId
+            Registration? registration = null;
+
+            // Method 1: Extract registration_id from refund metadata (we store it when creating refund)
+            if (latestRefund.Metadata != null &&
+                latestRefund.Metadata.TryGetValue("registration_id", out var registrationIdStr) &&
+                Guid.TryParse(registrationIdStr, out var registrationId))
             {
-                _logger.LogWarning(
-                    "[Phase 6A.91] [Webhook-Refund-WARN] Missing registration_id in refund metadata - CorrelationId: {CorrelationId}, RefundId: {RefundId}",
-                    correlationId, latestRefund.Id);
-                return;
+                _logger.LogInformation(
+                    "[Phase 6A.91] [Webhook-Refund-3a] Metadata lookup - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+
+                registration = await _registrationRepository.GetByIdAsync(registrationId);
             }
 
-            _logger.LogInformation(
-                "[Phase 6A.91] [Webhook-Refund-3] Metadata extracted - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                correlationId, registrationId);
+            // Method 2 (FALLBACK): Use PaymentIntentId from charge if metadata is missing
+            if (registration == null && !string.IsNullOrEmpty(charge.PaymentIntentId))
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.91] [Webhook-Refund-3b] Fallback to PaymentIntentId lookup - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, charge.PaymentIntentId);
 
-            // Load registration
-            var registration = await _registrationRepository.GetByIdAsync(registrationId);
+                registration = await _registrationRepository.GetByPaymentIntentIdAsync(charge.PaymentIntentId);
+            }
+
+            // If still not found, we cannot process the refund
             if (registration == null)
             {
                 _logger.LogWarning(
-                    "[Phase 6A.91] [Webhook-Refund-WARN] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                    correlationId, registrationId);
+                    "[Phase 6A.91] [Webhook-Refund-WARN] Registration not found by metadata or PaymentIntentId - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, charge.Id, charge.PaymentIntentId);
                 return;
             }
 
             _logger.LogInformation(
                 "[Phase 6A.91] [Webhook-Refund-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus);
+                correlationId, registration.Id, registration.Status, registration.PaymentStatus);
 
             // Complete refund (RefundRequested → Refunded)
             var completeRefundResult = registration.CompleteRefund(latestRefund.Id);
@@ -640,13 +649,13 @@ public class PaymentsController : ControllerBase
                 // This may be expected if refund was already processed (idempotency)
                 _logger.LogWarning(
                     "[Phase 6A.91] [Webhook-Refund-INFO] CompleteRefund failed (may be already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
-                    correlationId, registrationId, registration.Status, completeRefundResult.Error);
+                    correlationId, registration.Id, registration.Status, completeRefundResult.Error);
                 return;
             }
 
             _logger.LogInformation(
                 "[Phase 6A.91] [Webhook-Refund-5] After CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, StripeRefundId: {RefundId}, Transition: RefundRequested→Refunded",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus, latestRefund.Id);
+                correlationId, registration.Id, registration.Status, registration.PaymentStatus, latestRefund.Id);
 
             // Save changes and dispatch RefundCompletedEvent
             _registrationRepository.Update(registration);
@@ -654,7 +663,7 @@ public class PaymentsController : ControllerBase
 
             _logger.LogInformation(
                 "[Phase 6A.91] [Webhook-Refund-SUCCESS] Refund completed successfully - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, StripeRefundId: {RefundId}, RefundCompletedAt: {RefundCompletedAt}",
-                correlationId, registrationId, latestRefund.Id, registration.RefundCompletedAt?.ToString("o") ?? "null");
+                correlationId, registration.Id, latestRefund.Id, registration.RefundCompletedAt?.ToString("o") ?? "null");
         }
         catch (Exception ex)
         {

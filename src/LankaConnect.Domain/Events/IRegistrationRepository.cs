@@ -16,4 +16,10 @@ public interface IRegistrationRepository : IRepository<Registration>
     /// Used to fetch registration details for anonymous users' confirmation emails
     /// </summary>
     Task<Registration?> GetAnonymousByEventAndEmailAsync(Guid eventId, string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.X: Gets a registration by Stripe PaymentIntentId.
+    /// Used by charge.refunded webhook handler as fallback when refund metadata is missing.
+    /// </summary>
+    Task<Registration?> GetByPaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default);
 }

@@ -82,9 +82,14 @@ public class GetEmailTemplatesQueryHandler : IRequestHandler<GetEmailTemplatesQu
                     cancellationToken);
 
                 // Get category counts for filtering
-                var categoryCounts = await _emailTemplateRepository.GetCategoryCountsAsync(
+                var categoryCountsRaw = await _emailTemplateRepository.GetCategoryCountsAsync(
                     request.IsActive,
                     cancellationToken);
+
+                // Phase 6A.89 Fix: Convert to Dictionary<string, int> for proper JSON serialization
+                var categoryCounts = categoryCountsRaw.ToDictionary(
+                    kvp => kvp.Key.Value,
+                    kvp => kvp.Value);
 
                 // Map to DTOs
                 var templateDtos = new List<EmailTemplateDto>();

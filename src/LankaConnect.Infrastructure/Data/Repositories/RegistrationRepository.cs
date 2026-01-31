@@ -382,4 +382,57 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
             }
         }
     }
+
+    /// <summary>
+    /// Phase 6A.X: Gets a registration by Stripe PaymentIntentId.
+    /// Used by charge.refunded webhook handler as fallback when refund metadata is missing.
+    /// Returns the registration WITH tracking enabled so CompleteRefund() can raise domain events.
+    /// </summary>
+    public async Task<Registration?> GetByPaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetByPaymentIntentId"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("PaymentIntentId", paymentIntentId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetByPaymentIntentIdAsync START: PaymentIntentId={PaymentIntentId}",
+                paymentIntentId);
+
+            try
+            {
+                // Use tracking (NOT AsNoTracking) so domain events are dispatched via CommitAsync
+                var result = await _dbSet
+                    .Include(r => r.Attendees)
+                    .Include(r => r.Contact)
+                    .FirstOrDefaultAsync(r => r.StripePaymentIntentId == paymentIntentId, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByPaymentIntentIdAsync COMPLETE: PaymentIntentId={PaymentIntentId}, Found={Found}, RegId={RegId}, Status={Status}, Duration={ElapsedMs}ms",
+                    paymentIntentId,
+                    result != null,
+                    result?.Id,
+                    result?.Status,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByPaymentIntentIdAsync FAILED: PaymentIntentId={PaymentIntentId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    paymentIntentId,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
 }

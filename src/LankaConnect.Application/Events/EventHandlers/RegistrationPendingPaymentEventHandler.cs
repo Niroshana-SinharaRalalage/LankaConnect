@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -147,8 +148,8 @@ public class RegistrationPendingPaymentEventHandler
             {
                 { "UserName", domainEvent.ContactName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
+                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
                 { "EventLocation", @event.Location?.ToString() ?? "TBD" },
                 { "AttendeeCount", domainEvent.AttendeeCount },
                 { "TotalAmount", $"${domainEvent.TotalAmount:F2}" },

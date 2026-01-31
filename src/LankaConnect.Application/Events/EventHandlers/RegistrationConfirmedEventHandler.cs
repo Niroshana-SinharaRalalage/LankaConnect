@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -147,7 +148,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                     userEmail: user.Email.Value,
                     eventTitle: @event.Title.Value,
                     eventStartDate: @event.StartDate,
-                    eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
                     registrationDate: domainEvent.RegistrationDate);
@@ -209,8 +210,8 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 {
                     { "UserName", $"{user.FirstName} {user.LastName}" },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
                     { "EventLocation", GetEventLocationString(@event) },
                     { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },

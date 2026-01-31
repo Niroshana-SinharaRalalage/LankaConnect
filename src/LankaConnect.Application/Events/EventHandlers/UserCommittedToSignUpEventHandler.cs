@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;  // Phase 6A.83: Added for IEmailUrlHelper
 using LankaConnect.Domain.Events;
@@ -86,7 +87,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 { "EventTitle", @event.Title },
                 { "SignupItem", domainEvent.ItemDescription },  // Phase 6A.83: Renamed from ItemDescription
                 { "Quantity", domainEvent.Quantity },
-                { "EventDateTime", @event.StartDate.ToString("f") }, // Full date/time pattern
+                { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
                 { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "CommitmentType", "Item Contribution" },  // Phase 6A.83: Added missing parameter

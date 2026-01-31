@@ -1,3 +1,5 @@
+using LankaConnect.Shared.Email.Helpers;
+
 namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
@@ -67,7 +69,8 @@ public class EventEmailParams
     /// <returns>Dictionary with all event parameters</returns>
     public Dictionary<string, object> ToDictionary()
     {
-        var formattedDate = EventStartDate.ToString("MMMM dd, yyyy");
+        // Phase 6A.X Issue #40: Use timezone helper for consistent formatting
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate);
 
         return new Dictionary<string, object>
         {

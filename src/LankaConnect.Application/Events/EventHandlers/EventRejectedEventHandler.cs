@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -90,8 +91,8 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                 var parameters = new Dictionary<string, object>
                 {
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
                     { "Reason", domainEvent.Reason },
                     { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") },
                     { "OrganizerName", organizerName }

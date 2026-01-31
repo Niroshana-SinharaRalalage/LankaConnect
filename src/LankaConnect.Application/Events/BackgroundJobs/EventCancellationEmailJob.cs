@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
@@ -226,10 +227,10 @@ public class EventCancellationEmailJob
             var baseParameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
-                ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
-                ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
+                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
+                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
                 // Phase 6A.83 Part 3: Add EventDateTime (template expects combined date+time)
-                ["EventDateTime"] = @event.StartDate.ToString("MMMM dd, yyyy 'at' h:mm tt"),
+                ["EventDateTime"] = EmailDateTimeHelper.FormatDateTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
                 ["RefundInfo"] = GetRefundInfoMessage(@event.IsFree(), refundResults),

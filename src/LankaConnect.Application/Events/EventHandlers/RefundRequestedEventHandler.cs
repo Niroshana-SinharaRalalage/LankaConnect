@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -82,7 +83,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                 {
                     { "UserName", userName },
                     { "EventTitle", @event.Title?.Value ?? "Event" },
-                    { "EventDateTime", @event.StartDate.ToString("MMMM dd, yyyy 'at' h:mm tt") },
+                    { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) },
                     { "RefundAmount", domainEvent.RefundAmount.ToString("F2") },
                     { "OrganizerContactName", @event.OrganizerContactName ?? "Event Organizer" },
                     { "OrganizerContactEmail", @event.OrganizerContactEmail ?? SupportEmail },

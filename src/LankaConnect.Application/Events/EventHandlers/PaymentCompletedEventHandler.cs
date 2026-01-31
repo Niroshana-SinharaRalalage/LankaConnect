@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -187,7 +188,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     contactEmail: recipientEmail,
                     eventTitle: @event.Title.Value,
                     eventStartDate: @event.StartDate,
-                    eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
                     amountPaid: domainEvent.AmountPaid,
@@ -257,8 +258,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 {
                     { "UserName", recipientName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
                     { "EventLocation", GetEventLocationString(@event) },
                     { "RegistrationDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },

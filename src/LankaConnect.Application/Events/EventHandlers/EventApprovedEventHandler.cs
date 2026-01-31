@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -88,8 +89,8 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
             {
                 { "OrganizerName", organizerName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
+                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
                 { "EventLocation", GetEventLocationString(@event) },
                 { "ApprovedAt", domainEvent.ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") },
                 { "EventUrl", eventUrl },

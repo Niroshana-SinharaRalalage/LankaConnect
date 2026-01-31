@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
@@ -319,8 +320,8 @@ public class EventNotificationEmailJob
 
             // Phase 6A.61+: Add event-published fields for rich template compatibility
             { "EventDescription", @event.Description?.Value ?? "" },
-            { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") }, // e.g., "December 25, 2025"
-            { "EventStartTime", @event.StartDate.ToString("h:mm tt") }, // e.g., "7:00 PM"
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
+            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
             { "EventCity", @event.Location?.Address.City ?? "TBA" },
             { "EventState", @event.Location?.Address.State ?? "TBA" },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl

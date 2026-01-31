@@ -1,3 +1,5 @@
+using LankaConnect.Shared.Email.Helpers;
+
 namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
@@ -156,7 +158,7 @@ public class EventReminderEmailParams : IEmailParameters
             // Required parameters
             { "AttendeeName", AttendeeName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EventStartDate.ToString("MMMM dd, yyyy") },
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
             { "EventStartTime", EventStartTime },
             { "Location", Location },
             { "Quantity", Quantity },

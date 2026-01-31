@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
@@ -219,7 +220,7 @@ public class EventReminderJob
                             attendeeEmail: toEmail,
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
                             eventStartDate: @event.StartDate,
-                            eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                            eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
                             location: @event.Location?.Address.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
                             hoursUntilEvent: hoursUntilEvent,
@@ -244,7 +245,7 @@ public class EventReminderJob
                         {
                             emailParams.WithTicket(
                                 ticketCode: ticket.TicketCode,
-                                expiryDate: ticket.ExpiresAt.ToString("MMMM dd, yyyy")
+                                expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt)  // Phase 6A.X Issue #40: Uses timezone helper
                             );
                         }
 
@@ -416,7 +417,7 @@ public class EventReminderJob
                         attendeeEmail: toEmail,
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
                         eventStartDate: @event.StartDate,
-                        eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                        eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
                         location: @event.Location?.Address.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,
                         hoursUntilEvent: hoursUntilEvent,
@@ -441,7 +442,7 @@ public class EventReminderJob
                     {
                         emailParams.WithTicket(
                             ticketCode: ticket.TicketCode,
-                            expiryDate: ticket.ExpiresAt.ToString("MMMM dd, yyyy")
+                            expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt)  // Phase 6A.X Issue #40: Uses timezone helper
                         );
                     }
 

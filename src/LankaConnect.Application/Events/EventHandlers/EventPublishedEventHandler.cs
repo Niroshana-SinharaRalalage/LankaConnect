@@ -3,6 +3,7 @@ using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Configuration;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -115,8 +116,8 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             {
                 ["EventTitle"] = @event.Title.Value,
                 ["EventDescription"] = @event.Description.Value,
-                ["EventStartDate"] = @event.StartDate.ToString("MMMM dd, yyyy"),
-                ["EventStartTime"] = @event.StartDate.ToString("h:mm tt"),
+                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate),
+                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate),
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["EventCity"] = @event.Location?.Address.City ?? "TBA",
                 ["EventState"] = @event.Location?.Address.State ?? "TBA",

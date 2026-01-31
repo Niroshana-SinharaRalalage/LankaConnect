@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -88,7 +89,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
                 { "OldQuantity", domainEvent.OldQuantity },
                 { "Quantity", domainEvent.NewQuantity },  // Phase 6A.83: Changed from NewQuantity to Quantity
-                { "EventDateTime", @event.StartDate.ToString("f") },
+                { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
                 { "ManageCommitmentUrl", $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" },  // Phase 6A.83: Added missing parameter
                 { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using LankaConnect.Shared.Email.Helpers;
 
 namespace LankaConnect.Shared.Email.Contracts;
 
@@ -230,7 +231,7 @@ public class TicketConfirmationEmailParams : IEmailParameters
             // Core event parameters
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EventStartDate.ToString("MMMM dd, yyyy") },
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
             { "EventStartTime", EventStartTime },
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },

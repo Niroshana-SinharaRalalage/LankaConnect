@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -87,7 +88,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 { "EventTitle", @event.Title?.Value ?? "Untitled Event" },  // Phase 6A.83: Extract Value from value object
                 { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
                 { "Quantity", domainEvent.Quantity },
-                { "EventDateTime", @event.StartDate.ToString("f") },
+                { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
                 { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "PickupInstructions", "No pickup/delivery needed as this commitment has been cancelled." }

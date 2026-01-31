@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -124,8 +125,8 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 {
                     { "UserName", contactName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },  // Phase 6A.83: Split date
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },  // Phase 6A.83: Split time
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
                     { "EventLocation", GetEventLocationString(@event) },
                     { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },

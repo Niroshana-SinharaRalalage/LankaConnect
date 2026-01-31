@@ -1,9 +1,98 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-29 - Phase 6A.87 Week 4: High Priority Handler Migrations ✅ COMPLETE*
+*Last Updated: 2026-01-30 - Phase 6A.X Issue #44: Top Ribbon Placement Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.87 Week 4: High Priority Handler Migrations ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issue #44: Top Ribbon Placement Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #44: TOP RIBBON/LOGO PLACEMENT FIX - COMPLETE - 2026-01-30
+
+**Status**: ✅ **COMPLETE - BUILD VERIFIED - QA READY**
+
+**GitHub Issue**: [#44](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/44) - Top Ribbon (Menu) /logo placement change
+
+**Priority**: 🟡 **BUG FIX** - UI Consistency
+
+**Root Cause**:
+The Dashboard page had its own inline header implementation using `max-w-7xl mx-auto` container class instead of the shared Header component which uses `container mx-auto`. This caused different maximum widths between Dashboard and other pages on larger screens (>1280px).
+
+**Fix Applied**:
+Changed the Dashboard header container class from `max-w-7xl` to `container` to match the shared Header component pattern documented in UI_STYLE_GUIDE.md.
+
+**File Modified**:
+- [dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx) - Line 335: Changed container class
+
+**Build Status**: ✅ Next.js build passed
+
+**Testing Required**:
+- Visual comparison of Dashboard and Events page headers at 1920px width
+- Verify logo/navigation alignment is consistent
+- Cross-browser testing
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.92: Paid Event Cancellation Auto-Refund ✅ COMPLETE
+
+### PHASE 6A.92: PAID EVENT CANCELLATION AUTO-REFUND (GitHub #32) - COMPLETE - 2026-01-30
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED**
+
+**Commit**: b0119805 - feat(phase-6a92): Implement paid event cancellation auto-refund workflow
+
+**Priority**: 🟡 **FEATURE** - Payment/Refund Workflow Enhancement
+
+**GitHub Issue**: [#32](https://github.com/your-repo/issues/32) - Auto-refund for paid registrations when event is cancelled
+
+**Objective**: When an organizer cancels a paid event, automatically process refunds for all paid registrations using webhook-based Stripe refunds, with dedicated email notifications.
+
+**Implementation**:
+
+1. **Validation Enhancement** - Paid events require organizer contact before cancellation:
+   - Error: "In order to cancel a paid event, the organizer must publish contact details in the Event Management page first."
+   - Prevents cancellation without contact info for refund inquiries
+
+2. **Shared Refund Service** - Created `IRegistrationRefundService`:
+   - Webhook-based approach: `RequestRefund()` only, Stripe webhook completes refund
+   - Registration state: `Confirmed → RefundRequested → Refunded`
+   - Comprehensive logging for observability
+
+3. **Email Templates** - Two new templates via migration:
+   - `template-refund-requested` - Sent when refund initiated
+   - `template-refund-completed` - Sent when Stripe confirms refund
+
+4. **Event Handlers**:
+   - `RefundRequestedEventHandler` - Sends refund initiated email
+   - `RefundCompletedEventHandler` - Sends refund completed email
+
+5. **Refactored Components**:
+   - `EventCancellationEmailJob` - Uses shared refund service
+   - `CancelRsvpCommandHandler` - Uses shared refund service
+   - Mass cancellation email mentions separate refund notification
+
+**Files Created**:
+- [IRegistrationRefundService.cs](../src/LankaConnect.Application/Events/Services/IRegistrationRefundService.cs)
+- [RegistrationRefundService.cs](../src/LankaConnect.Application/Events/Services/RegistrationRefundService.cs)
+- [RefundRequestedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequestedEventHandler.cs)
+- [RefundCompletedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundCompletedEventHandler.cs)
+- [20260129100000_Phase6A92_AddRefundEmailTemplates.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260129100000_Phase6A92_AddRefundEmailTemplates.cs)
+- [CancelEventCommandHandlerTests.cs](../tests/LankaConnect.Application.Tests/Events/Commands/CancelEventCommandHandlerTests.cs)
+
+**Files Modified**:
+- [CancelEventCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CancelEvent/CancelEventCommandHandler.cs) - Added paid event validation
+- [EventCancellationEmailJob.cs](../src/LankaConnect.Infrastructure/BackgroundJobs/EventCancellationEmailJob.cs) - Uses shared service
+- [CancelRsvpCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CancelRsvp/CancelRsvpCommandHandler.cs) - Uses shared service
+- [EmailTemplateNames.cs](../src/LankaConnect.Shared/Constants/EmailTemplateNames.cs) - Added RefundRequested/RefundCompleted
+- [DependencyInjection.cs](../src/LankaConnect.Application/DependencyInjection.cs) - Added service registration
+
+**Test Results**: 11 tests passing (4 new validation tests)
+
+**API Verification on Staging**:
+- ✅ `POST /api/Events/{id}/cancel` - Paid event WITHOUT contact returns 400: "In order to cancel a paid event, the organizer must publish contact details in the Event Management page first."
+- ✅ `POST /api/Events/{id}/cancel` - Paid event WITH contact passes validation (tested with other status error)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.87 Week 4: High Priority Handler Migrations ✅ COMPLETE
 
 ### PHASE 6A.87 WEEK 4: HIGH PRIORITY HANDLER MIGRATIONS - COMPLETE - 2026-01-29
 

@@ -371,27 +371,51 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     }
 
     /// <summary>
-    /// Sorts events by distance using Haversine formula
+    /// Sorts events by distance using Haversine formula.
+    /// Issue #23 Fix: Events WITH coordinates are sorted by distance (nearest first).
+    /// Events WITHOUT coordinates are appended at the end, sorted by StartDate.
+    /// This ensures no events are lost during location-based sorting.
     /// </summary>
     private List<Event> SortEventsByDistance(
         List<Event> events,
         decimal latitude,
         decimal longitude)
     {
-        return events
-            .Where(e => e.Location?.Coordinates != null)
-            .Select(e => new
+        // Issue #23 Fix: Partition events into those with and without coordinates
+        var eventsWithCoords = new List<(Event Event, double Distance)>();
+        var eventsWithoutCoords = new List<Event>();
+
+        foreach (var e in events)
+        {
+            if (e.Location?.Coordinates != null)
             {
-                Event = e,
-                Distance = CalculateDistance(
+                var distance = CalculateDistance(
                     latitude,
                     longitude,
-                    e.Location!.Coordinates!.Latitude,
-                    e.Location.Coordinates.Longitude)
-            })
+                    e.Location.Coordinates.Latitude,
+                    e.Location.Coordinates.Longitude);
+                eventsWithCoords.Add((e, distance));
+            }
+            else
+            {
+                eventsWithoutCoords.Add(e);
+            }
+        }
+
+        // Sort events with coordinates by distance (ascending - nearest first)
+        var result = eventsWithCoords
             .OrderBy(x => x.Distance)
             .Select(x => x.Event)
             .ToList();
+
+        // Issue #23 Fix: Append events without coordinates, sorted by StartDate
+        result.AddRange(eventsWithoutCoords.OrderBy(e => e.StartDate));
+
+        _logger.LogDebug(
+            "SortEventsByDistance: Sorted {WithCoords} events by distance, appended {WithoutCoords} events without coordinates",
+            eventsWithCoords.Count, eventsWithoutCoords.Count);
+
+        return result;
     }
 
     /// <summary>

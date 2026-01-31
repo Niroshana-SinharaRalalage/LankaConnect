@@ -44,28 +44,28 @@ export function AdminTasksTab({
 
   return (
     <div className="space-y-6">
-      {/* Horizontal Tab Navigation */}
-      <div className="flex flex-wrap gap-2">
-        <SectionButton
+      {/* Horizontal Tab Navigation - Consistent underline style */}
+      <div className="flex border-b border-gray-200 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+        <TabButton
           active={activeSection === 'approvals'}
           onClick={() => setActiveSection('approvals')}
           icon={ClipboardCheck}
           label="Pending Approvals"
           badge={pendingApprovals.length > 0 ? pendingApprovals.length : undefined}
         />
-        <SectionButton
+        <TabButton
           active={activeSection === 'users'}
           onClick={() => setActiveSection('users')}
           icon={Users}
           label="User Management"
         />
-        <SectionButton
+        <TabButton
           active={activeSection === 'support'}
           onClick={() => setActiveSection('support')}
           icon={MessageSquare}
           label="Support/Feedback"
         />
-        <SectionButton
+        <TabButton
           active={activeSection === 'email-metrics'}
           onClick={() => setActiveSection('email-metrics')}
           icon={Activity}
@@ -119,8 +119,8 @@ export function AdminTasksTab({
   );
 }
 
-// Horizontal section button component
-function SectionButton({
+// Tab button with underline style - matches main TabPanel styling
+function TabButton({
   active,
   onClick,
   icon: Icon,
@@ -136,20 +136,25 @@ function SectionButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+      className={`
+        flex items-center gap-2 px-4 py-3 font-medium text-sm
+        transition-all duration-200 whitespace-nowrap
+        ${
+          active
+            ? 'border-b-2 text-[#8B1538]'
+            : 'text-gray-600 hover:text-[#FF7900] hover:bg-gray-50'
+        }
+      `}
+      style={
         active
-          ? 'bg-[#8B1538] text-white'
-          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-      }`}
+          ? { borderImage: 'linear-gradient(90deg, #FF7900 0%, #8B1538 100%) 1' }
+          : undefined
+      }
     >
       <Icon className="w-4 h-4" />
-      <span className="text-sm font-medium">{label}</span>
+      <span>{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-          active
-            ? 'bg-white/20 text-white'
-            : 'bg-[#8B1538] text-white'
-        }`}>
+        <span className="ml-1 px-2 py-0.5 text-xs font-medium rounded-full bg-[#8B1538] text-white">
           {badge}
         </span>
       )}

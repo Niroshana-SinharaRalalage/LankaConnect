@@ -71,33 +71,33 @@ export function EmailMetricsTab() {
     <div className="space-y-6">
       {/* Header with Navigation and Refresh */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        {/* Section Navigation - Phase 6A.89: Added Manage Templates, renamed Templates to Template Usage */}
-        <div className="flex flex-wrap gap-2">
-          <SectionButton
+        {/* Section Navigation - Consistent underline style */}
+        <div className="flex border-b border-gray-200 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+          <TabButton
             active={activeSection === 'overview'}
             onClick={() => setActiveSection('overview')}
             icon={BarChart3}
             label="Overview"
           />
-          <SectionButton
+          <TabButton
             active={activeSection === 'template-usage'}
             onClick={() => setActiveSection('template-usage')}
             icon={Mail}
             label="Template Usage"
           />
-          <SectionButton
+          <TabButton
             active={activeSection === 'manage-templates'}
             onClick={() => setActiveSection('manage-templates')}
             icon={Settings}
             label="Manage Templates"
           />
-          <SectionButton
+          <TabButton
             active={activeSection === 'failures'}
             onClick={() => setActiveSection('failures')}
             icon={AlertTriangle}
             label="Failures"
           />
-          <SectionButtonWithTooltip
+          <TabButtonWithTooltip
             active={activeSection === 'migration'}
             onClick={() => setActiveSection('migration')}
             icon={TrendingUp}
@@ -403,7 +403,8 @@ export function EmailMetricsTab() {
 
 // Sub-components
 
-function SectionButton({
+// Tab button with underline style - matches main TabPanel styling
+function TabButton({
   active,
   onClick,
   icon: Icon,
@@ -417,20 +418,29 @@ function SectionButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+      className={`
+        flex items-center gap-2 px-4 py-3 font-medium text-sm
+        transition-all duration-200 whitespace-nowrap
+        ${
+          active
+            ? 'border-b-2 text-[#8B1538]'
+            : 'text-gray-600 hover:text-[#FF7900] hover:bg-gray-50'
+        }
+      `}
+      style={
         active
-          ? 'bg-[#8B1538] text-white'
-          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-      }`}
+          ? { borderImage: 'linear-gradient(90deg, #FF7900 0%, #8B1538 100%) 1' }
+          : undefined
+      }
     >
       <Icon className="w-4 h-4" />
-      <span className="text-sm font-medium">{label}</span>
+      <span>{label}</span>
     </button>
   );
 }
 
-// Phase 6A.89: SectionButton with tooltip for Migration tab (Issue #6)
-function SectionButtonWithTooltip({
+// Tab button with tooltip - consistent underline style
+function TabButtonWithTooltip({
   active,
   onClick,
   icon: Icon,
@@ -451,15 +461,24 @@ function SectionButtonWithTooltip({
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+        className={`
+          flex items-center gap-2 px-4 py-3 font-medium text-sm
+          transition-all duration-200 whitespace-nowrap
+          ${
+            active
+              ? 'border-b-2 text-[#8B1538]'
+              : 'text-gray-600 hover:text-[#FF7900] hover:bg-gray-50'
+          }
+        `}
+        style={
           active
-            ? 'bg-[#8B1538] text-white'
-            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-        }`}
+            ? { borderImage: 'linear-gradient(90deg, #FF7900 0%, #8B1538 100%) 1' }
+            : undefined
+        }
       >
         <Icon className="w-4 h-4" />
-        <span className="text-sm font-medium">{label}</span>
-        <Info className={`w-3 h-3 ${active ? 'text-white/70' : 'text-gray-400'}`} />
+        <span>{label}</span>
+        <Info className={`w-3 h-3 ${active ? 'text-[#8B1538]' : 'text-gray-400'}`} />
       </button>
       {showTooltip && (
         <div className="absolute z-10 top-full left-0 mt-1 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg">

@@ -136,6 +136,9 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
     /// <summary>
     /// Get list of failed email sends for troubleshooting.
     /// Shows correlation ID, template, recipient, and error message.
+    /// Phase 6A.89 Fix: TotalCount now uses global stats for consistency with Overview tab.
+    /// Note: Failure details are in-memory and may be lost on container restart,
+    /// but TotalCount reflects the persisted aggregate count.
     /// </summary>
     /// <param name="limit">Maximum number of failures to return (default: 100)</param>
     /// <returns>List of email failures</returns>
@@ -145,6 +148,9 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
     public IActionResult GetFailures([FromQuery] int limit = 100)
     {
         Logger.LogInformation("[Phase 6A.87] Email failures list requested, limit={Limit}", limit);
+
+        // Phase 6A.89 Fix: Get total failures from global stats for consistency with Overview tab
+        var globalStats = _emailMetrics.GetGlobalStats();
 
         var failures = _emailMetrics.GetFailedEmails()
             .OrderByDescending(f => f.Timestamp)
@@ -163,7 +169,10 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
         var response = new EmailFailuresResponse
         {
             Failures = failures,
-            TotalCount = failures.Count,
+            // Phase 6A.89 Fix: Use global stats count for consistency with Overview
+            // AvailableCount shows how many failure records are available in-memory
+            TotalCount = globalStats.TotalFailures,
+            AvailableCount = failures.Count,
             Timestamp = DateTime.UtcNow
         };
 
@@ -359,11 +368,19 @@ public class EmailFailureDto
 
 /// <summary>
 /// Email failures list response
+/// Phase 6A.89 Fix: Added AvailableCount to distinguish between persisted count and available records
 /// </summary>
 public class EmailFailuresResponse
 {
     public List<EmailFailureDto> Failures { get; set; } = new();
+    /// <summary>
+    /// Total failures from persisted aggregate stats (matches Overview tab)
+    /// </summary>
     public int TotalCount { get; set; }
+    /// <summary>
+    /// Number of failure records available in-memory (may be less than TotalCount after container restart)
+    /// </summary>
+    public int AvailableCount { get; set; }
     public DateTime Timestamp { get; set; }
 }
 

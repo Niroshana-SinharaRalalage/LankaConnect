@@ -264,7 +264,7 @@ export function EmailMetricsTab() {
                 Recent Email Failures
                 {failures && (
                   <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({failures.totalCount} total)
+                    ({failures.totalCount} total{failures.availableCount !== undefined && failures.availableCount < failures.totalCount ? `, ${failures.availableCount} available` : ''})
                   </span>
                 )}
               </h3>
@@ -272,6 +272,16 @@ export function EmailMetricsTab() {
 
             {loadingFailures ? (
               <LoadingSpinner />
+            ) : failures?.failures.length === 0 && failures?.totalCount > 0 ? (
+              /* Phase 6A.89 Fix: Show message when failures exist but details lost after restart */
+              <div className="p-8 text-center text-amber-600">
+                <AlertTriangle className="w-12 h-12 mx-auto mb-3" />
+                <p className="font-medium">Historical failure details unavailable</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {failures.totalCount} failure{failures.totalCount !== 1 ? 's' : ''} recorded, but details were cleared after server restart.
+                  <br />New failures will appear here as they occur.
+                </p>
+              </div>
             ) : failures?.failures.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />

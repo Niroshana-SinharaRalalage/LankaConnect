@@ -54,10 +54,14 @@ export interface EmailFailureDto {
 
 /**
  * Response from /api/admin/email-metrics/failures
+ * Phase 6A.89 Fix: Added availableCount to distinguish persisted count from in-memory records
  */
 export interface EmailFailuresDto {
   failures: EmailFailureDto[];
+  /** Total failures from persisted aggregate stats (matches Overview tab) */
   totalCount: number;
+  /** Number of failure records available in-memory (may be less than totalCount after container restart) */
+  availableCount: number;
   timestamp: string;
 }
 

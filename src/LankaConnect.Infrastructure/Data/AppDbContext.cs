@@ -66,6 +66,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
     public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
     public DbSet<LankaConnect.Domain.Events.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Domain.Events.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
+    public DbSet<EmailMetricRecord> EmailMetricRecords => Set<EmailMetricRecord>(); // Phase 6A.89: Email metrics persistence
 
     // Analytics Entity Sets (Epic 2 Phase 3)
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
@@ -143,6 +144,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration()); // Phase 6A.74 Part 13 Issue #1: Newsletter email history
         modelBuilder.ApplyConfiguration(new EventNotificationHistoryConfiguration()); // Phase 6A.61: Event notification history tracking
+        modelBuilder.ApplyConfiguration(new EmailMetricRecordConfiguration()); // Phase 6A.89: Email metrics persistence
 
         // Analytics entity configurations (Epic 2 Phase 3)
         modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
@@ -226,6 +228,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13: Newsletter email send history
         modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
+        modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89: Email metrics persistence
 
         // Analytics schema (Epic 2 Phase 3)
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
@@ -275,6 +278,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature
             typeof(NewsletterEmailHistory), // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
             typeof(EventNotificationHistory), // Phase 6A.61: Event notification history tracking
+            typeof(EmailMetricRecord), // Phase 6A.89: Email metrics persistence
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord), // Epic 2 Phase 3
             typeof(Notification), // Phase 6A.6

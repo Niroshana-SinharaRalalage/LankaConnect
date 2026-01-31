@@ -286,6 +286,14 @@ public static class DependencyInjection
         services.AddTypedEmailServices(configuration);
         services.AddEmailServiceBridge();
 
+        // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
+        // This fixes the data loss issue where metrics disappeared after container restart
+        // DatabaseEmailMetrics uses hybrid approach: in-memory cache + periodic DB flush
+        services.AddSingleton<DatabaseEmailMetrics>();
+        services.AddSingleton<LankaConnect.Shared.Email.Observability.IEmailMetrics>(sp =>
+            sp.GetRequiredService<DatabaseEmailMetrics>());
+        services.AddHostedService(sp => sp.GetRequiredService<DatabaseEmailMetrics>());
+
         // Phase 6A.37: Add HttpClient for email branding service to download images
         services.AddHttpClient();
 

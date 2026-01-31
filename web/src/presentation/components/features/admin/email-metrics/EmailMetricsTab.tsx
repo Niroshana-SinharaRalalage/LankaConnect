@@ -18,7 +18,11 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  Settings,
+  Info,
 } from 'lucide-react';
+import { EmailTemplateList, EmailTemplateEditor, EmailTemplatePreview } from '../email-templates';
+import type { EmailTemplateListItemDto } from '@/infrastructure/api/types/email-template-management.types';
 import {
   useEmailMetricsSummary,
   useEmailTemplateStats,
@@ -35,8 +39,13 @@ import type {
 } from '@/infrastructure/api/types/email-metrics.types';
 
 export function EmailMetricsTab() {
-  const [activeSection, setActiveSection] = useState<'overview' | 'templates' | 'failures' | 'migration'>('overview');
+  // Phase 6A.89: Added 'manage-templates' section for template editing
+  const [activeSection, setActiveSection] = useState<'overview' | 'template-usage' | 'manage-templates' | 'failures' | 'migration'>('overview');
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
+
+  // Phase 6A.89: State for template management modals
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateListItemDto | null>(null);
 
   // Queries
   const { data: summary, isLoading: loadingSummary, refetch: refetchSummary } = useEmailMetricsSummary();
@@ -62,7 +71,7 @@ export function EmailMetricsTab() {
     <div className="space-y-6">
       {/* Header with Navigation and Refresh */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        {/* Section Navigation */}
+        {/* Section Navigation - Phase 6A.89: Added Manage Templates, renamed Templates to Template Usage */}
         <div className="flex flex-wrap gap-2">
           <SectionButton
             active={activeSection === 'overview'}
@@ -71,10 +80,16 @@ export function EmailMetricsTab() {
             label="Overview"
           />
           <SectionButton
-            active={activeSection === 'templates'}
-            onClick={() => setActiveSection('templates')}
+            active={activeSection === 'template-usage'}
+            onClick={() => setActiveSection('template-usage')}
             icon={Mail}
-            label="Templates"
+            label="Template Usage"
+          />
+          <SectionButton
+            active={activeSection === 'manage-templates'}
+            onClick={() => setActiveSection('manage-templates')}
+            icon={Settings}
+            label="Manage Templates"
           />
           <SectionButton
             active={activeSection === 'failures'}
@@ -82,11 +97,12 @@ export function EmailMetricsTab() {
             icon={AlertTriangle}
             label="Failures"
           />
-          <SectionButton
+          <SectionButtonWithTooltip
             active={activeSection === 'migration'}
             onClick={() => setActiveSection('migration')}
             icon={TrendingUp}
             label="Migration"
+            tooltip="Developer tool for tracking typed email parameter migration progress"
           />
         </div>
 
@@ -156,8 +172,8 @@ export function EmailMetricsTab() {
         </div>
       )}
 
-      {/* Templates Section */}
-      {activeSection === 'templates' && (
+      {/* Template Usage Section - Phase 6A.89: Renamed from 'templates' */}
+      {activeSection === 'template-usage' && (
         <div className="space-y-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -195,6 +211,47 @@ export function EmailMetricsTab() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Manage Templates Section - Phase 6A.89: NEW */}
+      {activeSection === 'manage-templates' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Email Template Management</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  View, edit, and manage email templates. Changes take effect immediately.
+                </p>
+              </div>
+            </div>
+            <EmailTemplateList
+              onSelectTemplate={(templateName, templateId) => {
+                // We need to get the ID from the template - for now use name as ID
+                // In production, the list should return IDs
+                setSelectedTemplateId(templateId || templateName);
+              }}
+              onPreviewTemplate={(template) => setPreviewTemplate(template)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Template Editor Modal - Phase 6A.89 */}
+      {selectedTemplateId && (
+        <EmailTemplateEditor
+          templateId={selectedTemplateId}
+          onClose={() => setSelectedTemplateId(null)}
+          onSaved={() => setSelectedTemplateId(null)}
+        />
+      )}
+
+      {/* Template Preview Modal - Phase 6A.89 */}
+      {previewTemplate && (
+        <EmailTemplatePreview
+          template={previewTemplate}
+          onClose={() => setPreviewTemplate(null)}
+        />
       )}
 
       {/* Failures Section */}
@@ -369,6 +426,47 @@ function SectionButton({
       <Icon className="w-4 h-4" />
       <span className="text-sm font-medium">{label}</span>
     </button>
+  );
+}
+
+// Phase 6A.89: SectionButton with tooltip for Migration tab (Issue #6)
+function SectionButtonWithTooltip({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  tooltip,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof Mail;
+  label: string;
+  tooltip: string;
+}) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+          active
+            ? 'bg-[#8B1538] text-white'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+        }`}
+      >
+        <Icon className="w-4 h-4" />
+        <span className="text-sm font-medium">{label}</span>
+        <Info className={`w-3 h-3 ${active ? 'text-white/70' : 'text-gray-400'}`} />
+      </button>
+      {showTooltip && (
+        <div className="absolute z-10 top-full left-0 mt-1 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg">
+          {tooltip}
+        </div>
+      )}
+    </div>
   );
 }
 

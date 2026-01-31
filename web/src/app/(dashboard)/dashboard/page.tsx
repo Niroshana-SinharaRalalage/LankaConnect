@@ -38,9 +38,8 @@ import { approvalsRepository } from '@/infrastructure/api/repositories/approvals
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
 import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
 import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
-import { UserManagementTab } from '@/presentation/components/features/admin/users';
-import { SupportTab } from '@/presentation/components/features/admin/support';
-import { EmailMetricsTab } from '@/presentation/components/features/admin/email-metrics';
+// Phase 6A.89: Consolidated admin tasks into single component
+import { AdminTasksTab } from '@/presentation/components/features/admin/AdminTasksTab';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
@@ -555,45 +554,16 @@ function DashboardContent() {
                         ),
                       },
                       {
+                        // Phase 6A.89: Consolidated admin features into single tab with sub-navigation
                         id: 'admin',
                         label: 'Admin Tasks',
                         icon: ClipboardCheck,
                         content: (
-                          <div>
-                            <h3 className="text-lg font-semibold mb-4 text-[#8B1538]">
-                              Pending Approvals
-                            </h3>
-                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit */}
-                            <div className="max-h-[600px] overflow-y-auto">
-                              {loadingApprovals ? (
-                                <div className="text-center py-8">
-                                  <p className="text-gray-600">Loading approvals...</p>
-                                </div>
-                              ) : (
-                                <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
-                              )}
-                            </div>
-                          </div>
-                        ),
-                      },
-                      {
-                        id: 'user-management',
-                        label: 'User Management',
-                        icon: Users,
-                        content: (
-                          <div className="max-h-[700px] overflow-y-auto">
-                            <UserManagementTab />
-                          </div>
-                        ),
-                      },
-                      {
-                        id: 'support',
-                        label: 'Support/Feedback',
-                        icon: MessageSquare,
-                        content: (
-                          <div className="max-h-[700px] overflow-y-auto">
-                            <SupportTab />
-                          </div>
+                          <AdminTasksTab
+                            pendingApprovals={pendingApprovals}
+                            loadingApprovals={loadingApprovals}
+                            onApprovalsUpdate={handleApprovalsUpdate}
+                          />
                         ),
                       },
                       {
@@ -613,16 +583,6 @@ function DashboardContent() {
                         content: (
                           // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
                           <NewslettersTab />
-                        ),
-                      },
-                      {
-                        id: 'email-metrics',
-                        label: 'Email Metrics',
-                        icon: Activity,
-                        content: (
-                          <div className="max-h-[700px] overflow-y-auto">
-                            <EmailMetricsTab />
-                          </div>
                         ),
                       },
                       {

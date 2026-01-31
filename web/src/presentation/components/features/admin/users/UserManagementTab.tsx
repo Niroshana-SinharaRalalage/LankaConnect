@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import {
@@ -55,8 +55,9 @@ export function UserManagementTab() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Debounced search
+  // Debounced search - Phase 6A.89: Fix debounce bug with proper ref cleanup
   const [searchInput, setSearchInput] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Queries
   const { data: usersData, isLoading, error, refetch } = useAdminUsers(filters);
@@ -70,14 +71,27 @@ export function UserManagementTab() {
   const resendVerificationMutation = useResendVerification();
   const forcePasswordResetMutation = useForcePasswordReset();
 
+  // Phase 6A.89: Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handlers
+  // Phase 6A.89: Fixed debounce - was returning cleanup function that was never executed
   const handleSearch = useCallback((value: string) => {
     setSearchInput(value);
-    // Debounce search
-    const timeoutId = setTimeout(() => {
+    // Clear previous timeout before setting new one
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    // Debounce search - now properly clears previous timeout
+    searchTimeoutRef.current = setTimeout(() => {
       setFilters((prev) => ({ ...prev, searchTerm: value, page: 1 }));
     }, 300);
-    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleRoleFilter = (role: string) => {

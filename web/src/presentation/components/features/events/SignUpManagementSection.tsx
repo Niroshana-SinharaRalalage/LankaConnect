@@ -51,6 +51,7 @@ import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 
 /**
  * Props for SignUpManagementSection
@@ -205,12 +206,12 @@ export function SignUpManagementSection({
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
     if (!userId) {
-      alert('Please log in to commit to items');
+      toast.error('Please log in to commit to items');
       return;
     }
 
     if (!itemDescription.trim()) {
-      alert('Please enter an item description');
+      toast.error('Please enter an item description');
       return;
     }
 
@@ -230,7 +231,7 @@ export function SignUpManagementSection({
       setSelectedSignUpId(null);
     } catch (err) {
       console.error('Failed to commit:', err);
-      alert('Failed to commit. Please try again.');
+      toast.error('Failed to commit. Please try again.');
     }
   };
 
@@ -283,7 +284,7 @@ export function SignUpManagementSection({
   // GitHub Issue #31: Opens styled dialog instead of browser confirm()
   const handleCancelSignUp = (signUpListId: string, itemId: string) => {
     if (!userId) {
-      alert('Please log in to cancel sign-ups');
+      toast.error('Please log in to cancel sign-ups');
       return;
     }
     setCancelDialog({
@@ -313,7 +314,7 @@ export function SignUpManagementSection({
       setDeleteConfirmId(null);
     } catch (err) {
       console.error('Failed to delete sign-up list:', err);
-      alert('Failed to delete sign-up list. Please try again.');
+      toast.error('Failed to delete sign-up list. Please try again.');
     }
   };
 
@@ -383,7 +384,7 @@ export function SignUpManagementSection({
 
   const openEditOpenItemModal = (signUpListId: string, signUpListCategory: string, item: SignUpItemDto) => {
     if (!userId) {
-      alert('Please log in to edit items');
+      toast.error('Please log in to edit items');
       return;
     }
     setOpenItemSignUpListId(signUpListId);
@@ -456,7 +457,7 @@ export function SignUpManagementSection({
   // GitHub Issue #31: Opens styled dialog instead of browser confirm()
   const handleCancelOpenItem = (signUpListId: string, itemId: string) => {
     if (!userId) {
-      alert('Please log in to cancel sign-ups');
+      toast.error('Please log in to cancel sign-ups');
       return;
     }
     setCancelDialog({

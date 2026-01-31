@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Payments.Entities;
@@ -13,11 +14,13 @@ public class StripeWebhookEventRepository : IStripeWebhookEventRepository
 {
     private readonly AppDbContext _context;
     private readonly DbSet<StripeWebhookEvent> _dbSet;
+    private readonly ILogger<StripeWebhookEventRepository> _logger;
 
-    public StripeWebhookEventRepository(AppDbContext context)
+    public StripeWebhookEventRepository(AppDbContext context, ILogger<StripeWebhookEventRepository> logger)
     {
         _context = context;
         _dbSet = context.Set<StripeWebhookEvent>();
+        _logger = logger;
     }
 
     /// <summary>
@@ -51,13 +54,36 @@ public class StripeWebhookEventRepository : IStripeWebhookEventRepository
         string eventId,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation(
+            "[Phase 6A.X] [WebhookRepo-1] MarkEventAsProcessedAsync called - EventId: {EventId}",
+            eventId);
+
         var webhookEvent = await _dbSet
             .FirstOrDefaultAsync(e => e.EventId == eventId, cancellationToken);
 
         if (webhookEvent != null)
         {
+            _logger.LogInformation(
+                "[Phase 6A.X] [WebhookRepo-2] Found webhook event - EventId: {EventId}, CurrentProcessed: {Processed}",
+                eventId, webhookEvent.Processed);
+
             webhookEvent.MarkAsProcessed();
-            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.X] [WebhookRepo-3] About to SaveChangesAsync - EventId: {EventId}, TrackedEntities: {TrackedCount}",
+                eventId, _context.ChangeTracker.Entries().Count());
+
+            var savedCount = await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.X] [WebhookRepo-4] SaveChangesAsync completed - EventId: {EventId}, SavedCount: {SavedCount}",
+                eventId, savedCount);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "[Phase 6A.X] [WebhookRepo-WARN] Webhook event not found - EventId: {EventId}",
+                eventId);
         }
     }
 

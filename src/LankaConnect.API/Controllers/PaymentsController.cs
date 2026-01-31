@@ -285,7 +285,25 @@ public class PaymentsController : ControllerBase
             }
 
             // Mark as processed
-            await _webhookEventRepository.MarkEventAsProcessedAsync(stripeEvent.Id);
+            _logger.LogInformation(
+                "[Phase 6A.X] [Webhook-PRE-MARK] About to mark event as processed - EventId: {EventId}",
+                stripeEvent.Id);
+
+            try
+            {
+                await _webhookEventRepository.MarkEventAsProcessedAsync(stripeEvent.Id);
+                _logger.LogInformation(
+                    "[Phase 6A.X] [Webhook-POST-MARK] Successfully marked event as processed - EventId: {EventId}",
+                    stripeEvent.Id);
+            }
+            catch (Exception markEx)
+            {
+                _logger.LogError(markEx,
+                    "[Phase 6A.X] [Webhook-MARK-FAILED] Failed to mark event as processed - EventId: {EventId}, Error: {Error}",
+                    stripeEvent.Id, markEx.Message);
+                // Don't rethrow - the main processing succeeded, just the mark failed
+                // This prevents returning 500 when the payment actually processed successfully
+            }
 
             return Ok();
         }

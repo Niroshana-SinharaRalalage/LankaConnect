@@ -8,6 +8,8 @@
  *
  * This solves Issue #1 (Dashboard Restructuring) and Issue #7 (Nested Tab Limitation)
  * by using section-based navigation instead of nested TabPanels.
+ *
+ * Updated: Using horizontal tabs for better content width utilization
  */
 
 'use client';
@@ -18,7 +20,6 @@ import {
   Users,
   MessageSquare,
   Activity,
-  ChevronRight,
 } from 'lucide-react';
 import { ApprovalsTable } from './ApprovalsTable';
 import { UserManagementTab } from './users';
@@ -41,69 +42,39 @@ export function AdminTasksTab({
 }: AdminTasksTabProps) {
   const [activeSection, setActiveSection] = useState<AdminSection>('approvals');
 
-  const sections = [
-    {
-      id: 'approvals' as AdminSection,
-      label: 'Pending Approvals',
-      icon: ClipboardCheck,
-      badge: pendingApprovals.length > 0 ? pendingApprovals.length : undefined,
-    },
-    {
-      id: 'users' as AdminSection,
-      label: 'User Management',
-      icon: Users,
-    },
-    {
-      id: 'support' as AdminSection,
-      label: 'Support/Feedback',
-      icon: MessageSquare,
-    },
-    {
-      id: 'email-metrics' as AdminSection,
-      label: 'Email Metrics',
-      icon: Activity,
-    },
-  ];
-
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Sidebar Navigation */}
-      <div className="lg:w-64 flex-shrink-0">
-        <nav className="bg-gray-50 rounded-lg p-2 space-y-1">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-white text-[#8B1538] shadow-sm'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#8B1538]' : 'text-gray-400'}`} />
-                  <span className="text-sm font-medium">{section.label}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {section.badge && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-[#8B1538] text-white rounded-full">
-                      {section.badge}
-                    </span>
-                  )}
-                  <ChevronRight className={`w-4 h-4 ${isActive ? 'text-[#8B1538]' : 'text-gray-300'}`} />
-                </div>
-              </button>
-            );
-          })}
-        </nav>
+    <div className="space-y-6">
+      {/* Horizontal Tab Navigation */}
+      <div className="flex flex-wrap gap-2">
+        <SectionButton
+          active={activeSection === 'approvals'}
+          onClick={() => setActiveSection('approvals')}
+          icon={ClipboardCheck}
+          label="Pending Approvals"
+          badge={pendingApprovals.length > 0 ? pendingApprovals.length : undefined}
+        />
+        <SectionButton
+          active={activeSection === 'users'}
+          onClick={() => setActiveSection('users')}
+          icon={Users}
+          label="User Management"
+        />
+        <SectionButton
+          active={activeSection === 'support'}
+          onClick={() => setActiveSection('support')}
+          icon={MessageSquare}
+          label="Support/Feedback"
+        />
+        <SectionButton
+          active={activeSection === 'email-metrics'}
+          onClick={() => setActiveSection('email-metrics')}
+          icon={Activity}
+          label="Email Metrics"
+        />
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 min-w-0">
+      {/* Content Area - Full Width */}
+      <div className="w-full">
         {/* Approvals Section */}
         {activeSection === 'approvals' && (
           <div>
@@ -145,5 +116,43 @@ export function AdminTasksTab({
         )}
       </div>
     </div>
+  );
+}
+
+// Horizontal section button component
+function SectionButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  badge,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof ClipboardCheck;
+  label: string;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+        active
+          ? 'bg-[#8B1538] text-white'
+          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+      <span className="text-sm font-medium">{label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+          active
+            ? 'bg-white/20 text-white'
+            : 'bg-[#8B1538] text-white'
+        }`}>
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }

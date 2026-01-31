@@ -3,6 +3,7 @@
  * Tests environment-based token storage strategy
  */
 
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tokenStorageService } from '../tokenStorageService';
 
 describe('TokenStorageService', () => {

@@ -16,15 +16,15 @@ vi.mock('@/presentation/components/ui/Dialog', () => ({
 describe('MediaGallery', () => {
   // Test data with non-sequential displayOrder to expose the bug
   const mockImagesUnsorted: EventImageDto[] = [
-    { id: 'img-1', imageUrl: 'https://example.com/image3.jpg', displayOrder: 3 },
-    { id: 'img-2', imageUrl: 'https://example.com/image1.jpg', displayOrder: 1 },
-    { id: 'img-3', imageUrl: 'https://example.com/image2.jpg', displayOrder: 2 },
+    { id: 'img-1', imageUrl: 'https://example.com/image3.jpg', displayOrder: 3, isPrimary: false, uploadedAt: '2024-01-15T10:00:00Z' },
+    { id: 'img-2', imageUrl: 'https://example.com/image1.jpg', displayOrder: 1, isPrimary: true, uploadedAt: '2024-01-15T10:00:00Z' },
+    { id: 'img-3', imageUrl: 'https://example.com/image2.jpg', displayOrder: 2, isPrimary: false, uploadedAt: '2024-01-15T10:00:00Z' },
   ];
 
   const mockVideosUnsorted: EventVideoDto[] = [
-    { id: 'vid-1', videoUrl: 'https://example.com/video3.mp4', thumbnailUrl: 'https://example.com/thumb3.jpg', displayOrder: 3 },
-    { id: 'vid-2', videoUrl: 'https://example.com/video1.mp4', thumbnailUrl: 'https://example.com/thumb1.jpg', displayOrder: 1 },
-    { id: 'vid-3', videoUrl: 'https://example.com/video2.mp4', thumbnailUrl: 'https://example.com/thumb2.jpg', displayOrder: 2 },
+    { id: 'vid-1', videoUrl: 'https://example.com/video3.mp4', thumbnailUrl: 'https://example.com/thumb3.jpg', displayOrder: 3, format: 'mp4', fileSizeBytes: 1000000, uploadedAt: '2024-01-15T10:00:00Z' },
+    { id: 'vid-2', videoUrl: 'https://example.com/video1.mp4', thumbnailUrl: 'https://example.com/thumb1.jpg', displayOrder: 1, format: 'mp4', fileSizeBytes: 1000000, uploadedAt: '2024-01-15T10:00:00Z' },
+    { id: 'vid-3', videoUrl: 'https://example.com/video2.mp4', thumbnailUrl: 'https://example.com/thumb2.jpg', displayOrder: 2, format: 'mp4', fileSizeBytes: 1000000, uploadedAt: '2024-01-15T10:00:00Z' },
   ];
 
   describe('Rendering', () => {
@@ -265,7 +265,7 @@ describe('MediaGallery', () => {
   describe('Edge Cases', () => {
     it('should handle single image correctly', () => {
       const singleImage: EventImageDto[] = [
-        { id: 'img-1', imageUrl: 'https://example.com/single.jpg', displayOrder: 1 },
+        { id: 'img-1', imageUrl: 'https://example.com/single.jpg', displayOrder: 1, isPrimary: true, uploadedAt: '2024-01-15T10:00:00Z' },
       ];
 
       render(<MediaGallery images={singleImage} />);
@@ -286,8 +286,8 @@ describe('MediaGallery', () => {
 
     it('should handle images with same displayOrder gracefully', () => {
       const sameOrderImages: EventImageDto[] = [
-        { id: 'img-1', imageUrl: 'https://example.com/imageA.jpg', displayOrder: 1 },
-        { id: 'img-2', imageUrl: 'https://example.com/imageB.jpg', displayOrder: 1 },
+        { id: 'img-1', imageUrl: 'https://example.com/imageA.jpg', displayOrder: 1, isPrimary: true, uploadedAt: '2024-01-15T10:00:00Z' },
+        { id: 'img-2', imageUrl: 'https://example.com/imageB.jpg', displayOrder: 1, isPrimary: false, uploadedAt: '2024-01-15T10:00:00Z' },
       ];
 
       render(<MediaGallery images={sameOrderImages} />);

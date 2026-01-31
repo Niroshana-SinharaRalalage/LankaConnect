@@ -23,6 +23,10 @@ describe('EventsList', () => {
       state: 'ON',
       images: [],
       videos: [],
+      displayLabel: 'New',
+      groupPricingTiers: [],
+      hasGroupPricing: false,
+      publishOrganizerContact: false,
     },
     {
       id: '2',
@@ -43,6 +47,10 @@ describe('EventsList', () => {
       state: 'BC',
       images: [],
       videos: [],
+      displayLabel: 'Upcoming',
+      groupPricingTiers: [],
+      hasGroupPricing: false,
+      publishOrganizerContact: false,
     },
   ];
 

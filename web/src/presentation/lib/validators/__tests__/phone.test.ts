@@ -6,6 +6,7 @@
  * phone numbers with various formats and rejects invalid inputs.
  */
 
+import { describe, it, expect, test } from 'vitest';
 import { validatePhoneNumber, isValidPhoneNumber, phoneNumberSchema } from '../phone';
 
 describe('validatePhoneNumber', () => {

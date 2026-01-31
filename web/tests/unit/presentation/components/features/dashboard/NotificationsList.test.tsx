@@ -3,7 +3,7 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
-import { vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotificationsList } from '@/presentation/components/features/dashboard/NotificationsList';
 import type { NotificationDto } from '@/infrastructure/api/types/notifications.types';
 
@@ -11,24 +11,24 @@ describe('NotificationsList', () => {
   const mockNotifications: NotificationDto[] = [
     {
       id: '1',
-      userId: 'user-1',
       title: 'Role Upgrade Approved',
       message: 'Your request to become an Event Organizer has been approved.',
       type: 'RoleUpgradeApproved',
       relatedEntityId: 'user-1',
       relatedEntityType: 'User',
       isRead: false,
+      readAt: null,
       createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
     },
     {
       id: '2',
-      userId: 'user-1',
       title: 'Free Trial Expiring',
       message: 'Your free trial will expire in 7 days.',
       type: 'FreeTrialExpiring',
       relatedEntityId: 'user-1',
       relatedEntityType: 'User',
       isRead: false,
+      readAt: null,
       createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
     },
   ];
@@ -83,6 +83,7 @@ describe('NotificationsList', () => {
     it('should display "Just now" for recent notifications', () => {
       const recentNotification: NotificationDto = {
         ...mockNotifications[0],
+        readAt: null,
         createdAt: new Date().toISOString(),
       };
 

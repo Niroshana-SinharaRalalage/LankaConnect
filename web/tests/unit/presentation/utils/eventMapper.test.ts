@@ -62,6 +62,10 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
       },
     ],
     videos: [],
+    displayLabel: 'New',
+    groupPricingTiers: [],
+    hasGroupPricing: false,
+    publishOrganizerContact: false,
     ...overrides,
   };
 }

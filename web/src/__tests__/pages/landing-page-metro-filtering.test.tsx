@@ -104,7 +104,9 @@ const OHIO_METRO: MetroArea = {
   name: 'All Ohio',
   state: 'OH',
   cities: ['Statewide'],
-  population: 11700000,
+  centerLat: 40.4173,
+  centerLng: -82.9071,
+  radiusMiles: 200,
 };
 
 const CLEVELAND_METRO: MetroArea = {
@@ -112,7 +114,9 @@ const CLEVELAND_METRO: MetroArea = {
   name: 'Cleveland',
   state: 'OH',
   cities: ['Cleveland', 'Akron', 'Lorain'],
-  population: 2000000,
+  centerLat: 41.4993,
+  centerLng: -81.6944,
+  radiusMiles: 30,
 };
 
 const COLUMBUS_METRO: MetroArea = {
@@ -120,7 +124,9 @@ const COLUMBUS_METRO: MetroArea = {
   name: 'Columbus',
   state: 'OH',
   cities: ['Columbus', 'Westerville', 'New Albany'],
-  population: 1200000,
+  centerLat: 39.9612,
+  centerLng: -82.9988,
+  radiusMiles: 25,
 };
 
 const PENNSYLVANIA_METRO: MetroArea = {
@@ -128,7 +134,9 @@ const PENNSYLVANIA_METRO: MetroArea = {
   name: 'All Pennsylvania',
   state: 'PA',
   cities: ['Statewide'],
-  population: 13000000,
+  centerLat: 40.2732,
+  centerLng: -76.8867,
+  radiusMiles: 200,
 };
 
 const PHILADELPHIA_METRO: MetroArea = {
@@ -136,7 +144,9 @@ const PHILADELPHIA_METRO: MetroArea = {
   name: 'Philadelphia',
   state: 'PA',
   cities: ['Philadelphia', 'Chester', 'Bensalem'],
-  population: 1600000,
+  centerLat: 39.9526,
+  centerLng: -75.1652,
+  radiusMiles: 30,
 };
 
 // Sample feed items
@@ -146,11 +156,10 @@ const OHIO_EVENT: FeedItem = {
   title: 'Ohio Community Gathering',
   description: 'A celebration of Sri Lankan culture in Ohio',
   location: 'Cleveland, Ohio',
-  date: new Date('2025-12-15'),
-  source: 'api',
-  author: { id: '1', name: 'User 1', avatar: '' },
-  content: 'Event content',
-  imageUrl: null,
+  timestamp: new Date('2025-12-15'),
+  author: { id: '1', name: 'User 1', avatar: '', initials: 'U1' },
+  actions: [],
+  metadata: { type: 'event', date: '2025-12-15', interestedCount: 0, commentCount: 0 },
 };
 
 const CINCINNATI_EVENT: FeedItem = {
@@ -159,11 +168,10 @@ const CINCINNATI_EVENT: FeedItem = {
   title: 'Cincinnati Sinhala Lessons',
   description: 'Learn Sinhala in Cincinnati',
   location: 'Cincinnati, Ohio',
-  date: new Date('2025-12-20'),
-  source: 'api',
-  author: { id: '2', name: 'User 2', avatar: '' },
-  content: 'Event content',
-  imageUrl: null,
+  timestamp: new Date('2025-12-20'),
+  author: { id: '2', name: 'User 2', avatar: '', initials: 'U2' },
+  actions: [],
+  metadata: { type: 'event', date: '2025-12-20', interestedCount: 0, commentCount: 0 },
 };
 
 const PENNSYLVANIA_EVENT: FeedItem = {
@@ -172,11 +180,10 @@ const PENNSYLVANIA_EVENT: FeedItem = {
   title: 'Philadelphia New Year',
   description: 'Celebrate Sinhala New Year in Philadelphia',
   location: 'Philadelphia, Pennsylvania',
-  date: new Date('2025-12-25'),
-  source: 'api',
-  author: { id: '3', name: 'User 3', avatar: '' },
-  content: 'Event content',
-  imageUrl: null,
+  timestamp: new Date('2025-12-25'),
+  author: { id: '3', name: 'User 3', avatar: '', initials: 'U3' },
+  actions: [],
+  metadata: { type: 'event', date: '2025-12-25', interestedCount: 0, commentCount: 0 },
 };
 
 const NEW_YORK_EVENT: FeedItem = {
@@ -185,11 +192,10 @@ const NEW_YORK_EVENT: FeedItem = {
   title: 'New York Business Network',
   description: 'Sri Lankan business owners meetup',
   location: 'New York, New York',
-  date: new Date('2025-12-30'),
-  source: 'api',
-  author: { id: '4', name: 'User 4', avatar: '' },
-  content: 'Event content',
-  imageUrl: null,
+  timestamp: new Date('2025-12-30'),
+  author: { id: '4', name: 'User 4', avatar: '', initials: 'U4' },
+  actions: [],
+  metadata: { type: 'event', date: '2025-12-30', interestedCount: 0, commentCount: 0 },
 };
 
 const FORUM_ITEM: FeedItem = {
@@ -198,11 +204,10 @@ const FORUM_ITEM: FeedItem = {
   title: 'Immigration Discussion',
   description: 'Discuss immigration topics',
   location: 'Cleveland, Ohio',
-  date: new Date('2025-12-18'),
-  source: 'api',
-  author: { id: '5', name: 'User 5', avatar: '' },
-  content: 'Forum content',
-  imageUrl: null,
+  timestamp: new Date('2025-12-18'),
+  author: { id: '5', name: 'User 5', avatar: '', initials: 'U5' },
+  actions: [],
+  metadata: { type: 'forum', forumName: 'Immigration', repliesCount: 0, helpfulCount: 0 },
 };
 
 describe('Landing Page - Preferred Metro Areas Filtering (Phase 5B.9.4)', () => {
@@ -419,7 +424,7 @@ describe('Landing Page - Preferred Metro Areas Filtering (Phase 5B.9.4)', () => 
     it('should filter by both tab and metro preferences', () => {
       // Test: Only show events (type === 'event') that match preferred metros
       const allItems = [OHIO_EVENT, PENNSYLVANIA_EVENT, FORUM_ITEM, NEW_YORK_EVENT];
-      const activeTab = 'event';
+      const activeTab: string = 'event';
       const preferredMetros = [OHIO_METRO, PENNSYLVANIA_METRO];
 
       let filtered = allItems;
@@ -538,10 +543,10 @@ describe('Landing Page - Preferred Metro Areas Filtering (Phase 5B.9.4)', () => 
 
     it('should handle events with missing location data', () => {
       // Test: Event with no comma separator in location
-      const invalidItem: FeedItem = {
+      const invalidItem = {
         ...OHIO_EVENT,
         location: 'Unknown',
-      };
+      } as FeedItem;
 
       const extractCity = (location: string): string => {
         return location.split(',')[0].trim();
@@ -558,11 +563,10 @@ describe('Landing Page - Preferred Metro Areas Filtering (Phase 5B.9.4)', () => 
         title: 'Remote Event',
         description: 'Online event',
         location: 'Remote, Online',
-        date: new Date(),
-        source: 'api',
-        author: { id: '6', name: 'User 6', avatar: '' },
-        content: 'Event content',
-        imageUrl: null,
+        timestamp: new Date(),
+        author: { id: '6', name: 'User 6', avatar: '', initials: 'U6' },
+        actions: [],
+        metadata: { type: 'event', date: new Date().toISOString(), interestedCount: 0, commentCount: 0 },
       };
 
       const isEventInMetro = (item: FeedItem, metro: MetroArea): boolean => {
@@ -617,11 +621,11 @@ describe('Landing Page - Preferred Metro Areas Filtering (Phase 5B.9.4)', () => 
   describe('Fallback Behaviors', () => {
     it('should show all other events when user has no preferred metros', () => {
       // Implementation detail: else if (selectedMetroArea) or else: other = itemsToProcess
-      const isAuthenticated = false;
-      const profile = undefined;
+      const isAuthenticated = false as boolean;
+      const profile = undefined as { preferredMetroAreas?: string[] } | undefined;
       const selectedMetroArea = null;
 
-      if (!isAuthenticated || !profile?.preferredMetroAreas?.length) {
+      if (!isAuthenticated || !(profile as { preferredMetroAreas?: string[] } | undefined)?.preferredMetroAreas?.length) {
         // Fall back to selectedMetroArea or show all
         expect(selectedMetroArea).toBeNull();
       }

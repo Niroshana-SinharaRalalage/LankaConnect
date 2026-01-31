@@ -3,6 +3,7 @@
  * Tests coordinate conversion and validation logic
  */
 
+import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useBadgePositioning, roundToDecimal } from '../../../../src/presentation/hooks/useBadgePositioning';
 import { BadgeLocationConfigDto } from '../../../../src/infrastructure/api/types/badges.types';

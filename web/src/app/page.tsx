@@ -337,8 +337,9 @@ export default function Home() {
 
 
       {/* Main Content */}
+      {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with header */}
       <section className="py-16 bg-neutral-50">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Forum Highlights + News (stacked) then Business */}
             <div className="lg:col-span-2 space-y-8">

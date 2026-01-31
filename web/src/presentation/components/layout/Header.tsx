@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
@@ -27,6 +28,7 @@ export interface HeaderProps {
 export function Header({ className = '' }: HeaderProps) {
   const { user, isAuthenticated, isHydrated, clearAuth } = useAuthStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -72,7 +74,8 @@ export function Header({ className = '' }: HeaderProps) {
     <header
       className={`sticky top-0 z-50 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.08)] ${className}`}
     >
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with page content */}
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4">
           {/* Official LankaConnect Logo with Subtitle */}
           <OfficialLogo size="md" />
@@ -278,6 +281,9 @@ export function Header({ className = '' }: HeaderProps) {
                           } catch (error) {
                             // Silently handle logout errors
                           } finally {
+                            // Phase 6A.X Issue #47: Clear React Query cache on logout to prevent
+                            // data leakage between users (e.g., email groups visibility)
+                            queryClient.clear();
                             clearAuth();
                             router.push('/login');
                           }

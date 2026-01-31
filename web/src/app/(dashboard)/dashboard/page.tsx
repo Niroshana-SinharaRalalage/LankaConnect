@@ -332,8 +332,8 @@ function DashboardContent() {
           backdropFilter: 'blur(10px)',
           boxShadow: '0 2px 20px rgba(0,0,0,0.1)'
         }}>
-          {/* Phase 6A.X Issue #44: Changed max-w-7xl to container to match shared Header component */}
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with main content */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               {/* Logo + Navigation */}
               <div className="flex items-center gap-8">

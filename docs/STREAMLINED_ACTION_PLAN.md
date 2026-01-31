@@ -7,7 +7,30 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #31 UGLY ALERT FIX COMPLETE (2026-01-31)
+## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #38 GRAMMAR FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #38 Grammar Error Fix
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit 2f63467e
+**Priority**: 🟢 ENHANCEMENT - Text Correction
+**GitHub Issue**: [#38](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/38)
+
+**Objective**: Fix grammar error in signup list's open items section.
+
+**Issue**: Text displayed "Bringing by" instead of grammatically correct "Brought by".
+
+**Fix Applied**:
+- ✅ **SignUpManagementSection.tsx**: Changed "Bringing by" to "Brought by" (line 810)
+
+**QA Testing Required**:
+1. Navigate to an event with a signup list
+2. Look at open items that have commitments
+3. Verify the text shows "Brought by: [Name]" instead of "Bringing by: [Name]"
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #31 UGLY ALERT FIX COMPLETE (2026-01-31)
 **Date**: 2026-01-31
 **Session**: Phase 6A.X - Issue #31 Ugly Alert Replacement
 **Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY

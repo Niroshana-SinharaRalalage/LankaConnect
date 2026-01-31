@@ -1,9 +1,42 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-31 - Phase 6A.X Issue #31: Ugly Alert Fix ✅ COMPLETE*
+*Last Updated: 2026-01-31 - Phase 6A.X Issue #38: Grammar Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #31: Ugly Alert Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issue #38: Grammar Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #38: GRAMMAR ERROR FIX - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#38](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/38) - Wording/grammar error
+
+**Priority**: 🟢 **ENHANCEMENT** - Text Correction
+
+**Issue Description**:
+In the signup list's open items section, the text displayed "Bringing by" instead of the grammatically correct "Brought by".
+
+**Fix Applied**:
+Changed "Bringing by" to "Brought by" in the open items display section.
+
+**Files Changed**:
+- `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (line 810)
+
+**Commits**:
+- `2f63467e` - fix(#38): Correct grammar 'Bringing by' to 'Brought by' in signup list
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging (workflow run 21552852647)
+- ✅ All smoke tests passed (Health, Home Page, API Proxy)
+
+**Testing Required**:
+1. Navigate to an event with a signup list containing open items
+2. Look at open items that have commitments from users
+3. Verify the text shows "Brought by: [Name]" instead of "Bringing by: [Name]"
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #31: Ugly Alert Fix ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #31: UGLY ALERT REPLACEMENT - 2026-01-31
 

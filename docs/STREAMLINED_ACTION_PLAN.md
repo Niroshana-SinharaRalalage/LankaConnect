@@ -7,7 +7,29 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #42 UPGRADE BUTTON DISABLED FIX COMPLETE (2026-01-31)
+## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #31 UGLY ALERT FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #31 Ugly Alert Replacement
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit 28c79fca
+**Priority**: 🟡 BUG FIX - UX Improvement
+**GitHub Issue**: [#31](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/31)
+
+**Objective**: Replace ugly browser alerts with styled toast notifications in sign-up management.
+
+**Root Cause**: Browser `alert()` calls used for validation/auth/API error messages.
+
+**Fix Applied**:
+- ✅ **SignUpManagementSection.tsx**: Replaced 7 `alert()` calls with `toast.error()`
+
+**QA Testing Required**:
+1. Try to commit/cancel/edit without login - verify toast notification appears
+2. Submit empty item - verify toast appears instead of browser alert
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #42 UPGRADE BUTTON DISABLED FIX COMPLETE (2026-01-31)
 **Date**: 2026-01-31
 **Session**: Phase 6A.X - Issue #42 Upgrade Button Disabled
 **Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY

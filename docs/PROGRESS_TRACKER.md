@@ -1,9 +1,47 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-31 - Phase 6A.X Issue #43: Back to Dashboard Button Fix ✅ COMPLETE*
+*Last Updated: 2026-01-31 - Phase 6A.X Issue #31: Ugly Alert Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #43: Back to Dashboard Button Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issue #31: Ugly Alert Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #31: UGLY ALERT REPLACEMENT - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#31](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/31) - Ugly alert appears when cancelling a signup
+
+**Priority**: 🟡 **BUG FIX** - UX Improvement
+
+**Root Cause Analysis**:
+The SignUpManagementSection component was using browser `alert()` for error messages (auth errors, validation errors, API failures), which displays ugly native browser dialogs.
+
+**Fix Applied**:
+Replaced all 7 `alert()` calls with `toast.error()` from react-hot-toast:
+- Auth errors: "Please log in to commit/edit/cancel"
+- Validation errors: "Please enter an item description"
+- API failures: "Failed to commit/delete"
+
+Note: Cancel confirmation dialogs were already using styled `ConfirmDialog` component.
+
+**Files Changed**:
+- `web/src/presentation/components/features/events/SignUpManagementSection.tsx`
+
+**Commits**:
+- `28c79fca` - fix(#31): Replace browser alerts with toast notifications
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging (workflow run 21552810537)
+
+**Testing Required**:
+1. Go to an event with sign-up lists
+2. Try to commit/cancel without being logged in - verify toast appears (not browser alert)
+3. Try to submit empty item - verify toast appears
+4. Trigger a failed API call - verify toast appears
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #43: Back to Dashboard Button Fix ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #43: BACK TO DASHBOARD BUTTON FIX - 2026-01-31
 

@@ -807,7 +807,7 @@ export function SignUpManagementSection({
                                     )}
                                     {commitment && (
                                       <p className="text-sm text-muted-foreground mt-1">
-                                        Bringing by: {commitment.contactName || 'Anonymous'}
+                                        Brought by: {commitment.contactName || 'Anonymous'}
                                         {commitment.contactEmail && ` (${commitment.contactEmail})`}
                                       </p>
                                     )}

@@ -216,9 +216,20 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 typedParams.WithEventImage(eventImageUrl);
 
                 // Set contact information
+                // Phase 6A.X Issue #35: Handle guest users who may have contact info in AttendeeInfo
                 if (registration.Contact != null)
                 {
                     typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+                }
+                else if (registration.AttendeeInfo != null)
+                {
+                    // Guest users may have contact email in AttendeeInfo
+                    typedParams.WithContactInfo(registration.AttendeeInfo.Email.Value, null);
+                }
+                else
+                {
+                    // Ensure HasContactInfo is explicitly false when no contact info available
+                    typedParams.HasContactInfo = false;
                 }
 
                 // Set organizer contact

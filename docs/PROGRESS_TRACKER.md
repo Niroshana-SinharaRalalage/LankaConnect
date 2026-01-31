@@ -1,9 +1,135 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-31 - Phase 6A.X Issue #46: Role Upgrade Notification Audit Logging ✅ COMPLETE*
+*Last Updated: 2026-01-31 - Phase 6A.X Issue #47: Email Groups Cache Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #46: Role Upgrade Notification Audit Logging ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issue #47: Email Groups Cache Fix ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #47: EMAIL GROUPS VISIBILITY FIX - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#47](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/47) - One event organizer can see email groups of other organizers
+
+**Priority**: 🔴 **SECURITY BUG** - Data Visibility Issue
+
+**Root Cause Analysis**:
+React Query cache key for email groups did NOT include user context. The query key was:
+```
+['emailGroups', 'list', { includeAll: false }]
+```
+When User A logs out and User B logs in, React Query returns User A's cached email groups (same key!).
+
+**Fix Applied**:
+Two-pronged approach to ensure user data isolation:
+
+1. **Header.tsx** (logout handler): Added `queryClient.clear()` to clear all React Query cache on logout
+2. **useEmailGroups.ts**:
+   - Added `userId` to query key: `['emailGroups', 'list', { includeAll, userId }]`
+   - Added `enabled: !!userId` to prevent fetching for unauthenticated users
+
+**Files Changed**:
+- `web/src/presentation/components/layout/Header.tsx` - Clear cache on logout
+- `web/src/presentation/hooks/useEmailGroups.ts` - User-specific cache keys
+
+**Commits**:
+- `996beb88` - fix(#47): Prevent email groups cache collision between users
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging (workflow run 21551559849)
+
+**Testing Required**:
+1. Login as Event Organizer A, create email groups, logout
+2. Login as Event Organizer B, verify no groups from A are visible
+3. Create event as Organizer B, verify email group dropdown shows only B's groups
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #44: Header Width Alignment ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #44: TOP RIBBON PLACEMENT - REOPENED FIX - 2026-01-31
+
+**Status**: ✅ **COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#44](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/44) - Top Ribbon (Menu) /logo placement change
+
+**Priority**: 🟡 **BUG FIX** - UI Consistency
+
+**Root Cause Analysis**:
+The previous fix changed the dashboard header from `max-w-7xl` (1280px) to `container` (1536px at 2xl screens), but the main content remained at `max-w-7xl`. This created a 256px width mismatch between header and content on large screens (1536px+).
+
+| Class | Width at 2xl+ screens |
+|-------|----------------------|
+| `container mx-auto` | 1536px |
+| `max-w-7xl mx-auto` | 1280px |
+
+**Fix Applied**:
+Standardized all header and content widths to `max-w-7xl` (1280px) for consistent alignment:
+
+1. **Header.tsx**: `container mx-auto` → `max-w-7xl mx-auto`
+2. **dashboard/page.tsx header**: `container mx-auto` → `max-w-7xl mx-auto`
+3. **page.tsx main content**: `container mx-auto` → `max-w-7xl mx-auto`
+
+**Commits**:
+- `13f1c776` - fix(#44): Standardize header and content widths to max-w-7xl
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging
+- ⚠️ Backend deployment failed (pre-existing build error, unrelated to this UI fix)
+
+**Testing Required**:
+1. View landing page and dashboard on large screens (1536px+)
+2. Verify header logo/navigation aligns consistently
+3. Test at various screen widths (1280px, 1440px, 1920px, 2560px)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #48: Event Times Timezone Conversion ✅ COMPLETE
+
+### PHASE 6A.X ISSUE #48: EVENT TIMES NOT DISPLAYED CORRECTLY - COMPLETE - 2026-01-31
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - QA READY**
+
+**GitHub Issue**: [#48](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/48) - When an event is created and published the times displayed in the 'view event' page is not converted to the time I created
+
+**Priority**: 🟡 **BUG FIX** - Timezone Handling
+
+**Root Cause Analysis**:
+The event times were not being displayed correctly because the frontend `datetime-local` input field returns local time without timezone information (e.g., `2024-01-15T14:00`). When this value was sent to the backend, it was being interpreted and stored as UTC without conversion.
+
+For example, when a user in EST (UTC-5) entered 2:00 PM:
+- Frontend sent: `2024-01-15T14:00` (no timezone)
+- Backend stored as: `2024-01-15T14:00:00Z` (incorrectly treated as UTC)
+- When displayed back: showed 9:00 AM EST (5 hours earlier)
+
+**Fix Applied**:
+Modified [EventCreationForm.tsx](../web/src/presentation/components/features/events/EventCreationForm.tsx) to convert local datetime to UTC before sending to backend:
+```typescript
+const startDateUtc = new Date(data.startDate).toISOString();
+const endDateUtc = new Date(data.endDate).toISOString();
+```
+
+**Additional Fixes**:
+- Resolved pre-existing TypeScript errors in 9 test files that were blocking deployment
+- Added missing vitest imports, fixed FeedItem/EventDto/MetroArea mock data to match updated interfaces
+
+**Commits**:
+- `f7eb7289` - fix(#48): Convert event times to UTC before sending to backend
+- `2e447b47` - fix: Resolve TypeScript errors in test files to unblock deployment
+
+**Deployment Status**:
+- ✅ UI deployed to Azure Staging
+- ✅ Backend deployed to Azure Staging
+
+**Testing Required**:
+1. Create a new event with specific start/end times
+2. Save and publish the event
+3. View the event details page
+4. Verify the displayed times match what was entered
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #46: Role Upgrade Notification Audit Logging ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #46: INCORRECT ROLE UPGRADE NOTIFICATION - PREVENTIVE MEASURES - 2026-01-31
 

@@ -7,7 +7,107 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.87 WEEK 4: HIGH PRIORITY HANDLER MIGRATIONS COMPLETE (2026-01-29)
+## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #47 EMAIL GROUPS CACHE FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #47 Email Groups Visibility
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit 996beb88
+**Priority**: 🔴 SECURITY BUG - Data Visibility Issue
+**GitHub Issue**: [#47](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/47)
+
+**Objective**: Fix issue where one event organizer can see email groups of other organizers.
+
+**Root Cause**: React Query cache key did NOT include user context. Same cache key used for all users caused data leakage on logout/login.
+
+**Fix Applied**:
+- ✅ **Header.tsx**: Added `queryClient.clear()` on logout to clear cache
+- ✅ **useEmailGroups.ts**: Added `userId` to query key for user-specific caching
+- ✅ **useEmailGroups.ts**: Added `enabled: !!userId` to prevent fetching for unauthenticated users
+
+**QA Testing Required**:
+1. Login as Organizer A, create email groups, logout
+2. Login as Organizer B, verify no groups from A visible
+3. Create event as B, verify email dropdown shows only B's groups
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #44 HEADER WIDTH ALIGNMENT COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #44 Top Ribbon Placement (Reopened)
+**Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ UI DEPLOYED - Commit 13f1c776
+**Priority**: 🟡 BUG FIX - UI Consistency
+**GitHub Issue**: [#44](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/44)
+
+**Objective**: Fix header/logo alignment inconsistency between pages on large screens.
+
+**Root Cause**: Width mismatch - `container` (1536px at 2xl) vs `max-w-7xl` (1280px). Previous fix changed header to `container` but content stayed at `max-w-7xl`.
+
+**Fix Applied**:
+- ✅ **Header.tsx**: `container mx-auto` → `max-w-7xl mx-auto`
+- ✅ **dashboard/page.tsx**: Header width `container mx-auto` → `max-w-7xl mx-auto`
+- ✅ **page.tsx**: Main content `container mx-auto` → `max-w-7xl mx-auto`
+
+**QA Testing Required**:
+1. Compare header alignment between landing page and dashboard on 1536px+ screens
+2. Verify consistent alignment at various screen widths
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #48 EVENT TIMES TIMEZONE FIX COMPLETE (2026-01-31)
+**Date**: 2026-01-31
+**Session**: Phase 6A.X - Issue #48 Event Times Timezone Conversion
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings (TypeScript)
+**Deployment**: ✅ DEPLOYED - Commits f7eb7289, 2e447b47
+**Priority**: 🟡 BUG FIX - Timezone Handling
+**GitHub Issue**: [#48](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/48)
+
+**Objective**: Fix event times being displayed incorrectly when events are created and published.
+
+**Root Cause**: Frontend `datetime-local` input returns local time without timezone info. Backend treated it as UTC without conversion.
+
+**Fix Applied**:
+- ✅ **EventCreationForm.tsx**: Convert local datetime to UTC ISO string before API call
+- ✅ **Test Files**: Fixed 9 test files with TypeScript errors blocking deployment
+
+**Files Modified**:
+- `web/src/presentation/components/features/events/EventCreationForm.tsx`
+- 9 test files (vitest imports, mock data fixes)
+
+**QA Testing Required**:
+1. Create event with specific times
+2. Verify displayed times match entered times
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.92: PAID EVENT CANCELLATION AUTO-REFUND COMPLETE (2026-01-30)
+**Date**: 2026-01-30
+**Session**: Phase 6A.92 - Paid Event Cancellation Auto-Refund (GitHub #32)
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Commit b0119805
+**Priority**: 🟡 FEATURE - Payment/Refund Workflow Enhancement
+**Tests**: 11 tests passing (4 new validation tests)
+
+**Objective**: Implement auto-refund for paid registrations when event is cancelled.
+
+**Implementation**:
+- ✅ **Validation**: Paid events require organizer contact before cancellation
+- ✅ **IRegistrationRefundService**: Shared webhook-based refund service
+- ✅ **Email Templates**: template-refund-requested, template-refund-completed
+- ✅ **Event Handlers**: RefundRequestedEventHandler, RefundCompletedEventHandler
+- ✅ **Refactored**: EventCancellationEmailJob, CancelRsvpCommandHandler
+
+**API Verification**:
+- ✅ Paid event WITHOUT contact: Returns 400 with validation error
+- ✅ Paid event WITH contact: Passes validation
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.87 WEEK 4: HIGH PRIORITY HANDLER MIGRATIONS COMPLETE (2026-01-29)
 **Date**: 2026-01-29
 **Session**: Phase 6A.87 Week 4 - High Priority Handler Migrations (Part 1)
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - API VERIFIED

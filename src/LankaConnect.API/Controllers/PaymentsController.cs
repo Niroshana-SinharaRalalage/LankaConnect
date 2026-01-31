@@ -252,15 +252,22 @@ public class PaymentsController : ControllerBase
 
             _logger.LogInformation("Processing webhook event {EventId} of type {EventType}", stripeEvent.Id, stripeEvent.Type);
 
-            // Check idempotency
+            // Check idempotency - skip only if event was fully processed
             if (await _webhookEventRepository.IsEventProcessedAsync(stripeEvent.Id))
             {
                 _logger.LogInformation("Event {EventId} already processed, skipping", stripeEvent.Id);
                 return Ok();
             }
 
-            // Record event
-            await _webhookEventRepository.RecordEventAsync(stripeEvent.Id, stripeEvent.Type);
+            // Record event only if it doesn't exist yet (prevents duplicate INSERT on retries)
+            if (!await _webhookEventRepository.EventExistsAsync(stripeEvent.Id))
+            {
+                await _webhookEventRepository.RecordEventAsync(stripeEvent.Id, stripeEvent.Type);
+            }
+            else
+            {
+                _logger.LogInformation("Event {EventId} exists but not processed, reprocessing", stripeEvent.Id);
+            }
 
             // Session 23 (Phase 2B): Process event based on type
             switch (stripeEvent.Type)

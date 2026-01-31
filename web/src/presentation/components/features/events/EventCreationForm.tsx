@@ -174,11 +174,17 @@ export function EventCreationForm() {
         }
       }
 
+      // Issue #48 Fix: Convert local datetime-local input values to UTC ISO strings
+      // The datetime-local input returns local time (e.g., "2024-01-15T14:00")
+      // We need to convert this to UTC before sending to the backend
+      const startDateUtc = new Date(data.startDate).toISOString();
+      const endDateUtc = new Date(data.endDate).toISOString();
+
       const eventData = {
         title: data.title,
         description: data.description,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: startDateUtc,
+        endDate: endDateUtc,
         organizerId: user.userId,
         capacity: data.capacity,
         category: data.category,
@@ -231,6 +237,14 @@ export function EventCreationForm() {
       };
 
       // PHASE 6A.10: Comprehensive payload logging
+      // Issue #48: Added timezone conversion logging
+      console.log('🕐 Timezone conversion (Issue #48 fix):', {
+        localStartInput: data.startDate,
+        localEndInput: data.endDate,
+        utcStartDate: startDateUtc,
+        utcEndDate: endDateUtc,
+        browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       console.log('📤 Creating event with payload:', JSON.stringify(eventData, null, 2));
       console.log('📊 Payload Analysis:', {
         hasLocation: hasCompleteLocation,

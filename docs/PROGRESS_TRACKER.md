@@ -1,9 +1,46 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-30 - Phase 6A.X Issue #44: Top Ribbon Placement Fix ✅ COMPLETE*
+*Last Updated: 2026-01-30 - Phase 6A.X Issues #27/#28: Newsletter Subscription Messages ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #44: Top Ribbon Placement Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.X Issues #27/#28: Newsletter Subscription Messages ✅ COMPLETE
+
+### PHASE 6A.X ISSUES #27 & #28: NEWSLETTER SUBSCRIPTION MESSAGES FIX - COMPLETE - 2026-01-30
+
+**Status**: ✅ **COMPLETE - BUILD VERIFIED - QA READY**
+
+**GitHub Issues**:
+- [#27](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/27) - Newsletter subscription confirmation message should not disappear
+- [#28](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/28) - Better message for already subscribed users
+
+**Priority**: 🟡 **BUG FIX** - UX Improvement
+
+**Root Cause**:
+1. **Issue #27**: Success message auto-dismissed after 3 seconds via `setTimeout`, too quick for users to read
+2. **Issue #28**: Backend returns specific error "Email is already subscribed" but frontend showed generic hardcoded message
+
+**Fix Applied**:
+- Added global `Toaster` component from react-hot-toast to providers.tsx
+- Refactored Footer.tsx newsletter subscription to use toast notifications for server responses
+- Success message now shows as toast (6 second duration, user can dismiss)
+- Already-subscribed users see specific info message with ℹ️ icon
+- Validation errors remain inline for immediate feedback
+
+**Files Modified**:
+- [providers.tsx](../web/src/app/providers.tsx) - Added Toaster provider
+- [Footer.tsx](../web/src/presentation/components/layout/Footer.tsx) - Refactored to use toast for server responses
+
+**Build Status**: ✅ Next.js build passed
+
+**Testing Required**:
+- Subscribe with new email - verify success toast appears for 6 seconds
+- Subscribe with already-subscribed email - verify info message appears
+- Test validation errors - verify inline error appears
+- Test toast on mobile viewport
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #44: Top Ribbon Placement Fix ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #44: TOP RIBBON/LOGO PLACEMENT FIX - COMPLETE - 2026-01-30
 
@@ -11,23 +48,8 @@
 
 **GitHub Issue**: [#44](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/44) - Top Ribbon (Menu) /logo placement change
 
-**Priority**: 🟡 **BUG FIX** - UI Consistency
-
-**Root Cause**:
-The Dashboard page had its own inline header implementation using `max-w-7xl mx-auto` container class instead of the shared Header component which uses `container mx-auto`. This caused different maximum widths between Dashboard and other pages on larger screens (>1280px).
-
-**Fix Applied**:
-Changed the Dashboard header container class from `max-w-7xl` to `container` to match the shared Header component pattern documented in UI_STYLE_GUIDE.md.
-
 **File Modified**:
 - [dashboard/page.tsx](../web/src/app/(dashboard)/dashboard/page.tsx) - Line 335: Changed container class
-
-**Build Status**: ✅ Next.js build passed
-
-**Testing Required**:
-- Visual comparison of Dashboard and Events page headers at 1920px width
-- Verify logo/navigation alignment is consistent
-- Cross-browser testing
 
 ---
 

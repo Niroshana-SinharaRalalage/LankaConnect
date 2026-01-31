@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { Logo } from '../atoms/Logo';
 import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
 import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
@@ -53,6 +54,8 @@ const Footer: React.FC = () => {
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [receiveAllLocations, setReceiveAllLocations] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2025);
+  // Phase 6A.X Issue #27/#28: Separate validation error state for inline display
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
@@ -86,8 +89,10 @@ const Footer: React.FC = () => {
     },
   ];
 
+  // Phase 6A.X Issue #27/#28: Refactored to use toast for server responses
   const handleNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setValidationError(null);
 
     console.log('[Footer] Newsletter form submitted:');
     console.log('  Email:', email);
@@ -95,15 +100,16 @@ const Footer: React.FC = () => {
     console.log('  Selected metro IDs:', selectedMetroIds);
     console.log('  Selected metro count:', selectedMetroIds.length);
 
+    // Client-side validation - use inline errors
     if (!email || !email.includes('@')) {
       console.log('[Footer] ❌ Validation failed: Invalid email');
-      setSubscribeStatus('error');
+      setValidationError('Please enter a valid email address.');
       return;
     }
 
     if (!receiveAllLocations && selectedMetroIds.length === 0) {
       console.log('[Footer] ❌ Validation failed: No metros selected and not receiving all locations');
-      setSubscribeStatus('error');
+      setValidationError('Please select at least one location or choose "All Locations".');
       return;
     }
 
@@ -132,21 +138,34 @@ const Footer: React.FC = () => {
       console.log('[Footer] Backend response:', response.status, data);
 
       if (data.success || data.Success) {
-        setSubscribeStatus('success');
+        // Phase 6A.X Issue #27: Use toast for success - doesn't auto-dismiss too quickly
+        toast.success(
+          'Thank you for subscribing! Please check your email to confirm your subscription.',
+          { duration: 6000 }
+        );
+        setSubscribeStatus('idle');
         setEmail('');
         setSelectedMetroIds([]);
         setReceiveAllLocations(false);
-
-        // Reset status after 3 seconds
-        setTimeout(() => {
-          setSubscribeStatus('idle');
-        }, 3000);
       } else {
-        setSubscribeStatus('error');
+        // Phase 6A.X Issue #28: Show specific backend error message
+        const errorMessage = data.message || data.Message || 'Subscription failed. Please try again.';
+
+        // Special handling for already-subscribed (friendlier message with info icon)
+        if (errorMessage.toLowerCase().includes('already subscribed')) {
+          toast('This email is already subscribed to our newsletter.', {
+            icon: 'ℹ️',
+            duration: 5000,
+          });
+        } else {
+          toast.error(errorMessage, { duration: 5000 });
+        }
+        setSubscribeStatus('idle');
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
-      setSubscribeStatus('error');
+      toast.error('Network error. Please check your connection and try again.', { duration: 5000 });
+      setSubscribeStatus('idle');
     }
   };
 
@@ -198,14 +217,10 @@ const Footer: React.FC = () => {
               </button>
             </form>
 
-            {subscribeStatus === 'error' && (
+            {/* Phase 6A.X Issue #27/#28: Inline validation errors only (server responses use toast) */}
+            {validationError && subscribeStatus !== 'loading' && (
               <p className="text-red-300 text-sm mt-2 text-center" role="alert">
-                Please enter a valid email address and select at least one location.
-              </p>
-            )}
-            {subscribeStatus === 'success' && (
-              <p className="text-green-300 text-sm mt-2 text-center" role="alert">
-                Thank you for subscribing! Please check your email to confirm your subscription.
+                {validationError}
               </p>
             )}
           </div>

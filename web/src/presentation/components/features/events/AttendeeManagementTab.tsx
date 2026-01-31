@@ -431,7 +431,8 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
             </div>
           ) : (
             /* Attendees Table - Phase 6A.71: Added vertical scrolling */
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto border rounded-lg">
+            /* Phase 6A.X Issue #43: Added isolation:isolate to contain sticky elements' stacking context */
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto border rounded-lg" style={{ isolation: 'isolate' }}>
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 z-10 bg-neutral-50">
                   <tr className="border-b border-neutral-200">

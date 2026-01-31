@@ -315,8 +315,8 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Navigation Buttons - Phase 6A.X Issue #43: Added relative z-20 to fix z-index stacking conflict with sticky table headers */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-20">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"

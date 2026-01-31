@@ -596,8 +596,30 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.91] [Webhook-Refund-1] Processing charge.refunded - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, StripeEventId: {StripeEventId}, AmountRefunded: {AmountRefunded}",
                 correlationId, charge.Id, stripeEvent.Id, charge.AmountRefunded);
 
-            // Get the latest refund from the charge (the one that triggered this webhook)
-            var latestRefund = charge.Refunds?.Data?.FirstOrDefault();
+            // Get the latest refund - try webhook payload first, then fetch from Stripe API
+            Refund? latestRefund = charge.Refunds?.Data?.FirstOrDefault();
+
+            // Phase 6A.X FIX: Webhook payload may not include Refunds collection - fetch from Stripe API
+            if (latestRefund == null)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.91] [Webhook-Refund-1b] Refunds not in webhook payload, fetching from Stripe API - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
+                    correlationId, charge.Id);
+
+                try
+                {
+                    var refundService = new RefundService(_stripeClient);
+                    var refunds = await refundService.ListAsync(new RefundListOptions { Charge = charge.Id, Limit = 1 });
+                    latestRefund = refunds.Data?.FirstOrDefault();
+                }
+                catch (StripeException ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[Phase 6A.91] [Webhook-Refund-WARN] Failed to fetch refunds from Stripe API - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
+                        correlationId, charge.Id);
+                }
+            }
+
             if (latestRefund == null)
             {
                 _logger.LogWarning(

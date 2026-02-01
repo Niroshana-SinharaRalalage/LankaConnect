@@ -229,13 +229,60 @@ public class Registration : BaseEntity
         }
     }
 
-    public void Confirm()
+    /// <summary>
+    /// Phase 6A.X FIX: Confirms a registration with payment status validation.
+    ///
+    /// CRITICAL GUARD: This method now validates that PaymentStatus is NOT Pending
+    /// before allowing confirmation. This prevents the Confirmed+Pending inconsistent
+    /// state that caused recurring bugs where registration details weren't displayed.
+    ///
+    /// For paid events, use CompletePayment() instead - it properly transitions
+    /// both Status (Preliminary → Confirmed) and PaymentStatus (Pending → Completed).
+    ///
+    /// Valid use cases for Confirm():
+    /// - Free events (PaymentStatus = NotRequired)
+    /// - Re-confirming cancelled registrations with completed payment
+    /// - Admin corrections with proper payment verification
+    /// </summary>
+    /// <returns>Result indicating success or failure with detailed error message</returns>
+    public Result Confirm()
     {
-        if (Status != RegistrationStatus.Confirmed)
+        // Already confirmed - no action needed
+        if (Status == RegistrationStatus.Confirmed)
         {
-            Status = RegistrationStatus.Confirmed;
-            MarkAsUpdated();
+            Console.WriteLine(
+                $"[Registration.Confirm] Registration already confirmed. " +
+                $"RegistrationId={Id}, EventId={EventId}");
+            return Result.Success();
         }
+
+        // CRITICAL GUARD: Prevent Confirmed + Pending state (root cause of recurring bug)
+        // This state is invalid because:
+        // 1. It indicates payment was never completed for a paid event
+        // 2. The frontend cannot properly display registration details
+        // 3. It bypasses the Three-State Lifecycle (Preliminary → Confirmed via CompletePayment)
+        if (PaymentStatus == PaymentStatus.Pending)
+        {
+            Console.WriteLine(
+                $"[Registration.Confirm] BLOCKED: Cannot confirm with PaymentStatus=Pending. " +
+                $"RegistrationId={Id}, EventId={EventId}, CurrentStatus={Status}. " +
+                $"Use CompletePayment() for paid events.");
+
+            return Result.Failure(
+                $"Cannot confirm registration with PaymentStatus=Pending. " +
+                $"For paid events, use CompletePayment() after payment succeeds via Stripe webhook. " +
+                $"RegistrationId={Id}, EventId={EventId}");
+        }
+
+        // Log successful confirmation
+        Console.WriteLine(
+            $"[Registration.Confirm] Confirming registration. " +
+            $"RegistrationId={Id}, EventId={EventId}, " +
+            $"FromStatus={Status}, PaymentStatus={PaymentStatus}");
+
+        Status = RegistrationStatus.Confirmed;
+        MarkAsUpdated();
+        return Result.Success();
     }
 
     public Result CheckIn()

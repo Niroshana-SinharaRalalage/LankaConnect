@@ -118,11 +118,13 @@ public class GetEmailTemplatesQueryHandler : IRequestHandler<GetEmailTemplatesQu
             {
                 stopwatch.Stop();
 
+                // Phase 6A.89 Enhancement: Log detailed exception info for better diagnostics
                 _logger.LogError(ex,
-                    "GetEmailTemplates FAILED: Exception occurred - Category={Category}, SearchTerm={SearchTerm}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    request.Category, request.SearchTerm, stopwatch.ElapsedMilliseconds, ex.Message);
+                    "GetEmailTemplates FAILED: Exception occurred - Category={Category}, SearchTerm={SearchTerm}, Duration={ElapsedMs}ms, ExceptionType={ExceptionType}, Error={ErrorMessage}, InnerError={InnerError}",
+                    request.Category, request.SearchTerm, stopwatch.ElapsedMilliseconds,
+                    ex.GetType().Name, ex.Message, ex.InnerException?.Message ?? "None");
 
-                return Result<GetEmailTemplatesResponse>.Failure("An error occurred while retrieving email templates");
+                return Result<GetEmailTemplatesResponse>.Failure($"An error occurred while retrieving email templates: {ex.Message}");
             }
         }
     }

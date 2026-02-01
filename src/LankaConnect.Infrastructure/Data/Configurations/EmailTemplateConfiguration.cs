@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Communications.Enums;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -51,9 +52,13 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
             .HasColumnType("text");
 
         // Configure enum with string conversion for better readability
+        // Phase 6A.89 Fix: Add fallback converter to gracefully handle invalid enum values in database
+        // If an invalid value is encountered (e.g., 'Registration'), fall back to Transactional
         builder.Property(e => e.Type)
             .HasColumnName("type")
-            .HasConversion<string>()
+            .HasConversion(
+                type => type.ToString(),
+                value => ParseEmailTypeWithFallback(value))
             .HasMaxLength(50)
             .IsRequired();
 
@@ -109,5 +114,19 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
 
         builder.HasIndex(e => e.CreatedAt)
             .HasDatabaseName("IX_EmailTemplates_CreatedAt");
+    }
+
+    /// <summary>
+    /// Phase 6A.89 Fix: Parse EmailType with fallback for invalid database values
+    /// Prevents query materialization failures when database contains invalid enum values
+    /// </summary>
+    private static EmailType ParseEmailTypeWithFallback(string value)
+    {
+        if (Enum.TryParse<EmailType>(value, ignoreCase: true, out var result))
+            return result;
+
+        // Fallback to Transactional for invalid values
+        // This matches the behavior of EmailTemplateCategory.FromDatabase()
+        return EmailType.Transactional;
     }
 }

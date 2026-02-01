@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { makeQueryClient } from '@/lib/react-query';
 import { AuthProvider } from '@/presentation/providers/AuthProvider';
+import { NumberInputScrollPrevention } from '@/presentation/components/utils/NumberInputScrollPrevention';
 
 /**
  * Providers Component
@@ -41,6 +42,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             error: { duration: 6000 },
           }}
         />
+        {/* Phase 6A.X Issue #20: Prevent scroll-to-change on number inputs globally */}
+        <NumberInputScrollPrevention />
       </AuthProvider>
     </QueryClientProvider>
   );

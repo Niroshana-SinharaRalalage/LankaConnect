@@ -769,6 +769,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
+                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1320,6 +1321,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
+                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1378,6 +1380,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
+                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1559,6 +1562,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <Footer />
 
       {/* Phase 6A.14: Edit Registration Modal */}
+      {/* Issue #51: Pass maxAttendeesPerRegistration to EditRegistrationModal */}
       <EditRegistrationModal
         open={showEditModal}
         onOpenChange={setShowEditModal}
@@ -1566,6 +1570,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         eventId={id}
         isFreeEvent={event?.isFree ?? true}
         spotsLeft={spotsLeft}
+        maxAttendeesPerRegistration={event?.maxAttendeesPerRegistration}
         onSave={handleEditRegistration}
         isSubmitting={isUpdatingRegistration}
       />

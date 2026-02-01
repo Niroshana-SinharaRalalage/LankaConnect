@@ -19,6 +19,7 @@ using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Application.Events.Commands.UpdateMaxAttendeesPerRegistration;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Commands.SendEventNotification;
@@ -363,6 +364,29 @@ public class EventsController : BaseController<EventsController>
             return BadRequest("Event ID mismatch");
         }
 
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Issue #51: Update max attendees per registration for an event
+    /// Allows event organizer to configure how many attendees can be added in a single registration
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="request">New max attendees value (1-50, cannot exceed event capacity)</param>
+    [HttpPut("{id:guid}/max-attendees-per-registration")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMaxAttendeesPerRegistration(Guid id, [FromBody] UpdateMaxAttendeesPerRegistrationRequest request)
+    {
+        Logger.LogInformation("[Issue #51] Updating max attendees per registration for event: {EventId}, NewMax: {NewMax}",
+            id, request.MaxAttendeesPerRegistration);
+
+        var command = new UpdateMaxAttendeesPerRegistrationCommand(id, request.MaxAttendeesPerRegistration);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -2363,3 +2387,8 @@ public record UpdateOpenSignUpItemRequest(
     string? ContactName = null,
     string? ContactEmail = null,
     string? ContactPhone = null);
+
+/// <summary>
+/// Issue #51: Request to update max attendees per registration
+/// </summary>
+public record UpdateMaxAttendeesPerRegistrationRequest(int MaxAttendeesPerRegistration);

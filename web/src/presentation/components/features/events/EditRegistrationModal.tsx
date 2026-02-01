@@ -37,6 +37,8 @@ interface EditRegistrationModalProps {
   eventId: string;
   isFreeEvent: boolean;
   spotsLeft: number;
+  // Issue #51: Max attendees per registration (configurable by event organizer)
+  maxAttendeesPerRegistration?: number;
   onSave: (data: EditRegistrationData) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -55,6 +57,7 @@ export function EditRegistrationModal({
   eventId,
   isFreeEvent,
   spotsLeft,
+  maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   onSave,
   isSubmitting = false,
 }: EditRegistrationModalProps) {
@@ -72,8 +75,9 @@ export function EditRegistrationModal({
   const originalAttendeeCount = registration?.attendees?.length || registration?.quantity || 1;
 
   // Calculate max attendees allowed
+  // Issue #51: Use event's configured max attendees per registration
   const maxAttendeesAllowed = isFreeEvent
-    ? Math.min(10, originalAttendeeCount + spotsLeft) // Free: can add up to event capacity
+    ? Math.min(maxAttendeesPerRegistration, originalAttendeeCount + spotsLeft) // Free: can add up to event capacity
     : originalAttendeeCount; // Paid: locked to original count
 
   // Initialize form with registration data when modal opens

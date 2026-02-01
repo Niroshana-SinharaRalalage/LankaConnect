@@ -32,6 +32,8 @@ interface EventRegistrationFormProps {
   // Phase 6D: Group tiered pricing support
   hasGroupPricing?: boolean;
   groupPricingTiers?: readonly GroupPricingTierDto[];
+  // Issue #51: Max attendees per registration (configurable by event organizer)
+  maxAttendeesPerRegistration?: number;
   isProcessing: boolean;
   onSubmit: (data: AnonymousRegistrationRequest | RsvpRequest) => Promise<void>;
   error?: string | null;
@@ -48,6 +50,7 @@ export function EventRegistrationForm({
   childAgeLimit,
   hasGroupPricing,
   groupPricingTiers,
+  maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   isProcessing,
   onSubmit,
   error,
@@ -117,7 +120,8 @@ export function EventRegistrationForm({
 
   // Add attendee function
   const handleAddAttendee = () => {
-    const maxAttendees = Math.min(10, spotsLeft);
+    // Issue #51: Use event's configured max attendees per registration
+    const maxAttendees = Math.min(maxAttendeesPerRegistration, spotsLeft);
     if (attendees.length < maxAttendees) {
       setAttendees([...attendees, { name: '', ageCategory: '', gender: null }]);
       setTouched(prev => ({
@@ -298,7 +302,8 @@ export function EventRegistrationForm({
   const totalPrice = calculateTotalPrice();
   const applicableTier = hasGroupPricing ? findApplicableTier() : null;
 
-  const maxAttendees = Math.min(10, spotsLeft);
+  // Issue #51: Use event's configured max attendees per registration
+    const maxAttendees = Math.min(maxAttendeesPerRegistration, spotsLeft);
   const canAddMore = attendees.length < maxAttendees;
 
   return (

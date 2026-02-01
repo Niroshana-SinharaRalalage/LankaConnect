@@ -129,13 +129,15 @@ public class Registration : BaseEntity
 
     // Session 21: Factory method for multi-attendee registration with contact info
     // Session 23: Updated to support payment status for paid events
+    // Issue #51: Added maxAttendeesPerRegistration parameter (configurable by event organizer)
     public static Result<Registration> CreateWithAttendees(
         Guid eventId,
         Guid? userId,
         IEnumerable<AttendeeDetails> attendees,
         RegistrationContact contact,
         Money totalPrice,
-        bool isPaidEvent = false)
+        bool isPaidEvent = false,
+        int maxAttendeesPerRegistration = 10)  // Issue #51: Default 10 for backward compatibility
     {
         if (eventId == Guid.Empty)
             return Result<Registration>.Failure("Event ID is required");
@@ -145,9 +147,11 @@ public class Registration : BaseEntity
 
         var attendeeList = attendees.ToList();
 
-        // Validate max attendees (business rule from ADR)
-        if (attendeeList.Count > 10)
-            return Result<Registration>.Failure("Maximum 10 attendees per registration");
+        // Issue #51: Validate max attendees using event's configured limit
+        // Also enforce system maximum of 50 as safety net
+        var effectiveMax = Math.Min(maxAttendeesPerRegistration, Event.SYSTEM_MAX_ATTENDEES_PER_REGISTRATION);
+        if (attendeeList.Count > effectiveMax)
+            return Result<Registration>.Failure($"Maximum {effectiveMax} attendees per registration");
 
         if (contact == null)
             return Result<Registration>.Failure("Contact information is required");
@@ -631,8 +635,9 @@ public class Registration : BaseEntity
     /// </summary>
     /// <param name="newAttendees">Updated list of attendees</param>
     /// <param name="newContact">Updated contact information</param>
+    /// <param name="maxAttendeesPerRegistration">Issue #51: Event's configured max attendees (default 10)</param>
     /// <returns>Result indicating success or failure with error message</returns>
-    public Result UpdateDetails(IEnumerable<AttendeeDetails> newAttendees, RegistrationContact newContact)
+    public Result UpdateDetails(IEnumerable<AttendeeDetails> newAttendees, RegistrationContact newContact, int maxAttendeesPerRegistration = 10)
     {
         // Validation: Attendees list cannot be null or empty
         if (newAttendees == null || !newAttendees.Any())
@@ -640,9 +645,10 @@ public class Registration : BaseEntity
 
         var attendeeList = newAttendees.ToList();
 
-        // Validation: Maximum 10 attendees
-        if (attendeeList.Count > 10)
-            return Result.Failure("Maximum 10 attendees per registration");
+        // Issue #51: Validate max attendees using event's configured limit
+        var effectiveMax = Math.Min(maxAttendeesPerRegistration, Event.SYSTEM_MAX_ATTENDEES_PER_REGISTRATION);
+        if (attendeeList.Count > effectiveMax)
+            return Result.Failure($"Maximum {effectiveMax} attendees per registration");
 
         // Validation: Contact is required
         if (newContact == null)

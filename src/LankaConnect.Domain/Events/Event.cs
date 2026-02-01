@@ -48,6 +48,18 @@ public class Event : BaseEntity
     /// </summary>
     public bool IsFreeEvent { get; private set; }
 
+    /// <summary>
+    /// Issue #51: Maximum number of attendees allowed per single registration
+    /// Configurable by event organizer via /events/{id}/manage page
+    /// Default: 10 (backward compatibility)
+    /// System Maximum: 50 (safety net to prevent abuse)
+    /// Cannot exceed event capacity
+    /// </summary>
+    public int MaxAttendeesPerRegistration { get; private set; } = 10;
+
+    // System-wide maximum for safety (prevents one registration from booking entire large event)
+    public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
+
     // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
     public string? OrganizerContactName { get; private set; }
@@ -347,13 +359,15 @@ public class Event : BaseEntity
         bool isPaidEvent = !IsFree();
 
         // Create registration with all attendees
+        // Issue #51: Pass event's configured max attendees per registration
         var registrationResult = Registration.CreateWithAttendees(
             Id,
             userId,
             attendeeList,
             contact,
             totalPrice!,
-            isPaidEvent);
+            isPaidEvent,
+            MaxAttendeesPerRegistration);
 
         if (registrationResult.IsFailure)
             return Result.Failure(registrationResult.Errors);
@@ -666,13 +680,61 @@ public class Event : BaseEntity
 
         var previousCapacity = Capacity;
         Capacity = newCapacity;
+
+        // Issue #51: Auto-adjust MaxAttendeesPerRegistration if it exceeds new capacity
+        if (MaxAttendeesPerRegistration > newCapacity)
+        {
+            MaxAttendeesPerRegistration = newCapacity;
+        }
+
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventCapacityUpdatedEvent(Id, previousCapacity, newCapacity, DateTime.UtcNow));
-        
+
         return Result.Success();
     }
+
+    #region MaxAttendeesPerRegistration Management (Issue #51)
+
+    /// <summary>
+    /// Updates the maximum number of attendees allowed per single registration
+    /// Issue #51: Configurable by event organizer
+    /// </summary>
+    /// <param name="maxAttendees">New maximum (1 to min(eventCapacity, 50))</param>
+    /// <returns>Result indicating success or failure</returns>
+    public Result UpdateMaxAttendeesPerRegistration(int maxAttendees)
+    {
+        // Validation: Must be at least 1
+        if (maxAttendees < 1)
+            return Result.Failure("Maximum attendees per registration must be at least 1");
+
+        // Validation: Cannot exceed system maximum (safety net)
+        if (maxAttendees > SYSTEM_MAX_ATTENDEES_PER_REGISTRATION)
+            return Result.Failure($"Maximum attendees per registration cannot exceed {SYSTEM_MAX_ATTENDEES_PER_REGISTRATION}");
+
+        // Validation: Cannot exceed event capacity
+        if (maxAttendees > Capacity)
+            return Result.Failure($"Maximum attendees per registration cannot exceed event capacity ({Capacity})");
+
+        MaxAttendeesPerRegistration = maxAttendees;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Gets the effective maximum attendees for a new registration
+    /// Takes into account configured limit, event capacity, and spots left
+    /// </summary>
+    /// <returns>Maximum attendees allowed for a new registration</returns>
+    public int GetEffectiveMaxAttendeesPerRegistration()
+    {
+        var spotsLeft = Capacity - CurrentRegistrations;
+        return Math.Min(MaxAttendeesPerRegistration, spotsLeft);
+    }
+
+    #endregion
 
     public Result HasSchedulingConflict(Event otherEvent)
     {

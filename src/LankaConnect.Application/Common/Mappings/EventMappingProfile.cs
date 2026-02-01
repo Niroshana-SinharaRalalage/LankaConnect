@@ -29,6 +29,8 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title.Value))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description.Value))
             .ForMember(dest => dest.CurrentRegistrations, opt => opt.MapFrom(src => src.CurrentRegistrations))
+            // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
+            .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
             // Location mapping (nullable)
             .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Street : null))

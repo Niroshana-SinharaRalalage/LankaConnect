@@ -236,6 +236,18 @@ export class EventsRepository {
   }
 
   /**
+   * Issue #51: Update max attendees per registration
+   * Allows event organizers to configure how many attendees can be added in a single registration
+   * @param id Event ID
+   * @param maxAttendeesPerRegistration New max value (1 to min(eventCapacity, 50))
+   */
+  async updateMaxAttendeesPerRegistration(id: string, maxAttendeesPerRegistration: number): Promise<void> {
+    await apiClient.put<void>(`${this.basePath}/${id}/max-attendees-per-registration`, {
+      maxAttendeesPerRegistration,
+    });
+  }
+
+  /**
    * Cancel event with reason
    * Notifies all registered users
    *

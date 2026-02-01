@@ -15,6 +15,13 @@ public record EventDto
     public Guid OrganizerId { get; init; }
     public int Capacity { get; init; }
     public int CurrentRegistrations { get; init; }
+
+    /// <summary>
+    /// Issue #51: Maximum attendees allowed per single registration
+    /// Configurable by event organizer (default: 10, max: 50)
+    /// </summary>
+    public int MaxAttendeesPerRegistration { get; init; } = 10;
+
     public EventStatus Status { get; init; }
     public EventCategory Category { get; init; }
     public DateTime CreatedAt { get; init; }

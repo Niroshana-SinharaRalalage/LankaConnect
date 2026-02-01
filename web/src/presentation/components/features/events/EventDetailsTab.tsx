@@ -9,7 +9,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -20,7 +20,12 @@ import {
   Video as VideoIcon,
   Mail,
   AlertTriangle,
+  Settings,
+  Save,
+  X,
+  Edit,
 } from 'lucide-react';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
@@ -46,8 +51,36 @@ export function EventDetailsTab({
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
 
+  // Issue #51: State for editing max attendees per registration
+  const [isEditingMaxAttendees, setIsEditingMaxAttendees] = useState(false);
+  const [maxAttendeesValue, setMaxAttendeesValue] = useState(event.maxAttendeesPerRegistration || 10);
+  const [isSavingMaxAttendees, setIsSavingMaxAttendees] = useState(false);
+  const [maxAttendeesError, setMaxAttendeesError] = useState<string | null>(null);
+
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
+
+  // Issue #51: Handle saving max attendees per registration
+  const handleSaveMaxAttendees = async () => {
+    try {
+      setIsSavingMaxAttendees(true);
+      setMaxAttendeesError(null);
+      await eventsRepository.updateMaxAttendeesPerRegistration(event.id, maxAttendeesValue);
+      await onRefetch();
+      setIsEditingMaxAttendees(false);
+    } catch (err) {
+      console.error('Failed to update max attendees per registration:', err);
+      setMaxAttendeesError(err instanceof Error ? err.message : 'Failed to update. Please try again.');
+    } finally {
+      setIsSavingMaxAttendees(false);
+    }
+  };
+
+  const handleCancelEditMaxAttendees = () => {
+    setMaxAttendeesValue(event.maxAttendeesPerRegistration || 10);
+    setIsEditingMaxAttendees(false);
+    setMaxAttendeesError(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -201,6 +234,73 @@ export function EventDetailsTab({
               ) : (
                 <Badge className="bg-yellow-100 text-yellow-700">Paid Event</Badge>
               )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Issue #51: Registration Settings Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ color: '#8B1538' }}>Registration Settings</CardTitle>
+          <CardDescription>Configure how attendees can register for this event</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+            <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+              <Settings className="h-4 w-4 text-[#FF7900]" />
+              Max per Registration:
+            </span>
+            <div>
+              {isEditingMaxAttendees ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.min(event.capacity, 50)}
+                    value={maxAttendeesValue}
+                    onChange={(e) => setMaxAttendeesValue(parseInt(e.target.value) || 1)}
+                    className="w-20 px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-[#FF7900]"
+                    disabled={isSavingMaxAttendees}
+                  />
+                  <span className="text-xs text-neutral-500">(1-{Math.min(event.capacity, 50)})</span>
+                  <button
+                    onClick={handleSaveMaxAttendees}
+                    disabled={isSavingMaxAttendees}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    title="Save"
+                  >
+                    <Save className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleCancelEditMaxAttendees}
+                    disabled={isSavingMaxAttendees}
+                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    title="Cancel"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-neutral-900">
+                    {event.maxAttendeesPerRegistration || 10} attendees
+                  </span>
+                  <button
+                    onClick={() => setIsEditingMaxAttendees(true)}
+                    className="p-1 text-[#FF7900] hover:bg-orange-50 rounded"
+                    title="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {maxAttendeesError && (
+                <p className="text-xs text-red-600 mt-1">{maxAttendeesError}</p>
+              )}
+              <p className="text-xs text-neutral-500 mt-1">
+                Maximum number of attendees that can be added in a single registration
+              </p>
             </div>
           </div>
         </CardContent>

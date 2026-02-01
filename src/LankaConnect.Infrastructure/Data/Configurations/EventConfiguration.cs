@@ -49,6 +49,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Capacity)
             .IsRequired();
 
+        // Issue #51: MaxAttendeesPerRegistration - configurable limit per single registration
+        builder.Property(e => e.MaxAttendeesPerRegistration)
+            .HasColumnName("max_attendees_per_registration")
+            .IsRequired()
+            .HasDefaultValue(10);  // Backward compatibility: default 10 for existing events
+
         // Configure enum
         builder.Property(e => e.Status)
             .HasConversion<string>()

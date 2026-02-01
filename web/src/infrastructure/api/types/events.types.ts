@@ -237,6 +237,11 @@ export interface EventDto {
   organizerId: string;
   capacity: number;
   currentRegistrations: number;
+  /**
+   * Issue #51: Maximum attendees allowed per single registration
+   * Configurable by event organizer (default: 10, max: 50)
+   */
+  maxAttendeesPerRegistration: number;
   status: EventStatus;
   category: EventCategory;
   createdAt: string;

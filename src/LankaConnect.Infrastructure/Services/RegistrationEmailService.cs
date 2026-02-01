@@ -3,6 +3,7 @@ using System.Text;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
@@ -15,20 +16,24 @@ namespace LankaConnect.Infrastructure.Services;
 /// Phase 6A.X: Shared service for sending registration confirmation emails.
 /// Consolidates email logic from multiple handlers to eliminate duplication.
 /// Supports both free and paid events, member and anonymous registrations.
+/// Phase 6A.X Issue #39: Added EventDetailsUrl to email templates.
 /// </summary>
 public class RegistrationEmailService : IRegistrationEmailService
 {
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationEmailService> _logger;
 
     public RegistrationEmailService(
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationEmailService> logger)
     {
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -67,6 +72,9 @@ public class RegistrationEmailService : IRegistrationEmailService
             // Format event date/time range
             var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
 
+            // Phase 6A.X Issue #39: Build event details URL for the email
+            var eventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+
             // Prepare email parameters
             var parameters = new Dictionary<string, object>
             {
@@ -74,6 +82,7 @@ public class RegistrationEmailService : IRegistrationEmailService
                 { "EventTitle", @event.Title.Value },
                 { "EventDateTime", eventDateTimeRange },
                 { "EventLocation", GetEventLocationString(@event) },
+                { "EventDetailsUrl", eventDetailsUrl }, // Phase 6A.X Issue #39: Link to view event details
                 { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
                 { "Attendees", attendeeDetailsHtml },
                 { "HasAttendeeDetails", hasAttendeeDetails },
@@ -186,6 +195,9 @@ public class RegistrationEmailService : IRegistrationEmailService
             // Format event date/time range
             var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
 
+            // Phase 6A.X Issue #39: Build event details URL for the email
+            var eventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+
             // Prepare email parameters
             var parameters = new Dictionary<string, object>
             {
@@ -193,6 +205,7 @@ public class RegistrationEmailService : IRegistrationEmailService
                 { "EventTitle", @event.Title.Value },
                 { "EventDateTime", eventDateTimeRange },
                 { "EventLocation", GetEventLocationString(@event) },
+                { "EventDetailsUrl", eventDetailsUrl }, // Phase 6A.X Issue #39: Link to view event details
                 { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
                 { "Attendees", attendeeDetailsHtml },
                 { "HasAttendeeDetails", hasAttendeeDetails },

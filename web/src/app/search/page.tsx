@@ -19,15 +19,17 @@ import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData'
 /**
  * Search Results Page
  * Phase 6A.59: Unified search across Events and Business
+ * Phase 6A.X Issue #36: Added filter to exclude cancelled events
  *
  * Features:
  * - Tab-based interface (Events, Business, Forums, Marketplace)
- * - URL-based state management (q, type, page params)
+ * - URL-based state management (q, type, page, hideCancelled params)
  * - Pagination per tab
  * - Coming Soon placeholders for Forums/Marketplace
  * - Reuses existing EventCard and BusinessCard components
+ * - Optional filter to hide cancelled events
  *
- * URL Format: /search?q=yoga&type=events&page=1
+ * URL Format: /search?q=yoga&type=events&page=1&hideCancelled=true
  */
 function SearchPageContent() {
   const router = useRouter();
@@ -38,9 +40,12 @@ function SearchPageContent() {
   const query = searchParams?.get('q') || '';
   const type = (searchParams?.get('type') || 'events') as 'events' | 'business' | 'forums' | 'marketplace';
   const page = parseInt(searchParams?.get('page') || '1');
+  // Phase 6A.X Issue #36: Extract hideCancelled filter from URL
+  const hideCancelled = searchParams?.get('hideCancelled') === 'true';
 
   // Fetch search results
-  const { data, isLoading, error } = useUnifiedSearch(query, type, page);
+  // Phase 6A.X Issue #36: Pass excludeCancelled to filter out cancelled events
+  const { data, isLoading, error } = useUnifiedSearch(query, type, page, 20, hideCancelled);
 
   // Phase 6A.46: Fetch user RSVPs for registration badges (events only)
   const { data: userRsvps } = useUserRsvps({ enabled: !!user && type === 'events' });
@@ -64,13 +69,32 @@ function SearchPageContent() {
   }, [categories]);
 
   // Handle tab change
+  // Phase 6A.X Issue #36: Reset hideCancelled when changing tabs (only relevant for events)
   const handleTabChange = (newType: 'events' | 'business' | 'forums' | 'marketplace') => {
     router.push(`/search?q=${encodeURIComponent(query)}&type=${newType}`);
   };
 
   // Handle page change
+  // Phase 6A.X Issue #36: Preserve hideCancelled when changing pages
   const handlePageChange = (newPage: number) => {
-    router.push(`/search?q=${encodeURIComponent(query)}&type=${type}&page=${newPage}`);
+    const params = new URLSearchParams({
+      q: query,
+      type,
+      page: String(newPage),
+    });
+    if (hideCancelled) params.set('hideCancelled', 'true');
+    router.push(`/search?${params.toString()}`);
+  };
+
+  // Phase 6A.X Issue #36: Handle hide cancelled toggle
+  const handleHideCancelledChange = (checked: boolean) => {
+    const params = new URLSearchParams({
+      q: query,
+      type,
+      page: '1', // Reset to page 1 when filter changes
+    });
+    if (checked) params.set('hideCancelled', 'true');
+    router.push(`/search?${params.toString()}`);
   };
 
   // Tab configuration
@@ -127,6 +151,23 @@ function SearchPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Phase 6A.X Issue #36: Filter options (only for events tab) */}
+      {type === 'events' && query && (
+        <div className="bg-neutral-50 border-b border-neutral-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideCancelled}
+                onChange={(e) => handleHideCancelledChange(e.target.checked)}
+                className="w-4 h-4 text-orange-500 border-neutral-300 rounded focus:ring-orange-500 focus:ring-2"
+              />
+              <span className="text-sm text-neutral-700">Hide cancelled events</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Search Results */}
       <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">

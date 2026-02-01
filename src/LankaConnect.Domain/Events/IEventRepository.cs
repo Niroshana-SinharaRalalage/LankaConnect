@@ -29,6 +29,9 @@ public interface IEventRepository : IRepository<Event>
     /// Search events using PostgreSQL full-text search with ranking
     /// Returns matching events ordered by relevance and pagination info
     /// </summary>
+    /// <summary>
+    /// Phase 6A.X Issue #36: Added excludeCancelled parameter to allow filtering out cancelled events
+    /// </summary>
     Task<(IReadOnlyList<Event> Events, int TotalCount)> SearchAsync(
         string searchTerm,
         int limit,
@@ -36,6 +39,7 @@ public interface IEventRepository : IRepository<Event>
         EventCategory? category = null,
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
+        bool excludeCancelled = false,
         CancellationToken cancellationToken = default);
 
     // Badge cleanup queries (Phase 6A.27)

@@ -8,6 +8,7 @@ namespace LankaConnect.Application.Events.Queries.SearchEvents;
 /// <summary>
 /// Query to search events using PostgreSQL full-text search
 /// Searches across event titles and descriptions with ranking
+/// Phase 6A.X Issue #36: Added ExcludeCancelled parameter to filter out cancelled events
 /// </summary>
 public record SearchEventsQuery(
     string SearchTerm,
@@ -15,5 +16,6 @@ public record SearchEventsQuery(
     int PageSize = 20,
     EventCategory? Category = null,
     bool? IsFreeOnly = null,
-    DateTime? StartDateFrom = null
+    DateTime? StartDateFrom = null,
+    bool ExcludeCancelled = false
 ) : IQuery<PagedResult<EventSearchResultDto>>;

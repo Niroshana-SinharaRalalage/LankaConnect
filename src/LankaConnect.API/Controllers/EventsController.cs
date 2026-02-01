@@ -136,6 +136,7 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Search events using full-text search (Epic 2 Phase 3 - PostgreSQL FTS)
+    /// Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
     /// </summary>
     /// <param name="searchTerm">Search term to match against event titles and descriptions</param>
     /// <param name="page">Page number (default: 1)</param>
@@ -143,6 +144,7 @@ public class EventsController : BaseController<EventsController>
     /// <param name="category">Optional category filter</param>
     /// <param name="isFreeOnly">Optional filter for free events only</param>
     /// <param name="startDateFrom">Optional filter for events starting from this date</param>
+    /// <param name="excludeCancelled">If true, excludes cancelled events from results (default: false)</param>
     /// <returns>Paginated list of matching events ordered by relevance</returns>
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<EventSearchResultDto>), StatusCodes.Status200OK)]
@@ -153,12 +155,13 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] int pageSize = 20,
         [FromQuery] EventCategory? category = null,
         [FromQuery] bool? isFreeOnly = null,
-        [FromQuery] DateTime? startDateFrom = null)
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] bool excludeCancelled = false)
     {
-        Logger.LogInformation("Searching events: term='{SearchTerm}', page={Page}, pageSize={PageSize}, category={Category}",
-            searchTerm, page, pageSize, category);
+        Logger.LogInformation("Searching events: term='{SearchTerm}', page={Page}, pageSize={PageSize}, category={Category}, excludeCancelled={ExcludeCancelled}",
+            searchTerm, page, pageSize, category, excludeCancelled);
 
-        var query = new SearchEventsQuery(searchTerm, page, pageSize, category, isFreeOnly, startDateFrom);
+        var query = new SearchEventsQuery(searchTerm, page, pageSize, category, isFreeOnly, startDateFrom, excludeCancelled);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

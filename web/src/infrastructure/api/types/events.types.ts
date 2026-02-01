@@ -461,6 +461,7 @@ export interface GetEventsRequest {
 
 /**
  * Search events request with pagination
+ * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
  */
 export interface SearchEventsRequest {
   searchTerm: string;
@@ -469,6 +470,7 @@ export interface SearchEventsRequest {
   category?: EventCategory;
   isFreeOnly?: boolean;
   startDateFrom?: string;
+  excludeCancelled?: boolean;
 }
 
 /**

@@ -8,25 +8,29 @@ import type { BusinessDto } from '@/infrastructure/api/types/business.types';
 /**
  * Unified Search Hook
  * Phase 6A.59: Consolidates search across Events and Business
+ * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
  *
  * Usage:
  * ```tsx
  * const { data, isLoading, error } = useUnifiedSearch('yoga', 'events', 1);
+ * const { data, isLoading, error } = useUnifiedSearch('yoga', 'events', 1, 20, true); // Exclude cancelled
  * ```
  *
  * @param searchTerm - The search query
  * @param type - Search category ('events' | 'business' | 'forums' | 'marketplace')
  * @param page - Current page number (default: 1)
  * @param pageSize - Results per page (default: 20)
+ * @param excludeCancelled - If true, excludes cancelled events from results (default: false)
  */
 export function useUnifiedSearch(
   searchTerm: string,
   type: 'events' | 'business' | 'forums' | 'marketplace',
   page: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
+  excludeCancelled: boolean = false
 ) {
   return useQuery({
-    queryKey: ['unified-search', searchTerm, type, page, pageSize],
+    queryKey: ['unified-search', searchTerm, type, page, pageSize, excludeCancelled],
     queryFn: async (): Promise<UnifiedSearchResult> => {
       if (!searchTerm.trim()) {
         // Return empty result if no search term
@@ -35,10 +39,12 @@ export function useUnifiedSearch(
 
       if (type === 'events') {
         // Call Events search API
+        // Phase 6A.X Issue #36: Pass excludeCancelled to filter out cancelled events
         const result = await eventsRepository.searchEvents({
           searchTerm,
           page,
           pageSize,
+          excludeCancelled,
         });
 
         // Convert PagedResult to unified format

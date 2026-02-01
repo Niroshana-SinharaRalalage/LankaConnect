@@ -40,8 +40,8 @@ public class SearchEventsQueryHandler : IQueryHandler<SearchEventsQuery, PagedRe
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "SearchEvents START: SearchTerm={SearchTerm}, Page={Page}, PageSize={PageSize}, Category={Category}, IsFreeOnly={IsFreeOnly}, StartDateFrom={StartDateFrom}",
-                request.SearchTerm, request.Page, request.PageSize, request.Category, request.IsFreeOnly, request.StartDateFrom);
+                "SearchEvents START: SearchTerm={SearchTerm}, Page={Page}, PageSize={PageSize}, Category={Category}, IsFreeOnly={IsFreeOnly}, StartDateFrom={StartDateFrom}, ExcludeCancelled={ExcludeCancelled}",
+                request.SearchTerm, request.Page, request.PageSize, request.Category, request.IsFreeOnly, request.StartDateFrom, request.ExcludeCancelled);
 
             try
             {
@@ -72,6 +72,7 @@ public class SearchEventsQueryHandler : IQueryHandler<SearchEventsQuery, PagedRe
                 var offset = (request.Page - 1) * request.PageSize;
 
                 // Execute search query
+                // Phase 6A.X Issue #36: Pass excludeCancelled parameter to filter out cancelled events
                 var (events, totalCount) = await _eventRepository.SearchAsync(
                     request.SearchTerm,
                     request.PageSize,
@@ -79,6 +80,7 @@ public class SearchEventsQueryHandler : IQueryHandler<SearchEventsQuery, PagedRe
                     request.Category,
                     request.IsFreeOnly,
                     request.StartDateFrom,
+                    request.ExcludeCancelled,
                     cancellationToken);
 
                 _logger.LogInformation(

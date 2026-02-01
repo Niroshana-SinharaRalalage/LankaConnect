@@ -513,6 +513,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         EventCategory? category = null,
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
+        bool excludeCancelled = false,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "Search"))
@@ -590,11 +591,24 @@ public class EventRepository : Repository<Event>, IEventRepository
         }
 
         // Add status filter
-        var statusParamIndex1 = parameters.Count;
-        var statusParamIndex2 = parameters.Count + 1;
-        whereConditions.Add($@"e.""Status"" IN ({{{statusParamIndex1}}}, {{{statusParamIndex2}}})");
-        parameters.Add(EventStatus.Published.ToString());  // "Published" - string enum value
-        parameters.Add(EventStatus.Cancelled.ToString());   // "Cancelled" - string enum value (user wants to see these)
+        // Phase 6A.X Issue #36: Conditionally include/exclude Cancelled events based on excludeCancelled parameter
+        if (excludeCancelled)
+        {
+            // Only show Published events (exclude Cancelled)
+            var statusParamIndex = parameters.Count;
+            whereConditions.Add($@"e.""Status"" = {{{statusParamIndex}}}");
+            parameters.Add(EventStatus.Published.ToString());
+            _repoLogger.LogInformation("[SEARCH-2A] Excluding cancelled events - only showing Published");
+        }
+        else
+        {
+            // Show both Published and Cancelled events (original behavior)
+            var statusParamIndex1 = parameters.Count;
+            var statusParamIndex2 = parameters.Count + 1;
+            whereConditions.Add($@"e.""Status"" IN ({{{statusParamIndex1}}}, {{{statusParamIndex2}}})");
+            parameters.Add(EventStatus.Published.ToString());  // "Published" - string enum value
+            parameters.Add(EventStatus.Cancelled.ToString());   // "Cancelled" - string enum value (user wants to see these)
+        }
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",
             string.Join(" AND ", whereConditions), string.Join(", ", parameters));

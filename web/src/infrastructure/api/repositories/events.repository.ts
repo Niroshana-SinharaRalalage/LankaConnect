@@ -118,6 +118,7 @@ export class EventsRepository {
   /**
    * Search events using full-text search (PostgreSQL FTS)
    * Returns paginated results with relevance scores
+   * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
    */
   async searchEvents(request: SearchEventsRequest): Promise<PagedResult<EventSearchResultDto>> {
     const params = new URLSearchParams({
@@ -129,6 +130,7 @@ export class EventsRepository {
     if (request.category !== undefined) params.append('category', String(request.category));
     if (request.isFreeOnly !== undefined) params.append('isFreeOnly', String(request.isFreeOnly));
     if (request.startDateFrom) params.append('startDateFrom', request.startDateFrom);
+    if (request.excludeCancelled !== undefined) params.append('excludeCancelled', String(request.excludeCancelled));
 
     return await apiClient.get<PagedResult<EventSearchResultDto>>(
       `${this.basePath}/search?${params.toString()}`

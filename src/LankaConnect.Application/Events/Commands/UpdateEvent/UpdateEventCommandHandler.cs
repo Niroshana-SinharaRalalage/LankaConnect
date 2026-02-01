@@ -255,6 +255,14 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         if (capacityResult.IsFailure)
             return capacityResult;
 
+        // Issue #51: Update max attendees per registration if provided
+        if (request.MaxAttendeesPerRegistration.HasValue)
+        {
+            var maxAttendeesResult = @event.UpdateMaxAttendeesPerRegistration(request.MaxAttendeesPerRegistration.Value);
+            if (maxAttendeesResult.IsFailure)
+                return maxAttendeesResult;
+        }
+
         if (request.Category.HasValue)
         {
             var categoryProperty = typeof(Event).GetProperty(nameof(Event.Category));

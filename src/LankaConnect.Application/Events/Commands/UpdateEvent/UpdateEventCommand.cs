@@ -12,6 +12,8 @@ public record UpdateEventCommand(
     DateTime StartDate,
     DateTime EndDate,
     int Capacity,
+    // Issue #51: Max attendees per registration (optional)
+    int? MaxAttendeesPerRegistration = null,
     EventCategory? Category = null,
     // Location (optional - null values will remove location)
     string? LocationAddress = null,

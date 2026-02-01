@@ -110,6 +110,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
+      // Issue #51: Max attendees per registration
+      maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
       isFree: event.isFree ?? true,
       // Pricing mode toggles
       enableDualPricing: event.hasDualPricing ?? false,
@@ -188,6 +190,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
       capacity: event.capacity,
+      // Issue #51: Max attendees per registration
+      maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
       isFree: event.isFree,
       // Session 33 Fix: Load pricing data with PROPERLY CONVERTED currency values
       // Single pricing - only set if in single pricing mode
@@ -325,6 +329,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         startDate: startDateISO,
         endDate: endDateISO,
         capacity: data.capacity,
+        // Issue #51: Max attendees per registration
+        maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
         category: data.category,
         // Phase 6A.32: Email Groups Integration
         emailGroupIds: data.emailGroupIds || [],
@@ -673,6 +679,28 @@ export function EventEditForm({ event }: EventEditFormProps) {
             {errors.capacity && (
               <p className="mt-1 text-sm text-destructive">{errors.capacity.message}</p>
             )}
+          </div>
+
+          {/* Issue #51: Max Attendees Per Registration */}
+          <div>
+            <label htmlFor="maxAttendeesPerRegistration" className="block text-sm font-medium text-neutral-700 mb-2">
+              Max Attendees Per Registration
+            </label>
+            <Input
+              id="maxAttendeesPerRegistration"
+              type="number"
+              min="1"
+              max="50"
+              placeholder="e.g., 10"
+              error={!!errors.maxAttendeesPerRegistration}
+              {...register('maxAttendeesPerRegistration', { valueAsNumber: true })}
+            />
+            {errors.maxAttendeesPerRegistration && (
+              <p className="mt-1 text-sm text-destructive">{errors.maxAttendeesPerRegistration.message}</p>
+            )}
+            <p className="mt-1 text-xs text-neutral-500">
+              Maximum number of attendees allowed in a single registration (1-50)
+            </p>
           </div>
 
           {/* Free Event Toggle */}

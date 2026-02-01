@@ -88,6 +88,15 @@ export const createEventSchema = z.object({
     .min(1, 'Capacity must be at least 1')
     .max(10000, 'Capacity cannot exceed 10,000'),
 
+  // Issue #51: Max attendees per registration
+  maxAttendeesPerRegistration: z
+    .number()
+    .int('Must be a whole number')
+    .min(1, 'Must be at least 1')
+    .max(50, 'Cannot exceed 50')
+    .optional()
+    .default(10),
+
   // Location (Optional but recommended)
   locationAddress: z
     .string()
@@ -461,6 +470,15 @@ const baseEditEventSchema = z.object({
     .int('Capacity must be a whole number')
     .min(1, 'Capacity must be at least 1')
     .max(10000, 'Capacity cannot exceed 10,000'),
+
+  // Issue #51: Max attendees per registration
+  maxAttendeesPerRegistration: z
+    .number()
+    .int('Must be a whole number')
+    .min(1, 'Must be at least 1')
+    .max(50, 'Cannot exceed 50')
+    .optional()
+    .default(10),
 
   // Location (Optional)
   locationAddress: z

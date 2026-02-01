@@ -141,6 +141,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     !isLoadingRegistration &&
     registrationDetails?.status === 'RefundRequested';
 
+  // Phase 6A.X: Handle legacy/inconsistent data where status is Confirmed but payment is Pending
+  // This can happen with old registrations created before Preliminary/Abandoned flow was implemented
+  // or if the backend failed to update status when checkout expired
+  // Check if checkout session has expired
+  const checkoutExpired = registrationDetails?.checkoutSessionExpiresAt
+    ? new Date(registrationDetails.checkoutSessionExpiresAt) < new Date()
+    : true; // Assume expired if no expiry date
+
+  const isPaymentIncomplete = !!userRsvp &&
+    !isLoadingRegistration &&
+    registrationDetails?.status === 'Confirmed' &&
+    registrationDetails?.paymentStatus === 'Pending';
+
   // Phase 6A.91: Check if this was a paid registration (for button text)
   const isPaidRegistration = registrationDetails?.paymentStatus === 'Completed';
 
@@ -160,7 +173,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     isPaymentPending,
     isAbandoned,  // Phase 6A.81: New state
     isRefundRequested,  // Phase 6A.91: New state
+    isPaymentIncomplete,  // Phase 6A.X: Legacy data with Confirmed + Pending
     isPaidRegistration,  // Phase 6A.91: For button text
+    checkoutExpired,  // Phase 6A.X: Whether checkout session has expired
     // Show what values are being compared (Phase 6A.79 Part 3: Compare to strings)
     statusCheck: {
       isConfirmed: registrationDetails?.status === 'Confirmed',
@@ -1332,6 +1347,79 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           onClick={() => {
                             // Phase 6A.91 Fix: Show registration form instead of reloading
                             console.log('[Abandoned] User clicked Register Again - showing registration form');
+                            setRetryAfterAbandoned(true);
+                          }}
+                        >
+                          Register Again
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                ) : isPaymentIncomplete ? (
+                  // Phase 6A.X: Handle legacy/inconsistent data - Confirmed status but Pending payment
+                  // This is an edge case where registration was marked Confirmed but payment was never completed
+                  // Treat similar to isAbandoned - allow user to register again
+                  retryAfterAbandoned ? (
+                    // User clicked "Register Again" - show the registration form
+                    <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Your previous registration had incomplete payment. Complete the form below to create a new registration.
+                        </p>
+                      </div>
+                      <EventRegistrationForm
+                        eventId={id}
+                        spotsLeft={spotsLeft}
+                        isFree={event.isFree}
+                        ticketPrice={event.ticketPriceAmount ?? undefined}
+                        hasDualPricing={event.hasDualPricing}
+                        adultPrice={event.adultPriceAmount ?? undefined}
+                        childPrice={event.childPriceAmount ?? undefined}
+                        childAgeLimit={event.childAgeLimit ?? undefined}
+                        hasGroupPricing={event.hasGroupPricing}
+                        groupPricingTiers={event.groupPricingTiers}
+                        isProcessing={isProcessing}
+                        onSubmit={handleRegistration}
+                        error={error}
+                      />
+                    </div>
+                  ) : (
+                    // Show "Payment Incomplete" banner with "Register Again" button
+                    <div className="space-y-4">
+                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
+                            Payment Incomplete
+                          </h3>
+                        </div>
+                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
+                          We found an existing registration for you, but payment was never completed.
+                          {checkoutExpired && ' The checkout session has expired.'}
+                        </p>
+                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
+                          Please register again to get a new payment link and complete your registration.
+                        </p>
+
+                        {/* Show previous registration details */}
+                        {registrationDetails && (
+                          <div className="mb-4 p-3 bg-orange-100 dark:bg-orange-900/30 rounded text-xs">
+                            <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Previous Registration:</p>
+                            <p className="text-orange-800 dark:text-orange-300">
+                              Amount: {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount?.toFixed(2)}
+                            </p>
+                            {registrationDetails.contactEmail && (
+                              <p className="text-orange-800 dark:text-orange-300">
+                                Email: {registrationDetails.contactEmail}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <Button
+                          className="w-full mt-3"
+                          onClick={() => {
+                            console.log('[PaymentIncomplete] User clicked Register Again - showing registration form');
                             setRetryAfterAbandoned(true);
                           }}
                         >

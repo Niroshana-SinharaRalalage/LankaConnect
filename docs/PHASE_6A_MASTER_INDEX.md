@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-12-31
+**Last Updated**: 2026-02-01
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -62,6 +62,11 @@
 | 6A.72 | Newsletter Backend Foundation | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
 | 6A.73 | Newsletter Email Sending System | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
 | 6A.74 | Newsletter Complete Feature | ⚠️ **IN PROGRESS** | [PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md](./PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md) | **CRITICAL - See checklist** |
+| 6A.87 | Email System Typed Parameters Migration | 🔧 In Progress | See PROGRESS_TRACKER.md | Week 4 Complete |
+| 6A.90 | Admin Dashboard (User Management + Support/Feedback) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-28 |
+| 6A.91 | Paid Event Refund Workflow | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-28 |
+| 6A.92 | Paid Event Cancellation Auto-Refund (GitHub #32) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-30 |
+| 6A.93 | Add Missing Email Templates (7 templates) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-01 |
 
 ---
 

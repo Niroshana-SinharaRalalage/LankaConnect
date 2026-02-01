@@ -1,9 +1,101 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-01-31 - Phase 6A.X Issue #38: Grammar Fix ✅ COMPLETE*
+*Last Updated: 2026-02-01 - Phase 6A.93: Add 7 Missing Email Templates ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.X Issue #38: Grammar Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.93: Add 7 Missing Email Templates ✅ COMPLETE
+
+### PHASE 6A.93: ADD MISSING EMAIL TEMPLATES - 2026-02-01
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - MIGRATION VERIFIED**
+
+**Priority**: 🟡 **DATA FIX** - Missing Database Records
+
+**Problem Discovery**:
+User analysis revealed that `EmailTemplateNames.cs` defines 28 email templates, but only 21 existed in the database. The missing 7 templates were:
+1. `OrganizerCustomEmail` - Custom organizer email to event attendees
+2. `template-support-ticket-confirmation` - Contact form auto-reply (Phase 6A.90)
+3. `template-support-ticket-reply` - Admin reply to support ticket (Phase 6A.90)
+4. `template-account-locked-by-admin` - Account lock notification (Phase 6A.90)
+5. `template-account-unlocked-by-admin` - Account unlock notification (Phase 6A.90)
+6. `template-account-activated-by-admin` - Account activation notification (Phase 6A.90)
+7. `template-account-deactivated-by-admin` - Account deactivation notification (Phase 6A.90)
+
+**Root Cause**:
+Phase 6A.90 migration file (20260128100000) was created manually without a Designer.cs file, so EF Core never recognized or applied it to the staging database. The handler code references these templates, but the templates were never seeded.
+
+**Fix Applied**:
+Created proper EF Core migration `20260201143833_Phase6A93_AddMissingEmailTemplates` with:
+- Idempotent INSERT WHERE NOT EXISTS pattern for all 7 templates
+- Full HTML and text content for each template
+- Consistent styling with existing LankaConnect email templates
+- Proper Designer.cs file for EF Core recognition
+
+**Files Changed**:
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260201143833_Phase6A93_AddMissingEmailTemplates.cs` (NEW)
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260201143833_Phase6A93_AddMissingEmailTemplates.Designer.cs` (NEW)
+- `src/LankaConnect.Infrastructure/Migrations/AppDbContextModelSnapshot.cs` (updated)
+
+**Commits**:
+- `469578a4` - feat(phase-6a93): Add 7 missing email templates to database
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (workflow run 21564824233)
+- ✅ Migration applied successfully (verified in deployment logs)
+- ✅ All 7 templates inserted into `communications.email_templates` table
+- ✅ Migration recorded in `__EFMigrationsHistory`
+
+**Impact**:
+- Database now has all 28 email templates defined in `EmailTemplateNames.cs`
+- Support ticket features (Phase 6A.90) can now send confirmation/reply emails
+- Admin user management features can now send lock/unlock/activate/deactivate emails
+- Organizers can now send custom emails to event attendees
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #89: Registration.Confirm() Guard Fix ✅ COMPLETE
+
+### ISSUE #89: REGISTRATION CONFIRM GUARD FIX - 2026-02-01
+
+**Status**: ✅ **COMPLETE - BACKEND DEPLOYED TO AZURE STAGING**
+
+**GitHub Issue**: #89 - Registration details not displaying despite having registration
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Recurring State Inconsistency
+
+**Root Cause Analysis**:
+The `Registration.Confirm()` method allowed setting Status=Confirmed without validating PaymentStatus, creating an invalid Confirmed+Pending state. This violated the domain's three-state lifecycle where paid events should transition: Preliminary → CompletePayment() → Confirmed.
+
+**Fix Applied (TDD Approach)**:
+1. **RED**: Wrote 8 unit tests for Confirm() guard behavior
+2. **GREEN**: Implemented guard in `Registration.Confirm()` that:
+   - Returns `Result.Failure` if PaymentStatus is Pending
+   - Returns `Result.Success` for NotRequired, Completed, or Refunded payment statuses
+   - Includes detailed logging for debugging
+3. **REFACTOR**: Updated all callers to handle Result return type
+
+**Files Changed**:
+- `src/LankaConnect.Domain/Events/Registration.cs` - Added guard to Confirm()
+- `tests/LankaConnect.Application.Tests/Events/Domain/RegistrationConfirmGuardTests.cs` (NEW) - 8 unit tests
+- `tests/LankaConnect.Application.Tests/Events/Queries/SearchEventsQueryHandlerTests.cs` - Fixed pre-existing mock parameter issues
+
+**Commits**:
+- `a9076aa0` - fix(domain): Add guard to Registration.Confirm() to prevent Confirmed+Pending state
+- `4d35ed0a` - fix(tests): Add missing excludeCancelled parameter to SearchEventsQueryHandlerTests
+- `e1270054` - fix(tests): Add missing excludeCancelled parameter to SearchAsync mock calls
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (workflow run 21556338937)
+- ✅ All unit tests pass (1293 passed)
+- ✅ API tested - Login and registration endpoints working
+
+**Impact**:
+- Prevents NEW registrations from reaching invalid Confirmed+Pending state
+- Existing invalid registrations handled by frontend `isPaymentIncomplete` state
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.X Issue #38: Grammar Fix ✅ COMPLETE
 
 ### PHASE 6A.X ISSUE #38: GRAMMAR ERROR FIX - 2026-01-31
 

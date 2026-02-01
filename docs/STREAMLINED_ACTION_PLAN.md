@@ -7,7 +7,69 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.X: ISSUE #38 GRAMMAR FIX COMPLETE (2026-01-31)
+## ✅ CURRENT STATUS - PHASE 6A.93: ADD MISSING EMAIL TEMPLATES COMPLETE (2026-02-01)
+**Date**: 2026-02-01
+**Session**: Phase 6A.93 - Add 7 Missing Email Templates
+**Status**: ✅ COMPLETE - BACKEND DEPLOYED TO AZURE STAGING - MIGRATION VERIFIED
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ DEPLOYED - Commit 469578a4
+**Priority**: 🟡 DATA FIX - Missing Database Records
+
+**Problem**: EmailTemplateNames.cs defines 28 templates, but only 21 existed in the database.
+
+**Missing 7 Templates**:
+1. `OrganizerCustomEmail` - Custom organizer email to event attendees
+2. `template-support-ticket-confirmation` - Contact form auto-reply
+3. `template-support-ticket-reply` - Admin reply to support ticket
+4. `template-account-locked-by-admin` - Account lock notification
+5. `template-account-unlocked-by-admin` - Account unlock notification
+6. `template-account-activated-by-admin` - Account activation notification
+7. `template-account-deactivated-by-admin` - Account deactivation notification
+
+**Root Cause**: Phase 6A.90 migration was created manually without Designer.cs file, so EF Core never applied it.
+
+**Fix Applied**:
+- ✅ **20260201143833_Phase6A93_AddMissingEmailTemplates.cs**: EF Core migration with idempotent INSERT
+- ✅ All 7 templates now in database with full HTML/text content
+- ✅ Migration recorded in __EFMigrationsHistory
+
+**Verification**:
+- ✅ Migration logs show all 7 templates inserted
+- ✅ Database now has 28 templates (21 + 7)
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #89: REGISTRATION CONFIRM GUARD FIX COMPLETE (2026-02-01)
+**Date**: 2026-02-01
+**Session**: Issue #89 - Registration.Confirm() Guard Fix
+**Status**: ✅ COMPLETE - BACKEND DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings (C#)
+**Test Status**: ✅ 1293 unit tests passed
+**Deployment**: ✅ BACKEND DEPLOYED - Commit a9076aa0
+**Priority**: 🔴 CRITICAL BUG FIX - Recurring State Inconsistency
+**GitHub Issue**: #89 - Registration details not displaying
+
+**Objective**: Fix recurring bug where registrations reach invalid Confirmed+Pending state.
+
+**Root Cause**: `Registration.Confirm()` method allowed setting Status=Confirmed without validating PaymentStatus, violating domain's three-state lifecycle.
+
+**Fix Applied (TDD)**:
+- ✅ **Registration.cs**: Added guard to Confirm() - returns Result.Failure if PaymentStatus=Pending
+- ✅ **RegistrationConfirmGuardTests.cs**: 8 new unit tests for guard behavior
+- ✅ **SearchEventsQueryHandlerTests.cs**: Fixed pre-existing mock parameter issues
+
+**Commits**:
+- `a9076aa0` - fix(domain): Add guard to Registration.Confirm() to prevent Confirmed+Pending state
+- `e1270054` - fix(tests): Add missing excludeCancelled parameter to SearchAsync mock calls
+
+**Verification**:
+- ✅ Backend API tested - Login and registration endpoints working
+- ✅ New registrations will not reach invalid state
+- ✅ Existing invalid registrations handled by frontend isPaymentIncomplete state
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: ISSUE #38 GRAMMAR FIX COMPLETE (2026-01-31)
 **Date**: 2026-01-31
 **Session**: Phase 6A.X - Issue #38 Grammar Error Fix
 **Status**: ✅ COMPLETE - UI DEPLOYED TO AZURE STAGING - QA READY

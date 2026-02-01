@@ -11,7 +11,8 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
-import { User, LogOut, ChevronDown, Search, Menu, X } from 'lucide-react';
+import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
+import { User, LogOut, ChevronDown, Search, Menu, X, Loader2 } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -34,6 +35,7 @@ export function Header({ className = '' }: HeaderProps) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState(''); // Phase 6A.59: Search input state
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false); // Phase 6A.X Issue #50: Loading state for logout
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
@@ -271,27 +273,38 @@ export function Header({ className = '' }: HeaderProps) {
                       <div style={{ borderTop: '1px solid #e2e8f0' }}></div>
 
                       {/* Logout Button */}
+                      {/* Phase 6A.X Issue #50: Optimized logout - instant client-side logout with background API call */}
                       <button
-                        onClick={async () => {
+                        onClick={() => {
+                          // Show loading state immediately
+                          setIsLoggingOut(true);
                           setUserMenuOpen(false);
-                          try {
-                            // Call logout endpoint if needed
-                            const { authRepository } = await import('@/infrastructure/api/repositories/auth.repository');
-                            await authRepository.logout();
-                          } catch (error) {
-                            // Silently handle logout errors
-                          } finally {
-                            // Phase 6A.X Issue #47: Clear React Query cache on logout to prevent
-                            // data leakage between users (e.g., email groups visibility)
-                            queryClient.clear();
-                            clearAuth();
-                            router.push('/login');
-                          }
+
+                          // Phase 6A.X Issue #47: Clear React Query cache on logout to prevent
+                          // data leakage between users (e.g., email groups visibility)
+                          queryClient.clear();
+
+                          // Clear client-side auth immediately (optimistic logout)
+                          clearAuth();
+
+                          // Fire-and-forget: Call logout API in background to invalidate server tokens
+                          // Don't wait for response - user experience is prioritized
+                          authRepository.logout().catch(() => {
+                            // Silently ignore server logout errors - client is already logged out
+                          });
+
+                          // Redirect immediately - don't wait for API
+                          router.push('/login');
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                        disabled={isLoggingOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left disabled:opacity-50"
                       >
-                        <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
-                        <span style={{ color: '#2d3748' }}>Logout</span>
+                        {isLoggingOut ? (
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B1538' }} />
+                        ) : (
+                          <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
+                        )}
+                        <span style={{ color: '#2d3748' }}>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                       </button>
                     </div>
                   )}

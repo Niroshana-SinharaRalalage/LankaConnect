@@ -1063,6 +1063,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           childAgeLimit={event.childAgeLimit ?? undefined}
                           hasGroupPricing={event.hasGroupPricing}
                           groupPricingTiers={event.groupPricingTiers}
+                          maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1453,6 +1454,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     childAgeLimit={event.childAgeLimit ?? undefined}
                     hasGroupPricing={event.hasGroupPricing}
                     groupPricingTiers={event.groupPricingTiers}
+                    maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}

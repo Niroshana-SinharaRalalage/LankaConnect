@@ -72,30 +72,46 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
         }
     }
 
-    public async Task<IReadOnlyList<Registration>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Phase 6A.93: Added trackChanges parameter for write operations.
+    /// When trackChanges is true, entities are tracked by EF Core, enabling:
+    /// - State change detection on SaveChanges
+    /// - Domain event dispatch via CommitAsync
+    /// Use trackChanges: true for auto-refund processing in EventCancellationEmailJob.
+    /// </summary>
+    public async Task<IReadOnlyList<Registration>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken = default, bool trackChanges = false)
     {
         using (LogContext.PushProperty("Operation", "GetByEvent"))
         using (LogContext.PushProperty("EntityType", "Registration"))
         using (LogContext.PushProperty("EventId", eventId))
+        using (LogContext.PushProperty("TrackChanges", trackChanges))
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _repoLogger.LogDebug("GetByEventAsync START: EventId={EventId}", eventId);
+            _repoLogger.LogDebug("GetByEventAsync START: EventId={EventId}, TrackChanges={TrackChanges}", eventId, trackChanges);
 
             try
             {
-                var result = await _dbSet
-                    .AsNoTracking()
-                    .Where(r => r.EventId == eventId)
+                // Phase 6A.93: Conditionally apply AsNoTracking based on trackChanges parameter
+                // When trackChanges is true, entities are tracked for write operations (e.g., refund processing)
+                IQueryable<Registration> query = _dbSet.Where(r => r.EventId == eventId);
+
+                if (!trackChanges)
+                {
+                    query = query.AsNoTracking();
+                }
+
+                var result = await query
                     .OrderBy(r => r.CreatedAt)
                     .ToListAsync(cancellationToken);
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "GetByEventAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    "GetByEventAsync COMPLETE: EventId={EventId}, Count={Count}, TrackChanges={TrackChanges}, Duration={ElapsedMs}ms",
                     eventId,
                     result.Count,
+                    trackChanges,
                     stopwatch.ElapsedMilliseconds);
 
                 return result;
@@ -105,8 +121,9 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "GetByEventAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    "GetByEventAsync FAILED: EventId={EventId}, TrackChanges={TrackChanges}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
                     eventId,
+                    trackChanges,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message,
                     (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");

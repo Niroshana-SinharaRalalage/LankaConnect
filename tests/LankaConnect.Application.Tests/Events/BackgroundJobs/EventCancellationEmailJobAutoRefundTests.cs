@@ -191,7 +191,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration> { registration });
 
         _mockUserRepository
@@ -229,7 +229,8 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _mockRegistrationRepository.Verify(x => x.Update(It.Is<Registration>(r => r.Id == registrationId)), Times.Once);
+        // Phase 6A.93: No longer verify Update() - entities are tracked by EF Core, so changes are detected automatically
+        // _mockRegistrationRepository.Verify(x => x.Update(It.Is<Registration>(r => r.Id == registrationId)), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -250,7 +251,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration> { registration });
 
         _mockUserRepository
@@ -295,7 +296,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(registrations);
 
         _mockUserRepository
@@ -330,7 +331,8 @@ public class EventCancellationEmailJobAutoRefundTests
             x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Exactly(3));
 
-        _mockRegistrationRepository.Verify(x => x.Update(It.IsAny<Registration>()), Times.Exactly(3));
+        // Phase 6A.93: No longer verify Update() - entities are tracked by EF Core, so changes are detected automatically
+        // _mockRegistrationRepository.Verify(x => x.Update(It.IsAny<Registration>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -351,7 +353,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(registrations);
 
         _mockUserRepository
@@ -394,8 +396,9 @@ public class EventCancellationEmailJobAutoRefundTests
             x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
+        // Phase 6A.93: No longer verify Update() - entities are tracked by EF Core, so changes are detected automatically
         // Only the second registration should be updated (the successful one)
-        _mockRegistrationRepository.Verify(x => x.Update(It.Is<Registration>(r => r.Id == reg2.Id)), Times.Once);
+        // _mockRegistrationRepository.Verify(x => x.Update(It.Is<Registration>(r => r.Id == reg2.Id)), Times.Once);
     }
 
     [Fact]
@@ -424,7 +427,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration> { registration });
 
         _mockUserRepository
@@ -486,7 +489,7 @@ public class EventCancellationEmailJobAutoRefundTests
             .ReturnsAsync(@event);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration> { registration });
 
         _mockUserRepository

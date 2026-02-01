@@ -141,7 +141,7 @@ public class EventNotificationEmailJobTests
             .ReturnsAsync(recipients);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration> { registration1, registration2 });
 
         _mockUserRepository
@@ -221,7 +221,7 @@ public class EventNotificationEmailJobTests
             .ReturnsAsync(recipients);
 
         _mockRegistrationRepository
-            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<Registration>());
 
         _mockEmailUrlHelper

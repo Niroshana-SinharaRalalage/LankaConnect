@@ -26,6 +26,8 @@ namespace LankaConnect.Application.Events.BackgroundJobs;
 ///
 /// Phase 6A.92: Auto-refund feature - automatically processes refunds for all paid registrations
 /// when an event is cancelled by the organizer.
+/// Phase 6A.93: Fixed EF Core tracking issue - registrations are now loaded with tracking enabled
+/// to ensure domain events (RefundRequestedEvent) are dispatched correctly.
 ///
 /// Performance: Sends emails to unlimited recipients without blocking the API response.
 /// Retry: Hangfire automatically retries failed jobs (default: 10 attempts with exponential backoff).
@@ -108,13 +110,15 @@ public class EventCancellationEmailJob
                 eventId, @event.Title?.Value ?? "Untitled Event", stopwatch.ElapsedMilliseconds);
 
             // 2. Get confirmed registration emails (bulk query to avoid N+1)
+            // Phase 6A.93: Use trackChanges: true to enable EF Core change tracking for refund processing
+            // This ensures domain events (RefundRequestedEvent) are dispatched when CommitAsync is called
             var registrationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var registrations = await _registrationRepository.GetByEventAsync(eventId, CancellationToken.None);
+            var registrations = await _registrationRepository.GetByEventAsync(eventId, CancellationToken.None, trackChanges: true);
             var confirmedRegistrations = registrations
                 .Where(r => r.Status == RegistrationStatus.Confirmed && r.UserId.HasValue)
                 .ToList();
 
-            _logger.LogInformation("[Phase 6A.64] Retrieved {Count} confirmed registrations in {ElapsedMs}ms",
+            _logger.LogInformation("[Phase 6A.93] Retrieved {Count} confirmed registrations with tracking enabled in {ElapsedMs}ms",
                 confirmedRegistrations.Count, registrationStopwatch.ElapsedMilliseconds);
 
             // Phase 6A.92: Process auto-refunds for all paid registrations
@@ -435,16 +439,18 @@ public class EventCancellationEmailJob
 
                 if (refundResult.IsSuccess)
                 {
-                    _registrationRepository.Update(registration);
+                    // Phase 6A.93: No need to call Update() when entity is tracked.
+                    // EF Core automatically detects changes made by RequestRefund().
+                    // The RefundRequestedEvent domain event will be dispatched on CommitAsync.
 
                     result.SuccessCount++;
                     result.TotalRefundedAmount += refundResult.Value.AmountRefunded;
                     result.RefundedRegistrationIds.Add(registration.Id);
 
                     _logger.LogInformation(
-                        "[Phase 6A.92] Refund request successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms. Webhook will complete refund.",
+                        "[Phase 6A.93] Refund request successful - RegId={RegId}, StripeRefundId={RefundId}, Amount=${Amount}, NewStatus={Status}, Duration={ElapsedMs}ms. Webhook will complete refund.",
                         registration.Id, refundResult.Value.StripeRefundId,
-                        refundResult.Value.AmountRefunded, singleRefundStopwatch.ElapsedMilliseconds);
+                        refundResult.Value.AmountRefunded, registration.Status, singleRefundStopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
@@ -468,14 +474,20 @@ public class EventCancellationEmailJob
             }
         }
 
-        // Commit all registration updates
+        // Phase 6A.93: Commit all registration updates and dispatch domain events
+        // This will persist Status changes (Confirmed → RefundRequested) and dispatch RefundRequestedEvent
         if (result.SuccessCount > 0)
         {
             try
             {
-                await _unitOfWork.CommitAsync(CancellationToken.None);
                 _logger.LogInformation(
-                    "[Phase 6A.92] Committed {Count} registration refund updates to database",
+                    "[Phase 6A.93] About to commit {Count} registration refund updates and dispatch domain events",
+                    result.SuccessCount);
+
+                await _unitOfWork.CommitAsync(CancellationToken.None);
+
+                _logger.LogInformation(
+                    "[Phase 6A.93] Committed {Count} registration refund updates to database. RefundRequestedEvent dispatched for each.",
                     result.SuccessCount);
             }
             catch (Exception ex)

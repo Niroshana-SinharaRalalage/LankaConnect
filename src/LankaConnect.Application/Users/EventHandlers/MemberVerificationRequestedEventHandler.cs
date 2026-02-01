@@ -58,11 +58,13 @@ public class MemberVerificationRequestedEventHandler
                 // Phase 6A.53 Fix: Build user name from FirstName and LastName
                 var userName = BuildUserName(domainEvent.FirstName, domainEvent.LastName);
 
+                // Phase 6A.X Issue #49: Fixed parameter name to match email template
+                // Template uses {{ExpirationHours}} placeholder, not {{TokenExpiry}}
                 var parameters = new Dictionary<string, object>
                 {
                     { "Email", domainEvent.Email },
                     { "VerificationUrl", verificationUrl },
-                    { "TokenExpiry", "24 hours" },  // Phase 6A.83: Fix parameter name to match template
+                    { "ExpirationHours", "24" },  // Must match template placeholder {{ExpirationHours}}
                     { "UserName", userName }
                 };
 

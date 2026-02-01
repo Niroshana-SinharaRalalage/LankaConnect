@@ -42,7 +42,8 @@ public static class EmailTemplateNames
 
     /// <summary>
     /// Member email verification email.
-    /// Variables: {UserName}, {VerificationUrl}, {TokenExpiry}
+    /// Variables: {UserName}, {VerificationUrl}, {ExpirationHours}
+    /// Phase 6A.X Issue #49: Fixed parameter name to match actual template placeholder
     /// </summary>
     public const string MemberEmailVerification = "template-membership-email-verification";
 

@@ -94,6 +94,22 @@ public class StripeWebhookEventRepository : IStripeWebhookEventRepository
                 "[Phase 6A.X] [WebhookRepo-3] About to SaveChangesAsync - EventId: {EventId}, TrackedEntities: {TrackedCount}",
                 eventId, _context.ChangeTracker.Entries().Count());
 
+            // Phase 6A.92 FIX: Detach all entities EXCEPT the webhook event to avoid concurrency conflicts
+            // The shared DbContext accumulates tracked entities from domain event handlers (email sending, etc.)
+            // which can cause "expected to affect 1 row, but affected 0" errors when saving alongside webhook event
+            var entriesToDetach = _context.ChangeTracker.Entries()
+                .Where(e => !ReferenceEquals(e.Entity, webhookEvent))
+                .ToList();
+
+            _logger.LogInformation(
+                "[Phase 6A.92] [WebhookRepo-3a] Detaching {Count} non-webhook entities to avoid concurrency conflicts",
+                entriesToDetach.Count);
+
+            foreach (var entry in entriesToDetach)
+            {
+                entry.State = EntityState.Detached;
+            }
+
             var savedCount = await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(

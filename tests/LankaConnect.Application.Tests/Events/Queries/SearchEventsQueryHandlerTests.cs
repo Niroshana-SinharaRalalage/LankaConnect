@@ -44,6 +44,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 query.IsFreeOnly,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((events, totalCount));
 
@@ -85,6 +86,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 query.IsFreeOnly,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -120,6 +122,7 @@ public class SearchEventsQueryHandlerTests
                 EventCategory.Cultural,
                 query.IsFreeOnly,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -161,6 +164,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 true,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -203,6 +207,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 query.IsFreeOnly,
                 startDate,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -240,6 +245,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 query.IsFreeOnly,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -284,6 +290,7 @@ public class SearchEventsQueryHandlerTests
                 EventCategory.Business,
                 false,
                 startDate,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -323,6 +330,7 @@ public class SearchEventsQueryHandlerTests
                 query.Category,
                 query.IsFreeOnly,
                 query.StartDateFrom,
+                It.IsAny<bool>(),  // excludeCancelled
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((events, totalCount));
 

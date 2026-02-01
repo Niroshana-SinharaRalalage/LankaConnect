@@ -55,8 +55,9 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 var query = _dbSet.AsNoTracking();
 
                 // Apply filters
+                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for comparisons
                 if (category != null)
-                    query = query.Where(t => t.Category.Value == category.Value);
+                    query = query.Where(t => EF.Property<string>(t, "category") == category.Value);
 
                 if (emailType.HasValue)
                     query = query.Where(t => t.Type == emailType.Value);
@@ -71,8 +72,10 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 }
 
                 // Apply pagination
+                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly
+                // OrderBy(t => t.Category.Value) fails because EF Core can't translate .Value to SQL
                 var result = await query
-                    .OrderBy(t => t.Category.Value)
+                    .OrderBy(t => EF.Property<string>(t, "category"))
                     .ThenBy(t => t.Name)
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
@@ -133,8 +136,9 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 var query = _dbSet.AsNoTracking();
 
                 // Apply same filters as GetTemplatesAsync
+                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for comparisons
                 if (category != null)
-                    query = query.Where(t => t.Category.Value == category.Value);
+                    query = query.Where(t => EF.Property<string>(t, "category") == category.Value);
 
                 if (emailType.HasValue)
                     query = query.Where(t => t.Type == emailType.Value);
@@ -197,8 +201,9 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 if (isActive.HasValue)
                     query = query.Where(t => t.IsActive == isActive.Value);
 
+                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for GroupBy
                 var result = await query
-                    .GroupBy(t => t.Category.Value)
+                    .GroupBy(t => EF.Property<string>(t, "category"))
                     .Select(g => new { CategoryValue = g.Key, Count = g.Count() })
                     .ToListAsync(cancellationToken);
 

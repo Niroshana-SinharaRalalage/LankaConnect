@@ -686,9 +686,23 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.91] [Webhook-Refund-5] After CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, StripeRefundId: {RefundId}, Transition: RefundRequested→Refunded",
                 correlationId, registration.Id, registration.Status, registration.PaymentStatus, latestRefund.Id);
 
+            // Phase 6A.92 FIX: Log domain events to diagnose email dispatch issue
+            _logger.LogInformation(
+                "[Phase 6A.92] [Webhook-Refund-6] Domain events after CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
+                correlationId, registration.Id, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
+
             // Save changes and dispatch RefundCompletedEvent
             _registrationRepository.Update(registration);
+
+            _logger.LogInformation(
+                "[Phase 6A.92] [Webhook-Refund-7] Before CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
+                correlationId, registration.Id, registration.DomainEvents.Count);
+
             await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[Phase 6A.92] [Webhook-Refund-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count} (should be cleared after dispatch)",
+                correlationId, registration.Id, registration.DomainEvents.Count);
 
             _logger.LogInformation(
                 "[Phase 6A.91] [Webhook-Refund-SUCCESS] Refund completed successfully - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, StripeRefundId: {RefundId}, RefundCompletedAt: {RefundCompletedAt}",

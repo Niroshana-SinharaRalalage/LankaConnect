@@ -76,6 +76,10 @@ using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
 using LankaConnect.Application.Events.Queries.GetTicket;
 using LankaConnect.Application.Events.Queries.GetTicketPdf;
+using LankaConnect.Application.Events.Queries.CalculateAdditionPrice;
+using LankaConnect.Application.Events.Queries.GetPendingAddition;
+using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
+using LankaConnect.Application.Events.Commands.CancelPendingAddition;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -2190,6 +2194,204 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
+    // ==================== ADD ATTENDEES (DELTA PAYMENT) ====================
+    // Phase: Add-Only Attendees with Delta Payment Feature
+
+    /// <summary>
+    /// Calculate the price for adding new attendees to an existing paid registration.
+    /// Returns the delta amount to charge.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/calculate-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AdditionPriceResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CalculateAdditionPrice(
+        Guid registrationId,
+        [FromBody] CalculateAdditionPriceRequest request)
+    {
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Calculating addition price for registration {RegistrationId}, NewAttendeesCount={Count}",
+            registrationId, request.NewAttendees?.Count ?? 0);
+
+        var query = new CalculateAdditionPriceQuery(
+            registrationId,
+            request.NewAttendees?.Select(a => new NewAttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
+                ?? new List<NewAttendeeDto>());
+
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Calculate addition price failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Price Calculation Failed",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Initiate adding attendees to an existing paid registration.
+    /// Creates a pending addition and returns a Stripe checkout URL.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/add-attendees")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(InitiateAddAttendeesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> InitiateAddAttendees(
+        Guid registrationId,
+        [FromBody] InitiateAddAttendeesRequest request)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Initiating add attendees for registration {RegistrationId}, UserId={UserId}, NewAttendeesCount={Count}",
+            registrationId, userId, request.NewAttendees?.Count ?? 0);
+
+        var command = new InitiateAddAttendeesCommand(
+            registrationId,
+            request.NewAttendees?.Select(a => new NewAttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
+                ?? new List<NewAttendeeDto>(),
+            request.SuccessUrl,
+            request.CancelUrl,
+            userId);
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Initiate add attendees failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Initiate Attendee Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (!result.Value.Success)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Initiate add attendees business rule failure - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Value.ErrorMessage);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot Add Attendees",
+                Detail = result.Value.ErrorMessage,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Initiate add attendees succeeded - RegistrationId={RegistrationId}, AdditionId={AdditionId}",
+            registrationId, result.Value.RegistrationAdditionId);
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Get the pending attendee addition for a registration, if any.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpGet("registrations/{registrationId:guid}/pending-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PendingAdditionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPendingAddition(Guid registrationId)
+    {
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Getting pending addition for registration {RegistrationId}",
+            registrationId);
+
+        var query = new GetPendingAdditionQuery(registrationId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Get pending addition failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Get Pending Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (result.Value == null)
+        {
+            return NoContent();
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Cancel a pending attendee addition before payment completes.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpDelete("registrations/{registrationId:guid}/pending-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(CancelPendingAdditionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CancelPendingAddition(Guid registrationId)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Cancelling pending addition for registration {RegistrationId}, UserId={UserId}",
+            registrationId, userId);
+
+        var command = new CancelPendingAdditionCommand(registrationId, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Cancel pending addition failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Cancel Pending Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (!result.Value.Success)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Cancel pending addition business rule failure - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Value.ErrorMessage);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot Cancel Pending Addition",
+                Detail = result.Value.ErrorMessage,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Cancel pending addition succeeded - RegistrationId={RegistrationId}, CancelledAdditionId={AdditionId}",
+            registrationId, result.Value.CancelledAdditionId);
+
+        return Ok(result.Value);
+    }
+
     #endregion
 }
 
@@ -2392,3 +2594,30 @@ public record UpdateOpenSignUpItemRequest(
 /// Issue #51: Request to update max attendees per registration
 /// </summary>
 public record UpdateMaxAttendeesPerRegistrationRequest(int MaxAttendeesPerRegistration);
+
+// ==================== ADD ATTENDEES (DELTA PAYMENT) REQUEST DTOS ====================
+
+/// <summary>
+/// Request to calculate the price for adding new attendees.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record CalculateAdditionPriceRequest(
+    List<AddAttendeeDto>? NewAttendees);
+
+/// <summary>
+/// Request to initiate adding attendees to a paid registration.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record InitiateAddAttendeesRequest(
+    List<AddAttendeeDto>? NewAttendees,
+    string SuccessUrl,
+    string CancelUrl);
+
+/// <summary>
+/// DTO for a new attendee being added.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record AddAttendeeDto(
+    string Name,
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);

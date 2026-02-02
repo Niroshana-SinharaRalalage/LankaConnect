@@ -687,6 +687,108 @@ public class Registration : BaseEntity
         Quantity = attendeeList.Count;
 
         MarkAsUpdated();
+
+        // Raise domain event for email notification
+        RaiseDomainEvent(new RegistrationDetailsUpdatedEvent(
+            EventId,
+            Id,
+            UserId,
+            GetAttendeeCount(),
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Adds additional attendees to an existing paid registration.
+    /// Called after additional payment has been confirmed.
+    ///
+    /// Business Rules:
+    /// - Only Confirmed registrations can add attendees
+    /// - Only registrations with Completed payment can add attendees
+    /// - Cannot exceed the event's max attendees per registration
+    /// - At least one new attendee is required
+    ///
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    /// <param name="additionalAttendees">New attendees to add.</param>
+    /// <param name="newTotalPrice">Updated total price including new attendees.</param>
+    /// <param name="additionalPayment">The RegistrationPayment for this addition.</param>
+    /// <param name="registrationAdditionId">ID of the RegistrationAddition record being merged.</param>
+    /// <param name="maxAttendeesPerRegistration">Event's configured max attendees.</param>
+    /// <returns>Result indicating success or failure with error message.</returns>
+    public Result AddAttendees(
+        IEnumerable<AttendeeDetails> additionalAttendees,
+        Money newTotalPrice,
+        RegistrationPayment additionalPayment,
+        Guid registrationAdditionId,
+        int maxAttendeesPerRegistration = 10)
+    {
+        // Validation: Must be Confirmed registration
+        if (Status != RegistrationStatus.Confirmed)
+            return Result.Failure($"Can only add attendees to confirmed registrations. Current status: {Status}");
+
+        // Validation: Must have completed payment
+        if (PaymentStatus != PaymentStatus.Completed)
+            return Result.Failure($"Can only add attendees to paid registrations. Current payment status: {PaymentStatus}");
+
+        // Validation: Attendees list cannot be null or empty
+        if (additionalAttendees == null || !additionalAttendees.Any())
+            return Result.Failure("At least one new attendee is required");
+
+        var additionalList = additionalAttendees.ToList();
+
+        // Validation: New total price is required
+        if (newTotalPrice == null)
+            return Result.Failure("New total price is required");
+
+        // Validation: Payment record is required
+        if (additionalPayment == null)
+            return Result.Failure("Additional payment record is required");
+
+        // Validation: RegistrationAddition ID is required
+        if (registrationAdditionId == Guid.Empty)
+            return Result.Failure("Registration Addition ID is required");
+
+        var currentCount = GetAttendeeCount();
+        var newCount = currentCount + additionalList.Count;
+
+        // Validation: Cannot exceed max attendees per registration
+        var effectiveMax = Math.Min(maxAttendeesPerRegistration, Event.SYSTEM_MAX_ATTENDEES_PER_REGISTRATION);
+        if (newCount > effectiveMax)
+            return Result.Failure($"Cannot exceed {effectiveMax} attendees per registration. Current: {currentCount}, Adding: {additionalList.Count}");
+
+        // Store previous values for the event
+        var previousCount = currentCount;
+        var previousTotal = TotalPrice?.Amount ?? 0m;
+        var additionalAmount = additionalPayment.Amount.Amount;
+
+        // Add new attendees
+        _attendees.AddRange(additionalList);
+
+        // Update quantity to match attendee count
+        Quantity = _attendees.Count;
+
+        // Update total price
+        TotalPrice = newTotalPrice;
+
+        MarkAsUpdated();
+
+        // Raise domain event for email notification
+        RaiseDomainEvent(new AttendeesAddedEvent(
+            EventId,
+            Id,
+            UserId,
+            Contact?.Email ?? string.Empty,
+            previousCount,
+            additionalList.Count,
+            newCount,
+            additionalAmount,
+            newTotalPrice.Currency.ToString(),
+            newTotalPrice.Amount,
+            registrationAdditionId,
+            DateTime.UtcNow));
+
         return Result.Success();
     }
 

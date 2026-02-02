@@ -83,6 +83,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Ticket Entity Set (Phase 6A.24)
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
 
+    // Registration Addition Entity Sets (Add-Only Attendees Feature)
+    public DbSet<RegistrationAddition> RegistrationAdditions => Set<RegistrationAddition>(); // Delta payment for adding attendees
+    public DbSet<RegistrationPayment> RegistrationPayments => Set<RegistrationPayment>(); // Payment audit trail
+
     // Badge Entity Sets (Phase 6A.25)
     public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
     public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
@@ -155,6 +159,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Ticket entity configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new TicketConfiguration());
+
+        // Registration Addition entity configurations (Add-Only Attendees Feature)
+        modelBuilder.ApplyConfiguration(new RegistrationAdditionConfiguration());
+        modelBuilder.ApplyConfiguration(new RegistrationPaymentConfiguration());
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
@@ -240,6 +248,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tickets schema (Phase 6A.24)
         modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
 
+        // Registration Addition tables (Add-Only Attendees Feature)
+        modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
+        modelBuilder.Entity<RegistrationPayment>().ToTable("registration_payments", "events");
+
         // Badges schema (Phase 6A.25)
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
@@ -283,6 +295,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventViewRecord), // Epic 2 Phase 3
             typeof(Notification), // Phase 6A.6
             typeof(Ticket), // Phase 6A.24
+            typeof(RegistrationAddition), // Add-Only Attendees Feature
+            typeof(RegistrationPayment), // Add-Only Attendees Feature
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
             typeof(EmailGroup), // Phase 6A.25: Email Groups Management

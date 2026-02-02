@@ -7,6 +7,8 @@ using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Common;
 using LankaConnect.Application.Common.Interfaces;
 
@@ -28,6 +30,8 @@ public class PaymentsController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IRegistrationAdditionRepository _additionRepository;
+    private readonly IRegistrationPaymentRepository _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
@@ -39,6 +43,8 @@ public class PaymentsController : ControllerBase
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IRegistrationAdditionRepository additionRepository,
+        IRegistrationPaymentRepository paymentRepository,
         IUnitOfWork unitOfWork,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
@@ -49,6 +55,8 @@ public class PaymentsController : ControllerBase
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _additionRepository = additionRepository;
+        _paymentRepository = paymentRepository;
         _unitOfWork = unitOfWork;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
@@ -359,7 +367,17 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
-            // Extract metadata
+            // [AddOnlyAttendees] Check if this is an addition payment
+            if (session.Metadata.TryGetValue("payment_type", out var paymentType) && paymentType == "addition")
+            {
+                _logger.LogInformation(
+                    "[AddOnlyAttendees] [Webhook-Route] Routing to addition handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                await HandleAdditionCheckoutCompletedAsync(session, stripeEvent, correlationId);
+                return;
+            }
+
+            // Extract metadata (regular registration payment)
             if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
                 !Guid.TryParse(registrationIdStr, out var registrationId))
             {
@@ -467,6 +485,205 @@ public class PaymentsController : ControllerBase
             _logger.LogError(ex, "Error handling checkout.session.completed webhook - Type: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
                 ex.GetType().FullName, ex.Message, ex.InnerException?.Message ?? "None");
             throw; // Re-throw to trigger outer catch block with HTTP 500
+        }
+    }
+
+    /// <summary>
+    /// [AddOnlyAttendees] Handles checkout.session.completed for addition payments.
+    /// Completes the RegistrationAddition, merges attendees into registration,
+    /// and creates a RegistrationPayment record.
+    /// </summary>
+    private async Task HandleAdditionCheckoutCompletedAsync(Session session, Stripe.Event stripeEvent, Guid correlationId)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-1] Processing addition payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                correlationId, session.Id);
+
+            // Extract metadata
+            if (!session.Metadata.TryGetValue("registration_addition_id", out var additionIdStr) ||
+                !Guid.TryParse(additionIdStr, out var additionId))
+            {
+                _logger.LogWarning(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing registration_addition_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
+                !Guid.TryParse(registrationIdStr, out var registrationId))
+            {
+                _logger.LogWarning(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing registration_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
+                !Guid.TryParse(eventIdStr, out var eventId))
+            {
+                _logger.LogWarning(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing event_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-2] Metadata extracted - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
+                correlationId, additionId, registrationId, eventId);
+
+            // Load the RegistrationAddition (with tracking)
+            var addition = await _additionRepository.GetByIdAsync(additionId);
+            if (addition == null)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] RegistrationAddition not found - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}",
+                    correlationId, additionId);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-3] Addition loaded - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Status: {Status}, NewAttendeesCount: {Count}",
+                correlationId, additionId, addition.Status, addition.NewAttendees.Count);
+
+            // Verify the addition is still pending
+            if (addition.Status != RegistrationAdditionStatus.Pending)
+            {
+                _logger.LogWarning(
+                    "[AddOnlyAttendees] [Webhook-Addition-WARN] Addition not in Pending status - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, CurrentStatus: {Status}",
+                    correlationId, additionId, addition.Status);
+                return;
+            }
+
+            // Load the registration (with tracking)
+            var registration = await _registrationRepository.GetByIdAsync(registrationId);
+            if (registration == null)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentAttendees: {Count}, PaymentStatus: {PaymentStatus}",
+                correlationId, registrationId, registration.Attendees.Count, registration.PaymentStatus);
+
+            // Complete payment on the addition
+            var paymentIntentId = session.PaymentIntentId ?? session.Id;
+            var completePaymentResult = addition.CompletePayment(paymentIntentId);
+            if (completePaymentResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
+                    correlationId, additionId, completePaymentResult.Error);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-5] Payment completed on addition - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, additionId, paymentIntentId);
+
+            // Get the event to determine max attendees per registration
+            var @event = await _eventRepository.GetByIdAsync(eventId);
+            var maxAttendeesPerRegistration = @event?.MaxAttendeesPerRegistration ?? 10;
+
+            // Create RegistrationPayment record for audit trail (needed for AddAttendees)
+            var paymentResult = RegistrationPayment.CreateAddition(
+                registrationId,
+                paymentIntentId,
+                addition.AdditionalAmount,
+                additionId,
+                PaymentStatus.Completed);
+
+            if (paymentResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Failed to create payment record - CorrelationId: {CorrelationId}, Error: {Error}",
+                    correlationId, paymentResult.Error);
+                addition.MarkAsFailed();
+                _additionRepository.Update(addition);
+                await _unitOfWork.CommitAsync();
+                return;
+            }
+
+            var payment = paymentResult.Value;
+            await _paymentRepository.AddAsync(payment);
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-6] Payment record created - CorrelationId: {CorrelationId}, PaymentId: {PaymentId}, Amount: {Amount}",
+                correlationId, payment.Id, addition.AdditionalAmount.Amount);
+
+            // Calculate new total price (previous total + additional amount)
+            var previousTotal = registration.TotalPrice?.Amount ?? 0m;
+            var newTotalAmount = previousTotal + addition.AdditionalAmount.Amount;
+            var newTotalPriceResult = Domain.Shared.ValueObjects.Money.Create(newTotalAmount, addition.AdditionalAmount.Currency);
+
+            if (newTotalPriceResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Failed to create new total price - CorrelationId: {CorrelationId}, Error: {Error}",
+                    correlationId, newTotalPriceResult.Error);
+                addition.MarkAsFailed();
+                _additionRepository.Update(addition);
+                await _unitOfWork.CommitAsync();
+                return;
+            }
+
+            // Merge attendees into the registration
+            var addAttendeesResult = registration.AddAttendees(
+                addition.NewAttendees,
+                newTotalPriceResult.Value,
+                payment,
+                additionId,
+                maxAttendeesPerRegistration);
+
+            if (addAttendeesResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] AddAttendees failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
+                    correlationId, registrationId, addAttendeesResult.Error);
+                // Mark addition as failed
+                addition.MarkAsFailed();
+                _additionRepository.Update(addition);
+                await _unitOfWork.CommitAsync();
+                return;
+            }
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-7] Attendees merged - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewAttendeeCount: {NewCount}, TotalAttendees: {TotalCount}",
+                correlationId, registrationId, addition.NewAttendees.Count, registration.Attendees.Count);
+
+            // Mark addition as merged
+            var mergeResult = addition.MarkAsMerged();
+            if (mergeResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[AddOnlyAttendees] [Webhook-Addition-WARN] MarkAsMerged failed but continuing - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
+                    correlationId, additionId, mergeResult.Error);
+            }
+
+            // Save all changes and dispatch domain events
+            _additionRepository.Update(addition);
+            _registrationRepository.Update(registration);
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-8] Before CommitAsync - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, RegistrationDomainEvents: {Count}",
+                correlationId, additionId, registration.DomainEvents.Count);
+
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-SUCCESS] Addition completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AdditionId: {AdditionId}, PaymentIntentId: {PaymentIntentId}, NewAttendees: {NewAttendees}, TotalAttendees: {TotalAttendees}",
+                correlationId, eventId, registrationId, additionId, paymentIntentId, addition.NewAttendees.Count, registration.Attendees.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnlyAttendees] [Webhook-Addition-ERROR] Error handling addition checkout - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
+                correlationId, ex.GetType().FullName, ex.Message);
+            throw;
         }
     }
 

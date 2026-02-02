@@ -493,6 +493,141 @@ public class StripePaymentService : IStripePaymentService
         return (long)(amount * 100);
     }
 
+    /// <summary>
+    /// Add-Only Attendees Feature: Creates a Stripe Checkout session for adding attendees to an existing registration.
+    /// Returns both the session ID (for tracking) and checkout URL (for redirect).
+    /// </summary>
+    public async Task<Result<AdditionCheckoutResult>> CreateAdditionCheckoutSessionAsync(
+        CreateAdditionCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnlyAttendees] Creating addition checkout session - RegistrationId={RegistrationId}, AdditionId={AdditionId}, Amount={Amount} {Currency}",
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                request.Amount,
+                request.Currency);
+
+            // Handle authenticated vs anonymous users
+            string? stripeCustomerId = null;
+            bool isAnonymous = !request.UserId.HasValue;
+
+            if (!isAnonymous)
+            {
+                stripeCustomerId = await GetOrCreateStripeCustomerAsync(request.UserId!.Value, cancellationToken);
+                if (stripeCustomerId == null)
+                {
+                    _logger.LogWarning(
+                        "[AddOnlyAttendees] Failed to get/create Stripe customer for user {UserId}",
+                        request.UserId);
+                    // Continue without customer - will create guest checkout
+                }
+            }
+
+            // Create checkout session
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                Customer = stripeCustomerId,
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                CustomerEmail = isAnonymous && !string.IsNullOrEmpty(request.ContactEmail)
+                    ? request.ContactEmail
+                    : null,
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"Additional Attendees: {request.EventTitle}",
+                                Description = $"Add {request.NewAttendeesCount} attendee(s) to your registration",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["registration_id"] = request.RegistrationId.ToString(),
+                                    ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                                    ["payment_type"] = "addition" // Key differentiator for webhook
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = AppendRegistrationIdToUrl(request.SuccessUrl, request.RegistrationId),
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["registration_id"] = request.RegistrationId.ToString(),
+                    ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                    ["payment_type"] = "addition" // Key differentiator for webhook
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["registration_id"] = request.RegistrationId.ToString(),
+                        ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                        ["payment_type"] = "addition" // Key differentiator for webhook
+                    }
+                },
+                // Session expires after 24 hours
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            // Add any additional metadata from request
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] Created checkout session - SessionId={SessionId}, RegistrationId={RegistrationId}, AdditionId={AdditionId}, ExpiresAt={ExpiresAt}",
+                session.Id,
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                session.ExpiresAt);
+
+            return Result<AdditionCheckoutResult>.Success(new AdditionCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnlyAttendees] Stripe error creating addition checkout - RegistrationId={RegistrationId}, AdditionId={AdditionId}, Error={Error}",
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                ex.Message);
+            return Result<AdditionCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnlyAttendees] Error creating addition checkout - RegistrationId={RegistrationId}, AdditionId={AdditionId}",
+                request.RegistrationId,
+                request.RegistrationAdditionId);
+            return Result<AdditionCheckoutResult>.Failure("Failed to create payment session");
+        }
+    }
+
     #region Not Implemented Methods (Cultural Intelligence - Future)
 
     // These methods are part of IStripePaymentService for Cultural Intelligence billing

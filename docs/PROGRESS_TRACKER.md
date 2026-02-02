@@ -1,9 +1,125 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-01 - Phase 6A.93: Add 7 Missing Email Templates ✅ COMPLETE*
+*Last Updated: 2026-02-02 - Phase 6A.94 Refund Observability Enhancements ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.93: Add 7 Missing Email Templates ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.94: Refund Observability Enhancements ✅ COMPLETE
+
+### PHASE 6A.94: REFUND OBSERVABILITY ENHANCEMENTS - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**GitHub Issue**: #32 - Paid Event Cancellation Auto-Refund (Observability Enhancement)
+
+**Priority**: 🟡 **ENHANCEMENT** - Critical Path Observability
+
+**Problem Discovery**:
+When investigating the Phase 6A.92 auto-refund issue, it was difficult to diagnose why refunds were not being processed due to insufficient logging. The refund processing code (a critical financial operation) lacked detailed observability.
+
+**Root Cause Analysis** (by System Architect Agent):
+- Classification: **Observability Gap** - Insufficient logging for critical financial operations
+- The refund flow spans multiple services (RegistrationRefundService → StripePaymentService → Webhook)
+- Silent failures could occur without any indication in logs
+- Hangfire jobs would "succeed" even if all refunds failed silently
+
+**Enhancements Applied**:
+
+1. **RegistrationRefundService.cs** - Added comprehensive logging:
+   - START/END logging with stopwatch timing for each refund
+   - Pre-Stripe-call logging with full request details (PaymentIntentId, Amount, Metadata)
+   - Post-Stripe-call logging with StripeRefundId and status
+   - State transition logging (StatusBefore → StatusAfter)
+   - Full exception logging with duration and exception type
+
+2. **EventCancellationEmailJob.cs** - Added registration breakdown logging:
+   - Total confirmed registrations count at START
+   - Filtered registrations breakdown (PaymentStatus, Amount, PaymentIntentId presence)
+   - Success/failure count logging
+   - **CRITICAL**: Exception thrown when ALL refunds fail (enables Hangfire retry)
+
+3. **StripePaymentService.cs** - Added Stripe API call logging:
+   - Full request logging before Stripe call
+   - Success logging with RefundId and status
+   - Detailed error logging with StripeErrorCode, StripeErrorType, DeclineCode, HttpStatus
+
+**Files Changed**:
+- `src/LankaConnect.Application/Events/Services/RegistrationRefundService.cs`
+- `src/LankaConnect.Application/Events/BackgroundJobs/EventCancellationEmailJob.cs`
+- `src/LankaConnect.Infrastructure/Payments/Services/StripePaymentService.cs`
+
+**Commits**:
+- `50b99984` - feat(#32): Add Phase 6A.94 observability for refund processing
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (GitHub Actions run 21572851193 succeeded)
+- ✅ All 1,306 unit tests pass locally (4 skipped - expected)
+- ✅ API health check verified (HTTP 200)
+
+**Impact**:
+- Full observability for refund processing in production logs
+- Clear diagnostic information when refunds fail
+- Hangfire will retry if ALL refunds fail (not silent failure)
+- Timing metrics for performance analysis
+
+**Log Prefixes for Searching**:
+- `[RefundService]` - RegistrationRefundService logs
+- `[Phase 6A.94]` - EventCancellationEmailJob enhanced logs
+- `[Phase 6A.94] STRIPE` - StripePaymentService logs
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.92: EF Core Change Tracking for Auto-Refund ✅ COMPLETE
+
+### PHASE 6A.92 FIX: EF CORE CHANGE TRACKING FOR AUTO-REFUND - 2026-02-01
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**GitHub Issue**: #32 - Paid Event Cancellation Auto-Refund (Continuation Fix)
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Refunds Not Being Initiated
+
+**Problem Discovery**:
+When organizer cancelled a paid event (c598620e-33c3-46b6-b5f4-a260759eb4e4), the refund was NOT initiated for a confirmed paid registration. The registration remained in "Confirmed" status with payment "Completed" instead of transitioning to "RefundRequested".
+
+**Root Cause Analysis** (by System Architect Agent):
+- Classification: **Backend API Issue - EF Core Change Tracking Bug**
+- The `RegistrationRepository.GetByEventAsync()` method used `AsNoTracking()` which caused:
+  1. Registrations to be detached from EF Core's change tracker
+  2. `Registration.RequestRefund()` modifications NOT tracked by EF Core
+  3. Domain events (`RefundRequestedEvent`) NOT dispatched via `CommitAsync()`
+  4. Registration status remaining "Confirmed" instead of "RefundRequested"
+  5. Stripe refund never initiated because `RefundRequestedEvent` handler never fired
+
+**Fix Applied (TDD Approach)**:
+1. Added `trackChanges` parameter to `IRegistrationRepository.GetByEventAsync()` (default: false for backward compatibility)
+2. Updated `RegistrationRepository.GetByEventAsync()` to conditionally apply `AsNoTracking()` based on parameter
+3. Updated `EventCancellationEmailJob` to pass `trackChanges: true` for refund processing
+4. Removed redundant `_registrationRepository.Update()` call since EF Core auto-detects changes on tracked entities
+5. Updated all unit tests to handle the new parameter
+
+**Files Changed**:
+- `src/LankaConnect.Application/Events/Repositories/IRegistrationRepository.cs` - Added trackChanges parameter
+- `src/LankaConnect.Infrastructure/Data/Repositories/RegistrationRepository.cs` - Conditional AsNoTracking
+- `src/LankaConnect.Application/Events/BackgroundJobs/EventCancellationEmailJob.cs` - Pass trackChanges: true
+- `tests/LankaConnect.Application.Tests/Events/BackgroundJobs/EventCancellationEmailJobAutoRefundTests.cs` - Updated mocks
+- `tests/LankaConnect.Application.Tests/Events/BackgroundJobs/EventNotificationEmailJobTests.cs` - Updated mocks
+
+**Commits**:
+- `e63914ed` - fix(phase6a92): Enable EF Core change tracking for auto-refund in EventCancellationEmailJob
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (GitHub Actions succeeded)
+- ✅ All unit tests pass locally
+- ✅ API verified working (auth token obtained)
+
+**Impact**:
+- Domain events now dispatch correctly when cancelling paid events
+- `RefundRequestedEvent` triggers Stripe refund via webhook flow
+- Registration status correctly transitions: Confirmed → RefundRequested → Refunded (after webhook)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.93: Add 7 Missing Email Templates ✅ COMPLETE
 
 ### PHASE 6A.93: ADD MISSING EMAIL TEMPLATES - 2026-02-01
 

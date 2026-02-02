@@ -279,17 +279,27 @@ public class StripePaymentService : IStripePaymentService
 
             var refundService = new RefundService(_stripeClient);
 
+            // Phase 6A.95: Map internal reason to valid Stripe reason
+            // Stripe only accepts: "duplicate", "fraudulent", or "requested_by_customer"
+            // Store original reason in metadata for our records
+            var stripeReason = MapToStripeReason(request.Reason);
+
+            _logger.LogInformation(
+                "[Phase 6A.95] Mapping refund reason - OriginalReason={OriginalReason}, StripeReason={StripeReason}",
+                request.Reason ?? "NULL", stripeReason);
+
             // Build refund options
             var refundOptions = new RefundCreateOptions
             {
                 PaymentIntent = request.PaymentIntentId,
-                Reason = request.Reason,
+                Reason = stripeReason,
                 Metadata = request.Metadata ?? new Dictionary<string, string>()
             };
 
-            // Add registration ID to metadata for tracking
+            // Add registration ID and original reason to metadata for tracking
             refundOptions.Metadata["registration_id"] = request.RegistrationId.ToString();
-            refundOptions.Metadata["refund_source"] = "lankaconnect_user_request";
+            refundOptions.Metadata["refund_source"] = "lankaconnect";
+            refundOptions.Metadata["original_reason"] = request.Reason ?? "not_specified";
 
             // If partial refund amount specified, include it
             if (request.AmountInCents.HasValue && request.AmountInCents.Value > 0)
@@ -394,6 +404,25 @@ public class StripePaymentService : IStripePaymentService
 
             return Result<StripeRefundResult>.Failure($"Failed to process refund request: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.95: Maps internal refund reasons to valid Stripe refund reasons.
+    /// Stripe only accepts: "duplicate", "fraudulent", or "requested_by_customer".
+    /// </summary>
+    private static string MapToStripeReason(string? internalReason)
+    {
+        // Stripe API only accepts these three values for refund reason
+        // See: https://docs.stripe.com/api/refunds/create#create_refund-reason
+        return internalReason?.ToLowerInvariant() switch
+        {
+            "duplicate" => "duplicate",
+            "fraudulent" => "fraudulent",
+            "requested_by_customer" => "requested_by_customer",
+            // Map all other reasons to "requested_by_customer" as the default
+            // This covers: event_cancelled, user_cancellation, organizer_refund, etc.
+            _ => "requested_by_customer"
+        };
     }
 
     /// <summary>

@@ -1,9 +1,63 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-02 - Phase 6A.94 Refund Observability Enhancements ✅ COMPLETE*
+*Last Updated: 2026-02-02 - Phase 6A.95 Search Hyphen Negation Bug Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.94: Refund Observability Enhancements ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.95: Search Hyphen Negation Bug Fix ✅ COMPLETE
+
+### PHASE 6A.95: SEARCH HYPHEN NEGATION BUG FIX - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Search Excluding Exact Matches
+
+**Problem Discovery**:
+When searching for "Sample group tier testing - Varuni" on the events page, the event with that exact title was NOT returned. Only "Varuni11" event appeared in results. This was counterintuitive - a more specific search should return at least the same results, not fewer.
+
+**Root Cause Analysis** (by System Architect Agent):
+- Classification: **Backend/Infrastructure Issue - PostgreSQL FTS Syntax**
+- PostgreSQL's `websearch_to_tsquery` interprets ` - word` as a negation operator
+- Example: "Sample - Varuni" → `'sampl' & 'group' & 'tier' & 'test' & !'varuni'`
+- The `!'varuni'` means "NOT varuni", which EXCLUDES events with "Varuni" in title
+- "Varuni11" matched because its token is `varuni11` (different from `varuni`)
+- This is a fundamental PostgreSQL behavior, not a coding bug
+
+**Fix Applied (TDD Approach)**:
+1. Created `SearchTermSanitizer` helper class to sanitize hyphen patterns
+2. Patterns sanitized: ` - ` → ` `, ` -` → ` `, `- ` → ` `
+3. Applied sanitization in `EventRepository.SearchAsync()` for multi-word queries
+4. Preserves websearch features: OR operators, quoted phrases, hyphenated compound words
+5. Added 29 unit tests covering all edge cases
+
+**Files Changed**:
+- `src/LankaConnect.Infrastructure/Helpers/SearchTermSanitizer.cs` (NEW)
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+- `tests/LankaConnect.Infrastructure.Tests/Helpers/SearchTermSanitizerTests.cs` (NEW)
+- `scripts/debug_search_vectors.py` (diagnostic script)
+
+**Commits**:
+- `4d1da2f2` - fix(search): Sanitize hyphen patterns to prevent websearch negation interpretation
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (GitHub Actions run 21573942173 succeeded)
+- ✅ All 29 SearchTermSanitizer tests pass
+- ✅ All 1,306 Application tests pass (4 skipped)
+- ✅ API tested: "Sample group tier testing - Varuni" now returns both Varuni events
+- ✅ OR operator verified working: "Varuni OR Gossip" returns 6 events
+
+**Test Results Before/After**:
+| Search Term | Before Fix | After Fix |
+|-------------|------------|-----------|
+| "Sample group tier testing - Varuni" | 1 result (Varuni11 only) | 2 results (both Varuni events) ✅ |
+| "Varuni OR Gossip" | Works | Works ✅ |
+
+**Trade-off**:
+- Intentional negation syntax (`music -classical`) no longer works
+- This was rarely used and benefits outweigh the loss
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.94: Refund Observability Enhancements ✅ COMPLETE
 
 ### PHASE 6A.94: REFUND OBSERVABILITY ENHANCEMENTS - 2026-02-02
 

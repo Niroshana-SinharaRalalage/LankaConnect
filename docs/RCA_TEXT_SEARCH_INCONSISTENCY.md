@@ -355,5 +355,49 @@ This analysis provides the technical foundation for implementing a comprehensive
 
 ---
 
+## 13. Resolution - Phase 6A.95 (2026-02-02)
+
+### 13.1 Fix Implemented
+
+The hyphen negation issue has been resolved by implementing **Option 1: Sanitize Hyphens** with a dedicated helper class.
+
+**Files Added/Modified**:
+- `src/LankaConnect.Infrastructure/Helpers/SearchTermSanitizer.cs` (NEW)
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+- `tests/LankaConnect.Infrastructure.Tests/Helpers/SearchTermSanitizerTests.cs` (NEW)
+
+**Implementation Details**:
+```csharp
+// SearchTermSanitizer.cs
+public static string SanitizeForWebSearch(string? searchTerm)
+{
+    if (string.IsNullOrWhiteSpace(searchTerm))
+        return string.Empty;
+
+    var sanitized = searchTerm.Trim();
+    sanitized = sanitized.Replace(" - ", " ");  // "Sample - Varuni" → "Sample Varuni"
+    sanitized = sanitized.Replace(" -", " ");   // "Sample -Varuni" → "Sample Varuni"
+    sanitized = sanitized.Replace("- ", " ");   // "Sample- Varuni" → "Sample Varuni"
+    // Clean up double spaces
+    while (sanitized.Contains("  "))
+        sanitized = sanitized.Replace("  ", " ");
+    return sanitized.Trim();
+}
+```
+
+### 13.2 Test Results
+
+| Search Term | Before Fix | After Fix |
+|-------------|------------|-----------|
+| "Sample group tier testing - Varuni" | 1 result (Varuni11 only) | 2 results (both Varuni events) ✅ |
+| "Varuni OR Gossip" | 6 results | 6 results ✅ (OR preserved) |
+| "well-known event" | Works | Works ✅ (hyphenated words preserved) |
+
+### 13.3 Commit
+
+- `4d1da2f2` - fix(search): Sanitize hyphen patterns to prevent websearch negation interpretation
+
+---
+
 **Prepared by**: System Architecture Agent
-**Review Status**: Pending Engineering Review
+**Review Status**: ✅ **RESOLVED** - Deployed to Azure Staging 2026-02-02

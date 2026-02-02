@@ -24,7 +24,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 UPDATE events.events e
                 SET ""TimeZoneId"" = CASE
                     -- Eastern Time States
-                    WHEN UPPER(e.""Location_Address_State"") IN ('OH', 'OHIO', 'NY', 'NEW YORK', 'PA', 'PENNSYLVANIA',
+                    WHEN UPPER(e.address_state) IN ('OH', 'OHIO', 'NY', 'NEW YORK', 'PA', 'PENNSYLVANIA',
                         'FL', 'FLORIDA', 'GA', 'GEORGIA', 'NC', 'NORTH CAROLINA', 'SC', 'SOUTH CAROLINA',
                         'VA', 'VIRGINIA', 'MI', 'MICHIGAN', 'IN', 'INDIANA', 'KY', 'KENTUCKY',
                         'TN', 'TENNESSEE', 'MA', 'MASSACHUSETTS', 'CT', 'CONNECTICUT', 'NJ', 'NEW JERSEY',
@@ -32,32 +32,32 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         'VT', 'VERMONT', 'RI', 'RHODE ISLAND', 'DC', 'DISTRICT OF COLUMBIA', 'WV', 'WEST VIRGINIA')
                     THEN 'America/New_York'
                     -- Central Time States
-                    WHEN UPPER(e.""Location_Address_State"") IN ('IL', 'ILLINOIS', 'TX', 'TEXAS', 'MN', 'MINNESOTA',
+                    WHEN UPPER(e.address_state) IN ('IL', 'ILLINOIS', 'TX', 'TEXAS', 'MN', 'MINNESOTA',
                         'WI', 'WISCONSIN', 'IA', 'IOWA', 'MO', 'MISSOURI', 'AR', 'ARKANSAS',
                         'LA', 'LOUISIANA', 'MS', 'MISSISSIPPI', 'AL', 'ALABAMA', 'OK', 'OKLAHOMA',
                         'KS', 'KANSAS', 'NE', 'NEBRASKA', 'SD', 'SOUTH DAKOTA', 'ND', 'NORTH DAKOTA')
                     THEN 'America/Chicago'
                     -- Mountain Time States
-                    WHEN UPPER(e.""Location_Address_State"") IN ('CO', 'COLORADO', 'NM', 'NEW MEXICO', 'UT', 'UTAH',
+                    WHEN UPPER(e.address_state) IN ('CO', 'COLORADO', 'NM', 'NEW MEXICO', 'UT', 'UTAH',
                         'WY', 'WYOMING', 'MT', 'MONTANA', 'ID', 'IDAHO')
                     THEN 'America/Denver'
                     -- Arizona (no DST)
-                    WHEN UPPER(e.""Location_Address_State"") IN ('AZ', 'ARIZONA')
+                    WHEN UPPER(e.address_state) IN ('AZ', 'ARIZONA')
                     THEN 'America/Phoenix'
                     -- Pacific Time States
-                    WHEN UPPER(e.""Location_Address_State"") IN ('CA', 'CALIFORNIA', 'WA', 'WASHINGTON', 'OR', 'OREGON',
+                    WHEN UPPER(e.address_state) IN ('CA', 'CALIFORNIA', 'WA', 'WASHINGTON', 'OR', 'OREGON',
                         'NV', 'NEVADA')
                     THEN 'America/Los_Angeles'
                     -- Alaska
-                    WHEN UPPER(e.""Location_Address_State"") IN ('AK', 'ALASKA')
+                    WHEN UPPER(e.address_state) IN ('AK', 'ALASKA')
                     THEN 'America/Anchorage'
                     -- Hawaii
-                    WHEN UPPER(e.""Location_Address_State"") IN ('HI', 'HAWAII')
+                    WHEN UPPER(e.address_state) IN ('HI', 'HAWAII')
                     THEN 'Pacific/Honolulu'
                     -- Default to Eastern Time (most Sri Lankan communities in USA are on East Coast)
                     ELSE 'America/New_York'
                 END
-                WHERE e.""Location_Address_State"" IS NOT NULL;
+                WHERE e.address_state IS NOT NULL;
             ");
 
             migrationBuilder.UpdateData(

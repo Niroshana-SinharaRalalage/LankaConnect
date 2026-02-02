@@ -183,32 +183,35 @@ public class TicketPricing : ValueObject
     }
 
     /// <summary>
-    /// Phase 6A.X Issue #34: Creates group-based tiered pricing with capacity validation
+    /// Phase 6A.X Issue #34: Creates group-based tiered pricing with max attendees per registration validation
     /// Ensures that the last tier either:
     /// 1. Is unlimited (no maxAttendees), OR
-    /// 2. Has maxAttendees >= eventCapacity
+    /// 2. Has maxAttendees >= maxAttendeesPerRegistration
+    ///
+    /// Note: Group pricing tiers should cover up to maxAttendeesPerRegistration (the limit per single registration),
+    /// not the total event capacity, because pricing tiers apply to individual registrations.
     /// </summary>
     /// <param name="tiers">List of pricing tiers</param>
     /// <param name="currency">Currency for all tiers</param>
-    /// <param name="eventCapacity">Event maximum capacity - tiers must cover this range</param>
-    public static Result<TicketPricing> CreateGroupTiered(List<GroupPricingTier>? tiers, Currency currency, int eventCapacity)
+    /// <param name="maxAttendeesPerRegistration">Maximum attendees allowed per registration - tiers must cover this range</param>
+    public static Result<TicketPricing> CreateGroupTiered(List<GroupPricingTier>? tiers, Currency currency, int maxAttendeesPerRegistration)
     {
         // First, call existing validation
         var baseResult = CreateGroupTiered(tiers, currency);
         if (baseResult.IsFailure)
             return baseResult;
 
-        // Additional validation: Last tier must cover event capacity
+        // Additional validation: Last tier must cover max attendees per registration
         var sortedTiers = tiers!.OrderBy(t => t.MinAttendees).ToList();
         var lastTier = sortedTiers.Last();
 
-        // If last tier is not unlimited, its maxAttendees must cover capacity
-        if (lastTier.MaxAttendees.HasValue && lastTier.MaxAttendees.Value < eventCapacity)
+        // If last tier is not unlimited, its maxAttendees must cover maxAttendeesPerRegistration
+        if (lastTier.MaxAttendees.HasValue && lastTier.MaxAttendees.Value < maxAttendeesPerRegistration)
         {
             return Result<TicketPricing>.Failure(
-                $"Pricing tiers do not cover the full event capacity. " +
-                $"The last tier ends at {lastTier.MaxAttendees.Value} attendees but event capacity is {eventCapacity}. " +
-                $"Either extend the last tier to cover {eventCapacity} attendees, or make it unlimited (no maximum).");
+                $"Pricing tiers do not cover the full registration limit. " +
+                $"The last tier ends at {lastTier.MaxAttendees.Value} attendees but max attendees per registration is {maxAttendeesPerRegistration}. " +
+                $"Either extend the last tier to cover {maxAttendeesPerRegistration} attendees, or make it unlimited (no maximum).");
         }
 
         return baseResult;

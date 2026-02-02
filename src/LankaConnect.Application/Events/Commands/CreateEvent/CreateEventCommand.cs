@@ -11,6 +11,8 @@ public record CreateEventCommand(
     DateTime EndDate,
     Guid OrganizerId,
     int Capacity,
+    // Issue #51: Max attendees per registration (optional, defaults to 10)
+    int? MaxAttendeesPerRegistration = null,
     EventCategory? Category = null,
     // Location (optional)
     string? LocationAddress = null,

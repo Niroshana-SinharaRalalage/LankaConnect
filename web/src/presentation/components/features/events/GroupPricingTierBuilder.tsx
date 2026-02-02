@@ -27,8 +27,9 @@ interface GroupPricingTierBuilderProps {
   onChange: (tiers: GroupPricingTierFormData[]) => void;
   defaultCurrency: Currency;
   errors?: string;
-  /** Phase 6A.X Issue #22: Event capacity for tier validation */
-  eventCapacity?: number;
+  /** Phase 6A.X Issue #22: Max attendees per registration for tier validation
+   *  Tiers should cover up to this limit, not total event capacity */
+  maxAttendeesPerRegistration?: number;
 }
 
 export function GroupPricingTierBuilder({
@@ -36,7 +37,7 @@ export function GroupPricingTierBuilder({
   onChange,
   defaultCurrency,
   errors,
-  eventCapacity,
+  maxAttendeesPerRegistration,
 }: GroupPricingTierBuilderProps) {
   // Phase 6A.47: Fetch currencies from reference data API
   const { data: currencies } = useCurrencies();
@@ -52,9 +53,9 @@ export function GroupPricingTierBuilder({
   });
   const [tierErrors, setTierErrors] = useState<string | null>(null);
 
-  // Phase 6A.X Issue #34: Check if tiers cover the full event capacity
-  const tiersCoverCapacity = useMemo(() => {
-    if (!eventCapacity || eventCapacity <= 0 || tiers.length === 0) return true;
+  // Phase 6A.X Issue #34: Check if tiers cover the max attendees per registration
+  const tiersCoverMaxAttendees = useMemo(() => {
+    if (!maxAttendeesPerRegistration || maxAttendeesPerRegistration <= 0 || tiers.length === 0) return true;
 
     const sorted = [...tiers].sort((a, b) => a.minAttendees - b.minAttendees);
     const lastTier = sorted[sorted.length - 1];
@@ -62,9 +63,9 @@ export function GroupPricingTierBuilder({
     // If last tier is unlimited (no max), it covers everything
     if (!lastTier.maxAttendees) return true;
 
-    // Otherwise, check if it reaches capacity
-    return lastTier.maxAttendees >= eventCapacity;
-  }, [tiers, eventCapacity]);
+    // Otherwise, check if it reaches max attendees per registration
+    return lastTier.maxAttendees >= maxAttendeesPerRegistration;
+  }, [tiers, maxAttendeesPerRegistration]);
 
   // Calculate suggested minAttendees for next tier
   const suggestedMinAttendees = (): number => {
@@ -107,14 +108,14 @@ export function GroupPricingTierBuilder({
       return false;
     }
 
-    // Phase 6A.X Issue #22: Validate tier max attendees against event capacity
-    if (eventCapacity && eventCapacity > 0) {
-      if (newTier.maxAttendees && newTier.maxAttendees > eventCapacity) {
-        setTierErrors(`Tier maximum (${newTier.maxAttendees}) cannot exceed event capacity (${eventCapacity})`);
+    // Phase 6A.X Issue #22: Validate tier max attendees against max attendees per registration
+    if (maxAttendeesPerRegistration && maxAttendeesPerRegistration > 0) {
+      if (newTier.maxAttendees && newTier.maxAttendees > maxAttendeesPerRegistration) {
+        setTierErrors(`Tier maximum (${newTier.maxAttendees}) cannot exceed max attendees per registration (${maxAttendeesPerRegistration})`);
         return false;
       }
-      if (newTier.minAttendees > eventCapacity) {
-        setTierErrors(`Tier minimum (${newTier.minAttendees}) cannot exceed event capacity (${eventCapacity})`);
+      if (newTier.minAttendees > maxAttendeesPerRegistration) {
+        setTierErrors(`Tier minimum (${newTier.minAttendees}) cannot exceed max attendees per registration (${maxAttendeesPerRegistration})`);
         return false;
       }
     }
@@ -387,8 +388,8 @@ export function GroupPricingTierBuilder({
         </div>
       )}
 
-      {/* Phase 6A.X Issue #34: Warning when tiers don't cover full capacity */}
-      {!tiersCoverCapacity && eventCapacity && sortedTiers.length > 0 && !showAddForm && (
+      {/* Phase 6A.X Issue #34: Warning when tiers don't cover max attendees per registration */}
+      {!tiersCoverMaxAttendees && maxAttendeesPerRegistration && sortedTiers.length > 0 && !showAddForm && (
         <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-amber-700">
@@ -396,11 +397,11 @@ export function GroupPricingTierBuilder({
             <p className="mt-1">
               Your pricing tiers only cover up to{' '}
               <strong>{sortedTiers[sortedTiers.length - 1]?.maxAttendees || 0}</strong> attendees,
-              but your event capacity is <strong>{eventCapacity}</strong>.
+              but max attendees per registration is <strong>{maxAttendeesPerRegistration}</strong>.
             </p>
             <p className="mt-1">
-              Groups larger than your last tier will see no pricing and cannot register.
-              Either make your last tier unlimited (leave max blank) or extend it to {eventCapacity}.
+              Registrations with more attendees than your last tier will see no pricing and cannot complete.
+              Either make your last tier unlimited (leave max blank) or extend it to {maxAttendeesPerRegistration}.
             </p>
           </div>
         </div>

@@ -724,7 +724,7 @@ export function EventCreationForm() {
                     onChange={(tiers) => setValue('groupPricingTiers', tiers)}
                     defaultCurrency={watch('ticketPriceCurrency') || Currency.USD}
                     errors={errors.groupPricingTiers?.message}
-                    eventCapacity={watch('capacity')}
+                    maxAttendeesPerRegistration={watch('maxAttendeesPerRegistration') || 10}
                   />
                 </div>
               )}

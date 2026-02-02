@@ -201,13 +201,15 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 tiers.Add(tierResult.Value);
             }
 
-            // Phase 6A.X Issue #34: Use overloaded method with capacity to validate tier coverage
-            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency, request.Capacity);
+            // Phase 6A.X Issue #34: Use overloaded method with maxAttendeesPerRegistration to validate tier coverage
+            // Tiers should cover the max attendees per registration, not total event capacity
+            var maxAttendeesPerReg = request.MaxAttendeesPerRegistration ?? 10; // Default to 10 if not specified
+            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency, maxAttendeesPerReg);
             if (groupPricingResult.IsFailure)
             {
                 _logger.LogWarning(
-                    "CreateEvent VALIDATION FAILED: Group pricing tiers do not cover capacity - Error={Error}",
-                    groupPricingResult.Error);
+                    "CreateEvent VALIDATION FAILED: Group pricing tiers do not cover max attendees per registration ({MaxAttendeesPerReg}) - Error={Error}",
+                    maxAttendeesPerReg, groupPricingResult.Error);
                 return Result<Guid>.Failure(groupPricingResult.Error);
             }
 

@@ -43,6 +43,18 @@ public record EventDto
     public decimal? Latitude { get; init; }
     public decimal? Longitude { get; init; }
 
+    /// <summary>
+    /// Phase 6A.97: IANA timezone ID for consistent date/time display (e.g., "America/New_York").
+    /// Derived from event location (US state). Used by frontend to display times in event's local timezone.
+    /// </summary>
+    public string? TimeZoneId { get; init; }
+
+    /// <summary>
+    /// Phase 6A.97: Timezone abbreviation for display (e.g., "EST", "PST").
+    /// Computed based on TimeZoneId and event StartDate (accounts for DST).
+    /// </summary>
+    public string? TimeZoneAbbreviation { get; init; }
+
     // Legacy Ticket pricing (nullable - free events, backward compatibility)
     public decimal? TicketPriceAmount { get; init; }
     public Currency? TicketPriceCurrency { get; init; }

@@ -33,6 +33,15 @@ public class Event : BaseEntity
     public string? CancellationReason { get; private set; }
     public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
+
+    /// <summary>
+    /// Phase 6A.97: IANA timezone identifier for event's local time display.
+    /// Derived from event location (US state) when event is created/updated.
+    /// Examples: "America/New_York" (Eastern), "America/Chicago" (Central), "America/Los_Angeles" (Pacific)
+    /// Used for consistent date/time display in emails and frontend.
+    /// </summary>
+    public string? TimeZoneId { get; private set; }
+
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
@@ -765,6 +774,32 @@ public class Event : BaseEntity
 
         // Raise domain event
         RaiseDomainEvent(new EventLocationUpdatedEvent(Id, location, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Sets the event's timezone for consistent date/time display.
+    /// Should be called when event location is set/updated.
+    /// </summary>
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    public Result SetTimeZone(string timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+            return Result.Failure("Timezone ID cannot be null or empty");
+
+        // Validate the timezone ID is valid
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return Result.Failure($"Invalid timezone ID: {timeZoneId}");
+        }
+
+        TimeZoneId = timeZoneId;
+        MarkAsUpdated();
 
         return Result.Success();
     }

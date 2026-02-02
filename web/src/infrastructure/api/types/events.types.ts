@@ -263,6 +263,19 @@ export interface EventDto {
   latitude?: number | null;
   longitude?: number | null;
 
+  /**
+   * Phase 6A.97: IANA timezone identifier for consistent date/time display
+   * Example: "America/New_York", "America/Los_Angeles"
+   * Derived from event's state location
+   */
+  timeZoneId?: string | null;
+
+  /**
+   * Phase 6A.97: Timezone abbreviation for display (e.g., "EST", "PST")
+   * Accounts for Daylight Saving Time
+   */
+  timeZoneAbbreviation?: string | null;
+
   // Ticket pricing (nullable - free events)
   // Legacy single pricing (backward compatibility)
   ticketPriceAmount?: number | null;

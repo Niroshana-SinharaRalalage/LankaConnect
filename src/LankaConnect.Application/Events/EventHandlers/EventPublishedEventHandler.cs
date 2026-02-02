@@ -116,8 +116,8 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             {
                 ["EventTitle"] = @event.Title.Value,
                 ["EventDescription"] = @event.Description.Value,
-                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate),
-                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate),
+                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["EventCity"] = @event.Location?.Address.City ?? "TBA",
                 ["EventState"] = @event.Location?.Address.State ?? "TBA",

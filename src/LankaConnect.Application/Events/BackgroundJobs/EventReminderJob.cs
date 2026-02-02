@@ -220,7 +220,7 @@ public class EventReminderJob
                             attendeeEmail: toEmail,
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
                             eventStartDate: @event.StartDate,
-                            eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
+                            eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                             location: @event.Location?.Address.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
                             hoursUntilEvent: hoursUntilEvent,
@@ -228,6 +228,9 @@ public class EventReminderJob
                             reminderMessage: reminderMessage,
                             eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                         );
+
+                        // Phase 6A.97: Set event's timezone for consistent date/time display
+                        emailParams.TimeZoneId = @event.TimeZoneId;
 
                         // Phase 6A.87: Add organizer contact if available
                         if (@event.HasOrganizerContact())
@@ -245,7 +248,7 @@ public class EventReminderJob
                         {
                             emailParams.WithTicket(
                                 ticketCode: ticket.TicketCode,
-                                expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt)  // Phase 6A.X Issue #40: Uses timezone helper
+                                expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt, @event.TimeZoneId)  // Phase 6A.97: Uses event's timezone
                             );
                         }
 
@@ -417,7 +420,7 @@ public class EventReminderJob
                         attendeeEmail: toEmail,
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
                         eventStartDate: @event.StartDate,
-                        eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
+                        eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                         location: @event.Location?.Address.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,
                         hoursUntilEvent: hoursUntilEvent,
@@ -425,6 +428,9 @@ public class EventReminderJob
                         reminderMessage: reminderMessage,
                         eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                     );
+
+                    // Phase 6A.97: Set event's timezone for consistent date/time display
+                    emailParams.TimeZoneId = @event.TimeZoneId;
 
                     // Phase 6A.87: Add organizer contact if available
                     if (@event.HasOrganizerContact())
@@ -442,7 +448,7 @@ public class EventReminderJob
                     {
                         emailParams.WithTicket(
                             ticketCode: ticket.TicketCode,
-                            expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt)  // Phase 6A.X Issue #40: Uses timezone helper
+                            expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt, @event.TimeZoneId)  // Phase 6A.97: Uses event's timezone
                         );
                     }
 

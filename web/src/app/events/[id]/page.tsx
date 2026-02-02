@@ -24,6 +24,8 @@ import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCateg
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
+// Phase 6A.97: Import timezone-aware date formatter
+import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/presentation/lib/utils/date-formatter';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -437,21 +439,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const startDate = new Date(event.startDate);
-  const endDate = new Date(event.endDate);
-  const formattedStartDate = startDate.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const formattedStartTime = startDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  const formattedEndTime = endDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  // Phase 6A.97: Use timezone-aware date formatting for consistent display
+  const formattedStartDate = formatEventDate(event.startDate, event.timeZoneId);
+  const formattedStartTime = formatEventTime(event.startDate, event.timeZoneId);
+  const formattedEndTime = formatEventTime(event.endDate, event.timeZoneId);
+  const timezoneAbbreviation = getTimezoneAbbreviation(event.timeZoneId, event.startDate);
 
   const isFull = event.currentRegistrations >= event.capacity;
   const spotsLeft = event.capacity - event.currentRegistrations;

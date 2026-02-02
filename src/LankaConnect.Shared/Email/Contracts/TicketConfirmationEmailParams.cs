@@ -69,6 +69,11 @@ public class TicketConfirmationEmailParams : IEmailParameters
     public DateTime EventStartDate { get; set; }
 
     /// <summary>
+    /// Phase 6A.97: IANA timezone identifier for consistent date/time display.
+    /// </summary>
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>
     /// Event start time formatted (e.g., "10:00 AM").
     /// </summary>
     public string EventStartTime { get; set; } = string.Empty;
@@ -231,7 +236,7 @@ public class TicketConfirmationEmailParams : IEmailParameters
             // Core event parameters
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", EventStartTime },
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
@@ -243,8 +248,8 @@ public class TicketConfirmationEmailParams : IEmailParameters
             { "TotalAmount", AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
             { "PaymentIntentId", PaymentIntentId },
             { "OrderNumber", PaymentIntentId }, // OrderNumber is same as PaymentIntentId
-            { "PaymentDate", PaymentDate.ToString("MMMM dd, yyyy h:mm tt") },
-            { "RegistrationDate", RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+            { "PaymentDate", EmailDateTimeHelper.FormatDateTimeWithTz(PaymentDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+            { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(RegistrationDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
             { "Quantity", Quantity },
 
             // Attendee parameters

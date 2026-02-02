@@ -66,6 +66,11 @@ public class EventReminderEmailParams : IEmailParameters
     public DateTime EventStartDate { get; set; }
 
     /// <summary>
+    /// Phase 6A.97: IANA timezone identifier for consistent date/time display.
+    /// </summary>
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>
     /// Event start time (e.g., "10:00 AM").
     /// </summary>
     public string EventStartTime { get; set; } = string.Empty;
@@ -158,7 +163,7 @@ public class EventReminderEmailParams : IEmailParameters
             // Required parameters
             { "AttendeeName", AttendeeName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", EventStartTime },
             { "Location", Location },
             { "Quantity", Quantity },

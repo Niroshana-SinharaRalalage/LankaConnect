@@ -148,10 +148,13 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                     userEmail: user.Email.Value,
                     eventTitle: @event.Title.Value,
                     eventStartDate: @event.StartDate,
-                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate),
+                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
                     registrationDate: domainEvent.RegistrationDate);
+
+                // Phase 6A.97: Set event's timezone for consistent date/time display
+                typedParams.TimeZoneId = @event.TimeZoneId;
 
                 // Set signup lists URL if event has signup lists
                 if (@event.HasSignUpLists())
@@ -210,10 +213,10 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 {
                     { "UserName", $"{user.FirstName} {user.LastName}" },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(domainEvent.RegistrationDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                     { "HasAttendeeDetails", hasAttendeeDetailsLocal },
                     { "EventImageUrl", eventImageUrl },

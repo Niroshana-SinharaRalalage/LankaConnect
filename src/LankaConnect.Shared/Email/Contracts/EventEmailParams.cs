@@ -63,14 +63,23 @@ public class EventEmailParams
     public string EventDetailsUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// Phase 6A.97: IANA timezone ID for the event (e.g., "America/New_York").
+    /// Used for consistent date/time formatting in emails.
+    /// If null, defaults to Eastern Time.
+    /// </summary>
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>
     /// Converts to dictionary for backward compatibility with existing email system.
     /// Includes both separate date/time AND combined EventDateTime for template compatibility.
     /// </summary>
     /// <returns>Dictionary with all event parameters</returns>
     public Dictionary<string, object> ToDictionary()
     {
-        // Phase 6A.X Issue #40: Use timezone helper for consistent formatting
-        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate);
+        // Phase 6A.97: Use timezone-aware helper for consistent formatting
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId); // Includes timezone abbr (e.g., "6:00 PM EST")
+        var tzAbbreviation = EmailDateTimeHelper.GetTimezoneAbbreviation(TimeZoneId, EventStartDate);
 
         return new Dictionary<string, object>
         {
@@ -78,9 +87,10 @@ public class EventEmailParams
             { "EventTitle", EventTitle },
             { "EventLocation", EventLocation },
             { "EventStartDate", formattedDate },
-            { "EventStartTime", EventStartTime },
-            { "EventDateTime", $"{formattedDate} at {EventStartTime}" }, // Combined for templates expecting single field
-            { "EventDetailsUrl", EventDetailsUrl }
+            { "EventStartTime", !string.IsNullOrEmpty(EventStartTime) ? EventStartTime : formattedTime }, // Use pre-set time or formatted
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" }, // Combined with timezone
+            { "EventDetailsUrl", EventDetailsUrl },
+            { "TimeZoneAbbreviation", tzAbbreviation } // Phase 6A.97: Include timezone abbreviation
         };
     }
 

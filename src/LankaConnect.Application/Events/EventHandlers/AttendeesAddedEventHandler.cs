@@ -252,8 +252,8 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                 {
                     { "UserName", recipientName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "EventLocation", GetEventLocationString(@event) },
                     { "PreviousCount", domainEvent.PreviousAttendeeCount },
                     { "AddedCount", domainEvent.AddedAttendeeCount },

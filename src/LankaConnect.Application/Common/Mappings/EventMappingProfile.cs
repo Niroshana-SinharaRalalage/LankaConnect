@@ -40,6 +40,12 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Country, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Country : null))
             .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Latitude : (decimal?)null))
             .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Longitude : (decimal?)null))
+            // Phase 6A.97: Timezone mapping for consistent date/time display
+            .ForMember(dest => dest.TimeZoneId, opt => opt.MapFrom(src => src.TimeZoneId))
+            .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>
+                src.TimeZoneId != null
+                    ? LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate)
+                    : null))
             // Legacy ticket price mapping (nullable - backward compatibility)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
             .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (Domain.Shared.Enums.Currency?)null))

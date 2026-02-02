@@ -68,6 +68,11 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     public DateTime EventStartDate { get; set; }
 
     /// <summary>
+    /// Phase 6A.97: IANA timezone identifier for consistent date/time display.
+    /// </summary>
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>
     /// Event start time formatted (e.g., "10:00 AM").
     /// </summary>
     public string EventStartTime { get; set; } = string.Empty;
@@ -181,14 +186,14 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             // Core event parameters
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", EventStartTime },
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "SignUpListsUrl", SignUpListsUrl },
 
             // Registration parameters
-            { "RegistrationDate", RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+            { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(RegistrationDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
 
             // Attendee parameters
             { "HasAttendeeDetails", HasAttendeeDetails },

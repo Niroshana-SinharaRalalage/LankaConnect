@@ -87,7 +87,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 { "EventTitle", @event.Title },
                 { "SignupItem", domainEvent.ItemDescription },  // Phase 6A.83: Renamed from ItemDescription
                 { "Quantity", domainEvent.Quantity },
-                { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
+                { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
                 { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "CommitmentType", "Item Contribution" },  // Phase 6A.83: Added missing parameter

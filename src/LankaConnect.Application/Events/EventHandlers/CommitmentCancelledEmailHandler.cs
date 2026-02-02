@@ -88,7 +88,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 { "EventTitle", @event.Title?.Value ?? "Untitled Event" },  // Phase 6A.83: Extract Value from value object
                 { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
                 { "Quantity", domainEvent.Quantity },
-                { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+                { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                 { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
                 { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "PickupInstructions", "No pickup/delivery needed as this commitment has been cancelled." }

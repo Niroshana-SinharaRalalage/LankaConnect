@@ -83,8 +83,8 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
             {
                 { "UserName", $"{user.FirstName} {user.LastName}" },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
-                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
+                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                 { "EventLocation", GetEventLocationString(@event) },  // Phase 6A.83: Added missing parameter
                 { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
                 { "CancellationDate", domainEvent.CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },

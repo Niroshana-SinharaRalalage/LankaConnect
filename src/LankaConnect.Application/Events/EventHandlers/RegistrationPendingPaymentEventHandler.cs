@@ -148,8 +148,8 @@ public class RegistrationPendingPaymentEventHandler
             {
                 { "UserName", domainEvent.ContactName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },
-                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },
+                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                 { "EventLocation", @event.Location?.ToString() ?? "TBD" },
                 { "AttendeeCount", domainEvent.AttendeeCount },
                 { "TotalAmount", $"${domainEvent.TotalAmount:F2}" },

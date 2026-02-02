@@ -231,10 +231,10 @@ public class EventCancellationEmailJob
             var baseParameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
-                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
-                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
+                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                 // Phase 6A.83 Part 3: Add EventDateTime (template expects combined date+time)
-                ["EventDateTime"] = EmailDateTimeHelper.FormatDateTime(@event.StartDate),  // Phase 6A.X Issue #40: Uses timezone helper
+                ["EventDateTime"] = EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["CancellationReason"] = cancellationReason,
                 ["RefundInfo"] = GetRefundInfoMessage(@event.IsFree(), refundResults),

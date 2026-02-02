@@ -125,10 +125,10 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 {
                     { "UserName", contactName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) },  // Phase 6A.X Issue #40: Uses timezone helper
+                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") },
+                    { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(domainEvent.RegistrationDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
                     { "HasAttendeeDetails", hasAttendeeDetails },
                     // Phase 6A.80: Add event image support

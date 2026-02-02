@@ -320,8 +320,8 @@ public class EventNotificationEmailJob
 
             // Phase 6A.61+: Add event-published fields for rich template compatibility
             { "EventDescription", @event.Description?.Value ?? "" },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
-            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate) }, // Phase 6A.X Issue #40: Uses timezone helper
+            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
             { "EventCity", @event.Location?.Address.City ?? "TBA" },
             { "EventState", @event.Location?.Address.State ?? "TBA" },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl

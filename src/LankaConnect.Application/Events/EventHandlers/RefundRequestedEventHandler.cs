@@ -83,7 +83,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                 {
                     { "UserName", userName },
                     { "EventTitle", @event.Title?.Value ?? "Event" },
-                    { "EventDateTime", EmailDateTimeHelper.FormatDateTime(@event.StartDate) },
+                    { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
                     { "RefundAmount", domainEvent.RefundAmount.ToString("F2") },
                     { "OrganizerContactName", @event.OrganizerContactName ?? "Event Organizer" },
                     { "OrganizerContactEmail", @event.OrganizerContactEmail ?? SupportEmail },

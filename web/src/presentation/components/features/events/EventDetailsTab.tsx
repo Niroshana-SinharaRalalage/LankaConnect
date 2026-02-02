@@ -32,6 +32,8 @@ import { ImageUploader } from '@/presentation/components/features/events/ImageUp
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { type EventDto } from '@/infrastructure/api/types/events.types';
+// Phase 6A.97: Import timezone-aware date formatter
+import { formatEventDateTime } from '@/presentation/lib/utils/date-formatter';
 
 interface EventDetailsTabProps {
   event: EventDto;
@@ -134,29 +136,23 @@ export function EventDetailsTab({
               <span className="text-sm text-neutral-600">{event.description}</span>
             </div>
 
-            {/* Start Date */}
+            {/* Start Date - Phase 6A.97: Uses event's timezone for consistent display */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#FF7900]" />
                 Start Date:
               </span>
               <span className="text-sm text-neutral-900">
-                {new Date(event.startDate).toLocaleString('en-US', {
-                  dateStyle: 'full',
-                  timeStyle: 'short',
-                })}
+                {formatEventDateTime(event.startDate, event.timeZoneId)}
               </span>
             </div>
 
-            {/* End Date */}
+            {/* End Date - Phase 6A.97: Uses event's timezone for consistent display */}
             {event.endDate && (
               <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700">End Date:</span>
                 <span className="text-sm text-neutral-900">
-                  {new Date(event.endDate).toLocaleString('en-US', {
-                    dateStyle: 'full',
-                    timeStyle: 'short',
-                  })}
+                  {formatEventDateTime(event.endDate, event.timeZoneId)}
                 </span>
               </div>
             )}

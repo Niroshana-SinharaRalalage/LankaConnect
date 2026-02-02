@@ -1,103 +1,229 @@
 namespace LankaConnect.Shared.Email.Helpers;
 
 /// <summary>
-/// Phase 6A.X Issue #40: Helper for consistent date/time formatting in emails.
-/// Converts UTC dates to Sri Lanka timezone (Asia/Colombo, UTC+5:30) for display.
+/// Phase 6A.97: Helper for consistent date/time formatting in emails.
+/// Converts UTC dates to the event's local timezone for display.
 ///
-/// Problem: Event dates are stored in UTC but displayed in local time on the website.
-/// The frontend converts UTC to browser local time, but emails were showing UTC time.
-/// This helper ensures emails show the same time as the website.
+/// This app serves Sri Lankans living in the USA, so all events are in US timezones.
+/// The timezone is derived from the event's location (US state).
 ///
 /// Usage:
-/// - EmailDateTimeHelper.FormatEventDate(@event.StartDate) => "January 15, 2026"
-/// - EmailDateTimeHelper.FormatEventTime(@event.StartDate) => "6:00 PM"
-/// - EmailDateTimeHelper.FormatDateTime(@event.StartDate) => "January 15, 2026 6:00 PM"
+/// - EmailDateTimeHelper.FormatEventDate(startDate, "America/New_York") => "January 15, 2026"
+/// - EmailDateTimeHelper.FormatEventTime(startDate, "America/New_York") => "6:00 PM EST"
+/// - EmailDateTimeHelper.FormatDateTimeWithTz(startDate, "America/New_York") => "January 15, 2026 at 6:00 PM EST"
 /// </summary>
 public static class EmailDateTimeHelper
 {
     /// <summary>
-    /// Sri Lanka timezone (Asia/Colombo, UTC+5:30)
-    /// This is used for all LankaConnect events since the platform serves Sri Lanka.
+    /// Default timezone when not specified (Eastern Time - most Sri Lankan communities in USA are on East Coast)
     /// </summary>
-    private static readonly TimeZoneInfo SriLankaTimeZone =
-        TimeZoneInfo.FindSystemTimeZoneById(GetSriLankaTimeZoneId());
+    public const string DefaultTimeZoneId = "America/New_York";
 
     /// <summary>
-    /// Converts a UTC DateTime to Sri Lanka local time.
+    /// Standard timezone abbreviations mapping.
+    /// </summary>
+    private static readonly Dictionary<string, (string Standard, string Daylight)> TimezoneAbbreviations = new()
+    {
+        { "America/New_York", ("EST", "EDT") },
+        { "America/Chicago", ("CST", "CDT") },
+        { "America/Denver", ("MST", "MDT") },
+        { "America/Phoenix", ("MST", "MST") },  // Arizona doesn't observe DST
+        { "America/Los_Angeles", ("PST", "PDT") },
+        { "America/Anchorage", ("AKST", "AKDT") },
+        { "Pacific/Honolulu", ("HST", "HST") },  // Hawaii doesn't observe DST
+    };
+
+    #region Phase 6A.97: New timezone-aware methods
+
+    /// <summary>
+    /// Phase 6A.97: Converts a UTC DateTime to the specified timezone.
     /// </summary>
     /// <param name="utcDateTime">UTC datetime to convert</param>
-    /// <returns>DateTime in Sri Lanka timezone</returns>
-    public static DateTime ToSriLankaTime(DateTime utcDateTime)
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    /// <returns>DateTime in the specified timezone</returns>
+    public static DateTime ToLocalTime(DateTime utcDateTime, string? timeZoneId)
     {
-        // Ensure the input is treated as UTC
-        var utc = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
-        return TimeZoneInfo.ConvertTimeFromUtc(utc, SriLankaTimeZone);
+        var tzId = string.IsNullOrWhiteSpace(timeZoneId) ? DefaultTimeZoneId : timeZoneId;
+
+        try
+        {
+            var utc = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, timeZone);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            // Fall back to default timezone
+            var utc = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            var defaultTz = TimeZoneInfo.FindSystemTimeZoneById(DefaultTimeZoneId);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, defaultTz);
+        }
     }
 
     /// <summary>
-    /// Formats a UTC date for display in emails (date only).
+    /// Phase 6A.97: Gets the timezone abbreviation (e.g., "EST", "PDT") for display.
+    /// Accounts for Daylight Saving Time.
+    /// </summary>
+    /// <param name="timeZoneId">IANA timezone ID</param>
+    /// <param name="utcDateTime">The datetime to check for DST</param>
+    /// <returns>Timezone abbreviation (e.g., "EST" or "EDT")</returns>
+    public static string GetTimezoneAbbreviation(string? timeZoneId, DateTime utcDateTime)
+    {
+        var tzId = string.IsNullOrWhiteSpace(timeZoneId) ? DefaultTimeZoneId : timeZoneId;
+
+        try
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+            var utc = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            var localTime = TimeZoneInfo.ConvertTimeFromUtc(utc, timeZone);
+            var isDst = timeZone.IsDaylightSavingTime(localTime);
+
+            if (TimezoneAbbreviations.TryGetValue(tzId, out var abbreviations))
+            {
+                return isDst ? abbreviations.Daylight : abbreviations.Standard;
+            }
+
+            // Fallback: use standard/daylight name
+            return isDst ? ExtractAbbreviation(timeZone.DaylightName) : ExtractAbbreviation(timeZone.StandardName);
+        }
+        catch
+        {
+            return "EST"; // Safe fallback
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Formats a UTC date for display in emails (date only).
     /// Example: "January 15, 2026"
     /// </summary>
     /// <param name="utcDateTime">UTC datetime to format</param>
-    /// <returns>Formatted date string in Sri Lanka timezone</returns>
-    public static string FormatEventDate(DateTime utcDateTime)
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    /// <returns>Formatted date string in the specified timezone</returns>
+    public static string FormatEventDate(DateTime utcDateTime, string? timeZoneId)
     {
-        var localTime = ToSriLankaTime(utcDateTime);
+        var localTime = ToLocalTime(utcDateTime, timeZoneId);
         return localTime.ToString("MMMM dd, yyyy");
     }
 
     /// <summary>
-    /// Formats a UTC time for display in emails (time only).
-    /// Example: "6:00 PM"
+    /// Phase 6A.97: Formats a UTC time for display in emails (time only, with timezone).
+    /// Example: "6:00 PM EST"
     /// </summary>
     /// <param name="utcDateTime">UTC datetime to format</param>
-    /// <returns>Formatted time string in Sri Lanka timezone</returns>
-    public static string FormatEventTime(DateTime utcDateTime)
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    /// <returns>Formatted time string with timezone abbreviation</returns>
+    public static string FormatEventTime(DateTime utcDateTime, string? timeZoneId)
     {
-        var localTime = ToSriLankaTime(utcDateTime);
+        var localTime = ToLocalTime(utcDateTime, timeZoneId);
+        var tzAbbr = GetTimezoneAbbreviation(timeZoneId, utcDateTime);
+        return $"{localTime:h:mm tt} {tzAbbr}";
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Formats time without timezone abbreviation.
+    /// Example: "6:00 PM"
+    /// </summary>
+    public static string FormatEventTimeOnly(DateTime utcDateTime, string? timeZoneId)
+    {
+        var localTime = ToLocalTime(utcDateTime, timeZoneId);
         return localTime.ToString("h:mm tt");
     }
 
     /// <summary>
-    /// Formats a UTC datetime for display in emails (date and time).
-    /// Example: "January 15, 2026 6:00 PM"
+    /// Phase 6A.97: Formats a UTC datetime for display in emails (date and time with timezone).
+    /// Example: "January 15, 2026 at 6:00 PM EST"
     /// </summary>
     /// <param name="utcDateTime">UTC datetime to format</param>
-    /// <returns>Formatted datetime string in Sri Lanka timezone</returns>
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    /// <returns>Formatted datetime string with timezone abbreviation</returns>
+    public static string FormatDateTimeWithTz(DateTime utcDateTime, string? timeZoneId)
+    {
+        var localTime = ToLocalTime(utcDateTime, timeZoneId);
+        var tzAbbr = GetTimezoneAbbreviation(timeZoneId, utcDateTime);
+        return $"{localTime:MMMM dd, yyyy} at {localTime:h:mm tt} {tzAbbr}";
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Formats a UTC datetime using a custom format pattern.
+    /// </summary>
+    /// <param name="utcDateTime">UTC datetime to format</param>
+    /// <param name="timeZoneId">IANA timezone ID</param>
+    /// <param name="format">Custom format pattern</param>
+    /// <returns>Formatted datetime string in specified timezone</returns>
+    public static string Format(DateTime utcDateTime, string? timeZoneId, string format)
+    {
+        var localTime = ToLocalTime(utcDateTime, timeZoneId);
+        return localTime.ToString(format);
+    }
+
+    #endregion
+
+    #region Legacy methods (backward compatibility - will be updated to use timezone in Phase 6A.97)
+
+    /// <summary>
+    /// Phase 6A.97: Legacy method that uses default Eastern timezone.
+    /// Will be updated to accept timezone parameter once all callers are updated.
+    /// </summary>
+    public static string FormatEventDate(DateTime utcDateTime)
+    {
+        return FormatEventDate(utcDateTime, DefaultTimeZoneId);
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Legacy method that uses default Eastern timezone.
+    /// Will be updated to accept timezone parameter once all callers are updated.
+    /// </summary>
+    public static string FormatEventTime(DateTime utcDateTime)
+    {
+        return FormatEventTimeOnly(utcDateTime, DefaultTimeZoneId);
+    }
+
+    /// <summary>
+    /// Phase 6A.97: Legacy method that uses default Eastern timezone.
+    /// Will be updated to accept timezone parameter once all callers are updated.
+    /// </summary>
     public static string FormatDateTime(DateTime utcDateTime)
     {
-        var localTime = ToSriLankaTime(utcDateTime);
+        var localTime = ToLocalTime(utcDateTime, DefaultTimeZoneId);
         return localTime.ToString("MMMM dd, yyyy h:mm tt");
     }
 
     /// <summary>
-    /// Formats a UTC datetime using a custom format pattern.
-    /// The datetime is first converted to Sri Lanka timezone.
+    /// Phase 6A.97: Legacy method that uses default Eastern timezone.
+    /// Will be updated to accept timezone parameter once all callers are updated.
     /// </summary>
-    /// <param name="utcDateTime">UTC datetime to format</param>
-    /// <param name="format">Custom format pattern</param>
-    /// <returns>Formatted datetime string in Sri Lanka timezone</returns>
     public static string Format(DateTime utcDateTime, string format)
     {
-        var localTime = ToSriLankaTime(utcDateTime);
-        return localTime.ToString(format);
+        return Format(utcDateTime, DefaultTimeZoneId, format);
     }
 
     /// <summary>
-    /// Gets the platform-appropriate timezone ID for Sri Lanka.
-    /// Windows uses "Sri Lanka Standard Time", Linux/Mac uses "Asia/Colombo".
+    /// Phase 6A.97: Legacy method - now converts to Eastern timezone (default for US events).
+    /// Previously converted to Sri Lanka time, but app serves Sri Lankans in USA.
     /// </summary>
-    private static string GetSriLankaTimeZoneId()
+    public static DateTime ToSriLankaTime(DateTime utcDateTime)
     {
-        // Try IANA ID first (Linux/Mac/Docker), then Windows ID
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo").Id;
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            // Fall back to Windows timezone ID
-            return "Sri Lanka Standard Time";
-        }
+        // Now converts to Eastern time as default (app serves Sri Lankans in USA)
+        return ToLocalTime(utcDateTime, DefaultTimeZoneId);
     }
+
+    #endregion
+
+    #region Helper methods
+
+    /// <summary>
+    /// Extracts abbreviation from timezone name.
+    /// E.g., "Eastern Standard Time" → "EST"
+    /// </summary>
+    private static string ExtractAbbreviation(string timezoneName)
+    {
+        if (string.IsNullOrWhiteSpace(timezoneName))
+            return "???";
+
+        // Take first letter of each word
+        var words = timezoneName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(words.Select(w => char.ToUpper(w[0])));
+    }
+
+    #endregion
 }

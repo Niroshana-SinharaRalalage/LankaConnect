@@ -320,6 +320,9 @@ public static class DependencyInjection
         // Add GeoLocation Service for distance calculations
         services.AddScoped<LankaConnect.Domain.Events.Services.IGeoLocationService, LankaConnect.Domain.Events.Services.GeoLocationService>();
 
+        // Phase 6A.97: Timezone Lookup Service for consistent event date/time display
+        services.AddScoped<LankaConnect.Domain.Events.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
+
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
 

@@ -342,6 +342,153 @@ public class TicketService : ITicketService
     }
 
     /// <inheritdoc />
+    public async Task<Result<TicketResult>> RegenerateTicketPdfForRegistrationAsync(
+        Guid registrationId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.X] RegenerateTicketPdfForRegistration START - RegistrationId={RegistrationId}",
+                registrationId);
+
+            // 1. Find existing ticket for registration
+            var existingTicket = await _ticketRepository.GetByRegistrationIdAsync(registrationId, cancellationToken);
+            if (existingTicket == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.X] No existing ticket found for registration - RegistrationId={RegistrationId}",
+                    registrationId);
+                return Result<TicketResult>.Failure($"No ticket found for registration {registrationId}");
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.X] Existing ticket found - TicketId={TicketId}, TicketCode={TicketCode}, OldPdfUrl={PdfUrl}",
+                existingTicket.Id, existingTicket.TicketCode, existingTicket.PdfBlobUrl);
+
+            // 2. Load event with registrations to get updated attendee data
+            var @event = await _eventRepository.GetWithRegistrationsAsync(existingTicket.EventId, cancellationToken);
+            if (@event == null)
+            {
+                _logger.LogError(
+                    "[Phase 6A.X] Event not found - EventId={EventId}, RegistrationId={RegistrationId}",
+                    existingTicket.EventId, registrationId);
+                return Result<TicketResult>.Failure($"Event {existingTicket.EventId} not found");
+            }
+
+            // 3. Get registration with CURRENT attendee data
+            var registration = @event.Registrations.FirstOrDefault(r => r.Id == registrationId);
+            if (registration == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.X] Registration not found in event, loading directly - RegistrationId={RegistrationId}",
+                    registrationId);
+
+                registration = await _registrationRepository.GetByIdAsync(registrationId, cancellationToken);
+                if (registration == null)
+                {
+                    return Result<TicketResult>.Failure($"Registration {registrationId} not found");
+                }
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.X] Loaded registration with updated attendees - RegistrationId={RegistrationId}, AttendeeCount={AttendeeCount}",
+                registrationId, registration.GetAttendeeCount());
+
+            // 4. Generate new QR code (same data, just regenerate the image)
+            var qrCodeBase64 = _qrCodeService.GenerateQrCodeBase64(existingTicket.QrCodeData);
+
+            // 5. Prepare attendee info for PDF with CURRENT data
+            var attendees = registration.Attendees
+                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
+                .ToList();
+
+            var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()
+                ? registration.Attendees.First().Name
+                : "Guest";
+
+            _logger.LogInformation(
+                "[Phase 6A.X] Building PDF with updated attendees - AttendeeCount={AttendeeCount}, Names={Names}",
+                attendees.Count, string.Join(", ", attendees.Select(a => a.Name)));
+
+            // 6. Generate new PDF with updated attendee list
+            var pdfData = new TicketPdfData
+            {
+                TicketCode = existingTicket.TicketCode,
+                QrCodeBase64 = qrCodeBase64,
+                EventTitle = @event.Title.Value,
+                EventStartDate = @event.StartDate,
+                EventEndDate = @event.EndDate,
+                EventLocation = @event.Location != null
+                    ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}"
+                    : "Online Event",
+                AttendeeName = attendeeName,
+                AttendeeCount = registration.GetAttendeeCount(),
+                Attendees = attendees,
+                AmountPaid = registration.TotalPrice?.Amount ?? 0m,
+                PaymentDate = DateTime.UtcNow
+            };
+
+            var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);
+            if (pdfResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[Phase 6A.X] PDF generation failed - RegistrationId={RegistrationId}, Error={Error}",
+                    registrationId, pdfResult.Error);
+                return Result<TicketResult>.Failure($"PDF generation failed: {pdfResult.Error}");
+            }
+
+            // 7. Upload new PDF to blob storage (overwrites existing)
+            var pdfUrl = await UploadPdfToBlobAsync(existingTicket.TicketCode, pdfResult.Value, cancellationToken);
+            if (string.IsNullOrEmpty(pdfUrl))
+            {
+                _logger.LogError(
+                    "[Phase 6A.X] PDF upload failed - RegistrationId={RegistrationId}, TicketCode={TicketCode}",
+                    registrationId, existingTicket.TicketCode);
+                return Result<TicketResult>.Failure("Failed to upload regenerated PDF to storage");
+            }
+
+            // 8. Update ticket entity with new PDF URL
+            existingTicket.SetPdfUrl(pdfUrl);
+            _ticketRepository.Update(existingTicket);
+
+            // 9. Commit changes
+            try
+            {
+                var changeCount = await _unitOfWork.CommitAsync(cancellationToken);
+                _logger.LogInformation(
+                    "[Phase 6A.X] Ticket PDF regenerated and saved - TicketId={TicketId}, TicketCode={TicketCode}, NewPdfUrl={PdfUrl}, ChangeCount={ChangeCount}",
+                    existingTicket.Id, existingTicket.TicketCode, pdfUrl, changeCount);
+            }
+            catch (Exception commitEx)
+            {
+                _logger.LogWarning(commitEx,
+                    "[Phase 6A.X] Commit threw exception (PDF may still be saved) - TicketId={TicketId}, Error={Error}",
+                    existingTicket.Id, commitEx.Message);
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.X] RegenerateTicketPdfForRegistration COMPLETE - RegistrationId={RegistrationId}, TicketCode={TicketCode}, AttendeeCount={AttendeeCount}",
+                registrationId, existingTicket.TicketCode, registration.GetAttendeeCount());
+
+            return Result<TicketResult>.Success(new TicketResult
+            {
+                TicketId = existingTicket.Id,
+                TicketCode = existingTicket.TicketCode,
+                QrCodeData = existingTicket.QrCodeData,
+                PdfBlobUrl = pdfUrl
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.X] RegenerateTicketPdfForRegistration FAILED - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, ex.Message);
+            return Result<TicketResult>.Failure($"Failed to regenerate ticket PDF: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<Result<byte[]>> GetTicketPdfAsync(Guid ticketId, CancellationToken cancellationToken = default)
     {
         var ticket = await _ticketRepository.GetByIdAsync(ticketId, cancellationToken);

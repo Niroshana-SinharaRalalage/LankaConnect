@@ -75,6 +75,16 @@ public static class EmailTemplateNames
     public const string RegistrationCancellation = "template-event-registration-cancellation";
 
     /// <summary>
+    /// Attendees added to registration confirmation email.
+    /// Phase 6A.X: Add-Only Attendees with Delta Payment feature.
+    /// Sent when additional attendees are added to an existing paid registration.
+    /// Variables: {UserName}, {EventTitle}, {EventStartDate}, {EventStartTime}, {EventLocation},
+    ///           {PreviousCount}, {AddedCount}, {NewTotalCount}, {AdditionalAmount}, {TotalPaid},
+    ///           {NewAttendees}, {AllAttendees}, {EventDetailsUrl}, {TicketUrl}, {Year}
+    /// </summary>
+    public const string AttendeesAddedConfirmation = "template-attendees-added-confirmation";
+
+    /// <summary>
     /// Phase 6A.92: Refund requested notification email.
     /// Sent when a refund is initiated (event cancelled or user cancellation).
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {RefundAmount}, {OrganizerContactName},
@@ -223,6 +233,7 @@ public static class EmailTemplateNames
         SignupCommitmentUpdate,
         SignupCommitmentCancellation,
         RegistrationCancellation,
+        AttendeesAddedConfirmation, // Phase 6A.X: Add-Only Attendees
         RefundRequested, // Phase 6A.92
         RefundCompleted, // Phase 6A.92
         EventPublished,
@@ -274,6 +285,7 @@ public static class EmailTemplateNames
             SignupCommitmentUpdate => "Signup commitment update notification",
             SignupCommitmentCancellation => "Signup commitment cancellation notification",
             RegistrationCancellation => "Registration cancellation confirmation",
+            AttendeesAddedConfirmation => "Attendees added to registration confirmation (Add-Only Attendees feature)",
             RefundRequested => "Refund requested notification (Phase 6A.92)",
             RefundCompleted => "Refund completed confirmation (Phase 6A.92)",
             EventPublished => "New event publication notification",

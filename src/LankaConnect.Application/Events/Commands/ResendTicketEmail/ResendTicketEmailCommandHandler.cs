@@ -182,7 +182,33 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     return Result.Failure("Ticket not found");
                 }
 
-                // 6. Get ticket PDF
+                // 5b. Phase 6A.X FIX: Check for stale PDF (attendee count mismatch)
+                // If registration has more attendees than when ticket was generated, regenerate PDF
+                var currentAttendeeCount = registration.GetAttendeeCount();
+                _logger.LogInformation(
+                    "ResendTicketEmail: Checking PDF freshness - TicketId={TicketId}, CurrentAttendeeCount={CurrentCount}",
+                    ticket.Id, currentAttendeeCount);
+
+                // Regenerate PDF to ensure it has current attendee data
+                // This handles the Add-Only Attendees scenario where attendees were added after initial ticket creation
+                var regenerateResult = await _ticketService.RegenerateTicketPdfForRegistrationAsync(
+                    request.RegistrationId,
+                    cancellationToken);
+
+                if (regenerateResult.IsSuccess)
+                {
+                    _logger.LogInformation(
+                        "ResendTicketEmail: PDF regenerated with current attendees - TicketCode={TicketCode}, AttendeeCount={Count}",
+                        regenerateResult.Value.TicketCode, currentAttendeeCount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "ResendTicketEmail: PDF regeneration failed, using cached PDF - Error={Error}",
+                        string.Join(", ", regenerateResult.Errors));
+                }
+
+                // 6. Get ticket PDF (now with fresh data)
                 var pdfResult = await _ticketService.GetTicketPdfAsync(ticket.Id, cancellationToken);
                 if (pdfResult.IsFailure)
                 {

@@ -46,6 +46,17 @@ public interface ITicketService
     Task<Result<string>> RegeneratePdfAsync(Guid ticketId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Regenerates the PDF for a registration's ticket with updated attendee data.
+    /// Phase 6A.X: Add-Only Attendees feature - forces PDF regeneration when attendees are added.
+    /// </summary>
+    /// <param name="registrationId">Registration ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result with ticket details including new PDF URL</returns>
+    Task<Result<TicketResult>> RegenerateTicketPdfForRegistrationAsync(
+        Guid registrationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the PDF bytes for a ticket
     /// </summary>
     Task<Result<byte[]>> GetTicketPdfAsync(Guid ticketId, CancellationToken cancellationToken = default);

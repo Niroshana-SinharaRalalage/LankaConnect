@@ -255,17 +255,25 @@ public class StripePaymentService : IStripePaymentService
         CreateRefundRequest request,
         CancellationToken cancellationToken = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Phase 6A.94: Enhanced pre-API-call logging
+        _logger.LogInformation(
+            "[Phase 6A.94] CreateRefundAsync START - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, " +
+            "AmountInCents={AmountInCents}, Reason={Reason}, MetadataKeys={MetadataKeys}",
+            request.PaymentIntentId ?? "NULL",
+            request.RegistrationId,
+            request.AmountInCents,
+            request.Reason ?? "NULL",
+            request.Metadata != null ? string.Join(",", request.Metadata.Keys) : "NONE");
+
         try
         {
-            _logger.LogInformation(
-                "[Phase 6A.91] Creating Stripe refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, AmountInCents={AmountInCents}",
-                request.PaymentIntentId,
-                request.RegistrationId,
-                request.AmountInCents);
-
             if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
             {
-                _logger.LogWarning("[Phase 6A.91] Cannot create refund: PaymentIntentId is empty");
+                _logger.LogWarning(
+                    "[Phase 6A.94] VALIDATION FAILED - PaymentIntentId is empty/null, RegistrationId={RegistrationId}",
+                    request.RegistrationId);
                 return Result<StripeRefundResult>.Failure("Payment intent ID is required for refund");
             }
 
@@ -295,15 +303,23 @@ public class StripePaymentService : IStripePaymentService
                 IdempotencyKey = $"refund_{request.RegistrationId}"
             };
 
+            // Phase 6A.94: Log just before Stripe API call
+            _logger.LogInformation(
+                "[Phase 6A.94] CALLING Stripe RefundService.CreateAsync - PaymentIntentId={PaymentIntentId}, " +
+                "IdempotencyKey={IdempotencyKey}, Amount={Amount}",
+                request.PaymentIntentId, requestOptions.IdempotencyKey, refundOptions.Amount);
+
             // Create the refund
             var refund = await refundService.CreateAsync(refundOptions, requestOptions, cancellationToken);
 
+            stopwatch.Stop();
+
+            // Phase 6A.94: Enhanced success logging with all response details
             _logger.LogInformation(
-                "[Phase 6A.91] Stripe refund created successfully - RefundId={RefundId}, Status={Status}, Amount={Amount}, PaymentIntentId={PaymentIntentId}",
-                refund.Id,
-                refund.Status,
-                refund.Amount,
-                request.PaymentIntentId);
+                "[Phase 6A.94] Stripe API SUCCESS - RefundId={RefundId}, Status={Status}, AmountRefunded={Amount}, " +
+                "Currency={Currency}, PaymentIntentId={PaymentIntentId}, Created={Created}, Duration={ElapsedMs}ms",
+                refund.Id, refund.Status, refund.Amount, refund.Currency,
+                request.PaymentIntentId, refund.Created, stopwatch.ElapsedMilliseconds);
 
             var result = new StripeRefundResult
             {
@@ -318,34 +334,65 @@ public class StripePaymentService : IStripePaymentService
         }
         catch (StripeException ex)
         {
+            stopwatch.Stop();
+
+            // Phase 6A.94: Enhanced Stripe error logging with full error details
             _logger.LogError(ex,
-                "[Phase 6A.91] Stripe error creating refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, StripeCode={Code}, Error={Error}",
+                "[Phase 6A.94] STRIPE API ERROR - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, " +
+                "StripeErrorCode={Code}, StripeErrorType={Type}, StripeErrorParam={Param}, " +
+                "StripeErrorDeclineCode={DeclineCode}, HttpStatus={HttpStatus}, Message={Message}, Duration={ElapsedMs}ms",
                 request.PaymentIntentId,
                 request.RegistrationId,
-                ex.StripeError?.Code,
-                ex.Message);
+                ex.StripeError?.Code ?? "NULL",
+                ex.StripeError?.Type ?? "NULL",
+                ex.StripeError?.Param ?? "NULL",
+                ex.StripeError?.DeclineCode ?? "NULL",
+                ex.HttpStatusCode,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
 
-            // Handle specific error cases
+            // Handle specific error cases with clear messaging
             if (ex.StripeError?.Code == "charge_already_refunded")
             {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Charge already refunded - PaymentIntentId={PaymentIntentId}. This is expected if refund was previously processed.",
+                    request.PaymentIntentId);
                 return Result<StripeRefundResult>.Failure("This payment has already been refunded.");
             }
 
             if (ex.StripeError?.Code == "insufficient_funds")
             {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Insufficient Stripe balance for refund - PaymentIntentId={PaymentIntentId}",
+                    request.PaymentIntentId);
                 return Result<StripeRefundResult>.Failure(
                     "Refund cannot be processed due to insufficient Stripe balance. Please contact support.");
             }
 
-            return Result<StripeRefundResult>.Failure($"Payment refund failed: {ex.Message}");
+            if (ex.StripeError?.Code == "charge_disputed")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Charge is disputed, cannot refund - PaymentIntentId={PaymentIntentId}",
+                    request.PaymentIntentId);
+                return Result<StripeRefundResult>.Failure(
+                    "Cannot refund a disputed charge. Please contact support.");
+            }
+
+            return Result<StripeRefundResult>.Failure($"Stripe refund failed: {ex.StripeError?.Code ?? "unknown"} - {ex.Message}");
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
+
             _logger.LogError(ex,
-                "[Phase 6A.91] Unexpected error creating refund - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}",
+                "[Phase 6A.94] UNEXPECTED ERROR in CreateRefundAsync - PaymentIntentId={PaymentIntentId}, " +
+                "RegistrationId={RegistrationId}, ExceptionType={ExceptionType}, Duration={ElapsedMs}ms",
                 request.PaymentIntentId,
-                request.RegistrationId);
-            return Result<StripeRefundResult>.Failure("Failed to process refund request");
+                request.RegistrationId,
+                ex.GetType().Name,
+                stopwatch.ElapsedMilliseconds);
+
+            return Result<StripeRefundResult>.Failure($"Failed to process refund request: {ex.Message}");
         }
     }
 

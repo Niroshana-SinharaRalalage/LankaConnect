@@ -390,23 +390,55 @@ public class EventCancellationEmailJob
         var result = new RefundProcessingResult();
         var refundStopwatch = Stopwatch.StartNew();
 
+        // Phase 6A.94: Enhanced logging for confirmed registrations breakdown
+        _logger.LogInformation(
+            "[Phase 6A.94] ProcessAutoRefundsAsync START - EventId={EventId}, EventTitle={EventTitle}, " +
+            "TotalConfirmedRegistrations={ConfirmedCount}",
+            eventId, eventTitle, confirmedRegistrations.Count);
+
+        // Log each confirmed registration for debugging
+        foreach (var reg in confirmedRegistrations)
+        {
+            _logger.LogDebug(
+                "[Phase 6A.94] Confirmed registration - RegId={RegId}, Status={Status}, " +
+                "PaymentStatus={PaymentStatus}, PaymentIntentId={PaymentIntentId}, Amount=${Amount}",
+                reg.Id, reg.Status, reg.PaymentStatus,
+                reg.StripePaymentIntentId ?? "NULL", reg.TotalPrice?.Amount ?? 0);
+        }
+
         // Filter for paid registrations that need refunds
         var paidRegistrations = confirmedRegistrations
             .Where(r => r.PaymentStatus == PaymentStatus.Completed &&
                         !string.IsNullOrWhiteSpace(r.StripePaymentIntentId))
             .ToList();
 
+        // Phase 6A.94: Log registrations that were filtered OUT
+        var filteredOutRegistrations = confirmedRegistrations.Except(paidRegistrations).ToList();
+        if (filteredOutRegistrations.Any())
+        {
+            _logger.LogInformation(
+                "[Phase 6A.94] Filtered out {Count} registrations (not eligible for refund) - " +
+                "RegIds={RegIds}, Reasons: PaymentStatus not Completed or missing PaymentIntentId",
+                filteredOutRegistrations.Count,
+                string.Join(", ", filteredOutRegistrations.Select(r => $"{r.Id}(PS={r.PaymentStatus},PI={r.StripePaymentIntentId ?? "NULL"})")));
+        }
+
         if (!paidRegistrations.Any())
         {
             _logger.LogInformation(
-                "[Phase 6A.92] No paid registrations to refund for event {EventId}",
-                eventId);
+                "[Phase 6A.94] No paid registrations to refund for event {EventId}. " +
+                "Total confirmed: {ConfirmedCount}, All filtered out: {FilteredCount}",
+                eventId, confirmedRegistrations.Count, filteredOutRegistrations.Count);
             return result;
         }
 
+        // Phase 6A.94: Detailed logging of paid registrations to be processed
         _logger.LogInformation(
-            "[Phase 6A.92] Starting auto-refund processing for {Count} paid registrations, EventId={EventId}",
-            paidRegistrations.Count, eventId);
+            "[Phase 6A.94] Starting auto-refund processing for {Count} paid registrations, EventId={EventId}. " +
+            "RegistrationIds={RegIds}, TotalAmount=${TotalAmount:F2}",
+            paidRegistrations.Count, eventId,
+            string.Join(", ", paidRegistrations.Select(r => r.Id)),
+            paidRegistrations.Sum(r => r.TotalPrice?.Amount ?? 0));
 
         foreach (var registration in paidRegistrations)
         {
@@ -502,10 +534,26 @@ public class EventCancellationEmailJob
         refundStopwatch.Stop();
 
         _logger.LogInformation(
-            "[Phase 6A.92] Auto-refund processing completed for event {EventId}. " +
-            "Success: {SuccessCount}, Failed: {FailedCount}, TotalRefunded: ${TotalAmount:F2}, Duration: {ElapsedMs}ms",
+            "[Phase 6A.94] Auto-refund processing completed for event {EventId}. " +
+            "Success: {SuccessCount}, Failed: {FailedCount}, TotalRefunded: ${TotalAmount:F2}, Duration: {ElapsedMs}ms. " +
+            "SuccessIds={SuccessIds}, FailedIds={FailedIds}",
             eventId, result.SuccessCount, result.FailedCount,
-            result.TotalRefundedAmount, refundStopwatch.ElapsedMilliseconds);
+            result.TotalRefundedAmount, refundStopwatch.ElapsedMilliseconds,
+            string.Join(",", result.RefundedRegistrationIds),
+            string.Join(",", result.FailedRegistrationIds));
+
+        // Phase 6A.94: CRITICAL - Throw exception if ALL refunds failed so Hangfire can retry
+        // This prevents silent failures where the job "succeeds" but no refunds were processed
+        if (paidRegistrations.Any() && result.SuccessCount == 0 && result.FailedCount > 0)
+        {
+            var errorMessage = $"[Phase 6A.94] CRITICAL: All {result.FailedCount} refunds failed for event {eventId}. " +
+                $"Failed registration IDs: {string.Join(", ", result.FailedRegistrationIds)}. " +
+                "This will trigger Hangfire retry. Check Stripe dashboard and previous logs for failure details.";
+
+            _logger.LogError(errorMessage);
+
+            throw new InvalidOperationException(errorMessage);
+        }
 
         return result;
     }

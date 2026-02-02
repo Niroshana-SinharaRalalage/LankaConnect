@@ -1,13 +1,70 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-02 - Add-Only Attendees with Delta Payment (Backend) ✅ COMPLETE*
+*Last Updated: 2026-02-02 - Add-Only Attendees Ticket/Email Fix (RCA) ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Add-Only Attendees with Delta Payment (Backend)
+## 🎯 Current Session Status - Add-Only Attendees Ticket/Email Fix (RCA)
+
+### ADD-ONLY ATTENDEES TICKET PDF & EMAIL FIX - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🔴 **BUG FIX** - Critical email/ticket issues from testing
+
+**Root Cause Analysis Summary**:
+After testing the Add-Only Attendees feature, the following issues were discovered:
+1. Ticket PDF showed only original attendees (2), not newly added ones (4)
+2. Email showed "Event Registration Confirmed" instead of "Event Registration Update"
+3. Email showed only prior attendees, not newly added ones
+4. Resend confirmation - email body showed 4 attendees but PDF attachment showed only 2
+
+**Root Causes Identified**:
+| Issue | Type | Root Cause |
+|-------|------|------------|
+| Ticket PDF stale | Backend API | PDF cached at creation, never regenerated |
+| Wrong email template | Missing Feature | No `AttendeesAddedEventHandler` exists |
+| Email missing attendees | Missing Feature | Same - no handler consumes the event |
+| Resend stale PDF | Backend API | `GetTicketPdfAsync` returns cached PDF |
+
+**Fixes Implemented**:
+1. **AttendeesAddedEventHandler** - New event handler that:
+   - Handles `AttendeesAddedEvent` domain event
+   - Regenerates ticket PDF with updated attendees
+   - Sends "Attendees Added" confirmation email with correct content
+
+2. **RegenerateTicketPdfForRegistrationAsync** - New method in `ITicketService`:
+   - Forces PDF regeneration with current attendee data
+   - Updates blob storage with new PDF
+   - Returns updated ticket result
+
+3. **Email Template Migration** - `template-attendees-added-confirmation`:
+   - Shows summary of changes (previous count, added count, new total)
+   - Lists all new attendees with "NEW" badges
+   - Shows payment summary (additional amount, total paid)
+   - Lists all attendees in updated registration
+   - Includes event details and updated ticket attachment
+
+4. **ResendTicketEmailCommandHandler Fix**:
+   - Now regenerates PDF before sending email
+   - Ensures PDF always reflects current attendee data
+
+**Files Created**:
+- `src/LankaConnect.Application/Events/EventHandlers/AttendeesAddedEventHandler.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260202100000_Phase6AX_AddAttendeesAddedEmailTemplate.cs`
+
+**Files Modified**:
+- `src/LankaConnect.Application/Common/Constants/EmailTemplateNames.cs` - Added `AttendeesAddedConfirmation`
+- `src/LankaConnect.Application/Common/Interfaces/ITicketService.cs` - Added `RegenerateTicketPdfForRegistrationAsync`
+- `src/LankaConnect.Infrastructure/Services/Tickets/TicketService.cs` - Implemented regeneration method
+- `src/LankaConnect.Application/Events/Commands/ResendTicketEmail/ResendTicketEmailCommandHandler.cs` - Fixed stale PDF issue
+
+**Deployment**: ✅ Deployed to Azure staging via `deploy-staging.yml`
+
+---
 
 ### ADD-ONLY ATTENDEES WITH DELTA PAYMENT - 2026-02-02
 
-**Status**: 🟡 **IN PROGRESS** - Backend Complete, Frontend Pending
+**Status**: ✅ **COMPLETE** - Backend + Frontend Deployed
 
 **Priority**: 🟢 **FEATURE** - Option 1.5: Add-Only Attendees with Delta Payment
 
@@ -77,10 +134,10 @@ Allow users with paid event registrations to ADD additional attendees (not remov
 - `src/LankaConnect.Infrastructure/Payments/Services/StripePaymentService.cs` - Addition checkout
 - `src/LankaConnect.Infrastructure/DependencyInjection.cs` - Repository registrations
 
-**Remaining Work**:
-- Phase 5: Frontend - AddAttendeesModal component
-- Phase 5: Frontend - Update EditRegistrationModal for paid events
-- Phase 6: Email templates - RegistrationUpdated and AttendeesAdded
+**Completed Work**:
+- ✅ Phase 5: Frontend - AddAttendeesModal component (deployed)
+- ✅ Phase 5: Frontend - Update EditRegistrationModal for paid events (deployed)
+- ✅ Phase 6: AttendeesAdded email template and handler (deployed via RCA fix)
 
 ---
 

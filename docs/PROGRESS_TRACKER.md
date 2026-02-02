@@ -1,9 +1,149 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-02 - Phase 6A.95 Search Hyphen Negation Bug Fix ✅ COMPLETE*
+*Last Updated: 2026-02-02 - Issue #51: Group Pricing Tier Validation Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.95: Search Hyphen Negation Bug Fix ✅ COMPLETE
+## 🎯 Current Session Status - Issue #51: Group Pricing Tier Validation Fix ✅ COMPLETE
+
+### Issue #51: GROUP PRICING TIER VALIDATION FIX - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🟡 **BUG FIX** - Validation Logic Correction
+
+**Problem Statement**:
+Group pricing tier validation was incorrectly comparing tiers against total event capacity (e.g., 90 attendees), when it should compare against "Max Attendees Per Registration" (e.g., 5 attendees). This caused validation errors when tiers only covered up to the registration limit, which is the correct behavior.
+
+**Root Cause Analysis**:
+- Group pricing tiers apply to individual registrations, not total event capacity
+- The validation message "Pricing tiers do not cover the full event capacity" was misleading
+- Users with tiers covering up to maxAttendeesPerRegistration were incorrectly shown errors
+
+**Implementation**:
+
+1. **Backend - TicketPricing.CreateGroupTiered**
+   - Updated method parameter from `eventCapacity` to `maxAttendeesPerRegistration`
+   - Updated validation error message to reference "max attendees per registration"
+   - Added clarifying documentation
+
+2. **Backend - CreateEventCommand**
+   - Added `MaxAttendeesPerRegistration` property to command
+
+3. **Backend - Command Handlers**
+   - Updated `CreateEventCommandHandler` to pass `maxAttendeesPerRegistration` for tier validation
+   - Updated `UpdateEventCommandHandler` to pass `maxAttendeesPerRegistration` for tier validation
+
+4. **Frontend - GroupPricingTierBuilder Component**
+   - Renamed prop from `eventCapacity` to `maxAttendeesPerRegistration`
+   - Updated validation logic and error messages
+   - Updated warning message to correctly explain the validation
+
+5. **Frontend - EventCreationForm**
+   - Updated to pass `maxAttendeesPerRegistration` instead of `capacity`
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/ValueObjects/TicketPricing.cs`
+- `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommand.cs`
+- `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs`
+- `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs`
+- `web/src/presentation/components/features/events/GroupPricingTierBuilder.tsx`
+- `web/src/presentation/components/features/events/EventCreationForm.tsx`
+- `web/tests/unit/presentation/components/features/dashboard/EventsList.test.tsx`
+- `web/tests/unit/presentation/utils/eventMapper.test.ts`
+
+**Commits**:
+- `fix(#51): Validate group pricing tiers against maxAttendeesPerRegistration`
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging
+- ✅ Frontend deployed to Azure Staging
+- ✅ All 50 TicketPricing tests pass
+- ✅ TypeScript check passes
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.96: Sales Tax Feature Flag ✅ COMPLETE
+
+### PHASE 6A.96: SALES TAX FEATURE FLAG - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🟢 **FEATURE** - Configurable Sales Tax Collection
+
+**Problem Statement**:
+Sales tax collection was hardcoded in the system. The user requested the ability to enable/disable sales tax collection via a feature flag so it can be turned on/off without code changes.
+
+**Implementation (TDD Approach)**:
+
+1. **Backend - SalesTaxSettings Configuration Class**
+   - Created `SalesTaxSettings` class with `Enabled` flag, `DefaultRateWhenDisabled`, and `EnabledStates` list
+   - Added validation logic for configuration values
+   - Added `IsTaxEnabledForState()` helper method for per-state tax control
+
+2. **Backend - Service Layer Updates**
+   - Updated `ISalesTaxService` interface with `IsEnabled` property
+   - Modified `DatabaseSalesTaxService` to check feature flag before calculating tax
+   - Updated `RevenueCalculatorService` with `IsSalesTaxEnabled` property
+
+3. **Backend - API Endpoints**
+   - Created `ConfigurationController` with two endpoints:
+     - `GET /api/configuration/features` - Returns feature flags (`salesTaxEnabled`)
+     - `GET /api/configuration/commission-settings` - Returns commission settings with `salesTaxEnabled`
+   - Both endpoints have response caching for performance
+
+4. **Frontend - React Query Hooks**
+   - Created `useFeatureFlags.ts` with hooks:
+     - `useFeatureFlags()` - Fetches feature flags
+     - `useCommissionSettingsWithFlags()` - Fetches commission settings with flags
+     - `useSalesTaxEnabled()` - Convenience boolean hook
+   - Updated `revenue-calculator.ts` to respect the `salesTaxEnabled` flag
+   - Updated `RevenueBreakdownPreview.tsx` to show conditional tax notes
+
+5. **Configuration**
+   - Added `SalesTax` section to `appsettings.json` with `Enabled: false`
+   - Registered `SalesTaxSettings` in DependencyInjection
+
+**Files Created**:
+- `src/LankaConnect.Application/Common/Options/SalesTaxSettings.cs`
+- `src/LankaConnect.API/Controllers/ConfigurationController.cs`
+- `tests/LankaConnect.Application.Tests/Common/Options/SalesTaxSettingsTests.cs` (19 tests)
+- `web/src/infrastructure/api/hooks/useFeatureFlags.ts`
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/Services/ISalesTaxService.cs`
+- `src/LankaConnect.Infrastructure/Services/DatabaseSalesTaxService.cs`
+- `src/LankaConnect.Infrastructure/Services/RevenueCalculatorService.cs`
+- `src/LankaConnect.Infrastructure/DependencyInjection.cs`
+- `src/LankaConnect.Application/Events/Common/RevenueBreakdownDto.cs`
+- `src/LankaConnect.API/appsettings.json`
+- `web/src/presentation/lib/utils/revenue-calculator.ts`
+- `web/src/presentation/components/features/events/RevenueBreakdownPreview.tsx`
+
+**Commits**:
+- `feat(#32): Add sales tax feature flag for configurable tax collection`
+- `fix: Comment out incomplete AddAttendees repository registrations`
+
+**Deployment Status**:
+- ✅ Backend deployed to Azure Staging (GitHub Actions run 21578368823 succeeded)
+- ✅ Frontend deployed to Azure Staging
+- ✅ All 19 SalesTaxSettings unit tests pass
+- ✅ API tested on staging:
+  - `/api/configuration/features` returns `{"salesTaxEnabled":false}`
+  - `/api/configuration/commission-settings` returns commission settings with `salesTaxEnabled:false`
+
+**Usage**:
+To enable sales tax collection, update `appsettings.json`:
+```json
+"SalesTax": {
+  "Enabled": true,
+  "DefaultRateWhenDisabled": 0.0,
+  "EnabledStates": ["CA", "NY", "TX"]  // Optional: restrict to specific states
+}
+```
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.95: Search Hyphen Negation Bug Fix ✅ COMPLETE
 
 ### PHASE 6A.95: SEARCH HYPHEN NEGATION BUG FIX - 2026-02-02
 

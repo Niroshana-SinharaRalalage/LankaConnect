@@ -7,7 +7,62 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHASE 6A.93: ADD MISSING EMAIL TEMPLATES COMPLETE (2026-02-01)
+## ✅ CURRENT STATUS - ISSUE #51: GROUP PRICING TIER VALIDATION FIX COMPLETE (2026-02-02)
+**Date**: 2026-02-02
+**Session**: Issue #51 - Group Pricing Tier Validation Fix
+**Status**: ✅ COMPLETE - BACKEND & FRONTEND DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Test Status**: ✅ 50 TicketPricing tests passed
+**Deployment**: ✅ Backend + Frontend deployed
+**Priority**: 🟡 BUG FIX - Validation Logic Correction
+
+**Objective**: Fix group pricing tier validation to compare against maxAttendeesPerRegistration instead of total event capacity.
+
+**Problem**: Group pricing tier validation was incorrectly comparing tiers against total event capacity (e.g., 90) when it should compare against "Max Attendees Per Registration" (e.g., 5). This caused validation errors when tiers only covered up to the registration limit.
+
+**Implementation**:
+- ✅ Updated `TicketPricing.CreateGroupTiered` to use `maxAttendeesPerRegistration` parameter
+- ✅ Added `MaxAttendeesPerRegistration` property to `CreateEventCommand`
+- ✅ Updated `CreateEventCommandHandler` to pass `maxAttendeesPerRegistration`
+- ✅ Updated `UpdateEventCommandHandler` to pass `maxAttendeesPerRegistration`
+- ✅ Updated `GroupPricingTierBuilder` frontend component to use `maxAttendeesPerRegistration`
+- ✅ Updated `EventCreationForm` to pass correct prop
+
+**Files Modified**: 8 files across backend and frontend
+**Commits**: `fix(#51): Validate group pricing tiers against maxAttendeesPerRegistration`
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.96: SALES TAX FEATURE FLAG COMPLETE (2026-02-02)
+**Date**: 2026-02-02
+**Session**: Phase 6A.96 - Sales Tax Feature Flag
+**Status**: ✅ COMPLETE - BACKEND & FRONTEND DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Test Status**: ✅ 19 new unit tests passed
+**Deployment**: ✅ Backend (run 21578368823) + Frontend deployed
+**Priority**: 🟢 FEATURE - Configurable Sales Tax Collection
+
+**Objective**: Make sales tax collection configurable via feature flag.
+
+**Implementation**:
+- ✅ Created `SalesTaxSettings` configuration class with `Enabled` flag
+- ✅ Updated `ISalesTaxService` and `DatabaseSalesTaxService` with feature flag check
+- ✅ Created `ConfigurationController` with `/api/configuration/features` endpoint
+- ✅ Added frontend `useFeatureFlags.ts` hooks for React Query integration
+- ✅ Updated revenue calculator to respect `salesTaxEnabled` flag
+
+**Files Created**: 4 new files (SalesTaxSettings.cs, ConfigurationController.cs, SalesTaxSettingsTests.cs, useFeatureFlags.ts)
+**Files Modified**: 8 files across backend and frontend
+
+**API Verification**:
+- ✅ `/api/configuration/features` returns `{"salesTaxEnabled":false}`
+- ✅ `/api/configuration/commission-settings` returns settings with `salesTaxEnabled:false`
+
+**Configuration**: Set `SalesTax:Enabled=true` in appsettings.json to enable tax collection.
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.93: ADD MISSING EMAIL TEMPLATES COMPLETE (2026-02-01)
 **Date**: 2026-02-01
 **Session**: Phase 6A.93 - Add 7 Missing Email Templates
 **Status**: ✅ COMPLETE - BACKEND DEPLOYED TO AZURE STAGING - MIGRATION VERIFIED

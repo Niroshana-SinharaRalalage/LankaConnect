@@ -7,7 +7,7 @@
  * - Edit attendee names, age categories, and gender
  * - Edit contact information (email, phone, address)
  * - Add/remove attendees for free events
- * - Prevents attendee count changes for paid events
+ * - Add-Only Attendees: Button to add more attendees to paid registrations
  * - Form validation
  * - Error handling
  */
@@ -25,7 +25,7 @@ import {
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
-import { AlertCircle, Plus, Trash2, User } from 'lucide-react';
+import { AlertCircle, Plus, Trash2, User, UserPlus } from 'lucide-react';
 import type { RegistrationDetailsDto, AttendeeDto, PaymentStatus } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 import { validatePhoneNumber } from '@/presentation/lib/validators/phone';
@@ -35,12 +35,15 @@ interface EditRegistrationModalProps {
   onOpenChange: (open: boolean) => void;
   registration: RegistrationDetailsDto | null;
   eventId: string;
+  eventTitle?: string;
   isFreeEvent: boolean;
   spotsLeft: number;
   // Issue #51: Max attendees per registration (configurable by event organizer)
   maxAttendeesPerRegistration?: number;
   onSave: (data: EditRegistrationData) => Promise<void>;
   isSubmitting?: boolean;
+  // Add-Only Attendees: Callback to open AddAttendeesModal for paid registrations
+  onAddAttendeesClick?: () => void;
 }
 
 export interface EditRegistrationData {
@@ -55,11 +58,13 @@ export function EditRegistrationModal({
   onOpenChange,
   registration,
   eventId,
+  eventTitle,
   isFreeEvent,
   spotsLeft,
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   onSave,
   isSubmitting = false,
+  onAddAttendeesClick,
 }: EditRegistrationModalProps) {
   // Form state
   const [attendees, setAttendees] = useState<AttendeeDto[]>([]);
@@ -79,6 +84,11 @@ export function EditRegistrationModal({
   const maxAttendeesAllowed = isFreeEvent
     ? Math.min(maxAttendeesPerRegistration, originalAttendeeCount + spotsLeft) // Free: can add up to event capacity
     : originalAttendeeCount; // Paid: locked to original count
+
+  // Add-Only Attendees: Check if user can add more attendees to paid registration
+  const canAddMoreToPaid = isPaidRegistration &&
+    originalAttendeeCount < maxAttendeesPerRegistration &&
+    spotsLeft > 0;
 
   // Initialize form with registration data when modal opens
   useEffect(() => {
@@ -247,7 +257,10 @@ export function EditRegistrationModal({
               Update your registration details for this event.
               {isPaidRegistration && (
                 <span className="block mt-1 text-amber-600 dark:text-amber-400 font-medium">
-                  Note: Attendee count cannot be changed for paid registrations.
+                  Note: Attendee details can be edited, but count is fixed.
+                  {canAddMoreToPaid && onAddAttendeesClick && (
+                    <> Use &quot;Add More Attendees&quot; below to add more.</>
+                  )}
                 </span>
               )}
             </DialogDescription>
@@ -260,18 +273,37 @@ export function EditRegistrationModal({
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                   Attendees ({attendees.length})
                 </h3>
-                {!isPaidRegistration && attendees.length < maxAttendeesAllowed && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addAttendee}
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Attendee
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {/* Free event: Direct add attendee */}
+                  {!isPaidRegistration && attendees.length < maxAttendeesAllowed && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAttendee}
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Attendee
+                    </Button>
+                  )}
+                  {/* Paid event: Add More Attendees (opens AddAttendeesModal) */}
+                  {canAddMoreToPaid && onAddAttendeesClick && (
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        onOpenChange(false); // Close this modal
+                        onAddAttendeesClick(); // Open AddAttendeesModal
+                      }}
+                      className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Add More Attendees
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {errors.attendees && (

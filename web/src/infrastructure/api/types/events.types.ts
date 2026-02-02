@@ -1128,3 +1128,122 @@ export interface EventReminderHistoryDto {
   sentDate: string;
   recipientCount: number;
 }
+
+// ==================== Add-Only Attendees with Delta Payment ====================
+
+/**
+ * Add-Only Attendees: Status of a registration addition
+ * Matches backend RegistrationAdditionStatus enum
+ */
+export type RegistrationAdditionStatus = 'Pending' | 'PaymentCompleted' | 'Merged' | 'Failed' | 'Abandoned';
+
+/**
+ * Add-Only Attendees: New attendee to be added
+ * Used in calculate-addition and add-attendees requests
+ */
+export interface NewAttendeeDto {
+  name: string;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
+}
+
+/**
+ * Add-Only Attendees: Request to calculate addition price
+ * POST /api/events/registrations/{registrationId}/calculate-addition
+ */
+export interface CalculateAdditionPriceRequest {
+  newAttendees: NewAttendeeDto[];
+}
+
+/**
+ * Add-Only Attendees: Attendee price breakdown
+ */
+export interface AttendeePrice {
+  name: string;
+  ageCategory: AgeCategory;
+  price: number;
+}
+
+/**
+ * Add-Only Attendees: Response from calculate-addition endpoint
+ */
+export interface AdditionPriceResultDto {
+  registrationId: string;
+  eventId: string;
+  eventTitle: string;
+  currentAttendeeCount: number;
+  newAttendeesCount: number;
+  totalAttendeeCount: number;
+  maxAttendeesPerRegistration: number;
+  currentTotalPaid: number;
+  newTotalPrice: number;
+  additionalAmount: number;
+  currency: string;
+  isValid: boolean;
+  errorMessage?: string | null;
+  hasPendingAddition: boolean;
+  attendeeBreakdown: AttendeePrice[];
+  remainingCapacity?: number | null;
+}
+
+/**
+ * Add-Only Attendees: Request to initiate adding attendees
+ * POST /api/events/registrations/{registrationId}/add-attendees
+ */
+export interface InitiateAddAttendeesRequest {
+  newAttendees: NewAttendeeDto[];
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * Add-Only Attendees: Response from add-attendees endpoint
+ */
+export interface InitiateAddAttendeesResult {
+  success: boolean;
+  errorMessage?: string | null;
+  registrationAdditionId?: string | null;
+  checkoutSessionId?: string | null;
+  checkoutUrl?: string | null;
+  expiresAt?: string | null;
+  additionalAmount: number;
+  currency: string;
+  newAttendeesCount: number;
+}
+
+/**
+ * Add-Only Attendees: Pending attendee in an addition
+ */
+export interface PendingAttendeeDto {
+  name: string;
+  ageCategory: AgeCategory | string;
+  gender?: Gender | null;
+}
+
+/**
+ * Add-Only Attendees: Pending addition details
+ * GET /api/events/registrations/{registrationId}/pending-addition
+ */
+export interface PendingAdditionDto {
+  id: string;
+  registrationId: string;
+  eventId: string;
+  status: RegistrationAdditionStatus;
+  newAttendees: PendingAttendeeDto[];
+  additionalAmount: number;
+  currency: string;
+  checkoutSessionId?: string | null;
+  checkoutUrl?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Add-Only Attendees: Response from cancel-pending-addition endpoint
+ * DELETE /api/events/registrations/{registrationId}/pending-addition
+ */
+export interface CancelPendingAdditionResult {
+  success: boolean;
+  errorMessage?: string | null;
+  cancelledAdditionId?: string | null;
+}

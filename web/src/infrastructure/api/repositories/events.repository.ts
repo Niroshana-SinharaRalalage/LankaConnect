@@ -42,6 +42,13 @@ import type {
   EventNotificationHistoryDto,
   // Phase 6A.76: Event Reminder History
   EventReminderHistoryDto,
+  // Add-Only Attendees with Delta Payment
+  CalculateAdditionPriceRequest,
+  AdditionPriceResultDto,
+  InitiateAddAttendeesRequest,
+  InitiateAddAttendeesResult,
+  PendingAdditionDto,
+  CancelPendingAdditionResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1014,6 +1021,86 @@ export class EventsRepository {
   async getEventReminderHistory(eventId: string): Promise<EventReminderHistoryDto[]> {
     return await apiClient.get<EventReminderHistoryDto[]>(
       `${this.basePath}/${eventId}/reminder-history`
+    );
+  }
+
+  // ==================== ADD-ONLY ATTENDEES WITH DELTA PAYMENT ====================
+
+  /**
+   * Calculate the additional amount required to add new attendees to a registration
+   * Add-Only Attendees Feature: Delta payment calculation
+   * Maps to backend POST /api/events/registrations/{registrationId}/calculate-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @param request - New attendees to calculate price for
+   * @returns Pricing calculation result with breakdown
+   */
+  async calculateAdditionPrice(
+    registrationId: string,
+    request: CalculateAdditionPriceRequest
+  ): Promise<AdditionPriceResultDto> {
+    return await apiClient.post<AdditionPriceResultDto>(
+      `${this.basePath}/registrations/${registrationId}/calculate-addition`,
+      request
+    );
+  }
+
+  /**
+   * Initiate adding attendees to a paid registration
+   * Creates a Stripe checkout session for the delta payment
+   * Add-Only Attendees Feature: Initiate addition with payment
+   * Maps to backend POST /api/events/registrations/{registrationId}/add-attendees
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @param request - New attendees and checkout URLs
+   * @returns Result with Stripe checkout URL
+   */
+  async initiateAddAttendees(
+    registrationId: string,
+    request: InitiateAddAttendeesRequest
+  ): Promise<InitiateAddAttendeesResult> {
+    return await apiClient.post<InitiateAddAttendeesResult>(
+      `${this.basePath}/registrations/${registrationId}/add-attendees`,
+      request
+    );
+  }
+
+  /**
+   * Get pending addition for a registration
+   * Returns null if no pending addition exists
+   * Add-Only Attendees Feature: Check pending status
+   * Maps to backend GET /api/events/registrations/{registrationId}/pending-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @returns Pending addition details or null
+   */
+  async getPendingAddition(registrationId: string): Promise<PendingAdditionDto | null> {
+    try {
+      const result = await apiClient.get<PendingAdditionDto | null>(
+        `${this.basePath}/registrations/${registrationId}/pending-addition`
+      );
+      return result;
+    } catch (error: any) {
+      // 404 means no pending addition exists
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel a pending addition
+   * Marks the addition as abandoned and invalidates checkout session
+   * Add-Only Attendees Feature: Cancel pending addition
+   * Maps to backend DELETE /api/events/registrations/{registrationId}/pending-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @returns Cancellation result
+   */
+  async cancelPendingAddition(registrationId: string): Promise<CancelPendingAdditionResult> {
+    return await apiClient.delete<CancelPendingAdditionResult>(
+      `${this.basePath}/registrations/${registrationId}/pending-addition`
     );
   }
 }

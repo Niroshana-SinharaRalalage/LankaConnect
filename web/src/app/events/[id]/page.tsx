@@ -13,6 +13,7 @@ import { SignUpManagementSection } from '@/presentation/components/features/even
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
+import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
@@ -75,6 +76,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isCancelling, setIsCancelling] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isUpdatingRegistration, setIsUpdatingRegistration] = useState(false);
+  // Add-Only Attendees: State for showing AddAttendeesModal
+  const [showAddAttendeesModal, setShowAddAttendeesModal] = useState(false);
   // Phase 6A.28: User choice for deleting signup commitments
   const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
   // Phase 6A.80: Success dialog for anonymous registration
@@ -1565,17 +1568,37 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Phase 6A.14: Edit Registration Modal */}
       {/* Issue #51: Pass maxAttendeesPerRegistration to EditRegistrationModal */}
+      {/* Add-Only Attendees: Pass onAddAttendeesClick for paid registrations */}
       <EditRegistrationModal
         open={showEditModal}
         onOpenChange={setShowEditModal}
         registration={registrationDetails || null}
         eventId={id}
+        eventTitle={event?.title}
         isFreeEvent={event?.isFree ?? true}
         spotsLeft={spotsLeft}
         maxAttendeesPerRegistration={event?.maxAttendeesPerRegistration}
         onSave={handleEditRegistration}
         isSubmitting={isUpdatingRegistration}
+        onAddAttendeesClick={() => setShowAddAttendeesModal(true)}
       />
+
+      {/* Add-Only Attendees: Modal for adding attendees to paid registrations */}
+      {registrationDetails && (
+        <AddAttendeesModal
+          open={showAddAttendeesModal}
+          onOpenChange={setShowAddAttendeesModal}
+          registrationId={registrationDetails.id}
+          eventId={id}
+          eventTitle={event?.title || ''}
+          currentAttendeeCount={registrationDetails.attendees?.length || registrationDetails.quantity}
+          maxAttendeesPerRegistration={event?.maxAttendeesPerRegistration ?? 10}
+          onSuccess={() => {
+            // Refresh registration details after successful addition
+            window.location.reload();
+          }}
+        />
+      )}
 
       {/* Phase 6A.80: Success Dialog for Anonymous Registration */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>

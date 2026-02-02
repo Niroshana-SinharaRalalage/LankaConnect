@@ -1,9 +1,90 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-02 - Issue #51: Group Pricing Tier Validation Fix ✅ COMPLETE*
+*Last Updated: 2026-02-02 - Add-Only Attendees with Delta Payment (Backend) ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Issue #51: Group Pricing Tier Validation Fix ✅ COMPLETE
+## 🎯 Current Session Status - Add-Only Attendees with Delta Payment (Backend)
+
+### ADD-ONLY ATTENDEES WITH DELTA PAYMENT - 2026-02-02
+
+**Status**: 🟡 **IN PROGRESS** - Backend Complete, Frontend Pending
+
+**Priority**: 🟢 **FEATURE** - Option 1.5: Add-Only Attendees with Delta Payment
+
+**Feature Description**:
+Allow users with paid event registrations to ADD additional attendees (not remove) and pay only the price difference. Removing attendees requires cancelling the entire registration.
+
+**Backend Implementation (COMPLETE)**:
+
+1. **Domain Layer - New Entities**
+   - `RegistrationAddition` entity - Tracks pending additions with states: Pending → PaymentCompleted → Merged
+   - `RegistrationPayment` entity - Tracks individual payments for audit trail
+   - `RegistrationAdditionStatus` enum - Pending, PaymentCompleted, Merged, Failed, Abandoned
+   - `PaymentType` enum - Initial, Addition
+   - `AttendeesAddedEvent` domain event - Triggers email after successful addition
+
+2. **Infrastructure Layer**
+   - `RegistrationAdditionConfiguration` - EF Core configuration with JSONB columns
+   - `RegistrationPaymentConfiguration` - EF Core configuration
+   - `RegistrationAdditionRepository` - Repository implementation
+   - `RegistrationPaymentRepository` - Repository implementation
+   - Database migrations for new tables in `events` schema
+
+3. **Application Layer**
+   - `CalculateAdditionPriceQuery` - Calculate delta price for new attendees
+   - `InitiateAddAttendeesCommand` - Create pending addition with Stripe checkout
+   - `GetPendingAdditionQuery` - Retrieve pending addition status
+   - `CancelPendingAdditionCommand` - Cancel pending addition
+
+4. **API Layer - New Endpoints**
+   - `POST /api/events/registrations/{registrationId}/calculate-addition` - Calculate pricing
+   - `POST /api/events/registrations/{registrationId}/add-attendees` - Initiate Stripe checkout
+   - `GET /api/events/registrations/{registrationId}/pending-addition` - Get pending addition
+   - `DELETE /api/events/registrations/{registrationId}/pending-addition` - Cancel pending addition
+
+5. **Payment Integration**
+   - Updated `StripePaymentService` to create checkout sessions with `payment_type: addition` metadata
+   - Updated `PaymentsController` webhook to detect and handle addition payments
+   - Implemented `HandleAdditionCheckoutCompletedAsync` for addition payment completion
+
+**API Testing on Staging (VERIFIED ✅)**:
+- ✅ `POST /calculate-addition` - Returns correct pricing with delta calculation
+- ✅ `POST /add-attendees` - Creates Stripe checkout session and returns URL
+- ✅ `GET /pending-addition` - Returns pending addition details
+- ✅ `DELETE /pending-addition` - Successfully cancels pending addition
+
+**Files Created**:
+- `src/LankaConnect.Domain/Events/RegistrationAddition.cs`
+- `src/LankaConnect.Domain/Events/RegistrationPayment.cs`
+- `src/LankaConnect.Domain/Events/Enums/RegistrationAdditionStatus.cs`
+- `src/LankaConnect.Domain/Events/Enums/PaymentType.cs`
+- `src/LankaConnect.Domain/Events/DomainEvents/AttendeesAddedEvent.cs`
+- `src/LankaConnect.Domain/Events/Repositories/IRegistrationAdditionRepository.cs`
+- `src/LankaConnect.Domain/Events/Repositories/IRegistrationPaymentRepository.cs`
+- `src/LankaConnect.Infrastructure/Data/Configurations/RegistrationAdditionConfiguration.cs`
+- `src/LankaConnect.Infrastructure/Data/Configurations/RegistrationPaymentConfiguration.cs`
+- `src/LankaConnect.Infrastructure/Data/Repositories/RegistrationAdditionRepository.cs`
+- `src/LankaConnect.Infrastructure/Data/Repositories/RegistrationPaymentRepository.cs`
+- `src/LankaConnect.Application/Events/Queries/CalculateAdditionPrice/*.cs`
+- `src/LankaConnect.Application/Events/Queries/GetPendingAddition/*.cs`
+- `src/LankaConnect.Application/Events/Commands/InitiateAddAttendees/*.cs`
+- `src/LankaConnect.Application/Events/Commands/CancelPendingAddition/*.cs`
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/Registration.cs` - Added AddAttendees() method
+- `src/LankaConnect.API/Controllers/EventsController.cs` - Added 4 new endpoints
+- `src/LankaConnect.API/Controllers/PaymentsController.cs` - Addition webhook handling
+- `src/LankaConnect.Infrastructure/Payments/Services/StripePaymentService.cs` - Addition checkout
+- `src/LankaConnect.Infrastructure/DependencyInjection.cs` - Repository registrations
+
+**Remaining Work**:
+- Phase 5: Frontend - AddAttendeesModal component
+- Phase 5: Frontend - Update EditRegistrationModal for paid events
+- Phase 6: Email templates - RegistrationUpdated and AttendeesAdded
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #51: Group Pricing Tier Validation Fix ✅ COMPLETE
 
 ### Issue #51: GROUP PRICING TIER VALIDATION FIX - 2026-02-02
 

@@ -7,7 +7,47 @@
 
 ---
 
-## ✅ CURRENT STATUS - ISSUE #51: GROUP PRICING TIER VALIDATION FIX COMPLETE (2026-02-02)
+## 🔄 CURRENT STATUS - ADD-ONLY ATTENDEES WITH DELTA PAYMENT (2026-02-02)
+**Date**: 2026-02-02
+**Session**: Option 1.5 - Add-Only Attendees with Delta Payment
+**Status**: 🟡 IN PROGRESS - BACKEND COMPLETE & DEPLOYED, FRONTEND PENDING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Test Status**: ✅ All tests pass
+**Deployment**: ✅ Backend deployed to Azure Staging
+**Priority**: 🟢 FEATURE - Add Attendees to Paid Registrations
+
+**Objective**: Allow users with paid event registrations to ADD additional attendees (not remove) and pay only the price difference.
+
+**Backend Implementation (COMPLETE)**:
+- ✅ Created `RegistrationAddition` entity (states: Pending → PaymentCompleted → Merged)
+- ✅ Created `RegistrationPayment` entity for audit trail
+- ✅ Created new enums: `RegistrationAdditionStatus`, `PaymentType`
+- ✅ Created EF Core configurations and repositories
+- ✅ Created database migrations for new tables
+- ✅ Created `CalculateAdditionPriceQuery` - Calculate delta pricing
+- ✅ Created `InitiateAddAttendeesCommand` - Create Stripe checkout for additions
+- ✅ Created `GetPendingAdditionQuery` - Check pending addition status
+- ✅ Created `CancelPendingAdditionCommand` - Cancel pending addition
+- ✅ Updated `PaymentsController` webhook to handle addition payments
+
+**API Endpoints Deployed & Verified**:
+- ✅ `POST /api/events/registrations/{id}/calculate-addition` - Working
+- ✅ `POST /api/events/registrations/{id}/add-attendees` - Working (returns Stripe checkout URL)
+- ✅ `GET /api/events/registrations/{id}/pending-addition` - Working
+- ✅ `DELETE /api/events/registrations/{id}/pending-addition` - Working
+
+**Files Created**: 20+ new files across Domain, Infrastructure, Application layers
+**Files Modified**: EventsController.cs, PaymentsController.cs, StripePaymentService.cs, DependencyInjection.cs
+
+**Remaining Work**:
+- Phase 5: Frontend - Create `AddAttendeesModal` component
+- Phase 5: Frontend - Update `EditRegistrationModal` for paid events
+- Phase 6: Email - Create `RegistrationUpdated` email template and handler
+- Phase 6: Email - Create `AttendeesAdded` email template and handler
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #51: GROUP PRICING TIER VALIDATION FIX COMPLETE (2026-02-02)
 **Date**: 2026-02-02
 **Session**: Issue #51 - Group Pricing Tier Validation Fix
 **Status**: ✅ COMPLETE - BACKEND & FRONTEND DEPLOYED TO AZURE STAGING

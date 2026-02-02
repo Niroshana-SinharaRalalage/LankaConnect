@@ -1,12 +1,13 @@
 /**
  * Phase 6A.X: Client-side Revenue Breakdown Calculator
+ * Phase 6A.95: Added salesTaxEnabled feature flag support
  *
  * This utility provides a preview calculation of revenue breakdown for event organizers.
  * The actual breakdown is calculated on the backend; this is for UI preview purposes only.
  *
- * Formula (tax-inclusive):
+ * Formula (tax-inclusive, only when salesTaxEnabled):
  * 1. Gross Amount = Ticket Price (what buyer pays)
- * 2. Sales Tax = Gross - (Gross / (1 + taxRate))
+ * 2. Sales Tax = Gross - (Gross / (1 + taxRate)) -- only if salesTaxEnabled
  * 3. Taxable Amount = Gross - Sales Tax
  * 4. Stripe Fee = (Taxable * stripeFeeRate) + stripeFeeFixed
  * 5. Platform Commission = Taxable * platformCommissionRate
@@ -17,19 +18,24 @@ import { Currency, RevenueBreakdownDto } from '@/infrastructure/api/types/events
 
 /**
  * Commission settings from backend configuration
- * These are fetched from /api/reference-data/commission-settings
+ * These are fetched from /api/configuration/commission-settings
+ * Phase 6A.95: Added salesTaxEnabled feature flag
  */
 export interface CommissionSettings {
   platformCommissionRate: number;
   stripeFeeRate: number;
   stripeFeeFixed: number;
+  /** Phase 6A.95: Feature flag for sales tax collection. When false, tax calculations return 0. */
+  salesTaxEnabled?: boolean;
 }
 
 // Default fallback values (match appsettings.json defaults)
+// Phase 6A.95: salesTaxEnabled defaults to false for safety
 const DEFAULT_COMMISSION_SETTINGS: CommissionSettings = {
   platformCommissionRate: 0.02,
   stripeFeeRate: 0.029,
   stripeFeeFixed: 0.30,
+  salesTaxEnabled: false, // Phase 6A.95: Default to disabled
 };
 
 // Cached commission settings (fetched once from API)
@@ -254,6 +260,7 @@ export function formatTaxRateDisplay(taxRate: number): string {
 
 /**
  * Calculate revenue breakdown preview
+ * Phase 6A.95: Respects salesTaxEnabled feature flag
  *
  * @param ticketPrice - The ticket price in dollars/units
  * @param currency - The currency enum value
@@ -277,16 +284,20 @@ export function calculateRevenueBreakdown(
   // Use provided settings or get cached/default settings
   const commissionSettings = settings ?? getCommissionSettings();
 
-  // Get tax rate based on location
-  const taxRate = getStateTaxRate(state, country);
+  // Phase 6A.95: Check if sales tax feature is enabled
+  const salesTaxEnabled = commissionSettings.salesTaxEnabled ?? false;
+
+  // Get tax rate based on location (only if feature is enabled)
+  const taxRate = salesTaxEnabled ? getStateTaxRate(state, country) : 0;
 
   // Calculate breakdown using tax-inclusive formula
   const grossAmount = ticketPrice;
 
   // Sales Tax = Gross - (Gross / (1 + taxRate))
   // For tax-inclusive pricing: preTaxAmount = grossAmount / (1 + taxRate)
-  const preTaxAmount = taxRate > 0 ? grossAmount / (1 + taxRate) : grossAmount;
-  const salesTaxAmount = grossAmount - preTaxAmount;
+  // Phase 6A.95: Only calculate tax if salesTaxEnabled
+  const preTaxAmount = salesTaxEnabled && taxRate > 0 ? grossAmount / (1 + taxRate) : grossAmount;
+  const salesTaxAmount = salesTaxEnabled ? grossAmount - preTaxAmount : 0;
 
   // Taxable amount (amount after removing sales tax)
   const taxableAmount = preTaxAmount;
@@ -300,9 +311,9 @@ export function calculateRevenueBreakdown(
   // Organizer payout: Taxable - Stripe - Platform
   const organizerPayoutAmount = taxableAmount - stripeFeeAmount - platformCommissionAmount;
 
-  // Get state code for jurisdiction display
+  // Get state code for jurisdiction display (only if tax enabled)
   const stateCode = normalizeStateCode(state);
-  const taxJurisdiction = stateCode && country?.toUpperCase() === 'UNITED STATES' ? stateCode : null;
+  const taxJurisdiction = salesTaxEnabled && stateCode && country?.toUpperCase() === 'UNITED STATES' ? stateCode : null;
 
   return {
     grossAmount: Math.round(grossAmount * 100) / 100,

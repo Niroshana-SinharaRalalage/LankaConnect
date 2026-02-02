@@ -1,5 +1,6 @@
 /**
  * Phase 6A.X: Revenue Breakdown Preview Component
+ * Phase 6A.95: Added sales tax feature flag support
  *
  * A compact, inline preview of revenue breakdown for event creation/edit forms.
  * Shows the organizer what they will receive after fees and taxes.
@@ -9,14 +10,15 @@
  * - Shows detailed breakdown on hover/click
  * - Warning message for very low payouts
  * - Fetches fee rates from backend configuration
+ * - Respects salesTaxEnabled feature flag
  */
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Info, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Currency } from '@/infrastructure/api/types/events.types';
-import { useCommissionSettings } from '@/infrastructure/api/hooks/useReferenceData';
+import { useCommissionSettingsWithFlags } from '@/infrastructure/api/hooks/useFeatureFlags';
 import {
   calculateRevenueBreakdown,
   isPayoutWarningThreshold,
@@ -74,18 +76,22 @@ export function RevenueBreakdownPreview({
 }: RevenueBreakdownPreviewProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Fetch commission settings from backend configuration
-  const { data: commissionSettings } = useCommissionSettings();
+  // Phase 6A.95: Fetch commission settings with feature flags from backend
+  const { data: commissionSettings } = useCommissionSettingsWithFlags();
 
-  // Map CommissionSettingsDto to CommissionSettings type
+  // Map CommissionSettingsDto to CommissionSettings type with salesTaxEnabled flag
   const settings: CommissionSettings | undefined = useMemo(() => {
     if (!commissionSettings) return undefined;
     return {
       platformCommissionRate: commissionSettings.platformCommissionRate,
       stripeFeeRate: commissionSettings.stripeFeeRate,
       stripeFeeFixed: commissionSettings.stripeFeeFixed,
+      salesTaxEnabled: commissionSettings.salesTaxEnabled, // Phase 6A.95
     };
   }, [commissionSettings]);
+
+  // Phase 6A.95: Track if sales tax feature is enabled
+  const salesTaxEnabled = settings?.salesTaxEnabled ?? false;
 
   // Calculate breakdown using memoization with fetched settings
   const breakdown = useMemo(
@@ -206,14 +212,20 @@ export function RevenueBreakdownPreview({
             </div>
           )}
 
-          {/* Tax note */}
-          {!hasTax && country?.toUpperCase() === 'UNITED STATES' && (
+          {/* Tax note - Phase 6A.95: Updated to respect salesTaxEnabled flag */}
+          {!salesTaxEnabled && (
+            <p className="text-[10px] text-neutral-400 mt-2">
+              * Sales tax collection is not currently enabled
+            </p>
+          )}
+
+          {salesTaxEnabled && !hasTax && country?.toUpperCase() === 'UNITED STATES' && (
             <p className="text-[10px] text-neutral-400 mt-2">
               * Enter a US state to see applicable sales tax
             </p>
           )}
 
-          {!hasTax && (!country || country.toUpperCase() !== 'UNITED STATES') && (
+          {salesTaxEnabled && !hasTax && (!country || country.toUpperCase() !== 'UNITED STATES') && (
             <p className="text-[10px] text-neutral-400 mt-2">
               * Sales tax only applies to US events
             </p>

@@ -10,25 +10,37 @@ namespace LankaConnect.Infrastructure.Services;
 
 /// <summary>
 /// Phase 6A.X: Service for calculating detailed revenue breakdowns for event tickets
+/// Phase 6A.95: Added sales tax feature flag support
 /// Uses configurable fee rates from CommissionSettings
 /// </summary>
 public class RevenueCalculatorService : IRevenueCalculatorService
 {
     private readonly ISalesTaxService _salesTaxService;
     private readonly CommissionSettings _commissionSettings;
+    private readonly SalesTaxSettings _salesTaxSettings;
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// Phase 6A.95: Indicates whether sales tax collection is currently enabled.
+    /// Used by API controllers to expose feature flag status to frontend.
+    /// </summary>
+    public bool IsSalesTaxEnabled => _salesTaxSettings.Enabled;
 
     public RevenueCalculatorService(
         ISalesTaxService salesTaxService,
         IOptions<CommissionSettings> commissionSettings,
+        IOptions<SalesTaxSettings> salesTaxSettings,
         ILogger logger)
     {
         _salesTaxService = salesTaxService;
         _commissionSettings = commissionSettings.Value;
+        _salesTaxSettings = salesTaxSettings.Value;
         _logger = logger;
 
         _logger.Information(
-            "RevenueCalculatorService initialized with rates: PlatformCommission={Platform}%, StripeFee={Stripe}% + ${Fixed}",
+            "RevenueCalculatorService initialized. SalesTaxEnabled={SalesTaxEnabled}, " +
+            "Rates: PlatformCommission={Platform}%, StripeFee={Stripe}% + ${Fixed}",
+            _salesTaxSettings.Enabled,
             _commissionSettings.PlatformCommissionRate * 100,
             _commissionSettings.StripeFeeRate * 100,
             _commissionSettings.StripeFeeFixed);

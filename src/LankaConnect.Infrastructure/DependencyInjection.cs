@@ -182,21 +182,26 @@ public static class DependencyInjection
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
 
+        // Phase 6A.95: Configure Sales Tax Settings (feature flag)
+        services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));
+
         // Phase 6A.X: Add Tax and Revenue Breakdown Services
         services.AddScoped<IStateTaxRateRepository, StateTaxRateRepository>();
         services.AddScoped<ISalesTaxService>(provider =>
         {
             var repository = provider.GetRequiredService<IStateTaxRateRepository>();
             var memoryCache = provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            var salesTaxSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SalesTaxSettings>>();
             var logger = Log.ForContext<DatabaseSalesTaxService>();
-            return new DatabaseSalesTaxService(repository, memoryCache, logger);
+            return new DatabaseSalesTaxService(repository, memoryCache, salesTaxSettings, logger);
         });
         services.AddScoped<IRevenueCalculatorService>(provider =>
         {
             var salesTaxService = provider.GetRequiredService<ISalesTaxService>();
             var commissionSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CommissionSettings>>();
+            var salesTaxSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SalesTaxSettings>>();
             var logger = Log.ForContext<RevenueCalculatorService>();
-            return new RevenueCalculatorService(salesTaxService, commissionSettings, logger);
+            return new RevenueCalculatorService(salesTaxService, commissionSettings, salesTaxSettings, logger);
         });
 
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
@@ -397,6 +402,10 @@ public static class DependencyInjection
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
+
+        // Add-Only Attendees Feature: Registration Addition and Payment Repositories
+        services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
+        services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
 
         return services;
     }

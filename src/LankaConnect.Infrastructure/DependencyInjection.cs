@@ -403,9 +403,9 @@ public static class DependencyInjection
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
 
-        // TODO: Add-Only Attendees Feature - Uncomment when feature is complete
-        // services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
-        // services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
+        // Add-Only Attendees Feature repositories
+        services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
+        services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
 
         return services;
     }

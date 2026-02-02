@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
+using LankaConnect.Infrastructure.Helpers;
 using System.Diagnostics;
 using Serilog.Context;
 
@@ -584,10 +585,17 @@ public class EventRepository : Repository<Event>, IEventRepository
         else
         {
             // Phase 6A.89: For multi-word queries, use websearch_to_tsquery for natural language support
-            parameters.Add(trimmedSearchTerm);
+            // Phase 6A.XX FIX: Sanitize hyphen patterns that PostgreSQL interprets as negation operators
+            // Bug: "Sample - Varuni" was being parsed as 'sampl' & !'varuni' (NOT varuni)
+            // which incorrectly excluded events containing "Varuni" in the title
+            // Solution: Remove hyphen patterns before passing to websearch_to_tsquery
+            var sanitizedSearchTerm = SearchTermSanitizer.SanitizeForWebSearch(trimmedSearchTerm);
+            parameters.Add(sanitizedSearchTerm);
             whereConditions.Add("e.search_vector @@ websearch_to_tsquery('english', {0})");
 
-            _repoLogger.LogInformation("[SEARCH-1D] Using websearch_to_tsquery for multi-word: {Term}", trimmedSearchTerm);
+            _repoLogger.LogInformation(
+                "[SEARCH-1D] Using websearch_to_tsquery for multi-word: Original={OriginalTerm}, Sanitized={SanitizedTerm}",
+                trimmedSearchTerm, sanitizedSearchTerm);
         }
 
         // Add status filter
@@ -658,7 +666,9 @@ public class EventRepository : Repository<Event>, IEventRepository
         else
         {
             // For multi-word, use websearch_to_tsquery for ranking
-            parameters.Add(trimmedSearchTerm);
+            // Phase 6A.XX FIX: Use sanitized search term for consistent ranking with WHERE clause
+            var sanitizedSearchTermForRanking = SearchTermSanitizer.SanitizeForWebSearch(trimmedSearchTerm);
+            parameters.Add(sanitizedSearchTermForRanking);
             orderByRankExpression = $"ts_rank(e.search_vector, websearch_to_tsquery('english', {{{searchTermIndexForOrderBy}}}))";
         }
 

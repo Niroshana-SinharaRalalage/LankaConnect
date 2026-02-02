@@ -15,6 +15,7 @@ using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.Application.Interfaces;
 
 namespace LankaConnect.Infrastructure.Tests.Services;
 
@@ -26,6 +27,7 @@ public class RegistrationEmailServiceTests
 {
     private readonly Mock<IEmailService> _emailService;
     private readonly Mock<IEmailTemplateService> _emailTemplateService;
+    private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<RegistrationEmailService>> _logger;
     private readonly RegistrationEmailService _sut;
 
@@ -33,11 +35,17 @@ public class RegistrationEmailServiceTests
     {
         _emailService = new Mock<IEmailService>();
         _emailTemplateService = new Mock<IEmailTemplateService>();
+        _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<RegistrationEmailService>>();
+
+        // Setup default mock behavior for IEmailUrlHelper
+        _emailUrlHelper.Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))
+            .Returns("https://example.com/events/test-event-id");
 
         _sut = new RegistrationEmailService(
             _emailService.Object,
             _emailTemplateService.Object,
+            _emailUrlHelper.Object,
             _logger.Object);
     }
 

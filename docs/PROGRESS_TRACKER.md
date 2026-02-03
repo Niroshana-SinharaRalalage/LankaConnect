@@ -1,9 +1,64 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-03 - Phase 6A.87 Hybrid Email Migration + Phase 6A.98 Email Template Standardization ✅ COMPLETE*
+*Last Updated: 2026-02-03 - Issue #56 Duplicate Payment Email Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.98: Email Template Header/Footer Standardization ✅ COMPLETE
+## 🎯 Current Session Status - Issue #56: Duplicate Payment Confirmation Emails ✅ COMPLETE
+
+### ISSUE #56: TWO EMAILS FOR PAYMENT CONFIRMATION - 2026-02-03
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING - QA READY**
+
+**Priority**: 🔴 **BUG FIX** - Users receiving duplicate confirmation emails after payment
+
+**Problem Statement**:
+Users were receiving two payment confirmation emails after completing a Stripe payment. Root cause was a race condition in Stripe webhook handling where concurrent webhook requests both process the same payment before either marks it as complete, resulting in `PaymentCompletedEvent` being raised twice.
+
+**Race Condition Timeline**:
+1. Request A: Passes idempotency check (event exists, not marked processed)
+2. Request B: Also passes idempotency check (event still not marked processed)
+3. Request A: Loads Registration with Status=Preliminary
+4. Request B: Also loads Registration with Status=Preliminary
+5. Request A: Calls `CompletePayment()` → SUCCESS → Raises PaymentCompletedEvent #1
+6. Request B: Calls `CompletePayment()` → SUCCESS → Raises PaymentCompletedEvent #2
+7. Result: TWO emails sent
+
+**Two-Layer Fix Applied**:
+
+1. **Fix 1 - PaymentIntentId Guard (Domain Layer)**:
+   - Added idempotency check in `Registration.CompletePayment()`
+   - If called with same PaymentIntentId that was already processed, return success without raising domain event
+   - Handles sequential race (Request B loads after A saves)
+   - File: `src/LankaConnect.Domain/Events/Registration.cs`
+
+2. **Fix 2 - Concurrency Token (Infrastructure Layer)**:
+   - Added PostgreSQL `xmin` system column as EF Core concurrency token
+   - Concurrent `SaveChanges()` on same registration throws `DbUpdateConcurrencyException`
+   - Handles concurrent race (both load simultaneously)
+   - File: `src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs`
+
+**TDD Tests Added (8)**:
+- `CompletePayment_FirstCall_ShouldSucceedAndRaiseDomainEvent`
+- `CompletePayment_DuplicateCallWithSamePaymentIntent_ShouldReturnSuccessWithoutRaisingEvent`
+- `CompletePayment_DifferentPaymentIntentAfterCompletion_ShouldFail`
+- `CompletePayment_CaseInsensitivePaymentIntentComparison_ShouldReturnSuccess`
+- `CompletePayment_ShouldRaiseEventWithCorrectData`
+- `CompletePayment_WithEmptyPaymentIntentId_ShouldFail`
+- `CompletePayment_WhenAbandonedStatus_ShouldFail`
+- `CompletePayment_WhenAlreadyConfirmed_WithSamePaymentIntent_ShouldReturnSuccess`
+
+**Commits**:
+- `6667fad0` - fix(#56): Prevent duplicate payment confirmation emails
+
+**Verification**:
+- ✅ All 1381 tests pass (8 new + 1373 existing)
+- ✅ Deployed to Azure staging successfully
+- ✅ Health check passing
+- ✅ API endpoints working
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.98: Email Template Header/Footer Standardization ✅ COMPLETE
 
 ### PHASE 6A.98: EMAIL TEMPLATE HEADER/FOOTER STANDARDIZATION - 2026-02-03
 

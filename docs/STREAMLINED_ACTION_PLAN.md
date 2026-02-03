@@ -7,13 +7,96 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ADD-ONLY ATTENDEES WITH DELTA PAYMENT (2026-02-02)
+## 🔄 CURRENT STATUS - ISSUE #56: DUPLICATE PAYMENT EMAILS FIX (2026-02-03)
+**Date**: 2026-02-03
+**Session**: Issue #56 - Two Emails for Payment Confirmation
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - QA READY
+**Build Status**: ✅ 0 errors, 0 warnings
+**Test Status**: ✅ 1381 tests pass (8 new idempotency tests)
+**Deployment**: ✅ Backend (run #21651594424) - 8m20s
+**Priority**: 🔴 BUG FIX - Duplicate confirmation emails
+
+**Problem**: Users receiving two payment confirmation emails after completing Stripe payment.
+
+**Root Cause**: Race condition in webhook handling - concurrent webhook requests both process the same payment before either marks it as complete, resulting in `PaymentCompletedEvent` raised twice.
+
+**Two-Layer Fix Applied**:
+1. **PaymentIntentId Guard (Domain)**: Return success without event if same payment already processed
+2. **Concurrency Token (Infrastructure)**: PostgreSQL `xmin` column prevents concurrent updates
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/Registration.cs` - Fix 1
+- `src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs` - Fix 2
+- `tests/.../RegistrationCompletePaymentIdempotencyTests.cs` - 8 TDD tests
+
+**Commit**: `6667fad0` - fix(#56): Prevent duplicate payment confirmation emails
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.X: REVENUE BREAKDOWN FIX (2026-02-03)
+**Date**: 2026-02-03
+**Session**: Phase 6A.X - Revenue Breakdown Fix for Add-Only Attendees
+**Status**: ✅ COMPLETE - BACKEND DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ Backend (run #21617784612) - 7m28s
+**Priority**: 🔴 BUG FIX - Incorrect payout/fees on Attendees page
+
+**Problem**: After adding attendees, Attendees page showed incorrect fees/payout:
+- Gross Revenue: $380 ✓ (correct)
+- Stripe Fees: $4.36 ✗ (should be ~$11.32 based on $380)
+- Platform Commission: $2.80 ✗ (should be ~$7.60)
+- Organizer Payout: $132.84 ✗ (should be ~$361.08)
+
+**Root Cause**: `SetRevenueBreakdown()` was not called after `AddAttendees()` in webhook handler.
+
+**Fix Applied**:
+- Added `IRevenueCalculatorService` to `PaymentsController`
+- After `AddAttendees()` succeeds, recalculate breakdown for cumulative total
+- Call `registration.SetRevenueBreakdown()` with new breakdown
+
+**Files Modified**: `src/LankaConnect.API/Controllers/PaymentsController.cs`
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.97: TIMEZONE-CONSISTENT DATE/TIME DISPLAY (2026-02-02)
+**Date**: 2026-02-02
+**Session**: Phase 6A.97 - Timezone-Consistent Date/Time Display (GitHub #40)
+**Status**: ✅ COMPLETE - BACKEND + FRONTEND DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Test Status**: ✅ All tests pass (including new TimeZoneLookupService tests)
+**Deployment**: ✅ Backend (run #21609739219) + Frontend (run #21612085798)
+**Priority**: 🟢 FEATURE - Consistent timezone display for US-based events
+
+**Objective**: Store event timezone based on US state location and display consistently in emails and frontend.
+
+**Problem Solved**:
+- Database stored times in UTC
+- Emails incorrectly displayed Sri Lanka timezone (Asia/Colombo)
+- Frontend showed browser's local timezone (inconsistent per user)
+
+**Implementation Complete**:
+- ✅ Created `ITimeZoneLookupService` with all 50 US state → timezone mappings
+- ✅ Added `TimeZoneId` property to Event entity
+- ✅ Created database migration with backfill SQL for existing events
+- ✅ Updated `EmailDateTimeHelper` with timezone-aware methods
+- ✅ Updated 13+ email handlers to use event's timezone
+- ✅ Created frontend `date-formatter.ts` utility
+- ✅ Updated EventDto with `timeZoneId` and `timeZoneAbbreviation` fields
+- ✅ Updated key frontend components
+
+**API Verification** (Staging):
+- Ohio events → `America/New_York` timezone
+- DST handling: `EDT` for October, `EST` for November
+
+---
+
+## ⏸️ PREVIOUS STATUS - ADD-ONLY ATTENDEES WITH DELTA PAYMENT (2026-02-02)
 **Date**: 2026-02-02
 **Session**: Option 1.5 - Add-Only Attendees with Delta Payment
-**Status**: 🟡 IN PROGRESS - BACKEND COMPLETE & DEPLOYED, FRONTEND PENDING
+**Status**: ✅ COMPLETE - BACKEND + FRONTEND DEPLOYED
 **Build Status**: ✅ 0 errors, 0 warnings
 **Test Status**: ✅ All tests pass
-**Deployment**: ✅ Backend deployed to Azure Staging
+**Deployment**: ✅ Backend + Frontend deployed to Azure Staging
 **Priority**: 🟢 FEATURE - Add Attendees to Paid Registrations
 
 **Objective**: Allow users with paid event registrations to ADD additional attendees (not remove) and pay only the price difference.

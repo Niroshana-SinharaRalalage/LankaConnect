@@ -59,6 +59,8 @@ export function EventCreationForm() {
       enableGroupPricing: false,
       groupPricingTiers: [],
       capacity: 50,
+      // Issue #51: Max attendees per registration - default to 10
+      maxAttendeesPerRegistration: 10,
       // Session 33: Don't set default currencies - they should only be set when user enters pricing mode
       // This prevents validation errors when switching between pricing modes
       ticketPriceAmount: undefined,
@@ -187,6 +189,8 @@ export function EventCreationForm() {
         endDate: endDateUtc,
         organizerId: user.userId,
         capacity: data.capacity,
+        // Issue #51: Max attendees per registration
+        maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
         category: data.category,
         // Phase 6A.32: Email Groups Integration
         emailGroupIds: data.emailGroupIds || [],
@@ -562,6 +566,28 @@ export function EventCreationForm() {
             {errors.capacity && (
               <p className="mt-1 text-sm text-destructive">{errors.capacity.message}</p>
             )}
+          </div>
+
+          {/* Issue #51: Max Attendees Per Registration */}
+          <div>
+            <label htmlFor="maxAttendeesPerRegistration" className="block text-sm font-medium text-neutral-700 mb-2">
+              Max Attendees Per Registration
+            </label>
+            <Input
+              id="maxAttendeesPerRegistration"
+              type="number"
+              min="1"
+              max="50"
+              placeholder="e.g., 10"
+              error={!!errors.maxAttendeesPerRegistration}
+              {...register('maxAttendeesPerRegistration', { valueAsNumber: true })}
+            />
+            {errors.maxAttendeesPerRegistration && (
+              <p className="mt-1 text-sm text-destructive">{errors.maxAttendeesPerRegistration.message}</p>
+            )}
+            <p className="mt-1 text-xs text-neutral-500">
+              Maximum number of attendees allowed in a single registration (1-50)
+            </p>
           </div>
 
           {/* Free Event Toggle */}

@@ -3,6 +3,8 @@ using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users.DomainEvents;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -12,21 +14,27 @@ namespace LankaConnect.Application.Users.EventHandlers;
 /// <summary>
 /// Handles MemberVerificationRequestedEvent to send email verification link.
 /// Phase 6A.53: Member Email Verification System
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// Uses fail-silent pattern to prevent transaction rollback.
 /// </summary>
 public class MemberVerificationRequestedEventHandler
     : INotificationHandler<DomainEventNotification<MemberVerificationRequestedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly ILogger<MemberVerificationRequestedEventHandler> _logger;
     private readonly IApplicationUrlsService _urlsService;
 
+    private const string HandlerName = nameof(MemberVerificationRequestedEventHandler);  // Phase 6A.87: For feature flag lookup
+
     public MemberVerificationRequestedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         ILogger<MemberVerificationRequestedEventHandler> logger,
         IApplicationUrlsService urlsService)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _logger = logger;
         _urlsService = urlsService;
     }
@@ -58,39 +66,38 @@ public class MemberVerificationRequestedEventHandler
                 // Phase 6A.53 Fix: Build user name from FirstName and LastName
                 var userName = BuildUserName(domainEvent.FirstName, domainEvent.LastName);
 
-                // Phase 6A.X Issue #49: Fixed parameter name to match email template
-                // Template uses {{ExpirationHours}} placeholder, not {{TokenExpiry}}
-                var parameters = new Dictionary<string, object>
-                {
-                    { "Email", domainEvent.Email },
-                    { "VerificationUrl", verificationUrl },
-                    { "ExpirationHours", "24" },  // Must match template placeholder {{ExpirationHours}}
-                    { "UserName", userName }
-                };
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                var emailParams = EmailVerificationEmailParams.Create(
+                    userId: domainEvent.UserId,
+                    userName: userName,
+                    email: domainEvent.Email,
+                    verificationUrl: verificationUrl,
+                    expirationHours: "24"
+                );
 
                 _logger.LogInformation(
                     "MemberVerificationRequested: Sending verification email - Email={Email}, UserName={UserName}",
                     domainEvent.Email, userName);
 
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.MemberEmailVerification,
-                    domainEvent.Email,
-                    parameters,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (!typedResult.Success)
                 {
                     _logger.LogError(
                         "MemberVerificationRequested FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        domainEvent.Email, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        domainEvent.Email, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "MemberVerificationRequested COMPLETE: Email sent successfully - Email={Email}, Duration={ElapsedMs}ms",
-                        domainEvent.Email, stopwatch.ElapsedMilliseconds);
+                        "MemberVerificationRequested COMPLETE: Email sent successfully - Email={Email}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
+                        domainEvent.Email, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

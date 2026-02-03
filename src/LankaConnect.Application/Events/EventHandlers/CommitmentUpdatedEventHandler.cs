@@ -7,6 +7,8 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -16,23 +18,29 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// <summary>
 /// Phase 6A.51+: Handles CommitmentUpdatedEvent to send update confirmation email to user
 /// when they change their commitment quantity or details.
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNotification<CommitmentUpdatedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
+    private const string HandlerName = nameof(CommitmentUpdatedEventHandler);  // Phase 6A.87: For feature flag lookup
+
     public CommitmentUpdatedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;
@@ -80,41 +88,40 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     return; // Fail-silent
                 }
 
-            // Build template parameters
-            // Phase 6A.83 Part 3: Fix parameter names to match template expectations
-            var templateData = new Dictionary<string, object>
-            {
-                { "UserName", user.FirstName },
-                { "EventTitle", @event.Title?.Value ?? "Untitled Event" },  // Phase 6A.83: Extract Value from value object
-                { "ItemName", domainEvent.ItemDescription },  // Phase 6A.83: Changed from ItemDescription to ItemName
-                { "OldQuantity", domainEvent.OldQuantity },
-                { "Quantity", domainEvent.NewQuantity },  // Phase 6A.83: Changed from NewQuantity to Quantity
-                { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventLocation", @event.Location?.ToString() ?? "Location TBD" },
-                { "ManageCommitmentUrl", $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" },  // Phase 6A.83: Added missing parameter
-                { "PickupInstructions", "Please coordinate pickup/delivery details with the event organizer." }
-            };
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                var emailParams = SignupCommitmentEmailParams.CreateUpdate(
+                    userId: user.Id,
+                    userName: user.FirstName,
+                    userEmail: user.Email.Value,
+                    eventId: @event.Id,
+                    eventTitle: @event.Title?.Value ?? "Untitled Event",
+                    signupItem: domainEvent.ItemDescription,
+                    quantity: domainEvent.NewQuantity,
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    eventLocation: @event.Location?.ToString() ?? "Location TBD",
+                    eventDetailsUrl: $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups"
+                );
 
-                // Send templated email
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.SignupCommitmentUpdate,
-                    user.Email.Value,
-                    templateData,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsSuccess)
+                if (typedResult.Success)
                 {
                     _logger.LogInformation(
-                        "CommitmentUpdated COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
-                        user.Email.Value, @event.Id, stopwatch.ElapsedMilliseconds);
+                        "CommitmentUpdated COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
+                        user.Email.Value, @event.Id, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogError(
-                        "CommitmentUpdated FAILED: Email sending failed - Email={Email}, Error={Error}, Duration={ElapsedMs}ms",
-                        user.Email.Value, result.Error, stopwatch.ElapsedMilliseconds);
+                        "CommitmentUpdated FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

@@ -7,6 +7,8 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -15,23 +17,29 @@ namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
 /// Handles RegistrationCancelledEvent to send cancellation confirmation email to attendee
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class RegistrationCancelledEventHandler : INotificationHandler<DomainEventNotification<RegistrationCancelledEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl
     private readonly ILogger<RegistrationCancelledEventHandler> _logger;
 
+    private const string HandlerName = nameof(RegistrationCancelledEventHandler);  // Phase 6A.87: For feature flag lookup
+
     public RegistrationCancelledEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Added for EventDetailsUrl
         ILogger<RegistrationCancelledEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl
@@ -78,40 +86,43 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     return;
                 }
 
-            // Phase 6A.83 Part 3: Add missing EventLocation and EventDetailsUrl parameters
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", $"{user.FirstName} {user.LastName}" },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventLocation", GetEventLocationString(@event) },  // Phase 6A.83: Added missing parameter
-                { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },  // Phase 6A.83: Added missing parameter
-                { "CancellationDate", domainEvent.CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "Reason", "User cancelled registration" }
-            };
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Note: RegistrationCancelledEvent doesn't include RegistrationId, using Guid.Empty as placeholder
+                var emailParams = RegistrationCancellationEmailParams.Create(
+                    userId: user.Id,
+                    userName: $"{user.FirstName} {user.LastName}",
+                    userEmail: user.Email.Value,
+                    registrationId: Guid.Empty,  // RegistrationCancelledEvent doesn't include RegistrationId
+                    eventId: @event.Id,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    eventLocation: GetEventLocationString(@event),
+                    cancellationReason: "User cancelled registration",
+                    cancelledAt: domainEvent.CancelledAt,
+                    refundStatus: "No Refund Required"  // Default, will be updated by refund handler if applicable
+                );
+                emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
 
-                // Send templated email
-                // Phase 6A.79: Use EmailTemplateNames constant
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.RegistrationCancellation,
-                    user.Email.Value,
-                    parameters,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (!typedResult.Success)
                 {
                     _logger.LogError(
                         "RegistrationCancelled FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "RegistrationCancelled COMPLETE: Email sent successfully - Email={Email}, Duration={ElapsedMs}ms",
-                        user.Email.Value, stopwatch.ElapsedMilliseconds);
+                        "RegistrationCancelled COMPLETE: Email sent successfully - Email={Email}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
+                        user.Email.Value, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

@@ -7,6 +7,8 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -15,6 +17,7 @@ namespace LankaConnect.Application.Users.Commands.AdminUnlockUser;
 /// <summary>
 /// Handler for AdminUnlockUserCommand
 /// Phase 6A.90: Unlocks a user account by admin with role hierarchy protection and audit logging
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserCommand>
 {
@@ -22,15 +25,19 @@ public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserComm
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IApplicationUrlsService _urlsService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AdminUnlockUserCommandHandler> _logger;
+
+    private const string HandlerName = nameof(AdminUnlockUserCommandHandler);  // Phase 6A.87: For feature flag lookup
 
     public AdminUnlockUserCommandHandler(
         IUserRepository userRepository,
         IAdminAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IApplicationUrlsService urlsService,
         IUnitOfWork unitOfWork,
         ILogger<AdminUnlockUserCommandHandler> logger)
@@ -39,6 +46,7 @@ public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserComm
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -180,42 +188,45 @@ public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserComm
         {
             var loginUrl = $"{_urlsService.FrontendBaseUrl}/auth/signin";
 
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", user.FullName },
-                { "LoginUrl", loginUrl },
-                { "SupportEmail", "support@lankaconnect.com" },
-                { "Year", DateTime.UtcNow.Year.ToString() }
-            };
+            // Phase 6A.87: Use typed email parameters for compile-time safety
+            var emailParams = AdminUserEmailParams.CreateAccountUnlocked(
+                userId: user.Id,
+                userName: user.FullName,
+                userEmail: user.Email.Value,
+                adminId: _currentUserService.UserId,
+                adminName: "Administrator",
+                actionDate: DateTime.UtcNow
+            );
+            emailParams.LoginUrl = loginUrl;
 
             _logger.LogInformation(
-                "[Phase 6A.90] Sending unlock notification email to {Email}",
+                "[Phase 6A.87] Sending unlock notification email to {Email}",
                 user.Email.Value);
 
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.AccountUnlockedByAdmin,
-                user.Email.Value,
-                parameters,
+            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            var typedResult = await _typedEmailService.SendEmailAsync(
+                emailParams,
+                HandlerName,
                 cancellationToken);
 
-            if (result.IsSuccess)
+            if (typedResult.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.90] Unlock notification email sent successfully to {Email}",
-                    user.Email.Value);
+                    "[Phase 6A.87] Unlock notification email sent successfully to {Email}, UsedTyped={UsedTyped}",
+                    user.Email.Value, typedResult.UsedTypedParameters);
             }
             else
             {
                 _logger.LogWarning(
-                    "[Phase 6A.90] Failed to send unlock notification email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", result.Errors));
+                    "[Phase 6A.87] Failed to send unlock notification email to {Email}: {Errors}",
+                    user.Email.Value, string.Join(", ", typedResult.Errors));
             }
         }
         catch (Exception ex)
         {
             // Fail-silent: Log error but don't throw
             _logger.LogError(ex,
-                "[Phase 6A.90] Error sending unlock notification email to user {UserId}",
+                "[Phase 6A.87] Error sending unlock notification email to user {UserId}",
                 user.Id);
         }
     }

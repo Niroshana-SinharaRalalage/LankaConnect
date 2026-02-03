@@ -7,18 +7,22 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 
 /// <summary>
 /// TDD tests for ResetPasswordCommandHandler
 /// Tests written FIRST following Red-Green-Refactor cycle
+/// Phase 6A.87: Updated for ITypedEmailService support
 /// </summary>
 public class ResetPasswordCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IPasswordHashingService> _mockPasswordHashingService;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;  // Phase 6A.87: Added for typed email service
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<ResetPasswordCommandHandler>> _mockLogger;
     private readonly ResetPasswordCommandHandler _handler;
@@ -28,13 +32,22 @@ public class ResetPasswordCommandHandlerTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockPasswordHashingService = new Mock<IPasswordHashingService>();
         _mockEmailService = new Mock<IEmailService>();
+        _mockTypedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<ResetPasswordCommandHandler>>();
+
+        // Phase 6A.87: Default setup for typed email service to return success
+        _mockTypedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
 
         _handler = new ResetPasswordCommandHandler(
             _mockUserRepository.Object,
             _mockPasswordHashingService.Object,
             _mockEmailService.Object,
+            _mockTypedEmailService.Object,  // Phase 6A.87: Pass typed email service
             _mockUnitOfWork.Object,
             _mockLogger.Object);
     }
@@ -453,13 +466,7 @@ public class ResetPasswordCommandHandlerTests
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-changed-confirmation",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        // Phase 6A.87: Uses default typed email service setup (success)
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -470,9 +477,17 @@ public class ResetPasswordCommandHandlerTests
         // Wait a bit for async email to be attempted
         await Task.Delay(100);
 
-        // Verify email was sent (may take a moment due to Task.Run)
+        // Phase 6A.87: Verify typed email service was called with PasswordChangedEmailParams
         // Note: This is fire-and-forget, so we can't guarantee timing in tests
         // In production, email failures don't affect the password reset result
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.Is<PasswordChangedEmailParams>(p =>
+                    p.UserEmail == email &&
+                    p.UserId == user.Id),
+                It.Is<string>(h => h == "ResetPasswordCommandHandler"),
+                It.IsAny<CancellationToken>()),
+            Times.AtMostOnce);
     }
 
     /// <summary>

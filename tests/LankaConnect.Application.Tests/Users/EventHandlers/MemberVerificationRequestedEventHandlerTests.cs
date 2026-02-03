@@ -4,6 +4,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Users.EventHandlers;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.DomainEvents;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,11 +16,13 @@ namespace LankaConnect.Application.Tests.Users.EventHandlers;
 /// <summary>
 /// Tests for MemberVerificationRequestedEventHandler
 /// Phase 6A.53: Member Email Verification System
+/// Phase 6A.87: Updated for ITypedEmailService support
 /// TDD approach - tests written before implementation changes
 /// </summary>
 public class MemberVerificationRequestedEventHandlerTests
 {
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;  // Phase 6A.87: Added for typed email service
     private readonly Mock<ILogger<MemberVerificationRequestedEventHandler>> _logger;
     private readonly Mock<IApplicationUrlsService> _urlsService;
     private readonly MemberVerificationRequestedEventHandler _handler;
@@ -26,11 +30,13 @@ public class MemberVerificationRequestedEventHandlerTests
     public MemberVerificationRequestedEventHandlerTests()
     {
         _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
         _logger = new Mock<ILogger<MemberVerificationRequestedEventHandler>>();
         _urlsService = new Mock<IApplicationUrlsService>();
 
         _handler = new MemberVerificationRequestedEventHandler(
             _emailService.Object,
+            _typedEmailService.Object,  // Phase 6A.87: Pass typed email service
             _logger.Object,
             _urlsService.Object);
     }
@@ -57,29 +63,24 @@ public class MemberVerificationRequestedEventHandlerTests
 
         _urlsService.Setup(x => x.GetEmailVerificationUrl(verificationToken))
             .Returns(verificationUrl);
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
+        // Phase 6A.87: Setup typed email service mock
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert - Phase 6A.76: Updated to use new template name
-        // Phase 6A.X Issue #49: Parameter name changed back to ExpirationHours to match actual template placeholder
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.MemberEmailVerification,
-            email,
-            It.Is<Dictionary<string, object>>(dict =>
-                dict.ContainsKey("Email") &&
-                dict.ContainsKey("VerificationUrl") &&
-                dict.ContainsKey("ExpirationHours") &&
-                dict.ContainsKey("UserName") &&
-                dict["Email"].ToString() == email &&
-                dict["VerificationUrl"].ToString() == verificationUrl &&
-                dict["UserName"].ToString() == "John Doe"),
+        // Assert - Phase 6A.87: Verify typed email service was called with correct parameters
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EmailVerificationEmailParams>(p =>
+                p.Email == email &&
+                p.VerificationUrl == verificationUrl &&
+                p.UserName == "John Doe" &&
+                p.ExpirationHours == "24"),
+            It.Is<string>(h => h == "MemberVerificationRequestedEventHandler"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -103,23 +104,22 @@ public class MemberVerificationRequestedEventHandlerTests
 
         _urlsService.Setup(x => x.GetEmailVerificationUrl(It.IsAny<string>()))
             .Returns("https://lankaconnect.com/verify-email?token=test");
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
+        // Phase 6A.87: Setup typed email service mock
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert - Phase 6A.76: Updated to use new template name
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.MemberEmailVerification,
-            email,
-            It.Is<Dictionary<string, object>>(dict =>
-                dict.ContainsKey("UserName") &&
-                dict["UserName"].ToString() == "John"),
+        // Assert - Phase 6A.87: Verify typed email service was called with first name only
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EmailVerificationEmailParams>(p =>
+                p.Email == email &&
+                p.UserName == "John"),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -142,23 +142,22 @@ public class MemberVerificationRequestedEventHandlerTests
 
         _urlsService.Setup(x => x.GetEmailVerificationUrl(It.IsAny<string>()))
             .Returns("https://lankaconnect.com/verify-email?token=test");
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
+        // Phase 6A.87: Setup typed email service mock
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert - Phase 6A.76: Updated to use new template name
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.MemberEmailVerification,
-            email,
-            It.Is<Dictionary<string, object>>(dict =>
-                dict.ContainsKey("UserName") &&
-                dict["UserName"].ToString() == "Friend"),
+        // Assert - Phase 6A.87: Verify typed email service was called with "Friend"
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EmailVerificationEmailParams>(p =>
+                p.Email == email &&
+                p.UserName == "Friend"),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -178,12 +177,12 @@ public class MemberVerificationRequestedEventHandlerTests
 
         _urlsService.Setup(x => x.GetEmailVerificationUrl(It.IsAny<string>()))
             .Returns("https://lankaconnect.com/verify-email?token=test");
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
+        // Phase 6A.87: Setup typed email service to return failure
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("Email service error"));
+            .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email service error" }));
 
         // Act - Should not throw (fail-silent pattern)
         var act = async () => await _handler.Handle(notification, CancellationToken.None);

@@ -1,9 +1,189 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-02 - Add-Only Attendees Ticket/Email Fix (RCA) ✅ COMPLETE*
+*Last Updated: 2026-02-03 - Phase 6A.87 Hybrid Email Migration IN PROGRESS*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Add-Only Attendees Ticket/Email Fix (RCA)
+## 🎯 Current Session Status - Phase 6A.87: Hybrid Email Migration
+
+### PHASE 6A.87: HYBRID EMAIL MIGRATION - 2026-02-03
+
+**Status**: 🟡 **IN PROGRESS** - Migrating email handlers to ITypedEmailService
+
+**Priority**: 🟢 **ENHANCEMENT** - Compile-time type safety for email parameters
+
+**Problem Statement**:
+The existing email system uses `Dictionary<string, object>` for template parameters which is error-prone:
+- No compile-time checking for parameter names
+- Easy to misspell template variable names
+- No IDE autocompletion for email parameters
+- Runtime failures when parameters don't match templates
+
+**Solution**: Hybrid email system with strongly-typed parameter contracts:
+1. `IEmailParameters` interface with `ToDictionary()` for backward compatibility
+2. `ITypedEmailService` for type-safe email sending
+3. `TypedEmailServiceAdapter` bridges typed params to existing `IEmailService`
+4. `EmailFeatureFlags` for per-handler gradual rollout with instant rollback
+
+**Handlers Migrated (13 so far)**:
+1. ✅ `MemberVerificationRequestedEventHandler` - EmailVerificationEmailParams
+2. ✅ `SendPasswordResetCommandHandler` - PasswordResetEmailParams
+3. ✅ `ResetPasswordCommandHandler` - PasswordChangedEmailParams
+4. ✅ `UserCommittedToSignUpEventHandler` - SignupCommitmentEmailParams
+5. ✅ `RegistrationCancelledEventHandler` - RegistrationCancellationEmailParams
+6. ✅ `AttendeesAddedEventHandler` - AttendeesAddedEmailParams
+7. ✅ `CommitmentUpdatedEventHandler` - SignupCommitmentEmailParams
+8. ✅ `CommitmentCancelledEmailHandler` - SignupCommitmentEmailParams
+9. ✅ `RefundRequestedEventHandler` - RefundEmailParams
+10. ✅ `RefundCompletedEventHandler` - RefundEmailParams
+11. ✅ `AdminLockUserCommandHandler` - AdminUserEmailParams
+12. ✅ `AdminUnlockUserCommandHandler` - AdminUserEmailParams
+13. ✅ `CreateSupportTicketCommandHandler` - SupportTicketEmailParams
+
+**Typed Parameter Classes Created (16 total)**:
+- EmailVerificationEmailParams, PasswordResetEmailParams, PasswordChangedEmailParams
+- SignupCommitmentEmailParams, RegistrationCancellationEmailParams, AttendeesAddedEmailParams
+- RefundEmailParams, EventCancellationEmailParams, AdminUserEmailParams, SupportTicketEmailParams
+- UserEmailParams, OrganizerEmailParams, EventEmailParams, EventReminderEmailParams
+- TicketConfirmationEmailParams, FreeEventRegistrationEmailParams
+
+**Test Updates**:
+- ✅ Updated `MemberVerificationRequestedEventHandlerTests` with ITypedEmailService mock
+- ✅ Updated `SendPasswordResetCommandHandlerTests` with ITypedEmailService mock
+- ✅ Updated `ResetPasswordCommandHandlerTests` with ITypedEmailService mock
+- ✅ All 1373 tests passing
+
+**Files Modified**:
+- 13 handler files in `src/LankaConnect.Application/`
+- 3 test files in `tests/LankaConnect.Application.Tests/`
+
+**Remaining Work**:
+- ~10+ more handlers to migrate to ITypedEmailService
+- Enable feature flags for all migrated handlers
+- Test complete email system with hybrid approach
+- Eventually remove legacy Dictionary-based code paths
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.X: Revenue Breakdown Fix
+
+### PHASE 6A.X: REVENUE BREAKDOWN FIX FOR ADD-ONLY ATTENDEES - 2026-02-03
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🔴 **BUG FIX** - Incorrect payout/fees on Attendees page after adding attendees
+
+**Problem Statement**:
+After adding attendees to a paid registration:
+- Gross Revenue showed correct cumulative total ($380) ✓
+- But Stripe Fees showed only $4.36 instead of ~$11.32
+- Platform Commission showed only $2.80 instead of ~$7.60
+- Organizer Payout showed $132.84 instead of ~$361.08
+- Same issue appeared in CSV/Excel exports
+
+**Root Cause**:
+When `AddAttendees()` was called in the webhook handler, it correctly updated `TotalPrice` to the cumulative total. However, `SetRevenueBreakdown()` was never called to recalculate the fee breakdown columns (`StripeFeeAmount`, `PlatformCommissionAmount`, `OrganizerPayoutAmount`). These columns still contained values from the initial payment only.
+
+**Fix Applied**:
+- Added `IRevenueCalculatorService` dependency to `PaymentsController`
+- After `AddAttendees()` succeeds, recalculate revenue breakdown for cumulative total
+- Call `registration.SetRevenueBreakdown(breakdownResult.Value)` with new breakdown
+
+**Files Modified**:
+- `src/LankaConnect.API/Controllers/PaymentsController.cs` - Added breakdown recalculation after add-attendees
+
+**Deployment**:
+- ✅ Commit: `9eb66856` - fix(#Phase6AX): Recalculate revenue breakdown after add-attendees
+- ✅ Backend Deploy: Run #21617784612 (7m28s)
+- ✅ API Health: PostgreSQL Healthy, EF Core DbContext Healthy
+
+**Note**: This fix applies to NEW add-attendees operations. Existing registrations with incorrect breakdown will be calculated on-the-fly by `GetEventAttendeesQueryHandler` when viewing the Attendees page.
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.97: Timezone-Consistent Date/Time Display
+
+### PHASE 6A.97: TIMEZONE-CONSISTENT DATE/TIME DISPLAY - 2026-02-02
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING (BACKEND + FRONTEND)**
+
+**Priority**: 🟢 **FEATURE** - Consistent timezone display for US-based events
+
+**GitHub Issue**: #40
+
+**Problem Statement**:
+- Database stores times in UTC
+- Emails displayed times in Sri Lanka timezone (Asia/Colombo) - incorrect for USA events
+- Frontend showed browser's local timezone - inconsistent per user
+- Users in different timezones saw different times for the same event
+
+**Solution**: Store event timezone based on US state location and display consistently everywhere.
+
+**Implementation Summary**:
+
+1. **Domain Layer**
+   - Created `ITimeZoneLookupService` interface
+   - Added `TimeZoneId` property to Event entity
+   - Created `SetTimeZone()` method for timezone assignment
+
+2. **Infrastructure Layer**
+   - Implemented `TimeZoneLookupService` with all 50 US state mappings
+   - Created database migration `Phase6A97_AddEventTimezone` with backfill SQL
+   - Registered service in DI container
+
+3. **Application Layer**
+   - Updated `EmailDateTimeHelper` with timezone-aware methods
+   - Updated 13+ email handlers to use event's timezone
+   - Updated email parameter classes (EventReminderEmailParams, TicketConfirmationEmailParams, etc.)
+
+4. **API Layer**
+   - Updated `EventDto` with `TimeZoneId` and `TimeZoneAbbreviation` fields
+   - Updated AutoMapper profile for timezone mapping
+
+5. **Frontend**
+   - Created `date-formatter.ts` utility with timezone-aware formatting
+   - Updated `EventDto` type with timezone fields
+   - Updated key components (EventDetailsTab, event page, eventMapper)
+
+**Files Created**:
+- `src/LankaConnect.Domain/Events/Services/ITimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Services/TimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260202184513_Phase6A97_AddEventTimezone.cs`
+- `web/src/presentation/lib/utils/date-formatter.ts`
+- `tests/LankaConnect.Infrastructure.Tests/Services/TimeZoneLookupServiceTests.cs`
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/Event.cs` - Added TimeZoneId property
+- `src/LankaConnect.Shared/Email/Helpers/EmailDateTimeHelper.cs` - Timezone-aware methods
+- `src/LankaConnect.Application/Common/Helpers/EmailDateTimeHelper.cs` - Wrapper methods
+- 13+ email handlers across Application layer
+- `web/src/infrastructure/api/types/events.types.ts` - Added timezone fields
+- `web/src/presentation/components/features/events/EventDetailsTab.tsx`
+- `web/src/presentation/utils/eventMapper.ts`
+
+**Timezone Mapping**:
+- Eastern Time (America/New_York): OH, NY, PA, FL, GA, NC, SC, VA, MI, IN, KY, TN, MA, CT, NJ, MD, DE, ME, NH, VT, RI, DC, WV
+- Central Time (America/Chicago): IL, TX, MN, WI, IA, MO, AR, LA, MS, AL, OK, KS, NE, SD, ND
+- Mountain Time (America/Denver): CO, NM, UT, WY, MT, ID
+- Arizona (America/Phoenix): AZ (no DST)
+- Pacific Time (America/Los_Angeles): CA, WA, OR, NV
+- Alaska (America/Anchorage): AK
+- Hawaii (Pacific/Honolulu): HI
+
+**API Verification** (Staging):
+```
+Event: Sinhala Drama Performance: 'Maname'
+  State: Ohio
+  TimeZoneId: America/New_York
+  TimeZoneAbbreviation: EDT
+```
+
+**Deployment**:
+- ✅ Backend: Run #21609739219 (migration applied successfully)
+- ✅ Frontend: Run #21612085798 (all smoke tests passed)
+
+---
+
+## ⏸️ PREVIOUS SESSION - Add-Only Attendees Ticket/Email Fix (RCA)
 
 ### ADD-ONLY ATTENDEES TICKET PDF & EMAIL FIX - 2026-02-02
 

@@ -9,6 +9,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -19,10 +20,12 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// Phase 6A.X: Handles AttendeesAddedEvent to send confirmation email and regenerate ticket PDF.
 /// This handler is triggered after additional attendees are successfully added to a paid registration.
 /// Part of the Add-Only Attendees with Delta Payment feature.
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotification<AttendeesAddedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly ITicketService _ticketService;
     private readonly IUserRepository _userRepository;
@@ -35,6 +38,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
 
     public AttendeesAddedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IEmailTemplateService emailTemplateService,
         ITicketService ticketService,
         IUserRepository userRepository,
@@ -44,6 +48,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
         ILogger<AttendeesAddedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _emailTemplateService = emailTemplateService;
         _ticketService = ticketService;
         _userRepository = userRepository;

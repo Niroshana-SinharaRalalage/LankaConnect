@@ -6,6 +6,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -15,23 +17,28 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// <summary>
 /// Phase 6A.92: Handles RefundRequestedEvent to send refund notification email to user.
 /// Triggered when a refund is initiated (either by user cancellation or event cancellation).
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotification<RefundRequestedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILogger<RefundRequestedEventHandler> _logger;
 
     private const string SupportEmail = "support@lankaconnect.com";
+    private const string HandlerName = nameof(RefundRequestedEventHandler);  // Phase 6A.87: For feature flag lookup
 
     public RefundRequestedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
         ILogger<RefundRequestedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _logger = logger;
@@ -69,48 +76,54 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
 
                 // Determine user name for email
                 string userName = "Valued Customer";
+                Guid userId = Guid.Empty;
                 if (domainEvent.UserId.HasValue)
                 {
                     var user = await _userRepository.GetByIdAsync(domainEvent.UserId.Value, cancellationToken);
                     if (user != null)
                     {
                         userName = $"{user.FirstName} {user.LastName}";
+                        userId = user.Id;
                     }
                 }
 
-                // Build email parameters
-                var parameters = new Dictionary<string, object>
-                {
-                    { "UserName", userName },
-                    { "EventTitle", @event.Title?.Value ?? "Event" },
-                    { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "RefundAmount", domainEvent.RefundAmount.ToString("F2") },
-                    { "OrganizerContactName", @event.OrganizerContactName ?? "Event Organizer" },
-                    { "OrganizerContactEmail", @event.OrganizerContactEmail ?? SupportEmail },
-                    { "OrganizerContactPhone", @event.OrganizerContactPhone ?? "" },
-                    { "SupportEmail", SupportEmail }
-                };
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                var emailParams = RefundEmailParams.CreateRequest(
+                    userId: userId,
+                    userName: userName,
+                    userEmail: domainEvent.ContactEmail,
+                    registrationId: domainEvent.RegistrationId,
+                    refundId: Guid.NewGuid(),  // Refund ID not available in domain event yet
+                    eventId: @event.Id,
+                    eventTitle: @event.Title?.Value ?? "Event",
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    refundAmount: domainEvent.RefundAmount,
+                    originalAmount: domainEvent.RefundAmount,  // Same as refund for full refunds
+                    refundReason: "Registration Cancellation",
+                    requestedAt: DateTime.UtcNow
+                );
+                emailParams.SupportEmail = SupportEmail;
 
-                // Send templated email
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.RefundRequested,
-                    domainEvent.ContactEmail,
-                    parameters,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (!typedResult.Success)
                 {
                     _logger.LogError(
-                        "[Phase 6A.92] RefundRequested FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        domainEvent.ContactEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.87] RefundRequested FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.ContactEmail, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.92] RefundRequested COMPLETE: Email sent successfully - Email={Email}, Amount=${Amount}, Duration={ElapsedMs}ms",
-                        domainEvent.ContactEmail, domainEvent.RefundAmount, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.87] RefundRequested COMPLETE: Email sent successfully - Email={Email}, Amount=${Amount}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
+                        domainEvent.ContactEmail, domainEvent.RefundAmount, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

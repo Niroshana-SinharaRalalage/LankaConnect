@@ -6,6 +6,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SendPasswordReset;
@@ -13,24 +15,30 @@ namespace LankaConnect.Application.Communications.Commands.SendPasswordReset;
 /// <summary>
 /// Handler for sending password reset emails
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordResetCommand, Result<SendPasswordResetResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendPasswordResetCommandHandler> _logger;
 
+    private const string HandlerName = nameof(SendPasswordResetCommandHandler);  // Phase 6A.87: For feature flag lookup
+
     public SendPasswordResetCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IEmailTemplateService emailTemplateService,
         IUnitOfWork unitOfWork,
         ILogger<SendPasswordResetCommandHandler> logger)
     {
         _userRepository = userRepository;
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _emailTemplateService = emailTemplateService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -146,33 +154,30 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
                     user.Id,
                     tokenExpiresAt);
 
-                // Prepare template parameters
-                var templateParameters = new Dictionary<string, object>
-                {
-                    { "UserName", user.FullName },
-                    { "UserEmail", user.Email.Value },
-                    { "ResetToken", resetToken },
-                    { "ResetLink", $"https://lankaconnect.com/reset-password?token={resetToken}" },
-                    { "ExpiresAt", tokenExpiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC") },
-                    { "CompanyName", "LankaConnect" },
-                    { "SupportEmail", "support@lankaconnect.com" }
-                };
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                var emailParams = PasswordResetEmailParams.Create(
+                    userId: user.Id,
+                    userName: user.FullName,
+                    userEmail: user.Email.Value,
+                    resetToken: resetToken,
+                    resetLink: $"https://lankaconnect.com/reset-password?token={resetToken}",
+                    expiresAt: tokenExpiresAt
+                );
 
-                // Send password reset email
-                var sendResult = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.PasswordReset,
-                    user.Email.Value,
-                    templateParameters,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
-                if (!sendResult.IsSuccess)
+                if (!typedResult.Success)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "SendPasswordReset FAILED: Email send failed - Email={Email}, UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
+                        "SendPasswordReset FAILED: Email send failed - Email={Email}, UserId={UserId}, Errors={Errors}, Duration={ElapsedMs}ms",
                         request.Email,
                         user.Id,
-                        sendResult.Error,
+                        string.Join(", ", typedResult.Errors),
                         stopwatch.ElapsedMilliseconds);
                     return Result<SendPasswordResetResponse>.Failure("Failed to send password reset email");
                 }

@@ -6,6 +6,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.ResetPassword;
@@ -13,25 +15,31 @@ namespace LankaConnect.Application.Communications.Commands.ResetPassword;
 /// <summary>
 /// Handler for resetting user passwords using reset tokens
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// </summary>
 public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand, Result<ResetPasswordResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ResetPasswordCommandHandler> _logger;
+
+    private const string HandlerName = nameof(ResetPasswordCommandHandler);  // Phase 6A.87: For feature flag lookup
 
     public ResetPasswordCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUnitOfWork unitOfWork,
         ILogger<ResetPasswordCommandHandler> logger)
     {
         _userRepository = userRepository;
         _passwordHashingService = passwordHashingService;
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -146,34 +154,44 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Send password change confirmation email asynchronously
+                // Phase 6A.87: Capture typed email service for closure
+                var typedEmailService = _typedEmailService;
+                var logger = _logger;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        // Phase 6A.83 Part 3: Fix parameter name to match template expectation
-                        var templateParameters = new Dictionary<string, object>
-                        {
-                            { "UserName", user.FullName },
-                            { "UserEmail", user.Email.Value },
-                            { "ChangedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },  // Phase 6A.83: Changed from ChangeDate to ChangedAt
-                            { "CompanyName", "LankaConnect" },
-                            { "SupportEmail", "support@lankaconnect.com" },
-                            { "LoginUrl", "https://lankaconnect.com/login" }
-                        };
+                        // Phase 6A.87: Use typed email parameters for compile-time safety
+                        var emailParams = PasswordChangedEmailParams.Create(
+                            userId: user.Id,
+                            userName: user.FullName,
+                            userEmail: user.Email.Value,
+                            changedAt: DateTime.UtcNow
+                        );
 
-                        await _emailService.SendTemplatedEmailAsync(
-                            EmailTemplateNames.PasswordChangeConfirmation,
-                            user.Email.Value,
-                            templateParameters,
+                        var typedResult = await typedEmailService.SendEmailAsync(
+                            emailParams,
+                            HandlerName,
                             CancellationToken.None);
 
-                        _logger.LogInformation(
-                            "ResetPassword: Confirmation email sent - UserId={UserId}",
-                            user.Id);
+                        if (typedResult.Success)
+                        {
+                            logger.LogInformation(
+                                "ResetPassword: Confirmation email sent - UserId={UserId}, UsedTyped={UsedTyped}",
+                                user.Id,
+                                typedResult.UsedTypedParameters);
+                        }
+                        else
+                        {
+                            logger.LogWarning(
+                                "ResetPassword: Confirmation email failed - UserId={UserId}, Errors={Errors}",
+                                user.Id,
+                                string.Join(", ", typedResult.Errors));
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex,
+                        logger.LogError(ex,
                             "ResetPassword: Failed to send confirmation email - UserId={UserId}, ErrorMessage={ErrorMessage}",
                             user.Id,
                             ex.Message);

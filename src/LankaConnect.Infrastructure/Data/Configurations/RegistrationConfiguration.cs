@@ -185,6 +185,15 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
         builder.Property(r => r.UpdatedAt);
 
+        // Issue #56 FIX: Add concurrency token for optimistic locking
+        // This prevents race conditions where concurrent webhook requests both
+        // successfully modify the same registration row.
+        // Uses shadow property pattern - no changes needed to domain entity.
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         // Configure indexes
         builder.HasIndex(r => r.EventId)
             .HasDatabaseName("ix_registrations_event_id");

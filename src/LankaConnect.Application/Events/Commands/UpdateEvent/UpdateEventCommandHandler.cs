@@ -21,6 +21,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+    private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<UpdateEventCommandHandler> _logger;
 
     public UpdateEventCommandHandler(
@@ -29,6 +30,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
+        ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
         ILogger<UpdateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -36,6 +38,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+        _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
         _logger = logger;
     }
 
@@ -283,6 +286,40 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             var removeLocationResult = @event.RemoveLocation();
             if (removeLocationResult.IsFailure)
                 return removeLocationResult;
+        }
+
+        // Issue #55: Update TimeZoneId when location changes
+        // This ensures emails and frontend display times in the correct timezone
+        try
+        {
+            if (location?.Address?.State != null && !string.IsNullOrWhiteSpace(location.Address.State))
+            {
+                // Location was set or updated - derive timezone from state
+                var timeZoneId = _timeZoneLookupService.GetTimeZoneFromState(location.Address.State);
+                var setTzResult = @event.SetTimeZone(timeZoneId);
+
+                if (setTzResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "UpdateEvent: Failed to set TimeZoneId - EventId={EventId}, State={State}, TimeZoneId={TimeZoneId}, Error={Error}",
+                        request.EventId, location.Address.State, timeZoneId, setTzResult.Error);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "UpdateEvent: Updated TimeZoneId based on state - EventId={EventId}, State={State}, TimeZoneId={TimeZoneId}",
+                        request.EventId, location.Address.State, timeZoneId);
+                }
+            }
+            // If location removed (converted to virtual), keep existing timezone
+            // This maintains the original timezone for events that become virtual
+        }
+        catch (Exception tzEx)
+        {
+            // Log warning but don't fail event update - timezone is informational
+            _logger.LogWarning(tzEx,
+                "UpdateEvent: Exception setting TimeZoneId - EventId={EventId}, State={State}",
+                request.EventId, location?.Address?.State);
         }
 
         // Session 33 + Session 21: Update pricing if provided

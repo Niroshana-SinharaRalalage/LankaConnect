@@ -25,6 +25,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+    private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<CreateEventCommandHandler> _logger;
 
     public CreateEventCommandHandler(
@@ -34,6 +35,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
+        ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
         ILogger<CreateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -42,6 +44,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+        _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
         _logger = logger;
     }
 
@@ -371,6 +374,45 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
             if (contactResult.IsFailure)
                 return Result<Guid>.Failure(contactResult.Error);
+        }
+
+        // Issue #55: Set TimeZoneId based on event location state
+        // This ensures emails and frontend display times in the correct timezone
+        try
+        {
+            string timeZoneId;
+            if (location?.Address?.State != null && !string.IsNullOrWhiteSpace(location.Address.State))
+            {
+                // Physical event: derive timezone from state
+                timeZoneId = _timeZoneLookupService.GetTimeZoneFromState(location.Address.State);
+                _logger.LogDebug(
+                    "CreateEvent: Setting TimeZoneId based on state - State={State}, TimeZoneId={TimeZoneId}",
+                    location.Address.State, timeZoneId);
+            }
+            else
+            {
+                // Virtual event: use default timezone (Eastern - most Sri Lankan communities in USA)
+                timeZoneId = _timeZoneLookupService.DefaultTimeZoneId;
+                _logger.LogDebug(
+                    "CreateEvent: Setting default TimeZoneId for virtual event - TimeZoneId={TimeZoneId}",
+                    timeZoneId);
+            }
+
+            var setTzResult = eventResult.Value.SetTimeZone(timeZoneId);
+            if (setTzResult.IsFailure)
+            {
+                // Log warning but don't fail event creation - timezone is informational
+                _logger.LogWarning(
+                    "CreateEvent: Failed to set TimeZoneId - State={State}, TimeZoneId={TimeZoneId}, Error={Error}",
+                    location?.Address?.State, timeZoneId, setTzResult.Error);
+            }
+        }
+        catch (Exception tzEx)
+        {
+            // Log warning but don't fail event creation - timezone is informational
+            _logger.LogWarning(tzEx,
+                "CreateEvent: Exception setting TimeZoneId - State={State}",
+                location?.Address?.State);
         }
 
                 // Add EventId to LogContext now that we have it

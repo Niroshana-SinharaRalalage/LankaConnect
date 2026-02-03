@@ -342,12 +342,24 @@ public class Registration : BaseEntity
     /// Completes payment when Stripe webhook confirms successful payment.
     /// Phase 6A.24: Raises PaymentCompletedEvent for email and ticket generation.
     /// Phase 6A.81: Updated to enforce Three-State Lifecycle - only Preliminary registrations can complete payment.
+    /// Issue #56 Fix: Added idempotency guard to prevent duplicate PaymentCompletedEvents from concurrent webhooks.
     /// </summary>
     public Result CompletePayment(string paymentIntentId)
     {
         // Phase 6A.81: Validation - payment intent ID required
         if (string.IsNullOrWhiteSpace(paymentIntentId))
             return Result.Failure("Payment intent ID cannot be empty");
+
+        // Issue #56 FIX: Idempotency guard for duplicate webhook handling
+        // If this exact payment intent was already processed, return success without raising events.
+        // This prevents duplicate PaymentCompletedEvents when Stripe sends concurrent/retry webhooks.
+        // Case-insensitive comparison per Stripe ID conventions.
+        if (!string.IsNullOrEmpty(StripePaymentIntentId) &&
+            StripePaymentIntentId.Equals(paymentIntentId, StringComparison.OrdinalIgnoreCase))
+        {
+            // Already completed with this payment intent - idempotent success (no domain event raised)
+            return Result.Success();
+        }
 
         // Phase 6A.81: Critical validation - registration must be in Preliminary state
         // This prevents double-payment and ensures proper state machine flow

@@ -10,6 +10,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Application.Common.Interfaces;
 
 namespace LankaConnect.API.Controllers;
@@ -32,6 +33,7 @@ public class PaymentsController : ControllerBase
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IRegistrationPaymentRepository _paymentRepository;
+    private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
@@ -45,6 +47,7 @@ public class PaymentsController : ControllerBase
         IRegistrationRepository registrationRepository,
         IRegistrationAdditionRepository additionRepository,
         IRegistrationPaymentRepository paymentRepository,
+        IRevenueCalculatorService revenueCalculatorService,
         IUnitOfWork unitOfWork,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
@@ -57,6 +60,7 @@ public class PaymentsController : ControllerBase
         _registrationRepository = registrationRepository;
         _additionRepository = additionRepository;
         _paymentRepository = paymentRepository;
+        _revenueCalculatorService = revenueCalculatorService;
         _unitOfWork = unitOfWork;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
@@ -654,6 +658,56 @@ public class PaymentsController : ControllerBase
             _logger.LogInformation(
                 "[AddOnlyAttendees] [Webhook-Addition-7] Attendees merged - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewAttendeeCount: {NewCount}, TotalAttendees: {TotalCount}",
                 correlationId, registrationId, addition.NewAttendees.Count, registration.Attendees.Count);
+
+            // Phase 6A.X FIX: Recalculate revenue breakdown for cumulative total
+            // Bug: Breakdown columns (StripeFeeAmount, PlatformCommissionAmount, OrganizerPayoutAmount)
+            // were not updated after add-attendees, causing incorrect payout display on Attendees page
+            try
+            {
+                var eventForBreakdown = await _eventRepository.GetByIdAsync(eventId);
+                if (eventForBreakdown?.Location != null)
+                {
+                    _logger.LogInformation(
+                        "[AddOnlyAttendees] [Webhook-Addition-7b] Recalculating revenue breakdown for cumulative total - CorrelationId: {CorrelationId}, NewTotalPrice: {TotalPrice}",
+                        correlationId, newTotalPriceResult.Value.Amount);
+
+                    var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                        newTotalPriceResult.Value,
+                        eventForBreakdown.Location,
+                        CancellationToken.None);
+
+                    if (breakdownResult.IsSuccess)
+                    {
+                        registration.SetRevenueBreakdown(breakdownResult.Value);
+                        _logger.LogInformation(
+                            "[AddOnlyAttendees] [Webhook-Addition-7c] Revenue breakdown updated - CorrelationId: {CorrelationId}, GrossRevenue: {Gross}, StripeFee: {StripeFee}, PlatformCommission: {Commission}, OrganizerPayout: {Payout}",
+                            correlationId,
+                            newTotalPriceResult.Value.Amount,
+                            breakdownResult.Value.StripeFeeAmount.Amount,
+                            breakdownResult.Value.PlatformCommission.Amount,
+                            breakdownResult.Value.OrganizerPayout.Amount);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[AddOnlyAttendees] [Webhook-Addition-WARN] Revenue breakdown calculation failed - CorrelationId: {CorrelationId}, Error: {Error}",
+                            correlationId, breakdownResult.Error);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "[AddOnlyAttendees] [Webhook-Addition-WARN] Event or location not found for breakdown calculation - CorrelationId: {CorrelationId}, EventId: {EventId}",
+                        correlationId, eventId);
+                }
+            }
+            catch (Exception breakdownEx)
+            {
+                // Don't fail the whole operation if breakdown calculation fails
+                _logger.LogError(breakdownEx,
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Exception during revenue breakdown calculation - CorrelationId: {CorrelationId}",
+                    correlationId);
+            }
 
             // Mark addition as merged
             var mergeResult = addition.MarkAsMerged();

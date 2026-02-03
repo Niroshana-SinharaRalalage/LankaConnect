@@ -7,6 +7,8 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -16,24 +18,30 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// <summary>
 /// Phase 6A.24: Handles AnonymousRegistrationConfirmedEvent to send confirmation email to anonymous attendees.
 /// Phase 6A.80: Updated to reuse member FreeEventRegistration template for consistency and maintainability.
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
 /// For paid events, email is sent by PaymentCompletedEventHandler after payment.
 /// </summary>
 public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<AnonymousRegistrationConfirmedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<AnonymousRegistrationConfirmedEventHandler> _logger;
 
+    private const string HandlerName = nameof(AnonymousRegistrationConfirmedEventHandler);  // Phase 6A.87: For feature flag lookup
+
     public AnonymousRegistrationConfirmedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<AnonymousRegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _emailUrlHelper = emailUrlHelper;
@@ -113,72 +121,76 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 // Phase 6A.80: Get event's primary image URL (same as member handler)
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
                 var eventImageUrl = primaryImage?.ImageUrl ?? "";
-                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-                // Phase 6A.80: Format date/time range properly (same as member handler)
-                var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
+                // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
+                var emailParams = FreeEventRegistrationEmailParams.Create(
+                    eventId: @event.Id,
+                    registrationId: registration.Id,
+                    userName: contactName,
+                    userEmail: domainEvent.AttendeeEmail,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
+                    eventLocation: GetEventLocationString(@event),
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                    registrationDate: domainEvent.RegistrationDate);
 
-                // Phase 6A.80: Prepare email parameters - ALIGNED WITH MEMBER HANDLER
-                // Using FreeEventRegistration template parameters
-                // Phase 6A.83 Part 3: Split EventDateTime into separate date and time fields per user request
-                var parameters = new Dictionary<string, object>
+                // Phase 6A.97: Set event's timezone for consistent date/time display
+                emailParams.TimeZoneId = @event.TimeZoneId;
+
+                // Set signup lists URL if event has signup lists
+                if (@event.HasSignUpLists())
                 {
-                    { "UserName", contactName },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(domainEvent.RegistrationDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                    { "HasAttendeeDetails", hasAttendeeDetails },
-                    // Phase 6A.80: Add event image support
-                    { "EventImageUrl", eventImageUrl },
-                    { "HasEventImage", hasEventImage },
-                    // Phase 6A.83 Part 3: Add required URLs per user request
-                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
-                };
+                    emailParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                }
 
-                // Add contact information if available
+                // Set attendee details
+                if (hasAttendeeDetails)
+                {
+                    emailParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
+                }
+
+                // Set event image
+                emailParams.WithEventImage(eventImageUrl);
+
+                // Set contact information
                 if (registration.Contact != null)
                 {
-                    parameters["ContactEmail"] = registration.Contact.Email;
-                    parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                    parameters["HasContactInfo"] = true;
+                    emailParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
                 }
-                else
+
+                // Set organizer contact
+                if (@event.HasOrganizerContact())
                 {
-                    parameters["ContactEmail"] = "";
-                    parameters["ContactPhone"] = "";
-                    parameters["HasContactInfo"] = false;
+                    emailParams.WithOrganizerContact(
+                        @event.OrganizerContactName,
+                        @event.OrganizerContactEmail,
+                        @event.OrganizerContactPhone);
                 }
 
-                // Phase 6A.80: Add organizer contact details (same as member handler)
-                parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
-                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
-                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+                _logger.LogInformation(
+                    "[Phase 6A.87] Sending anonymous registration email to {Email}",
+                    domainEvent.AttendeeEmail);
 
-                // Phase 6A.80: Reuse FreeEventRegistration template (same as member handler)
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.FreeEventRegistration,
-                    domainEvent.AttendeeEmail,
-                    parameters,
+                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                var typedResult = await _typedEmailService.SendEmailAsync(
+                    emailParams,
+                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (typedResult.Success)
                 {
-                    _logger.LogError(
-                        "AnonymousRegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        domainEvent.AttendeeEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                    _logger.LogInformation(
+                        "[Phase 6A.87] AnonymousRegistrationConfirmed COMPLETE: Email sent successfully to {Email}, UsedTyped={UsedTyped}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeEmail, typedResult.UsedTypedParameters, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
-                    _logger.LogInformation(
-                        "AnonymousRegistrationConfirmed COMPLETE: Email sent successfully - Email={Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                        domainEvent.AttendeeEmail, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
+                    _logger.LogError(
+                        "[Phase 6A.87] AnonymousRegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeEmail, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

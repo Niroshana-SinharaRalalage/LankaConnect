@@ -10,6 +10,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Configuration;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -25,6 +26,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<RegistrationConfirmedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
@@ -36,6 +38,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
     public RegistrationConfirmedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
@@ -44,6 +47,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
@@ -130,145 +134,81 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
 
-            // Phase 6A.87: Check feature flag for typed parameters
-            var useTypedParameters = _featureFlags.IsEnabledForHandler(HandlerName);
-            _logger.LogInformation(
-                "[Phase 6A.87] Using typed parameters: {UseTypedParameters} for handler: {HandlerName}",
-                useTypedParameters, HandlerName);
+            // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
+            var typedParams = FreeEventRegistrationEmailParams.Create(
+                eventId: @event.Id,
+                registrationId: registration.Id,
+                userName: $"{user.FirstName} {user.LastName}",
+                userEmail: user.Email.Value,
+                eventTitle: @event.Title.Value,
+                eventStartDate: @event.StartDate,
+                eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                eventLocation: GetEventLocationString(@event),
+                eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                registrationDate: domainEvent.RegistrationDate);
 
-            Dictionary<string, object> parameters;
+            // Phase 6A.97: Set event's timezone for consistent date/time display
+            typedParams.TimeZoneId = @event.TimeZoneId;
 
-            if (useTypedParameters)
+            // Set signup lists URL if event has signup lists
+            if (@event.HasSignUpLists())
             {
-                // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
-                var typedParams = FreeEventRegistrationEmailParams.Create(
-                    eventId: @event.Id,
-                    registrationId: registration.Id,
-                    userName: $"{user.FirstName} {user.LastName}",
-                    userEmail: user.Email.Value,
-                    eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
-                    eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                    eventLocation: GetEventLocationString(@event),
-                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
-                    registrationDate: domainEvent.RegistrationDate);
+                typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+            }
 
-                // Phase 6A.97: Set event's timezone for consistent date/time display
-                typedParams.TimeZoneId = @event.TimeZoneId;
+            // Set attendee details
+            if (hasAttendeeDetailsLocal)
+            {
+                typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
+            }
 
-                // Set signup lists URL if event has signup lists
-                if (@event.HasSignUpLists())
-                {
-                    typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
-                }
+            // Set event image
+            typedParams.WithEventImage(eventImageUrl);
 
-                // Set attendee details
-                if (hasAttendeeDetailsLocal)
-                {
-                    typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
-                }
+            // Set contact information
+            if (registration.Contact != null)
+            {
+                typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+            }
 
-                // Set event image
-                typedParams.WithEventImage(eventImageUrl);
+            // Set organizer contact
+            if (@event.HasOrganizerContact())
+            {
+                typedParams.WithOrganizerContact(
+                    @event.OrganizerContactName,
+                    @event.OrganizerContactEmail,
+                    @event.OrganizerContactPhone);
+            }
 
-                // Set contact information
-                if (registration.Contact != null)
-                {
-                    typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
-                }
+            _logger.LogInformation(
+                "[Phase 6A.87] Sending free event registration email to {Email}",
+                user.Email.Value);
 
-                // Set organizer contact
-                if (@event.HasOrganizerContact())
-                {
-                    typedParams.WithOrganizerContact(
-                        @event.OrganizerContactName,
-                        @event.OrganizerContactEmail,
-                        @event.OrganizerContactPhone);
-                }
+            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            var typedResult = await _typedEmailService.SendEmailAsync(
+                typedParams,
+                HandlerName,
+                cancellationToken);
 
-                // Validate if validation is enabled
-                if (_featureFlags.EnableValidation)
-                {
-                    if (!typedParams.Validate(out var validationErrors))
-                    {
-                        _logger.LogError(
-                            "[Phase 6A.87] [FreeRegistration-VALIDATION-ERROR] Parameter validation failed - Errors: {Errors}",
-                            string.Join(", ", validationErrors));
-                        // Continue anyway - validation is advisory during migration
-                    }
-                }
+            var result = typedResult.Success
+                ? Domain.Common.Result.Success()
+                : Domain.Common.Result.Failure(string.Join(", ", typedResult.Errors));
 
-                // Convert to dictionary for template rendering
-                parameters = typedParams.ToDictionary();
+            stopwatch.Stop();
+
+            if (typedResult.Success)
+            {
                 _logger.LogInformation(
-                    "[Phase 6A.87] [FreeRegistration-TYPED] Built typed parameters - ParameterCount: {ParameterCount}",
-                    parameters.Count);
+                    "[Phase 6A.87] RegistrationConfirmed COMPLETE: Email sent successfully to {Email}, UsedTyped={UsedTyped}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                    user.Email.Value, typedResult.UsedTypedParameters, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
             }
             else
             {
-                // Legacy: Use Dictionary approach
-                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
-
-                parameters = new Dictionary<string, object>
-                {
-                    { "UserName", $"{user.FirstName} {user.LastName}" },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(domainEvent.RegistrationDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                    { "HasAttendeeDetails", hasAttendeeDetailsLocal },
-                    { "EventImageUrl", eventImageUrl },
-                    { "HasEventImage", hasEventImage },
-                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
-                };
-
-                // Add registrant's contact information
-                if (registration.Contact != null)
-                {
-                    parameters["ContactEmail"] = registration.Contact.Email;
-                    parameters["ContactPhone"] = registration.Contact.PhoneNumber;
-                    parameters["HasContactInfo"] = true;
-                }
-                else
-                {
-                    parameters["ContactEmail"] = "";
-                    parameters["ContactPhone"] = "";
-                    parameters["HasContactInfo"] = false;
-                }
-
-                // Add organizer contact parameters
-                parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
-                parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
-                parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-                parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
+                _logger.LogError(
+                    "[Phase 6A.87] RegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                    user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
             }
-
-            // Phase 6A.38: Send templated email (no attachments - using direct URLs in template)
-            // Phase 6A.79: Use EmailTemplateNames constant
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.FreeEventRegistration,
-                user.Email.Value,
-                parameters,
-                cancellationToken);
-
-                stopwatch.Stop();
-
-                if (result.IsFailure)
-                {
-                    _logger.LogError(
-                        "RegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "RegistrationConfirmed COMPLETE: Email sent successfully - Email={Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                        user.Email.Value, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
-                }
-            }
+        }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 stopwatch.Stop();

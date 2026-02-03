@@ -1,9 +1,45 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-03 - Issue #56 Duplicate Payment Email Fix ✅ COMPLETE*
+*Last Updated: 2026-02-03 - Issue #51 Max Attendees Per Registration Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Issue #56: Duplicate Payment Confirmation Emails ✅ COMPLETE
+## 🎯 Current Session Status - Issue #51: Max Attendees Per Registration in Create Event ✅ COMPLETE
+
+### ISSUE #51: MAX ATTENDEES PER REGISTRATION MISSING IN CREATE EVENT - 2026-02-03
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING**
+
+**Priority**: 🟡 **UI FIX** - Field missing from Create Event form
+
+**Problem Statement**:
+The "Max Attendees Per Registration" field was visible in the Edit Event page but missing from the Create Event page. Users reported they could only register 10 attendees (the default) because they couldn't set this value during event creation.
+
+**Root Cause**:
+The `EventCreationForm.tsx` component was missing:
+1. The `maxAttendeesPerRegistration` default value in form initialization
+2. The input field UI element in the form
+3. The field in the API payload submission
+
+**Fix Applied**:
+- Added `maxAttendeesPerRegistration: 10` to form defaultValues
+- Added input field in "Capacity & Pricing" section (below Maximum Capacity)
+- Added field to eventData payload for API submission
+- Input constraints: min=1, max=50 (matching Edit Event form)
+
+**Files Changed**:
+- `web/src/presentation/components/features/events/EventCreationForm.tsx`
+
+**Commits**:
+- `3e482375` - fix(#51): Add Max Attendees Per Registration field to Create Event form
+
+**Verification**:
+- ✅ Frontend builds successfully
+- ✅ UI deployed to Azure staging
+- ✅ GitHub Issue #51 closed
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #56: Duplicate Payment Confirmation Emails ✅ COMPLETE
 
 ### ISSUE #56: TWO EMAILS FOR PAYMENT CONFIRMATION - 2026-02-03
 
@@ -20824,3 +20860,58 @@ internal static EmailSubject FromDatabase(string value)
 - Create Queries: GetUsersPaged, GetUserDetails, GetUserStatistics
 - Create AdminUsersController
 
+
+---
+
+## 🎯 Session: Issue #55 - Time Mismatch in Commitment Confirmation Email ✅ COMPLETE
+
+### Issue #55: Time Display Mismatch Fix - 2026-02-03
+
+**Problem**: The time in Item Commitment Confirmation email did not match the time displayed on the LankaConnect website. Events were showing wrong timezone in emails.
+
+**Root Cause Analysis**:
+- `TimeZoneLookupService` (Phase 6A.97) existed but was NEVER called during event creation/update
+- New events had `NULL` TimeZoneId in database
+- Email system fell back to incorrect timezone when TimeZoneId was null
+
+**Solution Implemented** (TDD Approach):
+1. **CreateEventCommandHandler.cs** - Inject `ITimeZoneLookupService`, call `GetTimeZoneFromState()` based on event location state
+2. **UpdateEventCommandHandler.cs** - Same pattern, update timezone when location changes
+3. Virtual events (no location) use default Eastern timezone ("America/New_York")
+
+**Tests Created** (9 total):
+- `CreateEventTimezoneTests.cs` (5 tests):
+  - California → America/Los_Angeles ✅
+  - Ohio → America/New_York ✅
+  - Texas → America/Chicago ✅
+  - Virtual event → default timezone ✅
+  - Unknown state → default timezone ✅
+
+- `UpdateEventTimezoneTests.cs` (4 tests):
+  - Location change OH→CA updates timezone ✅
+  - Location change CA→TX updates timezone ✅
+  - Location removed keeps existing timezone ✅
+  - Virtual event gets location sets new timezone ✅
+
+**Test Results**:
+- All 9 timezone-specific tests: PASSING ✅
+- All 67 Events.Commands tests: PASSING ✅
+
+**Azure Staging Verification**:
+- Created California event: `timeZoneId: "America/Los_Angeles"`, `timeZoneAbbreviation: "PST"` ✅
+- Created Texas event: `timeZoneId: "America/Chicago"`, `timeZoneAbbreviation: "CST"` ✅
+
+**Deployment**:
+- Commit: `fix(#56): Prevent duplicate payment confirmation emails` (includes #55 fix)
+- GitHub Actions: Run #21651594424 completed successfully (8m23s)
+- Azure Container Apps: Deployed to staging ✅
+
+**Files Modified**:
+- `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs`
+- `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs`
+- `tests/LankaConnect.Application.Tests/Events/Commands/CreateEventTimezoneTests.cs` (new)
+- `tests/LankaConnect.Application.Tests/Events/Commands/UpdateEventTimezoneTests.cs` (new)
+
+**Status**: ✅ QA READY - Fix verified on Azure staging
+
+---

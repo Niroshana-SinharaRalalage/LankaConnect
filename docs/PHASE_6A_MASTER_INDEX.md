@@ -68,6 +68,10 @@
 | 6A.92 | Paid Event Cancellation Auto-Refund (GitHub #32) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-30 |
 | 6A.93 | Add Missing Email Templates (7 templates) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-01 |
 | 6A.94 | Refund Observability Enhancements | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.95 | Search Hyphen Negation Bug Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.96 | Sales Tax Feature Flag | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.97 | Timezone-Consistent Date/Time Display | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.98 | Email Template Header/Footer Standardization | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-03 |
 
 ---
 

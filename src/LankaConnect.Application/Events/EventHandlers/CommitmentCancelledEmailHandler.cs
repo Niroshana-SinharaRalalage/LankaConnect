@@ -103,6 +103,21 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             );
 
+            // Phase 6A.87+ Fix: Populate organizer contact if available
+            if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))
+            {
+                emailParams.WithOrganizerContact(
+                    @event.OrganizerContactName,
+                    @event.OrganizerContactEmail,
+                    @event.OrganizerContactPhone);
+            }
+
+            // Phase 6A.87+ Fix: Populate signup lists URL if event has signup lists
+            if (@event.SignUpLists?.Count > 0)
+            {
+                emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-lists");
+            }
+
             // Phase 6A.87: Send via typed email service (feature flags handled internally)
             var typedResult = await _typedEmailService.SendEmailAsync(
                 emailParams,

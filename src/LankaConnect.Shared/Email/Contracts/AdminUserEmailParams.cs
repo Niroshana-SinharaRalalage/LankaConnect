@@ -95,6 +95,11 @@ public class AdminUserEmailParams : IEmailParameters
     /// </summary>
     public string LoginUrl { get; set; } = "https://lankaconnect.com/login";
 
+    /// <summary>
+    /// Date/time until which account is locked (for locked accounts).
+    /// </summary>
+    public DateTime? LockUntil { get; set; }
+
     #endregion
 
     #region Template Type Methods
@@ -155,10 +160,11 @@ public class AdminUserEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added LockUntil and Year for footer.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
-        return new Dictionary<string, object>
+        var dict = new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "UserEmail", UserEmail },
@@ -170,8 +176,22 @@ public class AdminUserEmailParams : IEmailParameters
             { "AppealInstructions", AppealInstructions },
             { "CompanyName", CompanyName },
             { "SupportEmail", SupportEmail },
-            { "LoginUrl", LoginUrl }
+            { "LoginUrl", LoginUrl },
+            { "Year", DateTime.UtcNow.Year }  // Footer param
         };
+
+        // Add LockUntil for locked account templates
+        if (LockUntil.HasValue)
+        {
+            dict["LockUntil"] = LockUntil.Value.ToString("MMMM dd, yyyy h:mm tt");
+            dict["HasLockExpiration"] = true;
+        }
+        else
+        {
+            dict["HasLockExpiration"] = false;
+        }
+
+        return dict;
     }
 
     /// <summary>

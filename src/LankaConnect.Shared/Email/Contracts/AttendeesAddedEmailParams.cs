@@ -146,25 +146,40 @@ public class AttendeesAddedEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added template aliases (NewAttendeesCount, TotalAttendeesCount, AmountCharged, EventDateTime).
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
         var dict = new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
-            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId) },
+            { "EventStartDate", formattedDate },
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Combined for template
             { "EventLocation", EventLocation },
+
+            // Original params (keep for compatibility)
             { "PreviousCount", PreviousCount },
             { "AddedCount", AddedCount },
             { "NewTotalCount", NewTotalCount },
             { "AdditionalAmount", AdditionalAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) },
             { "TotalPaid", TotalPaid.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) },
+
+            // Template aliases (Phase 6A.96 templates expect these names)
+            { "NewAttendeesCount", AddedCount },
+            { "TotalAttendeesCount", NewTotalCount },
+            { "AmountCharged", AdditionalAmount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) },
+
+            // Attendee lists
             { "NewAttendees", NewAttendees },
             { "NewAttendeesHtml", NewAttendeesHtml },
             { "AllAttendees", AllAttendees },
             { "AllAttendeesHtml", AllAttendeesHtml },
+
             { "EventDetailsUrl", EventDetailsUrl },
             { "HasTicket", HasTicket },
             { "Year", DateTime.UtcNow.Year }

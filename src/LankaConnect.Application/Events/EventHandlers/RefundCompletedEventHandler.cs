@@ -107,6 +107,15 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 );
                 emailParams.SupportEmail = SupportEmail;
 
+                // Phase 6A.87+ Fix: Populate organizer contact if available
+                if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))
+                {
+                    emailParams.WithOrganizerContact(
+                        @event.OrganizerContactName,
+                        @event.OrganizerContactEmail,
+                        @event.OrganizerContactPhone);
+                }
+
                 // Phase 6A.87: Send via typed email service (feature flags handled internally)
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,

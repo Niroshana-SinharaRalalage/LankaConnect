@@ -70,6 +70,7 @@ public class PasswordChangedEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added Year for footer.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
@@ -80,7 +81,8 @@ public class PasswordChangedEmailParams : IEmailParameters
             { "ChangedAt", ChangedAt },
             { "CompanyName", CompanyName },
             { "SupportEmail", SupportEmail },
-            { "LoginUrl", LoginUrl }
+            { "LoginUrl", LoginUrl },
+            { "Year", DateTime.UtcNow.Year }  // Footer param
         };
     }
 

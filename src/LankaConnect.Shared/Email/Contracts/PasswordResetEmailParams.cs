@@ -75,6 +75,7 @@ public class PasswordResetEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added Year for footer.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
@@ -86,7 +87,8 @@ public class PasswordResetEmailParams : IEmailParameters
             { "ResetLink", ResetLink },
             { "ExpiresAt", ExpiresAt },
             { "CompanyName", CompanyName },
-            { "SupportEmail", SupportEmail }
+            { "SupportEmail", SupportEmail },
+            { "Year", DateTime.UtcNow.Year }  // Footer param
         };
     }
 

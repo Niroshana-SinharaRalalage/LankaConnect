@@ -103,6 +103,44 @@ public class SignupCommitmentEmailParams : IEmailParameters
 
     #endregion
 
+    #region Signup Lists Properties
+
+    /// <summary>
+    /// Whether the event has signup lists (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to view signup lists for the event.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Organizer Contact Properties
+
+    /// <summary>
+    /// Whether organizer contact info is available (controls {{#HasOrganizerContact}} conditional).
+    /// </summary>
+    public bool HasOrganizerContact { get; set; } = false;
+
+    /// <summary>
+    /// Organizer's name.
+    /// </summary>
+    public string OrganizerContactName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's email.
+    /// </summary>
+    public string OrganizerContactEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's phone.
+    /// </summary>
+    public string OrganizerContactPhone { get; set; } = string.Empty;
+
+    #endregion
+
     #region Template Type
 
     /// <summary>
@@ -141,20 +179,36 @@ public class SignupCommitmentEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added ItemDescription alias, organizer contact, and signup list params.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
         return new Dictionary<string, object>
         {
+            // Core params
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "SignupItem", SignupItem },
+            { "ItemDescription", SignupItem },  // Template expects ItemDescription
+            { "SignupItem", SignupItem },       // Keep for backward compatibility
             { "Quantity", Quantity },
             { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(EventStartDate, TimeZoneId) },
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "CommitmentType", CommitmentType },
-            { "PickupInstructions", PickupInstructions }
+            { "PickupInstructions", PickupInstructions },
+
+            // Signup list params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+
+            // Organizer contact params (for {{#HasOrganizerContact}} conditional)
+            { "HasOrganizerContact", HasOrganizerContact },
+            { "OrganizerContactName", OrganizerContactName },
+            { "OrganizerContactEmail", OrganizerContactEmail },
+            { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Footer params
+            { "Year", DateTime.UtcNow.Year }
         };
     }
 
@@ -190,6 +244,35 @@ public class SignupCommitmentEmailParams : IEmailParameters
             errors.Add("EventStartDate is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Setters
+
+    /// <summary>
+    /// Sets organizer contact information.
+    /// </summary>
+    public SignupCommitmentEmailParams WithOrganizerContact(
+        string? name,
+        string? email = null,
+        string? phone = null)
+    {
+        HasOrganizerContact = !string.IsNullOrWhiteSpace(name);
+        OrganizerContactName = name ?? string.Empty;
+        OrganizerContactEmail = email ?? string.Empty;
+        OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL (if event has signup lists).
+    /// </summary>
+    public SignupCommitmentEmailParams WithSignUpLists(string signUpListsUrl)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(signUpListsUrl);
+        SignUpListsUrl = signUpListsUrl ?? string.Empty;
+        return this;
     }
 
     #endregion

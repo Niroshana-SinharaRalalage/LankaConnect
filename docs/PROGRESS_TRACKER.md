@@ -1,9 +1,100 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-03 - Phase 6A.87 Email Template Parameter Mismatch Fixes ✅ COMPLETE*
+*Last Updated: 2026-02-04 - Phase 6A.87+ Comprehensive Email Parameter Audit & Fixes ✅ BUILD COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.87: Email Template Parameter Mismatch Fixes ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.87+: Comprehensive Email Parameter Audit & Fixes ✅ BUILD COMPLETE
+
+### PHASE 6A.87+ FIX: COMPREHENSIVE EMAIL PARAMETER AUDIT - 2026-02-04
+
+**Status**: ✅ **BUILD COMPLETE - READY FOR DEPLOYMENT**
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Multiple email templates showing raw Handlebars placeholders
+
+**Problem Statement**:
+Deep audit revealed systematic parameter mismatches across ALL TypedEmailParams classes. Phase 6A.96 migration rebuilt templates with NEW parameter names, but TypedEmailParams classes were never updated to match. This caused raw placeholders like `{{ItemDescription}}`, `{{#HasOrganizerContact}}`, `{{Year}}` to appear in emails.
+
+**Root Causes Identified & Fixed**:
+
+**7 TypedEmailParams Classes Fixed:**
+
+1. **SignupCommitmentEmailParams.cs** - CRITICAL
+   - Added `ItemDescription` alias (templates expect this, code provided `SignupItem`)
+   - Added `HasOrganizerContact`, `OrganizerContactName`, `OrganizerContactEmail`, `OrganizerContactPhone`
+   - Added `HasSignUpLists`, `SignUpListsUrl`
+   - Added `Year` for footer
+   - Added fluent setters: `WithOrganizerContact()`, `WithSignUpLists()`
+
+2. **AttendeesAddedEmailParams.cs** - MODERATE
+   - Added `EventDateTime` combined field (Phase 6A.96 templates expect this)
+   - Added `NewAttendeesCount`, `TotalAttendeesCount`, `AmountCharged` aliases
+   - Already had `Year`
+
+3. **RefundEmailParams.cs** - CRITICAL
+   - Added `EventDateTime`, `EventStartTime` fields
+   - Added `HasOrganizerContact`, `OrganizerContactName`, `OrganizerContactEmail`, `OrganizerContactPhone`
+   - Added `Year` for footer
+   - Added fluent setter: `WithOrganizerContact()`
+
+4. **SupportTicketEmailParams.cs** - MINOR
+   - Added `TicketReference` alias for `TicketNumber`
+   - Added `Year` for footer
+
+5. **AdminUserEmailParams.cs** - MODERATE
+   - Added `LockUntil` field for locked account templates
+   - Added `HasLockExpiration` boolean
+   - Added `Year` for footer
+
+6. **PasswordResetEmailParams.cs** - MINOR
+   - Added `Year` for footer
+
+7. **PasswordChangedEmailParams.cs** - MINOR
+   - Added `Year` for footer
+
+8. **EmailVerificationEmailParams.cs** - MINOR
+   - Added `Year` for footer
+
+**5 Event Handlers Updated:**
+
+1. **UserCommittedToSignUpEventHandler.cs** - Added organizer contact + signup lists population
+2. **CommitmentUpdatedEventHandler.cs** - Added organizer contact + signup lists population
+3. **CommitmentCancelledEmailHandler.cs** - Added organizer contact + signup lists population
+4. **RefundRequestedEventHandler.cs** - Added organizer contact population
+5. **RefundCompletedEventHandler.cs** - Added organizer contact population
+
+**1 Database Migration Created:**
+
+- `20260204100000_Phase6A87Plus_FixSignupCommitmentButtonText.cs`
+  - Changes "View Event & Register" to "View Event Details" in signup commitment templates
+
+**Files Changed**:
+- `src/LankaConnect.Shared/Email/Contracts/SignupCommitmentEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/AttendeesAddedEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/RefundEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/SupportTicketEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/AdminUserEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/PasswordResetEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/PasswordChangedEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/EmailVerificationEmailParams.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/UserCommittedToSignUpEventHandler.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/CommitmentUpdatedEventHandler.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/CommitmentCancelledEmailHandler.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/RefundRequestedEventHandler.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/RefundCompletedEventHandler.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260204100000_Phase6A87Plus_FixSignupCommitmentButtonText.cs`
+
+**Documentation**:
+- RCA Document: [RCA_COMPREHENSIVE_EMAIL_PARAMETER_AUDIT.md](./RCA_COMPREHENSIVE_EMAIL_PARAMETER_AUDIT.md)
+- Original RCA: [RCA_SIGNUP_COMMITMENT_EMAIL_ISSUES.md](./RCA_SIGNUP_COMMITMENT_EMAIL_ISSUES.md)
+
+**Verification**:
+- ✅ Build successful (0 errors, 0 warnings)
+- ⏳ Pending deployment to Azure staging
+- ⏳ Pending email testing in staging environment
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.87: Email Template Parameter Mismatch Fixes ✅ COMPLETE
 
 ### PHASE 6A.87 FIX: EMAIL TEMPLATE PARAMETER MISMATCH - 2026-02-03
 
@@ -47,7 +138,9 @@ Multiple email templates were showing raw placeholders instead of actual values.
 
 **Verification**:
 - ✅ Build successful (0 errors, 0 warnings)
-- ⏳ Pending deployment and email testing
+- ✅ Deployed to Azure staging (2026-02-04, commit e7d0892e)
+- ✅ GitHub Actions run #21659298437 completed successfully
+- ⏳ Pending email testing in staging environment
 
 ---
 

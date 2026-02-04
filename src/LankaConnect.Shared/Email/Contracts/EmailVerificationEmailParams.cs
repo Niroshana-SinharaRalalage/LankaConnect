@@ -60,6 +60,7 @@ public class EmailVerificationEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added Year for footer.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
@@ -68,7 +69,8 @@ public class EmailVerificationEmailParams : IEmailParameters
             { "UserName", UserName },
             { "Email", Email },
             { "VerificationUrl", VerificationUrl },
-            { "ExpirationHours", ExpirationHours }
+            { "ExpirationHours", ExpirationHours },
+            { "Year", DateTime.UtcNow.Year }  // Footer param
         };
     }
 

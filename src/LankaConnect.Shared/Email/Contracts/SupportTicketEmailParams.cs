@@ -146,6 +146,7 @@ public class SupportTicketEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added TicketReference alias and Year for footer.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
@@ -153,6 +154,7 @@ public class SupportTicketEmailParams : IEmailParameters
         {
             { "UserName", UserName },
             { "TicketNumber", TicketNumber },
+            { "TicketReference", TicketNumber },  // Alias for templates expecting TicketReference
             { "Subject", Subject },
             { "Category", Category },
             { "Priority", Priority },
@@ -162,7 +164,8 @@ public class SupportTicketEmailParams : IEmailParameters
             { "ExpectedResponseTime", ExpectedResponseTime },
             { "TicketUrl", TicketUrl },
             { "SupportEmail", SupportEmail },
-            { "CompanyName", CompanyName }
+            { "CompanyName", CompanyName },
+            { "Year", DateTime.UtcNow.Year }  // Footer param
         };
 
         if (!string.IsNullOrWhiteSpace(ReplyMessage))

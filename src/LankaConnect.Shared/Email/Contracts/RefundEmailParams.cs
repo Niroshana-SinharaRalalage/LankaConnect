@@ -135,6 +135,30 @@ public class RefundEmailParams : IEmailParameters
 
     #endregion
 
+    #region Organizer Contact Properties
+
+    /// <summary>
+    /// Whether organizer contact info is available (controls {{#HasOrganizerContact}} conditional).
+    /// </summary>
+    public bool HasOrganizerContact { get; set; } = false;
+
+    /// <summary>
+    /// Organizer's name.
+    /// </summary>
+    public string OrganizerContactName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's email.
+    /// </summary>
+    public string OrganizerContactEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's phone.
+    /// </summary>
+    public string OrganizerContactPhone { get; set; } = string.Empty;
+
+    #endregion
+
     #region Template Type
 
     /// <summary>
@@ -162,17 +186,23 @@ public class RefundEmailParams : IEmailParameters
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
     /// Phase 6A.87 Fix: Added StripeRefundId and fixed currency formatting to use explicit US culture.
+    /// Phase 6A.87+ Fix: Added EventDateTime alias and organizer contact params.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
         // Use explicit US culture to avoid currency symbol issues (e.g., ¤ instead of $)
         var usCulture = CultureInfo.GetCultureInfo("en-US");
 
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
         var dict = new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
+            { "EventStartDate", formattedDate },
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Combined for template
             { "RefundAmount", RefundAmount.ToString("C", usCulture) },
             { "OriginalAmount", OriginalAmount.ToString("C", usCulture) },
             { "Currency", Currency },
@@ -182,7 +212,16 @@ public class RefundEmailParams : IEmailParameters
             { "ProcessingMethod", ProcessingMethod },
             { "SupportEmail", SupportEmail },
             { "RefundDetailsUrl", RefundDetailsUrl },
-            { "StripeRefundId", StripeRefundId }
+            { "StripeRefundId", StripeRefundId },
+
+            // Organizer contact params (for {{#HasOrganizerContact}} conditional)
+            { "HasOrganizerContact", HasOrganizerContact },
+            { "OrganizerContactName", OrganizerContactName },
+            { "OrganizerContactEmail", OrganizerContactEmail },
+            { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Footer params
+            { "Year", DateTime.UtcNow.Year }
         };
 
         if (CompletedAt.HasValue)
@@ -222,6 +261,25 @@ public class RefundEmailParams : IEmailParameters
             errors.Add("RefundAmount must be greater than 0");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Setters
+
+    /// <summary>
+    /// Sets organizer contact information.
+    /// </summary>
+    public RefundEmailParams WithOrganizerContact(
+        string? name,
+        string? email = null,
+        string? phone = null)
+    {
+        HasOrganizerContact = !string.IsNullOrWhiteSpace(name);
+        OrganizerContactName = name ?? string.Empty;
+        OrganizerContactEmail = email ?? string.Empty;
+        OrganizerContactPhone = phone ?? string.Empty;
+        return this;
     }
 
     #endregion

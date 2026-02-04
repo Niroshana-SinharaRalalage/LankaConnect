@@ -151,18 +151,69 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
                 if (existingSubscriber != null)
                 {
-                    // If already active, return error
-                    if (existingSubscriber.IsActive)
+                    // Phase 6A.99 Issue #57: Improved logic for handling existing subscribers
+                    // Case 1: Already confirmed and active - return friendly message
+                    if (existingSubscriber.IsActive && existingSubscriber.IsConfirmed)
                     {
                         stopwatch.Stop();
                         _logger.LogWarning(
-                            "SubscribeToNewsletter FAILED: Email already active - Email={Email}, SubscriberId={SubscriberId}, Duration={ElapsedMs}ms",
+                            "SubscribeToNewsletter FAILED: Email already confirmed and active - Email={Email}, SubscriberId={SubscriberId}, Duration={ElapsedMs}ms",
                             request.Email,
                             existingSubscriber.Id,
                             stopwatch.ElapsedMilliseconds);
                         return Result<SubscribeToNewsletterResponse>.Failure("Email is already subscribed to the newsletter");
                     }
 
+                    // Case 2: Active but NOT confirmed - resend confirmation email
+                    if (existingSubscriber.IsActive && !existingSubscriber.IsConfirmed)
+                    {
+                        _logger.LogInformation(
+                            "SubscribeToNewsletter: Existing unconfirmed subscription found - Email={Email}, SubscriberId={SubscriberId}, ResendingConfirmation=true",
+                            request.Email,
+                            existingSubscriber.Id);
+
+                        // Regenerate confirmation token using domain method
+                        existingSubscriber.ResendConfirmation();
+
+                        // Update metro areas if changed
+                        var metroAreaIds = await PopulateMetroAreasIfNeededAsync(
+                            request.MetroAreaIds,
+                            request.ReceiveAllLocations,
+                            cancellationToken);
+
+                        // Save changes
+                        await _unitOfWork.CommitAsync(cancellationToken);
+
+                        _logger.LogInformation(
+                            "SubscribeToNewsletter: Confirmation token regenerated - Email={Email}, SubscriberId={SubscriberId}",
+                            request.Email,
+                            existingSubscriber.Id);
+
+                        // Send confirmation email with new token
+                        await SendConfirmationEmailAsync(existingSubscriber, request.ReceiveAllLocations, request.MetroAreaIds, cancellationToken);
+
+                        var resendResponse = new SubscribeToNewsletterResponse(
+                            existingSubscriber.Id,
+                            existingSubscriber.Email.Value,
+                            existingSubscriber.MetroAreaIds.FirstOrDefault(),
+                            request.MetroAreaIds,
+                            existingSubscriber.ReceiveAllLocations,
+                            existingSubscriber.IsActive,
+                            existingSubscriber.IsConfirmed,
+                            existingSubscriber.ConfirmationToken!,
+                            existingSubscriber.ConfirmationSentAt!.Value);
+
+                        stopwatch.Stop();
+                        _logger.LogInformation(
+                            "SubscribeToNewsletter COMPLETE (Resend): Confirmation email resent - Email={Email}, SubscriberId={SubscriberId}, Duration={ElapsedMs}ms",
+                            request.Email,
+                            existingSubscriber.Id,
+                            stopwatch.ElapsedMilliseconds);
+
+                        return Result<SubscribeToNewsletterResponse>.Success(resendResponse);
+                    }
+
+                    // Case 3: Inactive (previously unsubscribed) - create new subscription
                     _logger.LogInformation(
                         "SubscribeToNewsletter: Reactivating inactive subscriber - Email={Email}, SubscriberId={SubscriberId}",
                         request.Email,
@@ -171,14 +222,14 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                     // For inactive subscribers, create a new subscription instead of reactivating
                     // This ensures a fresh confirmation token and follows the domain model
                     // Phase 6A.85 Part 3: Populate all metros when ReceiveAllLocations = true
-                    var metroAreaIds = await PopulateMetroAreasIfNeededAsync(
+                    var reactivateMetroAreaIds = await PopulateMetroAreasIfNeededAsync(
                         request.MetroAreaIds,
                         request.ReceiveAllLocations,
                         cancellationToken);
 
                     var reactivateResult = NewsletterSubscriber.Create(
                         email,
-                        metroAreaIds.ToList(),
+                        reactivateMetroAreaIds.ToList(),
                         request.ReceiveAllLocations);
 
                     if (!reactivateResult.IsSuccess)
@@ -272,15 +323,17 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
 
                 // Phase 6A.83 Part 3: Fix parameter name to match template expectation
+                // Phase 6A.99 Issue #57: Changed ConfirmationLink to ConfirmationUrl to match Phase 6A.96 template
                 var emailParameters = new Dictionary<string, object>
                 {
                     { "Email", request.Email },
                     { "ConfirmationToken", subscriber.ConfirmationToken! },
-                    { "ConfirmationLink", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
-                    { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },  // Phase 6A.83: Changed from UnsubscribeLink to UnsubscribeUrl
+                    { "ConfirmationUrl", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },  // Phase 6A.99: Fixed to match template placeholder
+                    { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
                     { "MetroAreasText", metroAreaDescription },
                     { "CompanyName", "LankaConnect" },
-                    { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") }
+                    { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") },
+                    { "Year", DateTime.UtcNow.Year }  // Phase 6A.99: Added Year for footer
                 };
 
                 var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
@@ -338,6 +391,69 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                     ex.Message);
                 throw;
             }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.99: Helper method to send confirmation email for new or re-confirmed subscriptions.
+    /// Extracted to support both new subscriptions and resending confirmations.
+    /// </summary>
+    private async Task SendConfirmationEmailAsync(
+        NewsletterSubscriber subscriber,
+        bool receiveAllLocations,
+        List<Guid>? metroAreaIds,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metroAreaDescription = receiveAllLocations
+                ? "All Locations"
+                : (metroAreaIds?.Count > 0 ? $"{metroAreaIds.Count} Location(s)" : "All Locations");
+
+            var apiBaseUrl = _configuration["ApplicationUrls:ApiBaseUrl"] ?? "https://lankaconnect.com";
+            var confirmPath = _configuration["ApplicationUrls:NewsletterConfirmPath"] ?? "/newsletter/confirm";
+            var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
+
+            var emailParameters = new Dictionary<string, object>
+            {
+                { "Email", subscriber.Email.Value },
+                { "ConfirmationToken", subscriber.ConfirmationToken! },
+                { "ConfirmationUrl", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
+                { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
+                { "MetroAreasText", metroAreaDescription },
+                { "CompanyName", "LankaConnect" },
+                { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") },
+                { "Year", DateTime.UtcNow.Year }
+            };
+
+            var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
+                EmailTemplateNames.NewsletterSubscriptionConfirmation,
+                subscriber.Email.Value,
+                emailParameters,
+                cancellationToken);
+
+            if (!sendEmailResult.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "SendConfirmationEmail: Failed to send confirmation email - Email={Email}, Error={Error}",
+                    subscriber.Email.Value,
+                    sendEmailResult.Error);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "SendConfirmationEmail: Newsletter confirmation email sent - Email={Email}, SubscriberId={SubscriberId}",
+                    subscriber.Email.Value,
+                    subscriber.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "SendConfirmationEmail FAILED: Exception sending confirmation email - Email={Email}, SubscriberId={SubscriberId}",
+                subscriber.Email.Value,
+                subscriber.Id);
+            // Don't throw - email sending failure shouldn't break the subscription flow
         }
     }
 }

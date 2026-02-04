@@ -56,6 +56,10 @@ const Footer: React.FC = () => {
   const [currentYear, setCurrentYear] = useState<number>(2025);
   // Phase 6A.X Issue #27/#28: Separate validation error state for inline display
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Phase 6A.99 Issue #57: Inline success message instead of toast
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Phase 6A.99: Server error message for inline display
+  const [serverError, setServerError] = useState<string | null>(null);
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
@@ -89,10 +93,12 @@ const Footer: React.FC = () => {
     },
   ];
 
-  // Phase 6A.X Issue #27/#28: Refactored to use toast for server responses
+  // Phase 6A.99 Issue #57: Refactored to use inline messages instead of toast
   const handleNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setValidationError(null);
+    setSuccessMessage(null);
+    setServerError(null);
 
     console.log('[Footer] Newsletter form submitted:');
     console.log('  Email:', email);
@@ -138,33 +144,33 @@ const Footer: React.FC = () => {
       console.log('[Footer] Backend response:', response.status, data);
 
       if (data.success || data.Success) {
-        // Phase 6A.X Issue #27: Use toast for success - doesn't auto-dismiss too quickly
-        toast.success(
-          'Thank you for subscribing! Please check your email to confirm your subscription.',
-          { duration: 6000 }
-        );
-        setSubscribeStatus('idle');
+        // Phase 6A.99 Issue #57: Use inline success message instead of toast
+        setSuccessMessage('Thank you for subscribing! Please check your email to confirm your subscription.');
+        setSubscribeStatus('success');
         setEmail('');
         setSelectedMetroIds([]);
         setReceiveAllLocations(false);
+
+        // Auto-clear success message after 10 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+          setSubscribeStatus('idle');
+        }, 10000);
       } else {
-        // Phase 6A.X Issue #28: Show specific backend error message
+        // Phase 6A.99 Issue #57: Show specific backend error message inline
         const errorMessage = data.message || data.Message || 'Subscription failed. Please try again.';
 
-        // Special handling for already-subscribed (friendlier message with info icon)
+        // Special handling for already-subscribed (friendlier message)
         if (errorMessage.toLowerCase().includes('already subscribed')) {
-          toast('This email is already subscribed to our newsletter.', {
-            icon: 'ℹ️',
-            duration: 5000,
-          });
+          setServerError('This email is already subscribed to our newsletter.');
         } else {
-          toast.error(errorMessage, { duration: 5000 });
+          setServerError(errorMessage);
         }
         setSubscribeStatus('idle');
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
-      toast.error('Network error. Please check your connection and try again.', { duration: 5000 });
+      setServerError('Network error. Please check your connection and try again.');
       setSubscribeStatus('idle');
     }
   };
@@ -217,11 +223,35 @@ const Footer: React.FC = () => {
               </button>
             </form>
 
-            {/* Phase 6A.X Issue #27/#28: Inline validation errors only (server responses use toast) */}
+            {/* Phase 6A.99 Issue #57: Inline messages for validation, success, and errors */}
             {validationError && subscribeStatus !== 'loading' && (
-              <p className="text-red-300 text-sm mt-2 text-center" role="alert">
+              <p className="text-red-300 text-sm mt-3 text-center" role="alert">
                 {validationError}
               </p>
+            )}
+
+            {/* Phase 6A.99: Inline success message */}
+            {successMessage && (
+              <div className="mt-4 p-3 bg-green-500/20 border border-green-400/30 rounded-lg" role="status">
+                <p className="text-green-200 text-sm text-center flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {successMessage}
+                </p>
+              </div>
+            )}
+
+            {/* Phase 6A.99: Inline server error message */}
+            {serverError && subscribeStatus !== 'loading' && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-400/30 rounded-lg" role="alert">
+                <p className="text-red-200 text-sm text-center flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {serverError}
+                </p>
+              </div>
             )}
           </div>
         </div>

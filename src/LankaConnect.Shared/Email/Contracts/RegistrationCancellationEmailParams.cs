@@ -139,6 +139,7 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "EventLocation", EventLocation },
             { "CancellationReason", CancellationReason },
             { "CancelledAt", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
+            { "CancellationDate", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },  // Issue #56.1: Alias for template compatibility
             { "RefundStatus", RefundStatus },
             { "EventDetailsUrl", EventDetailsUrl },
             { "SupportEmail", SupportEmail },

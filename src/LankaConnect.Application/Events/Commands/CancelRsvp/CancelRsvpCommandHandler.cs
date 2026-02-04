@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
@@ -224,6 +225,12 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         _logger.LogInformation(
                             "[Phase 6A.93] Raised RegistrationCancelledEvent for cancellation email - EventId={EventId}, UserId={UserId}. User will receive two emails: cancellation + refund.",
                             request.EventId, request.UserId);
+
+                        // Issue #56.1 Diagnostic: Log Event entity's domain event count to verify event was raised
+                        _logger.LogInformation(
+                            "[Issue #56.1 DIAGNOSTIC] Event entity domain events after RaiseRegistrationCancelledEvent - EventId={EventId}, DomainEventCount={Count}, EventTypes=[{Types}]",
+                            @event.Id, @event.DomainEvents.Count,
+                            string.Join(", ", @event.DomainEvents.Select(e => e.GetType().Name)));
                     }
                     else
                     {
@@ -243,6 +250,12 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         _logger.LogInformation(
                             "CancelRsvp: Raised RegistrationCancelledEvent for email notification - EventId={EventId}, UserId={UserId}",
                             request.EventId, request.UserId);
+
+                        // Issue #56.1 Diagnostic: Log Event entity's domain event count to verify event was raised
+                        _logger.LogInformation(
+                            "[Issue #56.1 DIAGNOSTIC] Event entity domain events after RaiseRegistrationCancelledEvent (free) - EventId={EventId}, DomainEventCount={Count}, EventTypes=[{Types}]",
+                            @event.Id, @event.DomainEvents.Count,
+                            string.Join(", ", @event.DomainEvents.Select(e => e.GetType().Name)));
                     }
 
                     // Save changes

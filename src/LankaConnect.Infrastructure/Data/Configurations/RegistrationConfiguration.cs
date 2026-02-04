@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Npgsql.EntityFrameworkCore.PostgreSQL;  // Issue #56 FIX: For UseXminAsConcurrencyToken()
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
@@ -188,11 +189,13 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         // Issue #56 FIX: Add concurrency token for optimistic locking
         // This prevents race conditions where concurrent webhook requests both
         // successfully modify the same registration row.
-        // Uses shadow property pattern - no changes needed to domain entity.
-        builder.Property<uint>("xmin")
-            .HasColumnType("xid")
-            .ValueGeneratedOnAddOrUpdate()
-            .IsConcurrencyToken();
+        // Uses Npgsql's UseXminAsConcurrencyToken() which properly configures PostgreSQL's
+        // xmin system column for EF Core concurrency detection.
+        // Note: Suppressing CS0618 because the recommended IsRowVersion() approach
+        // doesn't work correctly for PostgreSQL xmin system column.
+#pragma warning disable CS0618 // Type or member is obsolete
+        builder.UseXminAsConcurrencyToken();
+#pragma warning restore CS0618
 
         // Configure indexes
         builder.HasIndex(r => r.EventId)

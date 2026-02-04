@@ -515,6 +515,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
         bool excludeCancelled = false,
+        bool includeAllStatuses = false,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "Search"))
@@ -525,11 +526,12 @@ public class EventRepository : Repository<Event>, IEventRepository
         using (LogContext.PushProperty("Category", category))
         using (LogContext.PushProperty("IsFreeOnly", isFreeOnly))
         using (LogContext.PushProperty("StartDateFrom", startDateFrom))
+        using (LogContext.PushProperty("IncludeAllStatuses", includeAllStatuses))
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _repoLogger.LogInformation("[SEARCH-1] SearchAsync START - Term: {SearchTerm}, Limit: {Limit}, Offset: {Offset}, Category: {Category}, IsFreeOnly: {IsFreeOnly}, StartDateFrom: {StartDateFrom}",
-                searchTerm, limit, offset, category, isFreeOnly, startDateFrom);
+            _repoLogger.LogInformation("[SEARCH-1] SearchAsync START - Term: {SearchTerm}, Limit: {Limit}, Offset: {Offset}, Category: {Category}, IsFreeOnly: {IsFreeOnly}, StartDateFrom: {StartDateFrom}, IncludeAllStatuses: {IncludeAllStatuses}",
+                searchTerm, limit, offset, category, isFreeOnly, startDateFrom, includeAllStatuses);
             _repoLogger.LogDebug(
                 "SearchAsync START: SearchTerm={SearchTerm}, Limit={Limit}, Offset={Offset}, Category={Category}, IsFreeOnly={IsFreeOnly}, StartDateFrom={StartDateFrom}",
                 searchTerm,
@@ -600,22 +602,30 @@ public class EventRepository : Repository<Event>, IEventRepository
 
         // Add status filter
         // Phase 6A.X Issue #36: Conditionally include/exclude Cancelled events based on excludeCancelled parameter
-        if (excludeCancelled)
+        // Issue #33 FIX: Added includeAllStatuses parameter for Dashboard Event Management
+        if (includeAllStatuses)
+        {
+            // Issue #33: No status filter - include ALL events (Draft, UnderReview, Published, Cancelled, etc.)
+            // Used for Dashboard Event Management where organizers need to see their draft events
+            _repoLogger.LogInformation("[SEARCH-2A] IncludeAllStatuses=true - no status filter applied (showing all statuses)");
+        }
+        else if (excludeCancelled)
         {
             // Only show Published events (exclude Cancelled)
             var statusParamIndex = parameters.Count;
             whereConditions.Add($@"e.""Status"" = {{{statusParamIndex}}}");
             parameters.Add(EventStatus.Published.ToString());
-            _repoLogger.LogInformation("[SEARCH-2A] Excluding cancelled events - only showing Published");
+            _repoLogger.LogInformation("[SEARCH-2B] Excluding cancelled events - only showing Published");
         }
         else
         {
-            // Show both Published and Cancelled events (original behavior)
+            // Default: Show Published and Cancelled events (exclude Draft/UnderReview for public listings)
             var statusParamIndex1 = parameters.Count;
             var statusParamIndex2 = parameters.Count + 1;
             whereConditions.Add($@"e.""Status"" IN ({{{statusParamIndex1}}}, {{{statusParamIndex2}}})");
             parameters.Add(EventStatus.Published.ToString());  // "Published" - string enum value
             parameters.Add(EventStatus.Cancelled.ToString());   // "Cancelled" - string enum value (user wants to see these)
+            _repoLogger.LogInformation("[SEARCH-2C] Default status filter - showing Published and Cancelled only");
         }
 
         _repoLogger.LogInformation("[SEARCH-2] Initial WHERE conditions: {Conditions}, Parameters: {Parameters}",

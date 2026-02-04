@@ -561,4 +561,173 @@ public class GetEventsQueryHandlerTests
     }
 
     #endregion
+
+    #region Issue #33 - SearchAsync IncludeAllStatuses Parameter
+
+    /// <summary>
+    /// Issue #33 TDD Test: When searching with SearchTerm and IncludeAllStatuses=false (default),
+    /// SearchAsync should be called with includeAllStatuses=false, excluding Draft/UnderReview.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WithSearchTermAndIncludeAllStatusesFalse_ShouldPassFlagToSearchAsync()
+    {
+        // Arrange
+        var publishedEvent = CreateTestEvent("Published Event", EventStatus.Published);
+        var searchResults = new List<Event> { publishedEvent };
+
+        _mockEventRepository
+            .Setup(x => x.SearchAsync(
+                "test",                                     // searchTerm
+                It.IsAny<int>(),                           // limit
+                It.IsAny<int>(),                           // offset
+                It.IsAny<EventCategory?>(),                // category
+                It.IsAny<bool?>(),                         // isFreeOnly
+                It.IsAny<DateTime?>(),                     // startDateFrom
+                It.IsAny<bool>(),                          // excludeCancelled
+                false,                                      // includeAllStatuses = false (expected)
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto { Id = e.Id, Title = e.Title.Value, Status = e.Status });
+
+        // Default: IncludeAllStatuses = false
+        var query = new GetEventsQuery(SearchTerm: "test");
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _mockEventRepository.Verify(
+            x => x.SearchAsync(
+                "test",
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<EventCategory?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<bool>(),
+                false,  // includeAllStatuses should be false
+                It.IsAny<CancellationToken>()),
+            Times.Once,
+            "SearchAsync should be called with includeAllStatuses=false when IncludeAllStatuses is not set");
+    }
+
+    /// <summary>
+    /// Issue #33 TDD Test: When searching with SearchTerm and IncludeAllStatuses=true,
+    /// SearchAsync should be called with includeAllStatuses=true, including Draft/UnderReview.
+    /// This is used for Dashboard Event Management where organizers need to see their draft events.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WithSearchTermAndIncludeAllStatusesTrue_ShouldPassFlagToSearchAsync()
+    {
+        // Arrange
+        var draftEvent = CreateTestEvent("Draft Event", EventStatus.Draft);
+        var publishedEvent = CreateTestEvent("Published Event", EventStatus.Published);
+        var searchResults = new List<Event> { draftEvent, publishedEvent };
+
+        _mockEventRepository
+            .Setup(x => x.SearchAsync(
+                "test",                                     // searchTerm
+                It.IsAny<int>(),                           // limit
+                It.IsAny<int>(),                           // offset
+                It.IsAny<EventCategory?>(),                // category
+                It.IsAny<bool?>(),                         // isFreeOnly
+                It.IsAny<DateTime?>(),                     // startDateFrom
+                It.IsAny<bool>(),                          // excludeCancelled
+                true,                                       // includeAllStatuses = true (expected)
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((searchResults, 2));
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto { Id = e.Id, Title = e.Title.Value, Status = e.Status });
+
+        // Issue #33 FIX: IncludeAllStatuses = true (for Dashboard Event Management)
+        var query = new GetEventsQuery(SearchTerm: "test", IncludeAllStatuses: true);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2);
+        result.Value.Should().Contain(e => e.Title == "Draft Event");
+        result.Value.Should().Contain(e => e.Title == "Published Event");
+
+        _mockEventRepository.Verify(
+            x => x.SearchAsync(
+                "test",
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<EventCategory?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<bool>(),
+                true,  // includeAllStatuses should be true
+                It.IsAny<CancellationToken>()),
+            Times.Once,
+            "SearchAsync should be called with includeAllStatuses=true when IncludeAllStatuses is set");
+    }
+
+    /// <summary>
+    /// Issue #33 TDD Test: Dashboard Event Management search should return organizer's Draft events.
+    /// This simulates the flow: Dashboard → GetEventsByOrganizer → GetEventsQuery(IncludeAllStatuses: true)
+    /// </summary>
+    [Fact]
+    public async Task Handle_DashboardSearchWithIncludeAllStatuses_ShouldReturnDraftEvents()
+    {
+        // Arrange
+        var organizerId = Guid.NewGuid();
+        var draftEvent = CreateTestEvent("My Draft Event", EventStatus.Draft);
+        var publishedEvent = CreateTestEvent("My Published Event", EventStatus.Published);
+
+        // Use reflection to set OrganizerId
+        var orgIdField = typeof(Event).GetField("<OrganizerId>k__BackingField",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        orgIdField?.SetValue(draftEvent, organizerId);
+        orgIdField?.SetValue(publishedEvent, organizerId);
+
+        var searchResults = new List<Event> { draftEvent, publishedEvent };
+
+        _mockEventRepository
+            .Setup(x => x.SearchAsync(
+                "My",                                       // searchTerm
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<EventCategory?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<bool>(),
+                true,                                       // includeAllStatuses = true
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((searchResults, 2));
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto
+            {
+                Id = e.Id,
+                Title = e.Title.Value,
+                Status = e.Status,
+                OrganizerId = organizerId
+            });
+
+        // Simulating Dashboard Event Management query with IncludeAllStatuses=true
+        var query = new GetEventsQuery(SearchTerm: "My", IncludeAllStatuses: true);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2,
+            "Dashboard Event Management search should return Draft events when IncludeAllStatuses=true");
+        result.Value.Should().Contain(e => e.Status == EventStatus.Draft,
+            "Draft events should be included in Dashboard search results");
+    }
+
+    #endregion
 }

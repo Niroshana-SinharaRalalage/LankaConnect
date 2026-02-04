@@ -31,6 +31,7 @@ public interface IEventRepository : IRepository<Event>
     /// </summary>
     /// <summary>
     /// Phase 6A.X Issue #36: Added excludeCancelled parameter to allow filtering out cancelled events
+    /// Issue #33: Added includeAllStatuses parameter to include Draft/UnderReview events (for Dashboard Event Management)
     /// </summary>
     Task<(IReadOnlyList<Event> Events, int TotalCount)> SearchAsync(
         string searchTerm,
@@ -40,6 +41,7 @@ public interface IEventRepository : IRepository<Event>
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
         bool excludeCancelled = false,
+        bool includeAllStatuses = false,
         CancellationToken cancellationToken = default);
 
     // Badge cleanup queries (Phase 6A.27)

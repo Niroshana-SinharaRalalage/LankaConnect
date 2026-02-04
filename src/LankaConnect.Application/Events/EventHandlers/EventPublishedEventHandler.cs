@@ -112,12 +112,17 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
             // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
             var ticketPriceText = isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "TBA";
 
+            // Phase 6A.97: Use timezone-aware formatting
+            var formattedDate = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId);
+            var formattedTime = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId);
+
             var parameters = new Dictionary<string, object>
             {
                 ["EventTitle"] = @event.Title.Value,
                 ["EventDescription"] = @event.Description.Value,
-                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                ["EventStartDate"] = formattedDate,
+                ["EventStartTime"] = formattedTime,
+                ["EventDateTime"] = $"{formattedDate} at {formattedTime}",  // Phase 6A.87+ Fix: Template expects combined EventDateTime
                 ["EventLocation"] = GetEventLocationString(@event),
                 ["EventCity"] = @event.Location?.Address.City ?? "TBA",
                 ["EventState"] = @event.Location?.Address.State ?? "TBA",
@@ -125,7 +130,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 ["IsPaid"] = !isFree,
                 ["TicketPrice"] = ticketPriceText,
                 // Phase 6A.70: Use EmailUrlHelper instead of hardcoded URL
-                ["EventUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+                ["EventUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                ["EventDetailsUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id),  // Phase 6A.87+ Fix: Some templates use EventDetailsUrl
+                ["Year"] = DateTime.UtcNow.Year  // Phase 6A.87+ Fix: Footer param
             };
 
             // Phase 6A.83 Part 3: REVERT - Use OrganizerContact* parameters (templates expect these exact names)

@@ -114,15 +114,21 @@ public class EventCancellationEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added EventDateTime combined field for standardized templates.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
+        // Format date and time separately for backward compatibility
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
         return new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
-            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId) },
+            { "EventStartDate", formattedDate },
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
             { "EventLocation", EventLocation },
             { "CancellationReason", CancellationReason },
             { "CancelledAt", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
@@ -130,7 +136,8 @@ public class EventCancellationEmailParams : IEmailParameters
             { "RefundsWillBeProcessed", RefundsWillBeProcessed },
             { "RefundMessage", RefundMessage },
             { "SupportEmail", SupportEmail },
-            { "BrowseEventsUrl", BrowseEventsUrl }
+            { "BrowseEventsUrl", BrowseEventsUrl },
+            { "Year", DateTime.UtcNow.Year }
         };
     }
 

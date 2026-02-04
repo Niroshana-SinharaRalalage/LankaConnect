@@ -306,6 +306,10 @@ public class EventNotificationEmailJob
     {
         var isFree = @event.IsFree();
 
+        // Phase 6A.97: Use timezone-aware formatting
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId);
+        var formattedTime = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId);
+
         // Phase 6A.61+: Include ALL fields from event-published template for consistency
         // This ensures event-details template can reuse the same rich template as event-published
         var data = new Dictionary<string, object>
@@ -320,21 +324,23 @@ public class EventNotificationEmailJob
 
             // Phase 6A.61+: Add event-published fields for rich template compatibility
             { "EventDescription", @event.Description?.Value ?? "" },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-            { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+            { "EventStartDate", formattedDate },
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Template expects combined EventDateTime
             { "EventCity", @event.Location?.Address.City ?? "TBA" },
             { "EventState", @event.Location?.Address.State ?? "TBA" },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional
-            { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) ?? "TBA" }
+            { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) ?? "TBA" },
+            { "Year", DateTime.UtcNow.Year }  // Phase 6A.87+ Fix: Footer param
         };
 
         // Add sign-up lists URL if available
         if (@event.SignUpLists?.Any() == true)
         {
             data["HasSignUpLists"] = true;
-            data["SignUpListsUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#signup-lists";
+            data["SignUpListsUrl"] = _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups";  // Phase 6A.87+ Fix: Correct anchor
         }
         else
         {

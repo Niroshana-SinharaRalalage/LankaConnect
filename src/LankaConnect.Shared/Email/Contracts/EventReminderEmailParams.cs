@@ -155,16 +155,24 @@ public class EventReminderEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87+ Fix: Added EventDateTime combined field for standardized templates.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
+        // Format date and time separately for backward compatibility
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = !string.IsNullOrEmpty(EventStartTime)
+            ? EventStartTime
+            : EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
         var dict = new Dictionary<string, object>
         {
             // Required parameters
             { "AttendeeName", AttendeeName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-            { "EventStartTime", EventStartTime },
+            { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
             { "Location", Location },
             { "Quantity", Quantity },
             { "HoursUntilEvent", HoursUntilEvent },
@@ -182,7 +190,10 @@ public class EventReminderEmailParams : IEmailParameters
             // HasTicket controls {{#HasTicket}} conditional in Handlebars template
             { "HasTicket", HasTicket },
             { "TicketCode", TicketCode },
-            { "TicketExpiryDate", TicketExpiryDate }
+            { "TicketExpiryDate", TicketExpiryDate },
+
+            // Footer
+            { "Year", DateTime.UtcNow.Year }
         };
 
         return dict;

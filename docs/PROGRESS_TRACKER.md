@@ -1,9 +1,85 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-04 - Phase 6A.87+ Comprehensive Email Parameter Audit & Fixes ✅ BUILD COMPLETE*
+*Last Updated: 2026-02-04 - Issue #39: Event Details Link in Registration Emails FIX ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.87+: Comprehensive Email Parameter Audit & Fixes ✅ BUILD COMPLETE
+## 🎯 Current Session Status - Issue #39: Event Details Link in Registration Emails ✅ DEPLOYED
+
+### ISSUE #39 FIX: EVENT DETAILS LINK NOT SHOWING IN REGISTRATION EMAILS - 2026-02-04
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **BUG FIX** - Registration confirmation emails missing "View Event Details" link
+
+**Problem Statement**:
+Users reported that registration confirmation emails did not contain a link to view event details, even though a previous fix (commit aa6a1fdb) claimed to add this functionality.
+
+**Root Cause Identified**:
+The previous fix was **INCOMPLETE**:
+- ✅ `RegistrationEmailService.cs` correctly passed `EventDetailsUrl` parameter to template engine
+- ❌ **HTML templates in database did NOT contain `<a href="{{EventDetailsUrl}}">` element**
+
+The URL was being generated and passed, but the templates had no element to render it!
+
+**Fix Applied**:
+Added "View Event Details" CTA button to both registration confirmation email templates:
+- Gradient style consistent with existing email design (orange → red)
+- Button positioned before the organizer contact section
+- Also updated text templates for completeness
+
+**Templates Updated**:
+- `template-free-event-registration-confirmation` (HTML + TEXT)
+- `template-paid-event-registration-confirmation-with-ticket` (HTML + TEXT)
+
+**Commits**:
+- `8f15ac5c` - fix(#39): Add View Event Details button to registration confirmation emails
+
+**Verification**:
+- ✅ Database templates now contain `{{EventDetailsUrl}}`
+- ✅ GitHub Issue #39 closed
+- ⏳ Pending QA verification (register for event and check email)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #56: Duplicate Payment Confirmation Emails ✅ DEPLOYED
+
+### ISSUE #56 FIX: DUPLICATE PAYMENT CONFIRMATION EMAILS - 2026-02-04
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Users receiving duplicate payment confirmation emails
+
+**Problem Statement**:
+Users were receiving two payment confirmation emails after completing Stripe payment for paid events.
+
+**Root Cause Identified**:
+Nested CommitAsync calls during domain event dispatch. When `PaymentCompletedEventHandler` called `TicketService.GenerateTicketAsync()`, which in turn called `_unitOfWork.CommitAsync()`, the nested CommitAsync re-collected domain events from tracked entities. Since `ClearDomainEvents()` was called AFTER the dispatch loop (not before), the same `PaymentCompletedEvent` was dispatched twice.
+
+**Fix Applied**:
+Moved `ClearDomainEvents()` to immediately AFTER `SaveChangesAsync()` but BEFORE the dispatch loop in `AppDbContext.CommitAsync()`. This ensures:
+1. Domain events are captured in local list
+2. Database changes are saved
+3. Events are cleared from entities IMMEDIATELY (prevents re-collection)
+4. Events are dispatched (any nested CommitAsync sees empty event list)
+
+**Files Changed**:
+- `src/LankaConnect.Infrastructure/Data/AppDbContext.cs` - Core fix
+- `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` - SearchAsync signature fix
+- `src/LankaConnect.Application/Events/Queries/SearchEvents/SearchEventsQueryHandler.cs` - SearchAsync signature fix
+- `tests/LankaConnect.Application.Tests/Events/Queries/SearchEventsQueryHandlerTests.cs` - Test mock updates
+
+**Documentation**:
+- RCA Document: [RCA_ISSUE_56_DUPLICATE_PAYMENT_CONFIRMATION_EMAILS.md](./RCA_ISSUE_56_DUPLICATE_PAYMENT_CONFIRMATION_EMAILS.md)
+
+**Verification**:
+- ✅ Build successful (1393 unit tests passed)
+- ✅ Deployed to Azure staging (commit 054fca16)
+- ✅ API health check passed
+- ⏳ Pending end-user verification (next paid event registration)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Phase 6A.87+: Comprehensive Email Parameter Audit & Fixes ✅ BUILD COMPLETE
 
 ### PHASE 6A.87+ FIX: COMPREHENSIVE EMAIL PARAMETER AUDIT - 2026-02-04
 
@@ -21052,6 +21128,57 @@ internal static EmailSubject FromDatabase(string value)
 - `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs`
 - `tests/LankaConnect.Application.Tests/Events/Commands/CreateEventTimezoneTests.cs` (new)
 - `tests/LankaConnect.Application.Tests/Events/Commands/UpdateEventTimezoneTests.cs` (new)
+
+**Status**: ✅ QA READY - Fix verified on Azure staging
+
+---
+
+---
+
+## 🎯 Session: Issue #33 - Event Search Inconsistent Results ✅ COMPLETE
+
+### Issue #33: Dashboard Event Search Fix - 2026-02-04
+
+**Problem**: When organizers searched for their events in Dashboard Event Management, Draft events were NOT returned even though organizers should see their own draft events.
+
+**Root Cause Analysis** (see [RCA_ISSUE_33_EVENT_SEARCH_INCONSISTENCY.md](./RCA_ISSUE_33_EVENT_SEARCH_INCONSISTENCY.md)):
+- `SearchAsync()` in EventRepository hardcoded status filter to only `Published` and `Cancelled`
+- The `IncludeAllStatuses` flag from `GetEventsQuery` was never passed to `SearchAsync()`
+- When organizer searched on Dashboard, the search bypassed status filtering logic
+
+**Solution Implemented** (TDD Approach):
+1. **IEventRepository.cs** - Added `includeAllStatuses` parameter to `SearchAsync()` interface
+2. **EventRepository.cs** - Implemented status filter logic:
+   - `includeAllStatuses=true`: No status filter (for Dashboard Event Management)
+   - `excludeCancelled=true`: Only Published events
+   - Default: Published + Cancelled events (exclude Draft/UnderReview)
+3. **GetEventsQueryHandler.cs** - Now passes `request.IncludeAllStatuses` to `SearchAsync()`
+
+**Tests Created** (3 new tests):
+- `Handle_WithSearchTermAndIncludeAllStatusesFalse_ShouldPassFlagToSearchAsync` ✅
+- `Handle_WithSearchTermAndIncludeAllStatusesTrue_ShouldPassFlagToSearchAsync` ✅
+- `Handle_DashboardSearchWithIncludeAllStatuses_ShouldReturnDraftEvents` ✅
+
+**Test Results**:
+- 3 new Issue #33 tests: PASSING ✅
+- 14 GetEventsQueryHandler tests: PASSING ✅
+- 8 SearchEventsQueryHandler tests: PASSING ✅
+
+**Azure Staging Verification**:
+- Dashboard search for "Monthly Dhana" (Draft event): ✅ Found 1 Draft event
+- Public Events search for "Monthly Dhana": ✅ Found 0 results (Draft excluded)
+
+**Deployment**:
+- Commit: `fix(#33): Add includeAllStatuses param to SearchAsync for Dashboard search`
+- GitHub Actions: Run #21676946482 completed successfully (7m50s)
+- Azure Container Apps: Deployed to staging ✅
+
+**Files Modified**:
+- `src/LankaConnect.Domain/Events/IEventRepository.cs`
+- `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs`
+- `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs`
+- `tests/LankaConnect.Application.Tests/Events/Queries/GetEventsQueryHandlerTests.cs`
+- `docs/RCA_ISSUE_33_EVENT_SEARCH_INCONSISTENCY.md` (new)
 
 **Status**: ✅ QA READY - Fix verified on Azure staging
 

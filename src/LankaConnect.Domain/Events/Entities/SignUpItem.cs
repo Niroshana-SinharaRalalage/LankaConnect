@@ -197,11 +197,27 @@ public class SignUpItem : BaseEntity
             return Result.Failure("User has no commitment to this item");
 
         // Special case: quantity = 0 means cancel the commitment entirely
+        // Phase 6A.89 FIX: Raise CommitmentCancelledEvent so cancellation email is sent
         if (newQuantity == 0)
         {
-            RemainingQuantity += existingCommitment.Quantity;
+            // Capture data BEFORE removing commitment (needed for email notification)
+            var cancelledQuantity = existingCommitment.Quantity;
+            var commitmentId = existingCommitment.Id;
+
+            RemainingQuantity += cancelledQuantity;
             _commitments.Remove(existingCommitment);
             MarkAsUpdated();
+
+            // Phase 6A.89 FIX: Raise domain event for cancellation email notification
+            // Previously missing - caused no email to be sent when quantity=0 was used
+            RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
+                Id,
+                commitmentId,
+                userId,
+                SignUpListId,
+                ItemDescription,
+                cancelledQuantity));
+
             return Result.Success();
         }
 

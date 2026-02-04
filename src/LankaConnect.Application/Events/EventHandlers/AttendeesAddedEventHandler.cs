@@ -253,22 +253,37 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     index++;
                 }
 
+                // Phase 6A.87++ Fix: Add both original and aliased parameter names for template compatibility
+                var formattedDate = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId);
+                var formattedTime = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId);
+
                 var parameters = new Dictionary<string, object>
                 {
                     { "UserName", recipientName },
                     { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                    { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
+                    { "EventStartTime", formattedTime },  // Phase 6A.97: Uses event's timezone
+                    { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87++ Fix: Combined for template
                     { "EventLocation", GetEventLocationString(@event) },
+
+                    // Original params (keep for compatibility)
                     { "PreviousCount", domainEvent.PreviousAttendeeCount },
                     { "AddedCount", domainEvent.AddedAttendeeCount },
                     { "NewTotalCount", domainEvent.NewTotalAttendeeCount },
                     { "AdditionalAmount", domainEvent.AdditionalAmountPaid.ToString("F2", CultureInfo.InvariantCulture) },
                     { "TotalPaid", domainEvent.TotalAmountPaid.ToString("F2", CultureInfo.InvariantCulture) },
+
+                    // Template aliases (Phase 6A.87++ Fix: Template expects these exact names)
+                    { "NewAttendeesCount", domainEvent.AddedAttendeeCount },
+                    { "TotalAttendeesCount", domainEvent.NewTotalAttendeeCount },
+                    { "AmountCharged", domainEvent.AdditionalAmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
+
+                    // Attendee lists
                     { "NewAttendees", newAttendeesText.ToString().TrimEnd() },
                     { "NewAttendeesHtml", newAttendeesHtml.ToString() },
                     { "AllAttendees", allAttendeesText.ToString().TrimEnd() },
                     { "AllAttendeesHtml", allAttendeesHtml.ToString() },
+
                     { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
                     { "Year", DateTime.UtcNow.Year }
                 };

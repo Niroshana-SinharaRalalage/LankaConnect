@@ -68,14 +68,19 @@ export function useEmailGroups(
   // This ensures each user has their own cache and prevents cross-user data leakage
   const user = useAuthStore((state) => state.user);
   const userId = user?.userId ?? null;
+  // Phase 6A.X Issue #47 Fix: Wait for auth store hydration to prevent race conditions
+  // Without this, the query might fire before the correct JWT token is set in API client
+  const isHydrated = useAuthStore((state) => state.isHydrated);
 
   return useQuery({
     queryKey: emailGroupKeys.list(includeAll, userId),
     queryFn: () => emailGroupsRepository.getEmailGroups(includeAll),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    // Only fetch if user is authenticated
-    enabled: !!userId,
+    // Phase 6A.X Issue #47 Fix: Only fetch when BOTH conditions are met:
+    // 1. User is authenticated (userId exists)
+    // 2. Auth store is fully hydrated (prevents race condition with JWT token)
+    enabled: !!userId && isHydrated,
     ...options,
   });
 }

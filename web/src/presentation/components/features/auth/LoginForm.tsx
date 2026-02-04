@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -21,6 +22,7 @@ import type { AuthTokens } from '@/infrastructure/api/types/auth.types';
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { setAuth } = useAuthStore();
   const [apiError, setApiError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -52,6 +54,11 @@ export function LoginForm() {
 
       // Phase AUTH-IMPROVEMENT: Pass rememberMe to backend for extended sessions
       const response = await authRepository.login(data, rememberMe);
+
+      // Phase 6A.X Issue #47 Fix: Clear React Query cache BEFORE setting auth state
+      // This prevents stale data from previous user session from being visible to new user
+      // Works alongside queryClient.clear() in logout (Header.tsx) for complete cache isolation
+      queryClient.clear();
 
       // Set auth state
       // Phase 6A.10: In development (localStorage mode), backend sends refreshToken in response body

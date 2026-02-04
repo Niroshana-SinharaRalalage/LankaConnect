@@ -4,19 +4,22 @@ namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 5: Template-specific typed parameters for event cancellation emails.
-/// Template: template-event-cancellation
+/// Template: template-event-cancellation-notifications
 ///
 /// This replaces Dictionary&lt;string, object&gt; in EventCancellationEmailJob with
 /// compile-time type-safe parameters.
 ///
 /// Sent to attendees when an event is cancelled by the organizer.
+///
+/// Phase 6A.87 Fix: Corrected template name to include "-notifications" suffix.
 /// </summary>
 public class EventCancellationEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for event cancellation.
+    /// Phase 6A.87 Fix: Corrected from "template-event-cancellation" to include "-notifications" suffix.
     /// </summary>
-    public string TemplateName => "template-event-cancellation";
+    public string TemplateName => "template-event-cancellation-notifications";
 
     /// <summary>
     /// Recipient email address.

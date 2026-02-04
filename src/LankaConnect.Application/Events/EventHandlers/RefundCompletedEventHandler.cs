@@ -88,12 +88,13 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 }
 
                 // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Phase 6A.87 Fix: Added stripeRefundId parameter required by template
                 var emailParams = RefundEmailParams.CreateCompleted(
                     userId: userId,
                     userName: userName,
                     userEmail: domainEvent.ContactEmail,
                     registrationId: domainEvent.RegistrationId,
-                    refundId: Guid.NewGuid(),  // Map Stripe refund ID externally
+                    refundId: Guid.NewGuid(),  // Internal refund ID
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate,
@@ -101,6 +102,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     refundAmount: domainEvent.RefundAmount,
                     originalAmount: domainEvent.RefundAmount,  // Same as refund for full refunds
                     completedAt: DateTime.UtcNow,
+                    stripeRefundId: domainEvent.StripeRefundId,  // Phase 6A.87 Fix: Pass Stripe refund ID for template
                     processingMethod: "Original Payment Method"
                 );
                 emailParams.SupportEmail = SupportEmail;

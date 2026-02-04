@@ -228,16 +228,24 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87 Fix: Added EventDateTime combined field for Phase 6A.96 standardized templates.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
+        // Format date and time separately for backward compatibility
+        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = !string.IsNullOrEmpty(EventStartTime)
+            ? EventStartTime
+            : EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
         var dict = new Dictionary<string, object>
         {
             // Core event parameters
             { "UserName", UserName },
             { "EventTitle", EventTitle },
-            { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-            { "EventStartTime", EventStartTime },
+            { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
+            { "EventStartTime", formattedTime },
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87 Fix: Combined for standardized templates
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "SignUpListsUrl", SignUpListsUrl },

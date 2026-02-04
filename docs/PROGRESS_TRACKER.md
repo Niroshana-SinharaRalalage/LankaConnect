@@ -1,9 +1,57 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-03 - Issue #51 Max Attendees Per Registration Fix ✅ COMPLETE*
+*Last Updated: 2026-02-03 - Phase 6A.87 Email Template Parameter Mismatch Fixes ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Issue #51: Max Attendees Per Registration in Create Event ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.87: Email Template Parameter Mismatch Fixes ✅ COMPLETE
+
+### PHASE 6A.87 FIX: EMAIL TEMPLATE PARAMETER MISMATCH - 2026-02-03
+
+**Status**: ✅ **COMPLETE - BUILD SUCCESSFUL**
+
+**Priority**: 🔴 **CRITICAL BUG FIX** - Email placeholders displaying literally (e.g., `{{EventDateTime}}`, `{{StripeRefundId}}`)
+
+**Problem Statement**:
+Multiple email templates were showing raw placeholders instead of actual values. Comprehensive RCA revealed 5 critical issues across TypedEmailParams classes.
+
+**Root Causes Identified & Fixed**:
+
+1. **SignupCommitmentEmailParams** - 3 template names wrong (missing "list")
+   - `template-signup-commitment-*` → `template-signup-list-commitment-*`
+
+2. **RegistrationCancellationEmailParams** - Template name missing "event-" prefix
+   - `template-registration-cancellation` → `template-event-registration-cancellation`
+
+3. **EventCancellationEmailParams** - Template name missing "-notifications" suffix
+   - `template-event-cancellation` → `template-event-cancellation-notifications`
+
+4. **RefundEmailParams** - Multiple issues:
+   - Template name wrong: `template-refund-request-created` → `template-refund-requested`
+   - Missing `StripeRefundId` parameter (caused `{{StripeRefundId}}` in emails)
+   - Currency formatting bug (`$¤6.00` instead of `$6.00`) - fixed with explicit US culture
+
+5. **FreeEventRegistrationEmailParams & TicketConfirmationEmailParams** - Missing `EventDateTime` combined field
+   - Templates expected `{{EventDateTime}}` but params only provided separate `EventStartDate`/`EventStartTime`
+
+**Files Changed**:
+- `src/LankaConnect.Shared/Email/Contracts/SignupCommitmentEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/RegistrationCancellationEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/EventCancellationEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/RefundEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/FreeEventRegistrationEmailParams.cs`
+- `src/LankaConnect.Shared/Email/Contracts/TicketConfirmationEmailParams.cs`
+- `src/LankaConnect.Application/Events/EventHandlers/RefundCompletedEventHandler.cs`
+
+**Documentation**:
+- RCA Document: [RCA_EMAIL_TEMPLATE_PARAMETER_MISMATCH.md](./RCA_EMAIL_TEMPLATE_PARAMETER_MISMATCH.md)
+
+**Verification**:
+- ✅ Build successful (0 errors, 0 warnings)
+- ⏳ Pending deployment and email testing
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #51: Max Attendees Per Registration in Create Event ✅ COMPLETE
 
 ### ISSUE #51: MAX ATTENDEES PER REGISTRATION MISSING IN CREATE EVENT - 2026-02-03
 

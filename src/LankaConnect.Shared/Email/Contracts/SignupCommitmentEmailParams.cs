@@ -4,7 +4,7 @@ namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 5: Template-specific typed parameters for signup commitment emails.
-/// Templates: template-signup-commitment-confirmation, template-signup-commitment-update, template-signup-commitment-cancellation
+/// Templates: template-signup-list-commitment-confirmation, template-signup-list-commitment-update, template-signup-list-commitment-cancellation
 ///
 /// This replaces Dictionary&lt;string, object&gt; in UserCommittedToSignUpEventHandler,
 /// CommitmentUpdatedEventHandler, and CommitmentCancelledEmailHandler with
@@ -12,10 +12,12 @@ namespace LankaConnect.Shared.Email.Contracts;
 ///
 /// Parameters match exactly what the templates expect:
 /// - UserName, EventTitle, SignupItem, Quantity, EventDateTime, EventLocation, EventDetailsUrl, CommitmentType, PickupInstructions
+///
+/// Phase 6A.87 Fix: Corrected template names to include "list" (template-signup-list-commitment-*).
 /// </summary>
 public class SignupCommitmentEmailParams : IEmailParameters
 {
-    private string _templateName = "template-signup-commitment-confirmation";
+    private string _templateName = "template-signup-list-commitment-confirmation";
 
     /// <summary>
     /// The template name for signup commitment.
@@ -105,28 +107,31 @@ public class SignupCommitmentEmailParams : IEmailParameters
 
     /// <summary>
     /// Sets the template to use for confirmation emails.
+    /// Phase 6A.87 Fix: Corrected template name to include "list".
     /// </summary>
     public SignupCommitmentEmailParams AsConfirmation()
     {
-        _templateName = "template-signup-commitment-confirmation";
+        _templateName = "template-signup-list-commitment-confirmation";
         return this;
     }
 
     /// <summary>
     /// Sets the template to use for update emails.
+    /// Phase 6A.87 Fix: Corrected template name to include "list".
     /// </summary>
     public SignupCommitmentEmailParams AsUpdate()
     {
-        _templateName = "template-signup-commitment-update";
+        _templateName = "template-signup-list-commitment-update";
         return this;
     }
 
     /// <summary>
     /// Sets the template to use for cancellation emails.
+    /// Phase 6A.87 Fix: Corrected template name to include "list".
     /// </summary>
     public SignupCommitmentEmailParams AsCancellation()
     {
-        _templateName = "template-signup-commitment-cancellation";
+        _templateName = "template-signup-list-commitment-cancellation";
         return this;
     }
 

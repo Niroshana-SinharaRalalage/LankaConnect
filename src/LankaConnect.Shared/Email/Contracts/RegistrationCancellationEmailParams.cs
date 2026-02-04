@@ -1,23 +1,27 @@
+using System.Globalization;
 using LankaConnect.Shared.Email.Helpers;
 
 namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 5: Template-specific typed parameters for registration cancellation email.
-/// Template: template-registration-cancellation
+/// Template: template-event-registration-cancellation
 ///
 /// This replaces Dictionary&lt;string, object&gt; in RegistrationCancelledEventHandler with
 /// compile-time type-safe parameters.
 ///
 /// Parameters match exactly what the template expects:
 /// - UserName, EventTitle, EventStartDate, CancellationReason, RefundStatus, etc.
+///
+/// Phase 6A.87 Fix: Corrected template name to include "event-" prefix.
 /// </summary>
 public class RegistrationCancellationEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for registration cancellation.
+    /// Phase 6A.87 Fix: Corrected from "template-registration-cancellation" to include "event-" prefix.
     /// </summary>
-    public string TemplateName => "template-registration-cancellation";
+    public string TemplateName => "template-event-registration-cancellation";
 
     /// <summary>
     /// Recipient email address.
@@ -135,7 +139,8 @@ public class RegistrationCancellationEmailParams : IEmailParameters
 
         if (RefundAmount.HasValue)
         {
-            dict["RefundAmount"] = RefundAmount.Value.ToString("C");
+            // Phase 6A.87 Fix: Use explicit US culture to avoid currency symbol issues
+            dict["RefundAmount"] = RefundAmount.Value.ToString("C", CultureInfo.GetCultureInfo("en-US"));
             dict["Currency"] = Currency;
         }
 

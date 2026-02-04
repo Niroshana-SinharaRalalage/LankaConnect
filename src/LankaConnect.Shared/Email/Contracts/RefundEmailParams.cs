@@ -1,17 +1,20 @@
+using System.Globalization;
 using LankaConnect.Shared.Email.Helpers;
 
 namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 5: Template-specific typed parameters for refund-related emails.
-/// Templates: template-refund-request-created, template-refund-completed
+/// Templates: template-refund-requested, template-refund-completed
 ///
 /// This replaces Dictionary&lt;string, object&gt; in RefundRequestedEventHandler and
 /// RefundCompletedEventHandler with compile-time type-safe parameters.
+///
+/// Phase 6A.87 Fix: Corrected template names and added StripeRefundId parameter.
 /// </summary>
 public class RefundEmailParams : IEmailParameters
 {
-    private string _templateName = "template-refund-request-created";
+    private string _templateName = "template-refund-requested";
 
     /// <summary>
     /// The template name for refund email.
@@ -125,6 +128,11 @@ public class RefundEmailParams : IEmailParameters
     /// </summary>
     public string RefundDetailsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Stripe refund ID (for completed refunds - required by template).
+    /// </summary>
+    public string StripeRefundId { get; set; } = string.Empty;
+
     #endregion
 
     #region Template Type
@@ -134,7 +142,7 @@ public class RefundEmailParams : IEmailParameters
     /// </summary>
     public RefundEmailParams AsRequest()
     {
-        _templateName = "template-refund-request-created";
+        _templateName = "template-refund-requested";
         return this;
     }
 
@@ -153,23 +161,28 @@ public class RefundEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
+    /// Phase 6A.87 Fix: Added StripeRefundId and fixed currency formatting to use explicit US culture.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
+        // Use explicit US culture to avoid currency symbol issues (e.g., ¤ instead of $)
+        var usCulture = CultureInfo.GetCultureInfo("en-US");
+
         var dict = new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "EventTitle", EventTitle },
             { "EventStartDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
-            { "RefundAmount", RefundAmount.ToString("C") },
-            { "OriginalAmount", OriginalAmount.ToString("C") },
+            { "RefundAmount", RefundAmount.ToString("C", usCulture) },
+            { "OriginalAmount", OriginalAmount.ToString("C", usCulture) },
             { "Currency", Currency },
             { "RefundReason", RefundReason },
             { "RefundStatus", RefundStatus },
             { "RequestedAt", RequestedAt.ToString("MMMM dd, yyyy h:mm tt") },
             { "ProcessingMethod", ProcessingMethod },
             { "SupportEmail", SupportEmail },
-            { "RefundDetailsUrl", RefundDetailsUrl }
+            { "RefundDetailsUrl", RefundDetailsUrl },
+            { "StripeRefundId", StripeRefundId }
         };
 
         if (CompletedAt.HasValue)
@@ -253,6 +266,7 @@ public class RefundEmailParams : IEmailParameters
 
     /// <summary>
     /// Creates a new RefundEmailParams for a refund completed email.
+    /// Phase 6A.87 Fix: Added stripeRefundId parameter required by template.
     /// </summary>
     public static RefundEmailParams CreateCompleted(
         Guid userId,
@@ -267,6 +281,7 @@ public class RefundEmailParams : IEmailParameters
         decimal refundAmount,
         decimal originalAmount,
         DateTime completedAt,
+        string stripeRefundId,
         string processingMethod = "Original Payment Method")
     {
         return new RefundEmailParams
@@ -284,6 +299,7 @@ public class RefundEmailParams : IEmailParameters
             OriginalAmount = originalAmount,
             RefundStatus = "Completed",
             CompletedAt = completedAt,
+            StripeRefundId = stripeRefundId,
             ProcessingMethod = processingMethod
         }.AsCompleted();
     }

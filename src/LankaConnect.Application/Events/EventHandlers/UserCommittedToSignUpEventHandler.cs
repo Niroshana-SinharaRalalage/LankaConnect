@@ -115,7 +115,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 // Phase 6A.87+ Fix: Populate signup lists URL if event has signup lists
                 if (@event.SignUpLists?.Count > 0)
                 {
-                    emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-lists");
+                    emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
                 }
 
                 // Phase 6A.87: Send via typed email service (feature flags handled internally)

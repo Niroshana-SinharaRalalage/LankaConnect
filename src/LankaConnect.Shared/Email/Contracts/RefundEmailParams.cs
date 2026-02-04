@@ -133,6 +133,11 @@ public class RefundEmailParams : IEmailParameters
     /// </summary>
     public string StripeRefundId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Stripe payment intent ID (for refund requests - used as reference when StripeRefundId not yet available).
+    /// </summary>
+    public string PaymentIntentId { get; set; } = string.Empty;
+
     #endregion
 
     #region Organizer Contact Properties
@@ -185,16 +190,19 @@ public class RefundEmailParams : IEmailParameters
 
     /// <summary>
     /// Converts the typed parameters to a dictionary for template rendering.
-    /// Phase 6A.87 Fix: Added StripeRefundId and fixed currency formatting to use explicit US culture.
+    /// Phase 6A.87 Fix: Added StripeRefundId and fixed currency formatting.
     /// Phase 6A.87+ Fix: Added EventDateTime alias and organizer contact params.
+    /// Phase 6A.87++ Fix: Changed to F2 format (no $ symbol) since templates have $ hardcoded.
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
-        // Use explicit US culture to avoid currency symbol issues (e.g., ¤ instead of $)
-        var usCulture = CultureInfo.GetCultureInfo("en-US");
-
         var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
         var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+
+        // Phase 6A.87++ Fix: Use F2 format without $ symbol since templates have $ hardcoded
+        // This prevents double dollar sign ($$480.00)
+        var refundAmountFormatted = RefundAmount.ToString("F2", CultureInfo.InvariantCulture);
+        var originalAmountFormatted = OriginalAmount.ToString("F2", CultureInfo.InvariantCulture);
 
         var dict = new Dictionary<string, object>
         {
@@ -203,8 +211,8 @@ public class RefundEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Combined for template
-            { "RefundAmount", RefundAmount.ToString("C", usCulture) },
-            { "OriginalAmount", OriginalAmount.ToString("C", usCulture) },
+            { "RefundAmount", refundAmountFormatted },  // Phase 6A.87++ Fix: No $ symbol
+            { "OriginalAmount", originalAmountFormatted },  // Phase 6A.87++ Fix: No $ symbol
             { "Currency", Currency },
             { "RefundReason", RefundReason },
             { "RefundStatus", RefundStatus },
@@ -213,6 +221,7 @@ public class RefundEmailParams : IEmailParameters
             { "SupportEmail", SupportEmail },
             { "RefundDetailsUrl", RefundDetailsUrl },
             { "StripeRefundId", StripeRefundId },
+            { "ReferenceId", !string.IsNullOrEmpty(StripeRefundId) ? StripeRefundId : PaymentIntentId },  // Phase 6A.87++ Fix: Fallback to PaymentIntentId
 
             // Organizer contact params (for {{#HasOrganizerContact}} conditional)
             { "HasOrganizerContact", HasOrganizerContact },
@@ -288,6 +297,7 @@ public class RefundEmailParams : IEmailParameters
 
     /// <summary>
     /// Creates a new RefundEmailParams for a refund request email.
+    /// Phase 6A.87++ Fix: Added paymentIntentId parameter for reference number in email.
     /// </summary>
     public static RefundEmailParams CreateRequest(
         Guid userId,
@@ -302,7 +312,8 @@ public class RefundEmailParams : IEmailParameters
         decimal refundAmount,
         decimal originalAmount,
         string refundReason,
-        DateTime requestedAt)
+        DateTime requestedAt,
+        string? paymentIntentId = null)
     {
         return new RefundEmailParams
         {
@@ -318,7 +329,8 @@ public class RefundEmailParams : IEmailParameters
             RefundAmount = refundAmount,
             OriginalAmount = originalAmount,
             RefundReason = refundReason,
-            RequestedAt = requestedAt
+            RequestedAt = requestedAt,
+            PaymentIntentId = paymentIntentId ?? string.Empty
         }.AsRequest();
     }
 

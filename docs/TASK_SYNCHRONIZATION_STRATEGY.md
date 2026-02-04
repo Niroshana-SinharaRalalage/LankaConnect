@@ -3,8 +3,70 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.X OBSERVABILITY: REPOSITORY ENHANCEMENT ✅ COMPLETE (100% COVERAGE)
-**Date**: 2026-01-18 (Current Session)
+## 🎯 CURRENT SESSION STATUS - FIX DUPLICATE CTA BUTTONS ✅ COMPLETE
+**Date**: 2026-02-04 (Current Session)
+**Session**: Fix Duplicate CTA Buttons in Email Templates
+**Progress**: **✅ COMPLETE** - All 4 affected templates fixed and verified
+**Status**: 🎉 **BUG FIX COMPLETE** - No more duplicate buttons in email templates
+**Deployment**: ✅ SQL applied directly to staging database
+**Testing**: ✅ Python audit script confirms no duplicate buttons remain
+
+**Duplicate CTA Button Fix Summary**:
+- Audited all email templates for duplicate buttons
+- Found 4 templates with BOTH "View Event & Register" AND "View Event Details"
+- Fixed by removing redundant button per template context
+- `template-new-event-publication`: Keep "View Event & Register" (invites registration)
+- Other 3 templates: Keep "View Event Details" (more appropriate for context)
+
+**Templates Fixed**:
+- `template-new-event-publication`: Remove "View Event Details"
+- `template-event-details-publication`: Remove "View Event & Register"
+- `template-signup-list-commitment-confirmation`: Remove "View Event & Register"
+- `template-signup-list-commitment-update`: Remove "View Event & Register"
+
+**Key Files**:
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260204210000_FixDuplicateCTAButtons.cs`
+- `docs/RCA_DUPLICATE_EMAIL_CTA_BUTTONS.md`
+- `scripts/audit_cta_buttons.py`
+- `scripts/apply_cta_button_fix.py`
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - COMPREHENSIVE EMAIL LINK FIX ✅ COMPLETE
+**Date**: 2026-02-04
+**Session**: Comprehensive Email Link Fix - Add View Event Details to 11 Templates
+**Progress**: **✅ COMPLETE** - All 11 templates verified and deployed
+**Status**: 🎉 **BUG FIX COMPLETE** - All event-related emails now have View Event Details buttons
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.97: TIMEZONE-CONSISTENT DATE/TIME DISPLAY ✅ COMPLETE
+**Date**: 2026-02-02
+**Session**: Phase 6A.97 - Timezone-Consistent Date/Time Display (GitHub #40)
+**Progress**: **✅ COMPLETE** - Backend + Frontend deployed to Azure staging
+**Status**: 🎉 **FEATURE COMPLETE** - Consistent timezone display for US-based events
+**Deployment**: ✅ Backend (run #21609739219) + Frontend (run #21612085798)
+**Testing**: ✅ API returns correct TimeZoneId and TimeZoneAbbreviation for events
+
+**Phase 6A.97 Implementation Summary**:
+- Created `ITimeZoneLookupService` with all 50 US state → timezone mappings
+- Added `TimeZoneId` property to Event entity
+- Created database migration with backfill SQL for existing events
+- Updated `EmailDateTimeHelper` with timezone-aware methods
+- Updated 13+ email handlers to use event's timezone
+- Created frontend `date-formatter.ts` utility
+- Updated EventDto with timezone fields
+
+**Key Files**:
+- `src/LankaConnect.Domain/Events/Services/ITimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Services/TimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260202184513_Phase6A97_AddEventTimezone.cs`
+- `web/src/presentation/lib/utils/date-formatter.ts`
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.X OBSERVABILITY: REPOSITORY ENHANCEMENT ✅ COMPLETE (100% COVERAGE)
+**Date**: 2026-01-18
 **Session**: Phase 6A.X Observability - Batch 4 Repository Enhancement (Final 3 Repositories)
 **Progress**: **✅ COMPLETE** - All 25 repositories enhanced with comprehensive logging
 **Status**: 🎉 **MILESTONE ACHIEVED** - 100% repository coverage (158 methods total)

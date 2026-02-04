@@ -7,7 +7,103 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ISSUE #56: DUPLICATE PAYMENT EMAILS FIX (2026-02-03)
+## 🔄 CURRENT STATUS - FIX DUPLICATE CTA BUTTONS (2026-02-04)
+**Date**: 2026-02-04
+**Session**: Fix Duplicate CTA Buttons in Email Templates
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
+**Deployment**: ✅ SQL applied directly to staging database
+**Priority**: 🟡 BUG FIX - Some email templates had duplicate CTA buttons
+
+**Problem**: Some email templates had THREE buttons with same destination:
+- "View Event & Register" → `{{EventDetailsUrl}}`
+- "View Event Details" → `{{EventDetailsUrl}}`
+- "View Sign-Up Lists" → `{{EventDetailsUrl}}#sign-ups`
+
+**Root Cause**: ComprehensiveEmailLinkFix migration added "View Event Details" to templates that already had "View Event & Register" from earlier migrations.
+
+**Templates Fixed (4 total)**:
+- `template-new-event-publication`: Remove "View Event Details", keep "View Event & Register"
+- `template-event-details-publication`: Remove "View Event & Register", keep "View Event Details"
+- `template-signup-list-commitment-confirmation`: Remove "View Event & Register", keep "View Event Details"
+- `template-signup-list-commitment-update`: Remove "View Event & Register", keep "View Event Details"
+
+**Files Created**:
+- `20260204210000_FixDuplicateCTAButtons.cs`
+- `scripts/fix_duplicate_cta_buttons.sql`
+- `scripts/apply_cta_button_fix.py`
+- `docs/RCA_DUPLICATE_EMAIL_CTA_BUTTONS.md`
+
+**Verification**:
+- ✅ Database audit confirms no duplicate buttons remain
+- ✅ `template-new-event-publication` has ONLY "View Event & Register"
+
+---
+
+## ⏸️ PREVIOUS STATUS - COMPREHENSIVE EMAIL LINK FIX (2026-02-04)
+**Date**: 2026-02-04
+**Session**: Comprehensive Email Link Fix - Add View Event Details to 11 Templates
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
+**Deployment**: ✅ SQL applied directly to staging database
+**Priority**: 🟡 BUG FIX - Multiple email templates missing View Event Details links
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #56 FINAL FIX: DUPLICATE PAYMENT EMAILS (2026-02-04)
+**Date**: 2026-02-04
+**Session**: Issue #56 - Final Fix for Duplicate Payment Confirmation Emails
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings (1393 unit tests pass)
+**Deployment**: ✅ Backend (commit 054fca16) - Deployed successfully
+**Priority**: 🔴 CRITICAL BUG FIX - Duplicate payment confirmation emails still occurring
+
+**Problem**: Previous fix (PaymentIntentId guard + xmin concurrency token) didn't resolve duplicates because the TRUE root cause was nested CommitAsync during domain event dispatch.
+
+**True Root Cause**: In `AppDbContext.CommitAsync()`, `ClearDomainEvents()` was called AFTER the dispatch loop. When `PaymentCompletedEventHandler` called `TicketService.GenerateTicketAsync()` which calls `_unitOfWork.CommitAsync()`, the nested CommitAsync re-collected and re-dispatched domain events.
+
+**Final Fix Applied**:
+- Moved `ClearDomainEvents()` to immediately AFTER `SaveChangesAsync()` but BEFORE the dispatch loop
+- This ensures events are cleared from entities before any nested CommitAsync can re-collect them
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Data/AppDbContext.cs` - Core fix (move ClearDomainEvents)
+- `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` - SearchAsync signature
+- `src/LankaConnect.Application/Events/Queries/SearchEvents/SearchEventsQueryHandler.cs` - SearchAsync signature
+- `tests/LankaConnect.Application.Tests/Events/Queries/SearchEventsQueryHandlerTests.cs` - Test updates
+
+**Commit**: `054fca16` - fix(#56): Clear domain events BEFORE dispatch loop to prevent duplicates
+
+**Documentation**: [RCA_ISSUE_56_DUPLICATE_PAYMENT_CONFIRMATION_EMAILS.md](./RCA_ISSUE_56_DUPLICATE_PAYMENT_CONFIRMATION_EMAILS.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.87: EMAIL TEMPLATE PARAMETER FIXES (2026-02-04)
+**Date**: 2026-02-04
+**Session**: Phase 6A.87 - Email Template Parameter Mismatch Fixes
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING
+**Build Status**: ✅ 0 errors, 0 warnings
+**Deployment**: ✅ Backend (run #21659298437) completed successfully
+**Priority**: 🔴 BUG FIX - Email placeholders showing literally
+
+**Problem**: Multiple email templates showing raw placeholders (e.g., `{{EventDateTime}}`, `{{StripeRefundId}}`, `$¤6.00`)
+
+**Root Causes & Fixes**:
+1. **SignupCommitmentEmailParams**: 3 template names missing "list" (e.g., `template-signup-commitment-*` → `template-signup-list-commitment-*`)
+2. **RegistrationCancellationEmailParams**: Template name missing "event-" prefix
+3. **EventCancellationEmailParams**: Template name missing "-notifications" suffix
+4. **RefundEmailParams**: Wrong template name, missing StripeRefundId, bad currency formatting
+5. **Free/Paid Registration Params**: Missing `EventDateTime` combined field
+
+**Files Modified**:
+- 6 TypedEmailParams classes in `src/LankaConnect.Shared/Email/Contracts/`
+- `src/LankaConnect.Application/Events/EventHandlers/RefundCompletedEventHandler.cs`
+
+**Commit**: `e7d0892e` - fix(#Phase6A87): Fix email template parameter mismatches
+
+**Documentation**: [RCA_EMAIL_TEMPLATE_PARAMETER_MISMATCH.md](./RCA_EMAIL_TEMPLATE_PARAMETER_MISMATCH.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #56: DUPLICATE PAYMENT EMAILS FIX (2026-02-03)
 **Date**: 2026-02-03
 **Session**: Issue #56 - Two Emails for Payment Confirmation
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING - QA READY

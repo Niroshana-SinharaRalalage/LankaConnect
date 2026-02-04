@@ -1,9 +1,95 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-04 - Issue #39: Event Details Link in Registration Emails FIX ✅ DEPLOYED*
+*Last Updated: 2026-02-04 - Fix Duplicate CTA Buttons in Email Templates ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Issue #39: Event Details Link in Registration Emails ✅ DEPLOYED
+## 🎯 Current Session Status - Fix Duplicate CTA Buttons ✅ DEPLOYED
+
+### FIX DUPLICATE CTA BUTTONS IN EMAIL TEMPLATES - 2026-02-04
+
+**Status**: ✅ **DEPLOYED TO STAGING & VERIFIED**
+
+**Priority**: 🟡 **BUG FIX** - Some email templates had duplicate CTA buttons
+
+**Problem Statement**:
+User reported that some email templates had THREE buttons with the same destination:
+- "View Event & Register" → `{{EventDetailsUrl}}`
+- "View Event Details" → `{{EventDetailsUrl}}`
+- "View Sign-Up Lists" → `{{EventDetailsUrl}}#sign-ups`
+
+The first two buttons pointed to the same URL, creating redundancy.
+
+**Root Cause**:
+The `ComprehensiveEmailLinkFix` migration added "View Event Details" buttons to templates that already had "View Event & Register" buttons from earlier migrations, without checking for duplicates.
+
+**Templates Fixed (4 total)**:
+
+| Template | Action | Result |
+|----------|--------|--------|
+| `template-new-event-publication` | Remove "View Event Details" | Keep "View Event & Register" (correct for registration invitation) |
+| `template-event-details-publication` | Remove "View Event & Register" | Keep "View Event Details" (manual notification) |
+| `template-signup-list-commitment-confirmation` | Remove "View Event & Register" | Keep "View Event Details" (user already committed) |
+| `template-signup-list-commitment-update` | Remove "View Event & Register" | Keep "View Event Details" (user already committed) |
+
+**Files Created**:
+- `20260204210000_FixDuplicateCTAButtons.cs`
+- `scripts/fix_duplicate_cta_buttons.sql`
+- `scripts/apply_cta_button_fix.py`
+- `scripts/audit_cta_buttons.py`
+- `docs/RCA_DUPLICATE_EMAIL_CTA_BUTTONS.md`
+
+**Verification**:
+- ✅ Database audit confirms no duplicate buttons remain
+- ✅ `template-new-event-publication` has ONLY "View Event & Register" + "View Sign-Up Lists"
+- ✅ All other event templates use "View Event Details" as primary CTA
+
+---
+
+## ⏸️ PREVIOUS STATUS - Comprehensive Email Link Fix ✅ DEPLOYED
+
+### COMPREHENSIVE EMAIL LINK FIX: ADD VIEW EVENT DETAILS BUTTONS - 2026-02-04
+
+**Status**: ✅ **DEPLOYED TO STAGING & VERIFIED**
+
+**Priority**: 🟡 **BUG FIX** - Multiple email templates missing "View Event Details" links
+
+**Problem Statement**:
+Following Issue #39 fix, comprehensive audit revealed 11 additional email templates were missing "View Event Details" buttons despite handlers passing `EventDetailsUrl` parameter. Signup commitment emails also needed "View Sign-Up Lists" anchor links.
+
+**Templates Fixed (11 total)**:
+
+**HIGH PRIORITY (Signup Commitment - Both Buttons)**:
+1. `template-signup-list-commitment-confirmation` - ✅ View Event Details + View Sign-Up Lists
+2. `template-signup-list-commitment-update` - ✅ View Event Details + View Sign-Up Lists
+3. `template-signup-list-commitment-cancellation` - ✅ View Event Details + View Sign-Up Lists
+
+**MEDIUM PRIORITY (Event-Related)**:
+4. `template-attendees-added-confirmation` - ✅ View Event Details
+5. `template-event-registration-cancellation` - ✅ View Event Details
+6. `template-event-approval` - ✅ View Event Details + View Sign-Up Lists
+7. `template-event-details-publication` - ✅ View Event Details + View Sign-Up Lists
+8. `template-new-event-publication` - ✅ View Event Details + View Sign-Up Lists
+9. `template-preliminary-registration-payment-pending` - ✅ View Event Details
+
+**LOW PRIORITY (Refund)**:
+10. `template-refund-completed` - ✅ View Event Details
+11. `template-refund-requested` - ✅ View Event Details
+
+**Button Styles**:
+- **View Event Details**: Gradient (orange → red), 16px font, 14px/28px padding
+- **View Sign-Up Lists**: Green (#166534), 14px font, anchor link to `{{EventDetailsUrl}}#sign-ups`
+
+**Files Created**:
+- `20260204195000_ComprehensiveEmailLinkFix_AddViewEventDetailsButtons.cs`
+
+**Verification**:
+- ✅ All 11 templates verified to have "View Event Details" button
+- ✅ 5 signup-related templates have "View Sign-Up Lists" anchor link
+- ✅ SQL applied directly to staging database (migrations not auto-applying)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #39: Event Details Link in Registration Emails ✅ DEPLOYED
 
 ### ISSUE #39 FIX: EVENT DETAILS LINK NOT SHOWING IN REGISTRATION EMAILS - 2026-02-04
 

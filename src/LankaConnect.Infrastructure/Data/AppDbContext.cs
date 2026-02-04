@@ -437,6 +437,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
         var result = await SaveChangesAsync(cancellationToken);
         _logger.LogInformation("[DIAG-16] SaveChangesAsync completed, {Count} entities saved", result);
 
+        // Issue #56 FIX: Clear domain events IMMEDIATELY after save, BEFORE dispatching
+        // This prevents nested CommitAsync calls (e.g., from TicketService during PaymentCompletedEventHandler)
+        // from re-collecting and re-dispatching the same domain events, which caused duplicate emails.
+        // The domain events are already captured in the local 'domainEvents' list, so clearing them
+        // from the entities is safe and necessary to prevent double dispatch.
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            entry.Entity.ClearDomainEvents();
+        }
+        _logger.LogInformation("[Issue #56] Domain events cleared from entities to prevent double dispatch");
+
         // Dispatch domain events after successful save
         if (domainEvents.Any())
         {
@@ -474,12 +485,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 {
                     _logger.LogWarning("[Phase 6A.24] Failed to create notification for domain event: {EventType}", eventType.Name);
                 }
-            }
-
-            // Clear domain events after publishing
-            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
-            {
-                entry.Entity.ClearDomainEvents();
             }
 
             _logger.LogInformation("[Phase 6A.24] Successfully dispatched all {Count} domain events", domainEvents.Count);

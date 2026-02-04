@@ -65,6 +65,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
                     // Step 1a: Apply full-text search with filters
                     // Phase 6A.X Issue #36: Do not exclude cancelled events in GetEvents (events list page)
+                    // Issue #33 FIX: Pass IncludeAllStatuses to SearchAsync for Dashboard Event Management
                     (events, _) = await _eventRepository.SearchAsync(
                         request.SearchTerm,
                         limit: 1000, // Large limit for search
@@ -73,6 +74,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                         request.IsFreeOnly,
                         request.StartDateFrom,
                         excludeCancelled: false, // GetEvents shows all events including cancelled
+                        includeAllStatuses: request.IncludeAllStatuses, // Issue #33: Pass flag for Dashboard search
                         cancellationToken);
 
                     _logger.LogInformation(

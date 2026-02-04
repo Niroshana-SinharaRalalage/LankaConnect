@@ -81,6 +81,7 @@ public class SearchEventsQueryHandler : IQueryHandler<SearchEventsQuery, PagedRe
                     request.IsFreeOnly,
                     request.StartDateFrom,
                     request.ExcludeCancelled,
+                    includeAllStatuses: false, // Issue #33: Only show Approved events
                     cancellationToken);
 
                 _logger.LogInformation(

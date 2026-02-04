@@ -45,6 +45,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((events, totalCount));
 
@@ -87,6 +88,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -123,6 +125,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -143,6 +146,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -166,6 +170,7 @@ public class SearchEventsQueryHandlerTests
                 true,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -186,6 +191,7 @@ public class SearchEventsQueryHandlerTests
                 true,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -210,6 +216,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 startDate,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -230,6 +237,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 startDate,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -249,6 +257,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -269,6 +278,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -295,6 +305,7 @@ public class SearchEventsQueryHandlerTests
                 false,
                 startDate,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((Array.Empty<Event>(), 0));
 
@@ -315,6 +326,7 @@ public class SearchEventsQueryHandlerTests
                 false,
                 startDate,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -336,6 +348,7 @@ public class SearchEventsQueryHandlerTests
                 query.IsFreeOnly,
                 query.StartDateFrom,
                 It.IsAny<bool>(),  // excludeCancelled
+                It.IsAny<bool>(),  // includeAllStatuses (Issue #33)
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((events, totalCount));
 

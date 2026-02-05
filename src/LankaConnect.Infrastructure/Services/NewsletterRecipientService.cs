@@ -391,7 +391,9 @@ public class NewsletterRecipientService : INewsletterRecipientService
         CancellationToken cancellationToken)
     {
         var allSubscribers = new List<NewsletterSubscriber>();
+        var metroSubscriberCount = 0;
 
+        // Query 1: Get subscribers by metro area (junction table)
         foreach (var metroAreaId in metroAreaIds)
         {
             try
@@ -414,13 +416,42 @@ public class NewsletterRecipientService : INewsletterRecipientService
             }
         }
 
+        // Track metro subscriber count before adding all-locations
+        metroSubscriberCount = allSubscribers.DistinctBy(s => s.Id).Count();
+
+        // Phase 6A.98 FIX: Query 2: ALWAYS include "All Locations" subscribers
+        // This matches EventNotificationRecipientService pattern which correctly includes
+        // subscribers with receive_all_locations=true regardless of junction table entries.
+        // Bug: When newsletter targets "All Locations", Phase 6A.85 populates all 84 metros,
+        // but subscribers who selected "All Locations" have NO junction table entries.
+        // Fix: Explicitly query and include receive_all_locations=true subscribers.
+        IReadOnlyList<NewsletterSubscriber> allLocationsSubscribers;
+        try
+        {
+            allLocationsSubscribers = await _subscriberRepository.GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "[Phase 6A.98 FIX] Found {Count} all-locations subscribers to include in metro-based query",
+                allLocationsSubscribers.Count);
+
+            allSubscribers.AddRange(allLocationsSubscribers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.98 FIX] Failed to get all-locations subscribers");
+            allLocationsSubscribers = new List<NewsletterSubscriber>();
+        }
+
         // Deduplicate subscribers who may be subscribed to multiple metros
         var uniqueSubscribers = allSubscribers
             .DistinctBy(s => s.Id)
             .ToList();
 
-        _logger.LogInformation("[Phase 6A.74] Found {TotalSubscribers} total, {UniqueSubscribers} unique subscribers for {MetroAreaCount} metro areas",
-            allSubscribers.Count, uniqueSubscribers.Count, metroAreaIds.Count);
+        _logger.LogInformation(
+            "[Phase 6A.98 FIX] Found {TotalSubscribers} total, {UniqueSubscribers} unique subscribers " +
+            "(Metro: {MetroCount}, AllLocations: {AllLocationsCount}) for {MetroAreaCount} metro areas",
+            allSubscribers.Count, uniqueSubscribers.Count, metroSubscriberCount,
+            allLocationsSubscribers.Count, metroAreaIds.Count);
 
         var emails = uniqueSubscribers
             .Select(s => s.Email.Value)
@@ -428,9 +459,9 @@ public class NewsletterRecipientService : INewsletterRecipientService
 
         return new NewsletterSubscriberBreakdown(
             Emails: emails,
-            MetroCount: uniqueSubscribers.Count,
+            MetroCount: metroSubscriberCount,
             StateCount: 0,
-            AllLocationsCount: 0);
+            AllLocationsCount: allLocationsSubscribers.Count);
     }
 
     private static RecipientPreviewDto CreateEmptyResult()

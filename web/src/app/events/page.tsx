@@ -13,7 +13,7 @@ import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
-import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventDto, EventStatusFilter, EventStatusFilterLabels } from '@/infrastructure/api/types/events.types';
 import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
@@ -60,6 +60,8 @@ export default function EventsPage() {
   const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
   const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
   const [searchInput, setSearchInput] = useState<string>(''); // Phase 6A.58: Immediate search input (local state)
+  // Issue #36: Status filter state - defaults to Active Events for better UX
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>(EventStatusFilter.Active);
 
   // Phase 6A.72: Debounce search term to avoid excessive API calls
   // PERFORMANCE FIX: Use 500ms debounce for smoother typing experience (was 300ms)
@@ -80,6 +82,8 @@ export default function EventsPage() {
     return {
       searchTerm: debouncedSearchTerm || undefined,
       category: selectedCategory,
+      // Issue #36: Status filter for user-friendly status grouping
+      statusFilter: statusFilter,
       userId: user?.userId,
       latitude: isAnonymous ? latitude ?? undefined : undefined,
       longitude: isAnonymous ? longitude ?? undefined : undefined,
@@ -87,7 +91,7 @@ export default function EventsPage() {
       state: selectedState,
       ...dateRange,
     };
-  }, [debouncedSearchTerm, selectedCategory, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
+  }, [debouncedSearchTerm, selectedCategory, statusFilter, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
@@ -158,15 +162,22 @@ export default function EventsPage() {
     setDateRangeOption(e.target.value as DateRangeOption);
   };
 
+  // Issue #36: Handle status filter change
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(parseInt(e.target.value, 10) as EventStatusFilter);
+  };
+
   const clearFilters = () => {
     setSearchInput(''); // Phase 6A.59: Clear search input (local state)
     setSelectedCategory(undefined);
     setSelectedMetroIds([]);
     setSelectedState(undefined);
     setDateRangeOption('upcoming');
+    setStatusFilter(EventStatusFilter.Active); // Issue #36: Reset to default Active filter
   };
 
-  const hasActiveFilters = searchInput !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
+  // Issue #36: Updated to include status filter in active filters check
+  const hasActiveFilters = searchInput !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming' || statusFilter !== EventStatusFilter.Active;
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
@@ -271,7 +282,7 @@ export default function EventsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Event Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -289,6 +300,24 @@ export default function EventsPage() {
                       {category.label}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Issue #36: Event Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Event Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  disabled={isLoading}
+                >
+                  <option value={EventStatusFilter.All}>{EventStatusFilterLabels[EventStatusFilter.All]}</option>
+                  <option value={EventStatusFilter.Active}>{EventStatusFilterLabels[EventStatusFilter.Active]}</option>
+                  <option value={EventStatusFilter.Inactive}>{EventStatusFilterLabels[EventStatusFilter.Inactive]}</option>
+                  <option value={EventStatusFilter.Cancelled}>{EventStatusFilterLabels[EventStatusFilter.Cancelled]}</option>
                 </select>
               </div>
 

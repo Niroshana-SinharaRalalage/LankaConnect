@@ -22,6 +22,36 @@ export enum EventStatus {
 }
 
 /**
+ * Issue #36: User-friendly status filter groups for event listing pages.
+ * Maps to multiple EventStatus values internally for simplified filtering.
+ *
+ * Mappings:
+ * - All: Everything (context-dependent: public excludes Draft/UnderReview)
+ * - Active: Published + Active (upcoming/ongoing events)
+ * - Inactive: Completed + Archived + Postponed (past/paused events)
+ * - Cancelled: Cancelled only
+ * - Unpublished: Draft + UnderReview (organizer-only visibility)
+ */
+export enum EventStatusFilter {
+  All = 0,
+  Active = 1,
+  Inactive = 2,
+  Cancelled = 3,
+  Unpublished = 4,
+}
+
+/**
+ * Issue #36: Display labels for EventStatusFilter options
+ */
+export const EventStatusFilterLabels: Record<EventStatusFilter, string> = {
+  [EventStatusFilter.All]: 'All Events',
+  [EventStatusFilter.Active]: 'Active Events',
+  [EventStatusFilter.Inactive]: 'Inactive Events',
+  [EventStatusFilter.Cancelled]: 'Cancelled Events',
+  [EventStatusFilter.Unpublished]: 'Unpublished Events',
+};
+
+/**
  * Event category enum matching backend LankaConnect.Domain.Events.Enums.EventCategory
  */
 export enum EventCategory {
@@ -461,9 +491,16 @@ export interface SignUpListDto {
  * - For authenticated users without preferences: userId (uses user's home location)
  * - For anonymous users: latitude + longitude (uses provided coordinates)
  * - For specific metro filter: metroAreaIds
+ *
+ * Issue #36: Status filtering options:
+ * - status: Single specific status filter (legacy, backward compatible)
+ * - statusFilter: User-friendly status group filter (Active, Inactive, Cancelled, etc.)
+ * - statusFilter takes precedence over status when both provided
  */
 export interface GetEventsRequest {
   status?: EventStatus;
+  /** Issue #36: User-friendly status filter (takes precedence over status) */
+  statusFilter?: EventStatusFilter;
   category?: EventCategory;
   startDateFrom?: string; // ISO 8601 date
   startDateTo?: string; // ISO 8601 date
@@ -475,6 +512,8 @@ export interface GetEventsRequest {
   longitude?: number; // NEW: Longitude for anonymous user location-based sorting
   metroAreaIds?: string[]; // NEW: Specific metro area IDs filter
   searchTerm?: string; // Phase 6A.58: Text-based search filter
+  /** Issue #36: When true, includes Draft/UnderReview events (organizer view) */
+  includeAllStatuses?: boolean;
 }
 
 /**

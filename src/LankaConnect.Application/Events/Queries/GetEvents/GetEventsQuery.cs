@@ -12,9 +12,16 @@ namespace LankaConnect.Application.Events.Queries.GetEvents;
 /// - For anonymous users: Sort by provided coordinates
 /// Phase 6A.47: Added SearchTerm for full-text search integration
 /// Phase 6A.88: Added IncludeAllStatuses to control Draft/UnderReview visibility
+/// Issue #36: Added StatusFilter for user-friendly status group filtering
 /// </summary>
 public record GetEventsQuery(
     EventStatus? Status = null,
+    /// <summary>
+    /// Issue #36: User-friendly status filter that maps to multiple EventStatus values.
+    /// When provided, takes precedence over the Status parameter.
+    /// See EventStatusFilter enum for mappings.
+    /// </summary>
+    EventStatusFilter? StatusFilter = null,
     EventCategory? Category = null,
     DateTime? StartDateFrom = null,
     DateTime? StartDateTo = null,

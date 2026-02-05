@@ -6,7 +6,8 @@ import { SearchInput } from './SearchInput';
 import { CategoryFilter } from './CategoryFilter';
 import { DateRangeFilter, getDateRangeFromPreset, type DateRangePreset } from './DateRangeFilter';
 import { LocationFilter } from './LocationFilter';
-import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
+import { StatusFilter } from './StatusFilter';
+import { EventCategory, EventStatus, EventStatusFilter } from '@/infrastructure/api/types/events.types';
 
 export interface EventFiltersState {
   searchTerm: string;
@@ -14,6 +15,8 @@ export interface EventFiltersState {
   dateRange: DateRangePreset;
   metroAreaIds: string[];
   state?: string;
+  /** Issue #36: User-friendly status filter */
+  statusFilter?: EventStatusFilter | null;
 }
 
 export interface EventFiltersProps {
@@ -26,6 +29,10 @@ export interface EventFiltersProps {
   showCategory?: boolean;
   showDateRange?: boolean;
   showLocation?: boolean;
+  /** Issue #36: Show status filter dropdown */
+  showStatusFilter?: boolean;
+  /** Issue #36: Show "Unpublished" option in status filter (for organizers) */
+  showUnpublished?: boolean;
   /** Custom class name */
   className?: string;
 }
@@ -68,6 +75,8 @@ export function EventFilters({
   showCategory = true,
   showDateRange = true,
   showLocation = true,
+  showStatusFilter = false,
+  showUnpublished = false,
   className = '',
 }: EventFiltersProps) {
   // Local state for immediate search input updates (before debounce)
@@ -114,6 +123,11 @@ export function EventFilters({
     onFiltersChange({ ...filters, metroAreaIds });
   };
 
+  // Issue #36: Handle status filter change
+  const handleStatusFilterChange = (statusFilter: EventStatusFilter | null) => {
+    onFiltersChange({ ...filters, statusFilter });
+  };
+
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${className}`}>
       {/* Search Input */}
@@ -137,6 +151,20 @@ export function EventFilters({
             Category
           </label>
           <CategoryFilter value={filters.category} onChange={handleCategoryChange} />
+        </div>
+      )}
+
+      {/* Issue #36: Status Filter */}
+      {showStatusFilter && (
+        <div className="lg:col-span-1">
+          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+            Status
+          </label>
+          <StatusFilter
+            value={filters.statusFilter ?? null}
+            onChange={handleStatusFilterChange}
+            showUnpublished={showUnpublished}
+          />
         </div>
       )}
 
@@ -169,8 +197,12 @@ export function EventFilters({
 /**
  * Utility function to convert EventFiltersState to API request parameters
  * Handles date range preset conversion to actual dates
+ * Issue #36: Added statusFilter and includeAllStatuses parameters
+ *
+ * @param filters - Current filter state
+ * @param includeAllStatuses - When true, includes Draft/UnderReview events (for organizer view)
  */
-export function filtersToApiParams(filters: EventFiltersState) {
+export function filtersToApiParams(filters: EventFiltersState, includeAllStatuses = false) {
   const dateRange = getDateRangeFromPreset(filters.dateRange);
 
   return {
@@ -180,5 +212,10 @@ export function filtersToApiParams(filters: EventFiltersState) {
     startDateTo: dateRange.startDateTo,
     state: filters.state,
     metroAreaIds: filters.metroAreaIds.length > 0 ? filters.metroAreaIds : undefined,
+    // Issue #36: Status filter parameters
+    statusFilter: filters.statusFilter !== null && filters.statusFilter !== undefined
+      ? filters.statusFilter
+      : undefined,
+    includeAllStatuses: includeAllStatuses || undefined,
   };
 }

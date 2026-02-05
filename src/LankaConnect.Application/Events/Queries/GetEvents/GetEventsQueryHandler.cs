@@ -47,8 +47,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "GetEvents START: Category={Category}, City={City}, State={State}, Status={Status}, SearchTerm={SearchTerm}, IsFreeOnly={IsFreeOnly}, UserId={UserId}, HasLocation={HasLocation}",
-                request.Category, request.City, request.State, request.Status, request.SearchTerm,
+                "GetEvents START: Category={Category}, City={City}, State={State}, Status={Status}, StatusFilter={StatusFilter}, SearchTerm={SearchTerm}, IsFreeOnly={IsFreeOnly}, UserId={UserId}, HasLocation={HasLocation}",
+                request.Category, request.City, request.State, request.Status, request.StatusFilter, request.SearchTerm,
                 request.IsFreeOnly, request.UserId, request.Latitude.HasValue && request.Longitude.HasValue);
 
             try
@@ -142,15 +142,93 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     }
 
     /// <summary>
+    /// Issue #36: Resolves EventStatusFilter to an array of EventStatus values.
+    /// Maps user-friendly filter groups to actual backend statuses.
+    /// </summary>
+    private static EventStatus[]? ResolveStatusFilter(EventStatusFilter? statusFilter, bool includeAllStatuses)
+    {
+        if (!statusFilter.HasValue)
+            return null;
+
+        return statusFilter.Value switch
+        {
+            EventStatusFilter.Active => new[]
+            {
+                EventStatus.Published,
+                EventStatus.Active
+            },
+            EventStatusFilter.Inactive => new[]
+            {
+                EventStatus.Completed,
+                EventStatus.Archived,
+                EventStatus.Postponed
+            },
+            EventStatusFilter.Cancelled => new[]
+            {
+                EventStatus.Cancelled
+            },
+            EventStatusFilter.Unpublished => includeAllStatuses
+                ? new[] { EventStatus.Draft, EventStatus.UnderReview }
+                : Array.Empty<EventStatus>(), // Security: Unpublished requires IncludeAllStatuses
+            EventStatusFilter.All => null, // null means no status filter (handled separately)
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// Gets filtered events based on status, city, or defaults to all visible events
     /// Phase 6A.59: Changed default from Published-only to all except Draft/UnderReview
     /// Phase 6A.88: Added IncludeAllStatuses flag to control Draft/UnderReview visibility
+    /// Issue #36: Added StatusFilter support for user-friendly status group filtering
     /// This allows cancelled events to be visible to users
     /// </summary>
     private async Task<IReadOnlyList<Event>> GetFilteredEventsAsync(
         GetEventsQuery request,
         CancellationToken cancellationToken)
     {
+        // Issue #36: StatusFilter takes precedence over Status when provided
+        if (request.StatusFilter.HasValue)
+        {
+            var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
+
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using StatusFilter={StatusFilter}, ResolvedStatuses={ResolvedStatuses}, IncludeAllStatuses={IncludeAllStatuses}",
+                request.StatusFilter.Value,
+                resolvedStatuses != null ? string.Join(",", resolvedStatuses) : "null (All)",
+                request.IncludeAllStatuses);
+
+            // Get all events first
+            var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
+
+            // Handle "All" filter
+            if (resolvedStatuses == null)
+            {
+                // For "All" with IncludeAllStatuses=true: return everything
+                if (request.IncludeAllStatuses)
+                {
+                    return allEvents.ToList();
+                }
+
+                // For "All" without IncludeAllStatuses: exclude Draft/UnderReview (public view)
+                return allEvents
+                    .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
+                    .ToList();
+            }
+
+            // Handle Unpublished filter without authorization (returns empty)
+            if (resolvedStatuses.Length == 0)
+            {
+                _logger.LogWarning(
+                    "GetFilteredEventsAsync: Unpublished filter requested without IncludeAllStatuses=true, returning empty list");
+                return Array.Empty<Event>();
+            }
+
+            // Filter by resolved statuses
+            return allEvents
+                .Where(e => resolvedStatuses.Contains(e.Status))
+                .ToList();
+        }
+
         // If status filter is provided, use repository method
         if (request.Status.HasValue)
         {
@@ -170,27 +248,27 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         }
 
         // Get all events from repository
-        var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
+        var allEventsDefault = await _eventRepository.GetAllAsync(cancellationToken);
 
         // Phase 6A.88: If IncludeAllStatuses is true, return ALL events (for organizer's Event Management)
         if (request.IncludeAllStatuses)
         {
             _logger.LogDebug(
                 "GetFilteredEventsAsync: IncludeAllStatuses=true, returning all {EventCount} events including Draft/UnderReview",
-                allEvents.Count);
-            return allEvents.ToList();
+                allEventsDefault.Count);
+            return allEventsDefault.ToList();
         }
 
         // Phase 6A.59: Default behavior - exclude Draft and UnderReview for public listings
         // This includes Published, Active, Cancelled, Completed, Archived, Postponed
         // Cancelled events will show with CANCELLED badge in UI
-        var filteredEvents = allEvents
+        var filteredEvents = allEventsDefault
             .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
             .ToList();
 
         _logger.LogDebug(
             "GetFilteredEventsAsync: IncludeAllStatuses=false (default), filtered from {TotalCount} to {FilteredCount} events (excluded Draft/UnderReview)",
-            allEvents.Count, filteredEvents.Count);
+            allEventsDefault.Count, filteredEvents.Count);
 
         return filteredEvents;
     }

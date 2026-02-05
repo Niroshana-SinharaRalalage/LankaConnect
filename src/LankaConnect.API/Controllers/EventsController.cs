@@ -98,12 +98,14 @@ public class EventsController : BaseController<EventsController>
     /// <summary>
     /// Get all events with optional filtering and location-based sorting
     /// Phase 6A.47: Added searchTerm parameter for text-based search
+    /// Issue #36: Added statusFilter parameter for user-friendly status group filtering
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetEvents(
         [FromQuery] EventStatus? status = null,
+        [FromQuery] EventStatusFilter? statusFilter = null,
         [FromQuery] EventCategory? category = null,
         [FromQuery] DateTime? startDateFrom = null,
         [FromQuery] DateTime? startDateTo = null,
@@ -114,14 +116,16 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] decimal? latitude = null,
         [FromQuery] decimal? longitude = null,
         [FromQuery] List<Guid>? metroAreaIds = null,
-        [FromQuery] string? searchTerm = null)
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] bool includeAllStatuses = false)
     {
         Logger.LogInformation(
-            "Getting events with filters: status={Status}, category={Category}, city={City}, state={State}, userId={UserId}, searchTerm={SearchTerm}",
-            status, category, city, state, userId, searchTerm);
+            "Getting events with filters: status={Status}, statusFilter={StatusFilter}, category={Category}, city={City}, state={State}, userId={UserId}, searchTerm={SearchTerm}, includeAllStatuses={IncludeAllStatuses}",
+            status, statusFilter, category, city, state, userId, searchTerm, includeAllStatuses);
 
         var query = new GetEventsQuery(
             status,
+            statusFilter,
             category,
             startDateFrom,
             startDateTo,
@@ -132,7 +136,8 @@ public class EventsController : BaseController<EventsController>
             latitude,
             longitude,
             metroAreaIds,
-            searchTerm);
+            searchTerm,
+            includeAllStatuses);
 
         var result = await Mediator.Send(query);
 

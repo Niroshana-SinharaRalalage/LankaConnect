@@ -37,7 +37,7 @@ import { NewslettersTab } from '@/presentation/components/features/newsletters/N
 // Phase 6A.89: Consolidated admin tasks into single component
 import { AdminTasksTab } from '@/presentation/components/features/admin/AdminTasksTab';
 import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
-import type { EventDto } from '@/infrastructure/api/types/events.types';
+import type { EventDto, EventStatusFilter } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 import { CancelEventModal } from '@/presentation/components/features/events/CancelEventModal';
 import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
@@ -76,11 +76,13 @@ function DashboardContent() {
     metroAreaIds: [],
   });
 
+  // Issue #36: Status filter initialized to null (All Events) for organizers to see all their events
   const [createdFilters, setCreatedFilters] = useState<EventFiltersState>({
     searchTerm: '',
     category: null,
     dateRange: 'all',
     metroAreaIds: [],
+    statusFilter: null, // null = All Events (including Draft/UnderReview for organizers)
   });
 
   // State for admin approvals
@@ -120,12 +122,14 @@ function DashboardContent() {
   }, [user, registeredFilters]); // Phase 6A.58: Re-fetch when filters change
 
   // Phase 6A.58: Load created events (for Event Organizers and Admins) with filters
+  // Issue #36: Pass includeAllStatuses=true to see Draft/UnderReview events
   useEffect(() => {
     const loadCreatedEvents = async () => {
       try {
         setLoadingCreated(true);
         // Phase 6A.58: Pass filters to getUserCreatedEvents
-        const apiParams = filtersToApiParams(createdFilters);
+        // Issue #36: Pass includeAllStatuses=true to include Draft/UnderReview events
+        const apiParams = filtersToApiParams(createdFilters, true);
         const events = await eventsRepository.getUserCreatedEvents(apiParams);
         setCreatedEvents(events);
       } catch (error) {
@@ -354,6 +358,7 @@ function DashboardContent() {
                               </Button>
                             </div>
                             {/* Phase 6A.58: Event Filters for Event Management */}
+                            {/* Issue #36: Added status filter with Unpublished option */}
                             <div className="mb-6">
                               <EventFilters
                                 filters={createdFilters}
@@ -362,6 +367,8 @@ function DashboardContent() {
                                 showCategory={true}
                                 showDateRange={true}
                                 showLocation={true}
+                                showStatusFilter={true}
+                                showUnpublished={true}
                               />
                             </div>
                             {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
@@ -488,6 +495,7 @@ function DashboardContent() {
                               </Button>
                             </div>
                             {/* Phase 6A.58: Event Filters for Event Management */}
+                            {/* Issue #36: Added status filter with Unpublished option */}
                             <div className="mb-6">
                               <EventFilters
                                 filters={createdFilters}
@@ -496,6 +504,8 @@ function DashboardContent() {
                                 showCategory={true}
                                 showDateRange={true}
                                 showLocation={true}
+                                showStatusFilter={true}
+                                showUnpublished={true}
                               />
                             </div>
                             {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}

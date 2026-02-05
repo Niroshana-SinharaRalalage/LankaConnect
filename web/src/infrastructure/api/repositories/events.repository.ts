@@ -83,12 +83,18 @@ export class EventsRepository {
    * - For authenticated users: Pass userId to sort by preferred metros or home location
    * - For anonymous users: Pass latitude + longitude to sort by coordinates
    * - For specific metro filter: Pass metroAreaIds
+   *
+   * Issue #36: Status filtering:
+   * - statusFilter: User-friendly status group filter (Active, Inactive, Cancelled, Unpublished, All)
+   * - includeAllStatuses: When true, includes Draft/UnderReview events (for organizer view)
    */
   async getEvents(filters: GetEventsRequest = {}): Promise<EventDto[]> {
     const params = new URLSearchParams();
 
     // Traditional filters
     if (filters.status !== undefined) params.append('status', String(filters.status));
+    // Issue #36: User-friendly status filter (takes precedence over status)
+    if (filters.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
     if (filters.category !== undefined) params.append('category', String(filters.category));
     if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
     if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
@@ -107,6 +113,9 @@ export class EventsRepository {
 
     // Phase 6A.58: Text search filter
     if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+
+    // Issue #36: Include Draft/UnderReview events (for organizer's Event Management view)
+    if (filters.includeAllStatuses) params.append('includeAllStatuses', 'true');
 
     const queryString = params.toString();
     const url = queryString ? `${this.basePath}?${queryString}` : this.basePath;

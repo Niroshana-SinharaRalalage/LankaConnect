@@ -298,6 +298,87 @@ public class RegistrationCancellationEmailParamsTests
 
     #endregion
 
+    #region Phase 6A.97+ Fix: Organizer Contact Tests
+
+    [Fact]
+    public void RegistrationCancellationEmailParams_ShouldHaveOrganizerContactProperties()
+    {
+        // Arrange & Act
+        var emailParams = new RegistrationCancellationEmailParams();
+
+        // Assert - properties should exist and have default values
+        emailParams.HasOrganizerContact.Should().BeFalse();
+        emailParams.OrganizerContactName.Should().BeEmpty();
+        emailParams.OrganizerContactEmail.Should().BeEmpty();
+        emailParams.OrganizerContactPhone.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WithOrganizerContact_ShouldSetHasOrganizerContactTrue()
+    {
+        // Arrange
+        var emailParams = CreateValidParams();
+
+        // Act
+        emailParams.WithOrganizerContact("Jane Smith", "jane@example.com", "555-1234");
+
+        // Assert
+        emailParams.HasOrganizerContact.Should().BeTrue();
+        emailParams.OrganizerContactName.Should().Be("Jane Smith");
+        emailParams.OrganizerContactEmail.Should().Be("jane@example.com");
+        emailParams.OrganizerContactPhone.Should().Be("555-1234");
+    }
+
+    [Fact]
+    public void WithOrganizerContact_WithNullName_ShouldSetHasOrganizerContactFalse()
+    {
+        // Arrange
+        var emailParams = CreateValidParams();
+
+        // Act
+        emailParams.WithOrganizerContact(null, "jane@example.com");
+
+        // Assert
+        emailParams.HasOrganizerContact.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToDictionary_ShouldIncludeOrganizerContactParams()
+    {
+        // Arrange
+        var emailParams = CreateValidParams();
+        emailParams.WithOrganizerContact("Jane Smith", "jane@example.com", "555-1234");
+
+        // Act
+        var dict = emailParams.ToDictionary();
+
+        // Assert
+        dict.Should().ContainKey("HasOrganizerContact");
+        dict.Should().ContainKey("OrganizerContactName");
+        dict.Should().ContainKey("OrganizerContactEmail");
+        dict.Should().ContainKey("OrganizerContactPhone");
+        dict["HasOrganizerContact"].Should().Be(true);
+        dict["OrganizerContactName"].Should().Be("Jane Smith");
+        dict["OrganizerContactEmail"].Should().Be("jane@example.com");
+        dict["OrganizerContactPhone"].Should().Be("555-1234");
+    }
+
+    [Fact]
+    public void ToDictionary_WithoutOrganizerContact_ShouldIncludeFalseHasOrganizerContact()
+    {
+        // Arrange
+        var emailParams = CreateValidParams();
+
+        // Act
+        var dict = emailParams.ToDictionary();
+
+        // Assert
+        dict.Should().ContainKey("HasOrganizerContact");
+        dict["HasOrganizerContact"].Should().Be(false);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static RegistrationCancellationEmailParams CreateValidParams()

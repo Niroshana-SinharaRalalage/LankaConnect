@@ -117,6 +117,31 @@ public class RegistrationCancellationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Organizer Contact Properties (Phase 6A.97+)
+
+    /// <summary>
+    /// Whether organizer contact info is available (controls {{#HasOrganizerContact}} conditional).
+    /// Phase 6A.97+: Added to fix raw placeholder display in emails.
+    /// </summary>
+    public bool HasOrganizerContact { get; set; } = false;
+
+    /// <summary>
+    /// Organizer's name.
+    /// </summary>
+    public string OrganizerContactName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's email.
+    /// </summary>
+    public string OrganizerContactEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's phone.
+    /// </summary>
+    public string OrganizerContactPhone { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -143,7 +168,13 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "RefundStatus", RefundStatus },
             { "EventDetailsUrl", EventDetailsUrl },
             { "SupportEmail", SupportEmail },
-            { "Year", DateTime.UtcNow.Year }
+            { "Year", DateTime.UtcNow.Year },
+
+            // Phase 6A.97+ Fix: Organizer contact params (for {{#HasOrganizerContact}} conditional)
+            { "HasOrganizerContact", HasOrganizerContact },
+            { "OrganizerContactName", OrganizerContactName },
+            { "OrganizerContactEmail", OrganizerContactEmail },
+            { "OrganizerContactPhone", OrganizerContactPhone }
         };
 
         if (RefundAmount.HasValue)
@@ -191,6 +222,26 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             errors.Add("CancelledAt is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Setters (Phase 6A.97+)
+
+    /// <summary>
+    /// Sets organizer contact information.
+    /// Phase 6A.97+: Added to fix raw placeholder display in emails.
+    /// </summary>
+    public RegistrationCancellationEmailParams WithOrganizerContact(
+        string? name,
+        string? email = null,
+        string? phone = null)
+    {
+        HasOrganizerContact = !string.IsNullOrWhiteSpace(name);
+        OrganizerContactName = name ?? string.Empty;
+        OrganizerContactEmail = email ?? string.Empty;
+        OrganizerContactPhone = phone ?? string.Empty;
+        return this;
     }
 
     #endregion

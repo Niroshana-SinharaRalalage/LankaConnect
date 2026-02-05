@@ -255,14 +255,6 @@ export function EditRegistrationModal({
             <DialogTitle>Edit Registration</DialogTitle>
             <DialogDescription>
               Update your registration details for this event.
-              {isPaidRegistration && (
-                <span className="block mt-1 text-amber-600 dark:text-amber-400 font-medium">
-                  Note: Attendee details can be edited, but count is fixed.
-                  {canAddMoreToPaid && onAddAttendeesClick && (
-                    <> Use &quot;Add More Attendees&quot; below to add more.</>
-                  )}
-                </span>
-              )}
             </DialogDescription>
           </DialogHeader>
 

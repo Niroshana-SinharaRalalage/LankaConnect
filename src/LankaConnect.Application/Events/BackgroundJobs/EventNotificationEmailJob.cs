@@ -310,6 +310,16 @@ public class EventNotificationEmailJob
         var formattedDate = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId);
         var formattedTime = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId);
 
+        // Phase 6A.98: Determine if event is "New" (within 7 days of publish) or "Upcoming"
+        // New events get "New Event:" prefix, older events get "Upcoming Event:" prefix
+        var isNewEvent = @event.PublishedAt == null ||
+                         (DateTime.UtcNow - @event.PublishedAt.Value).TotalDays <= 7;
+        var subjectPrefix = isNewEvent ? "New Event:" : "Upcoming Event:";
+
+        _logger.LogInformation(
+            "[Phase 6A.98] Event {EventId} subject prefix: {SubjectPrefix} (PublishedAt: {PublishedAt}, IsNew: {IsNew})",
+            @event.Id, subjectPrefix, @event.PublishedAt, isNewEvent);
+
         // Phase 6A.61+: Include ALL fields from event-published template for consistency
         // This ensures event-details template can reuse the same rich template as event-published
         var data = new Dictionary<string, object>
@@ -333,7 +343,8 @@ public class EventNotificationEmailJob
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional
             { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) ?? "TBA" },
-            { "Year", DateTime.UtcNow.Year }  // Phase 6A.87+ Fix: Footer param
+            { "Year", DateTime.UtcNow.Year },  // Phase 6A.87+ Fix: Footer param
+            { "SubjectPrefix", subjectPrefix }  // Phase 6A.98: Dynamic subject prefix
         };
 
         // Add sign-up lists URL if available

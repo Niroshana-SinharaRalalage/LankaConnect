@@ -702,6 +702,68 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
             return Result.Failure("Azure Email Client is not configured. Check AzureConnectionString in EmailSettings.");
         }
 
+        // Phase 6A.98: Add retry logic with exponential backoff for rate limiting (429 errors)
+        const int maxRetries = 3;
+        const int baseDelayMs = 2000; // 2 seconds base delay
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var result = await SendViaAzureInternalAsync(emailMessage, cancellationToken);
+                if (result.IsSuccess)
+                {
+                    return result;
+                }
+
+                // If this is a rate limit error and we have retries left, wait and retry
+                if (result.Error?.Contains("429") == true || result.Error?.Contains("TooManyRequests") == true)
+                {
+                    if (attempt < maxRetries)
+                    {
+                        var delayMs = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff: 2s, 4s, 8s
+                        _logger.LogWarning(
+                            "Azure rate limit hit for email to {ToEmail}. Attempt {Attempt}/{MaxRetries}. Waiting {DelayMs}ms before retry.",
+                            emailMessage.ToEmail, attempt, maxRetries, delayMs);
+                        await Task.Delay(delayMs, cancellationToken);
+                        continue;
+                    }
+                }
+
+                return result;
+            }
+            catch (RequestFailedException ex) when (ex.Status == 429)
+            {
+                if (attempt < maxRetries)
+                {
+                    var delayMs = baseDelayMs * (int)Math.Pow(2, attempt - 1);
+                    _logger.LogWarning(ex,
+                        "Azure rate limit (429) for email to {ToEmail}. Attempt {Attempt}/{MaxRetries}. Waiting {DelayMs}ms before retry.",
+                        emailMessage.ToEmail, attempt, maxRetries, delayMs);
+                    await Task.Delay(delayMs, cancellationToken);
+                    continue;
+                }
+
+                _logger.LogError(ex, "Azure rate limit (429) exceeded after {MaxRetries} attempts for {ToEmail}",
+                    maxRetries, emailMessage.ToEmail);
+                return Result.Failure("Email service is temporarily busy. Please try again in a few minutes.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Azure email send failed for {ToEmail} on attempt {Attempt}",
+                    emailMessage.ToEmail, attempt);
+                return Result.Failure($"Azure email send failed: {ex.Message}");
+            }
+        }
+
+        return Result.Failure("Email service is temporarily busy. Please try again in a few minutes.");
+    }
+
+    /// <summary>
+    /// Phase 6A.98: Internal send method extracted for retry logic.
+    /// </summary>
+    private async Task<Result> SendViaAzureInternalAsync(EmailMessageDto emailMessage, CancellationToken cancellationToken)
+    {
         try
         {
             var senderAddress = _emailSettings.AzureSenderAddress;
@@ -763,6 +825,12 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
 
             // Send email
             _logger.LogInformation("Sending email via Azure Communication Services to {ToEmail}", emailMessage.ToEmail);
+
+            // Phase 6A.99: Null check to satisfy compiler (caller already checks, but compiler doesn't know)
+            if (_azureEmailClient == null)
+            {
+                return Result.Failure("Azure Email Client is not configured.");
+            }
 
             var operation = await _azureEmailClient.SendAsync(
                 WaitUntil.Completed,

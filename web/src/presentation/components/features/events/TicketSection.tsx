@@ -8,6 +8,7 @@ import { Download, Mail, Ticket, CheckCircle, XCircle, Clock, Users, QrCode, Ref
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { TicketDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import toast from 'react-hot-toast';
 
 interface TicketSectionProps {
   eventId: string;
@@ -80,7 +81,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download PDF:', err);
-      alert('Failed to download ticket PDF. Please try again.');
+      toast.error('Failed to download ticket PDF. Please try again.');
     } finally {
       setIsDownloading(false);
     }
@@ -96,9 +97,19 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
       setResendSuccess(true);
       // Clear success message after 5 seconds
       setTimeout(() => setResendSuccess(false), 5000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to resend email:', err);
-      alert('Failed to resend ticket email. Please try again.');
+      // Phase 6A.98: Extract meaningful error message from API response
+      let errorMessage = 'Failed to resend ticket email. Please try again.';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const response = err as { response?: { data?: { detail?: string; message?: string } } };
+        if (response.response?.data?.detail) {
+          errorMessage = response.response.data.detail;
+        } else if (response.response?.data?.message) {
+          errorMessage = response.response.data.message;
+        }
+      }
+      toast.error(errorMessage);
     } finally {
       setIsResending(false);
     }

@@ -1,9 +1,142 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-05 - Phase 6A.98: Event Email Publication UI Improvements ✅ DEPLOYED*
+*Last Updated: 2026-02-05 - Phase 6A.98+: Email Retry Logic & UI Improvements ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.98: Event Email Publication UI Improvements ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.98+: Email Retry Logic & UI Improvements ✅ DEPLOYED
+
+### PHASE 6A.98+ FIX: EMAIL RETRY LOGIC & UI IMPROVEMENTS - 2026-02-05
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **BUG FIX / UX IMPROVEMENT**
+
+**Changes Implemented**:
+
+| # | Issue | Fix | Status |
+|---|-------|-----|--------|
+| 1 | Resend ticket email failing | Added 3-retry exponential backoff (2s, 4s, 8s) for Azure 429 rate limiting | ✅ |
+| 2 | JavaScript alert() on error | Replaced with react-hot-toast for proper UX | ✅ |
+| 3 | Generic error message | Return user-friendly "Email service is temporarily busy. Please try again in a few minutes." | ✅ |
+
+**Technical Details**:
+
+1. **Retry Logic** (`AzureEmailService.cs`):
+   - 3 retry attempts with exponential backoff (2s, 4s, 8s delays)
+   - Detects rate limit errors via: "429", "TooManyRequests", "try again"
+   - Returns user-friendly message after all retries exhausted
+
+2. **UI Improvement** (`TicketSection.tsx`):
+   - Replaced `alert()` with `toast.error()` from react-hot-toast
+   - Extracts meaningful error message from API response
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Email/Services/AzureEmailService.cs`
+- `web/src/presentation/components/features/events/TicketSection.tsx`
+
+**Commit**: `8a1c9abc` - fix(email): Phase6A98+ Add retry logic for Azure rate limiting and replace alert with toast
+
+**Verification** (Azure Logs):
+```
+23:26:23 - Attempt 1/3, waiting 2000ms
+23:26:30 - Attempt 2/3, waiting 4000ms
+23:26:41 - "Azure rate limit exceeded after 3 attempts"
+23:26:41 - User-friendly error: "Email service is temporarily busy..."
+```
+
+---
+
+## Templates Migrated in Phase 6A.98
+
+| # | Template Name | Purpose |
+|---|--------------|---------|
+| 1 | template-new-event-publication | New event published notification |
+| 2 | template-event-details-publication | Event details updated |
+| 3 | template-event-cancellation-notifications | Event cancelled |
+| 4 | template-event-registration-cancellation | Registration cancelled |
+| 5 | template-event-reminder | Event reminder (24h) |
+| 6 | template-free-event-registration-confirmation | Free event registration |
+| 7 | template-paid-event-registration-confirmation-with-ticket | Paid event with ticket |
+
+**Key Fixes**:
+- All templates now use **850px max-width** responsive layout
+- Fixed parameter mismatches (`HasAttendeeDetails`, removed `Quantity`)
+- Gradient header/footer consistent with Phase6A96
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.98: Newsletter All-Locations Subscriber Fix ✅ DEPLOYED
+
+### PHASE 6A.98 FIX: NEWSLETTER ALL-LOCATIONS SUBSCRIBERS NOT RECEIVING EMAILS - 2026-02-05
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🔴 **CRITICAL BUG FIX**
+
+**Problem Statement**:
+Users who subscribed to newsletters with "Send me events from all locations" checked were NOT receiving:
+1. Newsletter emails (from Dashboard → Newsletters → Send Email)
+2. Event publication emails (from Event → Communications → Publish Event)
+
+**Database State Observed**:
+```sql
+-- Subscriber record (CORRECT)
+communications.newsletter_subscribers:
+  receive_all_locations = TRUE
+  is_active = TRUE
+  is_confirmed = TRUE
+
+-- Junction table (EMPTY - BY DESIGN for all-locations)
+communications.newsletter_subscriber_metro_areas:
+  (No entries for this subscriber)
+```
+
+**Root Cause Analysis**:
+
+| Component | How It Stores "All Locations" | How It Queries |
+|-----------|-------------------------------|----------------|
+| **Newsletter Entity** | Populates ALL 84 metro IDs (Phase 6A.85) | Junction table intersection |
+| **NewsletterSubscriber Entity** | Sets `receive_all_locations=true`, NO junction entries | Flag-based query |
+
+**The Conflict**:
+- Newsletter has: `[metro1, metro2, ..., metro84]` (84 entries)
+- Subscriber has: `[]` (0 entries, only flag=true)
+- **Intersection = EMPTY** → Subscriber NOT found!
+
+**Why Event Notifications Worked (but Newsletter Didn't)**:
+- `EventNotificationRecipientService` calls 3 separate queries and COMBINES results:
+  1. Metro area subscribers (junction)
+  2. State-level subscribers (junction)
+  3. **All-locations subscribers (flag)** ← This found the subscriber!
+
+- `NewsletterRecipientService` used CONDITIONAL logic (mutually exclusive):
+  1. If `newsletter.MetroAreaIds.Any()` → junction table only ❌
+  2. Else if `newsletter.TargetAllLocations` → flag query (NEVER reached!)
+
+**Fix Applied** (`NewsletterRecipientService.GetSubscribersByMetroAreasAsync`):
+```csharp
+// Query 1: Junction table (existing)
+foreach (var metroAreaId in metroAreaIds) { ... }
+
+// Query 2: ALWAYS include "All Locations" subscribers (NEW FIX)
+var allLocationsSubscribers = await _subscriberRepository
+    .GetConfirmedSubscribersForAllLocationsAsync(cancellationToken);
+allSubscribers.AddRange(allLocationsSubscribers);
+```
+
+**Files Modified**:
+- `src/LankaConnect.Infrastructure/Services/NewsletterRecipientService.cs`
+
+**Commit**: `d0acdf7f` - fix(Phase6A.98): Include all-locations subscribers in newsletter recipient resolution
+
+**Verification Needed**:
+- [ ] Create newsletter with "Target All Locations"
+- [ ] Send email - verify `lankaconnect.app@gmail.com` receives it
+- [ ] Check breakdown shows AllLocationsCount > 0
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.98: Event Email Publication UI Improvements ✅ DEPLOYED
 
 ### PHASE 6A.98: EVENT EMAIL PUBLICATION UI IMPROVEMENTS - 2026-02-05
 

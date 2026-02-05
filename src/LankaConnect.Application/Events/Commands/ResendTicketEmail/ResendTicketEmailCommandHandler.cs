@@ -354,11 +354,13 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 {
                     stopwatch.Stop();
 
+                    var errorMessage = emailResult.Errors.FirstOrDefault() ?? "Failed to send ticket email";
                     _logger.LogError(
                         "ResendTicketEmail FAILED: Email sending failed - Email={Email}, RegistrationId={RegistrationId}, Error={Error}, Duration={ElapsedMs}ms",
-                        recipientEmail, request.RegistrationId, string.Join(", ", emailResult.Errors), stopwatch.ElapsedMilliseconds);
+                        recipientEmail, request.RegistrationId, errorMessage, stopwatch.ElapsedMilliseconds);
 
-                    return Result.Failure("Failed to send ticket email");
+                    // Phase 6A.98: Pass the user-friendly error message from the email service
+                    return Result.Failure(errorMessage);
                 }
 
                 stopwatch.Stop();

@@ -24,7 +24,7 @@ import type {
   UpdateEmailGroupRequest,
 } from '@/infrastructure/api/types/email-groups.types';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
-import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 
 /**
  * Query Keys for Email Groups
@@ -70,7 +70,9 @@ export function useEmailGroups(
   const userId = user?.userId ?? null;
   // Phase 6A.X Issue #47 Fix: Wait for auth store hydration to prevent race conditions
   // Without this, the query might fire before the correct JWT token is set in API client
-  const isHydrated = useAuthStore((state) => state.isHydrated);
+  // CRITICAL: Must use useHasHydrated() helper, NOT state.isHydrated getter
+  // Zustand selectors receive plain object snapshots where getters are undefined
+  const isHydrated = useHasHydrated();
 
   return useQuery({
     queryKey: emailGroupKeys.list(includeAll, userId),

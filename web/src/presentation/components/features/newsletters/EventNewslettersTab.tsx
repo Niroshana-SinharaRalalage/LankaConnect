@@ -86,6 +86,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
   const [showPublicationProcessing, setShowPublicationProcessing] = useState(false);
   const [publicationMessage, setPublicationMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Phase 6A.98+: Local state for reminder result inline message (replaces toast)
+  const [reminderMessage, setReminderMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
   // Handlers
   // Phase 6A.98: Send event publication email with inline message instead of toast
   const handleSendEmail = async () => {
@@ -109,33 +112,38 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
     }
   };
 
-  // Phase 6A.76: Send manual event reminder (always custom type - automatic reminders handled by system)
+  // Phase 6A.98+: Send manual event reminder with inline messages (replaces toast)
   const handleSendReminder = async () => {
-    setShowReminderProcessing(true); // Show message immediately
+    setShowReminderProcessing(true);
+    setReminderMessage(null);
     try {
       const result = await sendReminderMutation.mutateAsync({ eventId, reminderType: 'custom' });
       if (result.recipientCount === 0) {
-        toast.success(
-          'No registrations found for this event. Reminder not sent.',
-          { duration: 4000 }
-        );
+        setReminderMessage({
+          type: 'info',
+          text: 'No registrations found for this event. Reminder not sent.',
+        });
       } else if (result.recipientCount === -1) {
         // All recipients already received this reminder type
-        toast('All attendees have already received this reminder. To avoid duplicate emails, the reminder was not sent again.', {
-          icon: 'ℹ️',
-          duration: 5000,
+        setReminderMessage({
+          type: 'info',
+          text: 'All attendees have already received this reminder. To avoid duplicate emails, the reminder was not sent again.',
         });
       } else {
-        toast.success(
-          `Reminder queued for ${result.recipientCount} attendee${result.recipientCount === 1 ? '' : 's'}!`,
-          { duration: 4000 }
-        );
+        setReminderMessage({
+          type: 'success',
+          text: `Reminder queued for ${result.recipientCount} attendee${result.recipientCount === 1 ? '' : 's'}! Check delivery status below.`,
+        });
       }
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to send reminder');
+      setReminderMessage({
+        type: 'error',
+        text: error?.message || 'Failed to send reminder',
+      });
     } finally {
-      // Keep message visible for 2 seconds after toast appears so user can read the result
-      setTimeout(() => setShowReminderProcessing(false), 2000);
+      setShowReminderProcessing(false);
+      // Auto-dismiss message after 8 seconds (longer than publication since info messages need more reading time)
+      setTimeout(() => setReminderMessage(null), 8000);
     }
   };
 
@@ -317,9 +325,9 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
             <div className="border-t pt-4 mt-4">
               <h4 className="text-md font-semibold mb-3 text-[#8B1538]">Reminder Send History</h4>
 
-              {/* Show processing message in history area while sending */}
+              {/* Phase 6A.98+: Show processing message in history area while sending */}
               {showReminderProcessing && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
                   <div className="flex items-center gap-3">
                     <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -333,9 +341,43 @@ export function EventNewslettersTab({ eventId, eventTitle }: EventNewslettersTab
                 </div>
               )}
 
+              {/* Phase 6A.98+: Show inline success/error/info message for reminder result */}
+              {reminderMessage && !showReminderProcessing && (
+                <div className={`rounded-lg p-4 mb-3 ${
+                  reminderMessage.type === 'success'
+                    ? 'bg-green-50 border border-green-200'
+                    : reminderMessage.type === 'error'
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-amber-50 border border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    {reminderMessage.type === 'success' ? (
+                      <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : reminderMessage.type === 'error' ? (
+                      <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    <p className={`font-medium ${
+                      reminderMessage.type === 'success' ? 'text-green-900'
+                        : reminderMessage.type === 'error' ? 'text-red-900'
+                        : 'text-amber-900'
+                    }`}>
+                      {reminderMessage.text}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Show actual history when not processing */}
               {!showReminderProcessing && reminderHistoryLoading && <div className="text-sm text-gray-500">Loading history...</div>}
-              {!showReminderProcessing && !reminderHistoryLoading && (!reminderHistory || reminderHistory.length === 0) && (
+              {!showReminderProcessing && !reminderHistoryLoading && !reminderMessage && (!reminderHistory || reminderHistory.length === 0) && (
                 <div className="text-sm text-gray-500">No reminders sent yet</div>
               )}
               {!showReminderProcessing && !reminderHistoryLoading && reminderHistory && reminderHistory.length > 0 && (

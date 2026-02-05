@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" VersionOverride="16.0.0" />
     <ProjectReference Include="..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />

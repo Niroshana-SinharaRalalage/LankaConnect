@@ -43,13 +43,23 @@ export interface TemplateStatsListDto {
 
 /**
  * Email failure record
+ * Phase 6A.99: Added correlationId for tracing
  */
 export interface EmailFailureDto {
   timestamp: string;
   templateName: string;
-  recipientEmail: string; // Masked for privacy
+  recipientEmail: string; // Masked for privacy unless unmasked=true (SuperAdmin only)
   errorMessage: string;
   handlerName?: string;
+  correlationId?: string; // Phase 6A.99: Added for tracing
+}
+
+/**
+ * Phase 6A.99: Request params for failures endpoint
+ */
+export interface GetFailuresParams {
+  limit?: number;
+  unmasked?: boolean; // SuperAdmin only - audit logged
 }
 
 /**

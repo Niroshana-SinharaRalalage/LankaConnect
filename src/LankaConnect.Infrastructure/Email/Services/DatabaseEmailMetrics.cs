@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+// Phase 6A.99: Email failure detail persistence imports
+
 namespace LankaConnect.Infrastructure.Email.Services;
 
 /// <summary>
@@ -36,19 +38,22 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
     // In-memory cache for real-time performance
     private readonly ConcurrentDictionary<string, TemplateMetrics> _templateMetrics = new();
     private readonly ConcurrentDictionary<string, HandlerMetrics> _handlerMetrics = new();
-    private readonly ConcurrentBag<EmailFailureRecord> _failedEmails = new();
-    private readonly ConcurrentBag<ValidationFailureRecord> _validationFailures = new();
+    // Phase 6A.99: Changed from ConcurrentBag to ConcurrentQueue for FIFO ordering
+    private readonly ConcurrentQueue<EmailFailureRecord> _failedEmails = new();
+    private readonly ConcurrentQueue<ValidationFailureRecord> _validationFailures = new();
 
     // Pending changes to flush to database
     private readonly ConcurrentDictionary<string, PendingMetricUpdate> _pendingUpdates = new();
+    // Phase 6A.99: Pending failure details to flush to database
+    private readonly ConcurrentQueue<EmailFailureDetail> _pendingFailureDetails = new();
 
     // Background flush timer
     private Timer? _flushTimer;
     private readonly TimeSpan _flushInterval = TimeSpan.FromSeconds(30);
     private bool _disposed;
 
-    // Maximum records to keep in memory
-    private const int MaxFailureRecords = 100;
+    // Phase 6A.99: Increased from 100 to 1000 for better debugging capability
+    private const int MaxFailureRecords = 1000;
 
     public DatabaseEmailMetrics(
         IServiceScopeFactory scopeFactory,
@@ -248,8 +253,10 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
         _templateMetrics.Clear();
         _handlerMetrics.Clear();
         _pendingUpdates.Clear();
-        _failedEmails.Clear();
-        _validationFailures.Clear();
+        // Phase 6A.99: Clear ConcurrentQueues properly
+        while (_failedEmails.TryDequeue(out _)) { }
+        while (_validationFailures.TryDequeue(out _)) { }
+        while (_pendingFailureDetails.TryDequeue(out _)) { }
         _logger.LogInformation("[Metrics] All metrics reset");
     }
 
@@ -267,13 +274,14 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
     {
         try
         {
-            // Trim old records if limit exceeded
+            // Phase 6A.99: Changed to ConcurrentQueue for FIFO ordering
+            // Trim old records if limit exceeded (FIFO - remove oldest first)
             while (_failedEmails.Count >= MaxFailureRecords)
             {
-                _failedEmails.TryTake(out _);
+                _failedEmails.TryDequeue(out _);
             }
 
-            _failedEmails.Add(new EmailFailureRecord
+            var record = new EmailFailureRecord
             {
                 CorrelationId = correlationId,
                 TemplateName = templateName,
@@ -281,9 +289,19 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
                 ErrorMessage = errorMessage,
                 HandlerName = handlerName,
                 Timestamp = DateTime.UtcNow
-            });
+            };
+            _failedEmails.Enqueue(record);
 
-            _logger.LogWarning("[Metrics] Failed email recorded: CorrelationId={CorrelationId}, Template={Template}, Error={Error}",
+            // Phase 6A.99: Queue for database persistence (email will be encrypted when flushing)
+            var failureDetail = EmailFailureDetail.Create(
+                correlationId ?? string.Empty,
+                templateName ?? "unknown",
+                recipientEmail ?? string.Empty, // Will be encrypted during flush
+                errorMessage ?? "No error message",
+                handlerName);
+            _pendingFailureDetails.Enqueue(failureDetail);
+
+            _logger.LogWarning("[Phase 6A.99] Failed email recorded and queued for persistence: CorrelationId={CorrelationId}, Template={Template}, Error={Error}",
                 correlationId, templateName, errorMessage);
         }
         catch (Exception ex)
@@ -294,20 +312,22 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
 
     public IReadOnlyList<EmailFailureRecord> GetFailedEmails()
     {
-        return _failedEmails.ToList();
+        // Phase 6A.99: Return ordered by timestamp descending (most recent first)
+        return _failedEmails.ToArray().OrderByDescending(f => f.Timestamp).ToList();
     }
 
     public void RecordValidationFailureDetails(string correlationId, string templateName, List<string> missingParameters, string handlerName)
     {
         try
         {
-            // Trim old records if limit exceeded
+            // Phase 6A.99: Changed to ConcurrentQueue for FIFO ordering
+            // Trim old records if limit exceeded (FIFO - remove oldest first)
             while (_validationFailures.Count >= MaxFailureRecords)
             {
-                _validationFailures.TryTake(out _);
+                _validationFailures.TryDequeue(out _);
             }
 
-            _validationFailures.Add(new ValidationFailureRecord
+            _validationFailures.Enqueue(new ValidationFailureRecord
             {
                 CorrelationId = correlationId,
                 TemplateName = templateName,
@@ -327,7 +347,8 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
 
     public IReadOnlyList<ValidationFailureRecord> GetValidationFailures()
     {
-        return _validationFailures.ToList();
+        // Phase 6A.99: Return ordered by timestamp descending (most recent first)
+        return _validationFailures.ToArray().OrderByDescending(f => f.Timestamp).ToList();
     }
 
     #endregion
@@ -367,13 +388,77 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
                 metrics.AverageDurationMs = metrics.TotalSent > 0 ? metrics.TotalDurationMs / metrics.TotalSent : 0;
             }
         }
+
+        // Phase 6A.99: Load failure details from database
+        await LoadFailureDetailsFromDatabaseAsync(dbContext, cancellationToken);
+    }
+
+    /// <summary>
+    /// Phase 6A.99: Load recent failure details from database on startup
+    /// </summary>
+    private async Task LoadFailureDetailsFromDatabaseAsync(IApplicationDbContext dbContext, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var encryptionService = _scopeFactory.CreateScope().ServiceProvider.GetService<IEmailEncryptionService>();
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+
+            var recentFailures = await ((DbContext)dbContext).Set<EmailFailureDetail>()
+                .Where(f => f.Timestamp >= thirtyDaysAgo && f.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(f => f.Timestamp)
+                .Take(MaxFailureRecords)
+                .ToListAsync(cancellationToken);
+
+            _logger.LogInformation("[Phase 6A.99] Loading {Count} failure details from database", recentFailures.Count);
+
+            // Clear existing in-memory queue and repopulate
+            while (_failedEmails.TryDequeue(out _)) { }
+
+            // Add in chronological order so queue maintains proper FIFO order
+            foreach (var failure in recentFailures.OrderBy(f => f.Timestamp))
+            {
+                // Decrypt email if encryption service available
+                var email = failure.RecipientEmailEncrypted;
+                if (encryptionService != null && !string.IsNullOrEmpty(email))
+                {
+                    try
+                    {
+                        email = encryptionService.Decrypt(email);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[Phase 6A.99] Could not decrypt email for failure {FailureId}", failure.Id);
+                        email = "[encrypted]";
+                    }
+                }
+
+                _failedEmails.Enqueue(new EmailFailureRecord
+                {
+                    CorrelationId = failure.CorrelationId ?? string.Empty,
+                    TemplateName = failure.TemplateName,
+                    RecipientEmail = email ?? string.Empty,
+                    ErrorMessage = failure.ErrorMessage,
+                    HandlerName = failure.HandlerName ?? string.Empty,
+                    Timestamp = failure.Timestamp
+                });
+            }
+
+            _logger.LogInformation("[Phase 6A.99] Loaded {Count} failure details from database - failures now survive restarts", _failedEmails.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.99] Failed to load failure details from database - starting with empty failures list");
+        }
     }
 
     private async Task FlushToDatabaseAsync()
     {
-        if (_pendingUpdates.IsEmpty)
+        var hasMetrics = !_pendingUpdates.IsEmpty;
+        var hasFailures = !_pendingFailureDetails.IsEmpty;
+
+        if (!hasMetrics && !hasFailures)
         {
-            _logger.LogDebug("[Phase 6A.89] No pending metrics to flush");
+            _logger.LogDebug("[Phase 6A.89] No pending metrics or failures to flush");
             return;
         }
 
@@ -382,53 +467,114 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
 
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var pendingCopy = _pendingUpdates.ToArray();
-
-            foreach (var (templateName, pending) in pendingCopy)
+            // Flush metrics
+            if (hasMetrics)
             {
-                if (pending.IsEmpty)
-                    continue;
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var pendingCopy = _pendingUpdates.ToArray();
 
-                try
+                foreach (var (templateName, pending) in pendingCopy)
                 {
-                    // Get or create record for today's date and this template
-                    var existingRecord = await ((DbContext)dbContext).Set<EmailMetricRecord>()
-                        .FirstOrDefaultAsync(m => m.MetricDate == today && m.TemplateName == templateName);
+                    if (pending.IsEmpty)
+                        continue;
 
-                    if (existingRecord == null)
+                    try
                     {
-                        existingRecord = EmailMetricRecord.Create(today, templateName);
-                        ((DbContext)dbContext).Set<EmailMetricRecord>().Add(existingRecord);
-                    }
+                        // Get or create record for today's date and this template
+                        var existingRecord = await ((DbContext)dbContext).Set<EmailMetricRecord>()
+                            .FirstOrDefaultAsync(m => m.MetricDate == today && m.TemplateName == templateName);
 
-                    // Merge pending updates
-                    lock (pending)
+                        if (existingRecord == null)
+                        {
+                            existingRecord = EmailMetricRecord.Create(today, templateName);
+                            ((DbContext)dbContext).Set<EmailMetricRecord>().Add(existingRecord);
+                        }
+
+                        // Merge pending updates
+                        lock (pending)
+                        {
+                            existingRecord.MergeFrom(
+                                pending.TotalSent,
+                                pending.Successful,
+                                pending.Failed,
+                                pending.TotalDurationMs,
+                                pending.ValidationFailures,
+                                pending.TemplateNotFoundCount);
+
+                            // Clear pending after merge
+                            pending.Reset();
+                        }
+                    }
+                    catch (Exception ex)
                     {
-                        existingRecord.MergeFrom(
-                            pending.TotalSent,
-                            pending.Successful,
-                            pending.Failed,
-                            pending.TotalDurationMs,
-                            pending.ValidationFailures,
-                            pending.TemplateNotFoundCount);
-
-                        // Clear pending after merge
-                        pending.Reset();
+                        _logger.LogError(ex, "[Phase 6A.89] Failed to flush metrics for template {Template}", templateName);
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "[Phase 6A.89] Failed to flush metrics for template {Template}", templateName);
                 }
             }
 
+            // Phase 6A.99: Flush failure details
+            if (hasFailures)
+            {
+                FlushFailureDetailsToDatabaseSync(scope, dbContext);
+            }
+
             await dbContext.CommitAsync();
-            _logger.LogDebug("[Phase 6A.89] Metrics flushed to database successfully");
+            _logger.LogDebug("[Phase 6A.89/6A.99] Metrics and failure details flushed to database successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Phase 6A.89] Failed to flush metrics to database");
+            _logger.LogError(ex, "[Phase 6A.89] Failed to flush to database");
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.99: Flush pending failure details to database with email encryption
+    /// </summary>
+    private void FlushFailureDetailsToDatabaseSync(IServiceScope scope, IApplicationDbContext dbContext)
+    {
+        if (_pendingFailureDetails.IsEmpty)
+            return;
+
+        try
+        {
+            var encryptionService = scope.ServiceProvider.GetService<IEmailEncryptionService>();
+            var detailsToSave = new List<EmailFailureDetail>();
+            var count = 0;
+
+            while (_pendingFailureDetails.TryDequeue(out var detail) && count < 100) // Batch max 100 at a time
+            {
+                count++;
+
+                // Encrypt email before saving if encryption service is available
+                if (encryptionService != null && !string.IsNullOrEmpty(detail.RecipientEmailEncrypted))
+                {
+                    // The RecipientEmailEncrypted field currently contains plain email
+                    // We need to create a new entity with encrypted email
+                    var encryptedEmail = encryptionService.Encrypt(detail.RecipientEmailEncrypted);
+                    var encryptedDetail = EmailFailureDetail.Create(
+                        detail.CorrelationId ?? string.Empty,
+                        detail.TemplateName,
+                        encryptedEmail,
+                        detail.ErrorMessage,
+                        detail.HandlerName);
+                    detailsToSave.Add(encryptedDetail);
+                }
+                else
+                {
+                    // No encryption service - store as-is (not recommended for production)
+                    detailsToSave.Add(detail);
+                }
+            }
+
+            if (detailsToSave.Count > 0)
+            {
+                ((DbContext)dbContext).Set<EmailFailureDetail>().AddRange(detailsToSave);
+                _logger.LogInformation("[Phase 6A.99] Queued {Count} failure details for database persistence", detailsToSave.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.99] Failed to flush failure details to database");
         }
     }
 

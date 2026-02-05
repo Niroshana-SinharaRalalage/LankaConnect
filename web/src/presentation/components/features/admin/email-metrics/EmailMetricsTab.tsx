@@ -22,6 +22,7 @@ import {
   Info,
 } from 'lucide-react';
 import { EmailTemplateList, EmailTemplateEditor, EmailTemplatePreview } from '../email-templates';
+import { EmailFailureDetailModal } from './EmailFailureDetailModal'; // Phase 6A.99
 import type { EmailTemplateListItemDto } from '@/infrastructure/api/types/email-template-management.types';
 import {
   useEmailMetricsSummary,
@@ -46,6 +47,9 @@ export function EmailMetricsTab() {
   // Phase 6A.89: State for template management modals
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateListItemDto | null>(null);
+
+  // Phase 6A.99: State for failure detail modal
+  const [selectedFailure, setSelectedFailure] = useState<EmailFailureDto | null>(null);
 
   // Queries
   const { data: summary, isLoading: loadingSummary, refetch: refetchSummary } = useEmailMetricsSummary();
@@ -254,6 +258,13 @@ export function EmailMetricsTab() {
         />
       )}
 
+      {/* Phase 6A.99: Email Failure Detail Modal */}
+      <EmailFailureDetailModal
+        isOpen={selectedFailure !== null}
+        failure={selectedFailure}
+        onClose={() => setSelectedFailure(null)}
+      />
+
       {/* Failures Section */}
       {activeSection === 'failures' && (
         <div className="space-y-6">
@@ -300,7 +311,11 @@ export function EmailMetricsTab() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {failures?.failures.map((failure, index) => (
-                      <FailureRow key={index} failure={failure} />
+                      <FailureRow
+                        key={index}
+                        failure={failure}
+                        onShowDetails={() => setSelectedFailure(failure)} // Phase 6A.99
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -622,9 +637,18 @@ function TemplateStatsRow({
   );
 }
 
-function FailureRow({ failure }: { failure: EmailFailureDto }) {
+/**
+ * Phase 6A.99: Updated FailureRow with tooltip and detail modal support
+ */
+function FailureRow({
+  failure,
+  onShowDetails,
+}: {
+  failure: EmailFailureDto;
+  onShowDetails: () => void;
+}) {
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-gray-50 cursor-pointer" onClick={onShowDetails}>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {new Date(failure.timestamp).toLocaleString()}
       </td>
@@ -634,8 +658,26 @@ function FailureRow({ failure }: { failure: EmailFailureDto }) {
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {failure.recipientEmail}
       </td>
-      <td className="px-6 py-4 text-sm text-red-600 max-w-xs truncate">
-        {failure.errorMessage}
+      {/* Phase 6A.99: Added tooltip and expand button */}
+      <td className="px-6 py-4 text-sm text-red-600 max-w-xs">
+        <div className="flex items-center gap-2">
+          <span
+            className="truncate cursor-help"
+            title={failure.errorMessage} // Native tooltip on hover
+          >
+            {failure.errorMessage}
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowDetails();
+            }}
+            className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            title="View full details"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+        </div>
       </td>
     </tr>
   );

@@ -177,4 +177,7 @@ public static class AdminAuditActions
 
     // Export actions
     public const string UsersExported = "USERS_EXPORTED";
+
+    // Phase 6A.99: Email metrics audit actions
+    public const string EmailFailuresViewedUnmasked = "EMAIL_FAILURES_VIEWED_UNMASKED";
 }

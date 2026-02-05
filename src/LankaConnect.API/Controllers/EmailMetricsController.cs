@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.Shared.Email.Observability;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Support;
 
 namespace LankaConnect.API.Controllers;
 
@@ -16,16 +19,19 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
 {
     private readonly IEmailMetrics _emailMetrics;
     private readonly IWebHostEnvironment _environment;
+    private readonly IAdminAuditLogRepository _auditLogRepository; // Phase 6A.99
 
     public EmailMetricsController(
         IMediator mediator,
         ILogger<EmailMetricsController> logger,
         IEmailMetrics emailMetrics,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IAdminAuditLogRepository auditLogRepository) // Phase 6A.99
         : base(mediator, logger)
     {
         _emailMetrics = emailMetrics;
         _environment = environment;
+        _auditLogRepository = auditLogRepository;
     }
 
     /// <summary>
@@ -137,20 +143,46 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
     /// Get list of failed email sends for troubleshooting.
     /// Shows correlation ID, template, recipient, and error message.
     /// Phase 6A.89 Fix: TotalCount now uses global stats for consistency with Overview tab.
-    /// Note: Failure details are in-memory and may be lost on container restart,
-    /// but TotalCount reflects the persisted aggregate count.
+    /// Phase 6A.99: Added unmasked parameter for SuperAdmin to see full email addresses.
+    /// Note: Failure details are now persisted to database and survive container restarts.
     /// </summary>
     /// <param name="limit">Maximum number of failures to return (default: 100)</param>
+    /// <param name="unmasked">If true and user is SuperAdmin, show full email addresses (audit logged)</param>
     /// <returns>List of email failures</returns>
     [HttpGet("failures")]
     [AllowAnonymous] // TODO: Add [Authorize(Policy = "RequireAdmin")] for production
     [ProducesResponseType(typeof(EmailFailuresResponse), StatusCodes.Status200OK)]
-    public IActionResult GetFailures([FromQuery] int limit = 100)
+    public async Task<IActionResult> GetFailures([FromQuery] int limit = 100, [FromQuery] bool unmasked = false)
     {
-        Logger.LogInformation("[Phase 6A.87] Email failures list requested, limit={Limit}", limit);
+        Logger.LogInformation("[Phase 6A.99] Email failures list requested, limit={Limit}, unmasked={Unmasked}", limit, unmasked);
 
         // Phase 6A.89 Fix: Get total failures from global stats for consistency with Overview tab
         var globalStats = _emailMetrics.GetGlobalStats();
+
+        // Phase 6A.99: Only SuperAdmin can view unmasked emails
+        var isSuperAdmin = User.IsInRole("SuperAdmin");
+        var showUnmasked = unmasked && isSuperAdmin;
+
+        // Phase 6A.99: Audit log unmasked access for GDPR compliance
+        if (showUnmasked)
+        {
+            var adminUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            var adminUserId = Guid.TryParse(adminUserIdStr, out var parsedId) ? parsedId : Guid.Empty;
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var userAgent = Request.Headers.UserAgent.ToString();
+
+            var auditLog = AdminAuditLog.Create(
+                adminUserId,
+                AdminAuditActions.EmailFailuresViewedUnmasked,
+                details: $"Viewed up to {limit} unmasked email failure records",
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
+            await _auditLogRepository.AddAsync(auditLog);
+
+            Logger.LogWarning("[Phase 6A.99] AUDIT: SuperAdmin {AdminId} viewed unmasked email failures from IP {IpAddress}",
+                adminUserId, ipAddress);
+        }
 
         var failures = _emailMetrics.GetFailedEmails()
             .OrderByDescending(f => f.Timestamp)
@@ -159,7 +191,7 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
             {
                 CorrelationId = f.CorrelationId,
                 TemplateName = f.TemplateName,
-                RecipientEmail = MaskEmail(f.RecipientEmail),
+                RecipientEmail = showUnmasked ? f.RecipientEmail : MaskEmail(f.RecipientEmail),
                 ErrorMessage = f.ErrorMessage,
                 HandlerName = f.HandlerName,
                 Timestamp = f.Timestamp
@@ -170,7 +202,7 @@ public class EmailMetricsController : BaseController<EmailMetricsController>
         {
             Failures = failures,
             // Phase 6A.89 Fix: Use global stats count for consistency with Overview
-            // AvailableCount shows how many failure records are available in-memory
+            // AvailableCount shows how many failure records are available
             TotalCount = globalStats.TotalFailures,
             AvailableCount = failures.Count,
             Timestamp = DateTime.UtcNow

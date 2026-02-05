@@ -222,6 +222,9 @@ public static class DependencyInjection
         // Phase 6A.70: Add EmailUrlHelper for centralized URL building in email templates
         services.AddScoped<IEmailUrlHelper, EmailUrlHelper>();
 
+        // Phase 6A.99: Add EmailEncryptionService for GDPR-compliant email storage
+        services.AddSingleton<IEmailEncryptionService, EmailEncryptionService>();
+
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
         
@@ -310,6 +313,9 @@ public static class DependencyInjection
 
         // Add Email Queue Processor (Background Service)
         services.AddHostedService<EmailQueueProcessor>();
+
+        // Phase 6A.99: Add Email Failure Cleanup Service (Background Service - runs daily at 2 AM UTC)
+        services.AddHostedService<BackgroundServices.EmailFailureCleanupService>();
 
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();

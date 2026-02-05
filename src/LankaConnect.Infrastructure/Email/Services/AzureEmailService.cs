@@ -716,8 +716,12 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
                     return result;
                 }
 
-                // If this is a rate limit error and we have retries left, wait and retry
-                if (result.Error?.Contains("429") == true || result.Error?.Contains("TooManyRequests") == true)
+                // If this is a rate limit error, handle retries or return friendly message
+                var isRateLimitError = result.Error?.Contains("429") == true ||
+                                       result.Error?.Contains("TooManyRequests") == true ||
+                                       result.Error?.Contains("try again") == true;
+
+                if (isRateLimitError)
                 {
                     if (attempt < maxRetries)
                     {
@@ -727,6 +731,14 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
                             emailMessage.ToEmail, attempt, maxRetries, delayMs);
                         await Task.Delay(delayMs, cancellationToken);
                         continue;
+                    }
+                    else
+                    {
+                        // All retries exhausted for rate limiting - return user-friendly message
+                        _logger.LogError(
+                            "Azure rate limit exceeded after {MaxRetries} attempts for {ToEmail}. Final error: {Error}",
+                            maxRetries, emailMessage.ToEmail, result.Error);
+                        return Result.Failure("Email service is temporarily busy. Please try again in a few minutes.");
                     }
                 }
 

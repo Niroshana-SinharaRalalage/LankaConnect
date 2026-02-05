@@ -55,11 +55,12 @@ export function useEmailTemplateStatsByName(templateName: string) {
 
 /**
  * Hook to fetch recent email failures
+ * Phase 6A.99: Added optional unmasked param for SuperAdmin
  */
-export function useEmailFailures() {
+export function useEmailFailures(params?: { unmasked?: boolean }) {
   return useQuery({
-    queryKey: emailMetricsKeys.failures(),
-    queryFn: () => emailMetricsRepository.getFailures(),
+    queryKey: [...emailMetricsKeys.failures(), params?.unmasked],
+    queryFn: () => emailMetricsRepository.getFailures(params),
     staleTime: 1 * 60 * 1000, // 1 minute - failures need fresh data
     refetchOnWindowFocus: false,
   });

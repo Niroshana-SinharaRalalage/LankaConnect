@@ -12,6 +12,7 @@ import type {
   ValidationFailuresDto,
   MigrationProgressDto,
   ResetMetricsResponseDto,
+  GetFailuresParams, // Phase 6A.99
 } from '../types/email-metrics.types';
 
 export class EmailMetricsRepository {
@@ -45,9 +46,19 @@ export class EmailMetricsRepository {
 
   /**
    * Get recent email failures
+   * Phase 6A.99: Added optional params for limit and unmasked (SuperAdmin only)
    */
-  async getFailures(): Promise<EmailFailuresDto> {
-    const response = await apiClient.get<EmailFailuresDto>(`${this.basePath}/failures`);
+  async getFailures(params?: GetFailuresParams): Promise<EmailFailuresDto> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    if (params?.unmasked) searchParams.set('unmasked', 'true');
+
+    const queryString = searchParams.toString();
+    const url = queryString
+      ? `${this.basePath}/failures?${queryString}`
+      : `${this.basePath}/failures`;
+
+    const response = await apiClient.get<EmailFailuresDto>(url);
     return response;
   }
 

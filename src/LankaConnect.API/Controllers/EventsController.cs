@@ -848,6 +848,7 @@ public class EventsController : BaseController<EventsController>
     /// Get events created by current user (Authenticated Event Organizers/Admins)
     /// Epic 1: Dashboard my-events endpoint
     /// Phase 6A.47: Added filters (searchTerm, category, date range, location) for Event Management tab
+    /// Issue #36: Added statusFilter for user-friendly status filtering
     /// </summary>
     [HttpGet("my-events")]
     [Authorize]
@@ -860,11 +861,12 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] DateTime? startDateFrom = null,
         [FromQuery] DateTime? startDateTo = null,
         [FromQuery] string? state = null,
-        [FromQuery] List<Guid>? metroAreaIds = null)
+        [FromQuery] List<Guid>? metroAreaIds = null,
+        [FromQuery] EventStatusFilter? statusFilter = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting events created by user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}",
-            userId, searchTerm, category, state);
+        Logger.LogInformation("Getting events created by user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}, statusFilter={StatusFilter}",
+            userId, searchTerm, category, state, statusFilter);
 
         var query = new GetEventsByOrganizerQuery(
             userId,
@@ -873,7 +875,8 @@ public class EventsController : BaseController<EventsController>
             startDateFrom,
             startDateTo,
             state,
-            metroAreaIds);
+            metroAreaIds,
+            statusFilter);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

@@ -466,6 +466,7 @@ export class EventsRepository {
    * Get events created by current user
    * Returns all events user has created as organizer
    * Phase 6A.58: Added optional filters for category, date range, location, and text search
+   * Issue #36: Added statusFilter and includeAllStatuses for status group filtering
    */
   async getUserCreatedEvents(filters?: GetEventsRequest): Promise<EventDto[]> {
     if (!filters) {
@@ -481,6 +482,9 @@ export class EventsRepository {
     if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
       filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
     }
+    // Issue #36: Status filter parameters
+    if (filters.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
+    if (filters.includeAllStatuses) params.append('includeAllStatuses', 'true');
 
     const queryString = params.toString();
     const url = queryString

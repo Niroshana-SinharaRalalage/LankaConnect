@@ -88,6 +88,7 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
 
                     // Use GetEventsQuery with filters
                     // Phase 6A.88: Set IncludeAllStatuses=true so organizer sees Draft/UnderReview events
+                    // Issue #36: Pass StatusFilter for user-friendly status filtering
                     var getEventsQuery = new GetEventsQuery(
                         SearchTerm: request.SearchTerm,
                         Category: request.Category,
@@ -95,6 +96,7 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
                         StartDateTo: request.StartDateTo,
                         State: request.State,
                         MetroAreaIds: request.MetroAreaIds,
+                        StatusFilter: request.StatusFilter,  // Issue #36: User-friendly status filter
                         IncludeAllStatuses: true  // Phase 6A.88: Organizer sees ALL their events including Draft
                     );
 
@@ -151,7 +153,10 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
 
                 // Delegate to GetEventsQuery without filters
                 // Phase 6A.88: Set IncludeAllStatuses=true so organizer sees Draft/UnderReview events
-                var getAllQuery = new GetEventsQuery(IncludeAllStatuses: true);
+                // Issue #36: Pass StatusFilter even on unfiltered path
+                var getAllQuery = new GetEventsQuery(
+                    StatusFilter: request.StatusFilter,  // Issue #36: User-friendly status filter
+                    IncludeAllStatuses: true);
                 var allEventsResult = await _mediator.Send(getAllQuery, cancellationToken);
 
                 if (allEventsResult.IsFailure)
@@ -198,6 +203,7 @@ public class GetEventsByOrganizerQueryHandler : IQueryHandler<GetEventsByOrganiz
             || request.StartDateFrom.HasValue
             || request.StartDateTo.HasValue
             || !string.IsNullOrWhiteSpace(request.State)
-            || (request.MetroAreaIds != null && request.MetroAreaIds.Any());
+            || (request.MetroAreaIds != null && request.MetroAreaIds.Any())
+            || request.StatusFilter.HasValue;  // Issue #36: Include StatusFilter in filter check
     }
 }

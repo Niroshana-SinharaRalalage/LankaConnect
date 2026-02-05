@@ -1,9 +1,124 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-04 - Fix Duplicate CTA Buttons in Email Templates ✅ DEPLOYED*
+*Last Updated: 2026-02-05 - Phase 6A.98: Event Email Publication UI Improvements ✅ DEPLOYED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Fix Duplicate CTA Buttons ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.98: Event Email Publication UI Improvements ✅ DEPLOYED
+
+### PHASE 6A.98: EVENT EMAIL PUBLICATION UI IMPROVEMENTS - 2026-02-05
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **UI/UX IMPROVEMENT**
+
+**Changes Implemented**:
+
+| # | Requirement | Category | Status |
+|---|-------------|----------|--------|
+| 1 | Change "Publish Event" button to "Send Email" | UI | ✅ Done |
+| 2 | Dynamic email subject (New Event/Upcoming Event) | Backend + DB | ✅ Done |
+| 3 | Convert toast to inline message in Publication History | UI | ✅ Done |
+| 4 | Remove note text from Edit Registration modal | UI | ✅ Done |
+
+**Technical Details**:
+
+1. **Button Text Change**: `EventNewslettersTab.tsx` - Changed from "Publish Event" to "Send Email"
+
+2. **Dynamic Email Subject**:
+   - Events published within 7 days → Subject prefix: "New Event:"
+   - Events published more than 7 days ago → Subject prefix: "Upcoming Event:"
+   - Backend: `EventNotificationEmailJob.cs` - Uses `PublishedAt` date to determine prefix
+   - Migration: Updated `template-event-details-publication` to use `{{SubjectPrefix}}` placeholder
+
+3. **Inline Message**: Toast notification replaced with inline success/error message in Publication History area (follows existing reminder pattern)
+
+4. **Remove Note**: Removed "Note: Attendee details can be edited..." text from Edit Registration modal
+
+**Files Modified**:
+- `web/src/presentation/components/features/newsletters/EventNewslettersTab.tsx`
+- `web/src/presentation/components/features/events/EditRegistrationModal.tsx`
+- `src/LankaConnect.Application/Events/BackgroundJobs/EventNotificationEmailJob.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260205200000_Phase6A98_DynamicEmailSubjectPrefix.cs` (new)
+
+**Documentation**:
+- [RCA_EVENT_EMAIL_PUBLICATION_IMPROVEMENTS.md](./RCA_EVENT_EMAIL_PUBLICATION_IMPROVEMENTS.md)
+
+**Verification**:
+- ✅ Build successful (Backend + Frontend)
+- ✅ Deployed to Azure staging via GitHub Actions
+- ✅ API tested - Backend functioning correctly
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #47 Regression Fix ✅ DEPLOYED
+
+### ISSUE #47 REGRESSION FIX: EMAIL GROUPS NOT SHOWING - 2026-02-05
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Priority**: 🔴 **CRITICAL REGRESSION** - All email groups stopped showing after Issue #47 fix
+
+**Problem Statement**:
+After deploying the Issue #47 fix, NO email groups were visible to ANY user:
+- Dashboard → Email Groups tab: "No Email Groups Yet"
+- Create/Edit Event → Email Groups dropdown: "No options available"
+- Backend API confirmed: Data NOT lost - 3 email groups still exist in database
+
+**Root Cause Identified**:
+The first Issue #47 fix used `state.isHydrated` which is a JavaScript **getter**.
+
+**CRITICAL**: Zustand selectors receive **plain object snapshots** where getters are `undefined`.
+
+```typescript
+// BROKEN - state.isHydrated is a getter, returns undefined in selector
+const isHydrated = useAuthStore((state) => state.isHydrated); // = undefined!
+
+// FIXED - useHasHydrated() accesses _hasHydrated property directly
+const isHydrated = useHasHydrated(); // = true/false
+```
+
+**Fix Applied**:
+
+| Component | Before (BROKEN) | After (FIXED) |
+|-----------|-----------------|---------------|
+| `useEmailGroups.ts` | `useAuthStore((state) => state.isHydrated)` | `useHasHydrated()` |
+
+**Files Modified**:
+- `web/src/presentation/hooks/useEmailGroups.ts` - Use `useHasHydrated()` helper
+
+**Commits**:
+- `5ea9cd16` - fix(#47): Fix email groups cross-user visibility (CAUSED REGRESSION)
+- `614471fd` - fix(#47): Fix regression - use useHasHydrated() instead of broken getter selector
+
+**Documentation**:
+- [RCA_ISSUE_47_REGRESSION_EMAIL_GROUPS_NOT_SHOWING.md](./RCA_ISSUE_47_REGRESSION_EMAIL_GROUPS_NOT_SHOWING.md)
+
+**Lesson Learned**:
+Zustand selectors cannot access JavaScript getters - they only see regular properties on the state snapshot object. The `useHasHydrated()` helper was already used correctly in `ProtectedRoute.tsx`.
+
+**Verification**:
+- ✅ Backend API returns 3 email groups (data not lost)
+- ✅ Build successful (Next.js 16 production build)
+- ✅ Deployed to Azure staging via GitHub Actions (run #21696723750)
+- ⏳ Pending user verification in staging
+
+---
+
+## ⏸️ PREVIOUS STATUS - Issue #47: Email Groups Cross-User Visibility ⚠️ CAUSED REGRESSION
+
+### ISSUE #47: EMAIL GROUPS CROSS-USER VISIBILITY FIX - 2026-02-04
+
+**Status**: ⚠️ **CAUSED REGRESSION** - Fixed in subsequent commit
+
+**Original Fix Applied (Two-Part)**:
+1. **useEmailGroups.ts**: Add `isHydrated` check (used getter - BROKEN)
+2. **LoginForm.tsx**: Add `queryClient.clear()` before `setAuth()` (still valid)
+
+**Documentation**: [RCA_ISSUE_47_EMAIL_GROUPS_VISIBILITY.md](./RCA_ISSUE_47_EMAIL_GROUPS_VISIBILITY.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - Fix Duplicate CTA Buttons ✅ DEPLOYED
 
 ### FIX DUPLICATE CTA BUTTONS IN EMAIL TEMPLATES - 2026-02-04
 

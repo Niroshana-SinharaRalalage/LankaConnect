@@ -7,7 +7,78 @@
 
 ---
 
-## 🔄 CURRENT STATUS - FIX DUPLICATE CTA BUTTONS (2026-02-04)
+## 🔄 CURRENT STATUS - PHASE 6A.98: EVENT EMAIL PUBLICATION UI IMPROVEMENTS (2026-02-05)
+**Date**: 2026-02-05
+**Session**: Phase 6A.98 - Event Email Publication UI Improvements
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING
+**Deployment**: ✅ Backend + UI deployed via GitHub Actions
+**Priority**: 🟡 UI/UX IMPROVEMENT
+
+**Changes Implemented**:
+1. ✅ Button text: "Publish Event" → "Send Email"
+2. ✅ Dynamic email subject: "New Event:" (within 7 days) or "Upcoming Event:" (older)
+3. ✅ Toast → Inline message in Publication History area
+4. ✅ Remove note text from Edit Registration modal
+
+**Files Modified**:
+- `EventNewslettersTab.tsx` - Button text, inline message pattern
+- `EditRegistrationModal.tsx` - Remove note text
+- `EventNotificationEmailJob.cs` - SubjectPrefix logic based on PublishedAt
+- `20260205200000_Phase6A98_DynamicEmailSubjectPrefix.cs` - Migration for template
+
+**Documentation**: [RCA_EVENT_EMAIL_PUBLICATION_IMPROVEMENTS.md](./RCA_EVENT_EMAIL_PUBLICATION_IMPROVEMENTS.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #47 REGRESSION FIX: EMAIL GROUPS NOT SHOWING (2026-02-05)
+**Date**: 2026-02-05
+**Session**: Issue #47 Regression Fix - Email Groups Not Showing
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING
+**Deployment**: ✅ UI deployed via GitHub Actions (run #21696723750)
+**Priority**: 🔴 CRITICAL REGRESSION - All email groups stopped showing after Issue #47 fix
+
+**Problem**: After deploying the Issue #47 fix, NO email groups were visible to ANY user:
+- Dashboard → Email Groups tab: "No Email Groups Yet"
+- Create/Edit Event → Email Groups dropdown: "No options available"
+- Backend API confirmed: Data NOT lost - 3 email groups exist
+
+**Root Cause**: The first fix used `state.isHydrated` which is a JavaScript **getter**. Zustand selectors receive plain object snapshots where **getters are undefined**. The query never executed because `isHydrated` was always `undefined`.
+
+**Fix Applied**:
+- **useEmailGroups.ts**: Use `useHasHydrated()` helper instead of broken getter selector
+  - Before (BROKEN): `const isHydrated = useAuthStore((state) => state.isHydrated);`
+  - After (FIXED): `const isHydrated = useHasHydrated();`
+- The `useHasHydrated()` helper correctly accesses `_hasHydrated` property
+
+**Files Modified**:
+- `web/src/presentation/hooks/useEmailGroups.ts` - Use useHasHydrated() helper
+
+**Documentation**:
+- [RCA_ISSUE_47_REGRESSION_EMAIL_GROUPS_NOT_SHOWING.md](./RCA_ISSUE_47_REGRESSION_EMAIL_GROUPS_NOT_SHOWING.md)
+
+**Commits**:
+- `5ea9cd16` - fix(#47): Fix email groups cross-user visibility (CAUSED REGRESSION)
+- `614471fd` - fix(#47): Fix regression - use useHasHydrated() instead of broken getter selector
+
+**Lesson Learned**: Zustand selectors cannot access JavaScript getters - they only see regular properties on the state snapshot object. Always use `_hasHydrated` or `useHasHydrated()` helper.
+
+---
+
+## ⏸️ PREVIOUS STATUS - ISSUE #47: EMAIL GROUPS CROSS-USER VISIBILITY FIX (2026-02-04)
+**Date**: 2026-02-04
+**Session**: Issue #47 - Fix Email Groups Cross-User Visibility
+**Status**: ⚠️ CAUSED REGRESSION - Fixed in subsequent commit
+**Priority**: 🟡 BUG FIX - One organizer could see another organizer's email groups
+
+**Original Fix Applied (Two-Part)**:
+1. **useEmailGroups.ts**: Add `isHydrated` check to query's `enabled` condition
+2. **LoginForm.tsx**: Add `queryClient.clear()` before `setAuth()`
+
+**Documentation**: [RCA_ISSUE_47_EMAIL_GROUPS_VISIBILITY.md](./RCA_ISSUE_47_EMAIL_GROUPS_VISIBILITY.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - FIX DUPLICATE CTA BUTTONS (2026-02-04)
 **Date**: 2026-02-04
 **Session**: Fix Duplicate CTA Buttons in Email Templates
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED

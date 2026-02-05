@@ -172,8 +172,11 @@ public class RegistrationCancellationEmailParams : IEmailParameters
         if (string.IsNullOrWhiteSpace(UserEmail))
             errors.Add("UserEmail is required");
 
-        if (RegistrationId == Guid.Empty)
-            errors.Add("RegistrationId is required");
+        // Phase 6A.97 Fix: RegistrationId is now OPTIONAL because:
+        // 1. RegistrationCancelledEvent domain event doesn't include RegistrationId
+        // 2. Email template doesn't prominently display registration ID
+        // 3. User and event information are sufficient for the recipient
+        // Previously: if (RegistrationId == Guid.Empty) errors.Add("RegistrationId is required");
 
         if (EventId == Guid.Empty)
             errors.Add("EventId is required");

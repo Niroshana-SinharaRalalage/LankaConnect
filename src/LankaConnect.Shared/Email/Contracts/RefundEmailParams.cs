@@ -129,6 +129,12 @@ public class RefundEmailParams : IEmailParameters
     public string RefundDetailsUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// URL to view event details page.
+    /// Phase 6A.97: Added for "View Event Details" button in refund emails.
+    /// </summary>
+    public string EventDetailsUrl { get; set; } = string.Empty;
+
+    /// <summary>
     /// Stripe refund ID (for completed refunds - required by template).
     /// </summary>
     public string StripeRefundId { get; set; } = string.Empty;
@@ -220,6 +226,7 @@ public class RefundEmailParams : IEmailParameters
             { "ProcessingMethod", ProcessingMethod },
             { "SupportEmail", SupportEmail },
             { "RefundDetailsUrl", RefundDetailsUrl },
+            { "EventDetailsUrl", EventDetailsUrl },  // Phase 6A.97: For "View Event Details" button
             { "StripeRefundId", StripeRefundId },
             { "ReferenceId", !string.IsNullOrEmpty(StripeRefundId) ? StripeRefundId : PaymentIntentId },  // Phase 6A.87++ Fix: Fallback to PaymentIntentId
 

@@ -92,7 +92,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     userId: user.Id,
                     userName: $"{user.FirstName} {user.LastName}",
                     userEmail: user.Email.Value,
-                    registrationId: Guid.Empty,  // RegistrationCancelledEvent doesn't include RegistrationId
+                    registrationId: Guid.Empty,  // Phase 6A.97: RegistrationId is optional - domain event doesn't include it
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
                     eventStartDate: @event.StartDate,

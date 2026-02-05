@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
@@ -24,6 +25,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
     private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.97: For EventDetailsUrl
     private readonly ILogger<RefundCompletedEventHandler> _logger;
 
     private const string SupportEmail = "support@lankaconnect.com";
@@ -34,12 +36,14 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
         ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,  // Phase 6A.97: For EventDetailsUrl
         ILogger<RefundCompletedEventHandler> logger)
     {
         _emailService = emailService;
         _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;  // Phase 6A.97: For EventDetailsUrl
         _logger = logger;
     }
 
@@ -106,6 +110,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     processingMethod: "Original Payment Method"
                 );
                 emailParams.SupportEmail = SupportEmail;
+                emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);  // Phase 6A.97: For "View Event Details" button
 
                 // Phase 6A.87+ Fix: Populate organizer contact if available
                 if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))

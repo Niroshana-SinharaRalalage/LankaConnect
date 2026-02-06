@@ -18,7 +18,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                INSERT INTO communications.email_templates (""id"", ""name"", ""description"", ""subject_template"", ""text_template"", ""html_template"", ""category"", ""is_active"", ""created_at"", ""updated_at"")
+                INSERT INTO communications.email_templates (""Id"", ""name"", ""description"", ""subject_template"", ""html_template"", ""text_template"", ""type"", ""category"", ""is_active"", ""created_at"", ""updated_at"")
                 VALUES (
                     gen_random_uuid(),
                     'event-cancelled-notification',
@@ -145,10 +145,11 @@ Thank you for being part of the LankaConnect community!
 ---
 LankaConnect - Connecting Sri Lankan Communities Worldwide
 Unsubscribe from event notifications: {{UnsubscribeUrl}}',
-                    NOW(),
-                    NOW(),
+                    'notification',
                     'event',
-                    true
+                    true,
+                    NOW(),
+                    NOW()
                 );
             ");
         }

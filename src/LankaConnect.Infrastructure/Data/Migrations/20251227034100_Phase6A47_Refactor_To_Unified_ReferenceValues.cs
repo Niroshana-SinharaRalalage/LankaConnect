@@ -119,7 +119,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 
             // Step 4: Migrate data from event_statuses (or seed defaults if table doesn't exist)
             migrationBuilder.Sql(@"
-                DO $
+                DO $$
                 BEGIN
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'reference_data' AND table_name = 'event_statuses') THEN
                         INSERT INTO reference_data.reference_values
@@ -163,12 +163,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             (gen_random_uuid(), 'EventStatus', 'Archived', 6, 'Archived', 'Event has been archived', 7, true, '{""allowsRegistration"": false, ""isFinalState"": true}'::jsonb, NOW(), NOW()),
                             (gen_random_uuid(), 'EventStatus', 'UnderReview', 7, 'Under Review', 'Event is under review', 8, true, '{""allowsRegistration"": false, ""isFinalState"": false}'::jsonb, NOW(), NOW());
                     END IF;
-                END $;
+                END $$;
             ");
 
             // Step 5: Migrate data from user_roles (or seed defaults if table doesn't exist)
             migrationBuilder.Sql(@"
-                DO $
+                DO $$
                 BEGIN
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'reference_data' AND table_name = 'user_roles') THEN
                         INSERT INTO reference_data.reference_values
@@ -220,7 +220,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             (gen_random_uuid(), 'UserRole', 'AdminManager', 6, 'Admin Manager', 'Admin manager with elevated privileges', 6, true,
                                 '{""canManageUsers"": true, ""canCreateEvents"": true, ""canModerateContent"": true, ""requiresSubscription"": false, ""canCreateBusinessProfile"": true, ""canCreatePosts"": true, ""monthlySubscriptionPrice"": 0.00, ""requiresApproval"": false}'::jsonb, NOW(), NOW());
                     END IF;
-                END $;
+                END $$;
             ");
 
             // Step 5b: Seed remaining enum types (Tier 1-4 critical enums)

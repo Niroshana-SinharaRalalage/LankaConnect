@@ -19,28 +19,53 @@
 |---|------------|---------|----------|--------|-------|
 | 1 | Contact Form / Support Ticket | CreateSupportTicketCommandHandler | `POST /api/Contact` | ✅ SUCCESS | Email received with confirmation |
 | 2 | Free Event Registration | RegistrationConfirmedEventHandler | `POST /api/Events/{id}/rsvp` | ✅ SUCCESS | Registration confirmation email received |
-| 3 | Password Reset | SendPasswordResetCommandHandler | `POST /api/Auth/forgot-password` | ❌ 500 ERROR | Needs investigation - may be template/DB issue |
-| 4 | Resend Ticket Email | ResendTicketEmailCommandHandler | `POST /api/Events/{id}/my-registration/ticket/resend-email` | ⚠️ BLOCKED | Requires `PaymentStatus=Completed` (expected for paid events) |
+| 3 | Support Ticket Reply | ReplySupportTicketCommandHandler | `POST /api/admin/support-tickets/{id}/reply` | ✅ SUCCESS | Admin reply email sent |
+| 4 | Event Reminder (Admin) | EventReminderJob | `POST /api/Admin/send-event-reminder/{id}` | ✅ SUCCESS | Reminder queued and sent |
+| 5 | Password Reset | SendPasswordResetCommandHandler | `POST /api/Auth/forgot-password` | ⚠️ PARTIAL | Email sends, but DB concurrency error (see RCA) |
+| 6 | Resend Ticket Email | ResendTicketEmailCommandHandler | `POST /api/Events/{id}/my-registration/ticket/resend-email` | ⚠️ BLOCKED | Requires `PaymentStatus=Completed` (expected) |
 
 **Key Findings**:
 
 1. **Unified Email Architecture Working**: The `ITypedEmailService.SendEmailAsync(IEmailParameters)` pattern is functioning correctly
 2. **Contact Form**: Public endpoint (no auth required) successfully creates support tickets and sends confirmation emails
 3. **Free Event Registration**: Full flow working - RSVP triggers `RegistrationConfirmedEventHandler` → email sent
-4. **Password Reset**: Returning 500 error - needs Azure logs investigation
-5. **Ticket Resend**: Requires payment completion - expected behavior for paid events
+4. **Support Ticket Reply (Admin)**: Admin can reply to tickets and notification emails are sent
+5. **Event Reminder (Admin)**: Manual reminder trigger works via `/api/Admin/send-event-reminder/{id}`
+6. **Password Reset**: Email IS sent successfully, but DB save fails due to concurrency (see RCA below)
+7. **Ticket Resend**: Requires payment completion - expected behavior for paid events
+
+**Password Reset RCA (Concurrency Issue)**:
+```
+Root Cause: Optimistic concurrency exception when saving password reset token
+- Email sends successfully (template-password-reset, ~10 seconds)
+- Then UnitOfWork.CommitAsync() fails with concurrency error
+- User entity is modified by another process (token refresh) between load and save
+- Error: "The database operation was expected to affect 1 row(s), but actually affected 0 row(s)"
+
+Fix Options:
+1. Add retry logic for concurrency exceptions
+2. Use a separate table for password reset tokens instead of user entity
+3. Reload entity after email send and before save
+
+Status: LOW PRIORITY - Email functionality works, only DB save fails occasionally
+```
 
 **Test Scripts Created**:
 - `scripts/test_all_emails_comprehensive.ps1` - Full email flow testing
 - `scripts/test_emails_final.ps1` - Focused validation tests
+- `scripts/test_admin_emails_v2.ps1` - Admin-specific email tests
 - `scripts/find_future_events.ps1` - Utility to find testable events
+- `scripts/get_admin_token.ps1` - Get admin authentication token
 
 **Confirmed Working Email Templates**:
 - `template-support-ticket-confirmation` (Support Ticket)
 - `template-free-event-registration-confirmation` (Free Event Registration)
+- `template-support-ticket-reply` (Admin Reply)
+- `template-event-reminder` (Event Reminder)
+- `template-password-reset` (Password Reset - email sends, DB issue)
 
-**Requires Further Investigation**:
-- Password reset 500 error - check Azure Container App logs for `SendPasswordResetCommandHandler` errors
+**Bug Fix Deployed**:
+- Commit `e871ab69`: Fixed null reference in password reset handler (accessing result.Value when IsSuccess=false)
 
 ---
 

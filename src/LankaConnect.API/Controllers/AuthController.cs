@@ -389,9 +389,16 @@ public class AuthController : ControllerBase
 
             // Always return success for security (don't reveal if email exists)
             // The handler internally logs failed attempts
-            if (!result.IsSuccess && !result.Value.UserNotFound)
+            // Phase 6A.100 Fix: Check IsSuccess first before accessing Value properties
+            if (!result.IsSuccess)
             {
-                return BadRequest(new { error = result.Error });
+                // If the failure is NOT due to "user not found" (which is handled as success for security),
+                // then return the error. Otherwise, continue to return 200.
+                // Note: When IsSuccess is false, Value may be null, so use null-conditional
+                if (result.Value?.UserNotFound != true)
+                {
+                    return BadRequest(new { error = result.Error });
+                }
             }
 
             _logger.LogInformation("Password reset requested for email: {Email}", request.Email);

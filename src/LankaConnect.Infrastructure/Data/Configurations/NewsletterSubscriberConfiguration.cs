@@ -6,6 +6,7 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// EF Core configuration for NewsletterSubscriber aggregate root
+/// Phase 6A.64: Updated to map MetroAreaIds collection to junction table
 /// </summary>
 public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<NewsletterSubscriber>
 {
@@ -27,10 +28,13 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
                 .IsRequired();
         });
 
-        // Configure MetroAreaId (nullable foreign key)
-        builder.Property(ns => ns.MetroAreaId)
-            .HasColumnName("metro_area_id")
-            .IsRequired(false);
+        // Phase 6A.64: The _metroAreaIds collection is managed in application code
+        // We don't map it to a database column - it's populated from the junction table
+        // by the repository when loading entities
+        // The junction table relationship is managed via raw SQL in the repository layer
+
+        // Ignore the _metroAreaIds field - it's not a database column
+        builder.Ignore(ns => ns.MetroAreaIds);
 
         // Configure flags
         builder.Property(ns => ns.ReceiveAllLocations)
@@ -87,14 +91,12 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
 
         // Indexes for performance
         // Note: Unique index on email will be added in migration manually
+        // Phase 6A.64: Removed idx_newsletter_subscribers_metro_area_id (column no longer exists)
         builder.HasIndex(ns => ns.ConfirmationToken)
             .HasDatabaseName("idx_newsletter_subscribers_confirmation_token");
 
         builder.HasIndex(ns => ns.UnsubscribeToken)
             .HasDatabaseName("idx_newsletter_subscribers_unsubscribe_token");
-
-        builder.HasIndex(ns => ns.MetroAreaId)
-            .HasDatabaseName("idx_newsletter_subscribers_metro_area_id");
 
         builder.HasIndex(ns => new { ns.IsActive, ns.IsConfirmed })
             .HasDatabaseName("idx_newsletter_subscribers_active_confirmed");

@@ -132,7 +132,8 @@ public class AuthController : ControllerBase
                     result.Value.Email,
                     result.Value.FullName,
                     result.Value.Role,
-                    result.Value.PendingUpgradeRole, // Phase 6A.7: Include pending upgrade role for UI display
+                    result.Value.IsEmailVerified,     // FIX: Include email verification status for UI
+                    result.Value.PendingUpgradeRole,  // Phase 6A.7: Include pending upgrade role for UI display
                     result.Value.UpgradeRequestedAt,  // Phase 6A.7: Include when upgrade was requested
                     result.Value.ProfilePhotoUrl      // Include profile photo URL for header display
                 },
@@ -480,7 +481,8 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during email verification for user: {UserId}", request.UserId);
+            // Phase 6A.53: Token-only verification, no userId in request
+            _logger.LogError(ex, "Error during email verification with token: {Token}", request.Token);
             return StatusCode(500, new { error = "An error occurred while verifying your email" });
         }
     }
@@ -566,7 +568,9 @@ public class AuthController : ControllerBase
             }
 
             // Verify email without token validation (test-only)
-            var result = user.VerifyEmail();
+            // Generate and immediately verify to bypass validation
+            user.GenerateEmailVerificationToken();
+            var result = user.VerifyEmail(user.EmailVerificationToken!);
             if (!result.IsSuccess)
             {
                 _logger.LogWarning("Test verify user failed: {Error}", result.Error);
@@ -651,7 +655,7 @@ public class AuthController : ControllerBase
             Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "Setting refresh token cookie: Secure={Secure}, SameSite={SameSite}, " +
             "Expires={Expires}, Environment={Environment}, IsHttps={IsHttps}, Path={Path}",
             cookieOptions.Secure, cookieOptions.SameSite, cookieOptions.Expires,
@@ -675,7 +679,7 @@ public class AuthController : ControllerBase
             Domain = _env.IsProduction() ? ".lankaconnect.com" : null
         };
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "Clearing refresh token cookie: Secure={Secure}, SameSite={SameSite}, Environment={Environment}, IsHttps={IsHttps}",
             cookieOptions.Secure, cookieOptions.SameSite, _env.EnvironmentName, Request.IsHttps);
 

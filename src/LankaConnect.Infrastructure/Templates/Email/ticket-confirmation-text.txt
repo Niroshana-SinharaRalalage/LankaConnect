@@ -1,0 +1,31 @@
+Hi {{UserName}},
+
+Thank you for registering for {{EventTitle}}!
+
+EVENT DETAILS
+-------------
+Date: {{EventStartDate}} at {{EventStartTime}}
+Location: {{EventLocation}}
+Number of Attendees: {{AttendeeCount}}
+
+REGISTERED ATTENDEES
+--------------------
+{{Attendees}}
+
+PAYMENT CONFIRMATION
+--------------------
+Amount Paid: {{AmountPaid}}
+Payment ID: {{PaymentIntentId}}
+Payment Date: {{PaymentDate}}
+
+YOUR TICKET
+-----------
+Ticket Code: {{TicketCode}}
+
+Your ticket is attached to this email as a PDF. Please present it at the event entrance.
+Valid Until: {{TicketExpiryDate}}
+
+We look forward to seeing you at the event!
+
+(c) 2025 LankaConnect
+If you have questions, contact us at {{ContactEmail}}

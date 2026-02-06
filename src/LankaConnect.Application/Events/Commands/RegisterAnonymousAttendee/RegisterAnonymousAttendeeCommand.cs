@@ -1,11 +1,18 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 
 /// <summary>
-/// Session 21: Updated to support multiple attendees with individual names and ages
+/// Session 21: Updated to support multiple attendees with individual names and age categories
 /// Legacy format still supported for backward compatibility (single attendee with Name/Age)
-/// New format: List of AttendeeDto objects
+/// New format: List of AttendeeDto objects with AgeCategory and Gender
+/// </summary>
+/// <summary>
+/// Phase 6A.44: Updated to return Result<string?> for Stripe checkout URL
+/// - Returns null for FREE events (registration completes immediately)
+/// - Returns checkout URL for PAID events (user must complete payment)
+/// Added SuccessUrl and CancelUrl for Stripe Checkout redirect
 /// </summary>
 public record RegisterAnonymousAttendeeCommand(
     Guid EventId,
@@ -19,13 +26,17 @@ public record RegisterAnonymousAttendeeCommand(
     string PhoneNumber,
     string? Address,
     // Legacy quantity field (backward compatibility)
-    int Quantity = 1
-) : ICommand;
+    int Quantity = 1,
+    // Phase 6A.44: Stripe checkout URLs (required for paid events)
+    string? SuccessUrl = null,
+    string? CancelUrl = null
+) : ICommand<string?>;
 
 /// <summary>
-/// Session 21: Individual attendee information
+/// Individual attendee information with age category and optional gender
 /// </summary>
 public record AttendeeDto(
     string Name,
-    int Age
+    AgeCategory AgeCategory,
+    Gender? Gender = null
 );

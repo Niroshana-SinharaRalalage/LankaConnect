@@ -59,6 +59,7 @@ public class JwtTokenService : IJwtTokenService
                 new("firstName", user.FirstName),
                 new("lastName", user.LastName),
                 new("isActive", user.IsActive.ToString().ToLower()),
+                new("isEmailVerified", user.IsEmailVerified.ToString().ToLower()), // FIX: Add email verification status to JWT
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(JwtRegisteredClaimNames.Iat,
                     new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(),
@@ -105,7 +106,7 @@ public class JwtTokenService : IJwtTokenService
             rng.GetBytes(randomBytes);
             var refreshToken = Convert.ToBase64String(randomBytes);
 
-            _logger.LogDebug("Refresh token generated");
+            _logger.LogInformation("Refresh token generated");
             return Task.FromResult(Result<string>.Success(refreshToken));
         }
         catch (Exception ex)
@@ -143,7 +144,7 @@ public class JwtTokenService : IJwtTokenService
                 return Result<Guid>.Failure("Invalid user ID in token");
             }
 
-            _logger.LogDebug("Token validated for user {UserId}", userId);
+            _logger.LogInformation("Token validated for user {UserId}", userId);
             return Result<Guid>.Success(userId);
         }
         catch (SecurityTokenExpiredException)

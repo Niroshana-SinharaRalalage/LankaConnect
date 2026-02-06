@@ -112,10 +112,12 @@ public class EventCategoryAndPricingTests
     public void Create_WithNullTicketPrice_ShouldCreateFreeEvent()
     {
         // Arrange & Act
-        var @event = CreateValidEvent(ticketPrice: null);
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var @event = CreateValidEvent(ticketPrice: Money.Zero(Currency.USD));
 
         // Assert
-        @event.TicketPrice.Should().BeNull();
+        @event.TicketPrice.Should().NotBeNull();
+        @event.TicketPrice!.IsZero.Should().BeTrue();
         @event.IsFree().Should().BeTrue();
     }
 
@@ -187,7 +189,8 @@ public class EventCategoryAndPricingTests
     public void IsFree_WithNullTicketPrice_ShouldReturnTrue()
     {
         // Arrange
-        var @event = CreateValidEvent(ticketPrice: null);
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var @event = CreateValidEvent(ticketPrice: Money.Zero(Currency.USD));
 
         // Act
         var isFree = @event.IsFree();
@@ -268,6 +271,7 @@ public class EventCategoryAndPricingTests
         var endDate = startDate.AddHours(4);
 
         // Act
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
         var result = Event.Create(
             title,
             description,
@@ -277,12 +281,13 @@ public class EventCategoryAndPricingTests
             200,
             location: null,
             category: category,
-            ticketPrice: null);
+            ticketPrice: Money.Zero(Currency.USD));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Category.Should().Be(EventCategory.Charity);
-        result.Value.TicketPrice.Should().BeNull();
+        result.Value.TicketPrice.Should().NotBeNull();
+        result.Value.TicketPrice!.IsZero.Should().BeTrue();
         result.Value.IsFree().Should().BeTrue();
     }
 

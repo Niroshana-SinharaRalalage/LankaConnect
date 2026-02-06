@@ -212,9 +212,9 @@ public class RegisterUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithDatabaseError_ShouldReturnFailure()
+    public async Task Handle_WithDatabaseError_ShouldRethrowException()
     {
-        // Arrange
+        // Arrange - Phase 6A.X: Handler now re-throws exceptions for proper error handling
         var request = new RegisterUserCommand(
             "test@example.com",
             "ValidPassword123!",
@@ -222,25 +222,22 @@ public class RegisterUserHandlerTests
             "Doe");
 
         var email = Email.Create(request.Email).Value;
-        
+
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                           .ReturnsAsync((User?)null);
-        
+
         _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
                                   .Returns(Result.Success());
-        
+
         _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
                                   .Returns(Result<string>.Success("hashedpassword123"));
-        
+
         _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
                       .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _handler.Handle(request, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be("An error occurred during user registration");
+        // Act & Assert - Expect exception to be re-thrown (not caught)
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await _handler.Handle(request, CancellationToken.None));
     }
 
     [Theory]
@@ -400,17 +397,24 @@ public class RegisterUserHandlerTests
         result.Value.Should().NotBeNull();
         result.Value.EmailVerificationRequired.Should().BeTrue();
 
-        // Verify email was sent with correct user ID
-        _mockMediator.Verify(
-            m => m.Send(
-                It.Is<SendEmailVerificationCommand>(c => c.UserId != Guid.Empty),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        // Phase 6A.53: Email is now sent automatically via domain event (MemberVerificationRequestedEvent)
+        // when CommitAsync() is called, NOT via explicit MediatR SendEmailVerificationCommand.
+        // The domain event handler (MemberVerificationRequestedEventHandler) sends the email.
+        // We verify that CommitAsync was called, which triggers domain event dispatch.
+        _mockUnitOfWork.Verify(
+            u => u.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once,
+            "CommitAsync should be called to save user and dispatch domain events");
     }
 
     [Fact]
     public async Task Handle_WhenEmailFails_ShouldStillSucceedRegistration()
     {
+        // Phase 6A.53: This test is NO LONGER RELEVANT after removing explicit SendEmailVerificationCommand.
+        // Email sending now happens asynchronously via domain event (MemberVerificationRequestedEvent).
+        // The domain event handler runs AFTER CommitAsync() completes, so email failures don't affect
+        // registration success. Registration completes successfully regardless of email delivery status.
+
         // Arrange
         var request = new RegisterUserCommand(
             "test@example.com",
@@ -433,24 +437,18 @@ public class RegisterUserHandlerTests
         _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
                       .ReturnsAsync(1);
 
-        // Mock email service to return failure
-        _mockMediator
-            .Setup(m => m.Send(It.IsAny<SendEmailVerificationCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<SendEmailVerificationResponse>.Failure("Email service unavailable"));
-
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);
 
         // Assert
-        result.IsSuccess.Should().BeTrue(); // Registration still succeeds
+        result.IsSuccess.Should().BeTrue(); // Registration always succeeds now
         result.Value.Should().NotBeNull();
         result.Value.EmailVerificationRequired.Should().BeTrue();
 
-        // Verify email was attempted
-        _mockMediator.Verify(
-            m => m.Send(
-                It.IsAny<SendEmailVerificationCommand>(),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        // Verify user was saved (which triggers email via domain event handler)
+        _mockUnitOfWork.Verify(
+            u => u.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once,
+            "CommitAsync should be called to save user and dispatch verification email via domain events");
     }
 }

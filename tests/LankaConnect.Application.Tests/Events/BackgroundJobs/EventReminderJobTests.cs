@@ -1,8 +1,14 @@
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Application.Interfaces;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.Enums;
@@ -19,6 +25,10 @@ public class EventReminderJobTests
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;  // Phase 6A.87: Added for typed email support
+    private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
+    private readonly Mock<IEventReminderRepository> _eventReminderRepository;
+    private readonly Mock<ITicketRepository> _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
     private readonly Mock<ILogger<EventReminderJob>> _logger;
     private readonly EventReminderJob _job;
 
@@ -27,12 +37,43 @@ public class EventReminderJobTests
         _eventRepository = new Mock<IEventRepository>();
         _userRepository = new Mock<IUserRepository>();
         _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Added for typed email support
+        _emailUrlHelper = new Mock<IEmailUrlHelper>();
+        _eventReminderRepository = new Mock<IEventReminderRepository>();
+        _ticketRepository = new Mock<ITicketRepository>();  // Phase 6A.83 Part 3: Added for ticket parameter support
         _logger = new Mock<ILogger<EventReminderJob>>();
+
+        // Phase 6A.71: Setup IEmailUrlHelper mock to return test URL
+        _emailUrlHelper
+            .Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))
+            .Returns((Guid eventId) => $"https://test.lankaconnect.com/events/{eventId}");
+
+        // Phase 6A.71: Setup IEventReminderRepository mock to allow all sends by default
+        _eventReminderRepository
+            .Setup(x => x.IsReminderAlreadySentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Phase 6A.83 Part 3: Setup ITicketRepository mock to return null by default (most events are free)
+        _ticketRepository
+            .Setup(x => x.GetByRegistrationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LankaConnect.Domain.Events.Entities.Ticket?)null);
+
+        // Phase 6A.87: Setup ITypedEmailService mock to return success by default
+        _typedEmailService
+            .Setup(x => x.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
 
         _job = new EventReminderJob(
             _eventRepository.Object,
             _userRepository.Object,
             _emailService.Object,
+            _typedEmailService.Object,  // Phase 6A.87: Added for typed email support
+            _emailUrlHelper.Object,
+            _eventReminderRepository.Object,
+            _ticketRepository.Object,  // Phase 6A.83 Part 3: Added for ticket parameter support
             _logger.Object);
     }
 
@@ -59,19 +100,18 @@ public class EventReminderJobTests
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
         // Act
         await _job.ExecuteAsync();
 
-        // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(msg =>
-                msg.ToEmail == userEmail &&
-                msg.ToName == "Jane Attendee" &&
-                msg.Subject.Contains(eventTitle)),
-            It.IsAny<CancellationToken>()), Times.Once);
+        // Assert - Phase 6A.87: Now uses ITypedEmailService with EventReminderEmailParams
+        // Phase 6A.57: Sends 3 reminders (7d, 2d, 1d) per registration
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventReminderEmailParams>(p =>
+                p.AttendeeName == "Jane Attendee" &&
+                p.EventTitle == eventTitle &&
+                p.AttendeeEmail == userEmail),
+            "EventReminderJob",
+            It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -92,18 +132,17 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Event> { mockEvent });
 
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
         // Act
         await _job.ExecuteAsync();
 
-        // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(msg =>
-                msg.ToEmail == contactEmail &&
-                msg.Subject.Contains(eventTitle)),
-            It.IsAny<CancellationToken>()), Times.Once);
+        // Assert - Phase 6A.87: Now uses ITypedEmailService with EventReminderEmailParams
+        // Phase 6A.57: Sends 3 reminders (7d, 2d, 1d) per registration
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventReminderEmailParams>(p =>
+                p.EventTitle == eventTitle &&
+                p.AttendeeEmail == contactEmail),
+            "EventReminderJob",
+            It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -120,9 +159,10 @@ public class EventReminderJobTests
         // Act
         await _job.ExecuteAsync();
 
-        // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        // Assert - Phase 6A.87: Verify no typed emails sent
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -149,10 +189,11 @@ public class EventReminderJobTests
         // Act - Should not throw
         var act = async () => await _job.ExecuteAsync();
 
-        // Assert
+        // Assert - Phase 6A.87: Verify no typed emails sent
         await act.Should().NotThrowAsync();
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -181,26 +222,33 @@ public class EventReminderJobTests
         _userRepository.Setup(x => x.GetByIdAsync(userId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user2);
 
-        // First email fails, second should still be sent
+        // Phase 6A.87: First email fails, second should still be sent
+        // With 3 time windows, we expect 3 calls per registration = 6 total
         var callCount = 0;
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
                 callCount++;
-                return callCount == 1 ? Result.Failure("Email failed") : Result.Success();
+                return callCount == 1
+                    ? TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email failed" })
+                    : TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100);
             });
 
         // Act
         await _job.ExecuteAsync();
 
-        // Assert - Both emails should be attempted
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
-            It.IsAny<CancellationToken>()), Times.Exactly(2));
+        // Assert - Both registrations should be attempted (3 windows × 2 registrations = 6 calls)
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            "EventReminderJob",
+            It.IsAny<CancellationToken>()), Times.Exactly(6));
     }
 
     [Fact]
-    public async Task ExecuteAsync_ExceptionDuringProcessing_ShouldNotThrow()
+    public async Task ExecuteAsync_ExceptionDuringProcessing_ShouldThrowForHangfireRetry()
     {
         // Arrange
         _eventRepository.Setup(x => x.GetEventsStartingInTimeWindowAsync(
@@ -210,11 +258,11 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act - Should not throw
+        // Act & Assert - Phase 6A.61+ Fix: Should re-throw for Hangfire automatic retry
         var act = async () => await _job.ExecuteAsync();
 
-        // Assert
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<Exception>()
+            .WithMessage("Database error");
     }
 
     private static Event CreateMockEventWithRegistration(Guid eventId, Guid organizerId, string title, Guid? userId = null)
@@ -260,13 +308,17 @@ public class EventReminderJobTests
         var idProperty = typeof(BaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        eventObj.SetDualPricing(pricing);
+
         // Publish the event so registrations can be added
         eventObj.Publish();
 
         // Add anonymous registration using attendee details
         var attendees = new[]
         {
-            AttendeeDetails.Create("Anonymous Attendee", 30).Value
+            AttendeeDetails.Create("Anonymous Attendee", AgeCategory.Adult).Value
         };
         var contact = RegistrationContact.Create(contactEmail, "555-1234", null).Value;
 

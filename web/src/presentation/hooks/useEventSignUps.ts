@@ -27,6 +27,11 @@ import type {
   AddSignUpItemRequest,
   UpdateSignUpItemRequest,
   CommitToSignUpItemRequest,
+  CommitToSignUpItemAnonymousRequest,
+  // Phase 6A.27: Open Sign-Up Items
+  AddOpenSignUpItemRequest,
+  AddOpenSignUpItemAnonymousRequest,
+  UpdateOpenSignUpItemRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -598,6 +603,263 @@ export function useCommitToSignUpItem() {
 }
 
 /**
+ * useCommitToSignUpItemAnonymous Hook
+ *
+ * GitHub Issue #41: Mutation hook for anonymous users to commit to a sign-up item
+ * Uses React Query cache invalidation instead of page reload to preserve scroll position
+ *
+ * Phase 6A.23: Supports anonymous sign-up workflow
+ * Email must be registered for the event (member or anonymous)
+ *
+ * Features:
+ * - Proper cache invalidation (no page reload needed)
+ * - Returns commitment ID
+ * - Automatic cache refresh
+ *
+ * @example
+ * ```tsx
+ * const commitAnonymous = useCommitToSignUpItemAnonymous();
+ *
+ * await commitAnonymous.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789',
+ *   contactEmail: 'user@example.com',
+ *   quantity: 1,
+ *   notes: 'Will bring brown rice',
+ *   contactName: 'John Doe',
+ *   contactPhone: '555-1234'
+ * });
+ * ```
+ */
+export function useCommitToSignUpItemAnonymous() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    } & CommitToSignUpItemAnonymousRequest) =>
+      eventsRepository.commitToSignUpItemAnonymous(eventId, signupId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+// ==================== PHASE 6A.27: OPEN SIGN-UP ITEM HOOKS ====================
+
+/**
+ * useAddOpenSignUpItem Hook
+ *
+ * Phase 6A.27: Mutation hook for users to add their own Open sign-up items
+ *
+ * Features:
+ * - Creates user-submitted item with auto-commitment
+ * - Returns the newly created item ID
+ * - Automatic cache invalidation
+ *
+ * @example
+ * ```tsx
+ * const addOpenItem = useAddOpenSignUpItem();
+ *
+ * const itemId = await addOpenItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemName: 'Homemade Cookies',
+ *   quantity: 24,
+ *   notes: 'Chocolate chip cookies',
+ *   contactName: 'John Doe',
+ *   contactEmail: 'john@example.com'
+ * });
+ * ```
+ */
+export function useAddOpenSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+    } & AddOpenSignUpItemRequest) =>
+      eventsRepository.addOpenSignUpItem(eventId, signupId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useAddOpenSignUpItemAnonymous Hook
+ *
+ * Phase 6A.44: Mutation hook for anonymous users to add Open sign-up items
+ * Anonymous users must be registered for the event and provide contact info
+ *
+ * Features:
+ * - Creates user-submitted item with auto-commitment for anonymous users
+ * - Returns the newly created item ID
+ * - Automatic cache invalidation
+ *
+ * @example
+ * ```tsx
+ * const addOpenItemAnonymous = useAddOpenSignUpItemAnonymous();
+ *
+ * const itemId = await addOpenItemAnonymous.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   contactEmail: 'user@example.com',
+ *   itemName: 'Homemade Cookies',
+ *   quantity: 24,
+ *   notes: 'Chocolate chip cookies',
+ *   contactName: 'John Doe'
+ * });
+ * ```
+ */
+export function useAddOpenSignUpItemAnonymous() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+    } & AddOpenSignUpItemAnonymousRequest) =>
+      eventsRepository.addOpenSignUpItemAnonymous(eventId, signupId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useUpdateOpenSignUpItem Hook
+ *
+ * Phase 6A.27: Mutation hook for users to update their Open sign-up items
+ * Only the user who created the item can update it
+ *
+ * Features:
+ * - Updates item name, quantity, notes, and contact info
+ * - Automatic cache invalidation
+ *
+ * @example
+ * ```tsx
+ * const updateOpenItem = useUpdateOpenSignUpItem();
+ *
+ * await updateOpenItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789',
+ *   itemName: 'Updated Cookies',
+ *   quantity: 36,
+ *   notes: 'Now with extra chocolate!'
+ * });
+ * ```
+ */
+export function useUpdateOpenSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+      ...data
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    } & UpdateOpenSignUpItemRequest) =>
+      eventsRepository.updateOpenSignUpItem(eventId, signupId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * useCancelOpenSignUpItem Hook
+ *
+ * Phase 6A.27: Mutation hook for users to cancel/delete their Open sign-up items
+ * Only the user who created the item can cancel it
+ *
+ * Features:
+ * - Removes the item and its commitment
+ * - Optimistic update removes item from cache
+ * - Automatic cache invalidation
+ * - Rollback on error
+ *
+ * @example
+ * ```tsx
+ * const cancelOpenItem = useCancelOpenSignUpItem();
+ *
+ * await cancelOpenItem.mutateAsync({
+ *   eventId: 'event-123',
+ *   signupId: 'signup-456',
+ *   itemId: 'item-789'
+ * });
+ * ```
+ */
+export function useCancelOpenSignUpItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      itemId,
+    }: {
+      eventId: string;
+      signupId: string;
+      itemId: string;
+    }) => eventsRepository.cancelOpenSignUpItem(eventId, signupId, itemId),
+    onMutate: async ({ eventId, signupId, itemId }) => {
+      await queryClient.cancelQueries({ queryKey: signUpKeys.list(eventId) });
+
+      const previousSignUps = queryClient.getQueryData<SignUpListDto[]>(
+        signUpKeys.list(eventId)
+      );
+
+      // Optimistically remove item
+      queryClient.setQueryData<SignUpListDto[]>(signUpKeys.list(eventId), (old) => {
+        if (!old) return old;
+
+        return old.map((signUp) => {
+          if (signUp.id !== signupId) return signUp;
+
+          return {
+            ...signUp,
+            items: signUp.items.filter((item) => item.id !== itemId),
+          };
+        });
+      });
+
+      return { previousSignUps };
+    },
+    onError: (err, { eventId }, context) => {
+      if (context?.previousSignUps) {
+        queryClient.setQueryData(signUpKeys.list(eventId), context.previousSignUps);
+      }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
+    },
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -612,4 +874,9 @@ export default {
   useUpdateSignUpItem,
   useRemoveSignUpItem,
   useCommitToSignUpItem,
+  useCommitToSignUpItemAnonymous, // GitHub Issue #41
+  // Phase 6A.27: Open Sign-Up Items
+  useAddOpenSignUpItem,
+  useUpdateOpenSignUpItem,
+  useCancelOpenSignUpItem,
 };

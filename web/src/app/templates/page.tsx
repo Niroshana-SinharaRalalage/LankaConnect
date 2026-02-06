@@ -10,6 +10,7 @@ import Footer from '@/presentation/components/layout/Footer';
 import { EventCategory } from '@/infrastructure/api/types/events.types';
 import type { EventTemplateDto } from '@/infrastructure/api/types/event-template.types';
 import { ArrowLeft, Sparkles } from 'lucide-react';
+import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
 
 /**
  * Phase 6A.8: Event Template System

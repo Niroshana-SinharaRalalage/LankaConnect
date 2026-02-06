@@ -3,8 +3,150 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6D GROUP TIERED PRICING COMPLETE ✅
-**Date**: 2025-12-03 (Current Session - Session 24A)
+## 🎯 CURRENT SESSION STATUS - FIX DUPLICATE CTA BUTTONS ✅ COMPLETE
+**Date**: 2026-02-04 (Current Session)
+**Session**: Fix Duplicate CTA Buttons in Email Templates
+**Progress**: **✅ COMPLETE** - All 4 affected templates fixed and verified
+**Status**: 🎉 **BUG FIX COMPLETE** - No more duplicate buttons in email templates
+**Deployment**: ✅ SQL applied directly to staging database
+**Testing**: ✅ Python audit script confirms no duplicate buttons remain
+
+**Duplicate CTA Button Fix Summary**:
+- Audited all email templates for duplicate buttons
+- Found 4 templates with BOTH "View Event & Register" AND "View Event Details"
+- Fixed by removing redundant button per template context
+- `template-new-event-publication`: Keep "View Event & Register" (invites registration)
+- Other 3 templates: Keep "View Event Details" (more appropriate for context)
+
+**Templates Fixed**:
+- `template-new-event-publication`: Remove "View Event Details"
+- `template-event-details-publication`: Remove "View Event & Register"
+- `template-signup-list-commitment-confirmation`: Remove "View Event & Register"
+- `template-signup-list-commitment-update`: Remove "View Event & Register"
+
+**Key Files**:
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260204210000_FixDuplicateCTAButtons.cs`
+- `docs/RCA_DUPLICATE_EMAIL_CTA_BUTTONS.md`
+- `scripts/audit_cta_buttons.py`
+- `scripts/apply_cta_button_fix.py`
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - COMPREHENSIVE EMAIL LINK FIX ✅ COMPLETE
+**Date**: 2026-02-04
+**Session**: Comprehensive Email Link Fix - Add View Event Details to 11 Templates
+**Progress**: **✅ COMPLETE** - All 11 templates verified and deployed
+**Status**: 🎉 **BUG FIX COMPLETE** - All event-related emails now have View Event Details buttons
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.97: TIMEZONE-CONSISTENT DATE/TIME DISPLAY ✅ COMPLETE
+**Date**: 2026-02-02
+**Session**: Phase 6A.97 - Timezone-Consistent Date/Time Display (GitHub #40)
+**Progress**: **✅ COMPLETE** - Backend + Frontend deployed to Azure staging
+**Status**: 🎉 **FEATURE COMPLETE** - Consistent timezone display for US-based events
+**Deployment**: ✅ Backend (run #21609739219) + Frontend (run #21612085798)
+**Testing**: ✅ API returns correct TimeZoneId and TimeZoneAbbreviation for events
+
+**Phase 6A.97 Implementation Summary**:
+- Created `ITimeZoneLookupService` with all 50 US state → timezone mappings
+- Added `TimeZoneId` property to Event entity
+- Created database migration with backfill SQL for existing events
+- Updated `EmailDateTimeHelper` with timezone-aware methods
+- Updated 13+ email handlers to use event's timezone
+- Created frontend `date-formatter.ts` utility
+- Updated EventDto with timezone fields
+
+**Key Files**:
+- `src/LankaConnect.Domain/Events/Services/ITimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Services/TimeZoneLookupService.cs`
+- `src/LankaConnect.Infrastructure/Data/Migrations/20260202184513_Phase6A97_AddEventTimezone.cs`
+- `web/src/presentation/lib/utils/date-formatter.ts`
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.X OBSERVABILITY: REPOSITORY ENHANCEMENT ✅ COMPLETE (100% COVERAGE)
+**Date**: 2026-01-18
+**Session**: Phase 6A.X Observability - Batch 4 Repository Enhancement (Final 3 Repositories)
+**Progress**: **✅ COMPLETE** - All 25 repositories enhanced with comprehensive logging
+**Status**: 🎉 **MILESTONE ACHIEVED** - 100% repository coverage (158 methods total)
+**Deployment**: ✅ Azure staging (run #21115755324, 6m 30s)
+**Testing**: ✅ Verified logs working in Azure Container App
+
+**Phase 6A.X Complete Summary**:
+- **Batch 1**: 9 repositories, 51 methods ✅
+- **Batch 2**: 7 repositories, 54 methods ✅
+- **Batch 3**: 6 repositories, 41 methods ✅
+- **Batch 4**: 3 repositories, 12 methods ✅
+- **TOTAL**: 25 repositories, 158 methods, 100% coverage
+
+**Batch 4 Final Repositories**:
+1. EmailStatusRepository (5 methods) - Email status queries and analytics
+2. EventReminderRepository (2 methods) - Direct SQL with fail-open idempotency
+3. ReferenceDataRepository (5 methods) - Unified reference data queries
+
+**Logging Pattern Implemented**:
+- ILogger<T> with structured logging
+- LogContext.PushProperty for correlation tracking
+- Stopwatch timing for performance metrics
+- PostgreSQL SqlState extraction for error diagnosis
+- Comprehensive START/COMPLETE/FAILED logging
+
+**Git Commit**: 6a790f54 - "feat(phase-6ax-batch4): Add comprehensive logging to final 3 repositories"
+
+**Next Phase**: Phase 3 - CQRS Handler Logging (150+ handlers)
+
+### Azure UI Deployment Summary:
+**Goal**: Deploy Next.js UI to Azure Container Apps staging environment for public access
+
+**Implementation Phases**:
+1. ✅ **Phase 0**: Critical Fixes - Environment variables, health endpoint, CI/CD validation
+2. ✅ **Phase 1**: Next.js Configuration - Standalone output, Dockerfile, environment setup
+3. ✅ **Phase 2**: CI/CD Workflow - GitHub Actions automation with smoke tests
+4. ✅ **Phase 3**: Documentation - Comprehensive deployment guide and procedures
+
+**Solution Details**:
+- **Platform**: Azure Container Apps (same as backend)
+- **Scaling**: 0-3 replicas (scale-to-zero enabled)
+- **Cost**: $0-5/month (within free tier)
+- **Region**: East US 2
+- **Docker Image**: ~50 MB (Alpine Linux, multi-stage build)
+
+### Build & Test Results:
+- ✅ **Configuration**: Next.js standalone output configured
+- ✅ **Docker Build**: Multi-stage Dockerfile optimized
+- ✅ **CI/CD Workflow**: GitHub Actions workflow created
+- ✅ **Documentation**: AZURE_UI_DEPLOYMENT.md, PROGRESS_TRACKER.md updated
+
+### Files Created/Modified:
+**New Files**:
+- `web/src/app/api/health/route.ts` - Health check endpoint for Container Apps probes
+- `web/Dockerfile` - Multi-stage Docker build (deps, builder, runner)
+- `web/.dockerignore` - Build context exclusions
+- `.github/workflows/deploy-ui-staging.yml` - CI/CD workflow for UI deployment
+- `docs/AZURE_UI_DEPLOYMENT.md` - Comprehensive deployment documentation
+
+**Modified Files**:
+- `web/src/app/api/proxy/[...path]/route.ts` - Environment variable for backend URL
+- `web/next.config.js` - Added standalone output mode
+- `web/.env.production` - Changed API URL to /api/proxy for same-origin cookies
+
+**Next Steps** (Manual Azure CLI):
+1. Create Azure Container App (one-time setup via az containerapp create)
+2. Configure environment variables (BACKEND_API_URL, NEXT_PUBLIC_API_URL, etc.)
+3. Push changes to develop branch (triggers GitHub Actions deployment)
+4. Monitor deployment and test functionality
+
+**References**:
+- [Deployment Plan](../C:\Users\Niroshana\.claude\plans\golden-munching-allen.md)
+- [Deployment Documentation](./AZURE_UI_DEPLOYMENT.md)
+- [Progress Tracker](./PROGRESS_TRACKER.md)
+- [Action Plan](./STREAMLINED_ACTION_PLAN.md)
+
+---
+
+## 🎯 PREVIOUS SESSION STATUS - PHASE 6D GROUP TIERED PRICING COMPLETE ✅
+**Date**: 2025-12-03 (Session 24A)
 **Session**: PHASE 6D - Group Tiered Pricing for Events
 **Progress**: **✅ COMPLETE** - Backend + Frontend + Documentation
 **MILESTONE**: **✅ EVENTS NOW SUPPORT QUANTITY-BASED DISCOUNT PRICING TIERS**

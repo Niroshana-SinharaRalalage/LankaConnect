@@ -7,11 +7,17 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// <summary>
 /// Newsletter Subscriber Aggregate Root
 /// Encapsulates newsletter subscription business rules and workflow
+/// Phase 6A.64: Updated to support many-to-many relationship with MetroAreas via junction table
 /// </summary>
 public class NewsletterSubscriber : BaseEntity, IAggregateRoot
 {
     public Email Email { get; private set; } = null!;
-    public Guid? MetroAreaId { get; private set; }
+
+    // Phase 6A.64: Collection of metro area IDs (replaces single MetroAreaId)
+    // EF Core will map this to the newsletter_subscriber_metro_areas junction table
+    private readonly List<Guid> _metroAreaIds = new();
+    public IReadOnlyList<Guid> MetroAreaIds => _metroAreaIds.AsReadOnly();
+
     public bool ReceiveAllLocations { get; private set; }
     public bool IsActive { get; private set; }
     public bool IsConfirmed { get; private set; }
@@ -36,6 +42,7 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
 
     /// <summary>
     /// Validates the current state of the aggregate
+    /// Phase 6A.64: Updated to validate collection of metro area IDs
     /// </summary>
     public ValidationResult ValidateState()
     {
@@ -44,8 +51,8 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
         if (Email == null)
             errors.Add("Email is required");
 
-        if (!ReceiveAllLocations && !MetroAreaId.HasValue)
-            errors.Add("Must specify a metro area or choose to receive all locations");
+        if (!ReceiveAllLocations && !_metroAreaIds.Any())
+            errors.Add("Must specify at least one metro area or choose to receive all locations");
 
         if (string.IsNullOrWhiteSpace(UnsubscribeToken))
             errors.Add("Unsubscribe token is required");
@@ -65,23 +72,25 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
 
     /// <summary>
     /// Factory method to create a new newsletter subscription
+    /// Phase 6A.64: Updated to accept collection of metro area IDs
     /// </summary>
     public static Result<NewsletterSubscriber> Create(
         Email email,
-        Guid? metroAreaId,
+        IEnumerable<Guid> metroAreaIds,
         bool receiveAllLocations)
     {
-        // Business rule: Must have metro area OR receive all locations
-        if (!receiveAllLocations && !metroAreaId.HasValue)
+        var metroAreaIdsList = metroAreaIds?.ToList() ?? new List<Guid>();
+
+        // Business rule: Must have at least one metro area OR receive all locations
+        if (!receiveAllLocations && !metroAreaIdsList.Any())
         {
             return Result<NewsletterSubscriber>.Failure(
-                "Must specify a metro area or choose to receive all locations");
+                "Must specify at least one metro area or choose to receive all locations");
         }
 
         var subscriber = new NewsletterSubscriber
         {
             Email = email,
-            MetroAreaId = receiveAllLocations ? null : metroAreaId,
             ReceiveAllLocations = receiveAllLocations,
             IsActive = true,
             IsConfirmed = false,
@@ -90,11 +99,17 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
             UnsubscribeToken = GenerateToken()
         };
 
+        // Add metro area IDs if not receiving all locations
+        if (!receiveAllLocations)
+        {
+            subscriber._metroAreaIds.AddRange(metroAreaIdsList);
+        }
+
         // Raise domain event
         subscriber.RaiseDomainEvent(new NewsletterSubscriptionCreatedEvent(
             subscriber.Id,
             subscriber.Email.Value,
-            subscriber.MetroAreaId,
+            subscriber.MetroAreaIds.FirstOrDefault(),  // Backward compatibility: use first for event
             subscriber.ReceiveAllLocations
         ));
 
@@ -129,7 +144,7 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
         RaiseDomainEvent(new NewsletterSubscriptionConfirmedEvent(
             Id,
             Email.Value,
-            MetroAreaId
+            MetroAreaIds.FirstOrDefault()  // Backward compatibility: use first for event
         ));
 
         return Result.Success();
@@ -174,7 +189,7 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
         RaiseDomainEvent(new NewsletterSubscriptionCancelledEvent(
             Id,
             Email.Value,
-            MetroAreaId
+            MetroAreaIds.FirstOrDefault()  // Backward compatibility: use first for event
         ));
 
         return Result.Success();

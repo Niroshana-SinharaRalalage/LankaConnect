@@ -1,161 +1,92 @@
+using System.Diagnostics;
+using Hangfire;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Events;
+using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles EventCancelledEvent to send bulk cancellation notifications to all registered attendees
+/// Phase 6A.64: Handles EventCancelledEvent by queuing a background job to send cancellation notifications.
+///
+/// ARCHITECTURE CHANGE (Phase 6A.64):
+/// - BEFORE: Sent emails synchronously within HTTP request (80-90 seconds, caused timeouts)
+/// - AFTER: Queues Hangfire background job (instant API response, unlimited scalability)
+///
+/// Background job (EventCancellationEmailJob) sends email to:
+/// 1. Confirmed registrations (user accounts only)
+/// 2. Event email groups
+/// 3. Location-matched newsletter subscribers (metro → state → all locations)
+///
+/// Performance: API response < 1 second, emails sent asynchronously in background
+/// Retry: Hangfire automatically retries failed jobs (default: 10 attempts with exponential backoff)
+/// Monitoring: View job status and failures in Hangfire Dashboard (/hangfire)
 /// </summary>
 public class EventCancelledEventHandler : INotificationHandler<DomainEventNotification<EventCancelledEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly IUserRepository _userRepository;
-    private readonly IEventRepository _eventRepository;
-    private readonly IRegistrationRepository _registrationRepository;
+    private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly ILogger<EventCancelledEventHandler> _logger;
 
     public EventCancelledEventHandler(
-        IEmailService emailService,
-        IUserRepository userRepository,
-        IEventRepository eventRepository,
-        IRegistrationRepository registrationRepository,
+        IBackgroundJobClient backgroundJobClient,
         ILogger<EventCancelledEventHandler> logger)
     {
-        _emailService = emailService;
-        _userRepository = userRepository;
-        _eventRepository = eventRepository;
-        _registrationRepository = registrationRepository;
+        _backgroundJobClient = backgroundJobClient;
         _logger = logger;
     }
 
-    public async Task Handle(DomainEventNotification<EventCancelledEvent> notification, CancellationToken cancellationToken)
+    public Task Handle(DomainEventNotification<EventCancelledEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling EventCancelledEvent for Event {EventId}", domainEvent.EventId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventCancelled"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "EventCancelled START: EventId={EventId}, CancelledAt={CancelledAt}, Reason={Reason}",
+                domainEvent.EventId, domainEvent.CancelledAt, domainEvent.Reason);
+
+            try
             {
-                _logger.LogWarning("Event {EventId} not found for EventCancelledEvent", domainEvent.EventId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Get all confirmed registrations for this event
-            var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
-            var confirmedRegistrations = registrations
-                .Where(r => r.Status == RegistrationStatus.Confirmed)
-                .ToList();
+                // Phase 6A.64: Queue background job instead of sending emails synchronously
+                // This returns immediately (< 1ms), and Hangfire executes the job asynchronously
+                var jobId = _backgroundJobClient.Enqueue<EventCancellationEmailJob>(
+                    job => job.ExecuteAsync(domainEvent.EventId, domainEvent.Reason));
 
-            if (!confirmedRegistrations.Any())
-            {
-                _logger.LogInformation("No confirmed registrations found for Event {EventId}, skipping email notifications",
-                    domainEvent.EventId);
-                return;
-            }
+                stopwatch.Stop();
 
-            _logger.LogInformation("Found {Count} confirmed registrations for Event {EventId}, preparing bulk email",
-                confirmedRegistrations.Count, domainEvent.EventId);
-
-            // Prepare bulk email messages
-            var emailMessages = new List<EmailMessageDto>();
-
-            foreach (var registration in confirmedRegistrations)
-            {
-                // Skip anonymous registrations - they don't have email in user repository
-                if (!registration.UserId.HasValue)
-                {
-                    _logger.LogInformation("Skipping anonymous registration {RegistrationId} for cancelled event notification",
-                        registration.Id);
-                    continue;
-                }
-
-                var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
-                if (user == null)
-                {
-                    _logger.LogWarning("User {UserId} not found for registration {RegistrationId}",
-                        registration.UserId.Value, registration.Id);
-                    continue;
-                }
-
-                var parameters = new Dictionary<string, object>
-                {
-                    { "UserName", $"{user.FirstName} {user.LastName}" },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                    { "Reason", domainEvent.Reason },
-                    { "CancelledAt", domainEvent.CancelledAt.ToString("MMMM dd, yyyy h:mm tt") }
-                };
-
-                // Note: Using templated email approach with parameters
-                // In production, you would generate HTML from template here
-                var emailMessage = new EmailMessageDto
-                {
-                    ToEmail = user.Email.Value,
-                    ToName = $"{user.FirstName} {user.LastName}",
-                    Subject = $"Event Cancelled: {@event.Title.Value}",
-                    HtmlBody = GenerateEventCancelledHtml(parameters),
-                    Priority = 1 // High priority
-                };
-
-                emailMessages.Add(emailMessage);
-            }
-
-            if (!emailMessages.Any())
-            {
-                _logger.LogWarning("No email messages prepared for Event {EventId}", domainEvent.EventId);
-                return;
-            }
-
-            // Send bulk emails
-            var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
-
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send event cancellation bulk emails for Event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
-            }
-            else
-            {
                 _logger.LogInformation(
-                    "Event cancellation bulk emails sent: {Successful} successful, {Failed} failed out of {Total} total",
-                    result.Value.SuccessfulSends, result.Value.FailedSends, result.Value.TotalEmails);
+                    "EventCancelled COMPLETE: Job queued - EventId={EventId}, JobId={JobId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, jobId, stopwatch.ElapsedMilliseconds);
+
+                return Task.CompletedTask;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "EventCancelled CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventCancelled FAILED: Job queueing failed - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+
+                return Task.CompletedTask;
             }
         }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling EventCancelledEvent for Event {EventId}", domainEvent.EventId);
-        }
-    }
-
-    private string GenerateEventCancelledHtml(Dictionary<string, object> parameters)
-    {
-        // Simplified HTML generation - in production this would use Razor templates
-        return $@"
-            <html>
-            <body>
-                <h2>Event Cancelled</h2>
-                <p>Dear {parameters["UserName"]},</p>
-                <p>We regret to inform you that the following event has been cancelled:</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Original Date:</strong> {parameters["EventStartDate"]} at {parameters["EventStartTime"]}</li>
-                    <li><strong>Cancellation Reason:</strong> {parameters["Reason"]}</li>
-                </ul>
-                <p>We apologize for any inconvenience this may cause.</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
     }
 }

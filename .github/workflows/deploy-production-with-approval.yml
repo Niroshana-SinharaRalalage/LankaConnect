@@ -1,0 +1,306 @@
+name: Deploy to Production (With Approval)
+
+# ============================================================================
+# WORKFLOW: Staging → Production with Manual Approval
+# ============================================================================
+# How it works:
+# 1. Merge develop → main (or manually trigger)
+# 2. GitHub shows approval request in Actions tab
+# 3. You review staging, then click "Approve" in GitHub UI
+# 4. Production deployment proceeds automatically
+# ============================================================================
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - production
+        default: 'production'
+      skip_backend:
+        description: 'Skip backend deployment'
+        required: false
+        type: boolean
+        default: false
+      skip_frontend:
+        description: 'Skip frontend deployment'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  STAGING_UI_URL: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+  STAGING_API_URL: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+jobs:
+  # ==========================================================================
+  # JOB 1: Validate Staging is Healthy
+  # ==========================================================================
+  validate-staging:
+    name: Validate Staging Environment
+    runs-on: ubuntu-latest
+    outputs:
+      staging-healthy: ${{ steps.health-check.outputs.healthy }}
+      staging-version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check staging UI health
+        id: ui-health
+        run: |
+          echo "🔍 Checking staging UI health..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.STAGING_UI_URL }}/api/health)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Staging UI is healthy (Status: $HTTP_CODE)"
+            echo "ui_healthy=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Staging UI is unhealthy (Status: $HTTP_CODE)"
+            echo "ui_healthy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check staging API health
+        id: api-health
+        run: |
+          echo "🔍 Checking staging API health..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.STAGING_API_URL }}/health)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Staging API is healthy (Status: $HTTP_CODE)"
+            echo "api_healthy=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Staging API is unhealthy (Status: $HTTP_CODE)"
+            echo "api_healthy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Overall health check
+        id: health-check
+        run: |
+          if [ "${{ steps.ui-health.outputs.ui_healthy }}" == "true" ] && \
+             [ "${{ steps.api-health.outputs.api_healthy }}" == "true" ]; then
+            echo "✅ Staging environment is healthy"
+            echo "healthy=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Staging environment has issues"
+            echo "healthy=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Get staging version
+        id: version
+        run: |
+          echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Staging validation summary
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "✅ STAGING VALIDATION COMPLETE"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+          echo "Staging UI:      ${{ env.STAGING_UI_URL }}"
+          echo "Staging API:     ${{ env.STAGING_API_URL }}"
+          echo "UI Health:       ${{ steps.ui-health.outputs.ui_healthy }}"
+          echo "API Health:      ${{ steps.api-health.outputs.api_healthy }}"
+          echo "Commit:          ${{ github.sha }}"
+          echo "Branch:          ${{ github.ref_name }}"
+          echo ""
+          echo "📋 Pre-Deployment Checklist:"
+          echo "   1. ✅ Test login flow in staging"
+          echo "   2. ✅ Verify event CRUD operations"
+          echo "   3. ✅ Test payment flow (test mode)"
+          echo "   4. ✅ Check email notifications"
+          echo "   5. ✅ Review error logs"
+          echo ""
+          echo "Ready for production deployment approval!"
+          echo "═══════════════════════════════════════════════════════"
+
+  # ==========================================================================
+  # JOB 2: Request Manual Approval (GitHub Environments)
+  # ==========================================================================
+  request-approval:
+    name: Request Production Deployment Approval
+    runs-on: ubuntu-latest
+    needs: validate-staging
+    environment:
+      name: production-approval
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Display approval request
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "⏸️  WAITING FOR APPROVAL"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+          echo "Staging has been validated and is ready for production."
+          echo ""
+          echo "📋 Before approving, please verify:"
+          echo "   • All features work correctly in staging"
+          echo "   • No critical bugs reported"
+          echo "   • Database migrations tested"
+          echo "   • Stripe test payments work"
+          echo "   • Email notifications sending"
+          echo ""
+          echo "🔗 Staging URLs:"
+          echo "   UI:  ${{ env.STAGING_UI_URL }}"
+          echo "   API: ${{ env.STAGING_API_URL }}"
+          echo ""
+          echo "Waiting for approval to proceed with production deployment..."
+          echo "═══════════════════════════════════════════════════════"
+
+  # ==========================================================================
+  # JOB 3: Deploy Backend to Production
+  # ==========================================================================
+  deploy-backend:
+    name: Deploy Backend to Production
+    needs: request-approval
+    if: ${{ !inputs.skip_backend }}
+    uses: ./.github/workflows/deploy-production.yml
+    secrets: inherit
+
+  # ==========================================================================
+  # JOB 4: Deploy Frontend to Production
+  # ==========================================================================
+  deploy-frontend:
+    name: Deploy Frontend to Production
+    needs: request-approval
+    if: ${{ !inputs.skip_frontend }}
+    uses: ./.github/workflows/deploy-ui-production.yml
+    secrets: inherit
+
+  # ==========================================================================
+  # JOB 5: Post-Deployment Validation
+  # ==========================================================================
+  validate-production:
+    name: Validate Production Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always()
+
+    steps:
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "⏳ Waiting 60 seconds for production to stabilize..."
+          sleep 60
+
+      - name: Get production URLs
+        id: urls
+        run: |
+          # These will be your custom domains after DNS configured
+          # For now, using Azure-generated URLs
+          echo "API_URL=https://lankaconnect-api-prod.eastus.azurecontainerapps.io" >> $GITHUB_OUTPUT
+          echo "UI_URL=https://lankaconnect-ui-prod.eastus.azurecontainerapps.io" >> $GITHUB_OUTPUT
+
+      - name: Validate production API
+        run: |
+          echo "🔍 Testing production API health..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.API_URL }}/health)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Production API is healthy (Status: $HTTP_CODE)"
+          else
+            echo "❌ Production API health check failed (Status: $HTTP_CODE)"
+            exit 1
+          fi
+
+      - name: Validate production UI
+        run: |
+          echo "🔍 Testing production UI health..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.UI_URL }}/api/health)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Production UI is healthy (Status: $HTTP_CODE)"
+          else
+            echo "❌ Production UI health check failed (Status: $HTTP_CODE)"
+            exit 1
+          fi
+
+      - name: Deployment success summary
+        if: success()
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "🎉 PRODUCTION DEPLOYMENT SUCCESSFUL!"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+          echo "Production URLs:"
+          echo "   UI:  ${{ steps.urls.outputs.UI_URL }}"
+          echo "   API: ${{ steps.urls.outputs.API_URL }}"
+          echo ""
+          echo "Commit:      ${{ github.sha }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Timestamp:   $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "📋 Post-Deployment Tasks:"
+          echo "   1. Test login flow with Entra ID"
+          echo "   2. Verify event CRUD operations"
+          echo "   3. Test payment flow (Stripe LIVE mode - refund immediately!)"
+          echo "   4. Check email notifications"
+          echo "   5. Monitor Application Insights for errors"
+          echo "   6. Review Container Apps logs"
+          echo ""
+          echo "🔗 Quick Links:"
+          echo "   - UI Home: ${{ steps.urls.outputs.UI_URL }}"
+          echo "   - API Health: ${{ steps.urls.outputs.API_URL }}/health"
+          echo "   - Login: ${{ steps.urls.outputs.UI_URL }}/login"
+          echo ""
+          echo "═══════════════════════════════════════════════════════"
+
+      - name: Deployment failure notification
+        if: failure()
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "❌ PRODUCTION DEPLOYMENT FAILED OR UNHEALTHY"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+          echo "Check the logs above for specific errors."
+          echo ""
+          echo "🔍 Troubleshooting Steps:"
+          echo "   1. Check Container Apps logs"
+          echo "   2. Verify database migrations"
+          echo "   3. Check Application Insights"
+          echo "   4. Review GitHub Actions logs"
+          echo ""
+          echo "🔄 Rollback Commands:"
+          echo "   Backend:"
+          echo "     az containerapp ingress traffic set \\"
+          echo "       --name lankaconnect-api-prod \\"
+          echo "       --resource-group lankaconnect-prod \\"
+          echo "       --revision-weight <OLD_REVISION>=100"
+          echo ""
+          echo "   Frontend:"
+          echo "     az containerapp ingress traffic set \\"
+          echo "       --name lankaconnect-ui-prod \\"
+          echo "       --resource-group lankaconnect-prod \\"
+          echo "       --revision-weight <OLD_REVISION>=100"
+          echo ""
+          echo "═══════════════════════════════════════════════════════"
+
+  # ==========================================================================
+  # JOB 6: Notify on Success/Failure
+  # ==========================================================================
+  notify:
+    name: Send Deployment Notification
+    runs-on: ubuntu-latest
+    needs: validate-production
+    if: always()
+
+    steps:
+      - name: Notification summary
+        run: |
+          if [ "${{ needs.validate-production.result }}" == "success" ]; then
+            echo "✅ Production deployment completed successfully!"
+            echo "Environment is healthy and serving traffic."
+          else
+            echo "❌ Production deployment failed or is unhealthy!"
+            echo "Review logs and consider rollback if necessary."
+          fi
+
+          # In a real setup, you'd send this to Slack, Teams, email, etc.
+          # Example: curl -X POST -H 'Content-Type: application/json' \
+          #   -d '{"text":"Production deployment status: ${{ needs.validate-production.result }}"}' \
+          #   $SLACK_WEBHOOK_URL

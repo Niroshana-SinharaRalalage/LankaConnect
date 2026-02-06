@@ -6,6 +6,7 @@
  * since navigator.geolocation is not available in Node.js.
  */
 
+import { describe, it, expect } from 'vitest';
 import { isGeolocationAvailable } from './geolocation';
 
 describe('Geolocation Utility', () => {

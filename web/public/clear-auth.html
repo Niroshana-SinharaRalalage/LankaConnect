@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Authentication Data</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .danger {
+            background: #f44336;
+        }
+        .danger:hover {
+            background: #da190b;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .info {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Clear LankaConnect Authentication Data</h1>
+        <p>This tool will help you clear all stored authentication data to resolve the 401 errors.</p>
+
+        <div>
+            <button onclick="clearAllAuthData()">🧹 Clear All Auth Data</button>
+            <button onclick="checkCurrentAuth()" style="background: #2196F3;">🔍 Check Current Auth</button>
+            <button onclick="testLogin()" style="background: #FF9800;">🔐 Test Login</button>
+        </div>
+
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearAllAuthData() {
+            addLog('<b>⚡ FIXING THE 401 ERRORS NOW...</b>', 'info');
+            addLog('Starting authentication data cleanup...', 'info');
+
+            try {
+                // Clear localStorage
+                const localStorageKeys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('auth') || key.includes('token') || key.includes('user'))) {
+                        localStorageKeys.push(key);
+                    }
+                }
+                localStorageKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                    addLog(`✓ Removed localStorage: ${key}`, 'success');
+                });
+
+                // Clear sessionStorage
+                const sessionStorageKeys = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    if (key && (key.includes('auth') || key.includes('token') || key.includes('user'))) {
+                        sessionStorageKeys.push(key);
+                    }
+                }
+                sessionStorageKeys.forEach(key => {
+                    sessionStorage.removeItem(key);
+                    addLog(`✓ Removed sessionStorage: ${key}`, 'success');
+                });
+
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) {
+                    const eqPos = c.indexOf("=");
+                    const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+                    if (name.includes('token') || name.includes('auth')) {
+                        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
+                        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.' + window.location.hostname;
+                        addLog(`✓ Cleared cookie: ${name}`, 'success');
+                    }
+                });
+
+                // Clear IndexedDB if exists
+                if (window.indexedDB) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            if (db.name && (db.name.includes('auth') || db.name.includes('token'))) {
+                                indexedDB.deleteDatabase(db.name);
+                                addLog(`✓ Cleared IndexedDB: ${db.name}`, 'success');
+                            }
+                        });
+                    }).catch(e => {
+                        addLog('IndexedDB not accessible', 'info');
+                    });
+                }
+
+                addLog('✅ All authentication data cleared successfully!', 'success');
+                addLog('Please navigate to http://localhost:3000/login to sign in with fresh tokens', 'info');
+
+                setTimeout(() => {
+                    if (confirm('Authentication data cleared! Would you like to go to the login page now?')) {
+                        window.location.href = 'http://localhost:3000/login';
+                    }
+                }, 1500);
+
+            } catch (error) {
+                addLog(`❌ Error clearing auth data: ${error.message}`, 'error');
+            }
+        }
+
+        function checkCurrentAuth() {
+            addLog('Checking current authentication state...', 'info');
+
+            // Check localStorage
+            let foundAuth = false;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('auth') || key.includes('token') || key.includes('user'))) {
+                    const value = localStorage.getItem(key);
+                    let displayValue = value;
+                    try {
+                        const parsed = JSON.parse(value);
+                        if (parsed.state) {
+                            displayValue = `{user: ${parsed.state.user ? '✓' : '✗'}, accessToken: ${parsed.state.accessToken ? '✓' : '✗'}, refreshToken: ${parsed.state.refreshToken ? '✓' : '✗'}}`;
+                        }
+                    } catch (e) {
+                        displayValue = value.length > 50 ? value.substring(0, 50) + '...' : value;
+                    }
+                    addLog(`📦 localStorage[${key}]: ${displayValue}`, 'info');
+                    foundAuth = true;
+                }
+            }
+
+            // Check cookies
+            document.cookie.split(";").forEach(function(c) {
+                const eqPos = c.indexOf("=");
+                const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+                if (name && (name.includes('token') || name.includes('auth'))) {
+                    addLog(`🍪 Cookie found: ${name}`, 'info');
+                    foundAuth = true;
+                }
+            });
+
+            if (!foundAuth) {
+                addLog('✅ No authentication data found - browser is clean!', 'success');
+            } else {
+                addLog('⚠️ Authentication data found - consider clearing if you have 401 errors', 'error');
+            }
+        }
+
+        async function testLogin() {
+            addLog('Testing login with test credentials...', 'info');
+
+            try {
+                const response = await fetch('http://localhost:3000/api/proxy/Auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'niroshhh2@gmail.com',
+                        password: '1qaz!QAZ'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('✅ Login successful!', 'success');
+                    addLog(`User: ${data.user?.email || 'N/A'}`, 'info');
+                    addLog(`Access Token: ${data.accessToken ? '✓ Present' : '✗ Missing'}`, data.accessToken ? 'success' : 'error');
+                    addLog(`Refresh Token: ${data.refreshToken ? '✓ Present' : '✗ Missing'}`, data.refreshToken ? 'success' : 'error');
+
+                    if (data.accessToken && data.refreshToken) {
+                        addLog('🎉 Both tokens received! The fix is working correctly.', 'success');
+                    } else if (data.accessToken && !data.refreshToken) {
+                        addLog('⚠️ No refresh token in response - the backend fix may not be deployed yet', 'error');
+                    }
+                } else {
+                    addLog(`❌ Login failed: ${data.error || response.statusText}`, 'error');
+                    addLog('Please check your credentials', 'info');
+                }
+            } catch (error) {
+                addLog(`❌ Network error: ${error.message}`, 'error');
+                addLog('Make sure the development server is running on http://localhost:3000', 'info');
+            }
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', () => {
+            checkCurrentAuth();
+        });
+    </script>
+</body>
+</html>

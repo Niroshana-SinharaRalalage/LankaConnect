@@ -4,10 +4,10 @@
  * Phase 6A.14: Modal dialog for editing event registration details
  *
  * Features:
- * - Edit attendee names and ages
+ * - Edit attendee names, age categories, and gender
  * - Edit contact information (email, phone, address)
  * - Add/remove attendees for free events
- * - Prevents attendee count changes for paid events
+ * - Add-Only Attendees: Button to add more attendees to paid registrations
  * - Form validation
  * - Error handling
  */
@@ -24,18 +24,26 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
-import { AlertCircle, Plus, Trash2, User } from 'lucide-react';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
+import { AlertCircle, Plus, Trash2, User, UserPlus } from 'lucide-react';
 import type { RegistrationDetailsDto, AttendeeDto, PaymentStatus } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { validatePhoneNumber } from '@/presentation/lib/validators/phone';
 
 interface EditRegistrationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   registration: RegistrationDetailsDto | null;
   eventId: string;
+  eventTitle?: string;
   isFreeEvent: boolean;
   spotsLeft: number;
+  // Issue #51: Max attendees per registration (configurable by event organizer)
+  maxAttendeesPerRegistration?: number;
   onSave: (data: EditRegistrationData) => Promise<void>;
   isSubmitting?: boolean;
+  // Add-Only Attendees: Callback to open AddAttendeesModal for paid registrations
+  onAddAttendeesClick?: () => void;
 }
 
 export interface EditRegistrationData {
@@ -50,10 +58,13 @@ export function EditRegistrationModal({
   onOpenChange,
   registration,
   eventId,
+  eventTitle,
   isFreeEvent,
   spotsLeft,
+  maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   onSave,
   isSubmitting = false,
+  onAddAttendeesClick,
 }: EditRegistrationModalProps) {
   // Form state
   const [attendees, setAttendees] = useState<AttendeeDto[]>([]);
@@ -64,13 +75,20 @@ export function EditRegistrationModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Determine if this is a paid registration (cannot change attendee count)
-  const isPaidRegistration = registration?.paymentStatus === 1; // PaymentStatus.Completed
+  // Phase 6A.79 Part 3: API returns string values, not numeric enums
+  const isPaidRegistration = registration?.paymentStatus === 'Completed';
   const originalAttendeeCount = registration?.attendees?.length || registration?.quantity || 1;
 
   // Calculate max attendees allowed
+  // Issue #51: Use event's configured max attendees per registration
   const maxAttendeesAllowed = isFreeEvent
-    ? Math.min(10, originalAttendeeCount + spotsLeft) // Free: can add up to event capacity
+    ? Math.min(maxAttendeesPerRegistration, originalAttendeeCount + spotsLeft) // Free: can add up to event capacity
     : originalAttendeeCount; // Paid: locked to original count
+
+  // Add-Only Attendees: Check if user can add more attendees to paid registration
+  const canAddMoreToPaid = isPaidRegistration &&
+    originalAttendeeCount < maxAttendeesPerRegistration &&
+    spotsLeft > 0;
 
   // Initialize form with registration data when modal opens
   useEffect(() => {
@@ -83,7 +101,7 @@ export function EditRegistrationModal({
         const placeholders: AttendeeDto[] = [];
         const qty = registration.quantity || 1;
         for (let i = 0; i < qty; i++) {
-          placeholders.push({ name: '', age: 0 });
+          placeholders.push({ name: '', ageCategory: AgeCategory.Adult, gender: null });
         }
         setAttendees(placeholders);
       }
@@ -114,12 +132,14 @@ export function EditRegistrationModal({
   if (!registration) return null;
 
   // Update attendee field
-  const updateAttendee = (index: number, field: keyof AttendeeDto, value: string | number) => {
+  const updateAttendee = (index: number, field: keyof AttendeeDto, value: string | AgeCategory | Gender | null) => {
     const newAttendees = [...attendees];
     if (field === 'name') {
       newAttendees[index] = { ...newAttendees[index], name: value as string };
-    } else if (field === 'age') {
-      newAttendees[index] = { ...newAttendees[index], age: value as number };
+    } else if (field === 'ageCategory') {
+      newAttendees[index] = { ...newAttendees[index], ageCategory: value as AgeCategory };
+    } else if (field === 'gender') {
+      newAttendees[index] = { ...newAttendees[index], gender: value as Gender | null };
     }
     setAttendees(newAttendees);
 
@@ -135,7 +155,7 @@ export function EditRegistrationModal({
   // Add new attendee
   const addAttendee = () => {
     if (attendees.length < maxAttendeesAllowed) {
-      setAttendees([...attendees, { name: '', age: 0 }]);
+      setAttendees([...attendees, { name: '', ageCategory: AgeCategory.Adult, gender: null }]);
     }
   };
 
@@ -163,8 +183,8 @@ export function EditRegistrationModal({
         newErrors[`attendee_${index}_name`] = 'Name cannot exceed 100 characters';
       }
 
-      if (attendee.age < 0 || attendee.age > 120) {
-        newErrors[`attendee_${index}_age`] = 'Age must be between 0 and 120';
+      if (!attendee.ageCategory) {
+        newErrors[`attendee_${index}_ageCategory`] = 'Age category is required';
       }
     });
 
@@ -180,11 +200,10 @@ export function EditRegistrationModal({
       newErrors.email = 'Invalid email format';
     }
 
-    // Validate phone
-    if (!phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (phoneNumber.length > 30) {
-      newErrors.phoneNumber = 'Phone number cannot exceed 30 characters';
+    // Validate phone - GitHub Issue #30: Use centralized phone validation
+    const phoneValidation = validatePhoneNumber(phoneNumber);
+    if (!phoneValidation.isValid) {
+      newErrors.phoneNumber = phoneValidation.error || 'Invalid phone number';
     }
 
     // Validate address (optional, but has max length)
@@ -207,7 +226,11 @@ export function EditRegistrationModal({
 
     try {
       await onSave({
-        attendees: attendees.map(a => ({ name: a.name.trim(), age: a.age })),
+        attendees: attendees.map(a => ({
+          name: a.name.trim(),
+          ageCategory: a.ageCategory,
+          gender: a.gender
+        })),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         address: address.trim() || undefined,
@@ -232,11 +255,6 @@ export function EditRegistrationModal({
             <DialogTitle>Edit Registration</DialogTitle>
             <DialogDescription>
               Update your registration details for this event.
-              {isPaidRegistration && (
-                <span className="block mt-1 text-amber-600 dark:text-amber-400 font-medium">
-                  Note: Attendee count cannot be changed for paid registrations.
-                </span>
-              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -247,18 +265,37 @@ export function EditRegistrationModal({
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                   Attendees ({attendees.length})
                 </h3>
-                {!isPaidRegistration && attendees.length < maxAttendeesAllowed && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addAttendee}
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Attendee
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {/* Free event: Direct add attendee */}
+                  {!isPaidRegistration && attendees.length < maxAttendeesAllowed && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAttendee}
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Attendee
+                    </Button>
+                  )}
+                  {/* Paid event: Add More Attendees (opens AddAttendeesModal) */}
+                  {canAddMoreToPaid && onAddAttendeesClick && (
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        onOpenChange(false); // Close this modal
+                        onAddAttendeesClick(); // Open AddAttendeesModal
+                      }}
+                      className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Add More Attendees
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {errors.attendees && (
@@ -290,9 +327,9 @@ export function EditRegistrationModal({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
                       {/* Name */}
-                      <div className="col-span-2 sm:col-span-1">
+                      <div>
                         <label
                           htmlFor={`attendee-name-${index}`}
                           className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
@@ -318,35 +355,61 @@ export function EditRegistrationModal({
                         )}
                       </div>
 
-                      {/* Age */}
+                      {/* Age Category */}
                       <div>
-                        <label
-                          htmlFor={`attendee-age-${index}`}
-                          className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
-                        >
-                          Age *
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-2">
+                          Age Category *
                         </label>
-                        <input
-                          id={`attendee-age-${index}`}
-                          type="number"
-                          min="0"
-                          max="120"
-                          value={attendee.age || ''}
-                          onChange={(e) =>
-                            updateAttendee(index, 'age', parseInt(e.target.value) || 0)
-                          }
-                          className={`w-full px-3 py-2 text-sm border rounded-md ${
-                            errors[`attendee_${index}_age`]
-                              ? 'border-red-500 focus:ring-red-500'
-                              : 'border-neutral-300 dark:border-neutral-600 focus:ring-blue-500'
-                          } focus:outline-none focus:ring-2`}
-                          placeholder="Age"
-                        />
-                        {errors[`attendee_${index}_age`] && (
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`attendee-age-category-${index}`}
+                              checked={attendee.ageCategory === AgeCategory.Adult}
+                              onChange={() => updateAttendee(index, 'ageCategory', AgeCategory.Adult)}
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-neutral-700 dark:text-neutral-300">Adult</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`attendee-age-category-${index}`}
+                              checked={attendee.ageCategory === AgeCategory.Child}
+                              onChange={() => updateAttendee(index, 'ageCategory', AgeCategory.Child)}
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-neutral-700 dark:text-neutral-300">Child</span>
+                          </label>
+                        </div>
+                        {errors[`attendee_${index}_ageCategory`] && (
                           <p className="mt-1 text-xs text-red-600">
-                            {errors[`attendee_${index}_age`]}
+                            {errors[`attendee_${index}_ageCategory`]}
                           </p>
                         )}
+                      </div>
+
+                      {/* Gender */}
+                      <div>
+                        <label
+                          htmlFor={`attendee-gender-${index}`}
+                          className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+                        >
+                          Gender (Optional)
+                        </label>
+                        <select
+                          id={`attendee-gender-${index}`}
+                          value={attendee.gender ?? ''}
+                          onChange={(e) =>
+                            updateAttendee(index, 'gender', e.target.value ? parseInt(e.target.value) as Gender : null)
+                          }
+                          className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select gender</option>
+                          <option value={Gender.Male}>Male</option>
+                          <option value={Gender.Female}>Female</option>
+                          <option value={Gender.Other}>Other</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -391,7 +454,7 @@ export function EditRegistrationModal({
                   {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
                 </div>
 
-                {/* Phone */}
+                {/* Phone - GitHub Issue #30: PhoneInput restricts invalid characters */}
                 <div>
                   <label
                     htmlFor="phone"
@@ -399,24 +462,19 @@ export function EditRegistrationModal({
                   >
                     Phone Number *
                   </label>
-                  <input
+                  <PhoneInput
                     id="phone"
-                    type="tel"
                     value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value);
+                    onChange={(value) => {
+                      setPhoneNumber(value);
                       if (errors.phoneNumber) {
                         const newErrors = { ...errors };
                         delete newErrors.phoneNumber;
                         setErrors(newErrors);
                       }
                     }}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.phoneNumber
-                        ? 'border-red-500 focus:ring-red-500'
-                        : 'border-neutral-300 dark:border-neutral-600 focus:ring-blue-500'
-                    } focus:outline-none focus:ring-2`}
-                    placeholder="+1 (555) 123-4567"
+                    error={!!errors.phoneNumber}
+                    placeholder="+1-234-567-8901"
                   />
                   {errors.phoneNumber && (
                     <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>

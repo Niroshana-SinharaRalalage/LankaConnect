@@ -26,13 +26,17 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const requestUpgrade = useRequestRoleUpgrade();
 
-  // Reset state when modal opens/closes
+  // Reset state when modal OPENS (not closes) to ensure clean state
+  // This prevents isPending from being stuck if user closed modal during a previous submission
+  // Note: requestUpgrade.reset is stable from useMutation, so we only need to depend on 'isOpen'
+  // Including requestUpgrade in deps would cause infinite re-renders as mutation object is recreated each render
   React.useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setReason('');
       setShowSuccess(false);
       requestUpgrade.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,13 +173,11 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               >
                 Cancel
               </Button>
+              {/* Phase 6A.X Issue #42: Fixed disabled state visibility by replacing inline styles with Tailwind */}
+              {/* Gradient classes support hover/disabled variants for proper visual feedback */}
               <Button
                 type="submit"
-                className="flex-1"
-                style={{
-                  background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)',
-                  color: 'white',
-                }}
+                className="flex-1 bg-gradient-to-br from-[#FF7900] to-[#8B1538] text-white hover:from-[#FF8C1A] hover:to-[#9C1A40] disabled:from-[#FF7900]/50 disabled:to-[#8B1538]/50 disabled:cursor-not-allowed"
                 disabled={requestUpgrade.isPending || reason.trim().length < 20}
               >
                 {requestUpgrade.isPending ? 'Submitting...' : 'Submit Request'}

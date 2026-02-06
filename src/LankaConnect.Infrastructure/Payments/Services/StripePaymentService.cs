@@ -55,26 +55,41 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
-            // Get or create Stripe customer for the user
-            if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            // Phase 6A.44: Handle both authenticated and anonymous registrations
+            string? stripeCustomerId = null;
+            bool isAnonymous = request.Metadata?.ContainsKey("anonymous") == true;
+
+            if (!isAnonymous)
             {
-                return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                // Get or create Stripe customer for authenticated user
+                if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                }
+
+                stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
+
+                if (stripeCustomerId == null)
+                {
+                    return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                }
             }
-
-            var stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
-
-            if (stripeCustomerId == null)
+            else
             {
-                return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                // Phase 6A.44: For anonymous users, optionally provide email for receipt
+                // Stripe will create a guest checkout without requiring a customer record
+                _logger.LogInformation("Creating anonymous checkout session for Event {EventId}", request.EventId);
             }
 
             // Create checkout session for one-time payment (not subscription)
             var sessionService = new SessionService(_stripeClient);
             var sessionOptions = new SessionCreateOptions
             {
-                Customer = stripeCustomerId,
+                Customer = stripeCustomerId, // null for anonymous users
                 PaymentMethodTypes = new List<string> { "card" },
                 Mode = "payment",  // One-time payment (not subscription)
+                // Phase 6A.44: For anonymous users, provide email for receipt
+                CustomerEmail = isAnonymous && request.Metadata?.TryGetValue("email", out var email) == true ? email : null,
                 LineItems = new List<SessionLineItemOptions>
                 {
                     new SessionLineItemOptions
@@ -97,7 +112,8 @@ public class StripePaymentService : IStripePaymentService
                         Quantity = 1
                     }
                 },
-                SuccessUrl = request.SuccessUrl,
+                // Phase 6A.44: Append registrationId to success URL for anonymous users
+                SuccessUrl = AppendRegistrationIdToUrl(request.SuccessUrl, request.RegistrationId),
                 CancelUrl = request.CancelUrl,
                 Metadata = request.Metadata ?? new Dictionary<string, string>(),
                 PaymentIntentData = new SessionPaymentIntentDataOptions
@@ -127,6 +143,286 @@ public class StripePaymentService : IStripePaymentService
             _logger.LogError(ex, "Error creating event checkout session for Event {EventId}", request.EventId);
             return Result<string>.Failure("Failed to create payment session");
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.81 Part 3: Retrieves the checkout URL from an existing Stripe Checkout Session.
+    /// Used to display payment link in UI and email without creating duplicate sessions.
+    /// Architect decision: Retrieve from Stripe at query time (not store in DB) for security.
+    /// User concern: Payment link should be invalid after payment completes (Stripe handles this automatically).
+    /// </summary>
+    public async Task<Result<string>> GetCheckoutSessionUrlAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.81-Part3] Retrieving Stripe checkout URL - SessionId={SessionId}",
+                sessionId);
+
+            if (string.IsNullOrWhiteSpace(sessionId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81-Part3] Cannot retrieve checkout URL: SessionId is empty");
+                return Result<string>.Failure("Session ID cannot be empty");
+            }
+
+            // Phase 6A.81 Part 4 FIX: Handle legacy data where full URL was stored instead of session ID
+            // Bug origin: CreateEventCheckoutSessionAsync returned session.Url (full URL) instead of session.Id
+            // This URL was then stored in StripeCheckoutSessionId field (misnamed)
+            // Fix: Detect if input is already a checkout URL and return it directly
+            if (sessionId.StartsWith("https://checkout.stripe.com", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.81-Part4] Detected legacy checkout URL in StripeCheckoutSessionId field - returning directly. " +
+                    "UrlLength={UrlLength}",
+                    sessionId.Length);
+                return Result<string>.Success(sessionId);
+            }
+
+            var sessionService = new SessionService(_stripeClient);
+            var session = await sessionService.GetAsync(sessionId, null, null, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogError(
+                    "[Phase 6A.81-Part3] Stripe session not found - SessionId={SessionId}",
+                    sessionId);
+                return Result<string>.Failure("Checkout session not found");
+            }
+
+            // Check session status - Stripe auto-invalidates URLs after 24h or successful payment
+            if (session.Status == "expired")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.81-Part3] Stripe session expired - SessionId={SessionId}, ExpiresAt={ExpiresAt}",
+                    sessionId, session.ExpiresAt);
+                return Result<string>.Failure("Checkout session has expired (24 hours)");
+            }
+
+            if (session.Status == "complete")
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.81-Part3] Stripe session already completed - SessionId={SessionId}",
+                    sessionId);
+                return Result<string>.Failure("Checkout session already completed. Payment link cannot be reused.");
+            }
+
+            if (string.IsNullOrWhiteSpace(session.Url))
+            {
+                _logger.LogError(
+                    "[Phase 6A.81-Part3] Stripe session has no URL - SessionId={SessionId}, Status={Status}",
+                    sessionId, session.Status);
+                return Result<string>.Failure("Checkout session URL not available");
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.81-Part3] Checkout URL retrieved successfully - SessionId={SessionId}, Status={Status}, UrlLength={UrlLength}",
+                sessionId, session.Status, session.Url.Length);
+
+            return Result<string>.Success(session.Url);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.81-Part3] Stripe error retrieving checkout URL - SessionId={SessionId}, StripeCode={Code}, Error={Error}",
+                sessionId, ex.StripeError?.Code, ex.Message);
+            return Result<string>.Failure($"Stripe error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.81-Part3] Unexpected error retrieving checkout URL - SessionId={SessionId}",
+                sessionId);
+            return Result<string>.Failure("Failed to retrieve checkout URL");
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.91: Creates a Stripe refund for a completed payment.
+    /// This is called when a user requests a refund for a paid event registration.
+    ///
+    /// Stripe Refund Process:
+    /// 1. API call is synchronous - refund object returned immediately
+    /// 2. Status is usually "succeeded" for immediate refunds
+    /// 3. charge.refunded webhook will be sent for confirmation
+    /// 4. Customer sees refund on statement in 5-10 business days
+    ///
+    /// Idempotency: Uses RegistrationId as idempotency key to prevent duplicate refunds.
+    /// </summary>
+    public async Task<Result<StripeRefundResult>> CreateRefundAsync(
+        CreateRefundRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Phase 6A.94: Enhanced pre-API-call logging
+        _logger.LogInformation(
+            "[Phase 6A.94] CreateRefundAsync START - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, " +
+            "AmountInCents={AmountInCents}, Reason={Reason}, MetadataKeys={MetadataKeys}",
+            request.PaymentIntentId ?? "NULL",
+            request.RegistrationId,
+            request.AmountInCents,
+            request.Reason ?? "NULL",
+            request.Metadata != null ? string.Join(",", request.Metadata.Keys) : "NONE");
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.94] VALIDATION FAILED - PaymentIntentId is empty/null, RegistrationId={RegistrationId}",
+                    request.RegistrationId);
+                return Result<StripeRefundResult>.Failure("Payment intent ID is required for refund");
+            }
+
+            var refundService = new RefundService(_stripeClient);
+
+            // Phase 6A.95: Map internal reason to valid Stripe reason
+            // Stripe only accepts: "duplicate", "fraudulent", or "requested_by_customer"
+            // Store original reason in metadata for our records
+            var stripeReason = MapToStripeReason(request.Reason);
+
+            _logger.LogInformation(
+                "[Phase 6A.95] Mapping refund reason - OriginalReason={OriginalReason}, StripeReason={StripeReason}",
+                request.Reason ?? "NULL", stripeReason);
+
+            // Build refund options
+            var refundOptions = new RefundCreateOptions
+            {
+                PaymentIntent = request.PaymentIntentId,
+                Reason = stripeReason,
+                Metadata = request.Metadata ?? new Dictionary<string, string>()
+            };
+
+            // Add registration ID and original reason to metadata for tracking
+            refundOptions.Metadata["registration_id"] = request.RegistrationId.ToString();
+            refundOptions.Metadata["refund_source"] = "lankaconnect";
+            refundOptions.Metadata["original_reason"] = request.Reason ?? "not_specified";
+
+            // If partial refund amount specified, include it
+            if (request.AmountInCents.HasValue && request.AmountInCents.Value > 0)
+            {
+                refundOptions.Amount = request.AmountInCents.Value;
+            }
+
+            // Use RegistrationId as idempotency key to prevent duplicate refunds
+            var requestOptions = new RequestOptions
+            {
+                IdempotencyKey = $"refund_{request.RegistrationId}"
+            };
+
+            // Phase 6A.94: Log just before Stripe API call
+            _logger.LogInformation(
+                "[Phase 6A.94] CALLING Stripe RefundService.CreateAsync - PaymentIntentId={PaymentIntentId}, " +
+                "IdempotencyKey={IdempotencyKey}, Amount={Amount}",
+                request.PaymentIntentId, requestOptions.IdempotencyKey, refundOptions.Amount);
+
+            // Create the refund
+            var refund = await refundService.CreateAsync(refundOptions, requestOptions, cancellationToken);
+
+            stopwatch.Stop();
+
+            // Phase 6A.94: Enhanced success logging with all response details
+            _logger.LogInformation(
+                "[Phase 6A.94] Stripe API SUCCESS - RefundId={RefundId}, Status={Status}, AmountRefunded={Amount}, " +
+                "Currency={Currency}, PaymentIntentId={PaymentIntentId}, Created={Created}, Duration={ElapsedMs}ms",
+                refund.Id, refund.Status, refund.Amount, refund.Currency,
+                request.PaymentIntentId, refund.Created, stopwatch.ElapsedMilliseconds);
+
+            var result = new StripeRefundResult
+            {
+                RefundId = refund.Id,
+                Status = refund.Status,
+                AmountRefunded = refund.Amount,
+                Currency = refund.Currency,
+                CreatedAt = refund.Created
+            };
+
+            return Result<StripeRefundResult>.Success(result);
+        }
+        catch (StripeException ex)
+        {
+            stopwatch.Stop();
+
+            // Phase 6A.94: Enhanced Stripe error logging with full error details
+            _logger.LogError(ex,
+                "[Phase 6A.94] STRIPE API ERROR - PaymentIntentId={PaymentIntentId}, RegistrationId={RegistrationId}, " +
+                "StripeErrorCode={Code}, StripeErrorType={Type}, StripeErrorParam={Param}, " +
+                "StripeErrorDeclineCode={DeclineCode}, HttpStatus={HttpStatus}, Message={Message}, Duration={ElapsedMs}ms",
+                request.PaymentIntentId,
+                request.RegistrationId,
+                ex.StripeError?.Code ?? "NULL",
+                ex.StripeError?.Type ?? "NULL",
+                ex.StripeError?.Param ?? "NULL",
+                ex.StripeError?.DeclineCode ?? "NULL",
+                ex.HttpStatusCode,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
+
+            // Handle specific error cases with clear messaging
+            if (ex.StripeError?.Code == "charge_already_refunded")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Charge already refunded - PaymentIntentId={PaymentIntentId}. This is expected if refund was previously processed.",
+                    request.PaymentIntentId);
+                return Result<StripeRefundResult>.Failure("This payment has already been refunded.");
+            }
+
+            if (ex.StripeError?.Code == "insufficient_funds")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Insufficient Stripe balance for refund - PaymentIntentId={PaymentIntentId}",
+                    request.PaymentIntentId);
+                return Result<StripeRefundResult>.Failure(
+                    "Refund cannot be processed due to insufficient Stripe balance. Please contact support.");
+            }
+
+            if (ex.StripeError?.Code == "charge_disputed")
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.94] Charge is disputed, cannot refund - PaymentIntentId={PaymentIntentId}",
+                    request.PaymentIntentId);
+                return Result<StripeRefundResult>.Failure(
+                    "Cannot refund a disputed charge. Please contact support.");
+            }
+
+            return Result<StripeRefundResult>.Failure($"Stripe refund failed: {ex.StripeError?.Code ?? "unknown"} - {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+
+            _logger.LogError(ex,
+                "[Phase 6A.94] UNEXPECTED ERROR in CreateRefundAsync - PaymentIntentId={PaymentIntentId}, " +
+                "RegistrationId={RegistrationId}, ExceptionType={ExceptionType}, Duration={ElapsedMs}ms",
+                request.PaymentIntentId,
+                request.RegistrationId,
+                ex.GetType().Name,
+                stopwatch.ElapsedMilliseconds);
+
+            return Result<StripeRefundResult>.Failure($"Failed to process refund request: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.95: Maps internal refund reasons to valid Stripe refund reasons.
+    /// Stripe only accepts: "duplicate", "fraudulent", or "requested_by_customer".
+    /// </summary>
+    private static string MapToStripeReason(string? internalReason)
+    {
+        // Stripe API only accepts these three values for refund reason
+        // See: https://docs.stripe.com/api/refunds/create#create_refund-reason
+        return internalReason?.ToLowerInvariant() switch
+        {
+            "duplicate" => "duplicate",
+            "fraudulent" => "fraudulent",
+            "requested_by_customer" => "requested_by_customer",
+            // Map all other reasons to "requested_by_customer" as the default
+            // This covers: event_cancelled, user_cancellation, organizer_refund, etc.
+            _ => "requested_by_customer"
+        };
     }
 
     /// <summary>
@@ -197,6 +493,141 @@ public class StripePaymentService : IStripePaymentService
         return (long)(amount * 100);
     }
 
+    /// <summary>
+    /// Add-Only Attendees Feature: Creates a Stripe Checkout session for adding attendees to an existing registration.
+    /// Returns both the session ID (for tracking) and checkout URL (for redirect).
+    /// </summary>
+    public async Task<Result<AdditionCheckoutResult>> CreateAdditionCheckoutSessionAsync(
+        CreateAdditionCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnlyAttendees] Creating addition checkout session - RegistrationId={RegistrationId}, AdditionId={AdditionId}, Amount={Amount} {Currency}",
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                request.Amount,
+                request.Currency);
+
+            // Handle authenticated vs anonymous users
+            string? stripeCustomerId = null;
+            bool isAnonymous = !request.UserId.HasValue;
+
+            if (!isAnonymous)
+            {
+                stripeCustomerId = await GetOrCreateStripeCustomerAsync(request.UserId!.Value, cancellationToken);
+                if (stripeCustomerId == null)
+                {
+                    _logger.LogWarning(
+                        "[AddOnlyAttendees] Failed to get/create Stripe customer for user {UserId}",
+                        request.UserId);
+                    // Continue without customer - will create guest checkout
+                }
+            }
+
+            // Create checkout session
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                Customer = stripeCustomerId,
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                CustomerEmail = isAnonymous && !string.IsNullOrEmpty(request.ContactEmail)
+                    ? request.ContactEmail
+                    : null,
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"Additional Attendees: {request.EventTitle}",
+                                Description = $"Add {request.NewAttendeesCount} attendee(s) to your registration",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["registration_id"] = request.RegistrationId.ToString(),
+                                    ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                                    ["payment_type"] = "addition" // Key differentiator for webhook
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = AppendRegistrationIdToUrl(request.SuccessUrl, request.RegistrationId),
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["registration_id"] = request.RegistrationId.ToString(),
+                    ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                    ["payment_type"] = "addition" // Key differentiator for webhook
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["registration_id"] = request.RegistrationId.ToString(),
+                        ["registration_addition_id"] = request.RegistrationAdditionId.ToString(),
+                        ["payment_type"] = "addition" // Key differentiator for webhook
+                    }
+                },
+                // Session expires after 24 hours
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            // Add any additional metadata from request
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[AddOnlyAttendees] Created checkout session - SessionId={SessionId}, RegistrationId={RegistrationId}, AdditionId={AdditionId}, ExpiresAt={ExpiresAt}",
+                session.Id,
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                session.ExpiresAt);
+
+            return Result<AdditionCheckoutResult>.Success(new AdditionCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnlyAttendees] Stripe error creating addition checkout - RegistrationId={RegistrationId}, AdditionId={AdditionId}, Error={Error}",
+                request.RegistrationId,
+                request.RegistrationAdditionId,
+                ex.Message);
+            return Result<AdditionCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnlyAttendees] Error creating addition checkout - RegistrationId={RegistrationId}, AdditionId={AdditionId}",
+                request.RegistrationId,
+                request.RegistrationAdditionId);
+            return Result<AdditionCheckoutResult>.Failure("Failed to create payment session");
+        }
+    }
+
     #region Not Implemented Methods (Cultural Intelligence - Future)
 
     // These methods are part of IStripePaymentService for Cultural Intelligence billing
@@ -239,4 +670,17 @@ public class StripePaymentService : IStripePaymentService
     }
 
     #endregion
+
+    /// <summary>
+    /// Phase 6A.44: Appends registrationId to success URL for anonymous user checkout
+    /// This allows the payment success page to fetch registration details without userId
+    /// </summary>
+    private string AppendRegistrationIdToUrl(string url, Guid registrationId)
+    {
+        if (string.IsNullOrEmpty(url))
+            return url;
+
+        var separator = url.Contains('?') ? "&" : "?";
+        return $"{url}{separator}registrationId={registrationId}";
+    }
 }

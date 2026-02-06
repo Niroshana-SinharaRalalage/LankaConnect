@@ -38,7 +38,24 @@ public interface INewsletterSubscriberRepository : IRepository<NewsletterSubscri
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets all confirmed and active subscribers for state-level areas in a specific state
+    /// Used for event notifications to reach subscribers who selected state-level metro areas
+    /// </summary>
+    /// <param name="state">State name or abbreviation</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of subscribers in state-level areas for the given state</returns>
+    Task<IReadOnlyList<NewsletterSubscriber>> GetConfirmedSubscribersByStateAsync(
+        string state,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if an email is already subscribed (active subscription exists)
     /// </summary>
     Task<bool> IsEmailSubscribedAsync(string email, Guid? metroAreaId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.64: Inserts pending junction table entries after entities are saved to database
+    /// This must be called AFTER UnitOfWork.CommitAsync() to avoid FK constraint violations
+    /// </summary>
+    Task InsertPendingJunctionEntriesAsync(CancellationToken cancellationToken = default);
 }

@@ -37,6 +37,7 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
     organizerId: 'org-456',
     capacity: 100,
     currentRegistrations: 45,
+    maxAttendeesPerRegistration: 10,
     status: EventStatus.Published,
     category: EventCategory.Cultural,
     createdAt: '2024-03-01T12:00:00Z',
@@ -62,6 +63,10 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
       },
     ],
     videos: [],
+    displayLabel: 'New',
+    groupPricingTiers: [],
+    hasGroupPricing: false,
+    publishOrganizerContact: false,
     ...overrides,
   };
 }

@@ -20,13 +20,12 @@ COPY ["src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj", "Lan
 RUN dotnet restore "LankaConnect.API/LankaConnect.API.csproj"
 
 # Copy ALL source code (including all projects)
+# Phase 6A.34: API.csproj now links Infrastructure email templates via <Content Include>
+# This ensures templates are automatically included in build and publish output
 COPY ["src/LankaConnect.API/", "LankaConnect.API/"]
 COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
 COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
 COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
-
-# Copy email templates (needed for runtime)
-COPY ["Templates/", "LankaConnect.API/Templates/"]
 
 # Build application
 WORKDIR "/src/LankaConnect.API"
@@ -44,19 +43,25 @@ RUN dotnet publish "LankaConnect.API.csproj" \
 # Stage 3: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 
+# Phase 6A.35: Define APP_UID and create non-root user for security
+# This ensures Templates directory has correct ownership and read permissions
+ARG APP_UID=1654
+RUN groupadd -g $APP_UID appgroup && \
+    useradd -m -u $APP_UID -g appgroup appuser
+
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy published output
+# Phase 6A.34: Templates are automatically included via API.csproj linked content
+# No need for separate COPY command - they're already in /app/publish
 COPY --from=publish /app/publish .
 
-# Copy email templates to runtime
-COPY --from=build /src/LankaConnect.API/Templates ./Templates
-
-# Set correct permissions for Templates directory (before switching to non-root user)
-RUN chown -R $APP_UID:$APP_UID ./Templates && chmod -R 755 ./Templates
+# Phase 6A.35: Set world-readable permissions for Templates (Azure Container Apps runs as uid=1654 but doesn't respect our chown)
+# Make templates readable by all users since Azure might override ownership
+RUN if [ -d ./Templates ]; then chmod -R a+rX ./Templates; fi
 
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000

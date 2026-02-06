@@ -25,6 +25,12 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         using (LogContext.PushProperty("EntityType", typeof(T).Name))
         using (LogContext.PushProperty("EntityId", id))
         {
+            // Phase 6A.53 DEBUG: Check if base method is being called instead of EventRepository overload
+            if (typeof(T).Name == "Event")
+            {
+                _logger.Warning("[PHASE-6A53-BUG] BASE Repository.GetByIdAsync called for Event entity - THIS IS THE BUG! EventId: {EventId}", id);
+            }
+
             _logger.Debug("Getting entity {EntityType} by ID {EntityId}", typeof(T).Name, id);
             var result = await _dbSet.FindAsync(new object[] { id }, cancellationToken);
             _logger.Debug("Entity {EntityType} with ID {EntityId} {Result}", typeof(T).Name, id, result != null ? "found" : "not found");

@@ -1,0 +1,36 @@
+============================================================
+Testing Attendees API - Phase 6A.X QR Code Feature
+============================================================
+
+1. Logging in...
+   [OK] Login successful
+
+2. Getting attendees list for event d543629f-a5ba-4475-b124-3d0fc5200f2f...
+   HTTP Status: 200
+   Response type: <class 'dict'>
+   Response keys: dict_keys(['eventId', 'eventTitle', 'attendees', 'totalRegistrations', 'totalAttendees', 'grossRevenue', 'commissionAmount', 'netRevenue', 'commissionRate', 'isFreeEvent', 'totalRevenue', 'totalSalesTax', 'totalStripeFees', 'totalPlatformCommission', 'totalOrganizerPayout', 'averageTaxRate', 'hasRevenueBreakdown'])
+   [OK] Retrieved 8 attendees
+
+3. Finding registration 18422a29-61f7-4575-87d2-72ac0b1581d1...
+   [OK] Found registration
+
+   Registration Details:
+   - Registration ID: 18422a29-61f7-4575-87d2-72ac0b1581d1
+   - Status: Confirmed
+   - Payment Status: Completed
+   - Has Ticket: False
+   - Ticket Code: None
+   - QR Code Data: None...
+
+4. Verifying ticket data...
+   [WARNING] Ticket data missing:
+   - Has Ticket: False
+   - Ticket Code: None
+   - QR Code Data: Missing
+
+============================================================
+SUMMARY:
+- Attendees API: Working
+- LEFT JOIN: Working
+- QR Code Display: Ticket not generated yet
+============================================================

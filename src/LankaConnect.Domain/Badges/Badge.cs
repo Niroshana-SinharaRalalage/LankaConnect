@@ -1,0 +1,358 @@
+using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Badges.Enums;
+
+namespace LankaConnect.Domain.Badges;
+
+/// <summary>
+/// Represents a visual overlay badge/sticker that can be applied to event images
+/// Examples: "New Event", "Cancelled", "New Year", "Valentine", etc.
+/// Badge images are displayed as corner ribbons or decorative overlays on event cards
+/// </summary>
+public class Badge : BaseEntity
+{
+    /// <summary>
+    /// Display name of the badge (e.g., "New Event", "Valentine")
+    /// </summary>
+    public string Name { get; private set; }
+
+    /// <summary>
+    /// Azure Blob Storage URL for the badge image (PNG with transparency recommended)
+    /// </summary>
+    public string ImageUrl { get; private set; }
+
+    /// <summary>
+    /// Azure Blob name for deletion purposes
+    /// </summary>
+    public string BlobName { get; private set; }
+
+    /// <summary>
+    /// Position where the badge should appear on event images
+    /// Phase 6A.31a: DEPRECATED - Use location-specific configs instead
+    /// Kept for backward compatibility during two-phase migration
+    /// </summary>
+    [Obsolete("Use ListingConfig, FeaturedConfig, and DetailConfig instead")]
+    public BadgePosition Position { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Events Listing page (/events)
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig ListingConfig { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Featured Banner (home page)
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig FeaturedConfig { get; private set; }
+
+    /// <summary>
+    /// Badge configuration for Event Detail Hero (/events/{id})
+    /// Phase 6A.31a: Position and size as percentages for responsive scaling
+    /// </summary>
+    public BadgeLocationConfig DetailConfig { get; private set; }
+
+    /// <summary>
+    /// Whether the badge is currently active and available for assignment
+    /// </summary>
+    public bool IsActive { get; private set; }
+
+    /// <summary>
+    /// System badges are predefined and cannot be deleted (only deactivated)
+    /// Custom badges created by users have IsSystem = false
+    /// </summary>
+    public bool IsSystem { get; private set; }
+
+    /// <summary>
+    /// Display order in the badge selection list (lower numbers appear first)
+    /// </summary>
+    public int DisplayOrder { get; private set; }
+
+    /// <summary>
+    /// User who created this badge (null for system badges)
+    /// </summary>
+    public Guid? CreatedByUserId { get; private set; }
+
+    /// <summary>
+    /// Default duration in days for this badge when assigned to events
+    /// null = Never expires (no time limit)
+    /// Phase 6A.28: Changed from ExpiresAt (fixed date) to duration-based model
+    /// </summary>
+    public int? DefaultDurationDays { get; private set; }
+
+    // EF Core constructor
+    private Badge()
+    {
+        Name = null!;
+        ImageUrl = null!;
+        BlobName = null!;
+        ListingConfig = BadgeLocationConfig.DefaultListing;
+        FeaturedConfig = BadgeLocationConfig.DefaultFeatured;
+        DetailConfig = BadgeLocationConfig.DefaultDetail;
+    }
+
+    private Badge(
+        string name,
+        string imageUrl,
+        string blobName,
+        BadgePosition position,
+        bool isSystem,
+        int displayOrder,
+        Guid? createdByUserId,
+        int? defaultDurationDays = null,
+        BadgeLocationConfig? listingConfig = null,
+        BadgeLocationConfig? featuredConfig = null,
+        BadgeLocationConfig? detailConfig = null)
+    {
+        Name = name;
+        ImageUrl = imageUrl;
+        BlobName = blobName;
+
+        // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
+        Position = position;
+#pragma warning restore CS0618
+
+        IsActive = true;
+        IsSystem = isSystem;
+        DisplayOrder = displayOrder;
+        CreatedByUserId = createdByUserId;
+        DefaultDurationDays = defaultDurationDays;
+
+        // Phase 6A.31a: Initialize location-specific configs with defaults if not provided
+        ListingConfig = listingConfig ?? BadgeLocationConfig.DefaultListing;
+        FeaturedConfig = featuredConfig ?? BadgeLocationConfig.DefaultFeatured;
+        DetailConfig = detailConfig ?? BadgeLocationConfig.DefaultDetail;
+    }
+
+    /// <summary>
+    /// Factory method to create a new custom badge
+    /// Phase 6A.28: Changed from expiresAt to defaultDurationDays
+    /// </summary>
+    /// <param name="defaultDurationDays">Default duration in days for assignments (null = never expires)</param>
+    public static Result<Badge> Create(
+        string name,
+        string imageUrl,
+        string blobName,
+        BadgePosition position,
+        int displayOrder,
+        Guid createdByUserId,
+        int? defaultDurationDays = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Result<Badge>.Failure("Badge name is required");
+
+        if (name.Length > 50)
+            return Result<Badge>.Failure("Badge name cannot exceed 50 characters");
+
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return Result<Badge>.Failure("Badge image URL is required");
+
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result<Badge>.Failure("Badge blob name is required");
+
+        if (displayOrder < 0)
+            return Result<Badge>.Failure("Display order must be non-negative");
+
+        if (createdByUserId == Guid.Empty)
+            return Result<Badge>.Failure("Creator user ID is required");
+
+        if (defaultDurationDays.HasValue && defaultDurationDays.Value <= 0)
+            return Result<Badge>.Failure("Default duration must be a positive number of days");
+
+        var badge = new Badge(
+            name.Trim(),
+            imageUrl,
+            blobName,
+            position,
+            isSystem: false,
+            displayOrder,
+            createdByUserId,
+            defaultDurationDays);
+
+        return Result<Badge>.Success(badge);
+    }
+
+    /// <summary>
+    /// Factory method to create a system/predefined badge (used for seeding)
+    /// Phase 6A.28: Changed from expiresAt to defaultDurationDays
+    /// </summary>
+    /// <param name="defaultDurationDays">Default duration in days for assignments (null = never expires)</param>
+    public static Badge CreateSystemBadge(
+        string name,
+        string imageUrl,
+        string blobName,
+        BadgePosition position,
+        int displayOrder,
+        int? defaultDurationDays = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Badge name is required", nameof(name));
+
+        if (defaultDurationDays.HasValue && defaultDurationDays.Value <= 0)
+            throw new ArgumentException("Default duration must be a positive number of days", nameof(defaultDurationDays));
+
+        return new Badge(
+            name.Trim(),
+            imageUrl,
+            blobName,
+            position,
+            isSystem: true,
+            displayOrder,
+            createdByUserId: null,
+            defaultDurationDays);
+    }
+
+    /// <summary>
+    /// Updates the badge details
+    /// System badges can only have their active status changed
+    /// </summary>
+    public Result Update(string name, BadgePosition position, int displayOrder)
+    {
+        if (IsSystem)
+            return Result.Failure("System badges cannot have their name, position, or display order modified");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure("Badge name is required");
+
+        if (name.Length > 50)
+            return Result.Failure("Badge name cannot exceed 50 characters");
+
+        if (displayOrder < 0)
+            return Result.Failure("Display order must be non-negative");
+
+        Name = name.Trim();
+
+        // Phase 6A.31a: Suppress obsolete warning for backward compatibility during migration
+#pragma warning disable CS0618
+        Position = position;
+#pragma warning restore CS0618
+
+        DisplayOrder = displayOrder;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the badge image
+    /// </summary>
+    public Result UpdateImage(string newImageUrl, string newBlobName)
+    {
+        if (string.IsNullOrWhiteSpace(newImageUrl))
+            return Result.Failure("Badge image URL is required");
+
+        if (string.IsNullOrWhiteSpace(newBlobName))
+            return Result.Failure("Badge blob name is required");
+
+        ImageUrl = newImageUrl;
+        BlobName = newBlobName;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Activates the badge making it available for assignment
+    /// </summary>
+    public Result Activate()
+    {
+        if (IsActive)
+            return Result.Failure("Badge is already active");
+
+        IsActive = true;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Deactivates the badge, hiding it from selection lists
+    /// System badges can be deactivated but not deleted
+    /// </summary>
+    public Result Deactivate()
+    {
+        if (!IsActive)
+            return Result.Failure("Badge is already inactive");
+
+        IsActive = false;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if this badge can be deleted
+    /// System badges cannot be deleted, only deactivated
+    /// </summary>
+    public bool CanDelete() => !IsSystem;
+
+    /// <summary>
+    /// Updates the default duration for this badge
+    /// Admin can set for system badges, EventOrganizer for their custom badges
+    /// Phase 6A.28: Replaced UpdateExpiry with duration-based approach
+    /// </summary>
+    /// <param name="durationDays">Duration in days (null = never expires)</param>
+    public Result UpdateDefaultDuration(int? durationDays)
+    {
+        if (durationDays.HasValue && durationDays.Value <= 0)
+            return Result.Failure("Duration must be a positive number of days");
+
+        DefaultDurationDays = durationDays;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Events Listing page
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateListingConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        ListingConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Featured Banner
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateFeaturedConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        FeaturedConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates the badge configuration for Event Detail Hero
+    /// Phase 6A.31a: Per-location positioning and sizing
+    /// </summary>
+    public void UpdateDetailConfig(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        DetailConfig = config;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Updates all location configs at once (convenience method)
+    /// Phase 6A.31a: For "Apply to all locations" UI feature
+    /// </summary>
+    public void UpdateAllLocationConfigs(BadgeLocationConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        ListingConfig = config;
+        FeaturedConfig = config;
+        DetailConfig = config;
+        MarkAsUpdated();
+    }
+}

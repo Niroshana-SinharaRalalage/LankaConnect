@@ -75,24 +75,29 @@ public sealed class CulturalInterest : ValueObject
 
     /// <summary>
     /// Creates a CulturalInterest from a code string
+    /// Phase 6A.47: Now supports dynamic EventCategory codes from database
     /// </summary>
-    /// <param name="code">Cultural interest code (e.g., "SL_CUISINE")</param>
+    /// <param name="code">Cultural interest code (e.g., "SL_CUISINE" or "Business")</param>
+    /// <param name="name">Optional name for dynamic interests (defaults to code)</param>
     /// <returns>Result with CulturalInterest or error</returns>
-    public static Result<CulturalInterest> FromCode(string? code)
+    public static Result<CulturalInterest> FromCode(string? code, string? name = null)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
             return Result<CulturalInterest>.Failure("Cultural interest code cannot be null or empty");
         }
 
+        // First check if it matches a predefined interest
         var interest = All.FirstOrDefault(i => i.Code == code);
 
-        if (interest == null)
+        if (interest != null)
         {
-            return Result<CulturalInterest>.Failure($"Cultural interest code '{code}' is not recognized");
+            return Result<CulturalInterest>.Success(interest);
         }
 
-        return Result<CulturalInterest>.Success(interest);
+        // Phase 6A.47: Create dynamic interest from EventCategory database codes
+        // This allows EventCategory codes like "Business", "Cultural", etc.
+        return Result<CulturalInterest>.Success(new CulturalInterest(code, name ?? code));
     }
 
     /// <summary>

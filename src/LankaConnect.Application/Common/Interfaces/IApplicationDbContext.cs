@@ -13,6 +13,7 @@ using LankaConnect.Domain.Common.Security;
 using LankaConnect.Domain.Common.Recovery;
 using LankaConnect.Domain.Common.Database;
 using LankaConnect.Domain.Common.Enums;
+using LankaConnect.Domain.ReferenceData.Entities;
 using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
 
 namespace LankaConnect.Application.Common.Interfaces;
@@ -34,11 +35,15 @@ public interface IApplicationDbContext
     DbSet<SignUpItem> SignUpItems { get; } // Phase 6A.16: Required for cascade deletion
     DbSet<SignUpCommitment> SignUpCommitments { get; } // Phase 6A.16: Cascade deletion
     DbSet<Registration> Registrations { get; }
+    DbSet<Ticket> Tickets { get; } // Phase 6A.X: QR Code Display feature
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
+
+    // Reference Data Domain - Phase 6A.47 (Unified)
+    DbSet<ReferenceValue> ReferenceValues { get; } // Phase 6A.47: Unified Reference Data
 
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
 }

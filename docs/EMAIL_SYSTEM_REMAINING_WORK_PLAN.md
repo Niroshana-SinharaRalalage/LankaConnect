@@ -111,82 +111,414 @@ to:
 
 ---
 
-## Phase 6A.63: Migrate Event Cancellation to Template System
+## Phase 6A.63: Event Cancellation Email - Complete Recipient Consolidation
 
 ### Overview
-Migrate `EventCancelledEventHandler` from inline HTML generation to templated email system for consistency.
+Migrate `EventCancelledEventHandler` from inline HTML to templated email system AND add missing recipient groups (email groups + newsletter subscribers).
 
-### Current Implementation
+### Current Issue (CRITICAL GAP)
 **File**: [src/LankaConnect.Application/Events/EventHandlers/EventCancelledEventHandler.cs](src/LankaConnect.Application/Events/EventHandlers/EventCancelledEventHandler.cs)
 
-**Problem**:
-- Line 107: Uses inline `GenerateEventCancelledHtml()` method
-- Line 142-160: Hardcoded HTML in code
-- NOT using templated email system
-- Inconsistent with other emails
+**Problems**:
+1. ❌ Uses inline HTML (`GenerateEventCancelledHtml()` lines 142-160) instead of database template
+2. ❌ **ONLY sends to confirmed registrations** (lines 54-64)
+3. ❌ **MISSING**: Email group recipients
+4. ❌ **MISSING**: Newsletter subscribers (metro area, state, all locations)
+
+**Expected Behavior**:
+Event cancellation emails should go to ALL recipients who received the original event published notification:
+- ✅ Confirmed registrations (currently implemented)
+- ❌ Email group recipients (MISSING)
+- ❌ Newsletter subscribers (MISSING)
+
+### Root Cause Analysis
+**Reference**: [RCA_Event_Cancellation_Email_No_Recipients.md](docs/RCA_Event_Cancellation_Email_No_Recipients.md)
+
+User reported: "I cancelled a couple of events but event cancelation emails are not coming"
+
+**Investigation Result**: Events had ZERO confirmed registrations, so handler correctly exited early. However, handler should ALSO check email groups and newsletter subscribers, not just registrations.
+
+### Solution: Reuse EventNotificationRecipientService
+
+**Reference Implementation**: [EventPublishedEventHandler.cs:48-129](src/LankaConnect.Application/Events/EventHandlers/EventPublishedEventHandler.cs#L48-L129)
+
+**Service**: `IEventNotificationRecipientService` ([EventNotificationRecipientService.cs](src/LankaConnect.Application/Events/Services/EventNotificationRecipientService.cs))
+
+**Consolidation Logic**:
+```csharp
+// 1. Get confirmed registration emails
+var registrationEmails = confirmedRegistrations
+    .Select(r => r.User.Email.Value)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+// 2. Get email groups + newsletter subscribers
+var notificationRecipients = await _recipientService.ResolveRecipientsAsync(
+    domainEvent.EventId,
+    cancellationToken);
+
+// 3. Consolidate all recipients (deduplicated, case-insensitive)
+var allRecipients = registrationEmails
+    .Concat(notificationRecipients.EmailAddresses)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+// 4. Early exit ONLY if no recipients at all
+if (!allRecipients.Any())
+{
+    _logger.LogInformation("No recipients found for Event {EventId}", eventId);
+    return;
+}
+```
 
 ### Required Changes
 
 #### 1. Create Email Template in Database
-**Migration**: `20260101000001_Phase6A63_EventCancellationTemplate.cs`
+**Migration**: `20260102000000_Phase6A63_EventCancellationTemplate.cs`
 
 **Template Details**:
 - Name: `event-cancelled-notification`
-- Type: `EventCancellationNotification`
-- Category: `EventManagement`
+- Type: `transactional`
+- Category: `Events`
 - Branding: Orange/rose gradient matching other templates
 
 **Template Variables**:
-- `{{UserName}}` - User's full name
 - `{{EventTitle}}` - Event name
-- `{{EventStartDate}}` - Original event date
-- `{{EventStartTime}}` - Original event time
-- `{{Reason}}` - Cancellation reason from organizer
-- `{{CancelledAt}}` - When event was cancelled
+- `{{EventStartDate}}` - Original event date (e.g., "January 15, 2026")
+- `{{EventStartTime}}` - Original event time (e.g., "6:00 PM")
+- `{{EventLocation}}` - Event location string
+- `{{CancellationReason}}` - Organizer's cancellation reason
 
-#### 2. Update Event Handler
+**HTML Template** (orange/rose gradient):
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Cancelled - LankaConnect</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f4f4;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="650" cellspacing="0" cellpadding="0" border="0" style="max-width: 650px; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <!-- Header with Brand Gradient -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #8B1538 0%, #FF6600 50%, #2d5016 100%); padding: 30px 20px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: white;">Event Cancelled</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px; background: #ffffff;">
+                            <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Dear LankaConnect Community,</p>
+
+                            <p style="margin: 0 0 25px 0; color: #555; line-height: 1.6;">
+                                We regret to inform you that the following event has been <strong>cancelled</strong>:
+                            </p>
+
+                            <!-- Event Details Box -->
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 25px 0; background: #fff8f5; border-left: 4px solid #FF6600; border-radius: 0 8px 8px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h2 style="margin: 0 0 15px 0; color: #8B1538; font-size: 20px;">{{EventTitle}}</h2>
+                                        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>📅 Date:</strong> {{EventStartDate}} at {{EventStartTime}}</p>
+                                        <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>📍 Location:</strong> {{EventLocation}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Cancellation Reason -->
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 25px 0; background: #fef2f2; border-left: 4px solid #DC2626; border-radius: 0 8px 8px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #DC2626; font-size: 14px;">Cancellation Reason:</p>
+                                        <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">{{CancellationReason}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 20px 0 0 0; color: #555; line-height: 1.6;">
+                                We apologize for any inconvenience this may cause. If you had registered for this event, your registration has been automatically cancelled.
+                            </p>
+
+                            <p style="margin: 15px 0 0 0; color: #555; line-height: 1.6;">
+                                Thank you for your understanding.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer with Brand Gradient -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #8B1538 0%, #FF6600 50%, #2d5016 100%); padding: 30px 20px; text-align: center;">
+                            <p style="color: white; font-size: 20px; font-weight: bold; margin: 0 0 5px 0;">LankaConnect</p>
+                            <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0 0 10px 0;">Sri Lankan Community Hub</p>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0;">&copy; 2025 LankaConnect. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+```
+
+**Text Template**:
+```
+Dear LankaConnect Community,
+
+We regret to inform you that the following event has been CANCELLED:
+
+EVENT: {{EventTitle}}
+DATE: {{EventStartDate}} at {{EventStartTime}}
+LOCATION: {{EventLocation}}
+
+CANCELLATION REASON:
+{{CancellationReason}}
+
+We apologize for any inconvenience this may cause. If you had registered for this event, your registration has been automatically cancelled.
+
+Thank you for your understanding.
+
+---
+LankaConnect
+Sri Lankan Community Hub
+© 2025 LankaConnect. All rights reserved.
+```
+
+#### 2. Update Event Handler Dependencies
 **File**: `EventCancelledEventHandler.cs`
 
-**Changes**:
-- Replace `SendBulkEmailAsync()` with loop of `SendTemplatedEmailAsync()`
-- Remove `GenerateEventCancelledHtml()` method (lines 142-160)
-- Update template name to `event-cancelled-notification`
-- Add comprehensive logging with `[Phase 6A.63]` prefix
-
-**Code Change** (lines 100-112):
+**Add DI Injection**:
 ```csharp
-// OLD: Inline HTML generation
-var emailMessage = new EmailMessageDto
+private readonly IEventNotificationRecipientService _recipientService;
+private readonly IUserRepository _userRepository;  // For fetching user details
+
+public EventCancelledEventHandler(
+    IEventRepository eventRepository,
+    IRegistrationRepository registrationRepository,
+    IEmailService emailService,
+    IEventNotificationRecipientService recipientService,  // ← ADD
+    IUserRepository userRepository,  // ← ADD
+    ILogger<EventCancelledEventHandler> logger)
 {
-    ToEmail = user.Email.Value,
-    ToName = $"{user.FirstName} {user.LastName}",
-    Subject = $"Event Cancelled: {@event.Title.Value}",
-    HtmlBody = GenerateEventCancelledHtml(parameters),
-    Priority = 1
+    // ... assign to fields
+}
+```
+
+#### 3. Replace Registration-Only Logic with Full Consolidation
+
+**Current (BROKEN)** - Lines 54-68:
+```csharp
+// Get all confirmed registrations
+var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
+var confirmedRegistrations = registrations
+    .Where(r => r.Status == RegistrationStatus.Confirmed)
+    .ToList();
+
+if (!confirmedRegistrations.Any())
+{
+    _logger.LogInformation("No confirmed registrations found for Event {EventId}, skipping email notifications",
+        domainEvent.EventId);
+    return;  // ← WRONG: Exits before checking email groups/newsletter subscribers
+}
+```
+
+**New (CORRECT)** - Replace lines 54-120:
+```csharp
+// 1. Get confirmed registration emails
+var registrations = await _registrationRepository.GetByEventAsync(domainEvent.EventId, cancellationToken);
+var confirmedRegistrations = registrations
+    .Where(r => r.Status == RegistrationStatus.Confirmed)
+    .ToList();
+
+var registrationEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+foreach (var registration in confirmedRegistrations)
+{
+    var user = await _userRepository.GetByIdAsync(registration.UserId, cancellationToken);
+    if (user != null)
+    {
+        registrationEmails.Add(user.Email.Value);
+    }
+}
+
+_logger.LogInformation("[Phase 6A.63] Found {Count} confirmed registrations for Event {EventId}",
+    registrationEmails.Count, domainEvent.EventId);
+
+// 2. Get email groups + newsletter subscribers (reuse EventPublishedEventHandler pattern)
+var notificationRecipients = await _recipientService.ResolveRecipientsAsync(
+    domainEvent.EventId,
+    cancellationToken);
+
+_logger.LogInformation(
+    "[Phase 6A.63] Resolved {Count} notification recipients for Event {EventId}. " +
+    "Breakdown: EmailGroups={EmailGroupCount}, Metro={MetroCount}, State={StateCount}, AllLocations={AllLocationsCount}",
+    notificationRecipients.EmailAddresses.Count, domainEvent.EventId,
+    notificationRecipients.Breakdown.EmailGroupCount,
+    notificationRecipients.Breakdown.MetroAreaSubscribers,
+    notificationRecipients.Breakdown.StateLevelSubscribers,
+    notificationRecipients.Breakdown.AllLocationsSubscribers);
+
+// 3. Consolidate all recipients (deduplicated, case-insensitive)
+var allRecipients = registrationEmails
+    .Concat(notificationRecipients.EmailAddresses)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+if (!allRecipients.Any())
+{
+    _logger.LogInformation("[Phase 6A.63] No recipients found for Event {EventId}, skipping cancellation emails",
+        domainEvent.EventId);
+    return;
+}
+
+_logger.LogInformation(
+    "[Phase 6A.63] Sending cancellation emails to {TotalCount} unique recipients for Event {EventId}. " +
+    "Breakdown: Registrations={RegCount}, EmailGroups={EmailGroupCount}, Newsletter={NewsletterCount}",
+    allRecipients.Count, domainEvent.EventId,
+    registrationEmails.Count,
+    notificationRecipients.Breakdown.EmailGroupCount,
+    notificationRecipients.Breakdown.MetroAreaSubscribers +
+    notificationRecipients.Breakdown.StateLevelSubscribers +
+    notificationRecipients.Breakdown.AllLocationsSubscribers);
+
+// 4. Prepare template parameters
+var parameters = new Dictionary<string, object>
+{
+    { "EventTitle", @event.Title.Value },
+    { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
+    { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+    { "EventLocation", GetEventLocationString(@event) },
+    { "CancellationReason", domainEvent.Reason }
 };
 
-// NEW: Templated email
-var result = await _emailService.SendTemplatedEmailAsync(
-    "event-cancelled-notification",
-    user.Email.Value,
-    parameters,
-    cancellationToken);
+// 5. Send templated email to each recipient
+var successCount = 0;
+var failCount = 0;
+
+foreach (var email in allRecipients)
+{
+    var result = await _emailService.SendTemplatedEmailAsync(
+        "event-cancelled-notification",
+        email,
+        parameters,
+        cancellationToken);
+
+    if (result.IsSuccess)
+    {
+        successCount++;
+    }
+    else
+    {
+        failCount++;
+        _logger.LogWarning(
+            "[Phase 6A.63] Failed to send event cancellation email to {Email} for event {EventId}: {Errors}",
+            email, domainEvent.EventId, string.Join(", ", result.Errors));
+    }
+}
+
+_logger.LogInformation(
+    "[Phase 6A.63] Event cancellation emails completed for event {EventId}. Success: {SuccessCount}, Failed: {FailCount}",
+    domainEvent.EventId, successCount, failCount);
+```
+
+#### 4. Remove Inline HTML Method & Add Helper
+
+**Remove** (lines 142-160):
+```csharp
+private string GenerateEventCancelledHtml(Dictionary<string, object> parameters)
+{
+    // ... delete entire method
+}
+```
+
+**Add** (copy from EventPublishedEventHandler.cs:143-161):
+```csharp
+/// <summary>
+/// Safely extracts event location string with defensive null handling.
+/// </summary>
+private static string GetEventLocationString(Event @event)
+{
+    if (@event.Location?.Address == null)
+        return "Online Event";
+
+    var street = @event.Location.Address.Street;
+    var city = @event.Location.Address.City;
+    var state = @event.Location.Address.State;
+
+    if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+        return "Online Event";
+
+    var parts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+    if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+    if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+    return string.Join(", ", parts);
+}
 ```
 
 ### Testing Strategy
+
+#### Test Scenario 1: Confirmed Registrations Only
+1. Create event without email groups/newsletter targeting
+2. Register 2 users with confirmed status
+3. Cancel event with reason
+4. **Expected**: 2 users receive cancellation email
+5. **Verify**: Email uses template with orange/rose gradient
+
+#### Test Scenario 2: Email Groups Only (No Registrations)
+1. Create event with 1 email group (5 recipients)
+2. Do NOT register any users
+3. Cancel event with reason
+4. **Expected**: 5 email group recipients receive cancellation email
+5. **Verify**: Previously would send ZERO emails (bug), now sends to all 5
+
+#### Test Scenario 3: Newsletter Subscribers Only
+1. Create event in metro area with newsletter subscribers
+2. Do NOT register users or add email groups
+3. Cancel event
+4. **Expected**: Metro area newsletter subscribers receive cancellation email
+5. **Verify**: Previously would send ZERO emails (bug), now sends to subscribers
+
+#### Test Scenario 4: Full Consolidation (All Recipient Types)
+1. Create event with:
+   - Email group: 3 recipients
+   - Location: Metro area with 5 newsletter subscribers
+   - Register 2 users with confirmed status
+   - 1 overlapping email between registration and email group
+2. Cancel event
+3. **Expected**: 9 unique recipients (3+5+2-1 duplicate)
+4. **Verify**: Logs show correct breakdown
+
+#### Test Scenario 5: Zero Recipients
+1. Create event with no email groups, no location, no registrations
+2. Cancel event
+3. **Expected**: No emails sent, log: "No recipients found for Event {EventId}"
+
+### Deployment Checklist
 - [ ] Create migration and template
-- [ ] Update handler code
-- [ ] Build succeeds
+- [ ] Update handler code with recipient consolidation
+- [ ] Add DI dependencies (IEventNotificationRecipientService, IUserRepository)
+- [ ] Build succeeds (0 errors, 0 warnings)
 - [ ] Deploy to staging
-- [ ] Create test event with registrations
-- [ ] Cancel event as organizer
-- [ ] Verify all registrants receive email
-- [ ] Verify email uses template with orange/rose gradient
-- [ ] Check staging logs
+- [ ] Test Scenario 1: Registrations only
+- [ ] Test Scenario 2: Email groups only (critical - tests bug fix)
+- [ ] Test Scenario 3: Newsletter subscribers only (critical - tests bug fix)
+- [ ] Test Scenario 4: Full consolidation
+- [ ] Test Scenario 5: Zero recipients
+- [ ] Verify email template rendering
+- [ ] Check staging logs for `[Phase 6A.63]` entries
 - [ ] Deploy to production
 
 ### Estimated Time
-**2-3 hours** (template creation + handler migration + testing)
+**3-4 hours** (increased from 2-3 due to recipient consolidation complexity)
+
+**Breakdown**:
+- Template migration: 30 minutes
+- Handler update with consolidation: 1.5 hours
+- Testing all 5 scenarios: 1.5 hours
+- Buffer for edge cases: 30 minutes
 
 ---
 

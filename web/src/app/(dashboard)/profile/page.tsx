@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { ProfilePhotoSection } from '@/presentation/components/features/profile/ProfilePhotoSection';
-import { LocationSection } from '@/presentation/components/features/profile/LocationSection';
+import { BasicInfoSection } from '@/presentation/components/features/profile/BasicInfoSection';
 import { CulturalInterestsSection } from '@/presentation/components/features/profile/CulturalInterestsSection';
 import { PreferredMetroAreasSection } from '@/presentation/components/features/profile/PreferredMetroAreasSection';
 import { Button } from '@/presentation/components/ui/Button';
@@ -20,14 +20,10 @@ import Link from 'next/link';
  * Profile Page
  *
  * User profile management page with:
- * - Profile photo upload/delete
- * - Basic info editing (future)
- * - Location info editing (future)
- * - Cultural interests editing (future)
- * - Languages editing (future)
- *
- * Phase 1: Photo upload only
- * Future phases will add additional sections
+ * - Profile photo upload/delete (Phase 6A.64)
+ * - Basic info editing with location (Phase 6A.70)
+ * - Cultural interests editing
+ * - Preferred metro areas
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -114,45 +110,11 @@ export default function ProfilePage() {
         {/* Main Content */}
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
-            {/* Welcome Section */}
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{
-                background: 'white',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              <div
-                className="p-6"
-                style={{
-                  background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)',
-                  color: 'white'
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
-                    style={{ background: 'rgba(255, 255, 255, 0.2)' }}
-                  >
-                    {getInitials(user?.fullName || 'U')}
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-semibold mb-1">
-                      Welcome, {user?.fullName}!
-                    </h2>
-                    <p className="text-white/90">
-                      Manage your profile information to help others in the Sri Lankan community connect with you.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Profile Photo Section */}
             <ProfilePhotoSection />
 
-            {/* Location Section */}
-            <LocationSection />
+            {/* Basic Info Section - Phase 6A.70 (now includes Location fields) */}
+            <BasicInfoSection />
 
             {/* Cultural Interests Section */}
             <CulturalInterestsSection />

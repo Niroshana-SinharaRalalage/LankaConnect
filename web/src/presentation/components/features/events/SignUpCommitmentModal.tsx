@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { SignUpItemCategory, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -97,14 +98,14 @@ export function SignUpCommitmentModal({
         // Updating existing commitment - pre-fill with that data
         setName(existingCommitment.contactName || user?.fullName || '');
         setEmail(existingCommitment.contactEmail || user?.email || '');
-        setPhone(existingCommitment.contactPhone || '');
+        setPhone(existingCommitment.contactPhone || user?.phoneNumber || '');
         setQuantity(existingCommitment.quantity);
         setNotes(existingCommitment.notes || '');
       } else if (user) {
         // New commitment with logged-in user - use their defaults
         setName(user.fullName || '');
         setEmail(user.email || '');
-        setPhone('');
+        setPhone(user.phoneNumber || '');
         setQuantity(1);
         setNotes('');
       } else {
@@ -167,6 +168,13 @@ export function SignUpCommitmentModal({
   /**
    * Handle form submission with proper UX flow
    * Phase 6A.23: Supports both logged-in and anonymous users
+   *
+   * Decision Flow:
+   * - If LOGGED IN → Skip email check, use authenticated endpoint directly
+   * - If NOT LOGGED IN → Check email:
+   *   - Member account → Prompt to log in
+   *   - Registered for event → Allow anonymous commitment
+   *   - Not registered → Prompt to register first
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,14 +183,34 @@ export function SignUpCommitmentModal({
       return;
     }
 
-    setIsValidatingEmail(true);
     setErrors({});
 
     try {
-      // Step 1: Check email registration status
+      // PATH 1: User is LOGGED IN - skip email validation, use authenticated endpoint
+      if (isLoggedIn && user?.userId) {
+        const commitmentData: CommitmentFormData = {
+          userId: user.userId,
+          signUpListId,
+          itemId: item.id,
+          quantity,
+          notes: notes.trim() || undefined,
+          contactName: name.trim() || undefined,
+          contactEmail: email.trim() || undefined,
+          contactPhone: phone.trim() || undefined,
+        };
+
+        await onCommit(commitmentData);
+        onOpenChange(false);
+        return;
+      }
+
+      // PATH 2: User is NOT LOGGED IN - need to validate email
+      setIsValidatingEmail(true);
+
+      // Check email registration status for anonymous users
       const registrationCheck = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
 
-      // Step 2: Handle based on result
+      // Handle based on result
       if (registrationCheck.shouldPromptLogin) {
         // Email belongs to a member - they should log in
         setErrors({
@@ -201,26 +229,10 @@ export function SignUpCommitmentModal({
         return;
       }
 
-      // Step 3: User can proceed - determine which path
       setIsValidatingEmail(false);
 
-      if (isLoggedIn && user?.userId) {
-        // Logged-in user - use authenticated endpoint
-        const commitmentData: CommitmentFormData = {
-          userId: user.userId,
-          signUpListId,
-          itemId: item.id,
-          quantity,
-          notes: notes.trim() || undefined,
-          contactName: name.trim() || undefined,
-          contactEmail: email.trim() || undefined,
-          contactPhone: phone.trim() || undefined,
-        };
-
-        await onCommit(commitmentData);
-        onOpenChange(false);
-      } else if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
-        // Anonymous user registered for event - use anonymous endpoint
+      // Anonymous user registered for event - use anonymous endpoint
+      if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
         const anonymousData: AnonymousCommitmentFormData = {
           signUpListId,
           itemId: item.id,
@@ -393,13 +405,12 @@ export function SignUpCommitmentModal({
               >
                 Phone Number (Optional)
               </label>
-              <input
+              {/* GitHub Issue #30: PhoneInput restricts invalid characters */}
+              <PhoneInput
                 id="phone"
-                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="+1 (555) 123-4567"
+                onChange={setPhone}
+                placeholder="+1-234-567-8901"
               />
             </div>
 

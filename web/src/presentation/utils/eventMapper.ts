@@ -15,6 +15,12 @@ import {
   EventMetadata,
   createFeedItem,
 } from '@/domain/models/FeedItem';
+// Phase 6A.97: Import timezone-aware date formatter
+import {
+  formatEventTimeOnly,
+  formatEventDateShort,
+  formatEventDateRange as formatDateRangeWithTz,
+} from '@/presentation/lib/utils/date-formatter';
 
 /**
  * Default placeholder image for events without images
@@ -44,10 +50,11 @@ export function mapEventToFeedItem(event: EventDto): FeedItem {
   const actions: FeedAction[] = createEventActions(event);
 
   // Map event-specific metadata
+  // Phase 6A.97: Use event's timezone for time display
   const metadata: EventMetadata = {
     type: 'event',
     date: event.startDate,
-    time: extractTimeFromDate(event.startDate),
+    time: extractTimeFromDate(event.startDate, event.timeZoneId),
     venue: formatVenue(event),
     interestedCount: event.currentRegistrations || 0,
     commentCount: 0, // TODO: Add when comments feature is implemented
@@ -174,11 +181,13 @@ function formatVenue(event: EventDto): string | undefined {
 
 /**
  * Extracts time portion from ISO 8601 date-time string
+ * Phase 6A.97: Updated to use event's timezone for consistent display
  *
  * @param isoDateTime - ISO 8601 date-time string (e.g., "2024-03-15T18:30:00Z")
+ * @param timeZoneId - IANA timezone identifier (e.g., "America/New_York")
  * @returns Formatted time string (e.g., "6:30 PM") or undefined
  */
-function extractTimeFromDate(isoDateTime: string): string | undefined {
+function extractTimeFromDate(isoDateTime: string, timeZoneId?: string | null): string | undefined {
   try {
     const date = new Date(isoDateTime);
 
@@ -187,12 +196,8 @@ function extractTimeFromDate(isoDateTime: string): string | undefined {
       return undefined;
     }
 
-    // Format time in 12-hour format
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    // Phase 6A.97: Use timezone-aware formatter
+    return formatEventTimeOnly(isoDateTime, timeZoneId);
   } catch {
     return undefined;
   }
@@ -321,41 +326,21 @@ export function getAvailableSpots(event: EventDto): number {
 
 /**
  * Formats event date range for display
+ * Phase 6A.97: Updated to use event's timezone for consistent display
  *
  * @param event - EventDto
  * @returns Formatted date range string
  *
  * @example
  * ```typescript
- * formatEventDateRange(event) // "Mar 15, 2024 - Mar 17, 2024"
+ * formatEventDateRange(event) // "Mar 15, 2024 6:00 PM - 9:00 PM EST"
  * formatEventDateRange(singleDay) // "Mar 15, 2024"
  * ```
  */
 export function formatEventDateRange(event: EventDto): string {
   try {
-    const startDate = new Date(event.startDate);
-    const endDate = new Date(event.endDate);
-
-    const dateOptions: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    };
-
-    const startFormatted = startDate.toLocaleDateString('en-US', dateOptions);
-
-    // If same day event, return single date
-    if (
-      startDate.getFullYear() === endDate.getFullYear() &&
-      startDate.getMonth() === endDate.getMonth() &&
-      startDate.getDate() === endDate.getDate()
-    ) {
-      return startFormatted;
-    }
-
-    // Multi-day event
-    const endFormatted = endDate.toLocaleDateString('en-US', dateOptions);
-    return `${startFormatted} - ${endFormatted}`;
+    // Phase 6A.97: Use timezone-aware formatter
+    return formatDateRangeWithTz(event.startDate, event.endDate, event.timeZoneId);
   } catch {
     return 'Date TBD';
   }

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { Logo } from '../atoms/Logo';
 import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
 import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
@@ -53,19 +54,26 @@ const Footer: React.FC = () => {
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [receiveAllLocations, setReceiveAllLocations] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2025);
+  // Phase 6A.X Issue #27/#28: Separate validation error state for inline display
+  const [validationError, setValidationError] = useState<string | null>(null);
+  // Phase 6A.99 Issue #57: Inline success message instead of toast
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Phase 6A.99: Server error message for inline display
+  const [serverError, setServerError] = useState<string | null>(null);
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
     setCurrentYear(new Date().getFullYear());
   }, []);
 
+  // Phase 6A.76: Updated footer links - removed Cultural Hub, Services, Sell Items,
+  // entire Resources category, Careers, Press. Renamed "Our Story" to "About Us".
   const linkCategories: LinkCategory[] = [
     {
       title: 'Community',
       links: [
         { label: 'Events', href: '/events' },
         { label: 'Forums', href: '/forums' },
-        { label: 'Cultural Hub', href: '/culture' },
         ...(isAuthenticated ? [{ label: 'Dashboard', href: '/dashboard' }] : []),
       ],
     },
@@ -74,32 +82,23 @@ const Footer: React.FC = () => {
       links: [
         { label: 'Browse Listings', href: '/marketplace' },
         { label: 'Businesses', href: '/business' },
-        { label: 'Services', href: '/services' },
-        { label: 'Sell Items', href: '/marketplace/sell' },
-      ],
-    },
-    {
-      title: 'Resources',
-      links: [
-        { label: 'Help Center', href: '/help' },
-        { label: 'Guidelines', href: '/guidelines' },
-        { label: 'Safety', href: '/safety' },
-        { label: 'Blog', href: '/blog' },
       ],
     },
     {
       title: 'About',
       links: [
-        { label: 'Our Story', href: '/about' },
+        { label: 'About Us', href: '/about' },
         { label: 'Contact Us', href: '/contact' },
-        { label: 'Careers', href: '/careers' },
-        { label: 'Press', href: '/press' },
       ],
     },
   ];
 
+  // Phase 6A.99 Issue #57: Refactored to use inline messages instead of toast
   const handleNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setValidationError(null);
+    setSuccessMessage(null);
+    setServerError(null);
 
     console.log('[Footer] Newsletter form submitted:');
     console.log('  Email:', email);
@@ -107,15 +106,16 @@ const Footer: React.FC = () => {
     console.log('  Selected metro IDs:', selectedMetroIds);
     console.log('  Selected metro count:', selectedMetroIds.length);
 
+    // Client-side validation - use inline errors
     if (!email || !email.includes('@')) {
       console.log('[Footer] ❌ Validation failed: Invalid email');
-      setSubscribeStatus('error');
+      setValidationError('Please enter a valid email address.');
       return;
     }
 
     if (!receiveAllLocations && selectedMetroIds.length === 0) {
       console.log('[Footer] ❌ Validation failed: No metros selected and not receiving all locations');
-      setSubscribeStatus('error');
+      setValidationError('Please select at least one location or choose "All Locations".');
       return;
     }
 
@@ -144,21 +144,34 @@ const Footer: React.FC = () => {
       console.log('[Footer] Backend response:', response.status, data);
 
       if (data.success || data.Success) {
+        // Phase 6A.99 Issue #57: Use inline success message instead of toast
+        setSuccessMessage('Thank you for subscribing! Please check your email to confirm your subscription.');
         setSubscribeStatus('success');
         setEmail('');
         setSelectedMetroIds([]);
         setReceiveAllLocations(false);
 
-        // Reset status after 3 seconds
+        // Auto-clear success message after 10 seconds
         setTimeout(() => {
+          setSuccessMessage(null);
           setSubscribeStatus('idle');
-        }, 3000);
+        }, 10000);
       } else {
-        setSubscribeStatus('error');
+        // Phase 6A.99 Issue #57: Show specific backend error message inline
+        const errorMessage = data.message || data.Message || 'Subscription failed. Please try again.';
+
+        // Special handling for already-subscribed (friendlier message)
+        if (errorMessage.toLowerCase().includes('already subscribed')) {
+          setServerError('This email is already subscribed to our newsletter.');
+        } else {
+          setServerError(errorMessage);
+        }
+        setSubscribeStatus('idle');
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
-      setSubscribeStatus('error');
+      setServerError('Network error. Please check your connection and try again.');
+      setSubscribeStatus('idle');
     }
   };
 
@@ -210,21 +223,41 @@ const Footer: React.FC = () => {
               </button>
             </form>
 
-            {subscribeStatus === 'error' && (
-              <p className="text-red-300 text-sm mt-2 text-center" role="alert">
-                Please enter a valid email address and select at least one location.
+            {/* Phase 6A.99 Issue #57: Inline messages for validation, success, and errors */}
+            {validationError && subscribeStatus !== 'loading' && (
+              <p className="text-red-300 text-sm mt-3 text-center" role="alert">
+                {validationError}
               </p>
             )}
-            {subscribeStatus === 'success' && (
-              <p className="text-green-300 text-sm mt-2 text-center" role="alert">
-                Thank you for subscribing!
-              </p>
+
+            {/* Phase 6A.99: Inline success message */}
+            {successMessage && (
+              <div className="mt-4 p-3 bg-green-500/20 border border-green-400/30 rounded-lg" role="status">
+                <p className="text-green-200 text-sm text-center flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {successMessage}
+                </p>
+              </div>
+            )}
+
+            {/* Phase 6A.99: Inline server error message */}
+            {serverError && subscribeStatus !== 'loading' && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-400/30 rounded-lg" role="alert">
+                <p className="text-red-200 text-sm text-center flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {serverError}
+                </p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Links Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        {/* Links Grid - Phase 6A.76: Changed from 4 to 3 columns after removing Resources category */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {linkCategories.map((category) => (
             <div key={category.title}>
               <h4 className="text-white font-semibold mb-4">{category.title}</h4>

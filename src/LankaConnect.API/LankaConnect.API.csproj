@@ -32,4 +32,14 @@
     <ProjectReference Include="..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->
+  <!-- This ensures templates are included in both local builds and Docker deployments -->
+  <ItemGroup>
+    <Content Include="..\LankaConnect.Infrastructure\Templates\Email\**\*.*">
+      <Link>Templates\Email\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

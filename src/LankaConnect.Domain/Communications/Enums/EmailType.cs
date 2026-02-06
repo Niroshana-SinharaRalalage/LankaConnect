@@ -10,5 +10,10 @@ public enum EmailType
     Newsletter = 6,
     Marketing = 7,
     Transactional = 8,
-    CulturalEventNotification = 9
+    CulturalEventNotification = 9,
+    MemberEmailVerification = 10,
+    SignupCommitmentConfirmation = 11,
+    RegistrationCancellationConfirmation = 12,
+    OrganizerCustomMessage = 13,
+    EventReminder = 14
 }

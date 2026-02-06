@@ -23,6 +23,149 @@
 
 ---
 
+## EPIC TRACKING & ASSIGNMENTS
+
+**Last Updated:** 2026-01-24
+
+### How This Section Works
+
+This section tracks all development epics, their assignments to Senior Engineers, and links to detailed implementation plans.
+
+**Epic Format:** `[PHASE].[ID]. [Epic Name]`
+**Example:** `10.A. Shopping Cart Implementation`
+
+### Senior Engineer Assignments (Full-Stack)
+
+| Engineer | Focus Area | Agent File | Invoke Command |
+|----------|----------|------------|----------------|
+| **Senior Engineer 1** | Events Module (Backend + Frontend) | [docs/agents/senior-engineer-1.md](./agents/senior-engineer-1.md) | `/senior-engineer-1` |
+| **Senior Engineer 2** | Marketplace Module (Backend + Frontend) | [docs/agents/senior-engineer-2.md](./agents/senior-engineer-2.md) | `/senior-engineer-2` |
+| **Senior Engineer 3** | Business Profile Module (Backend + Frontend) | [docs/agents/senior-engineer-3.md](./agents/senior-engineer-3.md) | `/senior-engineer-3` |
+| **Senior Engineer 4** | Forum Module (Backend + Frontend) | [docs/agents/senior-engineer-4.md](./agents/senior-engineer-4.md) | `/senior-engineer-4` |
+
+**Note:** Each engineer owns their module end-to-end (Database → API → UI). This ensures faster delivery and complete feature ownership.
+
+### Phase 10: Marketplace Module (Full-Stack)
+
+**Owner:** Senior Engineer 2 (Backend + Frontend)
+
+| Epic ID | Epic Name (Full-Stack) | Status | Implementation Plan | Start Date | Target Date |
+|---------|------------------------|--------|---------------------|------------|-------------|
+| 10.A | Product Catalog (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.B | Shopping Cart (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.C | Stripe Checkout (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.D | Order Management (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.E | Inventory Management (Backend + Admin UI) | Not Started | TBD | TBD | TBD |
+| 10.F | Shipping & Fulfillment (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.G | Promotions & Discounts (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 10.H | Admin Product Management (Backend + Admin UI) | Not Started | TBD | TBD | TBD |
+
+### Phase 11: Business Profile Module (Full-Stack)
+
+**Owner:** Senior Engineer 3
+
+| Epic ID | Epic Name | Status | Implementation Plan | Start Date | Target Date |
+|---------|-----------|--------|---------------------|------------|-------------|
+| 11.A | Business Domain Model (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 11.B | Approval Workflow System (Backend + Admin UI) | Not Started | TBD | TBD | TBD |
+| 11.C | Business Directory & Search (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 11.D | Business Services Management (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 11.E | Admin Approval Panel (Backend + Admin UI) | Not Started | TBD | TBD | TBD |
+
+### Phase 12: Forum Module (Full-Stack)
+
+**Owner:** Senior Engineer 4
+
+| Epic ID | Epic Name | Status | Implementation Plan | Start Date | Target Date |
+|---------|-----------|--------|---------------------|------------|-------------|
+| 12.A | Forum Domain Model (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 12.B | Discussion Threads & Posts (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 12.C | Content Moderation System (Backend + Admin UI) | Not Started | TBD | TBD | TBD |
+| 12.D | User Reputation System (Backend + UI) | Not Started | TBD | TBD | TBD |
+| 12.E | Forum Search & Filters (Backend + UI) | Not Started | TBD | TBD | TBD |
+
+### Phase 14: Events Module Refactor (Full-Stack)
+
+**Owner:** Senior Engineer 1
+
+| Epic ID | Epic Name | Status | Implementation Plan | Start Date | Target Date |
+|---------|-----------|--------|---------------------|------------|-------------|
+| 14.A | Events Module Restructure (Backend) | Not Started | TBD | TBD | TBD |
+| 14.B | Events Test Migration | Not Started | TBD | TBD | TBD |
+| 14.C | Events UI Enhancement (Frontend) | Not Started | TBD | TBD | TBD |
+
+### Epic Status Values
+
+- **Not Started** - Epic defined but no work begun
+- **Planning** - Implementation plan being created
+- **In Progress** - Active development
+- **Code Review** - Implementation complete, under review
+- **Testing** - In QA/testing phase
+- **Deployed to Staging** - On staging environment
+- **Deployed to Production** - Live in production
+- **Blocked** - Waiting on dependency or decision
+- **On Hold** - Paused for business reasons
+- **Complete** - Fully done, verified, documented
+
+### Epic Workflow
+
+**1. Epic Assignment**
+```
+- Update "Assigned To" column in table above
+- Set status to "Planning"
+- Update engineer's agent file (docs/agents/senior-engineer-[N].md)
+```
+
+**2. Create Implementation Plan**
+```
+- Engineer uses template: docs/epics/EPIC_PLAN_TEMPLATE.md
+- Save as: docs/epics/[EPIC_ID]-[epic-name-slug]-plan.md
+- Link plan in "Implementation Plan" column above
+- Set Start Date to current date
+- Set realistic Target Date
+```
+
+**3. Development**
+```
+- Engineer references:
+  - CLAUDE.md (common rules)
+  - docs/agents/senior-engineer-[N].md (their assignments)
+  - docs/epics/[EPIC_ID]-plan.md (detailed plan)
+- You communicate via: /senior-engineer-[N]
+- If engineer loses focus: "Check your agent file and epic plan"
+```
+
+**4. Completion**
+```
+- Update status to "Complete"
+- Update PROGRESS_TRACKER.md
+- Update STREAMLINED_ACTION_PLAN.md
+- Update TASK_SYNCHRONIZATION_STRATEGY.md
+- Create epic summary document
+```
+
+### Cross-Module Dependencies
+
+Since each engineer owns their module end-to-end, dependencies are minimal. Most work can proceed in parallel.
+
+**Phase 0 (Foundation - Must Complete FIRST):**
+- [ ] Shared UI component library created (`web/src/components/ui/`)
+- [ ] UI_STYLE_GUIDE.md finalized
+- [ ] Design tokens implemented
+- [ ] All 4 engineers review UI guidelines
+
+**Phase 1-4 (Parallel Development):**
+- All 4 modules can develop simultaneously
+- No cross-module dependencies
+- Each engineer ships complete features (Backend → Frontend)
+
+**Within-Module Sequencing (Recommended):**
+- Backend first (Domain → Application → API)
+- Frontend second (consumes backend API)
+- This is flexible - engineers can work on both concurrently if preferred
+
+---
+
 ## 1. Project Overview
 
 ### 1.1 Vision Statement

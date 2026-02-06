@@ -5,6 +5,7 @@ using LankaConnect.Application.Users.Commands.DeleteProfilePhoto;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -28,7 +29,8 @@ public class DeleteProfilePhotoCommandHandlerTests
         _handler = new DeleteProfilePhotoCommandHandler(
             _userRepository.Object,
             _imageService.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            NullLogger<DeleteProfilePhotoCommandHandler>.Instance);
     }
 
     [Fact]

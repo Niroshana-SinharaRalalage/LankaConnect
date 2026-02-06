@@ -24,7 +24,7 @@ public class HealthController : ControllerBase
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object> { ["Operation"] = "HealthCheck" });
         
-        _logger.LogDebug("Health check requested");
+        _logger.LogInformation("Health check requested");
         
         var response = new 
         { 
@@ -48,7 +48,7 @@ public class HealthController : ControllerBase
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object> { ["Operation"] = "DetailedHealthCheck" });
         
-        _logger.LogDebug("Detailed health check requested");
+        _logger.LogInformation("Detailed health check requested");
         
         var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
         

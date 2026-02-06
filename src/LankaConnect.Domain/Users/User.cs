@@ -107,6 +107,9 @@ public class User : BaseEntity
         // Raise domain event
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id, email.Value, user.FullName));
 
+        // Phase 6A.53: Generate email verification token for new local users
+        user.GenerateEmailVerificationToken();
+
         return Result<User>.Success(user);
     }
 
@@ -255,20 +258,96 @@ public class User : BaseEntity
         return Result.Success();
     }
 
-    public Result VerifyEmail()
+    /// <summary>
+    /// Phase 6A.53: Generates email verification token and raises domain event to send verification email.
+    /// Uses GUID-based token (32 hex characters) for unpredictability.
+    /// Token expires after 24 hours.
+    /// Phase 6A.53 Fix: Now includes FirstName and LastName for personalized emails
+    /// </summary>
+    public void GenerateEmailVerificationToken()
+    {
+        // GUID for unpredictable tokens (ARCHITECT-APPROVED)
+        EmailVerificationToken = Guid.NewGuid().ToString("N");  // 32 hex chars
+        EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+        MarkAsUpdated();
+
+        // Phase 6A.53 Fix: Include FirstName and LastName for personalized emails
+        RaiseDomainEvent(new DomainEvents.MemberVerificationRequestedEvent(
+            Id,
+            Email.Value,
+            EmailVerificationToken,
+            DateTimeOffset.UtcNow,
+            FirstName,
+            LastName
+        ));
+    }
+
+    /// <summary>
+    /// Phase 6A.53: Verifies email address using token.
+    /// Token is one-time use and must not be expired.
+    /// </summary>
+    public Result VerifyEmail(string token)
     {
         if (IsEmailVerified)
-            return Result.Failure("Email is already verified");
+            return Result.Failure("Email already verified");
+
+        if (string.IsNullOrWhiteSpace(token))
+            return Result.Failure("Verification token is required");
+
+        if (EmailVerificationToken != token)
+            return Result.Failure("Invalid verification token");
+
+        if (!EmailVerificationTokenExpiresAt.HasValue || EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+            return Result.Failure("Token expired. Please request a new verification email.");
 
         IsEmailVerified = true;
-        EmailVerificationToken = null;
+        EmailVerificationToken = null;  // One-time use
         EmailVerificationTokenExpiresAt = null;
         MarkAsUpdated();
-        
+
         RaiseDomainEvent(new UserEmailVerifiedEvent(Id, Email.Value));
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.53: Marks email as verified without token validation.
+    /// ONLY for use in seed data, migrations, or admin operations.
+    /// </summary>
+    public void MarkEmailAsVerified()
+    {
+        if (!IsEmailVerified)
+        {
+            IsEmailVerified = true;
+            EmailVerificationToken = null;
+            EmailVerificationTokenExpiresAt = null;
+            MarkAsUpdated();
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.53: Regenerates email verification token with 1-hour cooldown to prevent spam.
+    /// </summary>
+    public Result RegenerateEmailVerificationToken()
+    {
+        if (IsEmailVerified)
+            return Result.Failure("Email already verified");
+
+        // Prevent spam: Check if token was generated recently (1-hour cooldown)
+        if (EmailVerificationTokenExpiresAt.HasValue &&
+            EmailVerificationTokenExpiresAt.Value > DateTime.UtcNow.AddHours(23))
+        {
+            return Result.Failure("Please wait before requesting a new verification email");
+        }
+
+        GenerateEmailVerificationToken();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// DEPRECATED: Use GenerateEmailVerificationToken() instead.
+    /// Kept for backwards compatibility.
+    /// </summary>
+    [Obsolete("Use GenerateEmailVerificationToken() instead")]
     public Result SetEmailVerificationToken(string token, DateTime expiresAt)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -485,18 +564,14 @@ public class User : BaseEntity
     }
 
     /// <summary>
-    /// Updates user's cultural interests (0-10 allowed)
+    /// Updates user's cultural interests (unlimited)
     /// Empty collection clears all interests (privacy choice)
     /// </summary>
     public Result UpdateCulturalInterests(IEnumerable<CulturalInterest>? interests)
     {
         var interestList = interests?.ToList() ?? new List<CulturalInterest>();
 
-        // Validate max 10 interests
-        if (interestList.Count > 10)
-        {
-            return Result.Failure("Cannot have more than 10 cultural interests");
-        }
+        // No max limit - users can select as many interests as they want
 
         // Clear and add interests (removes duplicates automatically via Distinct)
         _culturalInterests.Clear();
@@ -760,6 +835,84 @@ public class User : BaseEntity
         UpgradeRequestedAt = null;
 
         MarkAsUpdated();
+        return Result.Success();
+    }
+
+    // Phase 6A.89: Admin account management methods
+
+    /// <summary>
+    /// Phase 6A.89: Locks account by admin until specified date.
+    /// Different from automatic lock after failed login attempts.
+    /// </summary>
+    /// <param name="lockUntil">Date until which the account will be locked</param>
+    /// <param name="reason">Optional reason for the lock (for audit trail)</param>
+    public Result LockAccountByAdmin(DateTime lockUntil, string? reason = null)
+    {
+        if (lockUntil <= DateTime.UtcNow)
+            return Result.Failure("Lock date must be in the future");
+
+        // Business rule: Cannot lock an already locked account
+        if (IsAccountLocked)
+            return Result.Failure("Account is already locked");
+
+        AccountLockedUntil = lockUntil;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserAccountLockedByAdminEvent(
+            Id, Email.Value, lockUntil, reason));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Unlocks account by admin.
+    /// Clears the lock and resets failed login attempts.
+    /// </summary>
+    public Result UnlockAccountByAdmin()
+    {
+        if (!AccountLockedUntil.HasValue || AccountLockedUntil <= DateTime.UtcNow)
+            return Result.Failure("Account is not currently locked");
+
+        AccountLockedUntil = null;
+        FailedLoginAttempts = 0; // Reset failed attempts
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserAccountUnlockedByAdminEvent(Id, Email.Value));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Deactivates user by admin.
+    /// Prevents user from logging in or performing any actions.
+    /// </summary>
+    public Result DeactivateByAdmin()
+    {
+        if (!IsActive)
+            return Result.Failure("User is already deactivated");
+
+        IsActive = false;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserDeactivatedByAdminEvent(Id, Email.Value, FullName));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.89: Activates user by admin.
+    /// Allows user to login and perform actions again.
+    /// </summary>
+    public Result ActivateByAdmin()
+    {
+        if (IsActive)
+            return Result.Failure("User is already active");
+
+        IsActive = true;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new UserActivatedByAdminEvent(Id, Email.Value, FullName));
+
         return Result.Success();
     }
 

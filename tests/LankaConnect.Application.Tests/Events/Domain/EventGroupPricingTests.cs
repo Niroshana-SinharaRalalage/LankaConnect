@@ -129,9 +129,9 @@ public class EventGroupPricingTests
         var pricing = TicketPricing.CreateGroupTiered(tiers, currency).Value;
         @event.SetGroupPricing(pricing);
 
-        // Create attendees (age doesn't matter for group pricing)
+        // Create attendees (age category doesn't matter for group pricing)
         var attendees = Enumerable.Range(1, attendeeCount)
-            .Select(i => AttendeeDetails.Create($"Attendee {i}", 25).Value)
+            .Select(i => AttendeeDetails.Create($"Attendee {i}", AgeCategory.Adult).Value)
             .ToList();
 
         // Act
@@ -169,12 +169,14 @@ public class EventGroupPricingTests
     {
         // Arrange
         var @event = CreateValidEvent();
-        // Don't set any pricing - event is free
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        @event.SetDualPricing(pricing);
 
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("Attendee 1", 25).Value,
-            AttendeeDetails.Create("Attendee 2", 30).Value
+            AttendeeDetails.Create("Attendee 1", AgeCategory.Adult).Value,
+            AttendeeDetails.Create("Attendee 2", AgeCategory.Adult).Value
         };
 
         // Act
@@ -235,9 +237,9 @@ public class EventGroupPricingTests
 
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("Attendee 1", 25).Value,
-            AttendeeDetails.Create("Attendee 2", 30).Value,
-            AttendeeDetails.Create("Attendee 3", 35).Value
+            AttendeeDetails.Create("Attendee 1", AgeCategory.Adult).Value,
+            AttendeeDetails.Create("Attendee 2", AgeCategory.Adult).Value,
+            AttendeeDetails.Create("Attendee 3", AgeCategory.Adult).Value
         };
 
         // Act
@@ -260,9 +262,9 @@ public class EventGroupPricingTests
 
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("Adult 1", 30).Value,    // $50
-            AttendeeDetails.Create("Child 1", 8).Value,     // $25
-            AttendeeDetails.Create("Child 2", 10).Value     // $25
+            AttendeeDetails.Create("Adult 1", AgeCategory.Adult).Value,    // $50
+            AttendeeDetails.Create("Child 1", AgeCategory.Child).Value,     // $25
+            AttendeeDetails.Create("Child 2", AgeCategory.Child).Value     // $25
         };
 
         // Act
@@ -297,7 +299,9 @@ public class EventGroupPricingTests
     {
         // Arrange
         var @event = CreateValidEvent();
-        // No pricing set
+        // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
+        var pricing = TicketPricing.CreateSinglePrice(Money.Zero(Currency.USD)).Value;
+        @event.SetDualPricing(pricing);
 
         // Act & Assert
         @event.IsFree().Should().BeTrue();

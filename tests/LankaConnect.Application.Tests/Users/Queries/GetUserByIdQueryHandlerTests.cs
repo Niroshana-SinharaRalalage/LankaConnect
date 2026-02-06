@@ -3,18 +3,21 @@ using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Application.Users.Queries.GetUserById;
 using LankaConnect.Domain.Users;
+using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Users.Queries;
 
 public class GetUserByIdQueryHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepository;
+    private readonly Mock<ILogger<GetUserByIdQueryHandler>> _mockLogger;
     private readonly GetUserByIdQueryHandler _handler;
 
     public GetUserByIdQueryHandlerTests()
     {
         _userRepository = TestHelpers.MockRepository.CreateUserRepository();
-        _handler = new GetUserByIdQueryHandler(_userRepository.Object);
+        _mockLogger = new Mock<ILogger<GetUserByIdQueryHandler>>();
+        _handler = new GetUserByIdQueryHandler(_userRepository.Object, _mockLogger.Object);
     }
 
     [Fact]
@@ -66,18 +69,16 @@ public class GetUserByIdQueryHandlerTests
     {
         // Arrange
         var query = new GetUserByIdQuery(Guid.Empty);
-        
-        _userRepository.Setup(x => x.GetByIdAsync(Guid.Empty, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("User not found");
-        
-        _userRepository.Verify(x => x.GetByIdAsync(Guid.Empty, It.IsAny<CancellationToken>()), Times.Once);
+        result.Error.Should().Be("User ID is required");
+
+        // Repository should NOT be called when validation fails
+        _userRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

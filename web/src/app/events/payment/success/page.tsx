@@ -7,7 +7,9 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { useEventById } from '@/presentation/hooks/useEvents';
+import { useEventById, useUserRegistrationDetails, eventKeys } from '@/presentation/hooks/useEvents';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Payment Success Callback Page
@@ -24,10 +26,42 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = searchParams?.get('eventId');
+  const registrationId = searchParams?.get('registrationId'); // Phase 6A.44: Get registrationId from URL
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const { user, isHydrated } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [registrationDetails, setRegistrationDetails] = useState<any>(null);
 
   // Fetch event details to show confirmation
   const { data: event, isLoading, error } = useEventById(eventId || undefined);
+
+  // Phase 6A.44: Fetch registration details by registrationId if available (for anonymous users)
+  // Otherwise fallback to userId-based query for authenticated users
+  useEffect(() => {
+    if (registrationId) {
+      // Anonymous user - fetch by registrationId
+      import('@/infrastructure/api/repositories/events.repository').then(({ eventsRepository }) => {
+        eventsRepository.getRegistrationById(registrationId).then(setRegistrationDetails);
+      });
+    } else if (user?.userId && isHydrated && eventId) {
+      // Authenticated user - fetch by userId
+      import('@/infrastructure/api/repositories/events.repository').then(({ eventsRepository }) => {
+        eventsRepository.getUserRegistrationForEvent(eventId).then(setRegistrationDetails);
+      });
+    }
+  }, [registrationId, user?.userId, isHydrated, eventId]);
+
+  // Phase 6A.43 Fix: Invalidate React Query cache after Stripe redirect
+  // Stripe checkout redirects user to this page, causing browser to rehydrate
+  // React Query cache with STALE data (showing "not registered")
+  // Solution: Invalidate all event-related queries on mount to force fresh fetch
+  useEffect(() => {
+    if (eventId && isHydrated) {
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ['user-rsvps'] });
+      queryClient.invalidateQueries({ queryKey: ['user-registration', eventId] });
+    }
+  }, [eventId, isHydrated, queryClient]);
 
   useEffect(() => {
     // If no eventId, redirect to events list after 3 seconds
@@ -115,11 +149,26 @@ function PaymentSuccessContent() {
                         })}
                       </span>
                     </div>
-                    {event.ticketPriceAmount && (
+                    {/* Phase 6A.24 FIX: Show actual amount paid from registration, not base ticket price */}
+                    {/* Use registrationDetails.totalPriceAmount for accurate total (group pricing etc) */}
+                    {(registrationDetails?.totalPriceAmount || event.ticketPriceAmount) && (
                       <div className="flex justify-between border-t pt-2 mt-2">
                         <span className="text-muted-foreground font-semibold">Amount Paid:</span>
                         <span className="font-bold text-green-600">
-                          {event.ticketPriceCurrency} {event.ticketPriceAmount.toFixed(2)}
+                          ${registrationDetails?.totalPriceAmount
+                            ? registrationDetails.totalPriceAmount.toFixed(2)
+                            : event.ticketPriceAmount?.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {/* Phase 6A.44 Fix: Show actual attendee count from registration details */}
+                    {(registrationDetails?.quantity || registrationDetails?.attendees?.length) && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Attendees:</span>
+                        <span className="font-medium">
+                          {registrationDetails.quantity || registrationDetails.attendees.length} {
+                            ((registrationDetails.quantity || registrationDetails.attendees.length) === 1) ? 'person' : 'people'
+                          }
                         </span>
                       </div>
                     )}
@@ -136,7 +185,7 @@ function PaymentSuccessContent() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>You can view your registration details in your account</span>
+                    <span>If you are a member of LankaConnect, you can view your registration details in your account</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />

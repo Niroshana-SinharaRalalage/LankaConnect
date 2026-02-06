@@ -1,187 +1,503 @@
+using System.Diagnostics;
+using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
 /// <summary>
-/// Background job that runs hourly to send reminder emails for events starting in 24 hours
+/// Phase 6A.71: Background job that runs hourly to send reminder emails for events
+/// with idempotency tracking to prevent duplicate reminders
 /// </summary>
 public class EventReminderJob
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service for pilot migration
+    private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly IEventReminderRepository _eventReminderRepository;
+    private readonly ITicketRepository _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
     private readonly ILogger<EventReminderJob> _logger;
+
+    private const string HandlerName = "EventReminderJob";  // Phase 6A.87: For feature flag lookup
 
     public EventReminderJob(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service for pilot migration
+        IEmailUrlHelper emailUrlHelper,
+        IEventReminderRepository eventReminderRepository,
+        ITicketRepository ticketRepository,  // Phase 6A.83 Part 3: Added for ticket parameter support
         ILogger<EventReminderJob> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _emailUrlHelper = emailUrlHelper;
+        _eventReminderRepository = eventReminderRepository;
+        _ticketRepository = ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
         _logger = logger;
     }
 
     public async Task ExecuteAsync()
     {
-        _logger.LogInformation("EventReminderJob: Starting event reminder job execution at {Time}", DateTime.UtcNow);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventReminder"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
         {
-            // Find events starting in 24 hours (23-25 hour window to account for hourly execution)
-            var now = DateTime.UtcNow;
-            var reminderWindowStart = now.AddHours(23);
-            var reminderWindowEnd = now.AddHours(25);
+            var stopwatch = Stopwatch.StartNew();
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
 
-            _logger.LogInformation("EventReminderJob: Searching for events starting between {Start} and {End}",
-                reminderWindowStart, reminderWindowEnd);
+            _logger.LogInformation(
+                "[Phase 6A.71] [{CorrelationId}] EventReminderJob START: Beginning event reminder processing",
+                correlationId);
 
-            // Get published/active events starting in the next 24 hours
-            var upcomingEvents = await _eventRepository.GetEventsStartingInTimeWindowAsync(
-                reminderWindowStart,
-                reminderWindowEnd,
-                new[] { EventStatus.Published, EventStatus.Active });
-
-            _logger.LogInformation("EventReminderJob: Found {Count} events requiring reminders", upcomingEvents.Count);
-
-            foreach (var @event in upcomingEvents)
+            try
             {
-                try
+                var now = DateTime.UtcNow;
+
+                // Phase 6A.71: Send 3 types of reminders (7 days, 2 days, 1 day)
+                // Use 2-hour windows to prevent duplicates while running hourly
+                await SendRemindersForWindowAsync(now, 167, 169, "7day", "in 1 week", "Your event is coming up next week. Mark your calendar!", correlationId, CancellationToken.None);
+                await SendRemindersForWindowAsync(now, 47, 49, "2day", "in 2 days", "Your event is just 2 days away. Don't forget!", correlationId, CancellationToken.None);
+                await SendRemindersForWindowAsync(now, 23, 25, "1day", "tomorrow", "Your event is tomorrow! We look forward to seeing you there.", correlationId, CancellationToken.None);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob COMPLETE: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+            }
+            catch (OperationCanceledException) when (CancellationToken.None.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob CANCELED: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "[Phase 6A.71] [{CorrelationId}] EventReminderJob FAILED: Duration={ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+                throw;  // Phase 6A.61+ Fix: Re-throw for Hangfire retry
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.71: Send reminders for events starting within a specific time window.
+    /// Uses 2-hour windows to prevent duplicate reminders while job runs hourly.
+    /// Includes idempotency tracking via event_reminders_sent table.
+    /// </summary>
+    private async Task SendRemindersForWindowAsync(
+        DateTime now,
+        int startHours,
+        int endHours,
+        string reminderType,
+        string reminderTimeframe,
+        string reminderMessage,
+        string correlationId,
+        CancellationToken cancellationToken)
+    {
+        var windowStart = now.AddHours(startHours);
+        var windowEnd = now.AddHours(endHours);
+
+        _logger.LogInformation(
+            "[Phase 6A.71] [{CorrelationId}] Checking {Timeframe} reminder window ({Start} to {End})",
+            correlationId, reminderTimeframe, windowStart, windowEnd);
+
+        var upcomingEvents = await _eventRepository.GetEventsStartingInTimeWindowAsync(
+            windowStart,
+            windowEnd,
+            new[] { EventStatus.Published, EventStatus.Active });
+
+        if (upcomingEvents.Count == 0)
+        {
+            _logger.LogInformation(
+                "[Phase 6A.71] [{CorrelationId}] No events found in {Timeframe} reminder window",
+                correlationId, reminderTimeframe);
+            return;
+        }
+
+        _logger.LogInformation(
+            "[Phase 6A.71] [{CorrelationId}] Found {Count} events requiring {Timeframe} reminders",
+            correlationId, upcomingEvents.Count, reminderTimeframe);
+
+        foreach (var @event in upcomingEvents)
+        {
+            try
+            {
+                var registrations = @event.Registrations;
+
+                _logger.LogInformation(
+                    "[Phase 6A.71] [{CorrelationId}] Sending {Timeframe} reminders for event {EventId} ({Title}) to {Count} attendees",
+                    correlationId, reminderTimeframe, @event.Id, @event.Title?.Value ?? "Untitled Event", registrations.Count);
+
+                var successCount = 0;
+                var failCount = 0;
+                var skippedCount = 0;
+
+                foreach (var registration in registrations)
                 {
-                    // Get all attendees (registrations) for this event
-                    var registrations = @event.Registrations;
-
-                    _logger.LogInformation("EventReminderJob: Sending reminders for event {EventId} ({Title}) to {Count} attendees",
-                        @event.Id, @event.Title.Value, registrations.Count);
-
-                    foreach (var registration in registrations)
+                    try
                     {
-                        try
+                        // Phase 6A.71: Check idempotency before processing
+                        var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
+                            @event.Id, registration.Id, reminderType, cancellationToken);
+
+                        if (alreadySent)
                         {
-                            // Determine email recipient based on registration type
-                            string? toEmail = null;
-                            string toName = "Event Attendee";
+                            skippedCount++;
+                            _logger.LogInformation(
+                                "[Phase 6A.71] [{CorrelationId}] Skipping duplicate {ReminderType} reminder for registration {RegistrationId}",
+                                correlationId, reminderType, registration.Id);
+                            continue;
+                        }
 
-                            if (registration.UserId.HasValue)
-                            {
-                                // Authenticated user registration - look up user email
-                                var user = await _userRepository.GetByIdAsync(registration.UserId.Value, CancellationToken.None);
-                                if (user != null)
-                                {
-                                    toEmail = user.Email.Value;
-                                    toName = $"{user.FirstName} {user.LastName}";
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("EventReminderJob: User {UserId} not found for registration, skipping reminder",
-                                        registration.UserId);
-                                    continue;
-                                }
-                            }
-                            else if (registration.Contact != null)
-                            {
-                                // Anonymous registration with contact info (multi-attendee format)
-                                toEmail = registration.Contact.Email;
-                                // Try to get first attendee name if available
-                                var firstAttendee = registration.Attendees.FirstOrDefault();
-                                if (firstAttendee != null)
-                                {
-                                    toName = firstAttendee.Name;
-                                }
-                            }
-                            else if (registration.AttendeeInfo != null)
-                            {
-                                // Legacy anonymous registration format
-                                toEmail = registration.AttendeeInfo.Email.Value;
-                                toName = registration.AttendeeInfo.Name;
-                            }
+                        // Determine email recipient based on registration type
+                        string? toEmail = null;
+                        string toName = "Event Attendee";
 
-                            if (string.IsNullOrWhiteSpace(toEmail))
+                        if (registration.UserId.HasValue)
+                        {
+                            var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                            if (user != null)
                             {
-                                _logger.LogWarning("EventReminderJob: No email found for registration {RegistrationId}, skipping reminder",
-                                    registration.Id);
-                                continue;
-                            }
-
-                            var parameters = new Dictionary<string, object>
-                            {
-                                { "EventTitle", @event.Title.Value },
-                                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                                { "Location", @event.Location?.Address.ToString() ?? "Location TBD" },
-                                { "Quantity", registration.Quantity },
-                                { "HoursUntilEvent", Math.Round((@event.StartDate - now).TotalHours, 1) },
-                                { "AttendeeName", toName }
-                            };
-
-                            var emailMessage = new EmailMessageDto
-                            {
-                                ToEmail = toEmail,
-                                ToName = toName,
-                                Subject = $"Reminder: {@event.Title.Value} starts in 24 hours",
-                                HtmlBody = GenerateEventReminderHtml(parameters),
-                                Priority = 1 // High priority
-                            };
-
-                            var result = await _emailService.SendEmailAsync(emailMessage, CancellationToken.None);
-
-                            if (result.IsFailure)
-                            {
-                                _logger.LogWarning("EventReminderJob: Failed to send reminder for event {EventId} to {Email}: {Errors}",
-                                    @event.Id, toEmail, string.Join(", ", result.Errors));
+                                toEmail = user.Email.Value;
+                                toName = $"{user.FirstName} {user.LastName}";
                             }
                             else
                             {
-                                _logger.LogInformation("EventReminderJob: Reminder sent successfully for event {EventId} to {Email}",
-                                    @event.Id, toEmail);
+                                _logger.LogWarning(
+                                    "[Phase 6A.71] [{CorrelationId}] User {UserId} not found for registration {RegistrationId}, skipping",
+                                    correlationId, registration.UserId, registration.Id);
+                                continue;
                             }
                         }
-                        catch (Exception ex)
+                        else if (registration.Contact != null)
                         {
-                            _logger.LogError(ex, "EventReminderJob: Error sending reminder for event {EventId} to registration {RegistrationId}",
-                                @event.Id, registration.Id);
+                            toEmail = registration.Contact.Email;
+                            var firstAttendee = registration.Attendees.FirstOrDefault();
+                            if (firstAttendee != null)
+                            {
+                                toName = firstAttendee.Name;
+                            }
                         }
+                        else if (registration.AttendeeInfo != null)
+                        {
+                            toEmail = registration.AttendeeInfo.Email.Value;
+                            toName = registration.AttendeeInfo.Name;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(toEmail))
+                        {
+                            _logger.LogWarning(
+                                "[Phase 6A.71] [{CorrelationId}] No email found for registration {RegistrationId}, skipping",
+                                correlationId, registration.Id);
+                            continue;
+                        }
+
+                        // Phase 6A.87: Use typed email parameters for compile-time safety
+                        var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
+                        var emailParams = EventReminderEmailParams.Create(
+                            eventId: @event.Id,
+                            registrationId: registration.Id,
+                            attendeeName: toName,
+                            attendeeEmail: toEmail,
+                            eventTitle: @event.Title?.Value ?? "Untitled Event",
+                            eventStartDate: @event.StartDate,
+                            eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                            location: @event.Location?.Address.ToString() ?? "Location TBD",
+                            quantity: registration.Quantity,
+                            hoursUntilEvent: hoursUntilEvent,
+                            reminderTimeframe: reminderTimeframe,
+                            reminderMessage: reminderMessage,
+                            eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+                        );
+
+                        // Phase 6A.97: Set event's timezone for consistent date/time display
+                        emailParams.TimeZoneId = @event.TimeZoneId;
+
+                        // Phase 6A.87: Add organizer contact if available
+                        if (@event.HasOrganizerContact())
+                        {
+                            emailParams.WithOrganizerContact(
+                                name: @event.OrganizerContactName ?? "Event Organizer",
+                                email: @event.OrganizerContactEmail,
+                                phone: @event.OrganizerContactPhone
+                            );
+                        }
+
+                        // Phase 6A.87: Add ticket info if available (paid events only)
+                        var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
+                        if (ticket != null)
+                        {
+                            emailParams.WithTicket(
+                                ticketCode: ticket.TicketCode,
+                                expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt, @event.TimeZoneId)  // Phase 6A.97: Uses event's timezone
+                            );
+                        }
+
+                        // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                        var typedResult = await _typedEmailService.SendEmailAsync(
+                            emailParams,
+                            HandlerName,
+                            cancellationToken);
+
+                        // Convert to Result pattern for existing logic compatibility
+                        var result = typedResult.Success
+                            ? LankaConnect.Domain.Common.Result.Success()
+                            : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
+
+                        if (result.IsSuccess)
+                        {
+                            successCount++;
+
+                            // Phase 6A.71: Record successful send for idempotency
+                            await _eventReminderRepository.RecordReminderSentAsync(
+                                @event.Id, registration.Id, reminderType, toEmail, cancellationToken);
+                        }
+                        else
+                        {
+                            failCount++;
+                            _logger.LogWarning(
+                                "[Phase 6A.71] [{CorrelationId}] Failed to send {Timeframe} reminder to {Email} for event {EventId}: {Errors}",
+                                correlationId, reminderTimeframe, toEmail, @event.Id, string.Join(", ", result.Errors));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failCount++;
+                        _logger.LogError(ex,
+                            "[Phase 6A.71] [{CorrelationId}] Error sending {Timeframe} reminder for event {EventId} to registration {RegistrationId}",
+                            correlationId, reminderTimeframe, @event.Id, registration.Id);
+                    }
+                }
+
+                _logger.LogInformation(
+                    "[Phase 6A.71] [{CorrelationId}] {Timeframe} reminders for event {EventId}: Success={Success}, Failed={Failed}, Skipped={Skipped}",
+                    correlationId, reminderTimeframe, @event.Id, successCount, failCount, skippedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[Phase 6A.71] [{CorrelationId}] Error processing {Timeframe} reminders for event {EventId}",
+                    correlationId, reminderTimeframe, @event.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.75: Send reminders for a specific event, bypassing the time window check.
+    /// This is for manual testing/debugging purposes.
+    /// </summary>
+    public async Task SendRemindersForEventAsync(Guid eventId, string reminderType, CancellationToken cancellationToken)
+    {
+        var correlationId = Guid.NewGuid().ToString("N")[..8];
+        _logger.LogInformation(
+            "[Phase 6A.75] [{CorrelationId}] Manual reminder trigger for event {EventId}, type={ReminderType}",
+            correlationId, eventId, reminderType);
+
+        try
+        {
+            // Fetch the event with registrations
+            var @event = await _eventRepository.GetWithRegistrationsAsync(eventId, cancellationToken);
+            if (@event == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.75] [{CorrelationId}] Event {EventId} not found",
+                    correlationId, eventId);
+                return;
+            }
+
+            var registrations = @event.Registrations;
+            if (registrations.Count == 0)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.75] [{CorrelationId}] Event {EventId} has no registrations",
+                    correlationId, eventId);
+                return;
+            }
+
+            // Determine reminder message based on type
+            var (reminderTimeframe, reminderMessage) = reminderType switch
+            {
+                "7day" => ("in 1 week", "Your event is coming up next week. Mark your calendar!"),
+                "2day" => ("in 2 days", "Your event is just 2 days away. Don't forget!"),
+                "1day" => ("tomorrow", "Your event is tomorrow! We look forward to seeing you there."),
+                _ => ("soon", "Your event is coming up soon!")
+            };
+
+            _logger.LogInformation(
+                "[Phase 6A.75] [{CorrelationId}] Sending {ReminderType} reminders for event {EventId} ({Title}) to {Count} attendees",
+                correlationId, reminderType, eventId, @event.Title?.Value ?? "Untitled Event", registrations.Count);
+
+            var now = DateTime.UtcNow;
+            var successCount = 0;
+            var failCount = 0;
+            var skippedCount = 0;
+
+            foreach (var registration in registrations)
+            {
+                try
+                {
+                    // Phase 6A.71: Check idempotency before processing (skip if already sent)
+                    var alreadySent = await _eventReminderRepository.IsReminderAlreadySentAsync(
+                        eventId, registration.Id, reminderType, cancellationToken);
+
+                    if (alreadySent)
+                    {
+                        skippedCount++;
+                        _logger.LogInformation(
+                            "[Phase 6A.75] [{CorrelationId}] Skipping duplicate {ReminderType} reminder for registration {RegistrationId}",
+                            correlationId, reminderType, registration.Id);
+                        continue;
+                    }
+
+                    // Determine email recipient based on registration type
+                    string? toEmail = null;
+                    string toName = "Event Attendee";
+
+                    if (registration.UserId.HasValue)
+                    {
+                        var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                        if (user != null)
+                        {
+                            toEmail = user.Email.Value;
+                            toName = $"{user.FirstName} {user.LastName}";
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "[Phase 6A.75] [{CorrelationId}] User {UserId} not found for registration {RegistrationId}, skipping",
+                                correlationId, registration.UserId, registration.Id);
+                            continue;
+                        }
+                    }
+                    else if (registration.Contact != null)
+                    {
+                        toEmail = registration.Contact.Email;
+                        var firstAttendee = registration.Attendees.FirstOrDefault();
+                        if (firstAttendee != null)
+                        {
+                            toName = firstAttendee.Name;
+                        }
+                    }
+                    else if (registration.AttendeeInfo != null)
+                    {
+                        toEmail = registration.AttendeeInfo.Email.Value;
+                        toName = registration.AttendeeInfo.Name;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(toEmail))
+                    {
+                        _logger.LogWarning(
+                            "[Phase 6A.75] [{CorrelationId}] No email found for registration {RegistrationId}, skipping",
+                            correlationId, registration.Id);
+                        continue;
+                    }
+
+                    // Phase 6A.87: Use typed email parameters for compile-time safety
+                    var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
+                    var emailParams = EventReminderEmailParams.Create(
+                        eventId: @event.Id,
+                        registrationId: registration.Id,
+                        attendeeName: toName,
+                        attendeeEmail: toEmail,
+                        eventTitle: @event.Title?.Value ?? "Untitled Event",
+                        eventStartDate: @event.StartDate,
+                        eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                        location: @event.Location?.Address.ToString() ?? "Location TBD",
+                        quantity: registration.Quantity,
+                        hoursUntilEvent: hoursUntilEvent,
+                        reminderTimeframe: reminderTimeframe,
+                        reminderMessage: reminderMessage,
+                        eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+                    );
+
+                    // Phase 6A.97: Set event's timezone for consistent date/time display
+                    emailParams.TimeZoneId = @event.TimeZoneId;
+
+                    // Phase 6A.87: Add organizer contact if available
+                    if (@event.HasOrganizerContact())
+                    {
+                        emailParams.WithOrganizerContact(
+                            name: @event.OrganizerContactName ?? "Event Organizer",
+                            email: @event.OrganizerContactEmail,
+                            phone: @event.OrganizerContactPhone
+                        );
+                    }
+
+                    // Phase 6A.87: Add ticket info if available (paid events only)
+                    var ticket = await _ticketRepository.GetByRegistrationIdAsync(registration.Id, cancellationToken);
+                    if (ticket != null)
+                    {
+                        emailParams.WithTicket(
+                            ticketCode: ticket.TicketCode,
+                            expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt, @event.TimeZoneId)  // Phase 6A.97: Uses event's timezone
+                        );
+                    }
+
+                    // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                    var typedResult = await _typedEmailService.SendEmailAsync(
+                        emailParams,
+                        HandlerName,
+                        cancellationToken);
+
+                    // Convert to Result pattern for existing logic compatibility
+                    var result = typedResult.Success
+                        ? LankaConnect.Domain.Common.Result.Success()
+                        : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
+
+                    if (result.IsSuccess)
+                    {
+                        successCount++;
+
+                        // Phase 6A.71: Record successful send for idempotency
+                        await _eventReminderRepository.RecordReminderSentAsync(
+                            eventId, registration.Id, reminderType, toEmail, cancellationToken);
+                    }
+                    else
+                    {
+                        failCount++;
+                        _logger.LogWarning(
+                            "[Phase 6A.75] [{CorrelationId}] Failed to send {ReminderType} reminder to {Email} for event {EventId}: {Errors}",
+                            correlationId, reminderType, toEmail, eventId, string.Join(", ", result.Errors));
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "EventReminderJob: Error processing reminders for event {EventId}", @event.Id);
+                    failCount++;
+                    _logger.LogError(ex,
+                        "[Phase 6A.75] [{CorrelationId}] Error sending {ReminderType} reminder for event {EventId} to registration {RegistrationId}",
+                        correlationId, reminderType, eventId, registration.Id);
                 }
             }
 
-            _logger.LogInformation("EventReminderJob: Completed event reminder job execution at {Time}", DateTime.UtcNow);
+            _logger.LogInformation(
+                "[Phase 6A.75] [{CorrelationId}] Manual {ReminderType} reminders for event {EventId}: Success={Success}, Failed={Failed}, Skipped={Skipped}",
+                correlationId, reminderType, eventId, successCount, failCount, skippedCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "EventReminderJob: Fatal error during event reminder job execution");
+            _logger.LogError(ex,
+                "[Phase 6A.75] [{CorrelationId}] Fatal error sending manual reminders for event {EventId}",
+                correlationId, eventId);
+            throw;  // Re-throw for Hangfire retry
         }
-    }
-
-    private string GenerateEventReminderHtml(Dictionary<string, object> parameters)
-    {
-        var attendeeName = parameters.TryGetValue("AttendeeName", out var name) ? name.ToString() : "Event Attendee";
-        return $@"
-            <html>
-            <body>
-                <h2>Event Reminder</h2>
-                <p>Dear {attendeeName},</p>
-                <p>This is a friendly reminder that your event is starting soon!</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Date:</strong> {parameters["EventStartDate"]} at {parameters["EventStartTime"]}</li>
-                    <li><strong>Location:</strong> {parameters["Location"]}</li>
-                    <li><strong>Your Tickets:</strong> {parameters["Quantity"]}</li>
-                    <li><strong>Starting In:</strong> {parameters["HoursUntilEvent"]} hours</li>
-                </ul>
-                <p>We look forward to seeing you there!</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
     }
 }

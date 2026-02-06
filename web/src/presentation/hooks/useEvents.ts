@@ -29,6 +29,8 @@ import type {
   UpdateEventRequest,
   RsvpRequest,
   RegistrationDetailsDto,
+  AttendeeDto,
+  EventAttendeesResponse, // Phase 6A.45
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -423,8 +425,17 @@ export function useRsvpToEvent() {
       }
     },
     onSuccess: (_data, variables) => {
-      // Refetch to get accurate data from server
+      // Phase 6A.25 Fix: Invalidate all relevant caches after successful RSVP
+      // This ensures the UI updates correctly without needing a page reload
+
+      // Refetch event details to get accurate registration count
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+
+      // Invalidate user's RSVP list so isUserRegistered updates correctly
+      queryClient.invalidateQueries({ queryKey: ['user-rsvps'] });
+
+      // Invalidate registration details for this specific event
+      queryClient.invalidateQueries({ queryKey: ['user-registration', variables.eventId] });
     },
   });
 }
@@ -545,7 +556,17 @@ export function useUserRsvpForEvent(
     enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: false, // Don't retry - let auth interceptor handle token refresh
+    // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+    // The auth interceptor refreshes the token, but with retry: false the query wouldn't retry
+    // This allows the query to retry once after successful token refresh
+    retry: (failureCount, error) => {
+      // Only retry once for 401 errors (after token refresh)
+      if (failureCount < 1 && (error as any)?.response?.status === 401) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000, // Wait 1 second for token refresh to complete
     ...options,
   });
 }
@@ -576,7 +597,7 @@ export function useUserRsvpForEvent(
  */
 export function useUserRegistrationDetails(
   eventId: string | undefined,
-  isUserRegistered: boolean = false,
+  hasUserRsvp: boolean = false,  // Phase 6A.79 Part 3: Renamed for clarity
   options?: Omit<UseQueryOptions<RegistrationDetailsDto | null, ApiError>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
@@ -612,10 +633,19 @@ export function useUserRegistrationDetails(
         throw error;
       }
     },
-    enabled: !!eventId && isUserRegistered, // Only fetch if user is registered
+    enabled: !!eventId && hasUserRsvp, // Phase 6A.79 Part 3: Fetch whenever userRsvp exists (any status)
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    retry: false, // Don't retry on 401/404
+    // Phase 6A.25 Fix: Allow one retry after 401 to handle token refresh scenario
+    // Note: 404 errors are handled in queryFn and return null, so they won't trigger retry
+    retry: (failureCount, error) => {
+      // Only retry once for 401 errors (after token refresh)
+      if (failureCount < 1 && (error as any)?.response?.status === 401) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000, // Wait 1 second for token refresh to complete
     ...options,
   });
 }
@@ -649,7 +679,7 @@ export function useUpdateRegistrationDetails() {
   return useMutation({
     mutationFn: (data: {
       eventId: string;
-      attendees: { name: string; age: number }[];
+      attendees: AttendeeDto[];
       email: string;
       phoneNumber: string;
       address?: string;
@@ -671,6 +701,180 @@ export function useUpdateRegistrationDetails() {
 }
 
 /**
+ * useEventAttendees Hook
+ *
+ * Phase 6A.45: Query hook for fetching event attendee list (organizer only)
+ *
+ * Features:
+ * - Automatic caching with 2-minute stale time
+ * - Returns complete registration details with attendee information
+ * - Includes summary statistics (total registrations, attendees, revenue)
+ * - Proper authorization handling (403 for non-organizers)
+ *
+ * @param eventId - Event ID to fetch attendees for
+ * @param enabled - Whether to enable the query (default: true)
+ *
+ * @example
+ * ```tsx
+ * const { data: attendees, isLoading, error } = useEventAttendees('event-123');
+ *
+ * if (attendees) {
+ *   console.log(`Total registrations: ${attendees.totalRegistrations}`);
+ *   console.log(`Total attendees: ${attendees.totalAttendees}`);
+ *   console.log(`Total revenue: $${attendees.totalRevenue}`);
+ * }
+ * ```
+ */
+export function useEventAttendees(
+  eventId: string,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['event-attendees', eventId] as const,
+    queryFn: async () => {
+      return await eventsRepository.getEventAttendees(eventId);
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: enabled && !!eventId,
+  });
+}
+
+/**
+ * useExportEventAttendees Hook
+ *
+ * Phase 6A.45: Mutation hook for downloading event attendee data (organizer only)
+ *
+ * Features:
+ * - Supports Excel and CSV export formats
+ * - Multi-sheet Excel export includes signup lists
+ * - Handles file download with proper MIME types
+ * - Automatic error handling for authorization failures
+ *
+ * @example
+ * ```tsx
+ * const exportAttendees = useExportEventAttendees();
+ *
+ * const handleExport = async (format: 'excel' | 'csv') => {
+ *   try {
+ *     const blob = await exportAttendees.mutateAsync({
+ *       eventId: 'event-123',
+ *       format
+ *     });
+ *
+ *     // Trigger download
+ *     const url = URL.createObjectURL(blob);
+ *     const link = document.createElement('a');
+ *     link.href = url;
+ *     link.download = `event-attendees.${format === 'excel' ? 'xlsx' : 'csv'}`;
+ *     link.click();
+ *     URL.revokeObjectURL(url);
+ *   } catch (error) {
+ *     console.error('Export failed:', error);
+ *   }
+ * };
+ * ```
+ */
+export function useExportEventAttendees() {
+  return useMutation({
+    mutationFn: async (data: {
+      eventId: string;
+      format: 'excel' | 'csv';
+    }) => {
+      return await eventsRepository.exportEventAttendees(data.eventId, data.format);
+    },
+  });
+}
+
+// ==================== Phase 6A.61: Event Notification ====================
+
+/**
+ * Hook to send event notification email to all attendees
+ */
+export function useSendEventNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (eventId: string) => eventsRepository.sendEventNotification(eventId),
+    onSuccess: (_data, eventId) => {
+      // Invalidate event detail and notification history
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ['eventNotificationHistory', eventId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to send event notification:', error);
+    }
+  });
+}
+
+/**
+ * Hook to fetch event notification history
+ */
+export function useEventNotificationHistory(eventId: string) {
+  return useQuery({
+    queryKey: ['eventNotificationHistory', eventId],
+    queryFn: () => eventsRepository.getEventNotificationHistory(eventId),
+    enabled: !!eventId,
+    refetchInterval: 30000 // Refresh every 30 seconds to show updated statistics
+  });
+}
+
+// ==================== Phase 6A.76: Event Reminder ====================
+
+/**
+ * Phase 6A.76: Hook to send manual event reminder email to all registered attendees
+ */
+export function useSendEventReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { eventId: string; reminderType: string }) =>
+      eventsRepository.sendEventReminder(data.eventId, data.reminderType),
+    onSuccess: (_data, variables) => {
+      // Invalidate event detail to refresh any reminder-related state
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+    onError: (error: any) => {
+      console.error('Failed to send event reminder:', error);
+    }
+  });
+}
+
+/**
+ * Phase 6A.76: Hook to fetch event reminder history
+ */
+export function useEventReminderHistory(eventId: string) {
+  return useQuery({
+    queryKey: ['eventReminderHistory', eventId],
+    queryFn: () => eventsRepository.getEventReminderHistory(eventId),
+    enabled: !!eventId,
+    refetchInterval: 30000 // Refresh every 30 seconds to show updated statistics
+  });
+}
+
+// ==================== Phase 6A.X: Resend Attendee Confirmation ====================
+
+/**
+ * Phase 6A.X: Hook to resend registration confirmation email to specific attendee (Organizer action)
+ * Allows organizers to manually resend confirmation emails from Attendees tab
+ * Works for both free and paid event registrations
+ */
+export function useResendAttendeeConfirmation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { eventId: string; registrationId: string }) =>
+      eventsRepository.resendAttendeeConfirmation(data.eventId, data.registrationId),
+    onSuccess: (_data, variables) => {
+      // Invalidate event attendees list to refresh any email-related state
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', variables.eventId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to resend attendee confirmation:', error);
+    }
+  });
+}
+
+/**
  * Export all hooks
  */
 export default {
@@ -688,4 +892,11 @@ export default {
   useUserRsvpForEvent,
   useUserRegistrationDetails,
   useUpdateRegistrationDetails,
+  useEventAttendees,
+  useExportEventAttendees,
+  useSendEventNotification,
+  useEventNotificationHistory,
+  useSendEventReminder,
+  useEventReminderHistory,
+  useResendAttendeeConfirmation,
 };

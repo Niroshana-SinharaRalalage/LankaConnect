@@ -16,9 +16,9 @@ public class RegistrationUpdateDetailsTests
 {
     #region Helper Methods
 
-    private static AttendeeDetails CreateAttendee(string name, int age)
+    private static AttendeeDetails CreateAttendee(string name, AgeCategory ageCategory = AgeCategory.Adult)
     {
-        return AttendeeDetails.Create(name, age).Value;
+        return AttendeeDetails.Create(name, ageCategory).Value;
     }
 
     private static RegistrationContact CreateContact(string email = "test@example.com", string phone = "555-1234")
@@ -36,7 +36,7 @@ public class RegistrationUpdateDetailsTests
         RegistrationContact? contact = null,
         bool isPaid = false)
     {
-        attendees ??= new List<AttendeeDetails> { CreateAttendee("John Doe", 30) };
+        attendees ??= new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         contact ??= CreateContact();
         var price = CreateMoney();
 
@@ -84,7 +84,7 @@ public class RegistrationUpdateDetailsTests
         var registration = CreateConfirmedRegistration();
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("Jane Doe", 28)
+            CreateAttendee("Jane Doe", AgeCategory.Adult)
         };
         var newContact = CreateContact("jane@example.com", "555-9999");
 
@@ -95,7 +95,7 @@ public class RegistrationUpdateDetailsTests
         result.IsSuccess.Should().BeTrue();
         registration.Attendees.Should().HaveCount(1);
         registration.Attendees[0].Name.Should().Be("Jane Doe");
-        registration.Attendees[0].Age.Should().Be(28);
+        registration.Attendees[0].AgeCategory.Should().Be(AgeCategory.Adult);
         registration.Contact!.Email.Should().Be("jane@example.com");
         registration.Contact.PhoneNumber.Should().Be("555-9999");
     }
@@ -106,15 +106,15 @@ public class RegistrationUpdateDetailsTests
         // Arrange
         var originalAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Doe", 30),
-            CreateAttendee("Jane Doe", 28)
+            CreateAttendee("John Doe", AgeCategory.Adult),
+            CreateAttendee("Jane Doe", AgeCategory.Adult)
         };
         var registration = CreateConfirmedRegistration(originalAttendees, isPaid: true);
 
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Smith", 31),
-            CreateAttendee("Jane Smith", 29)
+            CreateAttendee("John Smith", AgeCategory.Adult),
+            CreateAttendee("Jane Smith", AgeCategory.Adult)
         };
         var newContact = CreateContact("smith@example.com", "555-8888");
 
@@ -133,7 +133,7 @@ public class RegistrationUpdateDetailsTests
         // Arrange
         var registration = CreateConfirmedRegistration();
         var originalUpdatedAt = registration.UpdatedAt;
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("Updated Person", 25) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("Updated Person", AgeCategory.Adult) };
         var newContact = CreateContact("updated@example.com");
 
         // Act
@@ -152,9 +152,9 @@ public class RegistrationUpdateDetailsTests
         var registration = CreateConfirmedRegistration(); // Free event (isPaid: false)
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("Person 1", 25),
-            CreateAttendee("Person 2", 30),
-            CreateAttendee("Person 3", 35)
+            CreateAttendee("Person 1", AgeCategory.Adult),
+            CreateAttendee("Person 2", AgeCategory.Adult),
+            CreateAttendee("Person 3", AgeCategory.Adult)
         };
         var newContact = CreateContact();
 
@@ -173,14 +173,14 @@ public class RegistrationUpdateDetailsTests
         // Arrange
         var originalAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("Person 1", 25),
-            CreateAttendee("Person 2", 30),
-            CreateAttendee("Person 3", 35)
+            CreateAttendee("Person 1", AgeCategory.Adult),
+            CreateAttendee("Person 2", AgeCategory.Adult),
+            CreateAttendee("Person 3", AgeCategory.Adult)
         };
         var registration = CreateConfirmedRegistration(originalAttendees);
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("Person 1", 25)
+            CreateAttendee("Person 1", AgeCategory.Adult)
         };
         var newContact = CreateContact();
 
@@ -197,7 +197,7 @@ public class RegistrationUpdateDetailsTests
     public void UpdateDetails_OnPendingRegistration_ShouldSucceed()
     {
         // Arrange - Create a pending paid registration (before payment complete)
-        var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", 30) };
+        var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var contact = CreateContact();
         var price = CreateMoney();
         var registration = Registration.CreateWithAttendees(
@@ -209,7 +209,7 @@ public class RegistrationUpdateDetailsTests
             isPaidEvent: true).Value;
         // Status is Pending since it's a paid event and payment not completed
 
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("Jane Doe", 28) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("Jane Doe", AgeCategory.Adult) };
         var newContact = CreateContact("jane@example.com");
 
         // Act
@@ -228,7 +228,7 @@ public class RegistrationUpdateDetailsTests
     {
         // Arrange
         var registration = CreateCancelledRegistration();
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("New Person", 25) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("New Person", AgeCategory.Adult) };
         var newContact = CreateContact();
 
         // Act
@@ -244,7 +244,7 @@ public class RegistrationUpdateDetailsTests
     {
         // Arrange
         var registration = CreateRefundedRegistration();
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("New Person", 25) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("New Person", AgeCategory.Adult) };
         var newContact = CreateContact();
 
         // Act
@@ -265,14 +265,14 @@ public class RegistrationUpdateDetailsTests
         // Arrange
         var originalAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Doe", 30)
+            CreateAttendee("John Doe", AgeCategory.Adult)
         };
         var registration = CreateConfirmedRegistration(originalAttendees, isPaid: true);
 
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Doe", 30),
-            CreateAttendee("Jane Doe", 28)  // Adding one more attendee
+            CreateAttendee("John Doe", AgeCategory.Adult),
+            CreateAttendee("Jane Doe", AgeCategory.Adult)  // Adding one more attendee
         };
         var newContact = CreateContact();
 
@@ -291,14 +291,14 @@ public class RegistrationUpdateDetailsTests
         // Arrange
         var originalAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Doe", 30),
-            CreateAttendee("Jane Doe", 28)
+            CreateAttendee("John Doe", AgeCategory.Adult),
+            CreateAttendee("Jane Doe", AgeCategory.Adult)
         };
         var registration = CreateConfirmedRegistration(originalAttendees, isPaid: true);
 
         var newAttendees = new List<AttendeeDetails>
         {
-            CreateAttendee("John Doe", 30)  // Removing one attendee
+            CreateAttendee("John Doe", AgeCategory.Adult)  // Removing one attendee
         };
         var newContact = CreateContact();
 
@@ -351,7 +351,7 @@ public class RegistrationUpdateDetailsTests
     {
         // Arrange
         var registration = CreateConfirmedRegistration();
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", 30) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
 
         // Act
         var result = registration.UpdateDetails(newAttendees, null!);
@@ -369,7 +369,7 @@ public class RegistrationUpdateDetailsTests
         var newAttendees = new List<AttendeeDetails>();
         for (int i = 0; i < 11; i++)
         {
-            newAttendees.Add(CreateAttendee($"Person {i}", 25 + i));
+            newAttendees.Add(CreateAttendee($"Person {i}", AgeCategory.Adult));
         }
         var newContact = CreateContact();
 
@@ -389,7 +389,7 @@ public class RegistrationUpdateDetailsTests
         var newAttendees = new List<AttendeeDetails>();
         for (int i = 0; i < 10; i++)
         {
-            newAttendees.Add(CreateAttendee($"Person {i}", 25 + i));
+            newAttendees.Add(CreateAttendee($"Person {i}", AgeCategory.Adult));
         }
         var newContact = CreateContact();
 
@@ -410,7 +410,7 @@ public class RegistrationUpdateDetailsTests
     {
         // Arrange
         var registration = CreateConfirmedRegistration();
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", 30) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var newContact = RegistrationContact.Create("newemail@example.com", "555-1234", "123 New St").Value;
 
         // Act
@@ -428,7 +428,7 @@ public class RegistrationUpdateDetailsTests
     {
         // Arrange
         var registration = CreateConfirmedRegistration();
-        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", 30) };
+        var newAttendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var newContact = RegistrationContact.Create("test@example.com", "999-8888", null).Value;
 
         // Act

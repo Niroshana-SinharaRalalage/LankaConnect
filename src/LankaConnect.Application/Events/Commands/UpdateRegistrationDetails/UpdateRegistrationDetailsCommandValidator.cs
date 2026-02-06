@@ -35,9 +35,10 @@ public class UpdateRegistrationDetailsCommandValidator : AbstractValidator<Updat
                     .MaximumLength(100)
                     .WithMessage("Attendee name cannot exceed 100 characters");
 
-                attendee.RuleFor(a => a.Age)
-                    .InclusiveBetween(0, 120)
-                    .WithMessage("Age must be between 0 and 120");
+                // Phase 6A.43: AgeCategory is an enum, validated by model binding
+                attendee.RuleFor(a => a.AgeCategory)
+                    .IsInEnum()
+                    .WithMessage("Invalid age category");
             });
 
         RuleFor(x => x.Email)

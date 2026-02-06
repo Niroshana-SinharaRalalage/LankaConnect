@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: Email groups relationship
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -48,6 +49,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Capacity)
             .IsRequired();
 
+        // Issue #51: MaxAttendeesPerRegistration - configurable limit per single registration
+        builder.Property(e => e.MaxAttendeesPerRegistration)
+            .HasColumnName("max_attendees_per_registration")
+            .IsRequired()
+            .HasDefaultValue(10);  // Backward compatibility: default 10 for existing events
+
         // Configure enum
         builder.Property(e => e.Status)
             .HasConversion<string>()
@@ -58,12 +65,38 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CancellationReason)
             .HasMaxLength(500);
 
+        // Phase 6A.46: PublishedAt timestamp for "New" label calculation
+        builder.Property(e => e.PublishedAt)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false); // Nullable for draft events
+
         // Configure Category enum (Epic 2 Phase 2)
         builder.Property(e => e.Category)
             .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired()
             .HasDefaultValue(EventCategory.Community);
+
+        // Phase 6A.X: Event Organizer Contact Details - Optional contact information for event inquiries
+        builder.Property(e => e.PublishOrganizerContact)
+            .HasColumnName("publish_organizer_contact")
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.OrganizerContactName)
+            .HasColumnName("organizer_contact_name")
+            .HasMaxLength(200)
+            .IsRequired(false); // Nullable - only set when PublishOrganizerContact is true
+
+        builder.Property(e => e.OrganizerContactPhone)
+            .HasColumnName("organizer_contact_phone")
+            .HasMaxLength(20)
+            .IsRequired(false); // Nullable - optional if email provided
+
+        builder.Property(e => e.OrganizerContactEmail)
+            .HasColumnName("organizer_contact_email")
+            .HasMaxLength(255)
+            .IsRequired(false); // Nullable - optional if phone provided
 
         // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
         // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice
@@ -87,6 +120,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             {
                 tier.OwnsOne(t => t.PricePerPerson);
             });
+        });
+
+        // Phase 6A.X: Configure RevenueBreakdown as JSONB
+        builder.OwnsOne(e => e.RevenueBreakdown, breakdown =>
+        {
+            breakdown.ToJson("revenue_breakdown");  // Store entire breakdown as JSONB
+
+            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
+            breakdown.OwnsOne(b => b.GrossAmount);
+            breakdown.OwnsOne(b => b.SalesTaxAmount);
+            breakdown.OwnsOne(b => b.TaxableAmount);
+            breakdown.OwnsOne(b => b.StripeFeeAmount);
+            breakdown.OwnsOne(b => b.PlatformCommission);
+            breakdown.OwnsOne(b => b.OrganizerPayout);
         });
 
         // Configure audit fields
@@ -235,5 +282,35 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         // Indexes for location-based searches will be added via raw SQL in migration
         // due to nested owned entity limitations with EF Core indexing
+
+        // Phase 6A.32: Email Groups - Many-to-Many Relationship
+        // Fix #1: Junction table ONLY, no JSONB denormalization
+        // Fix #2: Cascade delete on BOTH FKs (safe with soft delete pattern)
+        builder
+            .HasMany<EmailGroup>("_emailGroupEntities")
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "event_email_groups",
+                j => j
+                    .HasOne<EmailGroup>()
+                    .WithMany()
+                    .HasForeignKey("email_group_id")
+                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
+                j => j
+                    .HasOne<Event>()
+                    .WithMany()
+                    .HasForeignKey("event_id")
+                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
+                j =>
+                {
+                    j.ToTable("event_email_groups");
+                    j.HasKey("event_id", "email_group_id"); // Composite primary key
+                    j.Property<DateTime>("assigned_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    // Indexes for query performance
+                    j.HasIndex("event_id");
+                    j.HasIndex("email_group_id");
+                });
     }
 }

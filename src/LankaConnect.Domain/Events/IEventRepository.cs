@@ -5,6 +5,10 @@ namespace LankaConnect.Domain.Events;
 
 public interface IEventRepository : IRepository<Event>
 {
+    // Phase 6A.53 FIX: Add overload of GetByIdAsync to support change tracking control
+    // Command handlers need trackChanges: true, Query handlers need trackChanges: false for performance
+    Task<Event?> GetByIdAsync(Guid id, bool trackChanges, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetUpcomingEventsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken cancellationToken = default);
@@ -25,6 +29,10 @@ public interface IEventRepository : IRepository<Event>
     /// Search events using PostgreSQL full-text search with ranking
     /// Returns matching events ordered by relevance and pagination info
     /// </summary>
+    /// <summary>
+    /// Phase 6A.X Issue #36: Added excludeCancelled parameter to allow filtering out cancelled events
+    /// Issue #33: Added includeAllStatuses parameter to include Draft/UnderReview events (for Dashboard Event Management)
+    /// </summary>
     Task<(IReadOnlyList<Event> Events, int TotalCount)> SearchAsync(
         string searchTerm,
         int limit,
@@ -32,5 +40,34 @@ public interface IEventRepository : IRepository<Event>
         EventCategory? category = null,
         bool? isFreeOnly = null,
         DateTime? startDateFrom = null,
+        bool excludeCancelled = false,
+        bool includeAllStatuses = false,
         CancellationToken cancellationToken = default);
+
+    // Badge cleanup queries (Phase 6A.27)
+    /// <summary>
+    /// Gets all events that have a specific badge assigned
+    /// Used by ExpiredBadgeCleanupJob to remove expired badges from events
+    /// </summary>
+    Task<IReadOnlyList<Event>> GetEventsWithBadgeAsync(Guid badgeId, CancellationToken cancellationToken = default);
+
+    // Badge cleanup queries (Phase 6A.28)
+    /// <summary>
+    /// Gets all events that have at least one expired badge assignment (EventBadge.ExpiresAt &lt; now)
+    /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
+    /// </summary>
+    Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default);
+
+    // Signup commitment email queries (Phase 6A.51)
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpListId (navigates through shadow property)
+    /// Used by signup commitment confirmation email handlers
+    /// </summary>
+    Task<Event?> GetEventBySignUpListIdAsync(Guid signUpListId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.51: Gets an Event by its SignUpItemId
+    /// Used by commitment update confirmation email handler
+    /// </summary>
+    Task<Event?> GetEventBySignUpItemIdAsync(Guid signUpItemId, CancellationToken cancellationToken = default);
 }

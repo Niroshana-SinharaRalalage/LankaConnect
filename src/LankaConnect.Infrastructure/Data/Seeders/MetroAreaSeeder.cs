@@ -15,14 +15,14 @@ public static class MetroAreaSeeder
 {
     /// <summary>
     /// Seed metro areas data into database
+    /// Phase 6A.70: Enhanced to add missing metro areas instead of skipping entirely
     /// </summary>
     public static async Task SeedAsync(AppDbContext context)
     {
-        // Check if any metro areas already exist
-        if (await context.MetroAreas.AnyAsync())
-        {
-            return; // Already seeded
-        }
+        // Phase 6A.70: Get existing metro area IDs to avoid duplicates
+        var existingIds = await context.MetroAreas
+            .Select(m => m.Id)
+            .ToListAsync();
 
         var metroAreas = new List<MetroArea>
         {
@@ -701,6 +701,26 @@ public static class MetroAreaSeeder
             // =====================
             // NORTH DAKOTA
             // =====================
+            MetroArea.Create(
+                id: Guid.Parse("38111111-1111-1111-1111-111111111001"),
+                name: "Fargo",
+                state: "ND",
+                centerLatitude: 46.8772,
+                centerLongitude: -96.7898,
+                radiusMiles: 30,
+                isStateLevelArea: false,
+                isActive: true
+            ),
+            MetroArea.Create(
+                id: Guid.Parse("38111111-1111-1111-1111-111111111002"),
+                name: "Bismarck",
+                state: "ND",
+                centerLatitude: 46.8083,
+                centerLongitude: -100.7837,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
 
             // =====================
             // OHIO
@@ -839,6 +859,26 @@ public static class MetroAreaSeeder
             // =====================
             // SOUTH DAKOTA
             // =====================
+            MetroArea.Create(
+                id: Guid.Parse("46111111-1111-1111-1111-111111111001"),
+                name: "Sioux Falls",
+                state: "SD",
+                centerLatitude: 43.5446,
+                centerLongitude: -96.7311,
+                radiusMiles: 30,
+                isStateLevelArea: false,
+                isActive: true
+            ),
+            MetroArea.Create(
+                id: Guid.Parse("46111111-1111-1111-1111-111111111002"),
+                name: "Rapid City",
+                state: "SD",
+                centerLatitude: 44.0805,
+                centerLongitude: -103.2310,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
 
             // =====================
             // TENNESSEE
@@ -925,6 +965,16 @@ public static class MetroAreaSeeder
             // =====================
             // VERMONT
             // =====================
+            MetroArea.Create(
+                id: Guid.Parse("50111111-1111-1111-1111-111111111001"),
+                name: "Burlington",
+                state: "VT",
+                centerLatitude: 44.4759,
+                centerLongitude: -73.2121,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
 
             // =====================
             // VIRGINIA
@@ -957,6 +1007,26 @@ public static class MetroAreaSeeder
             // =====================
             // WEST VIRGINIA
             // =====================
+            MetroArea.Create(
+                id: Guid.Parse("54111111-1111-1111-1111-111111111001"),
+                name: "Charleston",
+                state: "WV",
+                centerLatitude: 38.3498,
+                centerLongitude: -81.6326,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
+            MetroArea.Create(
+                id: Guid.Parse("54111111-1111-1111-1111-111111111002"),
+                name: "Huntington",
+                state: "WV",
+                centerLatitude: 38.4192,
+                centerLongitude: -82.4452,
+                radiusMiles: 30,
+                isStateLevelArea: false,
+                isActive: true
+            ),
 
             // =====================
             // WISCONSIN
@@ -975,9 +1045,44 @@ public static class MetroAreaSeeder
             // =====================
             // WYOMING
             // =====================
+            MetroArea.Create(
+                id: Guid.Parse("56111111-1111-1111-1111-111111111001"),
+                name: "Cheyenne",
+                state: "WY",
+                centerLatitude: 41.1400,
+                centerLongitude: -104.8202,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
+            MetroArea.Create(
+                id: Guid.Parse("56111111-1111-1111-1111-111111111002"),
+                name: "Casper",
+                state: "WY",
+                centerLatitude: 42.8501,
+                centerLongitude: -106.3252,
+                radiusMiles: 25,
+                isStateLevelArea: false,
+                isActive: true
+            ),
         };
 
-        await context.MetroAreas.AddRangeAsync(metroAreas);
-        await context.SaveChangesAsync();
+        // Phase 6A.70: Only add metro areas that don't already exist
+        var newMetroAreas = metroAreas
+            .Where(m => !existingIds.Contains(m.Id))
+            .ToList();
+
+        if (newMetroAreas.Any())
+        {
+            await context.MetroAreas.AddRangeAsync(newMetroAreas);
+            await context.SaveChangesAsync();
+
+            // Log how many new metro areas were added
+            Console.WriteLine($"[MetroAreaSeeder] Added {newMetroAreas.Count} new metro areas to database");
+        }
+        else
+        {
+            Console.WriteLine("[MetroAreaSeeder] All metro areas already exist, skipping seed");
+        }
     }
 }

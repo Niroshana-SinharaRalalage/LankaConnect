@@ -22,11 +22,19 @@ export interface TabPanelProps {
  * Reusable tabbed interface with keyboard navigation and accessibility
  * Features: Sri Lankan flag colors, smooth transitions, keyboard navigation
  * Phase: Epic 1 Dashboard Enhancements
+ * Phase 6A.74 Part 14 Fix #3: Added useEffect to sync with defaultTab from URL
  */
 export function TabPanel({ tabs, defaultTab, onChange, className = '' }: TabPanelProps) {
   const [activeTab, setActiveTab] = React.useState<string>(
     defaultTab || (tabs.length > 0 ? tabs[0].id : '')
   );
+
+  // Phase 6A.74 Part 14 Fix #3: Sync active tab with defaultTab when it changes (e.g., URL param)
+  React.useEffect(() => {
+    if (defaultTab && tabs.some(tab => tab.id === defaultTab)) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, tabs]);
 
   const activeTabContent = React.useMemo(
     () => tabs.find((tab) => tab.id === activeTab)?.content,

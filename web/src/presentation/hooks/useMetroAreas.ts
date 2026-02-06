@@ -50,6 +50,7 @@ export function useMetroAreas(): MetroAreasState {
 
         const data = await metroAreasRepository.getAll(true);
         console.log('[useMetroAreas] Successfully fetched', data.length, 'metro areas');
+        console.log('[useMetroAreas] Sample metro area IDs:', data.slice(0, 3).map(m => ({ id: m.id, name: m.name, state: m.state })));
 
         if (isMounted) {
           setMetroAreas(data);

@@ -22,6 +22,7 @@ public record GetEmailTemplatesQuery(
 
 /// <summary>
 /// Response containing email template information
+/// Phase 6A.89 Fix: Changed CategoryCounts to Dictionary&lt;string, int&gt; for proper JSON serialization
 /// </summary>
 public class GetEmailTemplatesResponse
 {
@@ -32,10 +33,14 @@ public class GetEmailTemplatesResponse
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < TotalPages;
-    public Dictionary<LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory, int> CategoryCounts { get; init; } = new();
+    /// <summary>
+    /// Category counts as string dictionary for proper JSON serialization
+    /// Keys are category names: "Authentication", "Business", "Marketing", "Notification", "System"
+    /// </summary>
+    public Dictionary<string, int> CategoryCounts { get; init; } = new();
 
-    public GetEmailTemplatesResponse(List<EmailTemplateDto> templates, int totalCount, 
-        int pageNumber, int pageSize, Dictionary<LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory, int> categoryCounts)
+    public GetEmailTemplatesResponse(List<EmailTemplateDto> templates, int totalCount,
+        int pageNumber, int pageSize, Dictionary<string, int> categoryCounts)
     {
         Templates = templates;
         TotalCount = totalCount;

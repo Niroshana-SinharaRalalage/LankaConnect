@@ -1005,6 +1005,24 @@ export const ALL_METRO_AREAS: readonly MetroArea[] = [
     centerLng: -99.7840,
     radiusMiles: 250,
   },
+  {
+    id: '38111111-1111-1111-1111-111111111001',
+    name: 'Fargo',
+    state: 'ND',
+    cities: ['Fargo', 'West Fargo', 'Moorhead (MN)'],
+    centerLat: 46.8772,
+    centerLng: -96.7898,
+    radiusMiles: 30,
+  },
+  {
+    id: '38111111-1111-1111-1111-111111111002',
+    name: 'Bismarck',
+    state: 'ND',
+    cities: ['Bismarck', 'Mandan', 'Lincoln'],
+    centerLat: 46.8083,
+    centerLng: -100.7837,
+    radiusMiles: 25,
+  },
 
   // =====================
   // OHIO
@@ -1186,6 +1204,24 @@ export const ALL_METRO_AREAS: readonly MetroArea[] = [
     centerLng: -99.4388,
     radiusMiles: 250,
   },
+  {
+    id: '46111111-1111-1111-1111-111111111001',
+    name: 'Sioux Falls',
+    state: 'SD',
+    cities: ['Sioux Falls', 'Brandon', 'Harrisburg', 'Tea'],
+    centerLat: 43.5446,
+    centerLng: -96.7311,
+    radiusMiles: 30,
+  },
+  {
+    id: '46111111-1111-1111-1111-111111111002',
+    name: 'Rapid City',
+    state: 'SD',
+    cities: ['Rapid City', 'Box Elder', 'Summerset', 'Black Hawk'],
+    centerLat: 44.0805,
+    centerLng: -103.2310,
+    radiusMiles: 25,
+  },
 
   // =====================
   // TENNESSEE
@@ -1301,6 +1337,15 @@ export const ALL_METRO_AREAS: readonly MetroArea[] = [
     centerLng: -72.7107,
     radiusMiles: 150,
   },
+  {
+    id: '50111111-1111-1111-1111-111111111001',
+    name: 'Burlington',
+    state: 'VT',
+    cities: ['Burlington', 'South Burlington', 'Essex', 'Winooski'],
+    centerLat: 44.4759,
+    centerLng: -73.2121,
+    radiusMiles: 25,
+  },
 
   // =====================
   // VIRGINIA
@@ -1358,6 +1403,24 @@ export const ALL_METRO_AREAS: readonly MetroArea[] = [
     centerLng: -80.4549,
     radiusMiles: 200,
   },
+  {
+    id: '54111111-1111-1111-1111-111111111001',
+    name: 'Charleston',
+    state: 'WV',
+    cities: ['Charleston', 'Huntington', 'South Charleston', 'St. Albans'],
+    centerLat: 38.3498,
+    centerLng: -81.6326,
+    radiusMiles: 25,
+  },
+  {
+    id: '54111111-1111-1111-1111-111111111002',
+    name: 'Huntington',
+    state: 'WV',
+    cities: ['Huntington', 'Ashland (KY)', 'Ironton (OH)', 'Barboursville'],
+    centerLat: 38.4192,
+    centerLng: -82.4452,
+    radiusMiles: 30,
+  },
 
   // =====================
   // WISCONSIN
@@ -1392,6 +1455,24 @@ export const ALL_METRO_AREAS: readonly MetroArea[] = [
     centerLat: 42.7559,
     centerLng: -107.3025,
     radiusMiles: 250,
+  },
+  {
+    id: '56111111-1111-1111-1111-111111111001',
+    name: 'Cheyenne',
+    state: 'WY',
+    cities: ['Cheyenne', 'Laramie', 'Pine Bluffs'],
+    centerLat: 41.1400,
+    centerLng: -104.8202,
+    radiusMiles: 25,
+  },
+  {
+    id: '56111111-1111-1111-1111-111111111002',
+    name: 'Casper',
+    state: 'WY',
+    cities: ['Casper', 'Mills', 'Evansville', 'Bar Nunn'],
+    centerLat: 42.8501,
+    centerLng: -106.3252,
+    radiusMiles: 25,
   },
 ] as const;
 

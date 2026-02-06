@@ -391,7 +391,26 @@ export function useSetPrimaryImage(options?: UseImageUploadOptions) {
 
       // Call error callback to display error to user
       if (options?.onError) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to set image as primary';
+        let errorMessage = 'Failed to set image as primary';
+
+        // Try to extract detailed error message from API response (ProblemDetails.Detail)
+        if (error instanceof Error) {
+          const errorObj = error as any;
+          // Check various places where the error might be stored
+          if (errorObj.response?.data?.detail) {
+            errorMessage = errorObj.response.data.detail;
+          } else if (errorObj.response?.data?.message) {
+            errorMessage = errorObj.response.data.message;
+          } else if (errorObj.validationErrors) {
+            // If it's a ValidationError with validation details
+            errorMessage = Object.values(errorObj.validationErrors)
+              .flat()
+              .join('; ') || errorMessage;
+          } else if (errorObj.message && errorObj.message !== 'Request failed with status code 400') {
+            errorMessage = errorObj.message;
+          }
+        }
+
         options.onError(errorMessage);
       }
     },

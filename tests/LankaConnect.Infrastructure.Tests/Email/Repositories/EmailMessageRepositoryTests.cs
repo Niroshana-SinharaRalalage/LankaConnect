@@ -345,7 +345,7 @@ public class EmailMessageRepositoryTests : IAsyncLifetime
             EmailTestDataBuilder.CreateTemplatedEmail(templateName: templateName)
         };
         
-        var differentTemplateEmail = EmailTestDataBuilder.CreateTemplatedEmail(templateName: "password-reset");
+        var differentTemplateEmail = EmailTestDataBuilder.CreateTemplatedEmail(templateName: "template-password-reset");
         var nonTemplatedEmail = EmailTestDataBuilder.CreateBasicEmailMessage();
 
         foreach (var email in templatedEmails)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.MetroAreas.Common;
@@ -5,6 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.MetroAreas.Queries.GetMetroAreas;
 
@@ -33,43 +35,63 @@ public class GetMetroAreasQueryHandler : IQueryHandler<GetMetroAreasQuery, IRead
         GetMetroAreasQuery request,
         CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "GetMetroAreas"))
+        using (LogContext.PushProperty("EntityType", "MetroArea"))
         {
-            _logger.LogInformation("Fetching metro areas. ActiveOnly: {ActiveOnly}, StateFilter: {StateFilter}",
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetMetroAreas START: ActiveOnly={ActiveOnly}, StateFilter={StateFilter}",
                 request.ActiveOnly, request.StateFilter);
 
-            // Query metro areas from database
-            var query = _context.MetroAreas.AsQueryable();
-
-            // Apply active filter (default: true)
-            if (request.ActiveOnly == true)
+            try
             {
-                query = query.Where(m => m.IsActive);
-            }
+                // Query metro areas from database
+                var query = _context.MetroAreas.AsQueryable();
 
-            // Apply state filter if provided
-            if (!string.IsNullOrWhiteSpace(request.StateFilter))
+                // Apply active filter (default: true)
+                if (request.ActiveOnly == true)
+                {
+                    query = query.Where(m => m.IsActive);
+                }
+
+                // Apply state filter if provided
+                if (!string.IsNullOrWhiteSpace(request.StateFilter))
+                {
+                    query = query.Where(m => m.State == request.StateFilter.ToUpper());
+                }
+
+                // Execute query and order results
+                var metroAreas = await query
+                    .OrderBy(m => m.State)
+                    .ThenBy(m => m.Name)
+                    .ToListAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "GetMetroAreas: Query executed - MetroAreaCount={MetroAreaCount}",
+                    metroAreas.Count);
+
+                // Map to DTOs
+                var dtos = metroAreas.Select(m => _mapper.Map<MetroAreaDto>(m)).ToList();
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetMetroAreas COMPLETE: ActiveOnly={ActiveOnly}, StateFilter={StateFilter}, MetroAreaCount={MetroAreaCount}, Duration={ElapsedMs}ms",
+                    request.ActiveOnly, request.StateFilter, dtos.Count, stopwatch.ElapsedMilliseconds);
+
+                return Result<IReadOnlyList<MetroAreaDto>>.Success(dtos);
+            }
+            catch (Exception ex)
             {
-                query = query.Where(m => m.State == request.StateFilter.ToUpper());
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetMetroAreas FAILED: Exception occurred - ActiveOnly={ActiveOnly}, StateFilter={StateFilter}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.ActiveOnly, request.StateFilter, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                return Result<IReadOnlyList<MetroAreaDto>>.Failure("Failed to fetch metro areas");
             }
-
-            // Execute query and order results
-            var metroAreas = await query
-                .OrderBy(m => m.State)
-                .ThenBy(m => m.Name)
-                .ToListAsync(cancellationToken);
-
-            _logger.LogInformation("Found {Count} metro areas", metroAreas.Count);
-
-            // Map to DTOs
-            var dtos = metroAreas.Select(m => _mapper.Map<MetroAreaDto>(m)).ToList();
-
-            return Result<IReadOnlyList<MetroAreaDto>>.Success(dtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching metro areas");
-            return Result<IReadOnlyList<MetroAreaDto>>.Failure("Failed to fetch metro areas");
         }
     }
 }

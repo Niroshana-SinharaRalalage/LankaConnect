@@ -100,3 +100,14 @@ export interface PhotoUploadResponse {
   profilePhotoUrl: string;
   message?: string;
 }
+
+/**
+ * Email update response with verification details
+ * Phase 6A.70: Profile Basic Info Section with Email Verification
+ */
+export interface UpdateEmailResponse {
+  email: string;
+  isVerified: boolean;
+  verificationSentAt?: string | null;
+  message: string;
+}

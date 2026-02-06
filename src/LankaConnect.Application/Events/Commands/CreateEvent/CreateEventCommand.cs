@@ -11,6 +11,8 @@ public record CreateEventCommand(
     DateTime EndDate,
     Guid OrganizerId,
     int Capacity,
+    // Issue #51: Max attendees per registration (optional, defaults to 10)
+    int? MaxAttendeesPerRegistration = null,
     EventCategory? Category = null,
     // Location (optional)
     string? LocationAddress = null,
@@ -30,7 +32,14 @@ public record CreateEventCommand(
     Currency? ChildPriceCurrency = null,
     int? ChildAgeLimit = null,
     // Phase 6D: Group Tiered Pricing - optional
-    List<GroupPricingTierRequest>? GroupPricingTiers = null
+    List<GroupPricingTierRequest>? GroupPricingTiers = null,
+    // Phase 6A.32: Email Groups - optional
+    List<Guid>? EmailGroupIds = null,
+    // Phase 6A.X: Organizer Contact Details - optional
+    bool? PublishOrganizerContact = false,
+    string? OrganizerContactName = null,
+    string? OrganizerContactPhone = null,
+    string? OrganizerContactEmail = null
 ) : ICommand<Guid>;
 
 /// <summary>

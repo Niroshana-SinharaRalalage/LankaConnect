@@ -6,6 +6,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -19,15 +20,18 @@ public class UpdateSignUpListCommandHandlerTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ILogger<UpdateSignUpListCommandHandler>> _mockLogger;
     private readonly UpdateSignUpListCommandHandler _handler;
 
     public UpdateSignUpListCommandHandlerTests()
     {
         _mockEventRepository = new Mock<IEventRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockLogger = new Mock<ILogger<UpdateSignUpListCommandHandler>>();
         _handler = new UpdateSignUpListCommandHandler(
             _mockEventRepository.Object,
-            _mockUnitOfWork.Object);
+            _mockUnitOfWork.Object,
+            _mockLogger.Object);
     }
 
     private Event CreateTestEvent()

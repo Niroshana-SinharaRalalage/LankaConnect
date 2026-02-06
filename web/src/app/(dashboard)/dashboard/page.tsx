@@ -1,29 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
 import { TabPanel } from '@/presentation/components/ui/TabPanel';
-import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import Footer from '@/presentation/components/layout/Footer';
-import { useRouter } from 'next/navigation';
-import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
+import { Header } from '@/presentation/components/layout/Header';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { canCreateEvents, isAdmin } from '@/infrastructure/api/utils/role-helpers';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 import {
   Calendar,
   Users,
-  ChevronDown,
-  User,
-  LogOut,
   Sparkles,
   ClipboardCheck,
   FolderOpen,
-  Bell
+  Bell,
+  Mail,
+  Plus,
+  MessageSquare,
+  Activity,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+// Phase 6A.X Issue #44: Removed Image, OfficialLogo, authRepository, ChevronDown, User, LogOut - now handled by shared Header
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { EventsList } from '@/presentation/components/features/dashboard/EventsList';
 import { ApprovalsTable } from '@/presentation/components/features/admin/ApprovalsTable';
 import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
@@ -32,22 +32,58 @@ import { NotificationsList } from '@/presentation/components/features/dashboard/
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { approvalsRepository } from '@/infrastructure/api/repositories/approvals.repository';
 import { useUnreadNotifications, useMarkNotificationAsRead } from '@/presentation/hooks/useNotifications';
-import type { EventDto } from '@/infrastructure/api/types/events.types';
+import { EmailGroupsTab } from '@/presentation/components/features/email-groups';
+import { NewslettersTab } from '@/presentation/components/features/newsletters/NewslettersTab';
+// Phase 6A.89: Consolidated admin tasks into single component
+import { AdminTasksTab } from '@/presentation/components/features/admin/AdminTasksTab';
+import { EventFilters, type EventFiltersState, filtersToApiParams } from '@/components/events/filters/EventFilters';
+import type { EventDto, EventStatusFilter } from '@/infrastructure/api/types/events.types';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
+import { CancelEventModal } from '@/presentation/components/features/events/CancelEventModal';
+import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
-export default function DashboardPage() {
+// Phase 6A.74 Part 14 Fix #3: Wrapper component to use useSearchParams inside Suspense
+function DashboardContent() {
   const router = useRouter();
-  const { user, clearAuth } = useAuthStore();
-  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-  const [mounted, setMounted] = useState<boolean>(false);
+  const searchParams = useSearchParams();
+  const { user } = useAuthStore();
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Phase 6A.74 Part 14 Fix #3: Get initial tab from URL query param for back navigation
+  const initialTab = searchParams.get('tab') || undefined;
+
+  // Phase 6A.59: Cancel event modal state
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [cancellingEvent, setCancellingEvent] = useState<{ id: string; title: string } | null>(null);
+
+  // Delete event modal state
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [deletingEvent, setDeletingEvent] = useState<{ id: string; title: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // State for events
   const [registeredEvents, setRegisteredEvents] = useState<EventDto[]>([]);
   const [createdEvents, setCreatedEvents] = useState<EventDto[]>([]);
   const [loadingRegistered, setLoadingRegistered] = useState(false);
   const [loadingCreated, setLoadingCreated] = useState(false);
+
+  // Phase 6A.58: Filter state for both tabs
+  const [registeredFilters, setRegisteredFilters] = useState<EventFiltersState>({
+    searchTerm: '',
+    category: null,
+    dateRange: 'upcoming',
+    metroAreaIds: [],
+  });
+
+  // Issue #36: Status filter initialized to null (All Events) for organizers to see all their events
+  const [createdFilters, setCreatedFilters] = useState<EventFiltersState>({
+    searchTerm: '',
+    category: null,
+    dateRange: 'all',
+    metroAreaIds: [],
+    statusFilter: null, // null = All Events (including Draft/UnderReview for organizers)
+  });
 
   // State for admin approvals
   const [pendingApprovals, setPendingApprovals] = useState<PendingRoleUpgradeDto[]>([]);
@@ -57,29 +93,21 @@ export default function DashboardPage() {
   const { data: notifications = [], isLoading: loadingNotifications } = useUnreadNotifications();
   const markAsRead = useMarkNotificationAsRead();
 
-  // Set mounted state after client-side hydration
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Phase 6A.46: Create Set of registered event IDs for O(1) lookups
+  const registeredEventIds = useMemo(
+    () => new Set(registeredEvents.map(e => e.id)),
+    [registeredEvents]
+  );
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Load registered events
+  // Phase 6A.58: Load registered events with filters
   useEffect(() => {
     const loadRegisteredEvents = async () => {
       try {
         setLoadingRegistered(true);
         // Epic 1: Backend now returns full EventDto[] instead of RsvpDto[]
-        const events = await eventsRepository.getUserRsvps();
+        // Phase 6A.58: Pass filters to getUserRsvps
+        const apiParams = filtersToApiParams(registeredFilters);
+        const events = await eventsRepository.getUserRsvps(apiParams);
         setRegisteredEvents(events);
       } catch (error) {
         console.error('Error loading registered events:', error);
@@ -91,14 +119,18 @@ export default function DashboardPage() {
     if (user) {
       loadRegisteredEvents();
     }
-  }, [user]);
+  }, [user, registeredFilters]); // Phase 6A.58: Re-fetch when filters change
 
-  // Load created events (for Event Organizers and Admins)
+  // Phase 6A.58: Load created events (for Event Organizers and Admins) with filters
+  // Issue #36: Pass includeAllStatuses=true to see Draft/UnderReview events
   useEffect(() => {
     const loadCreatedEvents = async () => {
       try {
         setLoadingCreated(true);
-        const events = await eventsRepository.getUserCreatedEvents();
+        // Phase 6A.58: Pass filters to getUserCreatedEvents
+        // Issue #36: Pass includeAllStatuses=true to include Draft/UnderReview events
+        const apiParams = filtersToApiParams(createdFilters, true);
+        const events = await eventsRepository.getUserCreatedEvents(apiParams);
         setCreatedEvents(events);
       } catch (error) {
         console.error('Error loading created events:', error);
@@ -110,7 +142,7 @@ export default function DashboardPage() {
     if (user && (user.role === UserRole.EventOrganizer || isAdmin(user.role as UserRole))) {
       loadCreatedEvents();
     }
-  }, [user]);
+  }, [user, createdFilters]); // Phase 6A.58: Re-fetch when filters change
 
   // Load pending approvals (for Admins only)
   useEffect(() => {
@@ -148,8 +180,9 @@ export default function DashboardPage() {
     }
   };
 
+  // Session 33: Add from=dashboard parameter for back navigation tracking
   const handleEventClick = (eventId: string) => {
-    router.push(`/events/${eventId}`);
+    router.push(`/events/${eventId}?from=dashboard`);
   };
 
   // Session 30: Cancel registration handler for dashboard
@@ -170,130 +203,94 @@ export default function DashboardPage() {
     router.push(`/events/${eventId}/manage`);
   };
 
-  const handleLogout = async () => {
+  // Phase 6A.59: Event management action handlers
+  const handleEditEvent = (eventId: string) => {
+    router.push(`/events/${eventId}/edit`);
+  };
+
+  const handlePublishEvent = async (eventId: string): Promise<void> => {
     try {
-      await authRepository.logout();
+      await eventsRepository.publishEvent(eventId);
+      // Reload created events after successful publish
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
     } catch (error) {
-      // Silently handle logout errors (e.g., 401 when already logged out)
-      // The error is expected and clearAuth will handle cleanup
-    } finally {
-      clearAuth();
-      router.push('/login');
+      console.error('Error publishing event:', error);
+      throw error;
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
+  const handleCancelEventManagement = async (eventId: string): Promise<void> => {
+    // Phase 6A.59: Find event title and show modal
+    const event = createdEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    setCancellingEvent({ id: eventId, title: event.title });
+    setShowCancelModal(true);
   };
+
+  const handleConfirmCancelEvent = async (reason: string): Promise<void> => {
+    if (!cancellingEvent) return;
+
+    try {
+      await eventsRepository.cancelEvent(cancellingEvent.id, reason);
+      // Reload created events after successful cancellation
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
+
+      // Close modal and reset state
+      setShowCancelModal(false);
+      setCancellingEvent(null);
+    } catch (error) {
+      console.error('Error cancelling event:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteEventClick = async (eventId: string): Promise<void> => {
+    // Find the event to get its title
+    const event = createdEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Open the delete modal instead of using window.confirm
+    setDeletingEvent({ id: event.id, title: event.title });
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteEvent = async (): Promise<void> => {
+    if (!deletingEvent) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await eventsRepository.deleteEvent(deletingEvent.id);
+      setShowDeleteModal(false);
+      setDeletingEvent(null);
+      // Reload created events after successful deletion
+      const apiParams = filtersToApiParams(createdFilters);
+      const events = await eventsRepository.getUserCreatedEvents(apiParams);
+      setCreatedEvents(events);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete event. Please try again.';
+      setDeleteError(errorMessage);
+      // Don't re-throw - error is already displayed in modal
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Phase 6A.X Issue #44: handleLogout and getInitials removed - now handled by shared Header component
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen" style={{ background: '#f7fafc' }}>
-        {/* Header - Matching Landing Page */}
-        <header className="bg-white sticky top-0 z-40" style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 2px 20px rgba(0,0,0,0.1)'
-        }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              {/* Logo + Navigation */}
-              <div className="flex items-center gap-8">
-                <OfficialLogo size="md" />
-
-                {/* Navigation Links */}
-                <nav className="hidden md:flex items-center gap-6">
-                  <a href="/events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Events
-                  </a>
-                  <a href="/forums" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Forums
-                  </a>
-                  <a href="/business" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Business
-                  </a>
-                  <a href="/marketplace" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-                    Marketplace
-                  </a>
-                  <a href="/dashboard" className="text-[#FF7900] font-medium transition-colors">
-                    Dashboard
-                  </a>
-                </nav>
-              </div>
-
-              <div className="flex items-center gap-4" suppressHydrationWarning>
-                {/* User Menu Dropdown */}
-                {mounted && (
-                  <div className="relative" ref={userMenuRef}>
-                    <button
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors"
-                    >
-                      {user?.profilePhotoUrl ? (
-                        <Image
-                          src={user.profilePhotoUrl}
-                          alt={user.fullName}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                          style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 100%)' }}
-                        >
-                          {getInitials(user?.fullName || 'U')}
-                        </div>
-                      )}
-                      <div className="hidden md:block text-left">
-                        <p className="text-sm font-medium" style={{ color: '#8B1538' }}>{user?.fullName}</p>
-                        <p className="text-xs" style={{ color: '#718096' }}>{user?.role}</p>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Dropdown Menu - Only render after client-side hydration */}
-                    {showUserMenu && (
-                      <div
-                        className="absolute right-0 mt-2 w-48 rounded-lg shadow-lg overflow-hidden z-50"
-                        style={{
-                          background: 'white',
-                          border: '1px solid #e2e8f0'
-                        }}
-                      >
-                        <button
-                          onClick={() => {
-                            setShowUserMenu(false);
-                            router.push('/profile');
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                        >
-                          <User className="w-4 h-4" style={{ color: '#FF7900' }} />
-                          <span style={{ color: '#2d3748' }}>Profile</span>
-                        </button>
-                        <div style={{ borderTop: '1px solid #e2e8f0' }}></div>
-                        <button
-                          onClick={() => {
-                            setShowUserMenu(false);
-                            handleLogout();
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                        >
-                          <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
-                          <span style={{ color: '#2d3748' }}>Logout</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* Phase 6A.X Issue #44: Use shared Header component for consistent alignment across all pages */}
+        <Header />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Phase 6A.7: Upgrade Pending Banner - Show if user has pending upgrade */}
@@ -304,6 +301,7 @@ export default function DashboardPage() {
           )}
 
           {/* Quick Actions - Epic 1: Role-based visibility, Post Topic removed */}
+          {/* Phase 6A.74 Part 14 Fix #1: Moved Create Event button inside Event Management tab */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Show 'Upgrade to Event Organizer' button for GeneralUser (if not already pending) */}
@@ -322,23 +320,8 @@ export default function DashboardPage() {
                   Upgrade to Event Organizer
                 </Button>
               )}
-              {/* Show 'Create Event' for EventOrganizer, Admin, and AdminManager */}
-              {user && (user.role === UserRole.EventOrganizer || user.role === UserRole.Admin || user.role === UserRole.AdminManager) && (
-                <Button
-                  onClick={() => router.push('/events/create')}
-                  className="flex-1 sm:flex-none rounded-lg"
-                  style={{
-                    background: '#FF7900',
-                    color: 'white',
-                    transition: 'all 0.3s'
-                  }}
-                  variant="default"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Create Event
-                </Button>
-              )}
               {/* Post Topic button removed per Epic 1 requirements */}
+              {/* Create Event button moved to Event Management tab per Phase 6A.74 Part 14 Fix #1 */}
             </div>
           </div>
 
@@ -350,50 +333,298 @@ export default function DashboardPage() {
                 {/* Render tabs based on user role */}
                 {user && isAdmin(user.role as UserRole) ? (
                   <TabPanel
+                    defaultTab={initialTab}
+                    tabs={[
+                      {
+                        id: 'created',
+                        label: 'Event Management',
+                        icon: FolderOpen,
+                        content: (
+                          <div>
+                            {/* Phase 6A.74 Part 14 Fix #1: Create Event button inside tab */}
+                            <div className="mb-4 flex justify-end">
+                              <Button
+                                onClick={() => router.push('/events/create')}
+                                className="rounded-lg"
+                                style={{
+                                  background: '#FF7900',
+                                  color: 'white',
+                                  transition: 'all 0.3s'
+                                }}
+                                variant="default"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Event
+                              </Button>
+                            </div>
+                            {/* Phase 6A.58: Event Filters for Event Management */}
+                            {/* Issue #36: Added status filter with Unpublished option */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={createdFilters}
+                                onFiltersChange={setCreatedFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                                showStatusFilter={true}
+                                showUnpublished={true}
+                              />
+                            </div>
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={createdEvents}
+                                isLoading={loadingCreated}
+                                emptyMessage="You haven't created any events yet"
+                                onEventClick={handleManageEventClick}
+                                registeredEventIds={registeredEventIds}
+                                showManagementActions={true}
+                                onEditEvent={handleEditEvent}
+                                onPublishEvent={handlePublishEvent}
+                                onCancelEvent={handleCancelEventManagement}
+                                onDeleteEvent={handleDeleteEventClick}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        // Phase 6A.89: Consolidated admin features into single tab with sub-navigation
+                        id: 'admin',
+                        label: 'Admin Tasks',
+                        icon: ClipboardCheck,
+                        content: (
+                          <AdminTasksTab
+                            pendingApprovals={pendingApprovals}
+                            loadingApprovals={loadingApprovals}
+                            onApprovalsUpdate={handleApprovalsUpdate}
+                          />
+                        ),
+                      },
+                      {
+                        id: 'email-groups',
+                        label: 'Email Groups',
+                        icon: Mail,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <EmailGroupsTab />
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'newsletters',
+                        label: 'Newsletters',
+                        icon: Mail,
+                        content: (
+                          // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
+                          <NewslettersTab />
+                        ),
+                      },
+                      {
+                        id: 'notifications',
+                        label: 'Notifications',
+                        icon: Bell,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                ) : user && user.role === UserRole.EventOrganizer ? (
+                  <TabPanel
+                    defaultTab={initialTab}
+                    tabs={[
+                      {
+                        id: 'created',
+                        label: 'Event Management',
+                        icon: FolderOpen,
+                        content: (
+                          <div>
+                            {/* Phase 6A.74 Part 14 Fix #1: Create Event button inside tab */}
+                            <div className="mb-4 flex justify-end">
+                              <Button
+                                onClick={() => router.push('/events/create')}
+                                className="rounded-lg"
+                                style={{
+                                  background: '#FF7900',
+                                  color: 'white',
+                                  transition: 'all 0.3s'
+                                }}
+                                variant="default"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Event
+                              </Button>
+                            </div>
+                            {/* Phase 6A.58: Event Filters for Event Management */}
+                            {/* Issue #36: Added status filter with Unpublished option */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={createdFilters}
+                                onFiltersChange={setCreatedFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                                showStatusFilter={true}
+                                showUnpublished={true}
+                              />
+                            </div>
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={createdEvents}
+                                isLoading={loadingCreated}
+                                emptyMessage="You haven't created any events yet"
+                                onEventClick={handleManageEventClick}
+                                registeredEventIds={registeredEventIds}
+                                showManagementActions={true}
+                                onEditEvent={handleEditEvent}
+                                onPublishEvent={handlePublishEvent}
+                                onCancelEvent={handleCancelEventManagement}
+                                onDeleteEvent={handleDeleteEventClick}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'registered',
+                        label: 'My Registered Events',
+                        icon: Users,
+                        content: (
+                          <div>
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'email-groups',
+                        label: 'Email Groups',
+                        icon: Mail,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <EmailGroupsTab />
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'newsletters',
+                        label: 'Newsletters',
+                        icon: Mail,
+                        content: (
+                          // Phase 6A.75: Scroll handled inside NewslettersTab at newsletter list level
+                          <NewslettersTab />
+                        ),
+                      },
+                      {
+                        id: 'notifications',
+                        label: 'Notifications',
+                        icon: Bell,
+                        content: (
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                ) : (
+                  /* General User - Tabbed interface with Registered Events and Notifications */
+                  <TabPanel
+                    defaultTab={initialTab}
                     tabs={[
                       {
                         id: 'registered',
                         label: 'My Registered Events',
                         icon: Users,
                         content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                          />
-                        ),
-                      },
-                      {
-                        id: 'created',
-                        label: 'My Created Events',
-                        icon: FolderOpen,
-                        content: (
-                          <EventsList
-                            events={createdEvents}
-                            isLoading={loadingCreated}
-                            emptyMessage="You haven't created any events yet"
-                            onEventClick={handleManageEventClick}
-                          />
-                        ),
-                      },
-                      {
-                        id: 'admin',
-                        label: 'Admin Tasks',
-                        icon: ClipboardCheck,
-                        content: (
                           <div>
-                            <h3 className="text-lg font-semibold mb-4 text-[#8B1538]">
-                              Pending Approvals
-                            </h3>
-                            {loadingApprovals ? (
-                              <div className="text-center py-8">
-                                <p className="text-gray-600">Loading approvals...</p>
-                              </div>
-                            ) : (
-                              <ApprovalsTable approvals={pendingApprovals} onUpdate={handleApprovalsUpdate} />
-                            )}
+                            {/* Phase 6A.58: Event Filters for My Registered Events */}
+                            <div className="mb-6">
+                              <EventFilters
+                                filters={registeredFilters}
+                                onFiltersChange={setRegisteredFilters}
+                                showSearch={true}
+                                showCategory={true}
+                                showDateRange={true}
+                                showLocation={true}
+                              />
+                            </div>
+                            {/* Phase 6A.74 Part 14 Fix #2: Scroll limit - max 5 items visible */}
+                            <div className="max-h-[600px] overflow-y-auto">
+                              <EventsList
+                                events={registeredEvents}
+                                isLoading={loadingRegistered}
+                                emptyMessage="You haven't registered for any events yet. Browse events to join!"
+                                onEventClick={handleEventClick}
+                                onCancelClick={handleCancelRegistration}
+                                registeredEventIds={registeredEventIds}
+                              />
+                            </div>
                           </div>
                         ),
                       },
@@ -402,87 +633,13 @@ export default function DashboardPage() {
                         label: 'Notifications',
                         icon: Bell,
                         content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
-                        ),
-                      },
-                    ]}
-                  />
-                ) : user && user.role === UserRole.EventOrganizer ? (
-                  <TabPanel
-                    tabs={[
-                      {
-                        id: 'registered',
-                        label: 'My Registered Events',
-                        icon: Users,
-                        content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                          />
-                        ),
-                      },
-                      {
-                        id: 'created',
-                        label: 'My Created Events',
-                        icon: FolderOpen,
-                        content: (
-                          <EventsList
-                            events={createdEvents}
-                            isLoading={loadingCreated}
-                            emptyMessage="You haven't created any events yet"
-                            onEventClick={handleManageEventClick}
-                          />
-                        ),
-                      },
-                      {
-                        id: 'notifications',
-                        label: 'Notifications',
-                        icon: Bell,
-                        content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
-                        ),
-                      },
-                    ]}
-                  />
-                ) : (
-                  /* General User - Tabbed interface with Registered Events and Notifications */
-                  <TabPanel
-                    tabs={[
-                      {
-                        id: 'registered',
-                        label: 'My Registered Events',
-                        icon: Users,
-                        content: (
-                          <EventsList
-                            events={registeredEvents}
-                            isLoading={loadingRegistered}
-                            emptyMessage="You haven't registered for any events yet. Browse events to join!"
-                            onEventClick={handleEventClick}
-                            onCancelClick={handleCancelRegistration}
-                          />
-                        ),
-                      },
-                      {
-                        id: 'notifications',
-                        label: 'Notifications',
-                        icon: Bell,
-                        content: (
-                          <NotificationsList
-                            notifications={notifications}
-                            isLoading={loadingNotifications}
-                            onNotificationClick={handleNotificationClick}
-                          />
+                          <div className="max-h-[600px] overflow-y-auto">
+                            <NotificationsList
+                              notifications={notifications}
+                              isLoading={loadingNotifications}
+                              onNotificationClick={handleNotificationClick}
+                            />
+                          </div>
                         ),
                       },
                     ]}
@@ -498,7 +655,50 @@ export default function DashboardPage() {
 
         {/* Phase 6A.7: Upgrade Modal */}
         <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+
+        {/* Phase 6A.59: Cancel Event Modal */}
+        <CancelEventModal
+          isOpen={showCancelModal}
+          eventTitle={cancellingEvent?.title || ''}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setCancellingEvent(null);
+          }}
+          onConfirm={handleConfirmCancelEvent}
+        />
+
+        {/* Delete Event Modal */}
+        <DeleteEventModal
+          open={showDeleteModal}
+          onOpenChange={(open) => {
+            setShowDeleteModal(open);
+            if (!open) {
+              setDeletingEvent(null);
+              setDeleteError(null);
+            }
+          }}
+          onConfirm={handleDeleteEvent}
+          isDeleting={isDeleting}
+          eventTitle={deletingEvent?.title || ''}
+          error={deleteError}
+        />
       </div>
     </ProtectedRoute>
+  );
+}
+
+// Phase 6A.74 Part 14 Fix #3: Wrap in Suspense for useSearchParams
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7fafc' }}>
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-[#FF7900] rounded-full animate-spin" />
+          <p className="mt-2 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }

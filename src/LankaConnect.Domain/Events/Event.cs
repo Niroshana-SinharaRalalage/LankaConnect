@@ -15,8 +15,12 @@ public class Event : BaseEntity
     private readonly List<WaitingListEntry> _waitingList = new(); // Epic 2: Waiting List support
     private readonly List<EventPass> _passes = new(); // Event passes/tickets support
     private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
+    private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
+    private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
+    private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
 
     private const int MAX_IMAGES = 10; // Maximum images per event
+    private const int MAX_BADGES = 3; // Maximum badges per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
 
     public EventTitle Title { get; private set; }
@@ -27,10 +31,49 @@ public class Event : BaseEntity
     public int Capacity { get; private set; }
     public EventStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
+
+    /// <summary>
+    /// Phase 6A.97: IANA timezone identifier for event's local time display.
+    /// Derived from event location (US state) when event is created/updated.
+    /// Examples: "America/New_York" (Eastern), "America/Chicago" (Central), "America/Los_Angeles" (Pacific)
+    /// Used for consistent date/time display in emails and frontend.
+    /// </summary>
+    public string? TimeZoneId { get; private set; }
+
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
     public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
+    public RevenueBreakdown? RevenueBreakdown { get; private set; } // Phase 6A.X: Detailed revenue breakdown for paid events
+
+    /// <summary>
+    /// Phase 6A.86: Explicit flag indicating whether this event is free
+    /// Source of truth for free/paid determination (eliminates NULL pricing ambiguity)
+    /// Benefits:
+    /// - Unambiguous intent (NULL pricing no longer means "free")
+    /// - Security: Prevents payment bypass vulnerabilities
+    /// - Simplicity: Single boolean instead of complex price checking
+    /// </summary>
+    public bool IsFreeEvent { get; private set; }
+
+    /// <summary>
+    /// Issue #51: Maximum number of attendees allowed per single registration
+    /// Configurable by event organizer via /events/{id}/manage page
+    /// Default: 10 (backward compatibility)
+    /// System Maximum: 50 (safety net to prevent abuse)
+    /// Cannot exceed event capacity
+    /// </summary>
+    public int MaxAttendeesPerRegistration { get; private set; } = 10;
+
+    // System-wide maximum for safety (prevents one registration from booking entire large event)
+    public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
+
+    // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
+    public bool PublishOrganizerContact { get; private set; }
+    public string? OrganizerContactName { get; private set; }
+    public string? OrganizerContactPhone { get; private set; }
+    public string? OrganizerContactEmail { get; private set; }
 
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
@@ -38,6 +81,11 @@ public class Event : BaseEntity
     public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly(); // Epic 2: Read-only waiting list collection
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
+    public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
+    // Phase 6A.33 FIX: EmailGroupIds exposes domain's _emailGroupIds list (source of truth for business logic)
+    // Infrastructure layer syncs _emailGroupEntities shadow navigation from _emailGroupIds for persistence
+    // Pattern mirrors User.PreferredMetroAreaIds per ADR-009
+    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly();
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
@@ -65,6 +113,10 @@ public class Event : BaseEntity
         Location = location;
         Category = category;
         TicketPrice = ticketPrice;
+        // Phase 6A.86: Set IsFreeEvent flag based on ticket price
+        // Only explicit $0 price means free event
+        // NULL ticket price defaults to PAID for security (Phase 6A.81 security fix)
+        IsFreeEvent = ticketPrice != null && ticketPrice.IsZero;
     }
 
     public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,
@@ -117,18 +169,43 @@ public class Event : BaseEntity
             return Result.Failure("Only draft events can be published");
 
         Status = EventStatus.Published;
+        PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp for "New" label
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventPublishedEvent(Id, DateTime.UtcNow, OrganizerId));
-        
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.41: Unpublishes a published event, returning it to Draft status.
+    /// Allows organizers to make corrections after premature publication.
+    /// Business Rules:
+    /// - Only Published events can be unpublished
+    /// - Cannot unpublish Active, Cancelled, Postponed, or Completed events
+    /// - Events with registrations CAN be unpublished (organizer's decision)
+    /// </summary>
+    public Result Unpublish()
+    {
+        if (Status != EventStatus.Published)
+            return Result.Failure("Only published events can be unpublished");
+
+        Status = EventStatus.Draft;
+        PublishedAt = null; // Phase 6A.46: Clear publish timestamp when unpublishing
+        MarkAsUpdated();
+
+        // Raise domain event (for potential notification/logging)
+        RaiseDomainEvent(new EventUnpublishedEvent(Id, DateTime.UtcNow));
+
         return Result.Success();
     }
 
     public Result Cancel(string reason)
     {
-        if (Status != EventStatus.Published)
-            return Result.Failure("Only published events can be cancelled");
+        // Phase 6A.59: Allow cancelling Draft events too (organizer changes mind before publishing)
+        if (Status != EventStatus.Published && Status != EventStatus.Draft)
+            return Result.Failure("Only published or draft events can be cancelled");
 
         if (string.IsNullOrWhiteSpace(reason))
             return Result.Failure("Cancellation reason is required");
@@ -136,10 +213,10 @@ public class Event : BaseEntity
         Status = EventStatus.Cancelled;
         CancellationReason = reason.Trim();
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventCancelledEvent(Id, reason.Trim(), DateTime.UtcNow));
-        
+
         return Result.Success();
     }
 
@@ -147,6 +224,9 @@ public class Event : BaseEntity
     {
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
+
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
 
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
@@ -177,6 +257,9 @@ public class Event : BaseEntity
     {
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
+
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
 
         if (attendeeInfo == null)
             return Result.Failure("Attendee information is required");
@@ -216,6 +299,9 @@ public class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
+        if (StartDate <= DateTime.UtcNow)
+            return Result.Failure("Cannot register for an event that has already started");
+
         if (attendees == null || !attendees.Any())
             return Result.Failure("At least one attendee is required");
 
@@ -223,6 +309,49 @@ public class Event : BaseEntity
 
         if (contact == null)
             return Result.Failure("Contact information is required");
+
+        // Phase 6A.45 FIX: Check for duplicate registration
+        // For authenticated users: check by userId
+        // For anonymous users: check by email (case-insensitive)
+        if (userId.HasValue)
+        {
+            // Phase 6A.81: Authenticated user - check if already registered (not cancelled/refunded/preliminary/abandoned)
+            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
+            var existingRegistration = _registrations.FirstOrDefault(r =>
+                r.UserId == userId &&
+                r.Status != RegistrationStatus.Cancelled &&
+                r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
+                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
+                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
+                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+#pragma warning restore CS0618
+
+            if (existingRegistration != null)
+                return Result.Failure("You are already registered for this event. To change your registration details, please cancel your current registration first.");
+        }
+        else
+        {
+            // Phase 6A.81: Anonymous user - check by email (case-insensitive)
+            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
+            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
+            var existingRegistration = _registrations.FirstOrDefault(r =>
+                r.Contact != null &&
+                r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase) &&
+                r.Status != RegistrationStatus.Cancelled &&
+                r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
+                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
+                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
+                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+#pragma warning restore CS0618
+
+            if (existingRegistration != null)
+                return Result.Failure("This email is already registered for this event. Each email can only register once.");
+        }
 
         // Check capacity for all attendees
         if (!HasCapacityFor(attendeeList.Count))
@@ -239,13 +368,15 @@ public class Event : BaseEntity
         bool isPaidEvent = !IsFree();
 
         // Create registration with all attendees
+        // Issue #51: Pass event's configured max attendees per registration
         var registrationResult = Registration.CreateWithAttendees(
             Id,
             userId,
             attendeeList,
             contact,
-            totalPrice,
-            isPaidEvent);
+            totalPrice!,
+            isPaidEvent,
+            MaxAttendeesPerRegistration);
 
         if (registrationResult.IsFailure)
             return Result.Failure(registrationResult.Errors);
@@ -253,17 +384,26 @@ public class Event : BaseEntity
         _registrations.Add(registrationResult.Value);
         MarkAsUpdated();
 
-        // Raise appropriate domain event
-        if (userId.HasValue)
+        // Phase 6A.81: CRITICAL - Only raise confirmation events for Confirmed registrations
+        // For Preliminary registrations (paid events waiting for payment), domain events will be
+        // raised by the CompletePayment() method after webhook confirms payment
+        var registration = registrationResult.Value;
+        if (registration.Status == RegistrationStatus.Confirmed)
         {
-            // Authenticated user registration
-            RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeList.Count, DateTime.UtcNow));
+            // Raise appropriate domain event (triggers confirmation email)
+            if (userId.HasValue)
+            {
+                // Authenticated user registration - FREE event or immediate confirmation
+                RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeList.Count, DateTime.UtcNow));
+            }
+            else
+            {
+                // Anonymous registration - FREE event or immediate confirmation
+                RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeList.Count, DateTime.UtcNow));
+            }
         }
-        else
-        {
-            // Anonymous registration
-            RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeList.Count, DateTime.UtcNow));
-        }
+        // Phase 6A.81: For Preliminary registrations, NO domain event raised here
+        // Email will be sent after payment completes via PaymentCompletedEvent
 
         return Result.Success();
     }
@@ -306,6 +446,17 @@ public class Event : BaseEntity
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.62 Fix: Raises RegistrationCancelledEvent without requiring _registrations to be loaded.
+    /// This allows the CancelRsvpCommandHandler to bypass EF Core navigation property issues
+    /// while still triggering email notifications.
+    /// </summary>
+    public void RaiseRegistrationCancelledEvent(Guid userId)
+    {
+        RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
+        MarkAsUpdated();
     }
 
     public Result UpdateRegistration(Guid userId, int newQuantity)
@@ -361,10 +512,14 @@ public class Event : BaseEntity
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
-        // Find the user's active registration (Confirmed or Pending)
+        // Phase 6A.81: Find the user's active registration (Confirmed, Preliminary, or legacy Pending)
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
         var registration = _registrations.FirstOrDefault(r =>
             r.UserId == userId &&
-            (r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Pending));
+            (r.Status == RegistrationStatus.Confirmed ||
+             r.Status == RegistrationStatus.Preliminary ||
+             r.Status == RegistrationStatus.Pending));  // Support legacy Pending
+#pragma warning restore CS0618
 
         if (registration == null)
             return Result.Failure("User does not have an active registration for this event");
@@ -495,6 +650,7 @@ public class Event : BaseEntity
             return Result.Failure("Admin ID is required");
 
         Status = EventStatus.Published;
+        PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp when approved
         MarkAsUpdated();
 
         // Raise domain event
@@ -533,13 +689,61 @@ public class Event : BaseEntity
 
         var previousCapacity = Capacity;
         Capacity = newCapacity;
+
+        // Issue #51: Auto-adjust MaxAttendeesPerRegistration if it exceeds new capacity
+        if (MaxAttendeesPerRegistration > newCapacity)
+        {
+            MaxAttendeesPerRegistration = newCapacity;
+        }
+
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventCapacityUpdatedEvent(Id, previousCapacity, newCapacity, DateTime.UtcNow));
-        
+
         return Result.Success();
     }
+
+    #region MaxAttendeesPerRegistration Management (Issue #51)
+
+    /// <summary>
+    /// Updates the maximum number of attendees allowed per single registration
+    /// Issue #51: Configurable by event organizer
+    /// </summary>
+    /// <param name="maxAttendees">New maximum (1 to min(eventCapacity, 50))</param>
+    /// <returns>Result indicating success or failure</returns>
+    public Result UpdateMaxAttendeesPerRegistration(int maxAttendees)
+    {
+        // Validation: Must be at least 1
+        if (maxAttendees < 1)
+            return Result.Failure("Maximum attendees per registration must be at least 1");
+
+        // Validation: Cannot exceed system maximum (safety net)
+        if (maxAttendees > SYSTEM_MAX_ATTENDEES_PER_REGISTRATION)
+            return Result.Failure($"Maximum attendees per registration cannot exceed {SYSTEM_MAX_ATTENDEES_PER_REGISTRATION}");
+
+        // Validation: Cannot exceed event capacity
+        if (maxAttendees > Capacity)
+            return Result.Failure($"Maximum attendees per registration cannot exceed event capacity ({Capacity})");
+
+        MaxAttendeesPerRegistration = maxAttendees;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Gets the effective maximum attendees for a new registration
+    /// Takes into account configured limit, event capacity, and spots left
+    /// </summary>
+    /// <returns>Maximum attendees allowed for a new registration</returns>
+    public int GetEffectiveMaxAttendeesPerRegistration()
+    {
+        var spotsLeft = Capacity - CurrentRegistrations;
+        return Math.Min(MaxAttendeesPerRegistration, spotsLeft);
+    }
+
+    #endregion
 
     public Result HasSchedulingConflict(Event otherEvent)
     {
@@ -575,6 +779,32 @@ public class Event : BaseEntity
     }
 
     /// <summary>
+    /// Phase 6A.97: Sets the event's timezone for consistent date/time display.
+    /// Should be called when event location is set/updated.
+    /// </summary>
+    /// <param name="timeZoneId">IANA timezone ID (e.g., "America/New_York")</param>
+    public Result SetTimeZone(string timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+            return Result.Failure("Timezone ID cannot be null or empty");
+
+        // Validate the timezone ID is valid
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return Result.Failure($"Invalid timezone ID: {timeZoneId}");
+        }
+
+        TimeZoneId = timeZoneId;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Removes the event location (e.g., converting to virtual event)
     /// </summary>
     public Result RemoveLocation()
@@ -601,26 +831,54 @@ public class Event : BaseEntity
     #region Pricing Management (Epic 2 Phase 2 + Session 21)
 
     /// <summary>
-    /// Checks if event is free (no ticket price or zero ticket price)
-    /// Supports legacy single pricing, dual pricing, and group tiered pricing
+    /// Checks if event is free
+    /// Phase 6A.86: Returns explicit IsFreeEvent flag (source of truth)
+    /// No longer computes from pricing amounts (eliminates NULL ambiguity)
     /// </summary>
-    public bool IsFree()
+    public bool IsFree() => IsFreeEvent;
+
+    /// <summary>
+    /// Phase 6A.86: Marks event as free
+    /// Sets IsFreeEvent flag and optionally sets $0 pricing for display
+    /// </summary>
+    public Result SetAsFreeEvent()
     {
-        // Phase 6D: Group tiered pricing - never free if tiers are configured
-        if (Pricing != null && Pricing.Type == PricingType.GroupTiered)
-            return !Pricing.HasGroupTiers;
+        IsFreeEvent = true;
 
-        // New dual pricing system (Single or AgeDual)
-        if (Pricing != null)
-            return Pricing.AdultPrice.IsZero;
+        // Optional: Set explicit $0 pricing for display/reporting purposes
+        var zeroPrice = Money.Create(0m, Shared.Enums.Currency.USD);
+        if (zeroPrice.IsSuccess)
+        {
+            TicketPrice = zeroPrice.Value;
+        }
 
-        // Legacy single pricing
-        return TicketPrice == null || TicketPrice.IsZero;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.86: Sets single ticket pricing and updates IsFreeEvent flag
+    /// Replaces legacy pricing setter with flag management
+    /// </summary>
+    /// <param name="ticketPrice">Ticket price (use Money.Zero for free events)</param>
+    public Result SetPricing(Money? ticketPrice)
+    {
+        if (ticketPrice == null)
+            return Result.Failure("Ticket price cannot be null. Use SetAsFreeEvent() for free events.");
+
+        TicketPrice = ticketPrice;
+        IsFreeEvent = ticketPrice.IsZero;
+
+        MarkAsUpdated();
+
+        return Result.Success();
     }
 
     /// <summary>
     /// Sets dual pricing for event (adult + optional child pricing)
     /// Session 21: Dual Ticket Pricing feature
+    /// Phase 6A.86: Now updates IsFreeEvent flag based on pricing
     /// </summary>
     /// <param name="pricing">Ticket pricing configuration with adult and optional child prices</param>
     public Result SetDualPricing(TicketPricing pricing)
@@ -630,8 +888,29 @@ public class Event : BaseEntity
 
         Pricing = pricing;
 
-        // Maintain backward compatibility: Set TicketPrice to AdultPrice
-        TicketPrice = pricing.AdultPrice;
+        // Phase 6A.86: Update IsFreeEvent flag based on pricing type
+        if (pricing.Type == PricingType.GroupTiered)
+        {
+            // For group-tiered pricing, check if all tiers are free
+            IsFreeEvent = pricing.GroupTiers.All(tier => tier.PricePerPerson.IsZero);
+        }
+        else
+        {
+            // For single/dual pricing, check adult price
+            IsFreeEvent = pricing.AdultPrice.IsZero;
+        }
+
+        // Session 33: Create a NEW Money instance for backward compatibility
+        // CRITICAL: Do NOT share the same Money object reference between TicketPrice and Pricing.AdultPrice
+        // EF Core cannot track the same owned entity instance in two different navigations
+        if (pricing.AdultPrice != null)
+        {
+            var copyResult = Money.Create(pricing.AdultPrice.Amount, pricing.AdultPrice.Currency);
+            if (copyResult.IsSuccess)
+            {
+                TicketPrice = copyResult.Value;
+            }
+        }
 
         MarkAsUpdated();
 
@@ -643,6 +922,7 @@ public class Event : BaseEntity
 
     /// <summary>
     /// Phase 6D: Sets group-based tiered pricing for the event
+    /// Phase 6A.86: Now updates IsFreeEvent flag based on tier pricing
     /// </summary>
     /// <param name="pricing">Ticket pricing configuration with group tiers</param>
     public Result SetGroupPricing(TicketPricing? pricing)
@@ -655,6 +935,9 @@ public class Event : BaseEntity
 
         Pricing = pricing;
 
+        // Phase 6A.86: Check if all tiers are free (all prices are zero)
+        IsFreeEvent = pricing.GroupTiers.All(tier => tier.PricePerPerson.IsZero);
+
         // Set TicketPrice to null for group pricing (not applicable)
         TicketPrice = null;
 
@@ -662,6 +945,21 @@ public class Event : BaseEntity
 
         // Raise domain event
         RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Sets the revenue breakdown for this event
+    /// Should be called after pricing is set and location is known
+    /// </summary>
+    public Result SetRevenueBreakdown(RevenueBreakdown breakdown)
+    {
+        if (breakdown == null)
+            return Result.Failure("Revenue breakdown cannot be null");
+
+        RevenueBreakdown = breakdown;
+        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -685,6 +983,14 @@ public class Event : BaseEntity
             return Result<Money>.Success(freePrice);
         }
 
+        // Phase 6A.86: Security validation - Paid events MUST have pricing configured
+        if (!IsFreeEvent && Pricing == null && TicketPrice == null)
+        {
+            throw new InvalidOperationException(
+                "Paid event pricing is not configured. Events marked as paid must have explicit pricing set. " +
+                "Use SetPricing(), SetDualPricing(), or SetGroupPricing() to configure pricing.");
+        }
+
         // Calculate based on pricing configuration
         if (Pricing != null)
         {
@@ -700,13 +1006,13 @@ public class Event : BaseEntity
                 return Result<Money>.Success(groupPriceResult.Value);
             }
 
-            // Dual pricing (AgeDual): Calculate for each attendee based on age
-            // Single pricing: Also uses CalculateForAttendee (returns AdultPrice for all)
+            // Dual pricing (AgeDual): Calculate for each attendee based on age category
+            // Single pricing: Also uses CalculateForCategory (returns AdultPrice for all)
             Money? totalPrice = null;
 
             foreach (var attendee in attendees)
             {
-                var attendeePrice = Pricing.CalculateForAttendee(attendee.Age);
+                var attendeePrice = Pricing.CalculateForCategory(attendee.AgeCategory);
 
                 if (totalPrice == null)
                 {
@@ -1310,6 +1616,82 @@ public class Event : BaseEntity
     }
 
     /// <summary>
+    /// Cancels all signup commitments for a specific user across all sign-up lists in this event
+    /// Phase 6A.28: Called during registration cancellation when user opts to delete commitments
+    /// Properly restores remaining_quantity for each affected SignUpItem via domain logic
+    /// </summary>
+    /// <param name="userId">The ID of the user whose commitments should be cancelled</param>
+    /// <returns>Result indicating success or failure with error details</returns>
+    public Result CancelAllUserCommitments(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        var cancelledCount = 0;
+        var errors = new List<string>();
+
+        // Phase 6A.28 Issue 4 Fix: Track Open items to delete (user-created items should be removed entirely)
+        var itemsToRemove = new List<(SignUpList signUpList, Guid itemId)>();
+
+        foreach (var signUpList in _signUpLists)
+        {
+            foreach (var item in signUpList.Items)
+            {
+                // Check if this item has a commitment from the user
+                if (item.Commitments.Any(c => c.UserId == userId))
+                {
+                    // Use domain method which properly restores remaining_quantity
+                    var result = item.CancelCommitment(userId);
+
+                    if (result.IsSuccess)
+                    {
+                        cancelledCount++;
+
+                        // Phase 6A.28 Issue 4 Fix: If this is an Open item created by this user, mark for deletion
+                        // Open items are user-owned, so when the user cancels, both commitment AND item should be removed
+                        // This makes Open items consistent with the "Cancel Sign Up" button behavior
+                        if (item.CreatedByUserId.HasValue && item.CreatedByUserId.Value == userId)
+                        {
+                            itemsToRemove.Add((signUpList, item.Id));
+                        }
+                    }
+                    else
+                    {
+                        // Log error but continue processing other commitments
+                        errors.Add($"Failed to cancel commitment for item '{item.ItemDescription}': {result.Error}");
+                    }
+                }
+            }
+        }
+
+        // Phase 6A.28 Issue 4 Fix: Remove user-created Open items (commitment already cancelled above)
+        foreach (var (signUpList, itemId) in itemsToRemove)
+        {
+            var removeResult = signUpList.RemoveItem(itemId);
+            if (removeResult.IsFailure)
+            {
+                errors.Add($"Failed to remove Open item: {removeResult.Error}");
+            }
+        }
+
+        if (cancelledCount > 0)
+        {
+            MarkAsUpdated();
+        }
+
+        // Return success if at least one commitment was cancelled, even if some failed
+        if (cancelledCount > 0)
+        {
+            return Result.Success();
+        }
+
+        // No commitments found or all failed
+        return errors.Any()
+            ? Result.Failure($"Failed to cancel commitments: {string.Join("; ", errors)}")
+            : Result.Success();
+    }
+
+    /// <summary>
     /// Gets a sign-up list by ID
     /// </summary>
     public SignUpList? GetSignUpList(Guid signUpListId)
@@ -1329,6 +1711,307 @@ public class Event : BaseEntity
     /// Checks if event has any sign-up lists
     /// </summary>
     public bool HasSignUpLists() => _signUpLists.Any();
+
+    #endregion
+
+    #region Badge Management (Phase 6A.25)
+
+    /// <summary>
+    /// Assigns a badge to this event
+    /// Business rules:
+    /// - Same badge cannot be assigned twice
+    /// - Maximum 3 badges per event
+    /// Phase 6A.28: Added duration support
+    /// </summary>
+    /// <param name="badgeId">Badge ID to assign</param>
+    /// <param name="assignedByUserId">User performing the assignment</param>
+    /// <param name="durationDays">Duration override in days (null = use badge default or never expire)</param>
+    /// <param name="maxDurationDays">Maximum duration from badge's DefaultDurationDays (for validation)</param>
+    public Result<EventBadge> AssignBadge(
+        Guid badgeId,
+        Guid assignedByUserId,
+        int? durationDays = null,
+        int? maxDurationDays = null)
+    {
+        if (badgeId == Guid.Empty)
+            return Result<EventBadge>.Failure("Badge ID is required");
+
+        if (assignedByUserId == Guid.Empty)
+            return Result<EventBadge>.Failure("Assigner user ID is required");
+
+        // Business Rule 1: Cannot assign same badge twice
+        if (_badges.Any(b => b.BadgeId == badgeId))
+            return Result<EventBadge>.Failure("This badge is already assigned to the event");
+
+        // Business Rule 2: Maximum badges limit
+        if (_badges.Count >= MAX_BADGES)
+            return Result<EventBadge>.Failure($"Event cannot have more than {MAX_BADGES} badges");
+
+        var eventBadgeResult = EventBadge.Create(Id, badgeId, assignedByUserId, durationDays, maxDurationDays);
+        if (eventBadgeResult.IsFailure)
+            return Result<EventBadge>.Failure(eventBadgeResult.Error);
+
+        _badges.Add(eventBadgeResult.Value);
+        MarkAsUpdated();
+
+        return Result<EventBadge>.Success(eventBadgeResult.Value);
+    }
+
+    /// <summary>
+    /// Removes a badge from this event
+    /// </summary>
+    public Result RemoveBadge(Guid badgeId)
+    {
+        var eventBadge = _badges.FirstOrDefault(b => b.BadgeId == badgeId);
+        if (eventBadge == null)
+            return Result.Failure($"Badge with ID {badgeId} is not assigned to this event");
+
+        _badges.Remove(eventBadge);
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if event has any badges assigned
+    /// </summary>
+    public bool HasBadges() => _badges.Any();
+
+    /// <summary>
+    /// Checks if a specific badge is assigned to this event
+    /// </summary>
+    public bool HasBadge(Guid badgeId) => _badges.Any(b => b.BadgeId == badgeId);
+
+    /// <summary>
+    /// Gets the number of badges assigned to this event
+    /// </summary>
+    public int BadgeCount() => _badges.Count;
+
+    #endregion
+
+    #region Email Group Management
+
+    /// <summary>
+    /// Assigns email groups to this event for invitation distribution
+    /// Business Rules:
+    /// - Email groups must belong to the event organizer
+    /// - Duplicate assignments are prevented
+    /// - Can assign multiple groups at once
+    /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// </summary>
+    public Result AssignEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
+
+        if (!groupList.Any())
+            return Result.Success(); // No groups to assign
+
+        // Add groups that aren't already assigned to domain list
+        foreach (var groupId in groupList)
+        {
+            if (!_emailGroupIds.Contains(groupId))
+            {
+                _emailGroupIds.Add(groupId);
+            }
+        }
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Replaces all email groups with a new set
+    /// Primary method for updating email groups during event editing
+    /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// </summary>
+    public Result SetEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
+
+        // Update domain collection (used by business logic)
+        _emailGroupIds.Clear();
+        _emailGroupIds.AddRange(groupList);
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes specific email groups from this event
+    /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// </summary>
+    public Result RemoveEmailGroups(IEnumerable<Guid> emailGroupIds)
+    {
+        if (emailGroupIds == null)
+            return Result.Failure("Email group IDs cannot be null");
+
+        var groupList = emailGroupIds.Where(id => id != Guid.Empty).ToList();
+
+        if (!groupList.Any())
+            return Result.Success(); // No groups to remove
+
+        // Remove from domain list
+        foreach (var groupId in groupList)
+        {
+            _emailGroupIds.Remove(groupId);
+        }
+
+        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+        // See EventRepository - uses EF Core Entry API per ADR-009
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes all email groups from this event
+    /// Phase 6A.32: Email Groups Integration
+    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// </summary>
+    public Result ClearEmailGroups()
+    {
+        if (_emailGroupIds.Any())
+        {
+            _emailGroupIds.Clear();
+
+            // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
+            // See EventRepository - uses EF Core Entry API per ADR-009
+
+            MarkAsUpdated();
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.33 FIX: Sync domain's email group ID list from loaded EF Core entities
+    /// This method is called ONLY by infrastructure layer after loading event from database
+    /// Does NOT mark entity as updated or raise events - this is a hydration concern
+    /// Per ADR-009: Domain maintains List&lt;Guid&gt; for business logic, EF Core has shadow navigation for persistence
+    /// Pattern mirrors User.SyncPreferredMetroAreaIdsFromEntities
+    /// </summary>
+    /// <param name="emailGroupIds">IDs extracted from loaded shadow navigation entities</param>
+    internal void SyncEmailGroupIdsFromEntities(IEnumerable<Guid> emailGroupIds)
+    {
+        _emailGroupIds.Clear();
+        _emailGroupIds.AddRange(emailGroupIds);
+        // NOTE: Do NOT call MarkAsUpdated() - this is a read operation, not a modification
+        // NOTE: Do NOT raise domain events - this is infrastructure hydration, not business operation
+    }
+
+    /// <summary>
+    /// Checks if this event has any email groups assigned
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public bool HasEmailGroups() => _emailGroupIds.Any();
+
+    /// <summary>
+    /// Gets the count of email groups assigned to this event
+    /// Phase 6A.32: Email Groups Integration
+    /// </summary>
+    public int EmailGroupCount() => _emailGroupIds.Count;
+
+    #endregion
+
+    #region Organizer Contact Management
+
+    /// <summary>
+    /// Sets organizer contact details for event inquiries
+    /// Business Rules:
+    /// - If publishContact is true, contactName is required
+    /// - If publishContact is true, at least one contact method (email or phone) is required
+    /// - Email format is validated if provided
+    /// - If publishContact is false, all contact fields are cleared (privacy)
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    /// <param name="publishContact">Whether to publish organizer contact information</param>
+    /// <param name="contactName">Organizer's display name</param>
+    /// <param name="contactPhone">Organizer's phone number (optional if email provided)</param>
+    /// <param name="contactEmail">Organizer's email address (optional if phone provided)</param>
+    public Result SetOrganizerContactDetails(
+        bool publishContact,
+        string? contactName,
+        string? contactPhone,
+        string? contactEmail)
+    {
+        // Business Rule 1: If publishing contact, name is required
+        if (publishContact)
+        {
+            if (string.IsNullOrWhiteSpace(contactName))
+                return Result.Failure("Contact name is required when publishing organizer contact");
+
+            // Business Rule 2: At least one contact method (email or phone) must be provided
+            var hasEmail = !string.IsNullOrWhiteSpace(contactEmail);
+            var hasPhone = !string.IsNullOrWhiteSpace(contactPhone);
+
+            if (!hasEmail && !hasPhone)
+                return Result.Failure("At least one contact method (email or phone) is required");
+
+            // Business Rule 3: Email validation if provided
+            if (hasEmail && !IsValidEmail(contactEmail!))
+                return Result.Failure("Invalid email format");
+
+            // Set contact details (trimmed and normalized)
+            PublishOrganizerContact = true;
+            OrganizerContactName = contactName.Trim();
+            OrganizerContactPhone = hasPhone ? contactPhone!.Trim() : null;
+            OrganizerContactEmail = hasEmail ? contactEmail!.Trim().ToLowerInvariant() : null;
+        }
+        else
+        {
+            // Privacy: Clear all contact details when unpublishing
+            PublishOrganizerContact = false;
+            OrganizerContactName = null;
+            OrganizerContactPhone = null;
+            OrganizerContactEmail = null;
+        }
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks if organizer contact information is published and available
+    /// Returns true only if contact is published AND has a valid contact name
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    public bool HasOrganizerContact() =>
+        PublishOrganizerContact && !string.IsNullOrWhiteSpace(OrganizerContactName);
+
+    /// <summary>
+    /// Validates email format using the same regex pattern as Email value object
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// </summary>
+    /// <param name="email">Email address to validate</param>
+    /// <returns>True if email format is valid, false otherwise</returns>
+    private static bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        // RFC 5322 compliant email regex (same pattern as Email value object)
+        // Supports formats like: user@example.com, DoNotReply@7689582e-73cc-4552-b2ff-8afd9d1a6814.azurecomm.net
+        var emailRegex = new System.Text.RegularExpressions.Regex(
+            @"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return emailRegex.IsMatch(email.Trim());
+    }
 
     #endregion
 }

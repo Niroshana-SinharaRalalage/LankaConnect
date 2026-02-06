@@ -25,6 +25,9 @@ public class SignUpList : BaseEntity
     public bool HasPreferredItems { get; private set; }
     public bool HasSuggestedItems { get; private set; }
 
+    // Phase 6A.27: Open items flag - allows users to add their own items
+    public bool HasOpenItems { get; private set; }
+
     // Collections
     public IReadOnlyList<SignUpCommitment> Commitments => _commitments.AsReadOnly();
     public IReadOnlyList<string> PredefinedItems => _predefinedItems.AsReadOnly(); // Legacy
@@ -43,7 +46,8 @@ public class SignUpList : BaseEntity
         SignUpType signUpType,
         bool hasMandatoryItems = false,
         bool hasPreferredItems = false,
-        bool hasSuggestedItems = false)
+        bool hasSuggestedItems = false,
+        bool hasOpenItems = false)
     {
         Category = category;
         Description = description;
@@ -51,6 +55,7 @@ public class SignUpList : BaseEntity
         HasMandatoryItems = hasMandatoryItems;
         HasPreferredItems = hasPreferredItems;
         HasSuggestedItems = hasSuggestedItems;
+        HasOpenItems = hasOpenItems;
     }
 
     /// <summary>
@@ -70,13 +75,15 @@ public class SignUpList : BaseEntity
 
     /// <summary>
     /// Creates a category-based sign-up list (New model - without items)
+    /// Phase 6A.27: Added hasOpenItems parameter for user-submitted items
     /// </summary>
     public static Result<SignUpList> CreateWithCategories(
         string category,
         string description,
         bool hasMandatoryItems,
         bool hasPreferredItems,
-        bool hasSuggestedItems)
+        bool hasSuggestedItems,
+        bool hasOpenItems = false)
     {
         if (string.IsNullOrWhiteSpace(category))
             return Result<SignUpList>.Failure("Category cannot be empty");
@@ -84,7 +91,7 @@ public class SignUpList : BaseEntity
         if (string.IsNullOrWhiteSpace(description))
             return Result<SignUpList>.Failure("Description cannot be empty");
 
-        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems)
+        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems && !hasOpenItems)
             return Result<SignUpList>.Failure("At least one item category must be selected");
 
         var signUpList = new SignUpList(
@@ -93,7 +100,8 @@ public class SignUpList : BaseEntity
             SignUpType.Predefined, // Use Predefined to indicate structured items
             hasMandatoryItems,
             hasPreferredItems,
-            hasSuggestedItems);
+            hasSuggestedItems,
+            hasOpenItems);
 
         return Result<SignUpList>.Success(signUpList);
     }
@@ -101,6 +109,7 @@ public class SignUpList : BaseEntity
     /// <summary>
     /// Creates a category-based sign-up list WITH items in a single operation
     /// Matches requirement: POST /api/events/{eventId}/signups with items array
+    /// Phase 6A.27: Added hasOpenItems parameter for user-submitted items
     /// </summary>
     public static Result<SignUpList> CreateWithCategoriesAndItems(
         string category,
@@ -108,7 +117,8 @@ public class SignUpList : BaseEntity
         bool hasMandatoryItems,
         bool hasPreferredItems,
         bool hasSuggestedItems,
-        IEnumerable<(string description, int quantity, SignUpItemCategory category, string? notes)> items)
+        IEnumerable<(string description, int quantity, SignUpItemCategory category, string? notes)> items,
+        bool hasOpenItems = false)
     {
         // Validate basic list properties
         if (string.IsNullOrWhiteSpace(category))
@@ -117,12 +127,12 @@ public class SignUpList : BaseEntity
         if (string.IsNullOrWhiteSpace(description))
             return Result<SignUpList>.Failure("Description cannot be empty");
 
-        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems)
+        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems && !hasOpenItems)
             return Result<SignUpList>.Failure("At least one item category must be selected");
 
-        // Validate items array
+        // Validate items array (only required if not Open-only list)
         var itemsList = items.ToList();
-        if (!itemsList.Any())
+        if (!itemsList.Any() && !hasOpenItems)
             return Result<SignUpList>.Failure("At least one item must be provided");
 
         // Create the sign-up list
@@ -132,7 +142,8 @@ public class SignUpList : BaseEntity
             SignUpType.Predefined,
             hasMandatoryItems,
             hasPreferredItems,
-            hasSuggestedItems);
+            hasSuggestedItems,
+            hasOpenItems);
 
         // Add all items
         foreach (var item in itemsList)
@@ -186,13 +197,16 @@ public class SignUpList : BaseEntity
         string? notes = null)
     {
         // Validate category is enabled
+#pragma warning disable CS0618 // Preferred is deprecated but still supported for backward compatibility
         var categoryEnabled = itemCategory switch
         {
             SignUpItemCategory.Mandatory => HasMandatoryItems,
             SignUpItemCategory.Preferred => HasPreferredItems,
             SignUpItemCategory.Suggested => HasSuggestedItems,
+            SignUpItemCategory.Open => HasOpenItems,
             _ => false
         };
+#pragma warning restore CS0618
 
         if (!categoryEnabled)
             return Result<SignUpItem>.Failure($"{itemCategory} category is not enabled for this sign-up list");
@@ -339,7 +353,7 @@ public class SignUpList : BaseEntity
     /// <summary>
     /// Checks if using new category-based model
     /// </summary>
-    public bool IsCategoryBased() => _items.Any() || HasMandatoryItems || HasPreferredItems || HasSuggestedItems;
+    public bool IsCategoryBased() => _items.Any() || HasMandatoryItems || HasPreferredItems || HasSuggestedItems || HasOpenItems;
 
     /// <summary>
     /// Checks if using legacy predefined items model
@@ -349,13 +363,15 @@ public class SignUpList : BaseEntity
     /// <summary>
     /// Updates sign-up list details (category, description, and category flags)
     /// Phase 6A.13: Edit Sign-Up List feature
+    /// Phase 6A.27: Added hasOpenItems parameter for user-submitted items
     /// </summary>
     public Result UpdateDetails(
         string category,
         string description,
         bool hasMandatoryItems,
         bool hasPreferredItems,
-        bool hasSuggestedItems)
+        bool hasSuggestedItems,
+        bool hasOpenItems = false)
     {
         // Validate inputs
         if (string.IsNullOrWhiteSpace(category))
@@ -372,12 +388,14 @@ public class SignUpList : BaseEntity
                 return Result.Failure("Cannot disable Mandatory category because it contains items");
         }
 
+#pragma warning disable CS0618 // Preferred is deprecated but still supported
         if (!hasPreferredItems && HasPreferredItems)
         {
             var preferredItems = GetItemsByCategory(SignUpItemCategory.Preferred);
             if (preferredItems.Any())
                 return Result.Failure("Cannot disable Preferred category because it contains items");
         }
+#pragma warning restore CS0618
 
         if (!hasSuggestedItems && HasSuggestedItems)
         {
@@ -386,8 +404,15 @@ public class SignUpList : BaseEntity
                 return Result.Failure("Cannot disable Suggested category because it contains items");
         }
 
+        if (!hasOpenItems && HasOpenItems)
+        {
+            var openItems = GetItemsByCategory(SignUpItemCategory.Open);
+            if (openItems.Any())
+                return Result.Failure("Cannot disable Open category because it contains user-submitted items");
+        }
+
         // After checking for items in categories, validate at least one category is selected
-        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems)
+        if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems && !hasOpenItems)
             return Result.Failure("At least one item category must be selected");
 
         // Update properties
@@ -396,6 +421,7 @@ public class SignUpList : BaseEntity
         HasMandatoryItems = hasMandatoryItems;
         HasPreferredItems = hasPreferredItems;
         HasSuggestedItems = hasSuggestedItems;
+        HasOpenItems = hasOpenItems;
 
         MarkAsUpdated();
 
@@ -410,5 +436,51 @@ public class SignUpList : BaseEntity
             DateTime.UtcNow));
 
         return Result.Success();
+    }
+
+    // ==================== PHASE 6A.27: OPEN ITEMS METHODS ====================
+
+    /// <summary>
+    /// Phase 6A.27: Adds a user-submitted Open item to the sign-up list
+    /// The user who creates the item automatically commits to bringing it
+    /// </summary>
+    public Result<SignUpItem> AddOpenItem(
+        Guid userId,
+        string itemName,
+        int quantity,
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (!HasOpenItems)
+            return Result<SignUpItem>.Failure("Open items are not enabled for this sign-up list");
+
+        if (userId == Guid.Empty)
+            return Result<SignUpItem>.Failure("User ID is required for Open items");
+
+        // Create the Open item
+        var itemResult = SignUpItem.CreateOpenItem(Id, userId, itemName, quantity, notes);
+        if (itemResult.IsFailure)
+            return Result<SignUpItem>.Failure(itemResult.Error);
+
+        var item = itemResult.Value;
+
+        // Auto-commit the creator to their own item
+        var commitResult = item.AddCommitment(
+            userId,
+            quantity,
+            notes,
+            contactName,
+            contactEmail,
+            contactPhone);
+
+        if (commitResult.IsFailure)
+            return Result<SignUpItem>.Failure(commitResult.Error);
+
+        _items.Add(item);
+        MarkAsUpdated();
+
+        return Result<SignUpItem>.Success(item);
     }
 }

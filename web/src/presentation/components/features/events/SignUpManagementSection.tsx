@@ -29,6 +29,12 @@ import {
   useAddSignUpList,
   useRemoveSignUpList,
   useCommitToSignUpItem,
+  useCommitToSignUpItemAnonymous, // GitHub Issue #41
+  // Phase 6A.27: Open Sign-Up Items
+  useAddOpenSignUpItem,
+  useAddOpenSignUpItemAnonymous,
+  useUpdateOpenSignUpItem,
+  useCancelOpenSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
 import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import {
@@ -41,8 +47,11 @@ import {
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
-import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 
 /**
  * Props for SignUpManagementSection
@@ -79,9 +88,27 @@ export function SignUpManagementSection({
   // Tab state for multiple sign-up lists
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-  // Cancel sign-up state
-  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
+  // GitHub Issue #31: Unified cancel dialog state (replaces ugly browser confirm())
+  type CancelDialogType = 'commitment' | 'signUpItem' | 'openItem';
+  interface CancelDialogState {
+    open: boolean;
+    type: CancelDialogType | null;
+    signUpListId: string;
+    itemId?: string;
+  }
+  const [cancelDialog, setCancelDialog] = useState<CancelDialogState>({
+    open: false,
+    type: null,
+    signUpListId: '',
+    itemId: undefined,
+  });
+  const [isCancelPending, setIsCancelPending] = useState(false);
+
+  // Phase 6A.27: Open sign-up item modal state
+  const [openItemModalOpen, setOpenItemModalOpen] = useState(false);
+  const [openItemSignUpListId, setOpenItemSignUpListId] = useState<string>('');
+  const [openItemSignUpListCategory, setOpenItemSignUpListCategory] = useState<string>('');
+  const [editingOpenItem, setEditingOpenItem] = useState<SignUpItemDto | null>(null);
 
   // Fetch sign-up lists
   const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
@@ -90,7 +117,17 @@ export function SignUpManagementSection({
   const commitToSignUp = useCommitToSignUp();
   const cancelCommitment = useCancelCommitment();
   const commitToSignUpItem = useCommitToSignUpItem();
+  const commitToSignUpItemAnonymous = useCommitToSignUpItemAnonymous(); // GitHub Issue #41
   const removeSignUpListMutation = useRemoveSignUpList();
+
+  // Phase 6A.27: Open sign-up item mutations
+  const addOpenSignUpItem = useAddOpenSignUpItem();
+  const addOpenSignUpItemAnonymous = useAddOpenSignUpItemAnonymous();
+  const updateOpenSignUpItem = useUpdateOpenSignUpItem();
+  const cancelOpenSignUpItem = useCancelOpenSignUpItem();
+
+  // Auth store for user info
+  const { user } = useAuthStore();
 
   // Initialize active tab on first load (moved here to fix hooks order)
   React.useEffect(() => {
@@ -99,15 +136,82 @@ export function SignUpManagementSection({
     }
   }, [signUpLists]);
 
+  // GitHub Issue #31: Helper function to get dialog content based on cancel type
+  const getCancelDialogContent = (type: CancelDialogType | null) => {
+    switch (type) {
+      case 'commitment':
+        return {
+          title: 'Cancel Commitment',
+          description: 'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
+        };
+      case 'signUpItem':
+        return {
+          title: 'Cancel Sign-Up',
+          description: 'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
+        };
+      case 'openItem':
+        return {
+          title: 'Cancel Sign-Up',
+          description: 'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
+        };
+      default:
+        return { title: '', description: '' };
+    }
+  };
+
+  // GitHub Issue #31: Unified cancel confirm handler
+  const handleCancelConfirm = async () => {
+    if (!cancelDialog.type || !userId) return;
+
+    setIsCancelPending(true);
+    try {
+      switch (cancelDialog.type) {
+        case 'commitment':
+          await cancelCommitment.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            userId,
+          });
+          break;
+        case 'signUpItem':
+          await commitToSignUpItem.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            itemId: cancelDialog.itemId!,
+            userId,
+            quantity: 0, // Signal full cancellation
+            notes: '',
+            contactName: '',
+            contactEmail: '',
+            contactPhone: '',
+          });
+          break;
+        case 'openItem':
+          await cancelOpenSignUpItem.mutateAsync({
+            eventId,
+            signupId: cancelDialog.signUpListId,
+            itemId: cancelDialog.itemId!,
+          });
+          break;
+      }
+    } catch (error) {
+      console.error(`Failed to cancel ${cancelDialog.type}:`, error);
+      // Error is handled by mutation's onError or we can add toast here
+    } finally {
+      setIsCancelPending(false);
+      setCancelDialog({ open: false, type: null, signUpListId: '', itemId: undefined });
+    }
+  };
+
   // Handle commit to sign-up
   const handleCommit = async (signUpId: string) => {
     if (!userId) {
-      alert('Please log in to commit to items');
+      toast.error('Please log in to commit to items');
       return;
     }
 
     if (!itemDescription.trim()) {
-      alert('Please enter an item description');
+      toast.error('Please enter an item description');
       return;
     }
 
@@ -127,30 +231,19 @@ export function SignUpManagementSection({
       setSelectedSignUpId(null);
     } catch (err) {
       console.error('Failed to commit:', err);
-      alert('Failed to commit. Please try again.');
+      toast.error('Failed to commit. Please try again.');
     }
   };
 
-  // Handle cancel commitment
-  const handleCancel = async (signUpId: string) => {
-    if (!userId) {
-      return;
-    }
-
-    if (!confirm('Are you sure you want to cancel your commitment?')) {
-      return;
-    }
-
-    try {
-      await cancelCommitment.mutateAsync({
-        eventId,
-        signupId: signUpId,
-        userId,
-      });
-    } catch (err) {
-      console.error('Failed to cancel commitment:', err);
-      alert('Failed to cancel commitment. Please try again.');
-    }
+  // Handle cancel commitment - GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancel = (signUpId: string) => {
+    if (!userId) return;
+    setCancelDialog({
+      open: true,
+      type: 'commitment',
+      signUpListId: signUpId,
+      itemId: undefined,
+    });
   };
 
   // Handle commit to specific item (category-based) via modal
@@ -171,60 +264,35 @@ export function SignUpManagementSection({
 
   // Phase 6A.23: Handle anonymous commit to specific item
   // Used when user is not logged in but is registered for event
+  // GitHub Issue #41: Uses React Query mutation for proper cache invalidation (no page reload)
   const handleCommitToItemAnonymous = async (data: AnonymousCommitmentFormData) => {
-    await eventsRepository.commitToSignUpItemAnonymous(
+    await commitToSignUpItemAnonymous.mutateAsync({
       eventId,
-      data.signUpListId,
-      data.itemId,
-      {
-        contactEmail: data.contactEmail,
-        quantity: data.quantity,
-        notes: data.notes,
-        contactName: data.contactName,
-        contactPhone: data.contactPhone,
-      }
-    );
-    // Invalidate cache to refresh sign-up lists
-    // Note: Since we're using direct repository call, we need to manually trigger a refetch
-    window.location.reload();
+      signupId: data.signUpListId,
+      itemId: data.itemId,
+      contactEmail: data.contactEmail,
+      quantity: data.quantity,
+      notes: data.notes,
+      contactName: data.contactName,
+      contactPhone: data.contactPhone,
+    });
+    // Cache is automatically invalidated by the mutation hook
+    // No page reload needed - scroll position is preserved
   };
 
   // Handle cancel sign-up item commitment (Phase 6A.20)
-  const handleCancelSignUp = async (signUpListId: string, itemId: string) => {
+  // GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancelSignUp = (signUpListId: string, itemId: string) => {
     if (!userId) {
-      alert('Please log in to cancel sign-ups');
+      toast.error('Please log in to cancel sign-ups');
       return;
     }
-
-    if (!confirm('Are you sure you want to cancel your sign-up for this item?')) {
-      return;
-    }
-
-    try {
-      setIsCancelling(true);
-      setCancelConfirmId(itemId);
-
-      // Call API with quantity = 0 to signal cancellation
-      await commitToSignUpItem.mutateAsync({
-        eventId,
-        signupId: signUpListId,
-        itemId: itemId,
-        userId: userId,
-        quantity: 0, // Signal full cancellation
-        notes: '',
-        contactName: '',
-        contactEmail: '',
-        contactPhone: '',
-      });
-
-      setCancelConfirmId(null);
-    } catch (error) {
-      console.error('Failed to cancel sign-up:', error);
-      alert('Failed to cancel sign-up. Please try again.');
-      setCancelConfirmId(null);
-    } finally {
-      setIsCancelling(false);
-    }
+    setCancelDialog({
+      open: true,
+      type: 'signUpItem',
+      signUpListId,
+      itemId,
+    });
   };
 
   // Open commitment modal - Phase 6A.23: Available for ALL users (logged in or not)
@@ -246,36 +314,158 @@ export function SignUpManagementSection({
       setDeleteConfirmId(null);
     } catch (err) {
       console.error('Failed to delete sign-up list:', err);
-      alert('Failed to delete sign-up list. Please try again.');
+      toast.error('Failed to delete sign-up list. Please try again.');
     }
   };
 
-  // Get category badge color
+  // Get category badge color - Phase 6A.28: Updated to match item card colors
+  // Avoiding green since it's used for Registration details section
   const getCategoryColor = (category: SignUpItemCategory) => {
     switch (category) {
       case SignUpItemCategory.Mandatory:
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-orange-100 text-orange-800 border-orange-300';
       case SignUpItemCategory.Preferred:
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-rose-100 text-rose-800 border-rose-300';
       case SignUpItemCategory.Suggested:
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-sky-100 text-sky-800 border-sky-300';
+      case SignUpItemCategory.Open:
+        return 'bg-violet-100 text-violet-800 border-violet-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
-  // Get category label
+  // Get item card background and border colors based on category
+  // Phase 6A.28: Distinct colors matching LankaConnect theme (Saffron/Orange primary, Maroon secondary)
+  // Avoiding green since it's used for Registration details section
+  const getItemCardStyle = (category: SignUpItemCategory) => {
+    switch (category) {
+      case SignUpItemCategory.Mandatory:
+        // Orange/Saffron - LankaConnect primary color, indicates required items
+        return 'bg-orange-50 border-l-[6px] border-l-orange-500 border border-orange-200 shadow-sm';
+      case SignUpItemCategory.Preferred:
+        // Rose/Pink - indicates preferred items (hidden but kept for data consistency)
+        return 'bg-rose-50 border-l-[6px] border-l-rose-500 border border-rose-200 shadow-sm';
+      case SignUpItemCategory.Suggested:
+        // Sky blue - cool, calm optional suggestions
+        return 'bg-sky-50 border-l-[6px] border-l-sky-500 border border-sky-200 shadow-sm';
+      case SignUpItemCategory.Open:
+        // Violet/Purple - creative, user-contributed items
+        return 'bg-violet-50 border-l-[6px] border-l-violet-500 border border-violet-200 shadow-sm';
+      default:
+        return 'bg-gray-50 border-l-[6px] border-l-gray-500 border border-gray-200 shadow-sm';
+    }
+  };
+
+  // Get category label - Phase 6A.28: Updated to include "Items" suffix for clarity
   const getCategoryLabel = (category: SignUpItemCategory) => {
     switch (category) {
       case SignUpItemCategory.Mandatory:
-        return 'Mandatory';
+        return 'Mandatory Items';
       case SignUpItemCategory.Preferred:
-        return 'Preferred';
+        return 'Preferred Items';
       case SignUpItemCategory.Suggested:
-        return 'Suggested';
+        return 'Suggested Items';
+      case SignUpItemCategory.Open:
+        return 'Open Items';
       default:
-        return 'Unknown';
+        return 'Unknown Items';
     }
+  };
+
+  // Phase 6A.27: Open item handlers
+  // Phase 6A.44: Allow anonymous users to add Open Items
+  const openAddOpenItemModal = (signUpListId: string, signUpListCategory: string) => {
+    setOpenItemSignUpListId(signUpListId);
+    setOpenItemSignUpListCategory(signUpListCategory);
+    setEditingOpenItem(null);
+    setOpenItemModalOpen(true);
+  };
+
+  const openEditOpenItemModal = (signUpListId: string, signUpListCategory: string, item: SignUpItemDto) => {
+    if (!userId) {
+      toast.error('Please log in to edit items');
+      return;
+    }
+    setOpenItemSignUpListId(signUpListId);
+    setOpenItemSignUpListCategory(signUpListCategory);
+    setEditingOpenItem(item);
+    setOpenItemModalOpen(true);
+  };
+
+  // Phase 6A.44: Support both authenticated and anonymous users for Open Items
+  const handleOpenItemSubmit = async (data: OpenItemFormData) => {
+    // Anonymous users must provide contact info
+    if (!userId && !data.contactEmail) {
+      throw new Error('Email is required for anonymous users');
+    }
+
+    if (editingOpenItem) {
+      // Update existing Open item (only authenticated users can update)
+      await updateOpenSignUpItem.mutateAsync({
+        eventId,
+        signupId: openItemSignUpListId,
+        itemId: editingOpenItem.id,
+        itemName: data.itemName,
+        quantity: data.quantity,
+        notes: data.notes,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+      });
+    } else {
+      // Add new Open item - use appropriate endpoint based on auth status
+      if (userId) {
+        // Authenticated user
+        await addOpenSignUpItem.mutateAsync({
+          eventId,
+          signupId: openItemSignUpListId,
+          itemName: data.itemName,
+          quantity: data.quantity,
+          notes: data.notes,
+          contactName: data.contactName,
+          contactEmail: data.contactEmail,
+          contactPhone: data.contactPhone,
+        });
+      } else {
+        // Anonymous user - use anonymous endpoint
+        await addOpenSignUpItemAnonymous.mutateAsync({
+          eventId,
+          signupId: openItemSignUpListId,
+          contactEmail: data.contactEmail!, // Required for anonymous users
+          itemName: data.itemName,
+          quantity: data.quantity,
+          notes: data.notes,
+          contactName: data.contactName,
+          contactPhone: data.contactPhone,
+        });
+      }
+    }
+  };
+
+  const handleOpenItemCancel = async () => {
+    if (!editingOpenItem || !userId) return;
+
+    await cancelOpenSignUpItem.mutateAsync({
+      eventId,
+      signupId: openItemSignUpListId,
+      itemId: editingOpenItem.id,
+    });
+  };
+
+  // Handle direct cancel of open item from list
+  // GitHub Issue #31: Opens styled dialog instead of browser confirm()
+  const handleCancelOpenItem = (signUpListId: string, itemId: string) => {
+    if (!userId) {
+      toast.error('Please log in to cancel sign-ups');
+      return;
+    }
+    setCancelDialog({
+      open: true,
+      type: 'openItem',
+      signUpListId,
+      itemId,
+    });
   };
 
   // Loading state
@@ -300,6 +490,18 @@ export function SignUpManagementSection({
 
   // No sign-up lists
   if (!signUpLists || signUpLists.length === 0) {
+    // Issue 3 Fix: Don't show duplicate Card on manage page (isOrganizer=true)
+    // The manage page already has a Card wrapper with header/actions
+    if (isOrganizer) {
+      return (
+        <div className="py-8 text-center text-muted-foreground">
+          <p>No sign-up lists for this event yet.</p>
+          <p className="text-sm mt-2">Create one to let attendees volunteer to bring items!</p>
+        </div>
+      );
+    }
+
+    // For attendee view (event detail page), show Card
     return (
       <div className="py-8">
         <Card>
@@ -307,7 +509,6 @@ export function SignUpManagementSection({
             <CardTitle>Sign-Up Lists</CardTitle>
             <CardDescription>
               No sign-up lists for this event yet.
-              {isOrganizer && ' Create one to let attendees volunteer to bring items!'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -340,9 +541,7 @@ export function SignUpManagementSection({
               }`}
             >
               {list.category}
-              <span className="ml-1 text-xs text-gray-500">
-                ({list.items?.length || list.commitments.length})
-              </span>
+              {/* Phase 6A.28 Issue 2 Fix: Remove commitment count from tabs - redundant info already shown per item */}
             </button>
           ))}
         </div>
@@ -352,8 +551,15 @@ export function SignUpManagementSection({
         // Check if current user has committed to this list
         const userCommitment = signUpList.commitments.find((c) => c.userId === userId);
 
-        // Check if this is a category-based sign-up (has items)
-        const isCategoryBased = signUpList.items && signUpList.items.length > 0;
+        // Check if this is a category-based sign-up (has items or has category flags)
+        // Phase 6A.28: hasPreferredItems kept for backwards compatibility but Preferred UI is hidden
+        const isCategoryBased = (signUpList.items && signUpList.items.length > 0) ||
+          signUpList.hasMandatoryItems || signUpList.hasPreferredItems ||
+          signUpList.hasSuggestedItems || signUpList.hasOpenItems;
+
+        // Phase 6A.27: Get Open items (user-submitted)
+        const openItems = signUpList.items?.filter(item => item.isOpenItem) || [];
+        const userOpenItems = openItems.filter(item => item.createdByUserId === userId);
 
         return (
           <Card key={signUpList.id}>
@@ -414,20 +620,32 @@ export function SignUpManagementSection({
               {/* CATEGORY-BASED SIGN-UPS (NEW) */}
               {isCategoryBased ? (
                 <div className="space-y-6">
-                  {/* Group items by category */}
-                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Preferred, SignUpItemCategory.Suggested].map((category) => {
-                    const categoryItems = signUpList.items.filter(item => item.itemCategory === category);
+                  {/* Group items by category - Phase 6A.28: Preferred is DEPRECATED and hidden from UI */}
+                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category, index) => {
+                    // For predefined categories, filter out Open items
+                    // Phase 6A.28: Also skip Preferred items - they are deprecated
+                    const categoryItems = signUpList.items.filter(item =>
+                      item.itemCategory === category &&
+                      !item.isOpenItem &&
+                      item.itemCategory !== SignUpItemCategory.Preferred
+                    );
 
                     if (categoryItems.length === 0) return null;
 
+                    // Check if there are items in previous categories (for separator)
+                    const hasPreviousCategoryItems = index > 0 && signUpList.items.some(item =>
+                      item.itemCategory === SignUpItemCategory.Mandatory &&
+                      !item.isOpenItem
+                    );
+
                     return (
-                      <div key={category} className="space-y-3">
+                      <div key={category} className={`space-y-3 ${hasPreviousCategoryItems ? 'border-t pt-4 mt-4' : ''}`}>
                         <h4 className="font-semibold flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(category)}`}>
+                          <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(category)}`}>
                             {getCategoryLabel(category)}
                           </span>
                           <span className="text-sm text-muted-foreground">
-                            ({categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'})
+                            ({categoryItems.length})
                           </span>
                         </h4>
 
@@ -438,7 +656,7 @@ export function SignUpManagementSection({
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
 
                             return (
-                              <div key={item.id} className="border rounded-lg p-4 space-y-2">
+                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
@@ -497,7 +715,8 @@ export function SignUpManagementSection({
                                 )}
 
                                 {/* Sign Up/Update button - Show if remaining qty OR user has commitment */}
-                                {(remainingQty > 0 || userItemCommitment) && (
+                                {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                                {!isOrganizer && (remainingQty > 0 || userItemCommitment) && (
                                   <div className="mt-3 flex gap-2">
                                     <Button
                                       onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
@@ -507,14 +726,14 @@ export function SignUpManagementSection({
                                       {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
                                     </Button>
                                     {/* Cancel button - Show only if user has commitment */}
+                                    {/* GitHub Issue #31: Button now opens styled dialog */}
                                     {userItemCommitment && (
                                       <Button
                                         onClick={() => handleCancelSignUp(signUpList.id, item.id)}
                                         size="sm"
                                         variant="destructive"
-                                        disabled={isCancelling && cancelConfirmId === item.id}
                                       >
-                                        {isCancelling && cancelConfirmId === item.id ? 'Cancelling...' : 'Cancel Sign Up'}
+                                        Cancel Sign Up
                                       </Button>
                                     )}
                                   </div>
@@ -544,6 +763,101 @@ export function SignUpManagementSection({
                       </div>
                     );
                   })}
+
+                  {/* Phase 6A.27: Open Items Section */}
+                  {signUpList.hasOpenItems && (
+                    <div className="space-y-3 border-t pt-4 mt-4">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
+                          {getCategoryLabel(SignUpItemCategory.Open)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          (Bring your own item)
+                        </span>
+                      </h4>
+
+                      <p className="text-sm text-muted-foreground">
+                        You can add your own item to bring to this sign-up list.
+                      </p>
+
+                      {/* Display existing Open items */}
+                      {openItems.length > 0 ? (
+                        <div className="space-y-3">
+                          {openItems.map((item) => {
+                            const isOwnItem = item.createdByUserId === userId;
+                            const commitment = item.commitments?.[0];
+
+                            return (
+                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(SignUpItemCategory.Open)}`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{item.itemDescription}</p>
+                                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-semibold">
+                                        Qty: {item.quantity}
+                                      </span>
+                                      {isOwnItem && (
+                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                                          Your item
+                                        </span>
+                                      )}
+                                    </div>
+                                    {item.notes && (
+                                      <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+                                    )}
+                                    {commitment && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        Brought by: {commitment.contactName || 'Anonymous'}
+                                        {commitment.contactEmail && ` (${commitment.contactEmail})`}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Update/Cancel buttons for own items */}
+                                {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                                {!isOrganizer && isOwnItem && (
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      onClick={() => openEditOpenItemModal(signUpList.id, signUpList.category, item)}
+                                      size="sm"
+                                      variant="default"
+                                    >
+                                      Update Sign Up
+                                    </Button>
+                                    {/* GitHub Issue #31: Button now opens styled dialog */}
+                                    <Button
+                                      onClick={() => handleCancelOpenItem(signUpList.id, item.id)}
+                                      size="sm"
+                                      variant="destructive"
+                                    >
+                                      Cancel Sign Up
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">
+                          No one has signed up with their own item yet. Be the first!
+                        </p>
+                      )}
+
+                      {/* Sign Up button for all users (Phase 6A.44: Allow anonymous sign-ups for Open Items) */}
+                      {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                      {!isOrganizer && (
+                        <Button
+                          onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Sign Up
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* LEGACY OPEN/PREDEFINED SIGN-UPS */
@@ -564,7 +878,8 @@ export function SignUpManagementSection({
                   {signUpList.commitments.length > 0 ? (
                     <div>
                       <h4 className="font-semibold mb-2">
-                        Commitments ({signUpList.commitmentCount}):
+                        {/* Phase 6A.28 Issue 2 Fix: Remove commitment count - redundant */}
+                        Commitments:
                       </h4>
                       <div className="space-y-2">
                         {signUpList.commitments.map((commitment) => (
@@ -676,6 +991,36 @@ export function SignUpManagementSection({
         onCommit={handleCommitToItem}
         onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
+      />
+
+      {/* Phase 6A.27: Open Item Sign-Up Modal */}
+      <OpenItemSignUpModal
+        open={openItemModalOpen}
+        onOpenChange={setOpenItemModalOpen}
+        signUpListId={openItemSignUpListId}
+        signUpListCategory={openItemSignUpListCategory}
+        eventId={eventId}
+        existingItem={editingOpenItem}
+        onSubmit={handleOpenItemSubmit}
+        onCancel={editingOpenItem ? handleOpenItemCancel : undefined}
+        isSubmitting={addOpenSignUpItem.isPending || updateOpenSignUpItem.isPending || cancelOpenSignUpItem.isPending}
+      />
+
+      {/* GitHub Issue #31: Unified Cancel Confirmation Dialog */}
+      <ConfirmDialog
+        open={cancelDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelDialog({ open: false, type: null, signUpListId: '', itemId: undefined });
+          }
+        }}
+        title={getCancelDialogContent(cancelDialog.type).title}
+        description={getCancelDialogContent(cancelDialog.type).description}
+        confirmLabel="Yes, Cancel"
+        cancelLabel="No, Keep It"
+        onConfirm={handleCancelConfirm}
+        variant="warning"
+        isLoading={isCancelPending}
       />
     </div>
   );

@@ -4,7 +4,41 @@ This directory contains Architecture Decision Records (ADRs) and detailed design
 
 ---
 
-## Latest Architecture: Event Media Features (Image Replace + Video Support)
+## Latest Architecture: Session 33 - Group Pricing JSONB Update Failure Analysis
+
+**Status:** ✅ Root Cause Identified - Solution Designed
+**Date:** 2025-12-14
+**Severity:** Critical (Production HTTP 500 Errors)
+
+### Complete Analysis Documentation Set (130+ pages)
+
+1. **[SUMMARY-Session-33-Group-Pricing-Fix.md](./SUMMARY-Session-33-Group-Pricing-Fix.md)** (40 pages)
+   - Executive summary of HTTP 500 root cause
+   - Solution design and implementation steps
+   - Validation and testing strategy
+   - Impact assessment and risk analysis
+
+2. **[ADR-005-Group-Pricing-JSONB-Update-Failure-Analysis.md](./ADR-005-Group-Pricing-JSONB-Update-Failure-Analysis.md)** (45 pages)
+   - Root cause analysis of EF Core JSONB change tracking bug
+   - Microsoft-recommended patterns for JSONB owned entities
+   - Architectural solutions and alternatives
+   - Testing strategy and monitoring plan
+
+3. **[diagrams/group-pricing-update-flow.md](./diagrams/group-pricing-update-flow.md)** (25 pages)
+   - Sequence diagrams showing broken vs corrected flows
+   - JSONB change tracking mechanisms visualized
+   - Data flow from HTTP request to PostgreSQL database
+   - Comparison of property tracking vs object reference patterns
+
+4. **[technology-evaluation-ef-core-jsonb.md](./technology-evaluation-ef-core-jsonb.md)** (70 pages)
+   - Comprehensive technology evaluation of EF Core 8 JSONB
+   - Decision matrix: JSONB vs Separate Columns (6.95/10 vs 7.4/10)
+   - Performance benchmarks and best practices
+   - Monitoring metrics and logging strategies
+
+---
+
+## Event Media Features (Image Replace + Video Support)
 
 **Status:** ✅ Design Complete - Ready for Review and Approval
 **Date:** 2025-11-03

@@ -1,0 +1,39 @@
+Hi {{UserName}},
+
+Thank you for registering for {{EventTitle}}!
+
+EVENT DETAILS
+-------------
+Date: {{EventDateTime}}
+Location: {{EventLocation}}
+
+{{#HasAttendeeDetails}}
+REGISTERED ATTENDEES
+--------------------
+{{Attendees}}
+{{/HasAttendeeDetails}}
+
+PAYMENT CONFIRMATION
+--------------------
+Amount Paid: {{AmountPaid}}
+Payment ID: {{PaymentIntentId}}
+Payment Date: {{PaymentDate}}
+
+{{#HasTicket}}
+YOUR TICKET
+-----------
+Ticket Code: {{TicketCode}}
+Your ticket is attached to this email as a PDF. Please present it at the event entrance.
+Valid Until: {{TicketExpiryDate}}
+{{/HasTicket}}
+
+{{#HasContactInfo}}
+YOUR CONTACT INFORMATION
+------------------------
+Email: {{ContactEmail}}
+Phone: {{ContactPhone}}
+{{/HasContactInfo}}
+
+---
+LankaConnect - Sri Lankan Community Hub
+If you have any questions, please contact your event organizer.

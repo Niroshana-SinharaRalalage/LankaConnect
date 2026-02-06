@@ -6,6 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,7 +27,8 @@ public class UpdateUserLocationCommandHandlerTests
         _unitOfWork = TestHelpers.MockRepository.CreateUnitOfWork();
         _handler = new UpdateUserLocationCommandHandler(
             _userRepository.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            NullLogger<UpdateUserLocationCommandHandler>.Instance);
     }
 
     [Fact]

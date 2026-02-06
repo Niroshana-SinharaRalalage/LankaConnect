@@ -3,6 +3,7 @@ using LankaConnect.Application.Users.Commands.CreateUser;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Users.Commands;
@@ -17,7 +18,7 @@ public class CreateUserCommandHandlerTests
     {
         _userRepository = TestHelpers.MockRepository.CreateUserRepository();
         _unitOfWork = TestHelpers.MockRepository.CreateUnitOfWork();
-        _handler = new CreateUserCommandHandler(_userRepository.Object, _unitOfWork.Object);
+        _handler = new CreateUserCommandHandler(_userRepository.Object, _unitOfWork.Object, NullLogger<CreateUserCommandHandler>.Instance);
     }
 
     [Fact]

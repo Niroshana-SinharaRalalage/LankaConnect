@@ -1,0 +1,23 @@
+{
+  "eventId": "d9fa9a8e-2b54-47b2-bb24-09ee6f8dd656",
+  "title": "Test Group Pricing - Corrected Fix Verification",
+  "description": "Testing Session 33 corrected fix - EF Core automatic change tracking for JSONB",
+  "startDate": "2025-12-25T10:00:00Z",
+  "endDate": "2025-12-25T18:00:00Z",
+  "capacity": 100,
+  "category": 3,
+  "groupPricingTiers": [
+    {
+      "minAttendees": 1,
+      "maxAttendees": 1,
+      "pricePerPerson": 6.00,
+      "currency": 1
+    },
+    {
+      "minAttendees": 2,
+      "maxAttendees": null,
+      "pricePerPerson": 12.00,
+      "currency": 1
+    }
+  ]
+}

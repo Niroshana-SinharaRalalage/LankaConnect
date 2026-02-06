@@ -73,18 +73,18 @@ public class CulturalInterestTests
     }
 
     [Fact]
-    public void FromCode_Should_Return_Failure_For_Invalid_Code()
+    public void FromCode_Should_Accept_Dynamic_EventCategory_Codes()
     {
-        // Arrange
-        const string invalidCode = "INVALID_CODE";
+        // Arrange - Phase 6A.47: Now accepts any EventCategory code
+        const string dynamicCode = "Business";
 
         // Act
-        var result = CulturalInterest.FromCode(invalidCode);
+        var result = CulturalInterest.FromCode(dynamicCode);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Cultural interest code");
-        result.Error.Should().Contain(invalidCode);
+        // Assert - Should succeed with dynamic code
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Code.Should().Be(dynamicCode);
+        result.Value.Name.Should().Be(dynamicCode); // Name defaults to code
     }
 
     [Fact]
@@ -110,19 +110,27 @@ public class CulturalInterestTests
     }
 
     [Fact]
-    public void FromCode_Should_Be_Case_Sensitive()
+    public void FromCode_Should_Accept_Any_Case_For_Dynamic_Codes()
     {
-        // Arrange
-        const string correctCode = "SL_CUISINE";
-        const string lowercaseCode = "sl_cuisine";
+        // Arrange - Phase 6A.47: Dynamic codes are accepted as-is
+        const string uppercaseCode = "BUSINESS";
+        const string mixedCaseCode = "Business";
+        const string lowercaseCode = "business";
 
         // Act
-        var correctResult = CulturalInterest.FromCode(correctCode);
+        var uppercaseResult = CulturalInterest.FromCode(uppercaseCode);
+        var mixedCaseResult = CulturalInterest.FromCode(mixedCaseCode);
         var lowercaseResult = CulturalInterest.FromCode(lowercaseCode);
 
-        // Assert
-        correctResult.IsSuccess.Should().BeTrue();
-        lowercaseResult.IsFailure.Should().BeTrue("codes should be case-sensitive");
+        // Assert - All should succeed with their exact case preserved
+        uppercaseResult.IsSuccess.Should().BeTrue();
+        uppercaseResult.Value.Code.Should().Be(uppercaseCode);
+
+        mixedCaseResult.IsSuccess.Should().BeTrue();
+        mixedCaseResult.Value.Code.Should().Be(mixedCaseCode);
+
+        lowercaseResult.IsSuccess.Should().BeTrue();
+        lowercaseResult.Value.Code.Should().Be(lowercaseCode);
     }
 
     [Fact]

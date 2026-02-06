@@ -7,6 +7,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Represents a specific item in a sign-up list that participants can commit to bringing
 /// Example: "Chicken Curry (quantity: 2)" in the "Food & Drinks" sign-up list
 /// Replaces the predefinedItems string array with a full entity supporting quantities and categories
+/// Phase 6A.27: Added CreatedByUserId for Open items
 /// </summary>
 public class SignUpItem : BaseEntity
 {
@@ -18,6 +19,11 @@ public class SignUpItem : BaseEntity
     public SignUpItemCategory ItemCategory { get; private set; }
     public int RemainingQuantity { get; private set; }
     public string? Notes { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.27: User who created this Open item (null for organizer-created items)
+    /// </summary>
+    public Guid? CreatedByUserId { get; private set; }
 
     public IReadOnlyList<SignUpCommitment> Commitments => _commitments.AsReadOnly();
 
@@ -32,7 +38,8 @@ public class SignUpItem : BaseEntity
         string itemDescription,
         int quantity,
         SignUpItemCategory itemCategory,
-        string? notes = null)
+        string? notes = null,
+        Guid? createdByUserId = null)
     {
         SignUpListId = signUpListId;
         ItemDescription = itemDescription;
@@ -40,10 +47,11 @@ public class SignUpItem : BaseEntity
         ItemCategory = itemCategory;
         RemainingQuantity = quantity; // Initially, all quantity is remaining
         Notes = notes;
+        CreatedByUserId = createdByUserId;
     }
 
     /// <summary>
-    /// Creates a new sign-up item
+    /// Creates a new sign-up item (organizer-created)
     /// </summary>
     public static Result<SignUpItem> Create(
         Guid signUpListId,
@@ -69,7 +77,45 @@ public class SignUpItem : BaseEntity
             itemDescription.Trim(),
             quantity,
             itemCategory,
-            notes?.Trim());
+            notes?.Trim(),
+            createdByUserId: null);
+
+        return Result<SignUpItem>.Success(item);
+    }
+
+    /// <summary>
+    /// Phase 6A.27: Creates an Open item submitted by a user
+    /// Open items are user-created items where the user volunteers to bring something
+    /// </summary>
+    public static Result<SignUpItem> CreateOpenItem(
+        Guid signUpListId,
+        Guid createdByUserId,
+        string itemName,
+        int quantity,
+        string? notes = null)
+    {
+        if (signUpListId == Guid.Empty)
+            return Result<SignUpItem>.Failure("Sign-up list ID is required");
+
+        if (createdByUserId == Guid.Empty)
+            return Result<SignUpItem>.Failure("User ID is required for Open items");
+
+        if (string.IsNullOrWhiteSpace(itemName))
+            return Result<SignUpItem>.Failure("Item name is required");
+
+        if (quantity <= 0)
+            return Result<SignUpItem>.Failure("Quantity must be greater than 0");
+
+        if (quantity > 1000)
+            return Result<SignUpItem>.Failure("Quantity cannot exceed 1000");
+
+        var item = new SignUpItem(
+            signUpListId,
+            itemName.Trim(),
+            quantity,
+            SignUpItemCategory.Open,
+            notes?.Trim(),
+            createdByUserId);
 
         return Result<SignUpItem>.Success(item);
     }
@@ -117,6 +163,14 @@ public class SignUpItem : BaseEntity
         RemainingQuantity -= commitQuantity;
         MarkAsUpdated();
 
+        // Phase 6A.51: Raise domain event for sending confirmation email
+        RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
+            SignUpListId,
+            userId,
+            ItemDescription,
+            commitQuantity,
+            DateTime.UtcNow));
+
         return Result.Success();
     }
 
@@ -143,11 +197,27 @@ public class SignUpItem : BaseEntity
             return Result.Failure("User has no commitment to this item");
 
         // Special case: quantity = 0 means cancel the commitment entirely
+        // Phase 6A.89 FIX: Raise CommitmentCancelledEvent so cancellation email is sent
         if (newQuantity == 0)
         {
-            RemainingQuantity += existingCommitment.Quantity;
+            // Capture data BEFORE removing commitment (needed for email notification)
+            var cancelledQuantity = existingCommitment.Quantity;
+            var commitmentId = existingCommitment.Id;
+
+            RemainingQuantity += cancelledQuantity;
             _commitments.Remove(existingCommitment);
             MarkAsUpdated();
+
+            // Phase 6A.89 FIX: Raise domain event for cancellation email notification
+            // Previously missing - caused no email to be sent when quantity=0 was used
+            RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
+                Id,
+                commitmentId,
+                userId,
+                SignUpListId,
+                ItemDescription,
+                cancelledQuantity));
+
             return Result.Success();
         }
 
@@ -203,11 +273,23 @@ public class SignUpItem : BaseEntity
         RemainingQuantity -= quantityDifference;
         MarkAsUpdated();
 
+        // Phase 6A.51+: Raise domain event for sending update confirmation email
+        RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
+            Id,
+            userId,
+            oldQuantity,
+            newQuantity,
+            ItemDescription,
+            DateTime.UtcNow));
+
         return Result.Success();
     }
 
     /// <summary>
     /// User cancels their commitment to this item
+    /// Phase 6A.28 Issue 4 Fix: Raises CommitmentCancelledEvent so infrastructure
+    /// can explicitly mark the entity as Deleted in EF Core change tracker.
+    /// See ADR-008 for why this is necessary (private backing field issue).
     /// </summary>
     public Result CancelCommitment(Guid userId)
     {
@@ -215,9 +297,25 @@ public class SignUpItem : BaseEntity
         if (commitment == null)
             return Result.Failure("User has no commitment to this item");
 
+        // Capture data BEFORE removing commitment (needed for email notification)
+        var cancelledQuantity = commitment.Quantity;
+
         // Return the quantity back to remaining
         RemainingQuantity += commitment.Quantity;
         _commitments.Remove(commitment);
+
+        // Phase 6A.28 Issue 4 Fix: Raise domain event for infrastructure to handle deletion
+        // EF Core cannot detect collection removals from private backing fields
+        // This event allows infrastructure to explicitly mark entity as Deleted
+        // Phase 6A.51+ Fix: Include data for email notification (entity may be deleted by then)
+        RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
+            Id,
+            commitment.Id,
+            userId,
+            SignUpListId,
+            ItemDescription,
+            cancelledQuantity));
+
         MarkAsUpdated();
 
         return Result.Success();
@@ -270,6 +368,16 @@ public class SignUpItem : BaseEntity
     /// Gets total number of commitments (users who committed)
     /// </summary>
     public int GetCommitmentCount() => _commitments.Count;
+
+    /// <summary>
+    /// Phase 6A.27: Checks if this is a user-created Open item
+    /// </summary>
+    public bool IsOpenItem() => ItemCategory == SignUpItemCategory.Open && CreatedByUserId.HasValue;
+
+    /// <summary>
+    /// Phase 6A.27: Checks if the specified user created this Open item
+    /// </summary>
+    public bool IsCreatedByUser(Guid userId) => CreatedByUserId.HasValue && CreatedByUserId.Value == userId;
 
     /// <summary>
     /// Updates item details (description, quantity, and notes) in a single operation

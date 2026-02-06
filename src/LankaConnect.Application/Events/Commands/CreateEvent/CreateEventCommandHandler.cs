@@ -1,12 +1,19 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
+using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: EmailGroup entity
+using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
 
@@ -15,39 +22,100 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
+    private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
+    private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+    private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
+    private readonly ILogger<CreateEventCommandHandler> _logger;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
+        IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
+        ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
+        ILogger<CreateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
+        _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
+        _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
+        _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        // Validate user can create events based on role
-        var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
-        if (user == null)
-            return Result<Guid>.Failure("User not found");
-
-        // Check if user has permission to create events (EventOrganizer or Admin roles)
-        if (!user.Role.CanCreateEvents())
+        using (LogContext.PushProperty("Operation", "CreateEvent"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("OrganizerId", request.OrganizerId))
+        using (LogContext.PushProperty("EventTitle", request.Title))
         {
-            return Result<Guid>.Failure("You do not have permission to create events. Only Event Organizers and Administrators can create events.");
-        }
+            var stopwatch = Stopwatch.StartNew();
 
-        // Create EventTitle value object
-        var titleResult = EventTitle.Create(request.Title);
-        if (titleResult.IsFailure)
-            return Result<Guid>.Failure(titleResult.Error);
+            _logger.LogInformation(
+                "CreateEvent START: OrganizerId={OrganizerId}, Title={Title}, Category={Category}, StartDate={StartDate}",
+                request.OrganizerId, request.Title, request.Category ?? EventCategory.Community, request.StartDate);
 
-        // Create EventDescription value object
-        var descriptionResult = EventDescription.Create(request.Description);
-        if (descriptionResult.IsFailure)
-            return Result<Guid>.Failure(descriptionResult.Error);
+            try
+            {
+                // Check for cancellation at the start
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Validate user can create events based on role
+                var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent FAILED: User not found - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure("User not found");
+                }
+
+                // Check if user has permission to create events (EventOrganizer or Admin roles)
+                if (!user.Role.CanCreateEvents())
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent FAILED: Insufficient permissions - OrganizerId={OrganizerId}, Role={Role}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, user.Role, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure("You do not have permission to create events. Only Event Organizers and Administrators can create events.");
+                }
+
+                // Create EventTitle value object
+                var titleResult = EventTitle.Create(request.Title);
+                if (titleResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Invalid title - OrganizerId={OrganizerId}, Title={Title}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, request.Title, titleResult.Error, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure(titleResult.Error);
+                }
+
+                // Create EventDescription value object
+                var descriptionResult = EventDescription.Create(request.Description);
+                if (descriptionResult.IsFailure)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Invalid description - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.OrganizerId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Failure(descriptionResult.Error);
+                }
 
         // Create EventLocation if location data provided
         EventLocation? location = null;
@@ -95,6 +163,25 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // Phase 6D: Check if group pricing tiers are provided (highest priority)
         if (request.GroupPricingTiers != null && request.GroupPricingTiers.Count > 0)
         {
+            // Phase 6A.X Issue #22: Validate tier max attendees against event capacity
+            foreach (var tierRequest in request.GroupPricingTiers)
+            {
+                if (tierRequest.MaxAttendees.HasValue && tierRequest.MaxAttendees.Value > request.Capacity)
+                {
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Tier maxAttendees ({TierMax}) exceeds event capacity ({Capacity})",
+                        tierRequest.MaxAttendees.Value, request.Capacity);
+                    return Result<Guid>.Failure($"Pricing tier maximum ({tierRequest.MaxAttendees.Value}) cannot exceed event capacity ({request.Capacity})");
+                }
+                if (tierRequest.MinAttendees > request.Capacity)
+                {
+                    _logger.LogWarning(
+                        "CreateEvent VALIDATION FAILED: Tier minAttendees ({TierMin}) exceeds event capacity ({Capacity})",
+                        tierRequest.MinAttendees, request.Capacity);
+                    return Result<Guid>.Failure($"Pricing tier minimum ({tierRequest.MinAttendees}) cannot exceed event capacity ({request.Capacity})");
+                }
+            }
+
             // Build GroupPricingTier objects from request
             var tiers = new List<GroupPricingTier>();
             var currency = request.GroupPricingTiers[0].Currency; // Use currency from first tier
@@ -117,9 +204,17 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 tiers.Add(tierResult.Value);
             }
 
-            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency);
+            // Phase 6A.X Issue #34: Use overloaded method with maxAttendeesPerRegistration to validate tier coverage
+            // Tiers should cover the max attendees per registration, not total event capacity
+            var maxAttendeesPerReg = request.MaxAttendeesPerRegistration ?? 10; // Default to 10 if not specified
+            var groupPricingResult = TicketPricing.CreateGroupTiered(tiers, currency, maxAttendeesPerReg);
             if (groupPricingResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CreateEvent VALIDATION FAILED: Group pricing tiers do not cover max attendees per registration ({MaxAttendeesPerReg}) - Error={Error}",
+                    maxAttendeesPerReg, groupPricingResult.Error);
                 return Result<Guid>.Failure(groupPricingResult.Error);
+            }
 
             pricing = groupPricingResult.Value;
             isGroupPricing = true;
@@ -200,12 +295,165 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
             if (setPricingResult.IsFailure)
                 return Result<Guid>.Failure(setPricingResult.Error);
+
+            // Phase 6A.X: Calculate and store revenue breakdown for paid events
+            // Use adult price for dual pricing, first tier for group pricing, or single price
+            Money? priceForBreakdown = null;
+            if (isGroupPricing && pricing.GroupTiers != null && pricing.GroupTiers.Count > 0)
+            {
+                // Use first tier price for group pricing breakdown preview
+                priceForBreakdown = pricing.GroupTiers[0].PricePerPerson;
+            }
+            else if (pricing.AdultPrice != null)
+            {
+                priceForBreakdown = pricing.AdultPrice;
+            }
+
+            if (priceForBreakdown != null && priceForBreakdown.Amount > 0)
+            {
+                var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    priceForBreakdown,
+                    location,
+                    cancellationToken);
+
+                if (breakdownResult.IsSuccess)
+                {
+                    var setBreakdownResult = eventResult.Value.SetRevenueBreakdown(breakdownResult.Value);
+                    if (setBreakdownResult.IsFailure)
+                    {
+                        // Log warning but don't fail event creation - breakdown is informational
+                        // Revenue breakdown failure shouldn't block event creation
+                    }
+                }
+                // Note: Tax lookup failures don't block event creation - breakdown is informational
+            }
         }
 
-        // Add to repository and commit
-        await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        // Phase 6A.32/33: Validate and assign email groups
+        if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
+        {
+            var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
 
-        return Result<Guid>.Success(eventResult.Value.Id);
+            // Load EmailGroup entities for validation
+            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
+                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+
+            var emailGroups = await dbContext.Set<EmailGroup>()
+                .Where(g => distinctGroupIds.Contains(g.Id))
+                .ToListAsync(cancellationToken);
+
+            // Validate all groups exist, belong to organizer, and are active
+            foreach (var groupId in distinctGroupIds)
+            {
+                var emailGroup = emailGroups.FirstOrDefault(g => g.Id == groupId);
+
+                if (emailGroup == null)
+                    return Result<Guid>.Failure($"Email group with ID {groupId} not found");
+
+                if (emailGroup.OwnerId != request.OrganizerId)
+                    return Result<Guid>.Failure($"You do not have permission to use email group '{emailGroup.Name}'");
+
+                if (!emailGroup.IsActive)
+                    return Result<Guid>.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
+            }
+
+            // Assign email group IDs to domain model (for business logic)
+            var assignResult = eventResult.Value.SetEmailGroups(distinctGroupIds);
+            if (assignResult.IsFailure)
+                return Result<Guid>.Failure(assignResult.Error);
+        }
+
+        // Phase 6A.X: Set organizer contact details if provided
+        if (request.PublishOrganizerContact.GetValueOrDefault())
+        {
+            var contactResult = eventResult.Value.SetOrganizerContactDetails(
+                publishContact: true, // Safe to use true since we're inside the GetValueOrDefault() check
+                request.OrganizerContactName,
+                request.OrganizerContactPhone,
+                request.OrganizerContactEmail);
+
+            if (contactResult.IsFailure)
+                return Result<Guid>.Failure(contactResult.Error);
+        }
+
+        // Issue #55: Set TimeZoneId based on event location state
+        // This ensures emails and frontend display times in the correct timezone
+        try
+        {
+            string timeZoneId;
+            if (location?.Address?.State != null && !string.IsNullOrWhiteSpace(location.Address.State))
+            {
+                // Physical event: derive timezone from state
+                timeZoneId = _timeZoneLookupService.GetTimeZoneFromState(location.Address.State);
+                _logger.LogDebug(
+                    "CreateEvent: Setting TimeZoneId based on state - State={State}, TimeZoneId={TimeZoneId}",
+                    location.Address.State, timeZoneId);
+            }
+            else
+            {
+                // Virtual event: use default timezone (Eastern - most Sri Lankan communities in USA)
+                timeZoneId = _timeZoneLookupService.DefaultTimeZoneId;
+                _logger.LogDebug(
+                    "CreateEvent: Setting default TimeZoneId for virtual event - TimeZoneId={TimeZoneId}",
+                    timeZoneId);
+            }
+
+            var setTzResult = eventResult.Value.SetTimeZone(timeZoneId);
+            if (setTzResult.IsFailure)
+            {
+                // Log warning but don't fail event creation - timezone is informational
+                _logger.LogWarning(
+                    "CreateEvent: Failed to set TimeZoneId - State={State}, TimeZoneId={TimeZoneId}, Error={Error}",
+                    location?.Address?.State, timeZoneId, setTzResult.Error);
+            }
+        }
+        catch (Exception tzEx)
+        {
+            // Log warning but don't fail event creation - timezone is informational
+            _logger.LogWarning(tzEx,
+                "CreateEvent: Exception setting TimeZoneId - State={State}",
+                location?.Address?.State);
+        }
+
+                // Add EventId to LogContext now that we have it
+                using (LogContext.PushProperty("EventId", eventResult.Value.Id))
+                {
+                    _logger.LogInformation(
+                        "CreateEvent: Event aggregate created - EventId={EventId}, Title={Title}, Category={Category}",
+                        eventResult.Value.Id, request.Title, eventResult.Value.Category);
+
+                    // Phase 6A.33 FIX: Repository.AddAsync now handles email group shadow navigation sync
+                    // No manual EF Core state manipulation needed - repository pattern handles it
+                    await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
+
+                    // Commit changes (EF Core now detects changes via ChangeTracker)
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "CreateEvent COMPLETE: EventId={EventId}, OrganizerId={OrganizerId}, Title={Title}, Category={Category}, " +
+                        "StartDate={StartDate}, Capacity={Capacity}, HasPricing={HasPricing}, EmailGroupsCount={EmailGroupsCount}, Duration={ElapsedMs}ms",
+                        eventResult.Value.Id, request.OrganizerId, request.Title, eventResult.Value.Category,
+                        request.StartDate, request.Capacity, pricing != null, request.EmailGroupIds?.Count ?? 0, stopwatch.ElapsedMilliseconds);
+
+                    return Result<Guid>.Success(eventResult.Value.Id);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "CreateEvent FAILED: Exception occurred - OrganizerId={OrganizerId}, Title={Title}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.OrganizerId, request.Title, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw; // Re-throw to let MediatR/API handle
+            }
+        }
     }
 }

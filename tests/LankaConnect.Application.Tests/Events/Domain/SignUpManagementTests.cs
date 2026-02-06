@@ -480,28 +480,28 @@ public class SignUpManagementTests
     }
 
     [Fact]
-    public void UpdateDetails_DisablingPreferredCategoryWithItems_ShouldFail()
+    public void UpdateDetails_DisablingSuggestedCategoryWithItems_ShouldFail()
     {
         // Arrange
         var signUpList = SignUpList.CreateWithCategories(
             "Food",
             "Description",
             false,
-            true,
-            false).Value;
+            false,
+            true).Value;  // Create with Suggested category enabled
 
-        signUpList.AddItem("Dessert", 3, SignUpItemCategory.Preferred);
+        signUpList.AddItem("Dessert", 3, SignUpItemCategory.Suggested);
 
         // Act
-        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);
+        var result = signUpList.UpdateDetails("Food", "Description", false, false, false);  // Try to disable all categories
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain("Cannot disable Preferred category because it contains items");
+        result.Errors.Should().Contain("Cannot disable Suggested category because it contains items");
     }
 
     [Fact]
-    public void UpdateDetails_DisablingSuggestedCategoryWithItems_ShouldFail()
+    public void UpdateDetails_DisablingSuggestedCategoryWithItems_AnotherScenario_ShouldFail()
     {
         // Arrange
         var signUpList = SignUpList.CreateWithCategories(
@@ -596,6 +596,128 @@ public class SignUpManagementTests
 
         var updateEvent = (SignUpListUpdatedEvent)domainEvents.First();
         updateEvent.SignUpListId.Should().Be(signUpList.Id);
+    }
+
+    #endregion
+
+    #region Issue: UpdateCommitment with Quantity=0 Should Raise CommitmentCancelledEvent (TDD - Phase 6A.89)
+
+    /// <summary>
+    /// BUG FIX: When UpdateCommitment is called with quantity=0, the commitment is removed
+    /// but NO domain event was raised. This meant no cancellation email was sent.
+    /// The fix ensures CommitmentCancelledEvent is raised in this scenario.
+    /// </summary>
+    [Fact]
+    public void SignUpItem_UpdateCommitment_WithZeroQuantity_ShouldRaiseCommitmentCancelledEvent()
+    {
+        // Arrange
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Bring your favorite dish",
+            true,  // hasMandatoryItems
+            false,
+            false).Value;
+
+        // Add an item to the sign-up list
+        var addItemResult = signUpList.AddItem("Rice", 10, SignUpItemCategory.Mandatory);
+        addItemResult.IsSuccess.Should().BeTrue();
+
+        var signUpItem = signUpList.Items.First();
+        var userId = Guid.NewGuid();
+
+        // User commits to bringing 3 servings
+        var commitResult = signUpItem.AddCommitment(userId, 3, "I'll bring jasmine rice");
+        commitResult.IsSuccess.Should().BeTrue();
+
+        // Clear domain events to isolate the test
+        signUpItem.ClearDomainEvents();
+
+        // Act - Update commitment with quantity=0 (signals cancellation)
+        var updateResult = signUpItem.UpdateCommitment(userId, 0);
+
+        // Assert
+        updateResult.IsSuccess.Should().BeTrue();
+
+        // The commitment should be removed
+        signUpItem.Commitments.Should().BeEmpty();
+        signUpItem.RemainingQuantity.Should().Be(10); // All quantity restored
+
+        // CRITICAL: CommitmentCancelledEvent MUST be raised for email notification
+        var domainEvents = signUpItem.DomainEvents;
+        domainEvents.Should().HaveCount(1, "CommitmentCancelledEvent should be raised when quantity=0");
+        domainEvents.First().Should().BeOfType<CommitmentCancelledEvent>();
+
+        var cancelEvent = (CommitmentCancelledEvent)domainEvents.First();
+        cancelEvent.UserId.Should().Be(userId);
+        cancelEvent.SignUpItemId.Should().Be(signUpItem.Id);
+        cancelEvent.ItemDescription.Should().Be("Rice");
+        cancelEvent.Quantity.Should().Be(3); // Original committed quantity
+    }
+
+    [Fact]
+    public void SignUpItem_UpdateCommitment_WithNonZeroQuantity_ShouldRaiseCommitmentUpdatedEvent()
+    {
+        // Arrange - This test verifies the existing behavior is NOT affected
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Bring your favorite dish",
+            true,
+            false,
+            false).Value;
+
+        var addItemResult = signUpList.AddItem("Curry", 10, SignUpItemCategory.Mandatory);
+        var signUpItem = signUpList.Items.First();
+        var userId = Guid.NewGuid();
+
+        signUpItem.AddCommitment(userId, 3);
+        signUpItem.ClearDomainEvents();
+
+        // Act - Update to a different non-zero quantity (2 instead of 3)
+        var updateResult = signUpItem.UpdateCommitment(userId, 2);
+
+        // Assert
+        updateResult.IsSuccess.Should().BeTrue();
+        signUpItem.Commitments.Should().HaveCount(1);
+        signUpItem.Commitments.First().Quantity.Should().Be(2);
+
+        // CommitmentUpdatedEvent should be raised (NOT cancelled)
+        var domainEvents = signUpItem.DomainEvents;
+        domainEvents.Should().HaveCount(1);
+        domainEvents.First().Should().BeOfType<CommitmentUpdatedEvent>();
+    }
+
+    [Fact]
+    public void SignUpItem_CancelCommitment_ShouldRaiseCommitmentCancelledEvent()
+    {
+        // Arrange - Verify direct CancelCommitment still works
+        var signUpList = SignUpList.CreateWithCategories(
+            "Food",
+            "Bring your favorite dish",
+            true,
+            false,
+            false).Value;
+
+        var addItemResult = signUpList.AddItem("Dessert", 5, SignUpItemCategory.Mandatory);
+        var signUpItem = signUpList.Items.First();
+        var userId = Guid.NewGuid();
+
+        signUpItem.AddCommitment(userId, 2);
+        signUpItem.ClearDomainEvents();
+
+        // Act
+        var cancelResult = signUpItem.CancelCommitment(userId);
+
+        // Assert
+        cancelResult.IsSuccess.Should().BeTrue();
+        signUpItem.Commitments.Should().BeEmpty();
+
+        var domainEvents = signUpItem.DomainEvents;
+        domainEvents.Should().HaveCount(1);
+        domainEvents.First().Should().BeOfType<CommitmentCancelledEvent>();
+
+        var cancelEvent = (CommitmentCancelledEvent)domainEvents.First();
+        cancelEvent.UserId.Should().Be(userId);
+        cancelEvent.Quantity.Should().Be(2);
     }
 
     #endregion

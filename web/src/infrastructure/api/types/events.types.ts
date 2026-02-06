@@ -3,6 +3,8 @@
  * DTOs matching backend API contracts (LankaConnect.Application.Events.Common)
  */
 
+import type { EventBadgeDto } from './badges.types';
+
 // ==================== Enums ====================
 
 /**
@@ -20,6 +22,36 @@ export enum EventStatus {
 }
 
 /**
+ * Issue #36: User-friendly status filter groups for event listing pages.
+ * Maps to multiple EventStatus values internally for simplified filtering.
+ *
+ * Mappings:
+ * - All: Everything (context-dependent: public excludes Draft/UnderReview)
+ * - Active: Published + Active (upcoming/ongoing events)
+ * - Inactive: Completed + Archived + Postponed (past/paused events)
+ * - Cancelled: Cancelled only
+ * - Unpublished: Draft + UnderReview (organizer-only visibility)
+ */
+export enum EventStatusFilter {
+  All = 0,
+  Active = 1,
+  Inactive = 2,
+  Cancelled = 3,
+  Unpublished = 4,
+}
+
+/**
+ * Issue #36: Display labels for EventStatusFilter options
+ */
+export const EventStatusFilterLabels: Record<EventStatusFilter, string> = {
+  [EventStatusFilter.All]: 'All Events',
+  [EventStatusFilter.Active]: 'Active Events',
+  [EventStatusFilter.Inactive]: 'Inactive Events',
+  [EventStatusFilter.Cancelled]: 'Cancelled Events',
+  [EventStatusFilter.Unpublished]: 'Unpublished Events',
+};
+
+/**
  * Event category enum matching backend LankaConnect.Domain.Events.Enums.EventCategory
  */
 export enum EventCategory {
@@ -35,15 +67,67 @@ export enum EventCategory {
 
 /**
  * Registration status enum matching backend LankaConnect.Domain.Events.Enums.RegistrationStatus
+ * Phase 6A.81: Updated to support Three-State Registration Lifecycle for payment security
  */
 export enum RegistrationStatus {
-  Pending = 0,
-  Confirmed = 1,
-  Waitlisted = 2,
-  CheckedIn = 3,
-  Completed = 4,
-  Cancelled = 5,
-  Refunded = 6,
+  /**
+   * Phase 6A.81: NEW - Temporary state while waiting for payment confirmation
+   * - Does NOT consume event capacity
+   * - Does NOT block email from re-registering
+   * - Auto-expires after 25 hours (Stripe checkout expires at 24h)
+   * - Used for paid events only
+   */
+  Preliminary = 0,
+
+  /**
+   * DEPRECATED: Use Preliminary instead for backward compatibility
+   */
+  Pending = 1,
+
+  /**
+   * Payment completed (for paid events) OR registration completed (for free events)
+   * - Consumes event capacity
+   * - Blocks email from re-registering
+   * - Triggers confirmation email
+   */
+  Confirmed = 2,
+
+  Waitlisted = 3,
+  CheckedIn = 4,
+
+  /**
+   * Event attendance completed - user attended the event
+   */
+  Attended = 5,
+
+  /**
+   * DEPRECATED: Use Attended instead for clarity
+   * Same value as Attended for backward compatibility
+   */
+  Completed = 5,
+
+  Cancelled = 6,
+
+  /**
+   * Phase 6A.81: Kept for backward compatibility with existing refunded registrations
+   */
+  Refunded = 7,
+
+  /**
+   * Phase 6A.81: NEW - Stripe checkout session expired or user never completed payment
+   * - Does NOT consume event capacity
+   * - Does NOT block email from re-registering
+   * - Auto soft-deleted after 30 days for audit trail
+   */
+  Abandoned = 8,
+
+  /**
+   * Phase 6A.91: NEW - Refund requested but not yet completed
+   * - User cancelled paid confirmed registration
+   * - Stripe refund initiated, awaiting confirmation
+   * - User can withdraw request to restore Confirmed status
+   */
+  RefundRequested = 9,
 }
 
 /**
@@ -78,6 +162,25 @@ export enum PaymentStatus {
   Failed = 2,
   Refunded = 3,
   NotRequired = 4,
+}
+
+/**
+ * Phase 6A.43: Age category enum matching backend LankaConnect.Domain.Events.Enums.AgeCategory
+ * Used for attendee registration to distinguish adults from children
+ */
+export enum AgeCategory {
+  Adult = 1,
+  Child = 2,
+}
+
+/**
+ * Phase 6A.43: Gender enum matching backend LankaConnect.Domain.Events.Enums.Gender
+ * Optional field for attendee registration
+ */
+export enum Gender {
+  Male = 1,
+  Female = 2,
+  Other = 3,
 }
 
 // ==================== Event DTOs ====================
@@ -123,6 +226,34 @@ export interface GroupPricingTierDto {
 }
 
 /**
+ * Phase 6A.X: Revenue breakdown DTO
+ * Matches backend RevenueBreakdownDto
+ * Shows detailed fee breakdown for paid events
+ */
+export interface RevenueBreakdownDto {
+  /** Gross amount (ticket price) paid by buyer */
+  grossAmount: number;
+  /** Sales tax amount (state tax based on event location) */
+  salesTaxAmount: number;
+  /** Taxable amount (gross minus sales tax) */
+  taxableAmount: number;
+  /** Stripe payment processing fee (2.9% + $0.30) */
+  stripeFeeAmount: number;
+  /** Platform commission (2% of taxable amount) */
+  platformCommissionAmount: number;
+  /** Net amount to event organizer after all fees and taxes */
+  organizerPayoutAmount: number;
+  /** Currency for all amounts */
+  currency: Currency;
+  /** Sales tax rate as decimal (e.g., 0.0725 for 7.25%) */
+  salesTaxRate: number;
+  /** Display-friendly tax rate percentage (e.g., "7.25%") */
+  taxRateDisplay: string;
+  /** State/jurisdiction where tax was calculated */
+  taxJurisdiction?: string | null;
+}
+
+/**
  * Main Event DTO
  * Matches backend EventDto from LankaConnect.Application.Events.Common
  * Session 21: Added dual ticket pricing support
@@ -136,10 +267,22 @@ export interface EventDto {
   organizerId: string;
   capacity: number;
   currentRegistrations: number;
+  /**
+   * Issue #51: Maximum attendees allowed per single registration
+   * Configurable by event organizer (default: 10, max: 50)
+   */
+  maxAttendeesPerRegistration: number;
   status: EventStatus;
   category: EventCategory;
   createdAt: string;
   updatedAt?: string | null;
+
+  /**
+   * Phase 6A.46: User-facing display label based on event lifecycle
+   * Computed based on PublishedAt, StartDate, EndDate, and Status
+   * Values: "New", "Upcoming", "Cancelled", "Completed", "Inactive", or status name
+   */
+  displayLabel: string;
 
   // Location information (nullable - not all events have physical locations)
   address?: string | null;
@@ -149,6 +292,19 @@ export interface EventDto {
   country?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+
+  /**
+   * Phase 6A.97: IANA timezone identifier for consistent date/time display
+   * Example: "America/New_York", "America/Los_Angeles"
+   * Derived from event's state location
+   */
+  timeZoneId?: string | null;
+
+  /**
+   * Phase 6A.97: Timezone abbreviation for display (e.g., "EST", "PST")
+   * Accounts for Daylight Saving Time
+   */
+  timeZoneAbbreviation?: string | null;
 
   // Ticket pricing (nullable - free events)
   // Legacy single pricing (backward compatibility)
@@ -172,6 +328,22 @@ export interface EventDto {
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
   videos: readonly EventVideoDto[];
+
+  // Phase 6A.25: Badge overlays (optional - populated when badges are assigned)
+  badges?: readonly EventBadgeDto[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
+
+  // Phase 6A.X: Event Organizer Contact Details
+  publishOrganizerContact: boolean;
+  organizerContactName?: string | null;
+  organizerContactPhone?: string | null;
+  organizerContactEmail?: string | null;
+
+  // Phase 6A.X: Revenue Breakdown for paid events
+  /** Detailed fee breakdown (null for free events) */
+  revenueBreakdown?: RevenueBreakdownDto | null;
 }
 
 /**
@@ -227,12 +399,18 @@ export enum SignUpType {
  * For category-based sign-up lists
  *
  * IMPORTANT: Uses string values to match ASP.NET Core's JsonStringEnumConverter
- * The API serializes enums as strings: "Mandatory", "Preferred", "Suggested"
+ * The API serializes enums as strings: "Mandatory", "Preferred", "Suggested", "Open"
+ *
+ * Phase 6A.27: Added Open category for user-submitted items
+ * Note: Preferred is deprecated, use Suggested instead
  */
 export enum SignUpItemCategory {
   Mandatory = "Mandatory",
+  /** @deprecated Use Suggested instead. Preferred is being deprecated. */
   Preferred = "Preferred",
   Suggested = "Suggested",
+  /** Phase 6A.27: User-submitted items - users can add their own items */
+  Open = "Open",
 }
 
 /**
@@ -258,6 +436,7 @@ export interface SignUpCommitmentDto {
 /**
  * Sign-up item DTO
  * Represents a specific item in a category-based sign-up list
+ * Phase 6A.27: Enhanced with Open item support (createdByUserId, isOpenItem)
  */
 export interface SignUpItemDto {
   id: string;
@@ -269,11 +448,16 @@ export interface SignUpItemDto {
   commitments: SignUpCommitmentDto[];
   isFullyCommitted: boolean;
   committedQuantity: number;
+  /** Phase 6A.27: User ID who created this item (only for Open items) */
+  createdByUserId?: string | null;
+  /** Phase 6A.27: True if this is a user-submitted Open item */
+  isOpenItem: boolean;
 }
 
 /**
  * Sign-up list DTO
  * Matches backend SignUpListDto - supports both legacy and category-based models
+ * Phase 6A.27: Added hasOpenItems for user-submitted items
  */
 export interface SignUpListDto {
   id: string;
@@ -288,8 +472,11 @@ export interface SignUpListDto {
 
   // New category-based fields
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.27: True if users can add their own Open items */
+  hasOpenItems: boolean;
   items: SignUpItemDto[];
 }
 
@@ -304,9 +491,16 @@ export interface SignUpListDto {
  * - For authenticated users without preferences: userId (uses user's home location)
  * - For anonymous users: latitude + longitude (uses provided coordinates)
  * - For specific metro filter: metroAreaIds
+ *
+ * Issue #36: Status filtering options:
+ * - status: Single specific status filter (legacy, backward compatible)
+ * - statusFilter: User-friendly status group filter (Active, Inactive, Cancelled, etc.)
+ * - statusFilter takes precedence over status when both provided
  */
 export interface GetEventsRequest {
   status?: EventStatus;
+  /** Issue #36: User-friendly status filter (takes precedence over status) */
+  statusFilter?: EventStatusFilter;
   category?: EventCategory;
   startDateFrom?: string; // ISO 8601 date
   startDateTo?: string; // ISO 8601 date
@@ -317,10 +511,14 @@ export interface GetEventsRequest {
   latitude?: number; // NEW: Latitude for anonymous user location-based sorting
   longitude?: number; // NEW: Longitude for anonymous user location-based sorting
   metroAreaIds?: string[]; // NEW: Specific metro area IDs filter
+  searchTerm?: string; // Phase 6A.58: Text-based search filter
+  /** Issue #36: When true, includes Draft/UnderReview events (organizer view) */
+  includeAllStatuses?: boolean;
 }
 
 /**
  * Search events request with pagination
+ * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
  */
 export interface SearchEventsRequest {
   searchTerm: string;
@@ -329,6 +527,7 @@ export interface SearchEventsRequest {
   category?: EventCategory;
   isFreeOnly?: boolean;
   startDateFrom?: string;
+  excludeCancelled?: boolean;
 }
 
 /**
@@ -379,6 +578,9 @@ export interface CreateEventRequest {
 
   // Phase 6D: Group tiered pricing (optional)
   groupPricingTiers?: GroupPricingTierRequest[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
 }
 
 /**
@@ -418,6 +620,20 @@ export interface UpdateEventRequest {
   // Pricing (nullable to match C# decimal? and Currency?)
   ticketPriceAmount?: number | null;
   ticketPriceCurrency?: Currency | null;
+
+  // Session 21: Dual ticket pricing (optional)
+  adultPriceAmount?: number | null;
+  adultPriceCurrency?: Currency | null;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+
+  // Session 33: Group tiered pricing (optional)
+  groupPricingTiers?: GroupPricingTierRequest[];
+
+  // Phase 6A.32: Email Groups Integration
+  emailGroupIds?: string[];
+
   // Note: isFree is NOT in backend UpdateEventCommand - backend infers it from ticketPriceAmount
 }
 
@@ -450,6 +666,7 @@ export interface RsvpRequest {
  * Anonymous registration request
  * Matches backend AnonymousRegistrationRequest for unauthenticated event registration
  * Session 21: Added multi-attendee support with individual names and ages
+ * Phase 6A.44: Added successUrl and cancelUrl for Stripe Checkout
  */
 export interface AnonymousRegistrationRequest {
   // Legacy format (Session 20 - backward compatibility)
@@ -466,28 +683,48 @@ export interface AnonymousRegistrationRequest {
 
   // Legacy quantity field (backward compatibility)
   quantity?: number; // Default: 1
+
+  // Phase 6A.44: Stripe checkout URLs (required for paid events)
+  successUrl?: string;
+  cancelUrl?: string;
+}
+
+/**
+ * Phase 6A.44: Response from anonymous registration
+ * - For FREE events: success=true, checkoutUrl=null
+ * - For PAID events: success=true, checkoutUrl=<stripe_checkout_url>
+ * - For errors: success=false (shouldn't happen, API returns error status)
+ */
+export interface AnonymousRegistrationResponse {
+  success: boolean;
+  checkoutUrl: string | null;
+  message: string;
 }
 
 /**
  * Session 21: Individual attendee information
  * Used for multi-attendee registration
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
  */
 export interface AttendeeDto {
   name: string;
-  age: number;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
 }
 
 /**
  * Registration details DTO with attendee information
  * Fix 1: Enhanced registration status detection
  * Matches backend RegistrationDetailsDto
+ * Phase 6A.79 Part 3: .NET serializes enums as strings, not numbers
  */
 export interface RegistrationDetailsDto {
   id: string;
   eventId: string;
   userId?: string | null;
   quantity: number;
-  status: RegistrationStatus;
+  /** Phase 6A.81/6A.91: Updated with Preliminary, Abandoned, and RefundRequested states for payment security */
+  status: 'Preliminary' | 'Pending' | 'Confirmed' | 'Waitlisted' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded' | 'Abandoned' | 'Attended' | 'RefundRequested';  // String values from .NET API
   createdAt: string;
   updatedAt?: string | null;
 
@@ -500,9 +737,17 @@ export interface RegistrationDetailsDto {
   contactAddress?: string | null;
 
   // Payment information
-  paymentStatus: PaymentStatus;
+  paymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | 'NotRequired';  // String values from .NET API
   totalPriceAmount?: number | null;
   totalPriceCurrency?: string | null;
+
+  // Phase 6A.81 Part 3: Checkout session information for Preliminary registrations
+  /** Stripe checkout session ID (stored in DB). Used to retrieve checkout URL from Stripe. */
+  stripeCheckoutSessionId?: string | null;
+  /** Stripe checkout URL for resuming payment (only for Preliminary status). Retrieved from Stripe at query time. */
+  stripeCheckoutUrl?: string | null;
+  /** Timestamp when the Stripe checkout session expires (24 hours from creation). Used for countdown timer in UI. */
+  checkoutSessionExpiresAt?: string | null;
 }
 
 /**
@@ -526,10 +771,12 @@ export interface UpdateRegistrationRequest {
 
 /**
  * Phase 6A.14: Attendee DTO for registration update
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
  */
 export interface UpdateRegistrationAttendeeDto {
   name: string;
-  age: number;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
 }
 
 /**
@@ -575,27 +822,35 @@ export interface CancelCommitmentRequest {
 /**
  * Create sign-up list with items request
  * Matches backend CreateSignUpListRequest - creates list WITH items in single API call
+ * Phase 6A.27: Added hasOpenItems for user-submitted items
  */
 export interface CreateSignUpListRequest {
   category: string;
   description: string;
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.27: Allow users to add their own Open items */
+  hasOpenItems?: boolean;
   items: SignUpItemRequestDto[];
 }
 
 /**
  * Update sign-up list request
  * Phase 6A.13: Edit Sign-Up List feature
+ * Phase 6A.28: Added hasOpenItems for user-submitted items
  * Matches backend UpdateSignUpListRequest
  */
 export interface UpdateSignUpListRequest {
   category: string;
   description: string;
   hasMandatoryItems: boolean;
+  /** @deprecated Use hasSuggestedItems instead. Preferred is being deprecated. */
   hasPreferredItems: boolean;
   hasSuggestedItems: boolean;
+  /** Phase 6A.28: Allow users to add their own Open items */
+  hasOpenItems: boolean; // Made required for type safety
 }
 
 /**
@@ -627,6 +882,66 @@ export interface UpdateSignUpItemRequest {
   itemDescription: string;
   quantity: number;
   notes?: string | null;
+}
+
+// ==================== Phase 6A.27: Open Sign-Up Items ====================
+
+/**
+ * Phase 6A.27: Add an Open sign-up item (user-submitted)
+ * POST /api/events/{eventId}/signups/{signupId}/open-items
+ */
+export interface AddOpenSignUpItemRequest {
+  /** Name of the item the user will bring */
+  itemName: string;
+  /** Number of items */
+  quantity: number;
+  /** Optional notes/description */
+  notes?: string | null;
+  /** Optional contact name */
+  contactName?: string | null;
+  /** Optional contact email */
+  contactEmail?: string | null;
+  /** Optional contact phone */
+  contactPhone?: string | null;
+}
+
+/**
+ * Phase 6A.44: Add an Open sign-up item (anonymous user version)
+ * POST /api/events/{eventId}/signups/{signupId}/open-items-anonymous
+ */
+export interface AddOpenSignUpItemAnonymousRequest {
+  /** Contact email (required for anonymous users) */
+  contactEmail: string;
+  /** Name of the item the user will bring */
+  itemName: string;
+  /** Number of items */
+  quantity: number;
+  /** Optional notes/description */
+  notes?: string | null;
+  /** Optional contact name */
+  contactName?: string | null;
+  /** Optional contact phone */
+  contactPhone?: string | null;
+}
+
+/**
+ * Phase 6A.27: Update an Open sign-up item
+ * PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+ * Only the user who created the item can update it
+ */
+export interface UpdateOpenSignUpItemRequest {
+  /** Updated item name */
+  itemName: string;
+  /** Updated quantity */
+  quantity: number;
+  /** Updated notes/description */
+  notes?: string | null;
+  /** Updated contact name */
+  contactName?: string | null;
+  /** Updated contact email */
+  contactEmail?: string | null;
+  /** Updated contact phone */
+  contactPhone?: string | null;
 }
 
 /**
@@ -694,4 +1009,293 @@ export interface UploadEventImageResponse {
   imageUrl: string;
   displayOrder: number;
   uploadedAt: string;
+}
+
+// ==================== Ticket DTOs (Phase 6A.24) ====================
+
+/**
+ * Phase 6A.24: Ticket attendee information
+ * Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
+ */
+export interface TicketAttendeeDto {
+  name: string;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
+}
+
+/**
+ * Phase 6A.24: Event ticket DTO
+ * Returned by GET /api/events/{eventId}/my-registration/ticket
+ */
+export interface TicketDto {
+  id: string;
+  registrationId: string;
+  eventId: string;
+  userId?: string | null;
+  ticketCode: string;
+  qrCodeBase64?: string | null;
+  pdfBlobUrl?: string | null;
+  isValid: boolean;
+  validatedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+
+  // Event details for display
+  eventTitle?: string | null;
+  eventStartDate?: string | null;
+  eventLocation?: string | null;
+
+  // Attendee information
+  attendeeCount: number;
+  attendees?: TicketAttendeeDto[] | null;
+}
+
+// ==================== Phase 6A.45: Attendee Management ====================
+
+/**
+ * Phase 6A.45: Event attendee DTO (single registration)
+ * Matches backend EventAttendeeDto
+ */
+export interface EventAttendeeDto {
+  // Registration Info
+  registrationId: string;
+  userId?: string | null;
+  status: RegistrationStatus;
+  paymentStatus: PaymentStatus;
+  createdAt: string;
+
+  // Contact Info
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress?: string | null;
+
+  // Attendee Details
+  attendees: AttendeeDto[];
+  totalAttendees: number;
+  adultCount: number;
+  childCount: number;
+  genderDistribution: string;
+
+  // Payment Info
+  /** Phase 6A.71: GROSS amount (what customer paid, before commission) */
+  totalAmount?: number | null;
+  /** Phase 6A.71: NET amount (organizer's payout after 5% platform commission) */
+  netAmount?: number | null;
+  currency?: string | null;
+
+  // Phase 6A.X: Per-registration revenue breakdown
+  /** Sales tax amount for this registration */
+  salesTaxAmount?: number | null;
+  /** Stripe processing fee for this registration */
+  stripeFeeAmount?: number | null;
+  /** Platform commission for this registration */
+  platformCommissionAmount?: number | null;
+  /** Organizer payout for this registration */
+  organizerPayoutAmount?: number | null;
+  /** Sales tax rate applied to this registration */
+  salesTaxRate: number;
+
+  // Ticket Info
+  ticketCode?: string | null;
+  qrCodeData?: string | null;
+  hasTicket: boolean;
+
+  // Computed Properties (computed on backend)
+  mainAttendeeName: string;
+  additionalAttendees: string;
+}
+
+/**
+ * Phase 6A.45/6A.71/6A.X: Event attendees response with commission-aware revenue
+ * Matches backend EventAttendeesResponse
+ */
+export interface EventAttendeesResponse {
+  eventId: string;
+  eventTitle: string;
+  attendees: EventAttendeeDto[];
+  totalRegistrations: number;
+  totalAttendees: number;
+
+  // Phase 6A.71: Commission-aware revenue properties
+  /** Total revenue before commission deduction */
+  grossRevenue: number;
+  /** Platform commission amount (LankaConnect + Stripe combined - legacy) */
+  commissionAmount: number;
+  /** Net revenue after commission deduction (organizer's payout) */
+  netRevenue: number;
+  /** Commission rate applied (e.g., 0.05 for 5%) */
+  commissionRate: number;
+  /** Whether this is a free event */
+  isFreeEvent: boolean;
+
+  // Phase 6A.X: Detailed revenue breakdown totals
+  /** Total sales tax collected from all registrations */
+  totalSalesTax: number;
+  /** Total Stripe processing fees for all registrations */
+  totalStripeFees: number;
+  /** Total platform commission for all registrations */
+  totalPlatformCommission: number;
+  /** Total organizer payout after all deductions */
+  totalOrganizerPayout: number;
+  /** Average sales tax rate applied across registrations */
+  averageTaxRate: number;
+  /** Whether this event has detailed revenue breakdown data */
+  hasRevenueBreakdown: boolean;
+
+  /** @deprecated Use grossRevenue instead */
+  totalRevenue?: number | null;
+}
+
+/**
+ * Phase 6A.45/6A.73: Export format enum
+ * Matches backend ExportFormat
+ */
+export enum ExportFormat {
+  Excel = 0,
+  Csv = 1,
+  SignUpListsZip = 2,     // Phase 6A.69: ZIP archive with CSV files
+  SignUpListsExcel = 3,   // Phase 6A.73: Excel file with category sheets
+}
+
+/**
+ * Phase 6A.61: Event notification history DTO
+ * Matches backend EventNotificationHistoryDto
+ */
+export interface EventNotificationHistoryDto {
+  id: string;
+  sentAt: string;
+  sentByUserName: string;
+  recipientCount: number;
+  successfulSends: number;
+  failedSends: number;
+}
+
+/**
+ * Phase 6A.76: Event reminder history DTO
+ * Matches backend EventReminderHistoryDto
+ */
+export interface EventReminderHistoryDto {
+  reminderType: string;
+  reminderTypeLabel: string;
+  sentDate: string;
+  recipientCount: number;
+}
+
+// ==================== Add-Only Attendees with Delta Payment ====================
+
+/**
+ * Add-Only Attendees: Status of a registration addition
+ * Matches backend RegistrationAdditionStatus enum
+ */
+export type RegistrationAdditionStatus = 'Pending' | 'PaymentCompleted' | 'Merged' | 'Failed' | 'Abandoned';
+
+/**
+ * Add-Only Attendees: New attendee to be added
+ * Used in calculate-addition and add-attendees requests
+ */
+export interface NewAttendeeDto {
+  name: string;
+  ageCategory: AgeCategory;
+  gender?: Gender | null;
+}
+
+/**
+ * Add-Only Attendees: Request to calculate addition price
+ * POST /api/events/registrations/{registrationId}/calculate-addition
+ */
+export interface CalculateAdditionPriceRequest {
+  newAttendees: NewAttendeeDto[];
+}
+
+/**
+ * Add-Only Attendees: Attendee price breakdown
+ */
+export interface AttendeePrice {
+  name: string;
+  ageCategory: AgeCategory;
+  price: number;
+}
+
+/**
+ * Add-Only Attendees: Response from calculate-addition endpoint
+ */
+export interface AdditionPriceResultDto {
+  registrationId: string;
+  eventId: string;
+  eventTitle: string;
+  currentAttendeeCount: number;
+  newAttendeesCount: number;
+  totalAttendeeCount: number;
+  maxAttendeesPerRegistration: number;
+  currentTotalPaid: number;
+  newTotalPrice: number;
+  additionalAmount: number;
+  currency: string;
+  isValid: boolean;
+  errorMessage?: string | null;
+  hasPendingAddition: boolean;
+  attendeeBreakdown: AttendeePrice[];
+  remainingCapacity?: number | null;
+}
+
+/**
+ * Add-Only Attendees: Request to initiate adding attendees
+ * POST /api/events/registrations/{registrationId}/add-attendees
+ */
+export interface InitiateAddAttendeesRequest {
+  newAttendees: NewAttendeeDto[];
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * Add-Only Attendees: Response from add-attendees endpoint
+ */
+export interface InitiateAddAttendeesResult {
+  success: boolean;
+  errorMessage?: string | null;
+  registrationAdditionId?: string | null;
+  checkoutSessionId?: string | null;
+  checkoutUrl?: string | null;
+  expiresAt?: string | null;
+  additionalAmount: number;
+  currency: string;
+  newAttendeesCount: number;
+}
+
+/**
+ * Add-Only Attendees: Pending attendee in an addition
+ */
+export interface PendingAttendeeDto {
+  name: string;
+  ageCategory: AgeCategory | string;
+  gender?: Gender | null;
+}
+
+/**
+ * Add-Only Attendees: Pending addition details
+ * GET /api/events/registrations/{registrationId}/pending-addition
+ */
+export interface PendingAdditionDto {
+  id: string;
+  registrationId: string;
+  eventId: string;
+  status: RegistrationAdditionStatus;
+  newAttendees: PendingAttendeeDto[];
+  additionalAmount: number;
+  currency: string;
+  checkoutSessionId?: string | null;
+  checkoutUrl?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Add-Only Attendees: Response from cancel-pending-addition endpoint
+ * DELETE /api/events/registrations/{registrationId}/pending-addition
+ */
+export interface CancelPendingAdditionResult {
+  success: boolean;
+  errorMessage?: string | null;
+  cancelledAdditionId?: string | null;
 }

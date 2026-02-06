@@ -39,9 +39,9 @@ public class PhoneNumber : ValueObject
         if (string.IsNullOrEmpty(cleaned))
             return Result<PhoneNumber>.Failure("Phone number must contain digits");
 
-        // Validate format
+        // Validate format - E.164 international format or domestic formats
         if (!PhoneRegex.IsMatch(cleaned))
-            return Result<PhoneNumber>.Failure("Invalid phone number format. Must include country code (e.g., +94771234567)");
+            return Result<PhoneNumber>.Failure("Invalid phone number format");
 
         // Extract country code and number
         string countryCode;
@@ -49,7 +49,7 @@ public class PhoneNumber : ValueObject
 
         if (cleaned.StartsWith("+"))
         {
-            // Find where country code ends (assuming max 3 digits for country code)
+            // International format with + prefix
             var match = Regex.Match(cleaned, @"^\+(\d{1,3})(\d{7,})$");
             if (!match.Success)
                 return Result<PhoneNumber>.Failure("Invalid phone number format");
@@ -57,33 +57,38 @@ public class PhoneNumber : ValueObject
             countryCode = match.Groups[1].Value;
             number = match.Groups[2].Value;
         }
+        else if (cleaned.StartsWith("94"))
+        {
+            // Sri Lankan number without + prefix
+            countryCode = "94";
+            number = cleaned[2..];
+        }
+        else if (cleaned.StartsWith("0"))
+        {
+            // Sri Lankan local format (leading 0)
+            countryCode = "94";
+            number = cleaned[1..];
+        }
         else
         {
-            // Assume Sri Lankan number without + prefix
-            if (cleaned.StartsWith("94"))
-            {
-                countryCode = "94";
-                number = cleaned[2..];
-            }
-            else if (cleaned.StartsWith("0"))
-            {
-                countryCode = "94";
-                number = cleaned[1..];
-            }
-            else
-            {
-                return Result<PhoneNumber>.Failure("Phone number must include country code or start with 0 for Sri Lankan numbers");
-            }
+            // International format without + prefix (e.g., US number: 18609780124)
+            // Accept as-is with unknown country code
+            // Minimum 7 digits for a valid phone number
+            if (cleaned.Length < 7)
+                return Result<PhoneNumber>.Failure("Phone number must have at least 7 digits");
+
+            countryCode = "";
+            number = cleaned;
         }
 
-        // Validate Sri Lankan numbers specifically
+        // Validate Sri Lankan numbers specifically (only when country code is detected)
         if (countryCode == "94")
         {
             if (number.Length != 9)
                 return Result<PhoneNumber>.Failure("Sri Lankan phone numbers must have 9 digits after country code");
 
             var firstDigit = number[0];
-            if (firstDigit != '7' && firstDigit != '1' && firstDigit != '2' && firstDigit != '3' && 
+            if (firstDigit != '7' && firstDigit != '1' && firstDigit != '2' && firstDigit != '3' &&
                 firstDigit != '4' && firstDigit != '5' && firstDigit != '6' && firstDigit != '8' && firstDigit != '9')
                 return Result<PhoneNumber>.Failure("Invalid Sri Lankan phone number format");
         }

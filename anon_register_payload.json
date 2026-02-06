@@ -1,0 +1,17 @@
+{
+  "name": "Test User",
+  "age": 30,
+  "email": "test+phase6a81@example.com",
+  "phoneNumber": "8609780124",
+  "address": "123 Test St, Cleveland, OH",
+  "quantity": 1,
+  "attendees": [
+    {
+      "name": "Test User",
+      "ageCategory": "Adult",
+      "gender": "Male"
+    }
+  ],
+  "successUrl": "https://lankaconnect-staging.azurewebsites.net/payment-success",
+  "cancelUrl": "https://lankaconnect-staging.azurewebsites.net/payment-cancel"
+}

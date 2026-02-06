@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
@@ -6,6 +7,8 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Queries.GetEvents;
 
@@ -20,65 +23,254 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     private readonly IUserRepository _userRepository;
     private readonly IApplicationDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly ILogger<GetEventsQueryHandler> _logger;
 
     public GetEventsQueryHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IApplicationDbContext dbContext,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<GetEventsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
         _dbContext = dbContext;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<IReadOnlyList<EventDto>>> Handle(GetEventsQuery request, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-
-        // Step 1: Get base event list with traditional filtering
-        IReadOnlyList<Event> events = await GetFilteredEventsAsync(request, cancellationToken);
-
-        // Step 2: Apply location-based sorting if location parameters provided
-        if (ShouldApplyLocationSorting(request))
+        using (LogContext.PushProperty("Operation", "GetEvents"))
+        using (LogContext.PushProperty("EntityType", "Event"))
         {
-            events = await ApplyLocationBasedSortingAsync(events, request, now, cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetEvents START: Category={Category}, City={City}, State={State}, Status={Status}, StatusFilter={StatusFilter}, SearchTerm={SearchTerm}, IsFreeOnly={IsFreeOnly}, UserId={UserId}, HasLocation={HasLocation}",
+                request.Category, request.City, request.State, request.Status, request.StatusFilter, request.SearchTerm,
+                request.IsFreeOnly, request.UserId, request.Latitude.HasValue && request.Longitude.HasValue);
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Phase 6A.47: If SearchTerm provided, use full-text search first
+                IReadOnlyList<Event> events;
+                if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+                {
+                    _logger.LogInformation(
+                        "GetEvents: Using full-text search - SearchTerm={SearchTerm}",
+                        request.SearchTerm);
+
+                    // Step 1a: Apply full-text search with filters
+                    // Phase 6A.X Issue #36: Do not exclude cancelled events in GetEvents (events list page)
+                    // Issue #33 FIX: Pass IncludeAllStatuses to SearchAsync for Dashboard Event Management
+                    (events, _) = await _eventRepository.SearchAsync(
+                        request.SearchTerm,
+                        limit: 1000, // Large limit for search
+                        offset: 0,
+                        request.Category,
+                        request.IsFreeOnly,
+                        request.StartDateFrom,
+                        excludeCancelled: false, // GetEvents shows all events including cancelled
+                        includeAllStatuses: request.IncludeAllStatuses, // Issue #33: Pass flag for Dashboard search
+                        cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Full-text search completed - SearchTerm={SearchTerm}, ResultCount={ResultCount}",
+                        request.SearchTerm, events.Count);
+                }
+                else
+                {
+                    // Step 1b: Get base event list with traditional filtering
+                    events = await GetFilteredEventsAsync(request, cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Traditional filtering completed - ResultCount={ResultCount}",
+                        events.Count);
+                }
+
+                // Step 2: Apply location-based sorting if location parameters provided
+                if (ShouldApplyLocationSorting(request))
+                {
+                    _logger.LogInformation(
+                        "GetEvents: Applying location-based sorting - UserId={UserId}, HasCoordinates={HasCoordinates}, MetroAreaCount={MetroAreaCount}",
+                        request.UserId, request.Latitude.HasValue && request.Longitude.HasValue,
+                        request.MetroAreaIds?.Count ?? 0);
+
+                    events = await ApplyLocationBasedSortingAsync(events, request, now, cancellationToken);
+
+                    _logger.LogInformation(
+                        "GetEvents: Location-based sorting completed - ResultCount={ResultCount}",
+                        events.Count);
+                }
+
+                // Step 3: Apply additional in-memory filters
+                var filteredEvents = ApplyInMemoryFilters(events, request);
+                var filteredList = filteredEvents.ToList();
+
+                _logger.LogInformation(
+                    "GetEvents: In-memory filters applied - BeforeFilter={BeforeFilter}, AfterFilter={AfterFilter}",
+                    events.Count, filteredList.Count);
+
+                // Step 4: Sort and map to DTOs
+                var result = filteredList
+                    .OrderBy(e => e.StartDate)
+                    .Select(e => _mapper.Map<EventDto>(e))
+                    .ToList();
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetEvents COMPLETE: TotalResults={TotalResults}, Duration={ElapsedMs}ms",
+                    result.Count, stopwatch.ElapsedMilliseconds);
+
+                return Result<IReadOnlyList<EventDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetEvents FAILED: Exception occurred - Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
         }
-
-        // Step 3: Apply additional in-memory filters
-        var filteredEvents = ApplyInMemoryFilters(events, request);
-
-        // Step 4: Sort and map to DTOs
-        var result = filteredEvents
-            .OrderBy(e => e.StartDate)
-            .Select(e => _mapper.Map<EventDto>(e))
-            .ToList();
-
-        return Result<IReadOnlyList<EventDto>>.Success(result);
     }
 
     /// <summary>
-    /// Gets filtered events based on status, city, or defaults to published events
+    /// Issue #36: Resolves EventStatusFilter to an array of EventStatus values.
+    /// Maps user-friendly filter groups to actual backend statuses.
+    /// </summary>
+    private static EventStatus[]? ResolveStatusFilter(EventStatusFilter? statusFilter, bool includeAllStatuses)
+    {
+        if (!statusFilter.HasValue)
+            return null;
+
+        return statusFilter.Value switch
+        {
+            EventStatusFilter.Active => new[]
+            {
+                EventStatus.Published,
+                EventStatus.Active
+            },
+            EventStatusFilter.Inactive => new[]
+            {
+                EventStatus.Completed,
+                EventStatus.Archived,
+                EventStatus.Postponed
+            },
+            EventStatusFilter.Cancelled => new[]
+            {
+                EventStatus.Cancelled
+            },
+            EventStatusFilter.Unpublished => includeAllStatuses
+                ? new[] { EventStatus.Draft, EventStatus.UnderReview }
+                : Array.Empty<EventStatus>(), // Security: Unpublished requires IncludeAllStatuses
+            EventStatusFilter.All => null, // null means no status filter (handled separately)
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Gets filtered events based on status, city, or defaults to all visible events
+    /// Phase 6A.59: Changed default from Published-only to all except Draft/UnderReview
+    /// Phase 6A.88: Added IncludeAllStatuses flag to control Draft/UnderReview visibility
+    /// Issue #36: Added StatusFilter support for user-friendly status group filtering
+    /// This allows cancelled events to be visible to users
     /// </summary>
     private async Task<IReadOnlyList<Event>> GetFilteredEventsAsync(
         GetEventsQuery request,
         CancellationToken cancellationToken)
     {
+        // Issue #36: StatusFilter takes precedence over Status when provided
+        if (request.StatusFilter.HasValue)
+        {
+            var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
+
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using StatusFilter={StatusFilter}, ResolvedStatuses={ResolvedStatuses}, IncludeAllStatuses={IncludeAllStatuses}",
+                request.StatusFilter.Value,
+                resolvedStatuses != null ? string.Join(",", resolvedStatuses) : "null (All)",
+                request.IncludeAllStatuses);
+
+            // Get all events first
+            var allEvents = await _eventRepository.GetAllAsync(cancellationToken);
+
+            // Handle "All" filter
+            if (resolvedStatuses == null)
+            {
+                // For "All" with IncludeAllStatuses=true: return everything
+                if (request.IncludeAllStatuses)
+                {
+                    return allEvents.ToList();
+                }
+
+                // For "All" without IncludeAllStatuses: exclude Draft/UnderReview (public view)
+                return allEvents
+                    .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
+                    .ToList();
+            }
+
+            // Handle Unpublished filter without authorization (returns empty)
+            if (resolvedStatuses.Length == 0)
+            {
+                _logger.LogWarning(
+                    "GetFilteredEventsAsync: Unpublished filter requested without IncludeAllStatuses=true, returning empty list");
+                return Array.Empty<Event>();
+            }
+
+            // Filter by resolved statuses
+            return allEvents
+                .Where(e => resolvedStatuses.Contains(e.Status))
+                .ToList();
+        }
+
         // If status filter is provided, use repository method
         if (request.Status.HasValue)
         {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using status filter - Status={Status}",
+                request.Status.Value);
             return await _eventRepository.GetEventsByStatusAsync(request.Status.Value, cancellationToken);
         }
 
         // If city filter is provided, use repository method
         if (!string.IsNullOrWhiteSpace(request.City))
         {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: Using city filter - City={City}",
+                request.City);
             return await _eventRepository.GetEventsByCityAsync(request.City, cancellationToken: cancellationToken);
         }
 
-        // Otherwise get published events by default
-        return await _eventRepository.GetPublishedEventsAsync(cancellationToken);
+        // Get all events from repository
+        var allEventsDefault = await _eventRepository.GetAllAsync(cancellationToken);
+
+        // Phase 6A.88: If IncludeAllStatuses is true, return ALL events (for organizer's Event Management)
+        if (request.IncludeAllStatuses)
+        {
+            _logger.LogDebug(
+                "GetFilteredEventsAsync: IncludeAllStatuses=true, returning all {EventCount} events including Draft/UnderReview",
+                allEventsDefault.Count);
+            return allEventsDefault.ToList();
+        }
+
+        // Phase 6A.59: Default behavior - exclude Draft and UnderReview for public listings
+        // This includes Published, Active, Cancelled, Completed, Archived, Postponed
+        // Cancelled events will show with CANCELLED badge in UI
+        var filteredEvents = allEventsDefault
+            .Where(e => e.Status != EventStatus.Draft && e.Status != EventStatus.UnderReview)
+            .ToList();
+
+        _logger.LogDebug(
+            "GetFilteredEventsAsync: IncludeAllStatuses=false (default), filtered from {TotalCount} to {FilteredCount} events (excluded Draft/UnderReview)",
+            allEventsDefault.Count, filteredEvents.Count);
+
+        return filteredEvents;
     }
 
     /// <summary>
@@ -261,27 +453,51 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     }
 
     /// <summary>
-    /// Sorts events by distance using Haversine formula
+    /// Sorts events by distance using Haversine formula.
+    /// Issue #23 Fix: Events WITH coordinates are sorted by distance (nearest first).
+    /// Events WITHOUT coordinates are appended at the end, sorted by StartDate.
+    /// This ensures no events are lost during location-based sorting.
     /// </summary>
     private List<Event> SortEventsByDistance(
         List<Event> events,
         decimal latitude,
         decimal longitude)
     {
-        return events
-            .Where(e => e.Location?.Coordinates != null)
-            .Select(e => new
+        // Issue #23 Fix: Partition events into those with and without coordinates
+        var eventsWithCoords = new List<(Event Event, double Distance)>();
+        var eventsWithoutCoords = new List<Event>();
+
+        foreach (var e in events)
+        {
+            if (e.Location?.Coordinates != null)
             {
-                Event = e,
-                Distance = CalculateDistance(
+                var distance = CalculateDistance(
                     latitude,
                     longitude,
-                    e.Location!.Coordinates!.Latitude,
-                    e.Location.Coordinates.Longitude)
-            })
+                    e.Location.Coordinates.Latitude,
+                    e.Location.Coordinates.Longitude);
+                eventsWithCoords.Add((e, distance));
+            }
+            else
+            {
+                eventsWithoutCoords.Add(e);
+            }
+        }
+
+        // Sort events with coordinates by distance (ascending - nearest first)
+        var result = eventsWithCoords
             .OrderBy(x => x.Distance)
             .Select(x => x.Event)
             .ToList();
+
+        // Issue #23 Fix: Append events without coordinates, sorted by StartDate
+        result.AddRange(eventsWithoutCoords.OrderBy(e => e.StartDate));
+
+        _logger.LogDebug(
+            "SortEventsByDistance: Sorted {WithCoords} events by distance, appended {WithoutCoords} events without coordinates",
+            eventsWithCoords.Count, eventsWithoutCoords.Count);
+
+        return result;
     }
 
     /// <summary>

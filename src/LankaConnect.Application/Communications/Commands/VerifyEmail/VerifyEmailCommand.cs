@@ -6,11 +6,11 @@ namespace LankaConnect.Application.Communications.Commands.VerifyEmail;
 
 /// <summary>
 /// Command to verify a user's email address using verification token
+/// Phase 6A.53: Changed to token-only verification (removed UserId parameter)
+/// Token is sufficient to uniquely identify the user via GetByEmailVerificationTokenAsync
 /// </summary>
-/// <param name="UserId">The ID of the user verifying their email</param>
 /// <param name="Token">The email verification token</param>
 public record VerifyEmailCommand(
-    Guid UserId,
     string Token) : ICommand<VerifyEmailResponse>;
 
 /// <summary>

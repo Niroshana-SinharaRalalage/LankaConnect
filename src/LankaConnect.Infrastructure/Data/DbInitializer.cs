@@ -42,6 +42,9 @@ public class DbInitializer
             // Seed metro areas (Phase 5C)
             await SeedMetroAreasAsync();
 
+            // Seed badges (Phase 6A.25)
+            await SeedBadgesAsync();
+
             // Seed events
             await SeedEventsAsync();
         }
@@ -73,19 +76,39 @@ public class DbInitializer
     /// <summary>
     /// Seeds metro areas into the database
     /// Phase 5C: Metro Areas System
+    /// Phase 6A.70: Removed early return to allow incremental metro area additions
     /// </summary>
     private async Task SeedMetroAreasAsync()
     {
         var existingMetroAreasCount = await _context.MetroAreas.CountAsync();
-        if (existingMetroAreasCount > 0)
+        _logger.LogInformation("Database currently contains {Count} metro areas. Checking for missing metros...", existingMetroAreasCount);
+
+        // Phase 6A.70: Always call seeder - it handles incremental additions internally
+        await MetroAreaSeeder.SeedAsync(_context);
+
+        var finalCount = await _context.MetroAreas.CountAsync();
+        _logger.LogInformation("Metro area seeding complete. Total metros: {FinalCount} (added {Added})",
+            finalCount, finalCount - existingMetroAreasCount);
+    }
+
+    /// <summary>
+    /// Seeds predefined badges into the database
+    /// Phase 6A.25: Badge Management System
+    /// Phase 6A.28: Changed to check only for system badges, so seeding works even if custom badges exist
+    /// </summary>
+    private async Task SeedBadgesAsync()
+    {
+        var existingSystemBadgesCount = await _context.Badges.CountAsync(b => b.IsSystem);
+        if (existingSystemBadgesCount > 0)
         {
-            _logger.LogInformation("Database already contains {Count} metro areas. Skipping seed.", existingMetroAreasCount);
+            _logger.LogInformation("Database already contains {Count} system badges. Skipping seed.", existingSystemBadgesCount);
             return;
         }
 
-        _logger.LogInformation("Seeding metro areas...");
-        await MetroAreaSeeder.SeedAsync(_context);
-        _logger.LogInformation("Successfully seeded metro areas to the database.");
+        var existingTotalBadgesCount = await _context.Badges.CountAsync();
+        _logger.LogInformation("Seeding predefined system badges... (found {Count} existing custom badges)", existingTotalBadgesCount);
+        await BadgeSeeder.SeedAsync(_context);
+        _logger.LogInformation("Successfully seeded predefined system badges to the database.");
     }
 
     /// <summary>

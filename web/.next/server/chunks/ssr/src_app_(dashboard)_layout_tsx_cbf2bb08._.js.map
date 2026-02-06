@@ -1,1 +1,0 @@
-{"version":3,"sources":["turbopack:///[project]/src/app/(dashboard)/layout.tsx"],"sourcesContent":["export default function DashboardLayout({\r\n  children,\r\n}: {\r\n  children: React.ReactNode;\r\n}) {\r\n  return <>{children}</>;\r\n}\r\n"],"names":[],"mappings":"uDAAe,SAAS,EAAgB,UACtC,CAAQ,CAGT,EACC,MAAO,CAAA,EAAA,EAAA,GAAA,EAAA,EAAA,QAAA,CAAA,UAAG,GACZ"}

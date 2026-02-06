@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,15 +7,23 @@ using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Application.Events.Commands.UpdateEvent;
 using LankaConnect.Application.Events.Commands.DeleteEvent;
 using LankaConnect.Application.Events.Commands.PublishEvent;
+using LankaConnect.Application.Events.Commands.UnpublishEvent;
 using LankaConnect.Application.Events.Commands.CancelEvent;
 using LankaConnect.Application.Events.Commands.PostponeEvent;
 using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
+using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
+using LankaConnect.Application.Events.Commands.ResendTicketEmail;
+using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
+using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Application.Events.Commands.UpdateMaxAttendeesPerRegistration;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
+using LankaConnect.Application.Events.Commands.SendEventNotification;
+using LankaConnect.Application.Events.Commands.SendEventReminder;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
@@ -22,11 +31,14 @@ using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
 using LankaConnect.Application.Events.Queries.GetNearbyEvents;
 using LankaConnect.Application.Events.Queries.GetUserRsvps;
 using LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
+using LankaConnect.Application.Events.Queries.GetRegistrationById;
 using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
 using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
 using LankaConnect.Application.Events.Queries.SearchEvents;
 using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
+using LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
+using LankaConnect.Application.Events.Queries.GetEventReminderHistory;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Commands.AddImageToEvent;
 using LankaConnect.Application.Events.Commands.DeleteEventImage;
@@ -45,6 +57,8 @@ using LankaConnect.Application.Events.Queries.GetWaitingList;
 using LankaConnect.Application.Events.Queries.GetEventIcs;
 using LankaConnect.Application.Events.Commands.AddPassToEvent;
 using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
+using LankaConnect.Application.Events.Queries.GetEventAttendees;
+using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventPasses;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
@@ -55,7 +69,17 @@ using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
+using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
+using LankaConnect.Application.Events.Commands.AddOpenSignUpItemAnonymous;
+using LankaConnect.Application.Events.Commands.UpdateOpenSignUpItem;
+using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
+using LankaConnect.Application.Events.Queries.GetTicket;
+using LankaConnect.Application.Events.Queries.GetTicketPdf;
+using LankaConnect.Application.Events.Queries.CalculateAdditionPrice;
+using LankaConnect.Application.Events.Queries.GetPendingAddition;
+using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
+using LankaConnect.Application.Events.Commands.CancelPendingAddition;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -73,12 +97,15 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Get all events with optional filtering and location-based sorting
+    /// Phase 6A.47: Added searchTerm parameter for text-based search
+    /// Issue #36: Added statusFilter parameter for user-friendly status group filtering
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetEvents(
         [FromQuery] EventStatus? status = null,
+        [FromQuery] EventStatusFilter? statusFilter = null,
         [FromQuery] EventCategory? category = null,
         [FromQuery] DateTime? startDateFrom = null,
         [FromQuery] DateTime? startDateTo = null,
@@ -88,14 +115,17 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] Guid? userId = null,
         [FromQuery] decimal? latitude = null,
         [FromQuery] decimal? longitude = null,
-        [FromQuery] List<Guid>? metroAreaIds = null)
+        [FromQuery] List<Guid>? metroAreaIds = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] bool includeAllStatuses = false)
     {
         Logger.LogInformation(
-            "Getting events with filters: status={Status}, category={Category}, city={City}, state={State}, userId={UserId}",
-            status, category, city, state, userId);
+            "Getting events with filters: status={Status}, statusFilter={StatusFilter}, category={Category}, city={City}, state={State}, userId={UserId}, searchTerm={SearchTerm}, includeAllStatuses={IncludeAllStatuses}",
+            status, statusFilter, category, city, state, userId, searchTerm, includeAllStatuses);
 
         var query = new GetEventsQuery(
             status,
+            statusFilter,
             category,
             startDateFrom,
             startDateTo,
@@ -105,7 +135,9 @@ public class EventsController : BaseController<EventsController>
             userId,
             latitude,
             longitude,
-            metroAreaIds);
+            metroAreaIds,
+            searchTerm,
+            includeAllStatuses);
 
         var result = await Mediator.Send(query);
 
@@ -114,6 +146,7 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Search events using full-text search (Epic 2 Phase 3 - PostgreSQL FTS)
+    /// Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
     /// </summary>
     /// <param name="searchTerm">Search term to match against event titles and descriptions</param>
     /// <param name="page">Page number (default: 1)</param>
@@ -121,6 +154,7 @@ public class EventsController : BaseController<EventsController>
     /// <param name="category">Optional category filter</param>
     /// <param name="isFreeOnly">Optional filter for free events only</param>
     /// <param name="startDateFrom">Optional filter for events starting from this date</param>
+    /// <param name="excludeCancelled">If true, excludes cancelled events from results (default: false)</param>
     /// <returns>Paginated list of matching events ordered by relevance</returns>
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<EventSearchResultDto>), StatusCodes.Status200OK)]
@@ -131,12 +165,13 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] int pageSize = 20,
         [FromQuery] EventCategory? category = null,
         [FromQuery] bool? isFreeOnly = null,
-        [FromQuery] DateTime? startDateFrom = null)
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] bool excludeCancelled = false)
     {
-        Logger.LogInformation("Searching events: term='{SearchTerm}', page={Page}, pageSize={PageSize}, category={Category}",
-            searchTerm, page, pageSize, category);
+        Logger.LogInformation("Searching events: term='{SearchTerm}', page={Page}, pageSize={PageSize}, category={Category}, excludeCancelled={ExcludeCancelled}",
+            searchTerm, page, pageSize, category, excludeCancelled);
 
-        var query = new SearchEventsQuery(searchTerm, page, pageSize, category, isFreeOnly, startDateFrom);
+        var query = new SearchEventsQuery(searchTerm, page, pageSize, category, isFreeOnly, startDateFrom, excludeCancelled);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -320,6 +355,53 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.X: Update event organizer contact details (Owner only)
+    /// </summary>
+    [HttpPut("{id:guid}/organizer-contact")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateEventOrganizerContact(Guid id, [FromBody] UpdateEventOrganizerContactCommand command)
+    {
+        Logger.LogInformation("Updating organizer contact for event: {EventId}", id);
+
+        // Ensure ID in route matches command
+        if (id != command.EventId)
+        {
+            return BadRequest("Event ID mismatch");
+        }
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Issue #51: Update max attendees per registration for an event
+    /// Allows event organizer to configure how many attendees can be added in a single registration
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="request">New max attendees value (1-50, cannot exceed event capacity)</param>
+    [HttpPut("{id:guid}/max-attendees-per-registration")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMaxAttendeesPerRegistration(Guid id, [FromBody] UpdateMaxAttendeesPerRegistrationRequest request)
+    {
+        Logger.LogInformation("[Issue #51] Updating max attendees per registration for event: {EventId}, NewMax: {NewMax}",
+            id, request.MaxAttendeesPerRegistration);
+
+        var command = new UpdateMaxAttendeesPerRegistrationCommand(id, request.MaxAttendeesPerRegistration);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Delete an event (Owner only, draft/cancelled events only)
     /// </summary>
     [HttpDelete("{id:guid}")]
@@ -330,9 +412,10 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEvent(Guid id)
     {
-        Logger.LogInformation("Deleting event: {EventId}", id);
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} deleting event: {EventId}", userId, id);
 
-        var command = new DeleteEventCommand(id);
+        var command = new DeleteEventCommand(id, userId);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -371,6 +454,25 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Publishing event: {EventId}", id);
 
         var command = new PublishEventCommand(id);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.41: Unpublish an event (return to Draft status) (Owner only)
+    /// Allows organizers to make corrections after premature publication.
+    /// </summary>
+    [HttpPost("{id:guid}/unpublish")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UnpublishEvent(Guid id)
+    {
+        Logger.LogInformation("Unpublishing event: {EventId}", id);
+
+        var command = new UnpublishEventCommand(id);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -457,49 +559,154 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.24: Resend ticket email to the registered user
+    /// Only the registration owner can resend their ticket
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/resend-ticket")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ResendTicket(Guid registrationId)
+    {
+        // Get current user ID from claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            Logger.LogWarning("Resend ticket attempted without valid user ID claim");
+            return Unauthorized();
+        }
+
+        Logger.LogInformation("User {UserId} requesting to resend ticket for Registration {RegistrationId}",
+            userId, registrationId);
+
+        var command = new ResendTicketEmailCommand(registrationId, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            return Ok(new { message = "Ticket email resent successfully" });
+        }
+
+        // Check if it's an authorization error
+        if (result.Errors.Any(e => e.Contains("Not authorized")))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = result.Errors.First() });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Register anonymous attendee for an event (No authentication required)
+    /// Phase 6A.44: Returns checkout URL for paid events, null for free events
     /// </summary>
     [HttpPost("{id:guid}/register-anonymous")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AnonymousRegistrationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterAnonymousAttendee(Guid id, [FromBody] AnonymousRegistrationRequest request)
     {
         Logger.LogInformation("Anonymous attendee {Email} registering for event {EventId}",
             request.Email, id);
 
-        // Session 21: Updated for new command signature (backward compatible)
+        // Phase 6A.43: Support both legacy and multi-attendee formats
+        // Convert AnonymousAttendeeDto to Application layer AttendeeDto if provided
+        List<LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto>? attendees = null;
+        if (request.Attendees != null && request.Attendees.Any())
+        {
+            attendees = request.Attendees.Select(a =>
+                new LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto(
+                    a.Name,
+                    a.AgeCategory,
+                    a.Gender
+                )).ToList();
+        }
+
         var command = new RegisterAnonymousAttendeeCommand(
             EventId: id,
             Name: request.Name,
             Age: request.Age,
-            Attendees: null, // Legacy format - no detailed attendees
+            Attendees: attendees, // Phase 6A.43: Pass attendees array from request
             Email: request.Email,
             PhoneNumber: request.PhoneNumber,
             Address: request.Address,
-            Quantity: request.Quantity
+            Quantity: request.Quantity,
+            SuccessUrl: request.SuccessUrl, // Phase 6A.44: Stripe checkout URLs
+            CancelUrl: request.CancelUrl
         );
 
         var result = await Mediator.Send(command);
+
+        // Phase 6A.44: Return structured response with checkout URL for paid events
+        if (result.IsSuccess)
+        {
+            var checkoutUrl = result.Value;
+            return Ok(new AnonymousRegistrationResponse(
+                Success: true,
+                CheckoutUrl: checkoutUrl,
+                Message: checkoutUrl != null
+                    ? "Please complete payment to confirm your registration."
+                    : "Registration successful! You will receive a confirmation email shortly."
+            ));
+        }
 
         return HandleResult(result);
     }
 
     /// <summary>
     /// Cancel RSVP to an event (Authenticated users)
+    /// Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
     /// </summary>
+    /// <param name="id">The event ID</param>
+    /// <param name="deleteSignUpCommitments">
+    /// If true, deletes all sign-up commitments and restores remaining quantities.
+    /// If false (default), keeps sign-up commitments intact.
+    /// </param>
     [HttpDelete("{id:guid}/rsvp")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CancelRsvp(Guid id)
+    public async Task<IActionResult> CancelRsvp(Guid id, [FromQuery] bool deleteSignUpCommitments = false)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}", userId, id);
+        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}",
+            userId, id, deleteSignUpCommitments);
 
-        var command = new CancelRsvpCommand(id, userId);
+        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments);
         var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Withdraw a pending refund request and restore registration to Confirmed status.
+    /// Phase 6A.91: Allows users to cancel their refund request before it completes.
+    /// </summary>
+    /// <param name="id">The event ID</param>
+    /// <returns>Success if refund request was withdrawn</returns>
+    [HttpPost("{id:guid}/rsvp/withdraw-refund")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> WithdrawRefundRequest(Guid id)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("[Phase 6A.91] User {UserId} withdrawing refund request for event {EventId}",
+            userId, id);
+
+        var command = new WithdrawRefundRequestCommand(id, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation("[Phase 6A.91] Refund request withdrawn successfully - EventId: {EventId}, UserId: {UserId}",
+                id, userId);
+        }
 
         return HandleResult(result);
     }
@@ -523,23 +730,153 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
+    // ==================== TICKET ENDPOINTS (Phase 6A.24) ====================
+
+    /// <summary>
+    /// Get ticket details for a user's registration
+    /// Phase 6A.24: Ticket viewing for paid events
+    /// </summary>
+    [HttpGet("{eventId:guid}/my-registration/ticket")]
+    [Authorize]
+    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyTicket(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Getting ticket for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var query = new GetTicketQuery(eventId, registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound(new { message = result.Error });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Download ticket as PDF
+    /// Phase 6A.24: Ticket PDF download for paid events
+    /// </summary>
+    [HttpGet("{eventId:guid}/my-registration/ticket/pdf")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DownloadMyTicketPdf(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Downloading ticket PDF for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var query = new GetTicketPdfQuery(eventId, registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            if (result.Errors.FirstOrDefault()?.Contains("not found") == true)
+            {
+                return NotFound(new { message = result.Error });
+            }
+            return HandleResult(result);
+        }
+
+        return File(result.Value.PdfBytes, "application/pdf", result.Value.FileName);
+    }
+
+    /// <summary>
+    /// Resend ticket email to registration contact
+    /// Phase 6A.24: Allows users to request ticket email resend
+    /// </summary>
+    [HttpPost("{eventId:guid}/my-registration/ticket/resend-email")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ResendTicketEmail(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("Resending ticket email for user {UserId} for event {EventId}", userId, eventId);
+
+        // First get the registration to get the registration ID
+        var registrationQuery = new GetUserRegistrationForEventQuery(eventId, userId);
+        var registrationResult = await Mediator.Send(registrationQuery);
+
+        if (registrationResult.IsFailure || registrationResult.Value == null)
+        {
+            Logger.LogInformation("No registration found for user {UserId} for event {EventId}", userId, eventId);
+            return NotFound(new { message = "You are not registered for this event" });
+        }
+
+        var command = new ResendTicketEmailCommand(registrationResult.Value.Id, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound(new { message = result.Error });
+        }
+
+        return HandleResult(result);
+    }
+
     // ==================== USER DASHBOARD ENDPOINTS ====================
 
     /// <summary>
     /// Get events created by current user (Authenticated Event Organizers/Admins)
     /// Epic 1: Dashboard my-events endpoint
+    /// Phase 6A.47: Added filters (searchTerm, category, date range, location) for Event Management tab
+    /// Issue #36: Added statusFilter for user-friendly status filtering
     /// </summary>
     [HttpGet("my-events")]
     [Authorize]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyEvents()
+    public async Task<IActionResult> GetMyEvents(
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] string? state = null,
+        [FromQuery] List<Guid>? metroAreaIds = null,
+        [FromQuery] EventStatusFilter? statusFilter = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting events created by user: {UserId}", userId);
+        Logger.LogInformation("Getting events created by user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}, statusFilter={StatusFilter}",
+            userId, searchTerm, category, state, statusFilter);
 
-        var query = new GetEventsByOrganizerQuery(userId);
+        var query = new GetEventsByOrganizerQuery(
+            userId,
+            searchTerm,
+            category,
+            startDateFrom,
+            startDateTo,
+            state,
+            metroAreaIds,
+            statusFilter);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -548,18 +885,33 @@ public class EventsController : BaseController<EventsController>
     /// <summary>
     /// Get events user has registered for (Authenticated users)
     /// Epic 1: Returns full EventDto instead of RsvpDto for better dashboard UX
+    /// Phase 6A.47: Added filters (searchTerm, category, date range, location) for My Registered Events tab
     /// </summary>
     [HttpGet("my-rsvps")]
     [Authorize]
     [ProducesResponseType(typeof(IReadOnlyList<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyRsvps()
+    public async Task<IActionResult> GetMyRsvps(
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] EventCategory? category = null,
+        [FromQuery] DateTime? startDateFrom = null,
+        [FromQuery] DateTime? startDateTo = null,
+        [FromQuery] string? state = null,
+        [FromQuery] List<Guid>? metroAreaIds = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Getting registered events for user: {UserId}", userId);
+        Logger.LogInformation("Getting registered events for user: {UserId} with filters: searchTerm={SearchTerm}, category={Category}, state={State}",
+            userId, searchTerm, category, state);
 
-        var query = new GetMyRegisteredEventsQuery(userId);
+        var query = new GetMyRegisteredEventsQuery(
+            userId,
+            searchTerm,
+            category,
+            startDateFrom,
+            startDateTo,
+            state,
+            metroAreaIds);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -593,6 +945,29 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.44: Gets registration details by registration ID (for anonymous users after payment)
+    /// </summary>
+    [HttpGet("registrations/{registrationId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(RegistrationDetailsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRegistrationById(Guid registrationId)
+    {
+        Logger.LogInformation("Getting registration details for registration {RegistrationId}", registrationId);
+
+        var query = new GetRegistrationByIdQuery(registrationId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure || result.Value == null)
+        {
+            Logger.LogInformation("Registration {RegistrationId} not found", registrationId);
+            return NotFound();
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Phase 6A.14: Update user's registration details (attendees and contact information)
     /// Allows users to edit their registration after initial RSVP
     /// Business Rules:
@@ -616,7 +991,7 @@ public class EventsController : BaseController<EventsController>
         var command = new UpdateRegistrationDetailsCommand(
             eventId,
             userId,
-            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.Age)).ToList()
+            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
                 ?? new List<Application.Events.Commands.RsvpToEvent.AttendeeDto>(),
             request.Email,
             request.PhoneNumber,
@@ -1146,8 +1521,10 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Get all sign-up lists for an event
+    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists
     /// </summary>
     [HttpGet("{id:guid}/signups")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(List<SignUpListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetEventSignUpLists(Guid id)
@@ -1194,7 +1571,8 @@ public class EventsController : BaseController<EventsController>
             request.HasMandatoryItems,
             request.HasPreferredItems,
             request.HasSuggestedItems,
-            items);
+            items,
+            request.HasOpenItems); // Phase 6A.28: Open Items support
 
         var result = await Mediator.Send(command);
 
@@ -1223,7 +1601,8 @@ public class EventsController : BaseController<EventsController>
             request.Description,
             request.HasMandatoryItems,
             request.HasPreferredItems,
-            request.HasSuggestedItems);
+            request.HasSuggestedItems,
+            request.HasOpenItems); // Phase 6A.28: Open Items support
 
         var result = await Mediator.Send(command);
 
@@ -1411,6 +1790,616 @@ public class EventsController : BaseController<EventsController>
 
     #endregion
 
+    #region Open Sign-Up Items (Phase 6A.27)
+
+    /// <summary>
+    /// Add a user-submitted Open item to a sign-up list
+    /// Phase 6A.27: Allows authenticated users to add their own items to Open sign-up lists
+    /// The user who creates the item is automatically committed to bringing it
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/open-items")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] AddOpenSignUpItemRequest request)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} adding Open item '{ItemName}' to sign-up list {SignUpId} for event {EventId}",
+            userId, request.ItemName, signupId, eventId);
+
+        var command = new AddOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            userId,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Add a user-submitted Open item to a sign-up list for anonymous users
+    /// Phase 6A.44: Allows anonymous users (registered for event) to add Open items
+    /// The user who creates the item is automatically committed to bringing it
+    /// </summary>
+    [HttpPost("{eventId:guid}/signups/{signupId:guid}/open-items-anonymous")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddOpenSignUpItemAnonymous(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] AddOpenSignUpItemAnonymousRequest request)
+    {
+        Logger.LogInformation("Anonymous user with email {Email} adding Open item '{ItemName}' to sign-up list {SignUpId} for event {EventId}",
+            request.ContactEmail, request.ItemName, signupId, eventId);
+
+        var command = new AddOpenSignUpItemAnonymousCommand(
+            eventId,
+            signupId,
+            request.ContactEmail,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update a user-submitted Open item
+    /// Phase 6A.27: Allows users to update their own Open items
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}/open-items/{itemId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        Guid itemId,
+        [FromBody] UpdateOpenSignUpItemRequest request)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} updating Open item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            userId, itemId, signupId, eventId);
+
+        var command = new UpdateOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            itemId,
+            userId,
+            request.ItemName,
+            request.Quantity,
+            request.Notes,
+            request.ContactName,
+            request.ContactEmail,
+            request.ContactPhone);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Cancel (delete) a user-submitted Open item
+    /// Phase 6A.27: Allows users to cancel their own Open items
+    /// </summary>
+    [HttpDelete("{eventId:guid}/signups/{signupId:guid}/open-items/{itemId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelOpenSignUpItem(
+        Guid eventId,
+        Guid signupId,
+        Guid itemId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} canceling Open item {ItemId} in sign-up list {SignUpId} for event {EventId}",
+            userId, itemId, signupId, eventId);
+
+        var command = new CancelOpenSignUpItemCommand(
+            eventId,
+            signupId,
+            itemId,
+            userId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
+    #endregion
+
+    #region Attendee Management & Export (Phase 6A.45)
+
+    /// <summary>
+    /// Get all attendees for an event (organizer only)
+    /// Phase 6A.45: Attendee management and export system
+    /// </summary>
+    [HttpGet("{eventId:guid}/attendees")]
+    [Authorize]
+    [ProducesResponseType(typeof(EventAttendeesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventAttendees(Guid eventId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} requesting attendees for event {EventId}", userId, eventId);
+
+        // First, get event to check ownership
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        // Authorization: Only event organizer can view attendees
+        if (eventResult.Value!.OrganizerId != userId)
+        {
+            Logger.LogWarning("User {UserId} attempted to access attendees for event {EventId} without authorization",
+                userId, eventId);
+            return Forbid();
+        }
+
+        // Get attendees
+        var query = new LankaConnect.Application.Events.Queries.GetEventAttendees.GetEventAttendeesQuery(eventId);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Export event attendees to Excel or CSV (organizer only)
+    /// Phase 6A.45: Multi-sheet Excel export with signup lists
+    /// </summary>
+    [HttpGet("{eventId:guid}/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExportEventAttendees(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} requesting export for event {EventId} in format {Format}",
+            userId, eventId, format);
+
+        // First, get event to check ownership
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        // Authorization: Only event organizer can export attendees
+        if (eventResult.Value!.OrganizerId != userId)
+        {
+            Logger.LogWarning("User {UserId} attempted to export attendees for event {EventId} without authorization",
+                userId, eventId);
+            return Forbid();
+        }
+
+        // Phase 6A.69: Parse format (added signuplistszip support)
+        // Phase 6A.73: Added signuplistsexcel support
+        var exportFormat = format.ToLower() switch
+        {
+            "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
+            "signuplistszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
+            "signuplistsexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
+            _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
+        };
+
+        // Export attendees
+        var query = new LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportEventAttendeesQuery(
+            eventId,
+            exportFormat);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            return HandleResult(result);
+        }
+
+        Logger.LogInformation("Successfully exported attendees for event {EventId} in {Format} format. File: {FileName}",
+            eventId, format, result.Value!.FileName);
+
+        // Phase 6A.73: Force Content-Type to application/zip to prevent ASP.NET Core's
+        // automatic MIME type detection from overriding based on filename
+        var contentType = result.Value.ContentType == "application/zip"
+            ? "application/zip"
+            : result.Value.ContentType;
+
+        return File(
+            result.Value.FileContent,
+            contentType,
+            result.Value.FileName
+        );
+    }
+
+    #endregion
+
+    #region Communication
+
+    /// <summary>
+    /// Phase 6A.61: Send event notification email to all attendees
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>Accepted with recipient count</returns>
+    [HttpPost("{id:guid}/send-notification")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendEventNotification(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.61] API: Sending event notification for event {EventId}", id);
+
+        var command = new SendEventNotificationCommand(id);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation("[Phase 6A.61] API: Event notification queued successfully for event {EventId}", id);
+            return Accepted(new { recipientCount = result.Value });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.76: Send manual reminder email to all registered attendees.
+    /// Allows organizers to trigger reminders at any time from the Communications tab.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="reminderType">Type of reminder: "1day", "2day", "7day", or "custom"</param>
+    /// <returns>Accepted with recipient count</returns>
+    [HttpPost("{id:guid}/send-reminder")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendEventReminder(Guid id, [FromQuery] string reminderType = "1day")
+    {
+        Logger.LogInformation(
+            "[Phase 6A.76] API: Sending manual event reminder for event {EventId}, type={ReminderType}",
+            id, reminderType);
+
+        var command = new SendEventReminderCommand(id, reminderType);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "[Phase 6A.76] API: Event reminder queued successfully for event {EventId}, recipients={Count}",
+                id, result.Value);
+            return Accepted(new { recipientCount = result.Value });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.X: Resend registration confirmation email to specific attendee (Organizer action)
+    /// Allows organizers to manually resend confirmation emails from Attendees tab
+    /// Works for both free and paid event registrations via shared email service
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="registrationId">Registration ID</param>
+    /// <returns>Success message if email sent</returns>
+    [HttpPost("{id:guid}/attendees/{registrationId:guid}/resend-confirmation")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResendAttendeeConfirmation(Guid id, Guid registrationId)
+    {
+        // Get organizer ID from claims
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var organizerId))
+        {
+            Logger.LogWarning("Resend attendee confirmation attempted without valid user ID claim");
+            return Unauthorized();
+        }
+
+        Logger.LogInformation(
+            "[Phase 6A.X] API: Resending attendee confirmation - EventId={EventId}, RegistrationId={RegistrationId}, OrganizerId={OrganizerId}",
+            id, registrationId, organizerId);
+
+        var command = new ResendAttendeeConfirmationCommand(id, registrationId, organizerId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "[Phase 6A.X] API: Attendee confirmation resent successfully - RegistrationId={RegistrationId}",
+                registrationId);
+            return Ok(new { message = "Confirmation email resent successfully" });
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.61: Get email notification history for an event
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>List of notification history records</returns>
+    [HttpGet("{id:guid}/notification-history")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(List<EventNotificationHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEventNotificationHistory(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.61] API: Getting notification history for event {EventId}", id);
+
+        var query = new GetEventNotificationHistoryQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.76: Get event reminder history
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <returns>List of reminder history records aggregated by type and date</returns>
+    [HttpGet("{id:guid}/reminder-history")]
+    [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]
+    [ProducesResponseType(typeof(List<EventReminderHistoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEventReminderHistory(Guid id)
+    {
+        Logger.LogInformation("[Phase 6A.76] API: Getting reminder history for event {EventId}", id);
+
+        var query = new GetEventReminderHistoryQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    // ==================== ADD ATTENDEES (DELTA PAYMENT) ====================
+    // Phase: Add-Only Attendees with Delta Payment Feature
+
+    /// <summary>
+    /// Calculate the price for adding new attendees to an existing paid registration.
+    /// Returns the delta amount to charge.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/calculate-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AdditionPriceResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CalculateAdditionPrice(
+        Guid registrationId,
+        [FromBody] CalculateAdditionPriceRequest request)
+    {
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Calculating addition price for registration {RegistrationId}, NewAttendeesCount={Count}",
+            registrationId, request.NewAttendees?.Count ?? 0);
+
+        var query = new CalculateAdditionPriceQuery(
+            registrationId,
+            request.NewAttendees?.Select(a => new NewAttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
+                ?? new List<NewAttendeeDto>());
+
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Calculate addition price failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Price Calculation Failed",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Initiate adding attendees to an existing paid registration.
+    /// Creates a pending addition and returns a Stripe checkout URL.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/add-attendees")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(InitiateAddAttendeesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> InitiateAddAttendees(
+        Guid registrationId,
+        [FromBody] InitiateAddAttendeesRequest request)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Initiating add attendees for registration {RegistrationId}, UserId={UserId}, NewAttendeesCount={Count}",
+            registrationId, userId, request.NewAttendees?.Count ?? 0);
+
+        var command = new InitiateAddAttendeesCommand(
+            registrationId,
+            request.NewAttendees?.Select(a => new NewAttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
+                ?? new List<NewAttendeeDto>(),
+            request.SuccessUrl,
+            request.CancelUrl,
+            userId);
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Initiate add attendees failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Initiate Attendee Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (!result.Value.Success)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Initiate add attendees business rule failure - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Value.ErrorMessage);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot Add Attendees",
+                Detail = result.Value.ErrorMessage,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Initiate add attendees succeeded - RegistrationId={RegistrationId}, AdditionId={AdditionId}",
+            registrationId, result.Value.RegistrationAdditionId);
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Get the pending attendee addition for a registration, if any.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpGet("registrations/{registrationId:guid}/pending-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PendingAdditionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPendingAddition(Guid registrationId)
+    {
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Getting pending addition for registration {RegistrationId}",
+            registrationId);
+
+        var query = new GetPendingAdditionQuery(registrationId);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Get pending addition failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Get Pending Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (result.Value == null)
+        {
+            return NoContent();
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Cancel a pending attendee addition before payment completes.
+    /// Part of the Add-Only Attendees with Delta Payment feature.
+    /// </summary>
+    [HttpDelete("registrations/{registrationId:guid}/pending-addition")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(CancelPendingAdditionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CancelPendingAddition(Guid registrationId)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Cancelling pending addition for registration {RegistrationId}, UserId={UserId}",
+            registrationId, userId);
+
+        var command = new CancelPendingAdditionCommand(registrationId, userId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsFailure)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Cancel pending addition failed - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Error);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Failed to Cancel Pending Addition",
+                Detail = result.Error,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        if (!result.Value.Success)
+        {
+            Logger.LogWarning(
+                "[AddOnlyAttendees] API: Cancel pending addition business rule failure - RegistrationId={RegistrationId}, Error={Error}",
+                registrationId, result.Value.ErrorMessage);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot Cancel Pending Addition",
+                Detail = result.Value.ErrorMessage,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        Logger.LogInformation(
+            "[AddOnlyAttendees] API: Cancel pending addition succeeded - RegistrationId={RegistrationId}, CancelledAdditionId={AdditionId}",
+            registrationId, result.Value.CancelledAdditionId);
+
+        return Ok(result.Value);
+    }
+
     #endregion
 }
 
@@ -1435,13 +2424,45 @@ public record RsvpRequest(
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
 
+/// <summary>
+/// Phase 6A.43: Updated to support multi-attendee format with AgeCategory/Gender
+/// Supports both legacy format (Name/Age) and new format (Attendees array)
+/// </summary>
+/// <summary>
+/// Phase 6A.44: Updated to include SuccessUrl and CancelUrl for Stripe Checkout
+/// </summary>
 public record AnonymousRegistrationRequest(
+    // Legacy format fields (backward compatibility)
+    string? Name = null,
+    int? Age = null,
+    // New format (Phase 6A.43 - multi-attendee with AgeCategory/Gender)
+    List<AnonymousAttendeeDto>? Attendees = null,
+    // Contact information (required)
+    string Address = "",
+    string Email = "",
+    string PhoneNumber = "",
+    // Quantity for multiple attendees
+    int Quantity = 1,
+    // Phase 6A.44: Stripe checkout URLs (required for paid events)
+    string? SuccessUrl = null,
+    string? CancelUrl = null);
+
+/// <summary>
+/// Attendee DTO for anonymous registration
+/// </summary>
+public record AnonymousAttendeeDto(
     string Name,
-    int Age,
-    string Address,
-    string Email,
-    string PhoneNumber,
-    int Quantity = 1);
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+
+/// <summary>
+/// Phase 6A.44: Response from anonymous registration
+/// </summary>
+public record AnonymousRegistrationResponse(
+    bool Success,
+    string? CheckoutUrl,
+    string Message);
+
 public record UpdateRsvpRequest(Guid UserId, int NewQuantity);
 /// <summary>
 /// Phase 6A.14: Request to update registration details
@@ -1453,8 +2474,12 @@ public record UpdateRegistrationRequest(
     string? Address = null);
 /// <summary>
 /// Phase 6A.14: Attendee DTO for registration update
+/// Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
 /// </summary>
-public record UpdateRegistrationAttendeeDto(string Name, int Age);
+public record UpdateRegistrationAttendeeDto(
+    string Name,
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2
@@ -1479,7 +2504,8 @@ public record CreateSignUpListRequest(
     bool HasMandatoryItems,
     bool HasPreferredItems,
     bool HasSuggestedItems,
-    List<SignUpItemRequestDto> Items);
+    List<SignUpItemRequestDto> Items,
+    bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 
@@ -1488,7 +2514,8 @@ public record UpdateSignUpListRequest(
     string Description,
     bool HasMandatoryItems,
     bool HasPreferredItems,
-    bool HasSuggestedItems);
+    bool HasSuggestedItems,
+    bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
 public record SignUpItemRequestDto(
     string ItemDescription,
@@ -1534,3 +2561,71 @@ public record CommitToSignUpItemAnonymousRequest(
     string? Notes = null,
     string? ContactName = null,
     string? ContactPhone = null);
+
+/// <summary>
+/// Request to add a user-submitted Open item to a sign-up list
+/// Phase 6A.27: Open sign-up items feature
+/// </summary>
+public record AddOpenSignUpItemRequest(
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request to add a user-submitted Open item to a sign-up list for anonymous users
+/// Phase 6A.44: Anonymous users can add Open items if registered for the event
+/// </summary>
+public record AddOpenSignUpItemAnonymousRequest(
+    string ContactEmail,
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Request to update a user-submitted Open item
+/// Phase 6A.27: Open sign-up items feature
+/// </summary>
+public record UpdateOpenSignUpItemRequest(
+    string ItemName,
+    int Quantity,
+    string? Notes = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null);
+
+/// <summary>
+/// Issue #51: Request to update max attendees per registration
+/// </summary>
+public record UpdateMaxAttendeesPerRegistrationRequest(int MaxAttendeesPerRegistration);
+
+// ==================== ADD ATTENDEES (DELTA PAYMENT) REQUEST DTOS ====================
+
+/// <summary>
+/// Request to calculate the price for adding new attendees.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record CalculateAdditionPriceRequest(
+    List<AddAttendeeDto>? NewAttendees);
+
+/// <summary>
+/// Request to initiate adding attendees to a paid registration.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record InitiateAddAttendeesRequest(
+    List<AddAttendeeDto>? NewAttendees,
+    string SuccessUrl,
+    string CancelUrl);
+
+/// <summary>
+/// DTO for a new attendee being added.
+/// Part of the Add-Only Attendees with Delta Payment feature.
+/// </summary>
+public record AddAttendeeDto(
+    string Name,
+    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null);

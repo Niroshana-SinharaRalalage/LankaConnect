@@ -2,10 +2,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +19,7 @@
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.AspNetCore.Http" />
+    <PackageReference Include="Hangfire.AspNetCore" />
   </ItemGroup>
 
   <PropertyGroup>

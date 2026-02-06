@@ -39,4 +39,19 @@ public class CurrentUserService : ICurrentUserService
     }
 
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+
+    /// <summary>
+    /// Checks if user has Admin or AdminManager role
+    /// Phase 6A.25: Email Groups Management
+    /// </summary>
+    public bool IsAdmin
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user == null) return false;
+
+            return user.IsInRole("Admin") || user.IsInRole("AdminManager");
+        }
+    }
 }

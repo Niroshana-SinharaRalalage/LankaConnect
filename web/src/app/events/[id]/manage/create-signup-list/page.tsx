@@ -65,6 +65,8 @@ export default function ManageSignUpsPage() {
   const [hasMandatoryItems, setHasMandatoryItems] = useState(false);
   const [hasPreferredItems, setHasPreferredItems] = useState(false);
   const [hasSuggestedItems, setHasSuggestedItems] = useState(false);
+  // Phase 6A.28: Open Items - users can add their own items
+  const [hasOpenItems, setHasOpenItems] = useState(false);
 
   // Separate item arrays for each category
   type ItemType = {
@@ -189,7 +191,7 @@ export default function ManageSignUpsPage() {
     console.log('[ManageSignUps] handleCreateSignUpList called');
 
     if (!category.trim()) {
-      setSubmitError('Category is required');
+      setSubmitError('Sign-Up List Name is required');
       return;
     }
 
@@ -198,14 +200,19 @@ export default function ManageSignUpsPage() {
       return;
     }
 
-    if (!hasMandatoryItems && !hasPreferredItems && !hasSuggestedItems) {
-      setSubmitError('Please select at least one category (Mandatory, Preferred, or Suggested)');
+    // Phase 6A.28: Open Items doesn't require predefined items, so check separately
+    // Note: hasPreferredItems is kept for backwards compatibility but hidden from UI
+    if (!hasMandatoryItems && !hasSuggestedItems && !hasOpenItems) {
+      setSubmitError('Please select at least one category (Mandatory, Suggested, or Open Items)');
       return;
     }
 
-    // Validate at least one item exists
+    // Validate at least one item exists (unless only Open Items is enabled)
     const allItems = [...mandatoryItems, ...preferredItems, ...suggestedItems];
-    if (allItems.length === 0) {
+    // Phase 6A.28: If only hasOpenItems is selected, we don't require predefined items
+    // because users will add their own items
+    const requiresPredefinedItems = hasMandatoryItems || hasPreferredItems || hasSuggestedItems;
+    if (requiresPredefinedItems && allItems.length === 0) {
       setSubmitError('Please add at least one item to the sign-up list');
       return;
     }
@@ -242,6 +249,7 @@ export default function ManageSignUpsPage() {
         hasMandatoryItems,
         hasPreferredItems,
         hasSuggestedItems,
+        hasOpenItems, // Phase 6A.28: Open Items support
         items,
       };
 
@@ -258,12 +266,16 @@ export default function ManageSignUpsPage() {
       setHasMandatoryItems(false);
       setHasPreferredItems(false);
       setHasSuggestedItems(false);
+      setHasOpenItems(false); // Phase 6A.28
       setMandatoryItems([]);
       setPreferredItems([]);
       setSuggestedItems([]);
       setShowForm(false);
 
       console.log('[ManageSignUps] Form reset complete');
+
+      // Navigate to manage page after successful creation
+      router.push(`/events/${eventId}/manage`);
     } catch (err) {
       console.error('[ManageSignUps] Failed to create sign-up list:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to create sign-up list');
@@ -405,10 +417,10 @@ export default function ManageSignUpsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Category */}
+              {/* Category/List Name */}
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-neutral-700 mb-2">
-                  Category *
+                  Sign-Up List Name *
                 </label>
                 <Input
                   id="category"
@@ -417,6 +429,9 @@ export default function ManageSignUpsPage() {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 />
+                <p className="text-xs text-neutral-500 mt-1">
+                  Give your sign-up list a descriptive name
+                </p>
               </div>
 
               {/* Description */}
@@ -557,122 +572,11 @@ export default function ManageSignUpsPage() {
                   )}
                   </div>
 
-                  {/* Preferred Items Checkbox + Section */}
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50">
-                      <input
-                        type="checkbox"
-                        checked={hasPreferredItems}
-                        onChange={(e) => setHasPreferredItems(e.target.checked)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <div>
-                        <p className="font-medium text-neutral-900">Preferred Items</p>
-                        <p className="text-sm text-neutral-500">Highly desired items that would be helpful</p>
-                      </div>
-                    </label>
-
-                  {hasPreferredItems && (
-                    <div className="border-t pt-4">
-                      <h4 className="text-md font-semibold text-neutral-800 mb-3 flex items-center gap-2">
-                        <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          Preferred Items
-                        </span>
-                      </h4>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Left: Add Item Form */}
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-xs font-medium text-neutral-600 mb-1">
-                              Item Description *
-                            </label>
-                            <Input
-                              type="text"
-                              placeholder="e.g., Side dish"
-                              value={newPreferredDesc}
-                              onChange={(e) => setNewPreferredDesc(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-neutral-600 mb-1">
-                              Quantity *
-                            </label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={newPreferredQty}
-                              onChange={(e) => setNewPreferredQty(parseInt(e.target.value) || 1)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-neutral-600 mb-1">
-                              Notes (optional)
-                            </label>
-                            <textarea
-                              rows={2}
-                              placeholder="Any additional details..."
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-                              value={newPreferredNotes}
-                              onChange={(e) => setNewPreferredNotes(e.target.value)}
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={handleAddPreferredItem}
-                            variant="outline"
-                            className="w-full"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Item
-                          </Button>
-                        </div>
-
-                        {/* Right: Items Table */}
-                        <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
-                          {preferredItems.length === 0 ? (
-                            <div className="p-4 text-center text-neutral-500 text-sm">
-                              No items added yet
-                            </div>
-                          ) : (
-                            <table className="w-full">
-                              <thead className="bg-neutral-100 sticky top-0">
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
-                                  <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {preferredItems.map((item, index) => (
-                                  <tr key={index} className="border-t">
-                                    <td className="px-3 py-2 text-sm">
-                                      <div>
-                                        <p className="font-medium">{item.description}</p>
-                                        {item.notes && (
-                                          <p className="text-xs text-neutral-500">{item.notes}</p>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
-                                    <td className="px-3 py-2 text-center">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleRemovePreferredItem(index)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  </div>
+                  {/* Phase 6A.28: Preferred Items DEPRECATED - Hidden from UI
+                      The "Preferred" category has been deprecated in favor of "Suggested" and "Open" categories.
+                      The backend still supports Preferred for backwards compatibility with existing data.
+                      State variables (hasPreferredItems, preferredItems, etc.) are kept for data migration purposes.
+                  */}
 
                   {/* Suggested Items Checkbox + Section */}
                   <div className="space-y-3">
@@ -790,6 +694,41 @@ export default function ManageSignUpsPage() {
                     </div>
                   )}
                   </div>
+
+                  {/* Phase 6A.28: Open Items Checkbox */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-neutral-50 border-purple-200 bg-purple-50/30">
+                      <input
+                        type="checkbox"
+                        checked={hasOpenItems}
+                        onChange={(e) => setHasOpenItems(e.target.checked)}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <div>
+                        <p className="font-medium text-neutral-900">Open Items (Bring Your Own)</p>
+                        <p className="text-sm text-neutral-500">
+                          Allow attendees to sign up with their own items. Users can add custom items they&apos;ll bring.
+                        </p>
+                      </div>
+                    </label>
+
+                    {hasOpenItems && (
+                      <div className="border-t pt-4 bg-purple-50/50 rounded-lg p-4 border border-purple-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            Open Items
+                          </span>
+                        </div>
+                        <p className="text-sm text-neutral-600">
+                          <strong>How it works:</strong> When this is enabled, attendees can click &quot;Sign Up&quot; to add their own items
+                          (e.g., &quot;Homemade Cookies - 24 pieces&quot;). Each user manages their own items and can update or cancel them.
+                        </p>
+                        <p className="text-sm text-neutral-500 mt-2">
+                          No predefined items needed - users will create their own when they sign up.
+                        </p>
+                      </div>
+                    )}
+                  </div>
               </div>
 
               {/* Error Message */}
@@ -810,6 +749,7 @@ export default function ManageSignUpsPage() {
                     setHasMandatoryItems(false);
                     setHasPreferredItems(false);
                     setHasSuggestedItems(false);
+                    setHasOpenItems(false); // Phase 6A.28
                     setMandatoryItems([]);
                     setPreferredItems([]);
                     setSuggestedItems([]);

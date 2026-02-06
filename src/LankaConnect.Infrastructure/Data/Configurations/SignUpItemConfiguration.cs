@@ -35,11 +35,16 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
         builder.Property(si => si.ItemCategory)
             .HasColumnName("item_category")
             .IsRequired()
-            .HasConversion<int>(); // Store as int: 0=Mandatory, 1=Preferred, 2=Suggested
+            .HasConversion<int>(); // Store as int: 0=Mandatory, 1=Preferred, 2=Suggested, 3=Open
 
         builder.Property(si => si.Notes)
             .HasColumnName("notes")
             .HasMaxLength(500);
+
+        // Phase 6A.27: User who created Open items (null for organizer-created items)
+        builder.Property(si => si.CreatedByUserId)
+            .HasColumnName("created_by_user_id")
+            .IsRequired(false);
 
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")
@@ -60,6 +65,13 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
             .WithOne()
             .HasForeignKey(sc => sc.SignUpItemId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Phase 6A.28 Fix: Configure navigation to use backing field "_commitments"
+        // CRITICAL: This enables EF Core to populate the private readonly List backing field
+        // Without this, EF Core cannot write to IReadOnlyList<> property → commitments stay empty
+        // Same pattern successfully used in SignUpListConfiguration.cs line 83-84
+        builder.Navigation(si => si.Commitments)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Indexes
         builder.HasIndex(si => si.SignUpListId)

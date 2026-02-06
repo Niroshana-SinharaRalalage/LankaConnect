@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Enable standalone output for Docker deployment
+  // This creates a minimal production build with only necessary files
+  // Required for Azure Container Apps deployment
+  output: 'standalone',
   images: {
     remotePatterns: [
       {

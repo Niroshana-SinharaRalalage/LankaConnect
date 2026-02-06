@@ -1,0 +1,25 @@
+NEW EVENT ANNOUNCEMENT
+======================
+
+{{EventTitle}}
+
+{{EventDescription}}
+
+EVENT DETAILS
+-------------
+Date: {{EventStartDate}} at {{EventStartTime}}
+Location: {{EventLocation}}
+{{#if IsFree}}
+Admission: Free
+{{else}}
+Ticket Price: {{TicketPrice}}
+{{/if}}
+
+View full event details and register:
+{{EventUrl}}
+
+---
+This email was sent because you subscribed to event notifications for {{EventCity}}, {{EventState}}.
+
+(c) 2025 LankaConnect
+If you have questions, contact us at info@lankaconnect.com

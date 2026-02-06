@@ -4,20 +4,25 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Common.Constants;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 
 /// <summary>
 /// TDD tests for SendPasswordResetCommandHandler
 /// Tests written FIRST following Red-Green-Refactor cycle
+/// Phase 6A.87: Updated for ITypedEmailService support
 /// </summary>
 public class SendPasswordResetCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;  // Phase 6A.87: Added for typed email service
     private readonly Mock<IEmailTemplateService> _mockEmailTemplateService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<SendPasswordResetCommandHandler>> _mockLogger;
@@ -27,13 +32,22 @@ public class SendPasswordResetCommandHandlerTests
     {
         _mockUserRepository = new Mock<IUserRepository>();
         _mockEmailService = new Mock<IEmailService>();
+        _mockTypedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
         _mockEmailTemplateService = new Mock<IEmailTemplateService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<SendPasswordResetCommandHandler>>();
 
+        // Phase 6A.87: Default setup for typed email service to return success
+        _mockTypedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+
         _handler = new SendPasswordResetCommandHandler(
             _mockUserRepository.Object,
             _mockEmailService.Object,
+            _mockTypedEmailService.Object,  // Phase 6A.87: Pass typed email service
             _mockEmailTemplateService.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);
@@ -51,14 +65,7 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
+        // Phase 6A.87: Setup typed email service (default success setup in constructor)
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -75,15 +82,14 @@ public class SendPasswordResetCommandHandlerTests
         result.Value.WasRecentlySent.Should().BeFalse();
         result.Value.UserNotFound.Should().BeFalse();
 
-        // Verify email was sent with correct template
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.Is<Dictionary<string, object>>(d =>
-                    d.ContainsKey("UserName") &&
-                    d.ContainsKey("ResetToken") &&
-                    d.ContainsKey("ResetLink")),
+        // Phase 6A.87: Verify typed email service was called with correct parameters
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.Is<PasswordResetEmailParams>(p =>
+                    p.UserEmail == email &&
+                    !string.IsNullOrEmpty(p.ResetToken) &&
+                    !string.IsNullOrEmpty(p.ResetLink)),
+                It.Is<string>(h => h == "SendPasswordResetCommandHandler"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -108,11 +114,11 @@ public class SendPasswordResetCommandHandlerTests
         _mockUserRepository.Verify(
             r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
+        // Phase 6A.87: Verify typed email service was NOT called
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -138,12 +144,11 @@ public class SendPasswordResetCommandHandlerTests
         result.Value.UserId.Should().Be(Guid.Empty);
         result.Value.Email.Should().Be(email);
 
-        // Verify NO email was sent (security)
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
+        // Phase 6A.87: Verify NO email was sent via typed service (security)
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
 
@@ -176,12 +181,11 @@ public class SendPasswordResetCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Account is temporarily locked");
 
-        // Verify NO email was sent
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
+        // Phase 6A.87: Verify NO email was sent via typed service
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -210,12 +214,11 @@ public class SendPasswordResetCommandHandlerTests
         result.Value.WasRecentlySent.Should().BeTrue();
         result.Value.TokenExpiresAt.Should().Be(recentTokenExpiry);
 
-        // Verify NO new email was sent (rate limiting)
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
+        // Phase 6A.87: Verify NO new email was sent via typed service (rate limiting)
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
 
@@ -239,14 +242,7 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
+        // Phase 6A.87: Uses default typed email service setup (success)
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -258,12 +254,11 @@ public class SendPasswordResetCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.WasRecentlySent.Should().BeFalse();
 
-        // Verify email WAS sent (rate limiting bypassed)
-        _mockEmailService.Verify(
-            e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
+        // Phase 6A.87: Verify email WAS sent via typed service (rate limiting bypassed)
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<PasswordResetEmailParams>(),
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -283,13 +278,12 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("SMTP server unavailable"));
+        // Phase 6A.87: Setup typed email service to return failure
+        _mockTypedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "SMTP server unavailable" }));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -318,14 +312,7 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
+        // Phase 6A.87: Uses default typed email service setup (success)
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -350,14 +337,7 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
+        // Phase 6A.87: Uses default typed email service setup (success)
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Database connection failed"));
@@ -384,14 +364,7 @@ public class SendPasswordResetCommandHandlerTests
             .ReturnsAsync(user)
             .Callback<Email, CancellationToken>((_, __) => capturedUser = user);
 
-        _mockEmailService
-            .Setup(e => e.SendTemplatedEmailAsync(
-                "password-reset",
-                email,
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
+        // Phase 6A.87: Uses default typed email service setup (success)
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);

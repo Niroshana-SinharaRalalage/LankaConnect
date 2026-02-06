@@ -9,24 +9,32 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { Button } from '@/presentation/components/ui/Button';
 import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
 import { Calendar, MapPin, Users, DollarSign, Filter, Plus } from 'lucide-react';
-import { useEvents } from '@/presentation/hooks/useEvents';
+import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
-import { EventCategory, EventDto } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventDto, EventStatusFilter, EventStatusFilterLabels } from '@/infrastructure/api/types/events.types';
+import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
+import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
 import { getDateRangeForOption, type DateRangeOption } from '@/presentation/utils/dateRanges';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
+import { useEventCategories } from '@/infrastructure/api/hooks/useReferenceData';
+import { toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import { useDebounce } from '@/hooks/useDebounce';
 
 /**
  * Events Listing Page
  * Phase 6B: View All Events Feature
+ * Phase 6A.46: Event status labels and registration badges
  *
  * Features:
  * - Location-based sorting (same logic as featured events)
  * - Three filtering options: Event Type, Event Date, Location
  * - Displays unlimited events with scrolling
  * - Works for authenticated and anonymous users
+ * - Phase 6A.46: Shows "You are registered" badge for registered events
+ * - Phase 6A.46: Displays computed lifecycle labels (New, Upcoming, etc.)
  */
 export default function EventsPage() {
   const router = useRouter();
@@ -43,28 +51,59 @@ export default function EventsPage() {
     isLoading: metrosLoading,
   } = useMetroAreas();
 
+  // Phase 6A.47: Fetch EventCategory reference data from API
+  const { data: categories } = useEventCategories();
+
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | undefined>(undefined);
   const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
   const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
   const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
+  const [searchInput, setSearchInput] = useState<string>(''); // Phase 6A.58: Immediate search input (local state)
+  // Issue #36: Status filter state - defaults to Active Events for better UX
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>(EventStatusFilter.Active);
 
-  // Build filters for useEvents hook
+  // Phase 6A.72: Debounce search term to avoid excessive API calls
+  // PERFORMANCE FIX: Use 500ms debounce for smoother typing experience (was 300ms)
+  const debouncedSearchTerm = useDebounce(searchInput, 500);
+
+  // Phase 6A.72: Memoize date range separately to avoid unnecessary recalculations
+  const dateRange = useMemo(() => getDateRangeForOption(dateRangeOption), [dateRangeOption]);
+
+  // Phase 6A.72: Build filters for useEvents hook with optimized dependencies
+  // PERFORMANCE FIX: Stabilize metroAreaIds array reference to prevent unnecessary re-renders
+  const stableMetroIds = useMemo(() =>
+    selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedMetroIds.length, ...selectedMetroIds]
+  );
+
   const filters = useMemo(() => {
-    const dateRange = getDateRangeForOption(dateRangeOption);
     return {
+      searchTerm: debouncedSearchTerm || undefined,
       category: selectedCategory,
+      // Issue #36: Status filter for user-friendly status grouping
+      statusFilter: statusFilter,
       userId: user?.userId,
       latitude: isAnonymous ? latitude ?? undefined : undefined,
       longitude: isAnonymous ? longitude ?? undefined : undefined,
-      metroAreaIds: selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
+      metroAreaIds: stableMetroIds,
       state: selectedState,
-      ...dateRange, // Spread startDateFrom and startDateTo from date range
+      ...dateRange,
     };
-  }, [selectedCategory, user?.userId, isAnonymous, latitude, longitude, selectedMetroIds, selectedState, dateRangeOption]);
+  }, [debouncedSearchTerm, selectedCategory, statusFilter, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
 
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
+
+  // Phase 6A.46: Bulk fetch user RSVPs (1 API call) for registration badges
+  const { data: userRsvps } = useUserRsvps({ enabled: !!user });
+
+  // Phase 6A.46: Create Set of registered event IDs for O(1) lookups
+  const registeredEventIds = useMemo(
+    () => new Set(userRsvps?.map(e => e.id) || []),
+    [userRsvps]
+  );
 
   // Convert metro areas to tree structure for TreeDropdown
   const locationTreeNodes = useMemo<TreeNode[]>(() => {
@@ -123,35 +162,41 @@ export default function EventsPage() {
     setDateRangeOption(e.target.value as DateRangeOption);
   };
 
+  // Issue #36: Handle status filter change
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(parseInt(e.target.value, 10) as EventStatusFilter);
+  };
+
   const clearFilters = () => {
+    setSearchInput(''); // Phase 6A.59: Clear search input (local state)
     setSelectedCategory(undefined);
     setSelectedMetroIds([]);
     setSelectedState(undefined);
     setDateRangeOption('upcoming');
+    setStatusFilter(EventStatusFilter.Active); // Issue #36: Reset to default Active filter
   };
 
-  const hasActiveFilters = selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming';
-
-  // Category labels
-  const categoryLabels: Record<EventCategory, string> = {
-    [EventCategory.Religious]: 'Religious',
-    [EventCategory.Cultural]: 'Cultural',
-    [EventCategory.Community]: 'Community',
-    [EventCategory.Educational]: 'Educational',
-    [EventCategory.Social]: 'Social',
-    [EventCategory.Business]: 'Business',
-    [EventCategory.Charity]: 'Charity',
-    [EventCategory.Entertainment]: 'Entertainment',
-  };
+  // Issue #36: Updated to include status filter in active filters check
+  const hasActiveFilters = searchInput !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming' || statusFilter !== EventStatusFilter.Active;
 
   const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
 
-  // Check if user can create events (EventOrganizer, Admin, or AdminManager)
-  const canUserCreateEvents = user && (
-    user.role === UserRole.EventOrganizer ||
-    user.role === UserRole.Admin ||
-    user.role === UserRole.AdminManager
-  );
+  // Phase 6A.47: Convert reference data to dropdown options
+  const categoryOptions = useMemo(() => toDropdownOptions(categories), [categories]);
+
+  // Create category labels map from reference data
+  const categoryLabels = useMemo(() => {
+    if (!categories) return {} as Record<EventCategory, string>;
+    const labels: Record<EventCategory, string> = {} as Record<EventCategory, string>;
+    categories.forEach(cat => {
+      labels[cat.intValue as EventCategory] = cat.name;
+    });
+    return labels;
+  }, [categories]);
+
+  // Phase 6A.63: Remove Create Event button from /events page for all users
+  // Users should create events only from Dashboard
+  const canUserCreateEvents = false;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -222,7 +267,22 @@ export default function EventsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Phase 6A.59: Search Input with debouncing (matches dashboard behavior) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Search Events
+              </label>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search by event name, description..."
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Event Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -235,11 +295,29 @@ export default function EventsPage() {
                   disabled={isLoading}
                 >
                   <option value="">All Types</option>
-                  {Object.entries(categoryLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                  {categoryOptions.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Issue #36: Event Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Event Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  disabled={isLoading}
+                >
+                  <option value={EventStatusFilter.All}>{EventStatusFilterLabels[EventStatusFilter.All]}</option>
+                  <option value={EventStatusFilter.Active}>{EventStatusFilterLabels[EventStatusFilter.Active]}</option>
+                  <option value={EventStatusFilter.Inactive}>{EventStatusFilterLabels[EventStatusFilter.Inactive]}</option>
+                  <option value={EventStatusFilter.Cancelled}>{EventStatusFilterLabels[EventStatusFilter.Cancelled]}</option>
                 </select>
               </div>
 
@@ -322,7 +400,12 @@ export default function EventsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
-              <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
+              <EventCard
+                key={event.id}
+                event={event}
+                categoryLabels={categoryLabels}
+                isRegistered={user ? registeredEventIds.has(event.id) : false}
+              />
             ))}
           </div>
         )}
@@ -334,15 +417,48 @@ export default function EventsPage() {
 }
 
 /**
+ * Phase 6A.46: Get badge color based on event lifecycle label
+ * LankaConnect theme colors: Orange #FF7900, Rose #8B1538, Emerald #047857
+ */
+function getStatusBadgeColor(label: string): string {
+  switch (label) {
+    case 'New':
+      return '#10B981'; // Emerald-500 - Fresh, exciting new events
+    case 'Upcoming':
+      return '#FF7900'; // LankaConnect Orange - Events starting soon
+    case 'Published':
+    case 'Active':
+      return '#6366F1'; // Indigo-500 - Currently active events
+    case 'Cancelled':
+      return '#EF4444'; // Red-500 - Cancelled events
+    case 'Completed':
+      return '#6B7280'; // Gray-500 - Past events
+    case 'Inactive':
+      return '#9CA3AF'; // Gray-400 - Old inactive events
+    case 'Draft':
+      return '#F59E0B'; // Amber-500 - Draft events
+    case 'Postponed':
+      return '#F97316'; // Orange-500 - Postponed events
+    case 'UnderReview':
+      return '#8B5CF6'; // Violet-500 - Under admin review
+    default:
+      return '#8B1538'; // LankaConnect Rose - Default fallback
+  }
+}
+
+/**
  * Event Card Component
  * Displays individual event with image, title, date, location, category, and pricing
+ * Phase 6A.46: Displays registration badge and lifecycle label
  */
 function EventCard({
   event,
   categoryLabels,
+  isRegistered,
 }: {
   event: EventDto;
   categoryLabels: Record<EventCategory, string>;
+  isRegistered: boolean;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {
@@ -374,6 +490,15 @@ function EventCard({
           </div>
         )}
 
+        {/* Phase 6A.25: Badge Overlays */}
+        {event.badges && event.badges.length > 0 && (
+          <BadgeOverlayGroup
+            badges={event.badges.map(eb => eb.badge)}
+            size={50}
+            maxBadges={2}
+          />
+        )}
+
         {/* Category Badge */}
         <div className="absolute top-3 right-3">
           <Badge
@@ -391,6 +516,21 @@ function EventCard({
         <h3 className="text-lg font-semibold text-neutral-900 mb-3 line-clamp-2">
           {event.title}
         </h3>
+
+        {/* Phase 6A.46: Display Label and Registration Badge */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {/* Display Label (computed lifecycle label from backend) */}
+          <Badge
+            variant="default"
+            className="text-white font-semibold"
+            style={{ backgroundColor: getStatusBadgeColor(event.displayLabel) }}
+          >
+            {event.displayLabel}
+          </Badge>
+
+          {/* Registration Badge */}
+          <RegistrationBadge isRegistered={isRegistered} compact={false} />
+        </div>
 
         {/* Date & Time */}
         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-2">
@@ -414,12 +554,27 @@ function EventCard({
           </span>
         </div>
 
-        {/* Pricing */}
+        {/* Pricing - Session 33: Group and dual pricing support */}
         <div className="flex items-center justify-between pt-3 border-t border-neutral-200">
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" style={{ color: '#FF7900' }} />
             <span className="text-sm font-semibold" style={{ color: '#8B1538' }}>
-              {event.isFree ? 'Free Event' : `$${event.ticketPriceAmount?.toFixed(2)}`}
+              {event.isFree
+                ? 'Free Event'
+                : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0
+                  ? (() => {
+                      const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
+                      const minPrice = Math.min(...prices);
+                      const maxPrice = Math.max(...prices);
+                      return minPrice === maxPrice
+                        ? `$${minPrice.toFixed(2)}`
+                        : `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)}`;
+                    })()
+                  : event.hasDualPricing
+                    ? `$${event.adultPriceAmount?.toFixed(2)} / $${event.childPriceAmount?.toFixed(2)}`
+                    : event.ticketPriceAmount != null
+                      ? `$${event.ticketPriceAmount.toFixed(2)}`
+                      : 'Paid Event'}
             </span>
           </div>
           <button

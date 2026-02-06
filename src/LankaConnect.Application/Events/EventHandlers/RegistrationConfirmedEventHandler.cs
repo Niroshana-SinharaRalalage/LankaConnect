@@ -1,32 +1,58 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Configuration;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles RegistrationConfirmedEvent to send confirmation email to attendee
+/// Handles RegistrationConfirmedEvent to send confirmation email to attendee.
+/// Phase 6A.24: Enhanced to include attendee details and skip paid events.
+/// Phase 6A.38: Simplified to use direct Azure Blob Storage URLs for images (removed CID complexity).
+/// For paid events, email is sent by PaymentCompletedEventHandler after payment.
 /// </summary>
 public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<RegistrationConfirmedEvent>>
 {
     private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly EmailFeatureFlags _featureFlags;  // Phase 6A.87: Added for typed parameters migration
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
+
+    private const string HandlerName = nameof(RegistrationConfirmedEventHandler);
 
     public RegistrationConfirmedEventHandler(
         IEmailService emailService,
+        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository,
+        IEmailUrlHelper emailUrlHelper,
+        EmailFeatureFlags featureFlags,  // Phase 6A.87: Added for typed parameters migration
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _emailService = emailService;
+        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
+        _emailUrlHelper = emailUrlHelper;
+        _featureFlags = featureFlags;  // Phase 6A.87: Added for typed parameters migration
         _logger = logger;
     }
 
@@ -34,61 +60,214 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
-            domainEvent.EventId, domainEvent.AttendeeId);
-
-        try
+        using (LogContext.PushProperty("Operation", "RegistrationConfirmed"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
+        using (LogContext.PushProperty("AttendeeId", domainEvent.AttendeeId))
         {
-            // Retrieve user and event data
-            var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
-            if (user == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "RegistrationConfirmed START: Event={EventId}, User={UserId}, Quantity={Quantity}",
+                domainEvent.EventId, domainEvent.AttendeeId, domainEvent.Quantity);
+
+            try
             {
-                _logger.LogWarning("User {UserId} not found for RegistrationConfirmedEvent", domainEvent.AttendeeId);
-                return;
+                cancellationToken.ThrowIfCancellationRequested();
+                // Retrieve user and event data
+                var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Phase 6A.24: Fetch registration to get attendee details and check if paid event
+                var registration = await _registrationRepository.GetByEventAndUserAsync(
+                    domainEvent.EventId, domainEvent.AttendeeId, cancellationToken);
+
+                if (registration == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegistrationConfirmed: Registration not found - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Phase 6A.24: Skip email for paid events - PaymentCompletedEventHandler will send it after payment
+                if (registration.PaymentStatus == PaymentStatus.Pending)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "RegistrationConfirmed: Skipping paid event - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+            // Phase 6A.40: Prepare attendee details for email - show actual attendee names
+            var attendeeDetailsHtml = new System.Text.StringBuilder();
+            var hasAttendeeDetailsLocal = registration.HasDetailedAttendees() && registration.Attendees.Any();
+
+            if (hasAttendeeDetailsLocal)
+            {
+                foreach (var attendee in registration.Attendees)
+                {
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                }
             }
 
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
+            // Phase 6A.38: Get event's primary image URL (direct URL, no CID)
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? "";
+
+            // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
+            var typedParams = FreeEventRegistrationEmailParams.Create(
+                eventId: @event.Id,
+                registrationId: registration.Id,
+                userName: $"{user.FirstName} {user.LastName}",
+                userEmail: user.Email.Value,
+                eventTitle: @event.Title.Value,
+                eventStartDate: @event.StartDate,
+                eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
+                eventLocation: GetEventLocationString(@event),
+                eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                registrationDate: domainEvent.RegistrationDate);
+
+            // Phase 6A.97: Set event's timezone for consistent date/time display
+            typedParams.TimeZoneId = @event.TimeZoneId;
+
+            // Set signup lists URL if event has signup lists
+            if (@event.HasSignUpLists())
             {
-                _logger.LogWarning("Event {EventId} not found for RegistrationConfirmedEvent", domainEvent.EventId);
-                return;
+                typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
             }
 
-            // Prepare email parameters
-            var parameters = new Dictionary<string, object>
+            // Set attendee details
+            if (hasAttendeeDetailsLocal)
             {
-                { "UserName", $"{user.FirstName} {user.LastName}" },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
-                { "EventEndDate", @event.EndDate.ToString("MMMM dd, yyyy") },
-                { "EventLocation", @event.Location != null ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}" : "Online Event" },
-                { "Quantity", domainEvent.Quantity },
-                { "RegistrationDate", domainEvent.RegistrationDate.ToString("MMMM dd, yyyy h:mm tt") }
-            };
+                typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
+            }
 
-            // Send templated email
-            var result = await _emailService.SendTemplatedEmailAsync(
-                "RsvpConfirmation",
-                user.Email.Value,
-                parameters,
+            // Set event image
+            typedParams.WithEventImage(eventImageUrl);
+
+            // Set contact information
+            if (registration.Contact != null)
+            {
+                typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+            }
+
+            // Set organizer contact
+            if (@event.HasOrganizerContact())
+            {
+                typedParams.WithOrganizerContact(
+                    @event.OrganizerContactName,
+                    @event.OrganizerContactEmail,
+                    @event.OrganizerContactPhone);
+            }
+
+            _logger.LogInformation(
+                "[Phase 6A.87] Sending free event registration email to {Email}",
+                user.Email.Value);
+
+            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            var typedResult = await _typedEmailService.SendEmailAsync(
+                typedParams,
+                HandlerName,
                 cancellationToken);
 
-            if (result.IsFailure)
+            var result = typedResult.Success
+                ? Domain.Common.Result.Success()
+                : Domain.Common.Result.Failure(string.Join(", ", typedResult.Errors));
+
+            stopwatch.Stop();
+
+            if (typedResult.Success)
             {
-                _logger.LogError("Failed to send RSVP confirmation email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", result.Errors));
+                _logger.LogInformation(
+                    "[Phase 6A.87] RegistrationConfirmed COMPLETE: Email sent successfully to {Email}, UsedTyped={UsedTyped}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                    user.Email.Value, typedResult.UsedTypedParameters, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
             }
             else
             {
-                _logger.LogInformation("RSVP confirmation email sent successfully to {Email}", user.Email.Value);
+                _logger.LogError(
+                    "[Phase 6A.87] RegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                    user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
             }
         }
-        catch (Exception ex)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "RegistrationConfirmed CANCELED: Operation was canceled - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "RegistrationConfirmed FAILED: Exception occurred - EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Safely extracts event location string with defensive null handling.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
+    {
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        if (string.IsNullOrWhiteSpace(street))
+            return city!;
+
+        if (string.IsNullOrWhiteSpace(city))
+            return street;
+
+        return $"{street}, {city}";
+    }
+
+    /// <summary>
+    /// Phase 6A.40: Formats event date/time range for display.
+    /// Examples:
+    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
+    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
+    /// </summary>
+    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
+    {
+        if (startDate.Date == endDate.Date)
         {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling RegistrationConfirmedEvent for Event {EventId}, User {UserId}",
-                domainEvent.EventId, domainEvent.AttendeeId);
+            // Same day event
+            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
+        }
+        else
+        {
+            // Multi-day event
+            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
         }
     }
 }

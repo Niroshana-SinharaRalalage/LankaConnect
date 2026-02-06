@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2025-12-10
+**Last Updated**: 2026-02-02
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -51,6 +51,27 @@
 | 6A.61 | Manual Event Email Sending | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
 | 6A.62 | Fix Registration Cancellation Email | 🔧 In Progress | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Bug fix applied |
 | 6A.63 | Event Cancellation Email Template | 📋 Planned | [EMAIL_SYSTEM_REMAINING_WORK_PLAN.md](./EMAIL_SYSTEM_REMAINING_WORK_PLAN.md) | Not started |
+| 6A.64 | Event Cancellation Timeout Fix (2-Part) | ✅ Complete | [PHASE_6A64_NEWSLETTER_JUNCTION_TABLE_SUMMARY.md](./PHASE_6A64_NEWSLETTER_JUNCTION_TABLE_SUMMARY.md) | 2026-01-08 |
+| 6A.65 | Docker Monorepo Build Fix | ✅ Complete | [DOCKER_FIX_SUMMARY.md](./DOCKER_FIX_SUMMARY.md) | 2026-01-08 |
+| 6A.66 | CSV Export Line Ending Fix (Deprecated) | ❌ Superseded | See 6A.68 for proper fix | 2026-01-08 |
+| 6A.67 | CSV Export Improvements (Deprecated) | ❌ Superseded | See 6A.68 for proper fix | 2026-01-08 |
+| 6A.68 | CSV Export Formatting Fix | ✅ Complete | [PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md](./PHASE_6A68_CSV_EXPORT_FIX_SUMMARY.md) | 2026-01-08 |
+| 6A.69 | Sign-Up List CSV Export (ZIP Archive) | ✅ Complete | [PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md](./PHASE_6A69_SIGNUP_LIST_EXPORT_SUMMARY.md) | 2026-01-08 |
+| 6A.70 | Newsletter Subscription System | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-11 |
+| 6A.71 | Newsletter Confirmation & Unsubscribe Pages | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.72 | Newsletter Backend Foundation | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.73 | Newsletter Email Sending System | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-12 |
+| 6A.74 | Newsletter Complete Feature | ⚠️ **IN PROGRESS** | [PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md](./PHASE_6A74_COMPLETE_REQUIREMENTS_CHECKLIST.md) | **CRITICAL - See checklist** |
+| 6A.87 | Email System Typed Parameters Migration | 🔧 In Progress | See PROGRESS_TRACKER.md | Week 4 Complete |
+| 6A.90 | Admin Dashboard (User Management + Support/Feedback) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-28 |
+| 6A.91 | Paid Event Refund Workflow | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-28 |
+| 6A.92 | Paid Event Cancellation Auto-Refund (GitHub #32) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-01-30 |
+| 6A.93 | Add Missing Email Templates (7 templates) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-01 |
+| 6A.94 | Refund Observability Enhancements | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.95 | Search Hyphen Negation Bug Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.96 | Sales Tax Feature Flag | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.97 | Timezone-Consistent Date/Time Display | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
+| 6A.98 | Email Template Header/Footer Standardization | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-03 |
 
 ---
 

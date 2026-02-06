@@ -45,6 +45,7 @@ interface ProfileState {
 
   // Actions - Basic Info
   updateBasicInfo: (userId: string, basicInfo: UpdateBasicInfoRequest) => Promise<void>;
+  updateEmail: (userId: string, newEmail: string) => Promise<{ message: string }>;
 
   // Actions - Location
   updateLocation: (userId: string, location: UpdateLocationRequest) => Promise<void>;
@@ -230,6 +231,35 @@ export const useProfileStore = create<ProfileState>()(
             error: errorMessage,
             sectionStates: { ...state.sectionStates, basicInfo: 'error' },
           }));
+        }
+      },
+
+      // Update email (Phase 6A.70: triggers verification flow)
+      updateEmail: async (userId, newEmail) => {
+        set((state) => ({
+          sectionStates: { ...state.sectionStates, basicInfo: 'saving' },
+          error: null,
+        }));
+
+        try {
+          const response = await profileRepository.updateEmail(userId, newEmail);
+
+          // Update profile with new email (will be unverified)
+          set((state) => ({
+            profile: state.profile ? { ...state.profile, email: response.email } : null,
+            sectionStates: { ...state.sectionStates, basicInfo: 'success' },
+          }));
+
+          // Return message for UI to display
+          return { message: response.message };
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Failed to update email';
+          set((state) => ({
+            error: errorMessage,
+            sectionStates: { ...state.sectionStates, basicInfo: 'error' },
+          }));
+          throw error;
         }
       },
 

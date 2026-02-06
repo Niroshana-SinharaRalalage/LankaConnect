@@ -7,6 +7,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -21,15 +22,18 @@ public class GetNearbyEventsQueryHandlerTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<ILogger<GetNearbyEventsQueryHandler>> _mockLogger;
     private readonly GetNearbyEventsQueryHandler _handler;
 
     public GetNearbyEventsQueryHandlerTests()
     {
         _mockEventRepository = new Mock<IEventRepository>();
         _mockMapper = new Mock<IMapper>();
+        _mockLogger = new Mock<ILogger<GetNearbyEventsQueryHandler>>();
         _handler = new GetNearbyEventsQueryHandler(
             _mockEventRepository.Object,
-            _mockMapper.Object);
+            _mockMapper.Object,
+            _mockLogger.Object);
     }
 
     private Event CreateTestEvent(string title, DateTime startDate, decimal lat = 6.9271m, decimal lon = 79.8612m)

@@ -3,17 +3,22 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
+import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { createEventSchema, type CreateEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useCreateEvent } from '@/presentation/hooks/useEvents';
+import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
+import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
+import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 /**
  * Event Creation Form Component
@@ -33,6 +38,13 @@ export function EventCreationForm() {
   const createEventMutation = useCreateEvent();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Phase 6A.32: Fetch email groups for selection
+  const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
+
+  // Phase 6A.47: Fetch event categories and currencies from reference data API
+  const { data: categories, isLoading: isLoadingEventInterests } = useEventCategories();
+  const { data: currencies } = useCurrencies();
+
   const {
     register,
     handleSubmit,
@@ -47,9 +59,17 @@ export function EventCreationForm() {
       enableGroupPricing: false,
       groupPricingTiers: [],
       capacity: 50,
-      ticketPriceCurrency: Currency.USD,
+      // Issue #51: Max attendees per registration - default to 10
+      maxAttendeesPerRegistration: 10,
+      // Session 33: Don't set default currencies - they should only be set when user enters pricing mode
+      // This prevents validation errors when switching between pricing modes
+      ticketPriceAmount: undefined,
+      ticketPriceCurrency: undefined,
+      adultPriceAmount: undefined,
       adultPriceCurrency: Currency.USD,
+      childPriceAmount: undefined,
       childPriceCurrency: Currency.USD,
+      childAgeLimit: undefined,
       category: EventCategory.Community, // Default to Community instead of empty
     },
   });
@@ -58,6 +78,53 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const groupPricingTiers = watch('groupPricingTiers') || [];
+  const publishOrganizerContact = watch('publishOrganizerContact');
+
+  // Phase 6A.X: Auto-populate organizer contact from user profile when checkbox is checked
+  useEffect(() => {
+    if (publishOrganizerContact && user) {
+      // Only auto-populate if fields are empty
+      const currentName = watch('organizerContactName');
+      const currentEmail = watch('organizerContactEmail');
+      const currentPhone = watch('organizerContactPhone');
+
+      if (!currentName) {
+        setValue('organizerContactName', user.fullName);
+      }
+      if (!currentEmail) {
+        setValue('organizerContactEmail', user.email);
+      }
+      if (!currentPhone && user.phoneNumber) {
+        setValue('organizerContactPhone', user.phoneNumber);
+      }
+    }
+  }, [publishOrganizerContact, user, setValue, watch]);
+
+  // Session 33: Track validation errors for display
+  const hasErrors = Object.keys(errors).length > 0;
+
+  // Session 33: Handle form validation errors - displays message when validation fails
+  const onValidationError = (validationErrors: Record<string, any>) => {
+    console.error('❌ Form Validation Failed:', validationErrors);
+    // List all validation error fields for debugging
+    const errorFields = Object.keys(validationErrors);
+    console.error('Fields with errors:', errorFields);
+
+    // Session 33: Debug - log current form values for pricing mode
+    console.log('🔍 Debug - Current form state:', {
+      isFree,
+      enableDualPricing,
+      enableGroupPricing,
+      ticketPriceAmount: watch('ticketPriceAmount'),
+      ticketPriceCurrency: watch('ticketPriceCurrency'),
+      adultPriceAmount: watch('adultPriceAmount'),
+      childPriceAmount: watch('childPriceAmount'),
+    });
+
+    setSubmitError(`Please fix the validation errors: ${errorFields.join(', ')}`);
+    // Scroll to top of form to show errors
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     if (!user?.userId) {
@@ -109,14 +176,29 @@ export function EventCreationForm() {
         }
       }
 
+      // Issue #48 Fix: Convert local datetime-local input values to UTC ISO strings
+      // The datetime-local input returns local time (e.g., "2024-01-15T14:00")
+      // We need to convert this to UTC before sending to the backend
+      const startDateUtc = new Date(data.startDate).toISOString();
+      const endDateUtc = new Date(data.endDate).toISOString();
+
       const eventData = {
         title: data.title,
         description: data.description,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: startDateUtc,
+        endDate: endDateUtc,
         organizerId: user.userId,
         capacity: data.capacity,
+        // Issue #51: Max attendees per registration
+        maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
         category: data.category,
+        // Phase 6A.32: Email Groups Integration
+        emailGroupIds: data.emailGroupIds || [],
+        // Phase 6A.X: Event Organizer Contact Details
+        publishOrganizerContact: data.publishOrganizerContact || false,
+        organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
+        organizerContactPhone: data.publishOrganizerContact ? data.organizerContactPhone : null,
+        organizerContactEmail: data.publishOrganizerContact ? data.organizerContactEmail : null,
         // Only include location if we have at least address and city
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
@@ -159,6 +241,14 @@ export function EventCreationForm() {
       };
 
       // PHASE 6A.10: Comprehensive payload logging
+      // Issue #48: Added timezone conversion logging
+      console.log('🕐 Timezone conversion (Issue #48 fix):', {
+        localStartInput: data.startDate,
+        localEndInput: data.endDate,
+        utcStartDate: startDateUtc,
+        utcEndDate: endDateUtc,
+        browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       console.log('📤 Creating event with payload:', JSON.stringify(eventData, null, 2));
       console.log('📊 Payload Analysis:', {
         hasLocation: hasCompleteLocation,
@@ -173,7 +263,8 @@ export function EventCreationForm() {
       const eventId = await createEventMutation.mutateAsync(eventData);
       console.log('✅ Event created successfully! ID:', eventId);
 
-      // Redirect to event management page
+      // Phase 6A.41: Redirect to manage page for seamless event setup workflow
+      // User can immediately upload images, configure sign-ups, and publish
       router.push(`/events/${eventId}/manage`);
     } catch (err) {
       // PHASE 6A.10: Enhanced error logging
@@ -201,19 +292,21 @@ export function EventCreationForm() {
         console.error('Response Data:', axiosError.response?.data);
       }
     }
-  });
+  }, onValidationError);  // Session 33: Add validation error callback
 
-  // Category labels
-  const categoryOptions = [
-    { value: EventCategory.Religious, label: 'Religious' },
-    { value: EventCategory.Cultural, label: 'Cultural' },
-    { value: EventCategory.Community, label: 'Community' },
-    { value: EventCategory.Educational, label: 'Educational' },
-    { value: EventCategory.Social, label: 'Social' },
-    { value: EventCategory.Business, label: 'Business' },
-    { value: EventCategory.Charity, label: 'Charity' },
-    { value: EventCategory.Entertainment, label: 'Entertainment' },
-  ];
+  // Phase 6A.47: Map categories to category options using buildCodeToIntMap utility
+  const categoryCodeToEnumValue = useMemo(
+    () => buildCodeToIntMap<EventCategory>(categories),
+    [categories]
+  );
+
+  const categoryOptions = categories?.map(cat => ({
+    value: categoryCodeToEnumValue[cat.code] ?? EventCategory.Community,
+    label: cat.name,
+  })) ?? [];
+
+  // Phase 6A.47: Convert currencies to dropdown options
+  const currencyOptions = useMemo(() => toDropdownOptions(currencies), [currencies]);
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -475,6 +568,28 @@ export function EventCreationForm() {
             )}
           </div>
 
+          {/* Issue #51: Max Attendees Per Registration */}
+          <div>
+            <label htmlFor="maxAttendeesPerRegistration" className="block text-sm font-medium text-neutral-700 mb-2">
+              Max Attendees Per Registration
+            </label>
+            <Input
+              id="maxAttendeesPerRegistration"
+              type="number"
+              min="1"
+              max="50"
+              placeholder="e.g., 10"
+              error={!!errors.maxAttendeesPerRegistration}
+              {...register('maxAttendeesPerRegistration', { valueAsNumber: true })}
+            />
+            {errors.maxAttendeesPerRegistration && (
+              <p className="mt-1 text-sm text-destructive">{errors.maxAttendeesPerRegistration.message}</p>
+            )}
+            <p className="mt-1 text-xs text-neutral-500">
+              Maximum number of attendees allowed in a single registration (1-50)
+            </p>
+          </div>
+
           {/* Free Event Toggle */}
           <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
             <input
@@ -498,7 +613,7 @@ export function EventCreationForm() {
 
               {/* Pricing Mode Selection */}
               <div className="space-y-3">
-                {/* Dual Pricing Toggle - Session 33: Fixed onChange override bug */}
+                {/* Dual Pricing Toggle - Session 33: Fixed onChange override bug + clear fields */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableDualPricing"
@@ -507,7 +622,25 @@ export function EventCreationForm() {
                     {...register('enableDualPricing', {
                       onChange: (e) => {
                         if (e.target.checked) {
+                          // Disable other pricing modes
                           setValue('enableGroupPricing', false);
+                          // Clear single pricing fields to prevent validation conflicts
+                          setValue('ticketPriceAmount', undefined);
+                          setValue('ticketPriceCurrency', undefined);
+                          // Clear group pricing fields
+                          setValue('groupPricingTiers', []);
+                          // Set default currencies for dual pricing
+                          setValue('adultPriceCurrency', Currency.USD);
+                          setValue('childPriceCurrency', Currency.USD);
+                        } else {
+                          // When unchecking, clear dual pricing fields
+                          setValue('adultPriceAmount', undefined);
+                          setValue('adultPriceCurrency', undefined);
+                          setValue('childPriceAmount', undefined);
+                          setValue('childPriceCurrency', undefined);
+                          setValue('childAgeLimit', undefined);
+                          // Set default for single pricing
+                          setValue('ticketPriceCurrency', Currency.USD);
                         }
                       }
                     })}
@@ -517,7 +650,7 @@ export function EventCreationForm() {
                   </label>
                 </div>
 
-                {/* Group Pricing Toggle - Phase 6D - Session 33: Fixed onChange override bug */}
+                {/* Group Pricing Toggle - Phase 6D - Session 33: Fixed onChange override bug + clear fields */}
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
                   <input
                     id="enableGroupPricing"
@@ -526,7 +659,22 @@ export function EventCreationForm() {
                     {...register('enableGroupPricing', {
                       onChange: (e) => {
                         if (e.target.checked) {
+                          // Disable other pricing modes
                           setValue('enableDualPricing', false);
+                          // Clear single pricing fields
+                          setValue('ticketPriceAmount', undefined);
+                          setValue('ticketPriceCurrency', undefined);
+                          // Clear dual pricing fields
+                          setValue('adultPriceAmount', undefined);
+                          setValue('adultPriceCurrency', undefined);
+                          setValue('childPriceAmount', undefined);
+                          setValue('childPriceCurrency', undefined);
+                          setValue('childAgeLimit', undefined);
+                        } else {
+                          // When unchecking, clear group pricing fields
+                          setValue('groupPricingTiers', []);
+                          // Set default for single pricing
+                          setValue('ticketPriceCurrency', Currency.USD);
                         }
                       }
                     })}
@@ -550,14 +698,22 @@ export function EventCreationForm() {
                       type="number"
                       min="0"
                       max="10000"
-                      step="0.01"
-                      placeholder="e.g., 25.00"
+                      step="1"
+                      placeholder="e.g., 25"
                       error={!!errors.ticketPriceAmount}
                       {...register('ticketPriceAmount', { valueAsNumber: true })}
                     />
                     {errors.ticketPriceAmount && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceAmount.message}</p>
                     )}
+                    {/* Phase 6A.X: Revenue breakdown preview with detailed fees */}
+                    <RevenueBreakdownPreview
+                      ticketPrice={watch('ticketPriceAmount') as number | undefined}
+                      currency={(watch('ticketPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                      state={watch('locationState') as string | undefined}
+                      country={watch('locationCountry') as string | undefined}
+                      priceLabel="ticket"
+                    />
                   </div>
 
                   {/* Currency */}
@@ -570,10 +726,14 @@ export function EventCreationForm() {
                       className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                         errors.ticketPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                       }`}
+                      defaultValue={Currency.USD}
                       {...register('ticketPriceCurrency', { valueAsNumber: true })}
                     >
-                      <option value={Currency.USD}>USD ($)</option>
-                      <option value={Currency.LKR}>LKR (Rs)</option>
+                      {currencyOptions.map(curr => (
+                        <option key={curr.value} value={curr.value}>
+                          {curr.label}
+                        </option>
+                      ))}
                     </select>
                     {errors.ticketPriceCurrency && (
                       <p className="mt-1 text-sm text-destructive">{errors.ticketPriceCurrency.message}</p>
@@ -590,6 +750,7 @@ export function EventCreationForm() {
                     onChange={(tiers) => setValue('groupPricingTiers', tiers)}
                     defaultCurrency={watch('ticketPriceCurrency') || Currency.USD}
                     errors={errors.groupPricingTiers?.message}
+                    maxAttendeesPerRegistration={watch('maxAttendeesPerRegistration') || 10}
                   />
                 </div>
               )}
@@ -608,29 +769,41 @@ export function EventCreationForm() {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 25.00"
+                        step="1"
+                        placeholder="e.g., 25"
                         error={!!errors.adultPriceAmount}
                         {...register('adultPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.adultPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceAmount.message}</p>
                       )}
+                      {/* Phase 6A.X: Revenue breakdown preview for adult price */}
+                      <RevenueBreakdownPreview
+                        ticketPrice={watch('adultPriceAmount') as number | undefined}
+                        currency={(watch('adultPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                        state={watch('locationState') as string | undefined}
+                        country={watch('locationCountry') as string | undefined}
+                        priceLabel="adult ticket"
+                      />
                     </div>
 
                     <div>
                       <label htmlFor="adultPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Adult Currency *
+                        Currency *
                       </label>
                       <select
                         id="adultPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.adultPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('adultPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.adultPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.adultPriceCurrency.message}</p>
@@ -649,29 +822,41 @@ export function EventCreationForm() {
                         type="number"
                         min="0"
                         max="10000"
-                        step="0.01"
-                        placeholder="e.g., 15.00"
+                        step="1"
+                        placeholder="e.g., 15"
                         error={!!errors.childPriceAmount}
                         {...register('childPriceAmount', { valueAsNumber: true })}
                       />
                       {errors.childPriceAmount && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceAmount.message}</p>
                       )}
+                      {/* Phase 6A.X: Revenue breakdown preview for child price */}
+                      <RevenueBreakdownPreview
+                        ticketPrice={watch('childPriceAmount') as number | undefined}
+                        currency={(watch('childPriceCurrency') as Currency | undefined) ?? Currency.USD}
+                        state={watch('locationState') as string | undefined}
+                        country={watch('locationCountry') as string | undefined}
+                        priceLabel="child ticket"
+                      />
                     </div>
 
                     <div>
                       <label htmlFor="childPriceCurrency" className="block text-sm font-medium text-neutral-700 mb-2">
-                        Child Currency *
+                        Currency *
                       </label>
                       <select
                         id="childPriceCurrency"
                         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                           errors.childPriceCurrency ? 'border-destructive' : 'border-neutral-300'
                         }`}
+                        defaultValue={Currency.USD}
                         {...register('childPriceCurrency', { valueAsNumber: true })}
                       >
-                        <option value={Currency.USD}>USD ($)</option>
-                        <option value={Currency.LKR}>LKR (Rs)</option>
+                        {currencyOptions.map(curr => (
+                          <option key={curr.value} value={curr.value}>
+                            {curr.label}
+                          </option>
+                        ))}
                       </select>
                       {errors.childPriceCurrency && (
                         <p className="mt-1 text-sm text-destructive">{errors.childPriceCurrency.message}</p>
@@ -714,6 +899,123 @@ export function EventCreationForm() {
         </CardContent>
       </Card>
 
+      {/* Phase 6A.32: Email Groups Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Email Groups (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Select email groups to notify about this event
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <MultiSelect
+            options={emailGroups.map(group => ({
+              id: group.id,
+              label: group.name,
+              disabled: !group.isActive
+            }))}
+            value={watch('emailGroupIds') || []}
+            onChange={(ids) => setValue('emailGroupIds', ids)}
+            placeholder="Select email groups to notify"
+            isLoading={isLoadingEmailGroups}
+            error={!!errors.emailGroupIds}
+            errorMessage={errors.emailGroupIds?.message}
+            helperText="Select groups that should receive invitations for this event"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Phase 6A.X: Event Organizer Contact Details */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact (Optional)</CardTitle>
+          </div>
+          <CardDescription>
+            Publish your contact information with this event so attendees can reach you
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Publish Toggle Checkbox */}
+          <div className="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="publishOrganizerContact"
+              {...register('publishOrganizerContact')}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="publishOrganizerContact" className="text-sm font-medium text-gray-700">
+              Publish my contact information with this event
+            </label>
+          </div>
+
+          {/* Show contact fields only when checkbox is checked */}
+          {watch('publishOrganizerContact') && (
+            <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              {/* Contact Name */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactName" className="block text-sm font-medium text-gray-700">
+                  Contact Name *
+                </label>
+                <Input
+                  id="organizerContactName"
+                  type="text"
+                  placeholder="Your full name"
+                  error={!!errors.organizerContactName}
+                  {...register('organizerContactName')}
+                />
+                {errors.organizerContactName && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactName.message}</p>
+                )}
+              </div>
+
+              {/* Contact Email */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactEmail" className="block text-sm font-medium text-gray-700">
+                  Contact Email
+                </label>
+                <Input
+                  id="organizerContactEmail"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  error={!!errors.organizerContactEmail}
+                  {...register('organizerContactEmail')}
+                />
+                {errors.organizerContactEmail && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactEmail.message}</p>
+                )}
+              </div>
+
+              {/* Contact Phone */}
+              <div className="space-y-2">
+                <label htmlFor="organizerContactPhone" className="block text-sm font-medium text-gray-700">
+                  Contact Phone
+                </label>
+                <Input
+                  id="organizerContactPhone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  error={!!errors.organizerContactPhone}
+                  {...register('organizerContactPhone')}
+                />
+                {errors.organizerContactPhone && (
+                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactPhone.message}</p>
+                )}
+              </div>
+
+              {/* Help Text */}
+              <p className="text-sm text-gray-600 mt-2">
+                * At least one contact method (email or phone) is required
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Note about Media */}
       <Card>
         <CardContent className="py-6">
@@ -743,12 +1045,31 @@ export function EventCreationForm() {
         </div>
       )}
 
+      {/* Session 33: Validation Error Summary - Shows when form has validation errors */}
+      {hasErrors && !submitError && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-amber-800">Please fix the following errors:</p>
+              <ul className="mt-1 text-sm text-amber-700 list-disc list-inside">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{field}: {(error as any)?.message || 'Invalid'}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-4">
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push('/events')}
+          onClick={() => router.push('/dashboard')}
           disabled={isSubmitting}
         >
           Cancel

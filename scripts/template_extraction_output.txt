@@ -1,0 +1,285 @@
+Available columns:
+  - Id
+  - name
+  - description
+  - subject_template
+  - text_template
+  - html_template
+  - type
+  - category
+  - is_active
+  - tags
+  - created_at
+  - updated_at
+
+================================================================================
+Template: template-event-approval
+Parameters (9):
+  - ApprovedAt
+  - EventDetailsUrl
+  - EventLocation
+  - EventManageUrl
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - EventUrl
+  - OrganizerName
+
+================================================================================
+Template: template-event-cancellation-notifications
+Parameters (14):
+  - CancellationReason
+  - ContactEmail
+  - DashboardUrl
+  - EventDate
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - OrganizerEmail
+  - RefundInfo
+  - UserName
+
+================================================================================
+Template: template-event-details-publication
+Parameters (18):
+  - ContactEmail
+  - EventCity
+  - EventDateTime
+  - EventDescription
+  - EventDetailsUrl
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventState
+  - EventTitle
+  - EventUrl
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - OrganizerName
+  - SignUpListsUrl
+  - TicketPrice
+  - UserName
+
+================================================================================
+Template: template-event-registration-cancellation
+Parameters (12):
+  - CancellationDate
+  - ContactEmail
+  - EventDateTime
+  - EventDetailsUrl
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - UserName
+
+================================================================================
+Template: template-event-reminder
+Parameters (17):
+  - AttendeeName
+  - ContactEmail
+  - EventDescription
+  - EventDetailsUrl
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - Location
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - ReminderMessage
+  - ReminderTimeframe
+  - TicketCode
+  - TicketExpiryDate
+  - UserName
+
+================================================================================
+Template: template-free-event-registration-confirmation
+Parameters (16):
+  - Attendees
+  - ContactEmail
+  - ContactPhone
+  - EventDateTime
+  - EventDescription
+  - EventDetailsUrl
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - OrganizerEmail
+  - OrganizerName
+  - UserName
+
+================================================================================
+Template: template-membership-email-verification
+Parameters (3):
+  - ExpirationHours
+  - UserName
+  - VerificationUrl
+
+================================================================================
+Template: template-new-event-publication
+Parameters (17):
+  - ContactEmail
+  - EventCity
+  - EventDateTime
+  - EventDescription
+  - EventDetailsUrl
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventState
+  - EventTitle
+  - EventUrl
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - OrganizerName
+  - SignUpListsUrl
+  - TicketPrice
+
+================================================================================
+Template: template-newsletter-notification
+Parameters (10):
+  - DashboardUrl
+  - EventDateTime
+  - EventDescription
+  - EventDetailsUrl
+  - EventLocation
+  - NewsletterContent
+  - NewsletterTitle
+  - SignUpListsUrl
+  - UnsubscribeLink
+  - UnsubscribeUrl
+
+================================================================================
+Template: template-newsletter-subscription-confirmation
+Parameters (5):
+  - ConfirmationLink
+  - Email
+  - MetroAreasText
+  - UnsubscribeLink
+  - UnsubscribeUrl
+
+================================================================================
+Template: template-organizer-role-approval
+Parameters (2):
+  - DashboardUrl
+  - UserName
+
+================================================================================
+Template: template-paid-event-registration-confirmation-with-ticket
+Parameters (22):
+  - AmountPaid
+  - Attendees
+  - ContactEmail
+  - ContactPhone
+  - EventDateTime
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - OrderNumber
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - PaymentDate
+  - PaymentIntentId
+  - Quantity
+  - TicketCode
+  - TicketExpiryDate
+  - TicketType
+  - TicketUrl
+  - TotalAmount
+  - UserName
+
+================================================================================
+Template: template-password-change-confirmation
+Parameters (2):
+  - ChangedAt
+  - UserName
+
+================================================================================
+Template: template-password-reset
+Parameters (2):
+  - ResetLink
+  - UserName
+
+================================================================================
+Template: template-signup-list-commitment-cancellation
+Parameters (8):
+  - EventDate
+  - EventDetailsUrl
+  - EventLocation
+  - EventTitle
+  - ItemDescription
+  - ItemName
+  - Quantity
+  - UserName
+
+================================================================================
+Template: template-signup-list-commitment-confirmation
+Parameters (17):
+  - ContactEmail
+  - EventDateTime
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - EventUrl
+  - ItemDescription
+  - ItemName
+  - ManageCommitmentUrl
+  - Notes
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - Quantity
+  - SignUpListsUrl
+  - UserName
+
+================================================================================
+Template: template-signup-list-commitment-update
+Parameters (17):
+  - ContactEmail
+  - EventDateTime
+  - EventLocation
+  - EventStartDate
+  - EventStartTime
+  - EventTitle
+  - EventUrl
+  - ItemDescription
+  - ItemName
+  - ManageCommitmentUrl
+  - Notes
+  - OrganizerContactEmail
+  - OrganizerContactName
+  - OrganizerContactPhone
+  - Quantity
+  - SignUpListsUrl
+  - UserName
+
+================================================================================
+Template: template-welcome
+Parameters (5):
+  - DashboardUrl
+  - Email
+  - Name
+  - SiteUrl
+  - UserName
+
+================================================================================
+Total templates processed: 18
+Results saved to template_parameters.json

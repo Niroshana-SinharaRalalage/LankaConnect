@@ -1,32 +1,40 @@
+using System.Diagnostics;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles EventApprovedEvent to send approval notification email to event organizer
+/// Phase 6A.75: Handles EventApprovedEvent to send approval notification email to event organizer.
+/// Uses database-backed email template for consistent branding.
 /// </summary>
 public class EventApprovedEventHandler : INotificationHandler<DomainEventNotification<EventApprovedEvent>>
 {
     private readonly IEmailService _emailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<EventApprovedEventHandler> _logger;
 
     public EventApprovedEventHandler(
         IEmailService emailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEmailUrlHelper emailUrlHelper,
         ILogger<EventApprovedEventHandler> logger)
     {
         _emailService = emailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -34,81 +42,126 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
     {
         var domainEvent = notification.DomainEvent;
 
-        _logger.LogInformation("Handling EventApprovedEvent for Event {EventId}", domainEvent.EventId);
-
-        try
+        using (LogContext.PushProperty("Operation", "EventApproved"))
+        using (LogContext.PushProperty("EntityType", "Event"))
+        using (LogContext.PushProperty("EventId", domainEvent.EventId))
         {
-            // Retrieve event data
-            var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-            if (@event == null)
-            {
-                _logger.LogWarning("Event {EventId} not found for EventApprovedEvent", domainEvent.EventId);
-                return;
-            }
+            var stopwatch = Stopwatch.StartNew();
 
-            // Retrieve organizer's user details
-            var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
-            if (organizer == null)
+            _logger.LogInformation(
+                "EventApproved START: EventId={EventId}, ApprovedAt={ApprovedAt}",
+                domainEvent.EventId, domainEvent.ApprovedAt);
+
+            try
             {
-                _logger.LogWarning("Organizer {OrganizerId} not found for EventApprovedEvent", @event.OrganizerId);
-                return;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Retrieve event data
+                var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "EventApproved: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Retrieve organizer's user details
+                var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+                if (organizer == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "EventApproved: Organizer not found - OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        @event.OrganizerId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
             var organizerName = $"{organizer.FirstName} {organizer.LastName}";
+
+            // Phase 6A.75: Build URLs using centralized URL helper
+            var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+            var eventManageUrl = _emailUrlHelper.BuildEventManageUrl(@event.Id);
+
+            // Build template parameters
             var parameters = new Dictionary<string, object>
             {
+                { "OrganizerName", organizerName },
                 { "EventTitle", @event.Title.Value },
-                { "EventStartDate", @event.StartDate.ToString("MMMM dd, yyyy") },
-                { "EventStartTime", @event.StartDate.ToString("h:mm tt") },
+                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
+                { "EventLocation", GetEventLocationString(@event) },
                 { "ApprovedAt", domainEvent.ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "OrganizerName", organizerName }
+                { "EventUrl", eventUrl },
+                { "EventManageUrl", eventManageUrl }
             };
 
-            var emailMessage = new EmailMessageDto
-            {
-                ToEmail = organizer.Email.Value,
-                ToName = organizerName,
-                Subject = $"Event Approved: {@event.Title.Value}",
-                HtmlBody = GenerateEventApprovedHtml(parameters),
-                Priority = 1 // High priority
-            };
+                _logger.LogInformation(
+                    "EventApproved: Sending approval email - To={Email}, EventId={EventId}, EventTitle={EventTitle}",
+                    organizer.Email.Value, domainEvent.EventId, @event.Title.Value);
 
-            var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+                // Phase 6A.75: Use templated email instead of inline HTML
+                var result = await _emailService.SendTemplatedEmailAsync(
+                    "template-event-approval",
+                    organizer.Email.Value,
+                    parameters,
+                    cancellationToken);
 
-            if (result.IsFailure)
-            {
-                _logger.LogError("Failed to send event approval email for Event {EventId}: {Errors}",
-                    domainEvent.EventId, string.Join(", ", result.Errors));
+                stopwatch.Stop();
+
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation(
+                        "EventApproved COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        organizer.Email.Value, domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "EventApproved FAILED: Email sending failed - Email={Email}, EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        organizer.Email.Value, domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                }
             }
-            else
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Event approval email sent successfully for Event {EventId}", domainEvent.EventId);
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "EventApproved CANCELED: Operation was canceled - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                throw;
             }
-        }
-        catch (Exception ex)
-        {
-            // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
-            _logger.LogError(ex, "Error handling EventApprovedEvent for Event {EventId}", domainEvent.EventId);
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
+                _logger.LogError(ex,
+                    "EventApproved FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+            }
         }
     }
 
-    private string GenerateEventApprovedHtml(Dictionary<string, object> parameters)
+    /// <summary>
+    /// Safely extracts event location string with defensive null handling.
+    /// </summary>
+    private static string GetEventLocationString(Event @event)
     {
-        var organizerName = parameters.TryGetValue("OrganizerName", out var name) ? name.ToString() : "Event Organizer";
-        return $@"
-            <html>
-            <body>
-                <h2>Event Approved!</h2>
-                <p>Dear {organizerName},</p>
-                <p>Great news! Your event has been approved and is now published:</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Date:</strong> {parameters["EventStartDate"]} at {parameters["EventStartTime"]}</li>
-                    <li><strong>Approved:</strong> {parameters["ApprovedAt"]}</li>
-                </ul>
-                <p>Your event is now visible to all users and attendees can register.</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
+        if (@event.Location?.Address == null)
+            return "Online Event";
+
+        var street = @event.Location.Address.Street;
+        var city = @event.Location.Address.City;
+        var state = @event.Location.Address.State;
+
+        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
+            return "Online Event";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(street)) parts.Add(street);
+        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+        return string.Join(", ", parts);
     }
 }

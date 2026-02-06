@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { LoginForm } from '@/presentation/components/features/auth/LoginForm';
@@ -95,7 +96,9 @@ export default function LoginPage() {
             <OfficialLogo size="sm" linkTo="/" />
           </div>
 
-          <LoginForm />
+          <Suspense fallback={<div className="text-center py-4">Loading...</div>}>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

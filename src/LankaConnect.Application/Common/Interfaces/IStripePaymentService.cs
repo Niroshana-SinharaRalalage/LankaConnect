@@ -29,6 +29,17 @@ public interface IStripePaymentService
 
     // Session 23: Event ticket payment integration
     Task<Result<string>> CreateEventCheckoutSessionAsync(CreateEventCheckoutSessionRequest request, CancellationToken cancellationToken = default);
+
+    // Phase 6A.81 Part 3: Retrieve checkout URL from existing session
+    Task<Result<string>> GetCheckoutSessionUrlAsync(string sessionId, CancellationToken cancellationToken = default);
+
+    // Phase 6A.91: Create refund for a completed payment
+    Task<Result<StripeRefundResult>> CreateRefundAsync(CreateRefundRequest request, CancellationToken cancellationToken = default);
+
+    // Add-Only Attendees Feature: Create checkout session for additional attendees
+    Task<Result<AdditionCheckoutResult>> CreateAdditionCheckoutSessionAsync(
+        CreateAdditionCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -357,4 +368,159 @@ public class CreateEventCheckoutSessionRequest
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
     public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.91: Request to create a Stripe refund for a completed payment
+/// </summary>
+public class CreateRefundRequest
+{
+    /// <summary>
+    /// The Stripe PaymentIntent ID to refund (stored in Registration.StripePaymentIntentId)
+    /// </summary>
+    public required string PaymentIntentId { get; init; }
+
+    /// <summary>
+    /// The registration ID for this refund (used for idempotency and audit trail)
+    /// </summary>
+    public Guid RegistrationId { get; init; }
+
+    /// <summary>
+    /// The amount to refund in the smallest currency unit (e.g., cents for USD)
+    /// If null, refunds the full amount
+    /// </summary>
+    public long? AmountInCents { get; init; }
+
+    /// <summary>
+    /// The reason for the refund (for Stripe dashboard and reporting)
+    /// </summary>
+    public string Reason { get; init; } = "requested_by_customer";
+
+    /// <summary>
+    /// Optional metadata to attach to the refund
+    /// </summary>
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.91: Result of a Stripe refund operation
+/// </summary>
+public class StripeRefundResult
+{
+    /// <summary>
+    /// The Stripe Refund ID (e.g., re_xxx)
+    /// </summary>
+    public required string RefundId { get; init; }
+
+    /// <summary>
+    /// The status of the refund (succeeded, pending, failed, canceled)
+    /// </summary>
+    public required string Status { get; init; }
+
+    /// <summary>
+    /// The amount refunded in cents
+    /// </summary>
+    public long AmountRefunded { get; init; }
+
+    /// <summary>
+    /// The currency of the refund
+    /// </summary>
+    public string Currency { get; init; } = "usd";
+
+    /// <summary>
+    /// When the refund was created
+    /// </summary>
+    public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Whether the refund succeeded
+    /// </summary>
+    public bool IsSucceeded => Status == "succeeded";
+}
+
+/// <summary>
+/// Add-Only Attendees Feature: Request to create a Stripe Checkout session for adding attendees.
+/// </summary>
+public class CreateAdditionCheckoutSessionRequest
+{
+    /// <summary>
+    /// The existing registration to add attendees to.
+    /// </summary>
+    public Guid RegistrationId { get; init; }
+
+    /// <summary>
+    /// The RegistrationAddition ID tracking this addition.
+    /// </summary>
+    public Guid RegistrationAdditionId { get; init; }
+
+    /// <summary>
+    /// The event ID.
+    /// </summary>
+    public Guid EventId { get; init; }
+
+    /// <summary>
+    /// Event title for display in checkout.
+    /// </summary>
+    public required string EventTitle { get; init; }
+
+    /// <summary>
+    /// Additional amount to charge (delta payment).
+    /// </summary>
+    public decimal Amount { get; init; }
+
+    /// <summary>
+    /// Currency for the payment.
+    /// </summary>
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>
+    /// Number of new attendees being added.
+    /// </summary>
+    public int NewAttendeesCount { get; init; }
+
+    /// <summary>
+    /// URL to redirect to after successful payment.
+    /// </summary>
+    public required string SuccessUrl { get; init; }
+
+    /// <summary>
+    /// URL to redirect to if user cancels.
+    /// </summary>
+    public required string CancelUrl { get; init; }
+
+    /// <summary>
+    /// Contact email for the registration (for anonymous receipts).
+    /// </summary>
+    public string? ContactEmail { get; init; }
+
+    /// <summary>
+    /// User ID if authenticated (null for anonymous).
+    /// </summary>
+    public Guid? UserId { get; init; }
+
+    /// <summary>
+    /// Optional additional metadata.
+    /// </summary>
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Add-Only Attendees Feature: Result of creating an addition checkout session.
+/// </summary>
+public class AdditionCheckoutResult
+{
+    /// <summary>
+    /// The Stripe Checkout Session ID.
+    /// </summary>
+    public required string SessionId { get; init; }
+
+    /// <summary>
+    /// The checkout URL to redirect the user to.
+    /// </summary>
+    public required string CheckoutUrl { get; init; }
+
+    /// <summary>
+    /// When the checkout session expires (typically 24 hours).
+    /// </summary>
+    public DateTime ExpiresAt { get; init; }
 }

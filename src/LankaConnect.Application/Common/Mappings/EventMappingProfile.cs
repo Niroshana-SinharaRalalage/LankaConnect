@@ -1,6 +1,10 @@
 using AutoMapper;
+using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Application.Common.Mappings;
 
@@ -8,10 +12,25 @@ public class EventMappingProfile : Profile
 {
     public EventMappingProfile()
     {
+        // Phase 6A.X: RevenueBreakdown -> RevenueBreakdownDto mapping
+        CreateMap<RevenueBreakdown, RevenueBreakdownDto>()
+            .ForMember(dest => dest.GrossAmount, opt => opt.MapFrom(src => src.GrossAmount.Amount))
+            .ForMember(dest => dest.SalesTaxAmount, opt => opt.MapFrom(src => src.SalesTaxAmount.Amount))
+            .ForMember(dest => dest.TaxableAmount, opt => opt.MapFrom(src => src.TaxableAmount.Amount))
+            .ForMember(dest => dest.StripeFeeAmount, opt => opt.MapFrom(src => src.StripeFeeAmount.Amount))
+            .ForMember(dest => dest.PlatformCommissionAmount, opt => opt.MapFrom(src => src.PlatformCommission.Amount))
+            .ForMember(dest => dest.OrganizerPayoutAmount, opt => opt.MapFrom(src => src.OrganizerPayout.Amount))
+            .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.GrossAmount.Currency))
+            .ForMember(dest => dest.SalesTaxRate, opt => opt.MapFrom(src => src.SalesTaxRate))
+            .ForMember(dest => dest.TaxRateDisplay, opt => opt.MapFrom(src => $"{src.SalesTaxRate * 100:0.##}%"))
+            .ForMember(dest => dest.TaxJurisdiction, opt => opt.Ignore()); // Jurisdiction tracking can be added later
+
         CreateMap<Event, EventDto>()
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title.Value))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description.Value))
             .ForMember(dest => dest.CurrentRegistrations, opt => opt.MapFrom(src => src.CurrentRegistrations))
+            // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
+            .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
             // Location mapping (nullable)
             .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Street : null))
@@ -21,6 +40,12 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Country, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Country : null))
             .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Latitude : (decimal?)null))
             .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Longitude : (decimal?)null))
+            // Phase 6A.97: Timezone mapping for consistent date/time display
+            .ForMember(dest => dest.TimeZoneId, opt => opt.MapFrom(src => src.TimeZoneId))
+            .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>
+                src.TimeZoneId != null
+                    ? LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate)
+                    : null))
             // Legacy ticket price mapping (nullable - backward compatibility)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
             .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (Domain.Shared.Enums.Currency?)null))
@@ -37,13 +62,28 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.HasGroupPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers))
             // Media galleries (Epic 2 Phase 2)
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
-            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos));
+            .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos))
+            // Phase 6A.25: Badge Management System
+            .ForMember(dest => dest.Badges, opt => opt.MapFrom(src => src.Badges))
+            // Phase 6A.46: Display label based on lifecycle
+            .ForMember(dest => dest.DisplayLabel, opt => opt.MapFrom(src => src.GetDisplayLabel()))
+            // Phase 6A.X: Organizer Contact Details
+            .ForMember(dest => dest.PublishOrganizerContact, opt => opt.MapFrom(src => src.PublishOrganizerContact))
+            .ForMember(dest => dest.OrganizerContactName, opt => opt.MapFrom(src => src.OrganizerContactName))
+            .ForMember(dest => dest.OrganizerContactPhone, opt => opt.MapFrom(src => src.OrganizerContactPhone))
+            .ForMember(dest => dest.OrganizerContactEmail, opt => opt.MapFrom(src => src.OrganizerContactEmail))
+            // Phase 6A.X: Revenue Breakdown for paid events
+            .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown));
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();
 
         // EventVideo -> EventVideoDto mapping (Epic 2 Phase 2)
         CreateMap<EventVideo, EventVideoDto>();
+
+        // Phase 6A.25: Badge Management System mappings
+        CreateMap<EventBadge, EventBadgeDto>();
+        CreateMap<Badge, BadgeDto>();
 
         // Event -> EventSearchResultDto mapping (Epic 2 Phase 3 - Full-Text Search)
         // Same mappings as EventDto, plus SearchRelevance (set to 0, will be populated by repository)

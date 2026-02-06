@@ -95,17 +95,13 @@ class TokenRefreshService {
         tokenLength: accessToken?.length,
       });
 
-      // Update auth store with new token
-      const { setAuth, user } = useAuthStore.getState();
+      // Update auth store with new access token
+      const { updateAccessToken, user } = useAuthStore.getState();
       console.log('🔍 [TOKEN REFRESH] Auth store state:', { hasUser: !!user, userId: user?.userId });
 
       if (user) {
-        console.log('🔍 [TOKEN REFRESH] Updating auth store with new token');
-        setAuth(user, {
-          accessToken,
-          refreshToken: '', // Refresh token is in HttpOnly cookie (not in localStorage)
-          expiresIn: 1800, // 30 minutes (matches backend config)
-        });
+        console.log('🔍 [TOKEN REFRESH] Updating auth store with new access token only');
+        updateAccessToken(accessToken);
       } else {
         console.warn('⚠️ [TOKEN REFRESH] No user in auth store, cannot update token');
       }

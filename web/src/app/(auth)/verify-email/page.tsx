@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { EmailVerification } from '@/presentation/components/features/auth/EmailVerification';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import Link from 'next/link';
-import Image from 'next/image';
+import { ArrowLeft } from 'lucide-react';
+import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 
 /**
  * EmailVerificationContent Component
@@ -56,47 +57,41 @@ export default function VerifyEmailPage() {
     <div
       className="min-h-screen flex items-center justify-center p-5"
       style={{
-        backgroundImage: 'url(/images/batik-sri-lanka.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        background: 'linear-gradient(to-r, #FF7900, #8B1538, #006400)'
       }}
     >
-
       {/* Split Panel Container */}
       <div className="relative z-10 w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-2 bg-white rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
         {/* Left Panel - Branding */}
-        <div className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF7900 0%, #8B1538 50%, #006400 100%)' }}>
-          {/* Animated Background - Pulsing radial gradient */}
-          <div
-            className="absolute -top-1/2 -right-1/2 w-[200%] h-[200%] pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              animation: 'pulse 8s ease-in-out infinite'
-            }}
-          />
+        <div className="hidden md:flex flex-col justify-center text-white px-10 py-[60px] relative overflow-hidden bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800">
+          {/* Decorative Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              }}
+            ></div>
+          </div>
+
+          {/* Decorative gradient blobs */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
+          </div>
 
           {/* Logo Section */}
-          <div className="relative z-10 mb-10">
-            <div className="flex items-center text-[2rem] font-bold mb-5">
-              <Image
-                src="/lankaconnect-logo-transparent.png"
-                alt="LankaConnect"
-                width={80}
-                height={80}
-                className="mr-5"
-                priority
-              />
-              LankaConnect
-            </div>
+          <div className="mb-8 relative z-10">
+            <OfficialLogo size="md" textColor="text-white" subtitleColor="text-white/90" linkTo="/" />
           </div>
 
           {/* Welcome Text */}
           <div className="relative z-10">
-            <h1 className="text-[2.5rem] font-bold mb-5 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.2)]">
+            <h1 className="text-[1.75rem] font-semibold mb-4 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.2)]">
               Verify Your Email
             </h1>
-            <p className="text-[1.1rem] opacity-95 leading-[1.6] mb-[30px]">
+            <p className="text-base opacity-95 leading-relaxed mb-6">
               Welcome to LankaConnect! Just one more step to activate your account and join the vibrant Sri Lankan American community.
             </p>
           </div>
@@ -135,17 +130,18 @@ export default function VerifyEmailPage() {
 
         {/* Right Panel - Email Verification */}
         <div className="flex flex-col justify-center px-[50px] py-[60px]" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #fef9f5 100%)' }}>
+          {/* Back to Home Link */}
+          <Link
+            href="/"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-[#FF7900] transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Home
+          </Link>
+
           {/* Mobile Logo */}
-          <div className="mb-8 md:hidden text-center">
-            <Image
-              src="/lankaconnect-logo-transparent.png"
-              alt="LankaConnect"
-              width={60}
-              height={60}
-              className="mx-auto mb-2"
-              priority
-            />
-            <span className="text-2xl font-bold" style={{ color: '#8B1538' }}>LankaConnect</span>
+          <div className="mb-6 md:hidden text-center">
+            <OfficialLogo size="sm" linkTo="/" />
           </div>
 
           <Suspense

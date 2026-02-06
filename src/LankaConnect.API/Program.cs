@@ -4,6 +4,7 @@ using LankaConnect.API.Filters;
 using LankaConnect.Application;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -63,7 +64,7 @@ try
     builder.Services.AddHttpContextAccessor();
 
     // Add Application Layer
-    builder.Services.AddApplication();
+    builder.Services.AddApplication(builder.Configuration);
 
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
@@ -189,39 +190,62 @@ try
 
     var app = builder.Build();
 
-    // Apply database migrations automatically on startup
-    // This ensures the database schema is always up-to-date in all environments
-    using (var scope = app.Services.CreateScope())
+    // Phase 6A.X: Validate configuration settings at startup
+    ValidateConfiguration(builder.Configuration, app.Services.GetRequiredService<ILogger<Program>>());
+
+    // Phase 6A.X: Validate EF Core configurations at startup (non-Development only - Development runs migrations)
+    if (!app.Environment.IsDevelopment())
     {
-        var services = scope.ServiceProvider;
-        try
+        await ValidateEfCoreConfigurationsAsync(app.Services);
+    }
+
+    // Apply database migrations automatically on startup
+    // CRITICAL FIX Phase 6A.61 Hotfix: Only run migrations in Development to avoid dual execution
+    // In Staging/Production, migrations are applied exclusively via GitHub Actions CI/CD pipeline (deploy-staging.yml)
+    // This prevents permission issues, connection string conflicts, and silent failures
+    if (app.Environment.IsDevelopment())
+    {
+        using (var scope = app.Services.CreateScope())
         {
-            var context = services.GetRequiredService<AppDbContext>();
-            var logger = services.GetRequiredService<ILogger<Program>>();
-
-            logger.LogInformation("Applying database migrations...");
-            await context.Database.MigrateAsync();
-            logger.LogInformation("Database migrations applied successfully");
-
-            // Seed initial data (Development and Staging only)
-            if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+            var services = scope.ServiceProvider;
+            try
             {
+                var context = services.GetRequiredService<AppDbContext>();
+                var logger = services.GetRequiredService<ILogger<Program>>();
+
+                logger.LogInformation("Applying database migrations...");
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Database migrations applied successfully");
+
+                // Seed initial data (Development only)
                 var dbInitializer = new DbInitializer(
                     context,
                     services.GetRequiredService<ILogger<DbInitializer>>(),
                     services.GetRequiredService<IPasswordHashingService>());
                 await dbInitializer.SeedAsync();
             }
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database");
+                throw; // Re-throw to prevent application startup with incomplete database
+            }
         }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred while migrating the database");
-            throw; // Re-throw to prevent application startup with incomplete database
-        }
+    }
+    else
+    {
+        // Phase 6A.61 Hotfix: Log that migrations are skipped in Staging/Production
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation(
+            "[Phase 6A.61 Hotfix] Skipping automatic migrations in {Environment} environment. " +
+            "Database schema changes are applied via GitHub Actions CI/CD pipeline (deploy-staging.yml lines 101-142).",
+            app.Environment.EnvironmentName);
     }
 
     // Configure the HTTP request pipeline
+
+    // Phase 6A.X: Global exception handling middleware (FIRST to catch all exceptions)
+    app.UseMiddleware<LankaConnect.API.Middleware.GlobalExceptionMiddleware>();
 
     // CRITICAL FIX Phase 6A.12: Use ONLY built-in CORS middleware (removed custom middleware that was conflicting)
     // Apply CORS BEFORE other middleware to handle preflight requests correctly
@@ -327,11 +351,11 @@ try
     {
         options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
         options.GetLevel = (httpContext, elapsed, ex) => ex != null
-            ? LogEventLevel.Error 
-            : httpContext.Response.StatusCode > 499 
-                ? LogEventLevel.Error 
+            ? LogEventLevel.Error
+            : httpContext.Response.StatusCode > 499
+                ? LogEventLevel.Error
                 : LogEventLevel.Information;
-        
+
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
@@ -340,7 +364,7 @@ try
             diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
             diagnosticContext.Set("RequestSize", httpContext.Request.ContentLength ?? 0);
             diagnosticContext.Set("ResponseSize", httpContext.Response.ContentLength ?? 0);
-            
+
             if (httpContext.User.Identity?.IsAuthenticated == true)
             {
                 diagnosticContext.Set("UserId", httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("id")?.Value ?? "Unknown");
@@ -349,9 +373,14 @@ try
         };
     });
 
+    // CRITICAL FIX: Enable routing BEFORE authentication so [AllowAnonymous] is respected
+    // This is essential for webhook endpoints that don't use JWT authentication
+    app.UseRouting();
+
     // Authentication & Authorization
     app.UseCustomAuthentication();
 
+    // Map controllers AFTER authentication middleware
     app.MapControllers();
 
     // Add Health Check endpoint with detailed response
@@ -384,6 +413,7 @@ try
         DashboardTitle = "LankaConnect Background Jobs"
     });
 
+
     // Register Recurring Jobs (Epic 2 Phase 5)
     using (var scope = app.Services.CreateScope())
     {
@@ -412,6 +442,26 @@ try
                 TimeZone = TimeZoneInfo.Utc
             });
 
+        // Phase 6A.27: Expired Badge Cleanup Job - Runs daily to remove expired badges from events
+        recurringJobManager.AddOrUpdate<ExpiredBadgeCleanupJob>(
+            "expired-badge-cleanup-job",
+            job => job.ExecuteAsync(),
+            Cron.Daily, // Run once daily at midnight UTC
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Phase 6A.81: Cleanup Abandoned Registrations Job - Runs hourly to mark expired Preliminary registrations as Abandoned
+        recurringJobManager.AddOrUpdate<CleanupAbandonedRegistrationsJob>(
+            "cleanup-abandoned-registrations-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
         logger.LogInformation("Hangfire recurring jobs registered successfully");
     }
 
@@ -425,6 +475,151 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// Phase 6A.X: Configuration validation methods
+static void ValidateConfiguration(IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
+{
+    logger.LogInformation("Phase 6A.X: Validating configuration settings at startup");
+
+    var requiredSettings = new Dictionary<string, bool>
+    {
+        // Critical settings (fail fast if missing)
+        { "ConnectionStrings:DefaultConnection", true },
+        { "Jwt:Key", true },
+        { "Jwt:Issuer", true },
+        { "Jwt:Audience", true },
+
+        // Optional settings based on features (warn if missing)
+        { "AzureStorage:ConnectionString", false },
+        { "Stripe:SecretKey", false },
+        { "Stripe:PublishableKey", false },
+        { "EmailSettings:AzureConnectionString", false }
+    };
+
+    var errors = new List<string>();
+    var warnings = new List<string>();
+
+    foreach (var (key, required) in requiredSettings)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (required)
+            {
+                errors.Add($"Missing required configuration: {key}");
+                logger.LogCritical("Configuration validation: Missing required setting {Key}", key);
+            }
+            else
+            {
+                warnings.Add($"Missing optional configuration: {key} (feature may be disabled)");
+                logger.LogWarning("Configuration validation: Missing optional setting {Key} - feature may be disabled", key);
+            }
+        }
+        else
+        {
+            logger.LogInformation("Configuration validation: Setting {Key} is present", key);
+        }
+    }
+
+    if (errors.Any())
+    {
+        logger.LogCritical(
+            "Configuration validation FAILED with {ErrorCount} critical errors:\n{Errors}",
+            errors.Count,
+            string.Join("\n", errors));
+        throw new InvalidOperationException($"Configuration validation failed. Missing required settings:\n{string.Join("\n", errors)}");
+    }
+
+    if (warnings.Any())
+    {
+        logger.LogWarning(
+            "Configuration validation completed with {WarningCount} warnings:\n{Warnings}",
+            warnings.Count,
+            string.Join("\n", warnings));
+    }
+    else
+    {
+        logger.LogInformation("Configuration validation PASSED - all required settings present");
+    }
+}
+
+static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    logger.LogInformation("Phase 6A.X: Validating EF Core configurations at startup");
+
+    try
+    {
+        // Step 1: Validate migrations are applied
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        if (pendingMigrations.Any())
+        {
+            logger.LogWarning(
+                "EF Core validation: Pending migrations detected - {Count} migrations not applied: {Migrations}",
+                pendingMigrations.Count(),
+                string.Join(", ", pendingMigrations));
+        }
+        else
+        {
+            logger.LogInformation("EF Core validation: All migrations applied");
+        }
+
+        // Step 2: Validate database connection
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            logger.LogCritical("EF Core validation: Cannot connect to database");
+            throw new InvalidOperationException("Cannot connect to database - check connection string");
+        }
+
+        logger.LogInformation("EF Core validation: Database connection successful");
+
+        // Step 3: Test critical DbSets to validate configurations
+        // This will throw if column mappings don't match database schema (like StateTaxRateConfiguration Phase 6A.X)
+        var criticalEntityTests = new List<(string EntityName, Func<Task> TestQuery)>
+        {
+            ("StateTaxRates", async () => await context.StateTaxRates.AsNoTracking().FirstOrDefaultAsync()),
+            ("Events", async () => await context.Events.AsNoTracking().FirstOrDefaultAsync()),
+            ("Users", async () => await context.Users.AsNoTracking().FirstOrDefaultAsync()),
+            ("Registrations", async () => await context.Registrations.AsNoTracking().FirstOrDefaultAsync())
+        };
+
+        foreach (var (entityName, testQuery) in criticalEntityTests)
+        {
+            try
+            {
+                await testQuery();
+                logger.LogInformation("EF Core validation: {EntityName} configuration VALID", entityName);
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex,
+                    "EF Core validation: {EntityName} configuration INVALID - {ErrorMessage}",
+                    entityName,
+                    ex.Message);
+                throw new InvalidOperationException(
+                    $"EF Core configuration validation failed for {entityName}. " +
+                    $"Error: {ex.Message}. " +
+                    $"This likely indicates a mismatch between entity configuration (HasColumnName) and database schema.",
+                    ex);
+            }
+        }
+
+        logger.LogInformation("EF Core configuration validation PASSED - all critical entities validated");
+    }
+    catch (Exception ex) when (ex is not InvalidOperationException)
+    {
+        logger.LogCritical(ex,
+            "EF Core validation: UNEXPECTED ERROR during validation - {ErrorMessage}",
+            ex.Message);
+        throw new InvalidOperationException(
+            $"EF Core configuration validation failed with unexpected error: {ex.Message}",
+            ex);
+    }
 }
 
 // Make Program class public for testing

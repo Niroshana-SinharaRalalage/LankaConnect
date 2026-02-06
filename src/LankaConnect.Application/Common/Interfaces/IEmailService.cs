@@ -33,8 +33,21 @@ public interface IEmailService
     /// <param name="parameters">Template parameters</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result indicating success or failure</returns>
-    Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail, 
+    Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
         Dictionary<string, object> parameters, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.37: Sends an email using a template with parameters and inline image attachments
+    /// </summary>
+    /// <param name="templateName">Name of the email template</param>
+    /// <param name="recipientEmail">Recipient email address</param>
+    /// <param name="parameters">Template parameters</param>
+    /// <param name="attachments">Inline attachments (images with ContentId for CID embedding)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result indicating success or failure</returns>
+    Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
+        Dictionary<string, object> parameters, List<EmailAttachment>? attachments,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sends bulk emails asynchronously
@@ -73,12 +86,25 @@ public class EmailMessageDto
 
 /// <summary>
 /// Represents an email attachment
+/// Phase 6A.35: Added ContentId for CID inline image embedding in emails
 /// </summary>
 public class EmailAttachment
 {
     public string FileName { get; set; } = string.Empty;
     public byte[] Content { get; set; } = Array.Empty<byte>();
     public string ContentType { get; set; } = "application/octet-stream";
+
+    /// <summary>
+    /// Content-ID for inline attachments (CID embedding).
+    /// When set, the attachment can be referenced in HTML using: src="cid:{ContentId}"
+    /// This ensures images display immediately without user action in email clients.
+    /// </summary>
+    public string? ContentId { get; set; }
+
+    /// <summary>
+    /// Indicates if this is an inline attachment (embedded in email body) vs regular attachment
+    /// </summary>
+    public bool IsInline => !string.IsNullOrEmpty(ContentId);
 }
 
 /// <summary>

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Npgsql.EntityFrameworkCore.PostgreSQL;  // Issue #56 FIX: For UseXminAsConcurrencyToken()
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
@@ -61,13 +62,21 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         });
 
         // Session 21: Configure Attendees as JSONB array for multi-attendee registration
+        // Phase 6A.43: Updated to use AgeCategory and Gender instead of Age
+        // Phase 6A.55: Fixed shadow property issue for JSONB collections
         builder.OwnsMany(r => r.Attendees, attendeesBuilder =>
         {
             attendeesBuilder.ToJson("attendees");
 
             // Configure properties explicitly to help EF Core binding
             attendeesBuilder.Property(a => a.Name).HasColumnName("name");
-            attendeesBuilder.Property(a => a.Age).HasColumnName("age");
+            attendeesBuilder.Property(a => a.AgeCategory)
+                .HasColumnName("age_category")
+                .HasConversion<string>();
+            attendeesBuilder.Property(a => a.Gender)
+                .HasColumnName("gender")
+                .HasConversion<string?>()
+                .IsRequired(false);
         });
 
         // Session 21: Configure Contact as JSONB for shared contact information
@@ -95,17 +104,80 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
         });
 
+        // Phase 6A.X: Configure revenue breakdown Money value objects
+        builder.OwnsOne(r => r.SalesTaxAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("sales_tax_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("sales_tax_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.StripeFeeAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("stripe_fee_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("stripe_fee_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.PlatformCommissionAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("platform_commission_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("platform_commission_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.OwnsOne(r => r.OrganizerPayoutAmount, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("organizer_payout_amount")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("organizer_payout_currency")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.Property(r => r.SalesTaxRate)
+            .HasColumnName("sales_tax_rate")
+            .HasPrecision(5, 4)
+            .IsRequired()
+            .HasDefaultValue(0m);
+
         // Configure properties
         builder.Property(r => r.Quantity)
             .IsRequired()
             .HasDefaultValue(1);
 
         // Configure enum
+        // Phase 6A.81 FIX: Removed HasDefaultValue to let application code control Status
+        // Default value was overriding domain logic (Preliminary → Confirmed)
         builder.Property(r => r.Status)
             .HasConversion<string>()
             .HasMaxLength(20)
-            .IsRequired()
-            .HasDefaultValue(RegistrationStatus.Confirmed);
+            .IsRequired();
+
+        // Phase 6A.81 FIX: Configure PaymentStatus without default value
+        // Database had DEFAULT 0 (NotRequired) which overrode domain logic
+        // Application code should control PaymentStatus (Pending for paid events, NotRequired for free)
+        builder.Property(r => r.PaymentStatus)
+            .HasConversion<int>()
+            .IsRequired();
 
         // Configure audit fields
         builder.Property(r => r.CreatedAt)
@@ -113,6 +185,17 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasDefaultValueSql("NOW()");
 
         builder.Property(r => r.UpdatedAt);
+
+        // Issue #56 FIX: Add concurrency token for optimistic locking
+        // This prevents race conditions where concurrent webhook requests both
+        // successfully modify the same registration row.
+        // Uses Npgsql's UseXminAsConcurrencyToken() which properly configures PostgreSQL's
+        // xmin system column for EF Core concurrency detection.
+        // Note: Suppressing CS0618 because the recommended IsRowVersion() approach
+        // doesn't work correctly for PostgreSQL xmin system column.
+#pragma warning disable CS0618 // Type or member is obsolete
+        builder.UseXminAsConcurrencyToken();
+#pragma warning restore CS0618
 
         // Configure indexes
         builder.HasIndex(r => r.EventId)

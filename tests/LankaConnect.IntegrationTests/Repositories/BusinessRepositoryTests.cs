@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.Domain.Business.ValueObjects;
@@ -24,7 +26,7 @@ public class BusinessRepositoryTests : DockerComposeWebApiTestBase
 
         // Arrange - Initialize repository
         _context = DbContext;
-        _repository = new BusinessRepository(_context);
+        _repository = new BusinessRepository(_context, NullLogger<BusinessRepository>.Instance);
 
         // Act
         await _repository.AddAsync(business);

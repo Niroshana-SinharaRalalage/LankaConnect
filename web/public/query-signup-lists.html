@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Query SignUp Lists</title>
+</head>
+<body>
+    <h1>Query SignUp Lists for Event</h1>
+    <button onclick="fetchSignUpLists()">Fetch SignUp Lists</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function fetchSignUpLists() {
+            const eventId = '89f8ef9f-af11-4b1a-8dec-b440faef9ad0';
+            const url = `/api/proxy/events/${eventId}/signup-lists`;
+
+            try {
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                // Format the data to show categories
+                const formatted = data.map(list => ({
+                    id: list.id,
+                    category: list.category,
+                    description: list.description,
+                    has_mandatory_items: list.hasMandatoryItems,
+                    has_preferred_items: list.hasPreferredItems,
+                    has_suggested_items: list.hasSuggestedItems,
+                    has_open_items: list.hasOpenItems,
+                    created_at: list.createdAt
+                }));
+
+                document.getElementById('result').textContent = JSON.stringify(formatted, null, 2);
+                console.log('SignUp Lists:', formatted);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+                console.error('Error fetching signup lists:', error);
+            }
+        }
+    </script>
+</body>
+</html>

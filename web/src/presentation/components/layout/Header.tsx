@@ -4,13 +4,15 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { Button } from '@/presentation/components/ui/Button';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { NotificationBell } from '@/presentation/components/features/notifications/NotificationBell';
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
-import { User, LogOut, ChevronDown, Search, Menu, X } from 'lucide-react';
+import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
+import { User, LogOut, ChevronDown, Search, Menu, X, Loader2 } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -25,18 +27,23 @@ export interface HeaderProps {
  * Phase 6A.4: Fixed mobile responsive navigation with hamburger menu
  */
 export function Header({ className = '' }: HeaderProps) {
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, isHydrated, clearAuth } = useAuthStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState(''); // Phase 6A.59: Search input state
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false); // Phase 6A.X Issue #50: Loading state for logout
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
-  // Fetch unread notifications only when authenticated
+  // Fetch unread notifications only when authenticated AND hydrated
+  // CRITICAL: Must wait for isHydrated to be true to ensure auth token is set in API client
+  // Without this check, requests fire before token is restored, causing 401 errors
   const { data: unreadNotifications = [] } = useUnreadNotifications({
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isHydrated,
   });
 
   // Close dropdowns when clicking outside
@@ -69,7 +76,8 @@ export function Header({ className = '' }: HeaderProps) {
     <header
       className={`sticky top-0 z-50 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.08)] ${className}`}
     >
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with page content */}
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4">
           {/* Official LankaConnect Logo with Subtitle */}
           <OfficialLogo size="md" />
@@ -133,13 +141,38 @@ export function Header({ className = '' }: HeaderProps) {
               </button>
 
               {searchOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
-                  <input
-                    type="text"
-                    placeholder="Search events, forums, businesses..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
-                    autoFocus
-                  />
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchValue}
+                      onChange={(e) => setSearchValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && searchValue.trim()) {
+                          // Phase 6A.59: Navigate to search page with query
+                          router.push(`/search?q=${encodeURIComponent(searchValue.trim())}&type=events`);
+                          setSearchOpen(false);
+                          setSearchValue('');
+                        }
+                      }}
+                      placeholder="Search events, forums, businesses..."
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent text-sm"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => {
+                        if (searchValue.trim()) {
+                          router.push(`/search?q=${encodeURIComponent(searchValue.trim())}&type=events`);
+                          setSearchOpen(false);
+                          setSearchValue('');
+                        }
+                      }}
+                      disabled={!searchValue.trim()}
+                      className="px-4 py-2 bg-[#FF7900] text-white rounded-lg hover:bg-[#e66d00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium whitespace-nowrap"
+                    >
+                      Search
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -240,24 +273,38 @@ export function Header({ className = '' }: HeaderProps) {
                       <div style={{ borderTop: '1px solid #e2e8f0' }}></div>
 
                       {/* Logout Button */}
+                      {/* Phase 6A.X Issue #50: Optimized logout - instant client-side logout with background API call */}
                       <button
-                        onClick={async () => {
+                        onClick={() => {
+                          // Show loading state immediately
+                          setIsLoggingOut(true);
                           setUserMenuOpen(false);
-                          try {
-                            // Call logout endpoint if needed
-                            const { authRepository } = await import('@/infrastructure/api/repositories/auth.repository');
-                            await authRepository.logout();
-                          } catch (error) {
-                            // Silently handle logout errors
-                          } finally {
-                            clearAuth();
-                            router.push('/login');
-                          }
+
+                          // Phase 6A.X Issue #47: Clear React Query cache on logout to prevent
+                          // data leakage between users (e.g., email groups visibility)
+                          queryClient.clear();
+
+                          // Clear client-side auth immediately (optimistic logout)
+                          clearAuth();
+
+                          // Fire-and-forget: Call logout API in background to invalidate server tokens
+                          // Don't wait for response - user experience is prioritized
+                          authRepository.logout().catch(() => {
+                            // Silently ignore server logout errors - client is already logged out
+                          });
+
+                          // Redirect immediately - don't wait for API
+                          router.push('/login');
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                        disabled={isLoggingOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left disabled:opacity-50"
                       >
-                        <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
-                        <span style={{ color: '#2d3748' }}>Logout</span>
+                        {isLoggingOut ? (
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B1538' }} />
+                        ) : (
+                          <LogOut className="w-4 h-4" style={{ color: '#8B1538' }} />
+                        )}
+                        <span style={{ color: '#2d3748' }}>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                       </button>
                     </div>
                   )}
@@ -332,11 +379,35 @@ export function Header({ className = '' }: HeaderProps) {
 
               {/* Mobile Search */}
               <div className="px-4">
-                <input
-                  type="text"
-                  placeholder="Search events, forums, businesses..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchValue.trim()) {
+                        router.push(`/search?q=${encodeURIComponent(searchValue.trim())}&type=events`);
+                        setMobileMenuOpen(false);
+                        setSearchValue('');
+                      }
+                    }}
+                    placeholder="Search events, forums, businesses..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
+                  />
+                  <button
+                    onClick={() => {
+                      if (searchValue.trim()) {
+                        router.push(`/search?q=${encodeURIComponent(searchValue.trim())}&type=events`);
+                        setMobileMenuOpen(false);
+                        setSearchValue('');
+                      }
+                    }}
+                    disabled={!searchValue.trim()}
+                    className="px-4 py-2 bg-[#FF7900] text-white rounded-lg hover:bg-[#e66d00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    Search
+                  </button>
+                </div>
               </div>
 
               {/* Mobile Auth Buttons (if not authenticated) */}

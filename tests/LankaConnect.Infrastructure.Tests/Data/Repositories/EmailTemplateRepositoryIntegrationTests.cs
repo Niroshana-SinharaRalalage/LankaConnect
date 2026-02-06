@@ -350,4 +350,75 @@ public class EmailTemplateRepositoryIntegrationTests : TestBase, IAsyncLifetime
         // Assert
         existingTemplates.Should().BeEmpty("Each test should start with a clean database");
     }
+
+    /// <summary>
+    /// Integration test: Member email verification template should exist with correct name.
+    /// Phase 6AX Hotfix: This test validates the email template name mismatch fix.
+    /// Root Cause: Migration 20260123013633_Phase6A76 renamed template from 'member-email-verification'
+    /// to 'template-membership-email-verification', but migration was not applied in staging.
+    /// This test ensures the template exists with the correct name that matches EmailTemplateNames.MemberEmailVerification.
+    /// </summary>
+    [Fact]
+    public async Task MemberEmailVerificationTemplate_ShouldExist_WithCorrectName()
+    {
+        // Arrange
+        using var context = CreatePostgreSqlContext();
+        var repository = new EmailTemplateRepository(context);
+
+        // Seed the template with the CORRECT name (as it should be after hotfix)
+        var template = new EmailTemplateTestDataBuilder()
+            .WithName(Application.Common.Constants.EmailTemplateNames.MemberEmailVerification)
+            .WithEmailType(EmailType.EmailVerification)
+            .AsActive()
+            .Build();
+
+        await repository.AddAsync(template);
+        await context.SaveChangesAsync();
+
+        // Act
+        var retrievedTemplate = await repository.GetByNameAsync(
+            Application.Common.Constants.EmailTemplateNames.MemberEmailVerification,
+            CancellationToken.None);
+
+        // Assert
+        retrievedTemplate.Should().NotBeNull("email template should exist in database");
+        retrievedTemplate!.Name.Should().Be("template-membership-email-verification",
+            "template name must match EmailTemplateNames.MemberEmailVerification constant");
+        retrievedTemplate.IsActive.Should().BeTrue("template should be active");
+        retrievedTemplate.Type.Should().Be(EmailType.EmailVerification,
+            "template type should be EmailVerification");
+        retrievedTemplate.Category.Value.Should().Be("Authentication",
+            "member email verification is an authentication email");
+    }
+
+    /// <summary>
+    /// Integration test: Verify old template name 'member-email-verification' does NOT exist.
+    /// Phase 6AX Hotfix: After migration, the old name should not be found.
+    /// This ensures migration successfully renamed the template.
+    /// </summary>
+    [Fact]
+    public async Task OldMemberEmailVerificationTemplateName_ShouldNotExist_AfterMigration()
+    {
+        // Arrange
+        using var context = CreatePostgreSqlContext();
+        var repository = new EmailTemplateRepository(context);
+
+        // Seed the template with the CORRECT name only
+        var template = new EmailTemplateTestDataBuilder()
+            .WithName(Application.Common.Constants.EmailTemplateNames.MemberEmailVerification)
+            .WithEmailType(EmailType.EmailVerification)
+            .Build();
+
+        await repository.AddAsync(template);
+        await context.SaveChangesAsync();
+
+        // Act - Try to find template with OLD name
+        var oldNameTemplate = await repository.GetByNameAsync(
+            "member-email-verification", // OLD NAME (should not exist)
+            CancellationToken.None);
+
+        // Assert
+        oldNameTemplate.Should().BeNull(
+            "old template name 'member-email-verification' should not exist after migration");
+    }
 }

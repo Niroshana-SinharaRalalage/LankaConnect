@@ -194,6 +194,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             rt.WithOwner().HasForeignKey("UserId");
             rt.ToTable("user_refresh_tokens", "identity");
 
+            // CRITICAL FIX: Add shadow primary key for owned entity
+            // Without this, EF Core cannot track changes and INSERT fails silently
+            rt.Property<int>("Id")
+                .ValueGeneratedOnAdd();
+
+            rt.HasKey("Id");
+
             rt.Property(t => t.Token)
                 .HasMaxLength(255)
                 .IsRequired();

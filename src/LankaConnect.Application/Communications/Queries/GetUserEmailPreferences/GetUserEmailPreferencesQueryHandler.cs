@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
@@ -5,6 +6,7 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using IUserRepository = LankaConnect.Domain.Users.IUserRepository;
 using IUserEmailPreferencesRepository = LankaConnect.Application.Common.Interfaces.IUserEmailPreferencesRepository;
+using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Queries.GetUserEmailPreferences;
 
@@ -29,63 +31,103 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
 
     public async Task<Result<GetUserEmailPreferencesResponse>> Handle(GetUserEmailPreferencesQuery request, CancellationToken cancellationToken)
     {
-        try
+        using (LogContext.PushProperty("Operation", "GetUserEmailPreferences"))
+        using (LogContext.PushProperty("EntityType", "UserEmailPreferences"))
+        using (LogContext.PushProperty("UserId", request.UserId))
         {
-            // Validate user exists
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-            if (user == null)
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "GetUserEmailPreferences START: UserId={UserId}",
+                request.UserId);
+
+            try
             {
-                return Result<GetUserEmailPreferencesResponse>.Failure("User not found");
+                // Validate request
+                if (request.UserId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetUserEmailPreferences FAILED: Invalid UserId - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<GetUserEmailPreferencesResponse>.Failure("User ID is required");
+                }
+
+                // Validate user exists
+                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                if (user == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetUserEmailPreferences FAILED: User not found - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<GetUserEmailPreferencesResponse>.Failure("User not found");
+                }
+
+                // Get user email preferences (create default if none exist)
+                var preferences = await _preferencesRepository.GetByUserIdAsync(request.UserId, cancellationToken);
+                var createdDefaults = false;
+                if (preferences == null)
+                {
+                    preferences = await CreateDefaultPreferencesAsync(user, cancellationToken);
+                    createdDefaults = true;
+                }
+
+                // Map email preferences to DTO
+                var preferencesDto = new UserEmailPreferencesDto
+                {
+                    UserId = user.Id,
+                    Email = user.Email.Value,
+                    ReceiveWelcomeEmails = preferences.AllowTransactional, // Welcome emails are transactional
+                    ReceiveBusinessNotifications = preferences.AllowNotifications,
+                    ReceiveMarketingEmails = preferences.AllowMarketing,
+                    ReceiveSystemAlerts = preferences.AllowTransactional, // System alerts are transactional
+                    ReceivePasswordAlerts = preferences.AllowTransactional, // Password alerts are transactional
+                    NotificationFrequency = EmailFrequency.Immediate, // Default frequency since domain doesn't store this
+                    LastUpdated = preferences.UpdatedAt ?? DateTime.UtcNow
+                };
+
+                // Create email verification status DTO
+                var verificationDto = new EmailVerificationDto
+                {
+                    UserId = user.Id,
+                    Email = user.Email.Value,
+                    IsEmailVerified = user.IsEmailVerified,
+                    VerificationTokenExpiresAt = user.EmailVerificationTokenExpiresAt,
+                    LastVerificationSentAt = GetLastVerificationSentDate(user),
+                    VerificationAttempts = GetVerificationAttempts(user)
+                };
+
+                // Get email subscriptions
+                var subscriptions = GetEmailSubscriptions(preferences);
+
+                var response = new GetUserEmailPreferencesResponse(
+                    preferencesDto,
+                    verificationDto,
+                    subscriptions);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "GetUserEmailPreferences COMPLETE: UserId={UserId}, IsEmailVerified={IsEmailVerified}, AllowMarketing={AllowMarketing}, CreatedDefaults={CreatedDefaults}, Duration={ElapsedMs}ms",
+                    request.UserId, user.IsEmailVerified, preferences.AllowMarketing, createdDefaults, stopwatch.ElapsedMilliseconds);
+
+                return Result<GetUserEmailPreferencesResponse>.Success(response);
             }
-
-            // Get user email preferences (create default if none exist)
-            var preferences = await _preferencesRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (preferences == null)
+            catch (Exception ex)
             {
-                preferences = await CreateDefaultPreferencesAsync(user, cancellationToken);
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "GetUserEmailPreferences FAILED: Exception occurred - UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                return Result<GetUserEmailPreferencesResponse>.Failure("An error occurred while retrieving email preferences");
             }
-
-            // Map email preferences to DTO
-            var preferencesDto = new UserEmailPreferencesDto
-            {
-                UserId = user.Id,
-                Email = user.Email.Value,
-                ReceiveWelcomeEmails = preferences.AllowTransactional, // Welcome emails are transactional
-                ReceiveBusinessNotifications = preferences.AllowNotifications,
-                ReceiveMarketingEmails = preferences.AllowMarketing,
-                ReceiveSystemAlerts = preferences.AllowTransactional, // System alerts are transactional
-                ReceivePasswordAlerts = preferences.AllowTransactional, // Password alerts are transactional
-                NotificationFrequency = EmailFrequency.Immediate, // Default frequency since domain doesn't store this
-                LastUpdated = preferences.UpdatedAt ?? DateTime.UtcNow
-            };
-
-            // Create email verification status DTO
-            var verificationDto = new EmailVerificationDto
-            {
-                UserId = user.Id,
-                Email = user.Email.Value,
-                IsEmailVerified = user.IsEmailVerified,
-                VerificationTokenExpiresAt = user.EmailVerificationTokenExpiresAt,
-                LastVerificationSentAt = GetLastVerificationSentDate(user),
-                VerificationAttempts = GetVerificationAttempts(user)
-            };
-
-            // Get email subscriptions
-            var subscriptions = GetEmailSubscriptions(preferences);
-
-            var response = new GetUserEmailPreferencesResponse(
-                preferencesDto,
-                verificationDto,
-                subscriptions);
-
-            _logger.LogInformation("Retrieved email preferences for user {UserId}", request.UserId);
-
-            return Result<GetUserEmailPreferencesResponse>.Success(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving email preferences for user {UserId}", request.UserId);
-            return Result<GetUserEmailPreferencesResponse>.Failure("An error occurred while retrieving email preferences");
         }
     }
 

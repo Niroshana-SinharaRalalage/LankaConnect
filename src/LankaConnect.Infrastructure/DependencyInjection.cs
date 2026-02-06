@@ -13,7 +13,11 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Notifications;
+using LankaConnect.Domain.Badges;
+using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.ReferenceData.Interfaces;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Infrastructure.Storage.Configuration;
@@ -23,11 +27,22 @@ using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Infrastructure.Services;
+using LankaConnect.Application.Communications.BackgroundJobs;
+using LankaConnect.Application.Common.Extensions;
+using LankaConnect.Application.Common.Options;
+using LankaConnect.Shared.Email.Extensions;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Infrastructure.Services.Tickets;
 using LankaConnect.Domain.Payments;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.Services;
+using LankaConnect.Domain.Tax.Repositories;
+using LankaConnect.Domain.Support;
 using Stripe;
+using Serilog;
 
 namespace LankaConnect.Infrastructure;
 
@@ -136,17 +151,79 @@ public static class DependencyInjection
         services.AddScoped<IUserEmailPreferencesRepository, UserEmailPreferencesRepository>();
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
+        services.AddScoped<INewsletterRepository, NewsletterRepository>(); // Phase 6A.74: Newsletter Management
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Add Badge Repositories (Phase 6A.25)
+        services.AddScoped<IBadgeRepository, BadgeRepository>();
+
+        // Add Email Group Repository (Phase 6A.25)
+        services.AddScoped<IEmailGroupRepository, EmailGroupRepository>();
+
+        // Add Metro Area Repository (Phase 6A Event Notifications)
+        services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
+
+        // Phase 6A.71: Event Reminder Tracking Repository
+        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventReminderRepository, EventReminderRepository>();
+
+        // Phase 6A.61: Event Notification History Repository
+        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventNotificationHistoryRepository, EventNotificationHistoryRepository>();
 
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
         services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
 
+        // Add Reference Data Repository (Phase 6A.47)
+        services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
+
+        // Phase 6A.89: Add Support/Feedback Repositories
+        services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+        services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
+
+        // Phase 6A.95: Configure Sales Tax Settings (feature flag)
+        services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));
+
+        // Phase 6A.X: Add Tax and Revenue Breakdown Services
+        services.AddScoped<IStateTaxRateRepository, StateTaxRateRepository>();
+        services.AddScoped<ISalesTaxService>(provider =>
+        {
+            var repository = provider.GetRequiredService<IStateTaxRateRepository>();
+            var memoryCache = provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            var salesTaxSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SalesTaxSettings>>();
+            var logger = Log.ForContext<DatabaseSalesTaxService>();
+            return new DatabaseSalesTaxService(repository, memoryCache, salesTaxSettings, logger);
+        });
+        services.AddScoped<IRevenueCalculatorService>(provider =>
+        {
+            var salesTaxService = provider.GetRequiredService<ISalesTaxService>();
+            var commissionSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CommissionSettings>>();
+            var salesTaxSettings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SalesTaxSettings>>();
+            var logger = Log.ForContext<RevenueCalculatorService>();
+            return new RevenueCalculatorService(salesTaxService, commissionSettings, salesTaxSettings, logger);
+        });
+
         // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
         // Note: EmailSettings is configured below with SimpleEmailService
-        services.AddScoped<IEmailService, AzureEmailService>();
+        // Phase 6A.87: Wrap with MetricsRecordingEmailServiceDecorator to capture metrics for ALL email sends
+        services.AddScoped<AzureEmailService>();
+        services.AddScoped<IEmailService>(provider =>
+        {
+            var azureEmailService = provider.GetRequiredService<AzureEmailService>();
+            var metrics = provider.GetRequiredService<LankaConnect.Shared.Email.Observability.IEmailMetrics>();
+            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Email.Services.MetricsRecordingEmailServiceDecorator>>();
+            return new Email.Services.MetricsRecordingEmailServiceDecorator(azureEmailService, metrics, logger);
+        });
+
+        // Phase 6A.47/6A.53: Add ApplicationUrlsService for email verification URLs
+        services.AddScoped<IApplicationUrlsService, ApplicationUrlsService>();
+
+        // Phase 6A.70: Add EmailUrlHelper for centralized URL building in email templates
+        services.AddScoped<IEmailUrlHelper, EmailUrlHelper>();
+
+        // Phase 6A.99: Add EmailEncryptionService for GDPR-compliant email storage
+        services.AddSingleton<IEmailEncryptionService, EmailEncryptionService>();
 
         // Add Azure Storage Services
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
@@ -189,11 +266,56 @@ public static class DependencyInjection
 
         // Add Email Services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+
+        // Phase 6A.82: Register Email Notification Settings
+        services.Configure<Application.Common.Configuration.EmailNotificationSettings>(
+            configuration.GetSection(Application.Common.Configuration.EmailNotificationSettings.SectionName));
+
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
-        services.AddScoped<IEmailTemplateService, RazorEmailTemplateService>();
+
+        // Phase 6A.76: Contact Us Feature - Register Contact Settings
+        services.Configure<ContactSettings>(configuration.GetSection(ContactSettings.SectionName));
+
+        // Phase 0 (Email System): Register new configuration options
+        services.Configure<ApplicationUrlsOptions>(configuration.GetSection(ApplicationUrlsOptions.SectionName));
+        services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.SectionName));
+
+        // Phase 6A.43 Fix: Register AzureEmailService for both IEmailService and IEmailTemplateService
+        // This ensures all emails (free and paid) use database-stored templates consistently
+        // Previously: IEmailTemplateService → RazorEmailTemplateService (filesystem templates)
+        // Now: IEmailTemplateService → AzureEmailService (database templates)
+        // Phase 6A.87: Since IEmailService is now wrapped with decorator, get AzureEmailService directly
+        services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<AzureEmailService>());
+
+        // Phase 6A.87: Register Typed Email Services for hybrid email system
+        // - ITypedEmailService enables strongly-typed email parameters with compile-time safety
+        // - IEmailServiceBridge connects TypedEmailServiceAdapter to existing IEmailService
+        // - Feature flags control gradual migration per handler
+        services.AddTypedEmailServices(configuration);
+        services.AddEmailServiceBridge();
+
+        // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
+        // This fixes the data loss issue where metrics disappeared after container restart
+        // DatabaseEmailMetrics uses hybrid approach: in-memory cache + periodic DB flush
+        services.AddSingleton<DatabaseEmailMetrics>();
+        services.AddSingleton<LankaConnect.Shared.Email.Observability.IEmailMetrics>(sp =>
+            sp.GetRequiredService<DatabaseEmailMetrics>());
+        services.AddHostedService(sp => sp.GetRequiredService<DatabaseEmailMetrics>());
+
+        // Phase 6A.37: Add HttpClient for email branding service to download images
+        services.AddHttpClient();
+
+        // Phase 6A.35/6A.37: Add Email Branding Service for CID inline image embedding
+        services.AddScoped<IEmailBrandingService, EmailBrandingService>();
+
+        // Phase 6A.X: Add Registration Email Service for shared email logic
+        services.AddScoped<IRegistrationEmailService, RegistrationEmailService>();
 
         // Add Email Queue Processor (Background Service)
         services.AddHostedService<EmailQueueProcessor>();
+
+        // Phase 6A.99: Add Email Failure Cleanup Service (Background Service - runs daily at 2 AM UTC)
+        services.AddHostedService<BackgroundServices.EmailFailureCleanupService>();
 
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();
@@ -203,6 +325,24 @@ public static class DependencyInjection
 
         // Add GeoLocation Service for distance calculations
         services.AddScoped<LankaConnect.Domain.Events.Services.IGeoLocationService, LankaConnect.Domain.Events.Services.GeoLocationService>();
+
+        // Phase 6A.97: Timezone Lookup Service for consistent event date/time display
+        services.AddScoped<LankaConnect.Domain.Events.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
+
+        // Add Event Notification Recipient Service (Phase 6A Event Notifications)
+        services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
+
+        // Phase 6A.74: Newsletter Recipient Service
+        services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
+
+        // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
+        services.AddScoped<LankaConnect.Infrastructure.Services.EventMetroAreaMatcher>();
+
+        // Phase 6A.74: Newsletter Background Jobs
+        services.AddTransient<NewsletterEmailJob>();
+
+        // Phase 6A.61: Event Notification Background Jobs
+        services.AddTransient<LankaConnect.Application.Events.BackgroundJobs.EventNotificationEmailJob>();
 
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>
@@ -261,6 +401,20 @@ public static class DependencyInjection
 
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+
+        // Phase 6A.24: Ticket services for QR code and PDF generation
+        services.AddScoped<IQrCodeService, QrCodeService>();
+        services.AddScoped<IPdfTicketService, PdfTicketService>();
+        services.AddScoped<ITicketService, TicketService>();
+
+        // Phase 6A.45: Export services for attendee management
+        services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
+        services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
+        services.AddScoped<ITicketRepository, TicketRepository>();
+
+        // Add-Only Attendees Feature repositories
+        services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
+        services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
 
         return services;
     }

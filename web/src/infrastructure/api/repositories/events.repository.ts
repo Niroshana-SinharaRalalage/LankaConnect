@@ -11,6 +11,7 @@ import type {
   UpdateEventRequest,
   RsvpRequest,
   AnonymousRegistrationRequest,
+  AnonymousRegistrationResponse, // Phase 6A.44
   UpdateRsvpRequest,
   UpdateRegistrationRequest,
   CancelEventRequest,
@@ -30,6 +31,24 @@ import type {
   CommitToSignUpItemAnonymousRequest,
   EventRegistrationCheckResult,
   RegistrationDetailsDto,
+  TicketDto,
+  // Phase 6A.27: Open Sign-Up Items
+  AddOpenSignUpItemRequest,
+  AddOpenSignUpItemAnonymousRequest,
+  UpdateOpenSignUpItemRequest,
+  // Phase 6A.45: Attendee Management
+  EventAttendeesResponse,
+  // Phase 6A.61: Event Notification
+  EventNotificationHistoryDto,
+  // Phase 6A.76: Event Reminder History
+  EventReminderHistoryDto,
+  // Add-Only Attendees with Delta Payment
+  CalculateAdditionPriceRequest,
+  AdditionPriceResultDto,
+  InitiateAddAttendeesRequest,
+  InitiateAddAttendeesResult,
+  PendingAdditionDto,
+  CancelPendingAdditionResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -64,19 +83,25 @@ export class EventsRepository {
    * - For authenticated users: Pass userId to sort by preferred metros or home location
    * - For anonymous users: Pass latitude + longitude to sort by coordinates
    * - For specific metro filter: Pass metroAreaIds
+   *
+   * Issue #36: Status filtering:
+   * - statusFilter: User-friendly status group filter (Active, Inactive, Cancelled, Unpublished, All)
+   * - includeAllStatuses: When true, includes Draft/UnderReview events (for organizer view)
    */
   async getEvents(filters: GetEventsRequest = {}): Promise<EventDto[]> {
     const params = new URLSearchParams();
 
     // Traditional filters
     if (filters.status !== undefined) params.append('status', String(filters.status));
+    // Issue #36: User-friendly status filter (takes precedence over status)
+    if (filters.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
     if (filters.category !== undefined) params.append('category', String(filters.category));
     if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
     if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
     if (filters.isFreeOnly !== undefined) params.append('isFreeOnly', String(filters.isFreeOnly));
     if (filters.city) params.append('city', filters.city);
 
-    // NEW: Location-based sorting parameters
+    // Location-based sorting parameters
     if (filters.state) params.append('state', filters.state);
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.latitude !== undefined) params.append('latitude', String(filters.latitude));
@@ -85,6 +110,12 @@ export class EventsRepository {
       // Add each metro area ID as a separate query parameter
       filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
     }
+
+    // Phase 6A.58: Text search filter
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+
+    // Issue #36: Include Draft/UnderReview events (for organizer's Event Management view)
+    if (filters.includeAllStatuses) params.append('includeAllStatuses', 'true');
 
     const queryString = params.toString();
     const url = queryString ? `${this.basePath}?${queryString}` : this.basePath;
@@ -103,6 +134,7 @@ export class EventsRepository {
   /**
    * Search events using full-text search (PostgreSQL FTS)
    * Returns paginated results with relevance scores
+   * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
    */
   async searchEvents(request: SearchEventsRequest): Promise<PagedResult<EventSearchResultDto>> {
     const params = new URLSearchParams({
@@ -114,6 +146,7 @@ export class EventsRepository {
     if (request.category !== undefined) params.append('category', String(request.category));
     if (request.isFreeOnly !== undefined) params.append('isFreeOnly', String(request.isFreeOnly));
     if (request.startDateFrom) params.append('startDateFrom', request.startDateFrom);
+    if (request.excludeCancelled !== undefined) params.append('excludeCancelled', String(request.excludeCancelled));
 
     return await apiClient.get<PagedResult<EventSearchResultDto>>(
       `${this.basePath}/search?${params.toString()}`
@@ -211,12 +244,37 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.41: Unpublish event (return to Draft status)
+   * Allows organizers to make corrections after premature publication
+   */
+  async unpublishEvent(id: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${id}/unpublish`);
+  }
+
+  /**
+   * Issue #51: Update max attendees per registration
+   * Allows event organizers to configure how many attendees can be added in a single registration
+   * @param id Event ID
+   * @param maxAttendeesPerRegistration New max value (1 to min(eventCapacity, 50))
+   */
+  async updateMaxAttendeesPerRegistration(id: string, maxAttendeesPerRegistration: number): Promise<void> {
+    await apiClient.put<void>(`${this.basePath}/${id}/max-attendees-per-registration`, {
+      maxAttendeesPerRegistration,
+    });
+  }
+
+  /**
    * Cancel event with reason
    * Notifies all registered users
+   *
+   * Phase 6A.64: Background job implementation - instant API response
+   * Event cancellation completes immediately. Emails are sent asynchronously via Hangfire.
+   * Uses default 30s timeout (sufficient for instant response).
    */
   async cancelEvent(id: string, reason: string): Promise<void> {
     const request: CancelEventRequest = { reason };
     await apiClient.post<void>(`${this.basePath}/${id}/cancel`, request);
+    // Note: Emails are sent in background. Check Hangfire dashboard for email job status.
   }
 
   /**
@@ -246,9 +304,23 @@ export class EventsRepository {
   /**
    * Cancel RSVP
    * Removes registration and frees up capacity
+   * Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
+   * @param eventId - The event ID
+   * @param deleteSignUpCommitments - If true, deletes sign-up commitments and restores remaining quantities
    */
-  async cancelRsvp(eventId: string): Promise<void> {
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp`);
+  async cancelRsvp(eventId: string, deleteSignUpCommitments: boolean = false): Promise<void> {
+    const params = deleteSignUpCommitments ? '?deleteSignUpCommitments=true' : '';
+    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${params}`);
+  }
+
+  /**
+   * Phase 6A.91: Withdraw a pending refund request
+   * Transitions registration from RefundRequested back to Confirmed
+   * Only allowed before event has started
+   * @param eventId - The event ID
+   */
+  async withdrawRefundRequest(eventId: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/rsvp/withdraw-refund`);
   }
 
   /**
@@ -276,18 +348,39 @@ export class EventsRepository {
    * Register anonymous attendee for an event
    * No authentication required - for users without accounts
    * Maps to backend RegisterAnonymousAttendeeCommand
+   * Phase 6A.44: Returns checkout URL for paid events, null for free events
    */
-  async registerAnonymous(eventId: string, request: AnonymousRegistrationRequest): Promise<void> {
-    await apiClient.post<void>(`${this.basePath}/${eventId}/register-anonymous`, request);
+  async registerAnonymous(eventId: string, request: AnonymousRegistrationRequest): Promise<AnonymousRegistrationResponse> {
+    return await apiClient.post<AnonymousRegistrationResponse>(`${this.basePath}/${eventId}/register-anonymous`, request);
   }
 
   /**
    * Get current user's RSVPs
    * Epic 1: Backend now returns full EventDto[] instead of RsvpDto[] for better UX
    * Returns all events user has registered for
+   * Phase 6A.58: Added optional filters for category, date range, location, and text search
    */
-  async getUserRsvps(): Promise<EventDto[]> {
-    return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
+  async getUserRsvps(filters?: GetEventsRequest): Promise<EventDto[]> {
+    if (!filters) {
+      return await apiClient.get<EventDto[]>(`${this.basePath}/my-rsvps`);
+    }
+
+    const params = new URLSearchParams();
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters.category !== undefined) params.append('category', String(filters.category));
+    if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/my-rsvps?${queryString}`
+      : `${this.basePath}/my-rsvps`;
+
+    return await apiClient.get<EventDto[]>(url);
   }
 
   /**
@@ -317,6 +410,19 @@ export class EventsRepository {
         return null;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Phase 6A.44: Get registration details by registration ID (for anonymous users after payment)
+   * Maps to backend GetRegistrationByIdQuery
+   */
+  async getRegistrationById(registrationId: string): Promise<RegistrationDetailsDto | null> {
+    try {
+      return await apiClient.get<RegistrationDetailsDto>(`${this.basePath}/registrations/${registrationId}`);
+    } catch (error) {
+      console.error('Failed to get registration by ID:', error);
+      return null;
     }
   }
 
@@ -359,9 +465,33 @@ export class EventsRepository {
   /**
    * Get events created by current user
    * Returns all events user has created as organizer
+   * Phase 6A.58: Added optional filters for category, date range, location, and text search
+   * Issue #36: Added statusFilter and includeAllStatuses for status group filtering
    */
-  async getUserCreatedEvents(): Promise<EventDto[]> {
-    return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+  async getUserCreatedEvents(filters?: GetEventsRequest): Promise<EventDto[]> {
+    if (!filters) {
+      return await apiClient.get<EventDto[]>(`${this.basePath}/my-events`);
+    }
+
+    const params = new URLSearchParams();
+    if (filters.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters.category !== undefined) params.append('category', String(filters.category));
+    if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+    // Issue #36: Status filter parameters
+    if (filters.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
+    if (filters.includeAllStatuses) params.append('includeAllStatuses', 'true');
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/my-events?${queryString}`
+      : `${this.basePath}/my-events`;
+
+    return await apiClient.get<EventDto[]>(url);
   }
 
   // ==================== WAITING LIST ====================
@@ -532,6 +662,91 @@ export class EventsRepository {
     );
   }
 
+  // ==================== PHASE 6A.27: OPEN SIGN-UP ITEMS ====================
+
+  /**
+   * Add an Open sign-up item (user-submitted)
+   * Phase 6A.27: Users can add their own items to sign-up lists with hasOpenItems enabled
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/open-items
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param request - Open item details
+   * @returns Created item ID
+   */
+  async addOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    request: AddOpenSignUpItemRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items`,
+      request
+    );
+  }
+
+  /**
+   * Add an Open sign-up item (anonymous user version)
+   * Phase 6A.44: Anonymous users can add Open items if registered for the event
+   * Maps to backend POST /api/events/{eventId}/signups/{signupId}/open-items-anonymous
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param request - Open item details with contact info
+   * @returns Created item ID
+   */
+  async addOpenSignUpItemAnonymous(
+    eventId: string,
+    signupId: string,
+    request: AddOpenSignUpItemAnonymousRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items-anonymous`,
+      request
+    );
+  }
+
+  /**
+   * Update an Open sign-up item
+   * Phase 6A.27: Only the user who created the item can update it
+   * Maps to backend PUT /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param itemId - Item ID (GUID)
+   * @param request - Updated item details
+   */
+  async updateOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string,
+    request: UpdateOpenSignUpItemRequest
+  ): Promise<void> {
+    await apiClient.put<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items/${itemId}`,
+      request
+    );
+  }
+
+  /**
+   * Cancel/Delete an Open sign-up item
+   * Phase 6A.27: Only the user who created the item can cancel it
+   * Maps to backend DELETE /api/events/{eventId}/signups/{signupId}/open-items/{itemId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param signupId - Sign-up list ID (GUID)
+   * @param itemId - Item ID (GUID)
+   */
+  async cancelOpenSignUpItem(
+    eventId: string,
+    signupId: string,
+    itemId: string
+  ): Promise<void> {
+    await apiClient.delete<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/open-items/${itemId}`
+    );
+  }
+
   // ==================== UTILITY OPERATIONS ====================
 
   /**
@@ -676,6 +891,230 @@ export class EventsRepository {
    */
   async deleteEventVideo(eventId: string, videoId: string): Promise<void> {
     await apiClient.delete(`${this.basePath}/${eventId}/videos/${videoId}`);
+  }
+
+  // ==================== TICKET ENDPOINTS (Phase 6A.24) ====================
+
+  /**
+   * Get ticket for user's registration
+   * Phase 6A.24: Returns ticket details with QR code for paid events
+   * Maps to backend GET /api/events/{eventId}/my-registration/ticket
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns Ticket details including QR code and attendee info
+   */
+  async getMyTicket(eventId: string): Promise<TicketDto> {
+    return await apiClient.get<TicketDto>(`${this.basePath}/${eventId}/my-registration/ticket`);
+  }
+
+  /**
+   * Download ticket as PDF
+   * Phase 6A.24: Returns PDF blob for ticket download
+   * Phase 6A.24 FIX: Now uses apiClient for proper authentication
+   * Maps to backend GET /api/events/{eventId}/my-registration/ticket/pdf
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns PDF blob for download
+   */
+  async downloadTicketPdf(eventId: string): Promise<Blob> {
+    // Use apiClient with responseType: 'blob' to properly handle auth and binary response
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/my-registration/ticket/pdf`,
+      { responseType: 'blob' }
+    );
+  }
+
+  /**
+   * Resend ticket email
+   * Phase 6A.24: Resends ticket confirmation email to registration contact
+   * Maps to backend POST /api/events/{eventId}/my-registration/ticket/resend-email
+   *
+   * @param eventId - Event ID (GUID)
+   */
+  async resendTicketEmail(eventId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/my-registration/ticket/resend-email`, {});
+  }
+
+  // ==================== ATTENDEE MANAGEMENT (Phase 6A.45) ====================
+
+  /**
+   * Get all attendees for an event (organizer only)
+   * Phase 6A.45: Returns complete list of registrations with attendee details
+   * Maps to backend GET /api/events/{eventId}/attendees
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns Event attendees response with statistics
+   */
+  async getEventAttendees(eventId: string): Promise<EventAttendeesResponse> {
+    return await apiClient.get<EventAttendeesResponse>(`${this.basePath}/${eventId}/attendees`);
+  }
+
+  /**
+   * Export event attendees to Excel, CSV, or sign-up lists ZIP (organizer only)
+   * Phase 6A.45: Returns file download with attendee data and signup lists
+   * Phase 6A.69: Added 'signuplistszip' format for ZIP archive with multiple CSV files
+   * Maps to backend GET /api/events/{eventId}/export?format={format}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param format - Export format ('excel', 'csv', 'signuplistszip', or 'signuplistsexcel')
+   * @returns Blob for file download (Excel .xlsx, CSV .csv, or ZIP with multiple CSVs)
+   */
+  async exportEventAttendees(
+    eventId: string,
+    format: 'excel' | 'csv' | 'signuplistszip' | 'signuplistsexcel' = 'excel'
+  ): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/export?format=${format}`,
+      { responseType: 'blob' }
+    );
+  }
+
+  /**
+   * Phase 6A.61: Send event notification email to all attendees
+   * @param eventId - Event ID (GUID)
+   * @returns Recipient count (placeholder, actual count from background job)
+   */
+  async sendEventNotification(eventId: string): Promise<{ recipientCount: number }> {
+    return await apiClient.post<{ recipientCount: number }>(
+      `${this.basePath}/${eventId}/send-notification`,
+      {} // Empty body - eventId is in URL
+    );
+  }
+
+  /**
+   * Phase 6A.76: Send manual event reminder email to all registered attendees
+   * @param eventId - Event ID (GUID)
+   * @param reminderType - Type of reminder: "1day", "2day", "7day", or "custom"
+   * @returns Recipient count (actual sends may vary due to idempotency)
+   */
+  async sendEventReminder(
+    eventId: string,
+    reminderType: string = '1day'
+  ): Promise<{ recipientCount: number }> {
+    return await apiClient.post<{ recipientCount: number }>(
+      `${this.basePath}/${eventId}/send-reminder?reminderType=${encodeURIComponent(reminderType)}`,
+      {} // Empty body - eventId is in URL, reminderType in query string
+    );
+  }
+
+  /**
+   * Phase 6A.X: Resend registration confirmation email to specific attendee (Organizer action)
+   * Allows organizers to manually resend confirmation emails from Attendees tab
+   * Works for both free and paid event registrations
+   * @param eventId - Event ID (GUID)
+   * @param registrationId - Registration ID (GUID)
+   * @returns Success message
+   */
+  async resendAttendeeConfirmation(
+    eventId: string,
+    registrationId: string
+  ): Promise<{ message: string }> {
+    return await apiClient.post<{ message: string }>(
+      `${this.basePath}/${eventId}/attendees/${registrationId}/resend-confirmation`,
+      {} // Empty body - IDs are in URL
+    );
+  }
+
+  /**
+   * Phase 6A.61: Get event notification history
+   * @param eventId - Event ID (GUID)
+   * @returns List of notification history records
+   */
+  async getEventNotificationHistory(eventId: string): Promise<EventNotificationHistoryDto[]> {
+    return await apiClient.get<EventNotificationHistoryDto[]>(
+      `${this.basePath}/${eventId}/notification-history`
+    );
+  }
+
+  /**
+   * Phase 6A.76: Get event reminder history
+   * @param eventId - Event ID (GUID)
+   * @returns List of reminder history records aggregated by type and date
+   */
+  async getEventReminderHistory(eventId: string): Promise<EventReminderHistoryDto[]> {
+    return await apiClient.get<EventReminderHistoryDto[]>(
+      `${this.basePath}/${eventId}/reminder-history`
+    );
+  }
+
+  // ==================== ADD-ONLY ATTENDEES WITH DELTA PAYMENT ====================
+
+  /**
+   * Calculate the additional amount required to add new attendees to a registration
+   * Add-Only Attendees Feature: Delta payment calculation
+   * Maps to backend POST /api/events/registrations/{registrationId}/calculate-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @param request - New attendees to calculate price for
+   * @returns Pricing calculation result with breakdown
+   */
+  async calculateAdditionPrice(
+    registrationId: string,
+    request: CalculateAdditionPriceRequest
+  ): Promise<AdditionPriceResultDto> {
+    return await apiClient.post<AdditionPriceResultDto>(
+      `${this.basePath}/registrations/${registrationId}/calculate-addition`,
+      request
+    );
+  }
+
+  /**
+   * Initiate adding attendees to a paid registration
+   * Creates a Stripe checkout session for the delta payment
+   * Add-Only Attendees Feature: Initiate addition with payment
+   * Maps to backend POST /api/events/registrations/{registrationId}/add-attendees
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @param request - New attendees and checkout URLs
+   * @returns Result with Stripe checkout URL
+   */
+  async initiateAddAttendees(
+    registrationId: string,
+    request: InitiateAddAttendeesRequest
+  ): Promise<InitiateAddAttendeesResult> {
+    return await apiClient.post<InitiateAddAttendeesResult>(
+      `${this.basePath}/registrations/${registrationId}/add-attendees`,
+      request
+    );
+  }
+
+  /**
+   * Get pending addition for a registration
+   * Returns null if no pending addition exists
+   * Add-Only Attendees Feature: Check pending status
+   * Maps to backend GET /api/events/registrations/{registrationId}/pending-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @returns Pending addition details or null
+   */
+  async getPendingAddition(registrationId: string): Promise<PendingAdditionDto | null> {
+    try {
+      const result = await apiClient.get<PendingAdditionDto | null>(
+        `${this.basePath}/registrations/${registrationId}/pending-addition`
+      );
+      return result;
+    } catch (error: any) {
+      // 404 means no pending addition exists
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel a pending addition
+   * Marks the addition as abandoned and invalidates checkout session
+   * Add-Only Attendees Feature: Cancel pending addition
+   * Maps to backend DELETE /api/events/registrations/{registrationId}/pending-addition
+   *
+   * @param registrationId - Registration ID (GUID)
+   * @returns Cancellation result
+   */
+  async cancelPendingAddition(registrationId: string): Promise<CancelPendingAdditionResult> {
+    return await apiClient.delete<CancelPendingAdditionResult>(
+      `${this.basePath}/registrations/${registrationId}/pending-addition`
+    );
   }
 }
 

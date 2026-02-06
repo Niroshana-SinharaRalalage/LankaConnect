@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Currency } from '@/infrastructure/api/types/events.types';
 import type { GroupPricingTierFormData } from '@/presentation/lib/validators/event.schemas';
+import { useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
+import { toDropdownOptions, getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
+import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 
 /**
  * Group Pricing Tier Builder Component
@@ -24,6 +27,9 @@ interface GroupPricingTierBuilderProps {
   onChange: (tiers: GroupPricingTierFormData[]) => void;
   defaultCurrency: Currency;
   errors?: string;
+  /** Phase 6A.X Issue #22: Max attendees per registration for tier validation
+   *  Tiers should cover up to this limit, not total event capacity */
+  maxAttendeesPerRegistration?: number;
 }
 
 export function GroupPricingTierBuilder({
@@ -31,8 +37,14 @@ export function GroupPricingTierBuilder({
   onChange,
   defaultCurrency,
   errors,
+  maxAttendeesPerRegistration,
 }: GroupPricingTierBuilderProps) {
+  // Phase 6A.47: Fetch currencies from reference data API
+  const { data: currencies } = useCurrencies();
+  const currencyOptions = useMemo(() => toDropdownOptions(currencies), [currencies]);
+
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newTier, setNewTier] = useState<Partial<GroupPricingTierFormData>>({
     minAttendees: tiers.length === 0 ? 1 : undefined,
     maxAttendees: undefined,
@@ -40,6 +52,20 @@ export function GroupPricingTierBuilder({
     currency: defaultCurrency,
   });
   const [tierErrors, setTierErrors] = useState<string | null>(null);
+
+  // Phase 6A.X Issue #34: Check if tiers cover the max attendees per registration
+  const tiersCoverMaxAttendees = useMemo(() => {
+    if (!maxAttendeesPerRegistration || maxAttendeesPerRegistration <= 0 || tiers.length === 0) return true;
+
+    const sorted = [...tiers].sort((a, b) => a.minAttendees - b.minAttendees);
+    const lastTier = sorted[sorted.length - 1];
+
+    // If last tier is unlimited (no max), it covers everything
+    if (!lastTier.maxAttendees) return true;
+
+    // Otherwise, check if it reaches max attendees per registration
+    return lastTier.maxAttendees >= maxAttendeesPerRegistration;
+  }, [tiers, maxAttendeesPerRegistration]);
 
   // Calculate suggested minAttendees for next tier
   const suggestedMinAttendees = (): number => {
@@ -80,6 +106,18 @@ export function GroupPricingTierBuilder({
     if (newTier.pricePerPerson > 10000) {
       setTierErrors('Price per person cannot exceed $10,000');
       return false;
+    }
+
+    // Phase 6A.X Issue #22: Validate tier max attendees against max attendees per registration
+    if (maxAttendeesPerRegistration && maxAttendeesPerRegistration > 0) {
+      if (newTier.maxAttendees && newTier.maxAttendees > maxAttendeesPerRegistration) {
+        setTierErrors(`Tier maximum (${newTier.maxAttendees}) cannot exceed max attendees per registration (${maxAttendeesPerRegistration})`);
+        return false;
+      }
+      if (newTier.minAttendees > maxAttendeesPerRegistration) {
+        setTierErrors(`Tier minimum (${newTier.minAttendees}) cannot exceed max attendees per registration (${maxAttendeesPerRegistration})`);
+        return false;
+      }
     }
 
     // Check for overlaps with existing tiers
@@ -186,7 +224,7 @@ export function GroupPricingTierBuilder({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-semibold text-orange-600">
-                    {tier.currency === Currency.USD ? '$' : 'Rs'} {tier.pricePerPerson.toFixed(2)}
+                    {getNameFromIntValue(currencies, tier.currency)} {tier.pricePerPerson.toFixed(2)}
                   </span>
                   <span className="text-xs text-neutral-500">per person</span>
                 </div>
@@ -221,17 +259,19 @@ export function GroupPricingTierBuilder({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Min Attendees */}
-            <div>
+          {/* Improved layout: Attendees narrower, Price wider */}
+          <div className="grid grid-cols-12 gap-3">
+            {/* Min Attendees - 2 cols */}
+            <div className="col-span-6 sm:col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Min Attendees *
+                Min *
               </label>
               <Input
                 type="number"
                 min="1"
                 max="10000"
                 placeholder="1"
+                className="w-full"
                 value={newTier.minAttendees || ''}
                 onChange={(e) =>
                   setNewTier({ ...newTier, minAttendees: parseInt(e.target.value) || undefined })
@@ -239,16 +279,17 @@ export function GroupPricingTierBuilder({
               />
             </div>
 
-            {/* Max Attendees */}
-            <div>
+            {/* Max Attendees - 2 cols */}
+            <div className="col-span-6 sm:col-span-2">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Max Attendees
+                Max
               </label>
               <Input
                 type="number"
                 min={newTier.minAttendees || 1}
                 max="10000"
-                placeholder="Leave empty for unlimited"
+                placeholder="∞"
+                className="w-full"
                 value={newTier.maxAttendees || ''}
                 onChange={(e) =>
                   setNewTier({
@@ -257,31 +298,34 @@ export function GroupPricingTierBuilder({
                   })
                 }
               />
-              <p className="mt-1 text-xs text-neutral-500">Leave empty for unlimited (e.g., "6+")</p>
             </div>
 
-            {/* Price Per Person */}
-            <div>
+            {/* Price Per Person - 8 cols (wider) */}
+            <div className="col-span-12 sm:col-span-8">
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Price Per Person *
               </label>
               <div className="flex items-center gap-2">
                 <select
-                  className="px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="flex-shrink-0 px-2 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   value={newTier.currency || defaultCurrency}
                   onChange={(e) =>
                     setNewTier({ ...newTier, currency: parseInt(e.target.value) as Currency })
                   }
                 >
-                  <option value={Currency.USD}>$</option>
-                  <option value={Currency.LKR}>Rs</option>
+                  {currencyOptions.map(curr => (
+                    <option key={curr.value} value={curr.value}>
+                      {curr.label}
+                    </option>
+                  ))}
                 </select>
                 <Input
                   type="number"
                   min="0"
                   max="10000"
-                  step="0.01"
-                  placeholder="25.00"
+                  step="1"
+                  placeholder="25"
+                  className="flex-1"
                   value={newTier.pricePerPerson || ''}
                   onChange={(e) =>
                     setNewTier({ ...newTier, pricePerPerson: parseFloat(e.target.value) || undefined })
@@ -290,6 +334,13 @@ export function GroupPricingTierBuilder({
               </div>
             </div>
           </div>
+
+          {/* Phase 6A.X: Revenue breakdown preview - full width below */}
+          <RevenueBreakdownPreview
+            ticketPrice={newTier.pricePerPerson}
+            currency={newTier.currency || defaultCurrency}
+            priceLabel="person"
+          />
 
           {/* Tier-specific errors */}
           {tierErrors && (
@@ -334,6 +385,25 @@ export function GroupPricingTierBuilder({
             <Plus className="h-4 w-4 mr-1" />
             Add Your First Tier
           </Button>
+        </div>
+      )}
+
+      {/* Phase 6A.X Issue #34: Warning when tiers don't cover max attendees per registration */}
+      {!tiersCoverMaxAttendees && maxAttendeesPerRegistration && sortedTiers.length > 0 && !showAddForm && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-amber-700">
+            <p className="font-semibold">Warning: Incomplete tier coverage</p>
+            <p className="mt-1">
+              Your pricing tiers only cover up to{' '}
+              <strong>{sortedTiers[sortedTiers.length - 1]?.maxAttendees || 0}</strong> attendees,
+              but max attendees per registration is <strong>{maxAttendeesPerRegistration}</strong>.
+            </p>
+            <p className="mt-1">
+              Registrations with more attendees than your last tier will see no pricing and cannot complete.
+              Either make your last tier unlimited (leave max blank) or extend it to {maxAttendeesPerRegistration}.
+            </p>
+          </div>
         </div>
       )}
 

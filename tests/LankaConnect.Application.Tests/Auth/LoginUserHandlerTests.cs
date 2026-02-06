@@ -48,7 +48,9 @@ public class LoginUserHandlerTests
         var email = Email.Create("test@example.com").Value;
         _testUser = User.Create(email, "John", "Doe", UserRole.GeneralUser).Value;
         _testUser.SetPassword("hashedpassword123");
-        _testUser.VerifyEmail(); // Make user email verified
+        // Make user email verified
+        _testUser.GenerateEmailVerificationToken();
+        _testUser.VerifyEmail(_testUser.EmailVerificationToken!);
     }
 
     [Fact]
@@ -225,7 +227,8 @@ public class LoginUserHandlerTests
         var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
         var userWithoutPassword = User.Create(email, "Jane", "Doe").Value;
-        userWithoutPassword.VerifyEmail();
+        userWithoutPassword.GenerateEmailVerificationToken();
+        userWithoutPassword.VerifyEmail(userWithoutPassword.EmailVerificationToken!);
         // Don't set password hash
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
@@ -324,21 +327,18 @@ public class LoginUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithDatabaseException_ShouldReturnFailure()
+    public async Task Handle_WithDatabaseException_ShouldRethrowException()
     {
-        // Arrange
+        // Arrange - Phase 6A.X: Handler now re-throws exceptions for proper error handling
         var request = new LoginUserCommand { Email = "test@example.com", Password = "password123" };
         var email = Email.Create(request.Email).Value;
 
         _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                           .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _handler.Handle(request, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be("An error occurred during login");
+        // Act & Assert - Expect exception to be re-thrown (not caught)
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await _handler.Handle(request, CancellationToken.None));
     }
 
     [Fact]

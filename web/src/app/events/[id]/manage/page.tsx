@@ -5,65 +5,68 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Edit,
-  Upload,
+  FileText,
   Users,
-  Calendar,
-  MapPin,
-  DollarSign,
-  Image as ImageIcon,
-  Video as VideoIcon,
-  Download
+  ListChecks,
+  Ban,
+  Trash2,
+  XCircle,
+  Mail,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
+import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
-import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
-import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
-import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus } from '@/infrastructure/api/types/events.types';
+import { EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
+// Phase 6A.45: Import new components
+import { AttendeeManagementTab } from '@/presentation/components/features/events/AttendeeManagementTab';
+import { EventDetailsTab } from '@/presentation/components/features/events/EventDetailsTab';
+import { SignUpListsTab } from '@/presentation/components/features/events/SignUpListsTab';
+import { UnpublishEventModal } from '@/presentation/components/features/events/UnpublishEventModal';
+import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
+
+// Phase 6A.74: Import EventNewslettersTab
+import { EventNewslettersTab } from '@/presentation/components/features/newsletters/EventNewslettersTab';
+
 /**
- * Event Management Page
- * Organizer-only page for managing event details, publishing, editing, and uploading media
+ * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
+ * Organizer-only page with tabbed interface for managing events
  *
- * Features:
- * - Event statistics (registrations, capacity, revenue)
- * - Publish/unpublish events
- * - Edit event details
- * - Upload images and videos
- * - Manage sign-up lists
- * - View public event page
+ * Tabs:
+ * 1. Event Details - Event info, statistics, publish/edit buttons, media, badges
+ * 2. Attendees - Phase 6A.45: Registration list with export functionality
+ * 3. Signup Lists - Existing signup list management
+ * 4. Communications - Phase 6A.74: Event-specific newsletters
+ *
+ * Phase 6A.59: Added Cancel and Delete event buttons
+ * Phase 6A.74: Added Communications tab for event-specific newsletters
  */
 export default function EventManagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuthStore();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError, refetch } = useEventById(id);
 
-  // Fetch sign-up lists for CSV download
+  // Fetch sign-up lists (needed for tab content)
   const { data: signUpLists } = useEventSignUps(id);
-
-  // Category labels
-  const categoryLabels: Record<EventCategory, string> = {
-    [EventCategory.Religious]: 'Religious',
-    [EventCategory.Cultural]: 'Cultural',
-    [EventCategory.Community]: 'Community',
-    [EventCategory.Educational]: 'Educational',
-    [EventCategory.Social]: 'Social',
-    [EventCategory.Business]: 'Business',
-    [EventCategory.Charity]: 'Charity',
-    [EventCategory.Entertainment]: 'Entertainment',
-  };
 
   // Status labels
   const statusLabels: Record<EventStatus, string> = {
@@ -88,7 +91,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       setError(null);
       await eventsRepository.publishEvent(id);
       setIsPublishing(false);
-      // Refetch to show updated status
       await refetch();
     } catch (err) {
       console.error('Failed to publish event:', err);
@@ -97,49 +99,88 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Handle Download CSV
-  const handleDownloadCSV = () => {
-    if (!signUpLists || signUpLists.length === 0) {
-      alert('No sign-up lists to download');
+  // Handle Unpublish Event
+  const handleUnpublishEvent = async () => {
+    if (!event || event.organizerId !== user?.userId) {
       return;
     }
 
-    // Build CSV content
-    let csvContent = 'Category,Item Description,User ID,Quantity,Committed At\n';
-
-    signUpLists.forEach((list) => {
-      (list.commitments || []).forEach((commitment) => {
-        csvContent += `"${list.category}","${commitment.itemDescription}","${commitment.userId}",${commitment.quantity},"${commitment.committedAt}"\n`;
-      });
-    });
-
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', `event-${id}-signups.csv`);
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      setIsUnpublishing(true);
+      setError(null);
+      await eventsRepository.unpublishEvent(id);
+      setShowUnpublishModal(false);
+      setIsUnpublishing(false);
+      await refetch();
+    } catch (err) {
+      console.error('Failed to unpublish event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unpublish event. Please try again.');
+      setIsUnpublishing(false);
+    }
   };
 
+  // Phase 6A.59: Handle Cancel Event
+  const handleCancelEvent = async () => {
+    if (!event || event.organizerId !== user?.userId) {
+      return;
+    }
+
+    if (!cancellationReason.trim()) {
+      setError('Cancellation reason is required');
+      return;
+    }
+
+    if (cancellationReason.trim().length < 10) {
+      setError('Cancellation reason must be at least 10 characters');
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      setError(null);
+      await eventsRepository.cancelEvent(id, cancellationReason.trim());
+      setIsCancelling(false);
+      setShowCancelModal(false);
+      setCancellationReason('');
+      await refetch();
+    } catch (err) {
+      console.error('Failed to cancel event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to cancel event. Please try again.');
+      setIsCancelling(false);
+    }
+  };
+
+  // Phase 6A.59: Handle Delete Event
+  const handleDeleteEvent = async () => {
+    if (!event || event.organizerId !== user?.userId) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeleteError(null);
+      await eventsRepository.deleteEvent(id);
+      // On success, close modal and redirect to dashboard
+      setShowDeleteModal(false);
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete event. Please try again.';
+      setDeleteError(errorMessage);
+      setIsDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <Card className="animate-pulse">
-            <CardContent className="p-12">
-              <div className="h-8 bg-neutral-200 rounded w-3/4 mb-4"></div>
-              <div className="h-4 bg-neutral-200 rounded w-1/2 mb-8"></div>
-              <div className="h-64 bg-neutral-200 rounded"></div>
-            </CardContent>
-          </Card>
+          <div className="animate-pulse">
+            <div className="h-8 bg-neutral-200 rounded w-3/4 mb-4"></div>
+            <div className="h-4 bg-neutral-200 rounded w-1/2 mb-8"></div>
+            <div className="h-64 bg-neutral-200 rounded"></div>
+          </div>
         </div>
         <Footer />
       </div>
@@ -151,15 +192,13 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Event Not Found</h2>
-              <p className="text-neutral-600 mb-6">The event you're looking for doesn't exist or you don't have permission to manage it.</p>
-              <Button onClick={() => router.push('/dashboard')}>
-                Go to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="p-12 text-center bg-white rounded-lg shadow">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Event Not Found</h2>
+            <p className="text-neutral-600 mb-6">
+              The event you're looking for doesn't exist or you don't have permission to manage it.
+            </p>
+            <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -174,37 +213,75 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
-              <p className="text-neutral-600 mb-6">You don't have permission to manage this event.</p>
-              <Button onClick={() => router.push(`/events/${id}`)}>
-                View Event
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="p-12 text-center bg-white rounded-lg shadow">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
+            <p className="text-neutral-600 mb-6">You don't have permission to manage this event.</p>
+            <Button onClick={() => router.push(`/events/${id}`)}>View Event</Button>
+          </div>
         </div>
         <Footer />
       </div>
     );
   }
 
-  const spotsLeft = event.capacity - event.currentRegistrations;
-  const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
-
-  // Check if event is in Draft status (API returns string "Draft" instead of number 0)
+  // Check event status for buttons
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isDraft = (event.status as any) === EventStatus.Draft ||
                    (event.status as any) === 'Draft' ||
                    String(event.status).toLowerCase() === 'draft';
 
-  // Debug: log the actual status value
-  console.log('Event Status Check:', {
-    rawStatus: event.status,
-    statusType: typeof event.status,
-    isDraft,
-    EventStatusDraft: EventStatus.Draft
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isPublished = (event.status as any) === EventStatus.Published ||
+                       (event.status as any) === 'Published' ||
+                       String(event.status).toLowerCase() === 'published';
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isCancelled = (event.status as any) === EventStatus.Cancelled ||
+                       (event.status as any) === 'Cancelled' ||
+                       String(event.status).toLowerCase() === 'cancelled';
+
+  // Phase 6A.59: Button visibility logic
+  const canCancel = (isDraft || isPublished) && !isCancelled;
+  const canDelete = (isDraft || isCancelled) && event.currentRegistrations === 0;
+
+  // Define tabs
+  const tabs: Tab[] = [
+    {
+      id: 'details',
+      label: 'Event Details',
+      icon: FileText,
+      content: (
+        <EventDetailsTab
+          event={event}
+          onRefetch={refetch}
+          isDraft={isDraft}
+          isPublished={isPublished}
+          isPublishing={isPublishing}
+          isUnpublishing={isUnpublishing}
+          onPublish={handlePublishEvent}
+          onUnpublish={handleUnpublishEvent}
+        />
+      ),
+    },
+    {
+      id: 'attendees',
+      label: 'Attendees',
+      icon: Users,
+      content: <AttendeeManagementTab eventId={id} />,
+    },
+    {
+      id: 'signups',
+      label: 'Signup Lists',
+      icon: ListChecks,
+      content: <SignUpListsTab eventId={id} signUpLists={signUpLists || []} />,
+    },
+    {
+      id: 'communications',
+      label: 'Communications',
+      icon: Mail,
+      content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
@@ -219,19 +296,27 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
               <p className="text-white/90">{event.title}</p>
             </div>
             <Badge
-              className="text-sm px-4 py-2"
+              className="text-sm px-4 py-2 font-bold"
               style={{
-                backgroundColor: event.status === EventStatus.Published ? '#10B981' : '#6B7280',
+                backgroundColor:
+                  (event.status as any) === 'Cancelled' || event.status === EventStatus.Cancelled
+                    ? '#DC2626' // Red for cancelled
+                    : event.status === EventStatus.Published
+                    ? '#10B981' // Green for published
+                    : '#6B7280', // Gray for others
+                color: '#FFFFFF',
               }}
             >
-              {statusLabels[event.status]}
+              {(event.status as any) === 'Cancelled' || event.status === EventStatus.Cancelled
+                ? 'CANCELLED'
+                : statusLabels[event.status]}
             </Badge>
           </div>
         </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Navigation Buttons - Phase 6A.X Issue #43: Added relative z-20 to fix z-index stacking conflict with sticky table headers */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-20">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"
@@ -243,7 +328,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           </Button>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Publish/Unpublish Button - Show for Draft events */}
+            {/* Publish Button - Show for Draft events */}
             {isDraft && (
               <Button
                 onClick={handlePublishEvent}
@@ -252,6 +337,44 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                 style={{ background: '#10B981', color: 'white' }}
               >
                 {isPublishing ? 'Publishing...' : 'Publish Event'}
+              </Button>
+            )}
+
+            {/* Unpublish Button - Show for Published events */}
+            {isPublished && (
+              <Button
+                onClick={() => setShowUnpublishModal(true)}
+                disabled={isUnpublishing}
+                className="flex items-center gap-2 text-white"
+                style={{ background: '#EF4444', color: 'white' }}
+              >
+                {isUnpublishing ? 'Unpublishing...' : 'Unpublish Event'}
+              </Button>
+            )}
+
+            {/* Phase 6A.59: Cancel Event Button - Show for Published or Draft (not Cancelled) */}
+            {canCancel && (
+              <Button
+                onClick={() => setShowCancelModal(true)}
+                disabled={isCancelling}
+                className="flex items-center gap-2 text-white"
+                style={{ background: '#F59E0B', color: 'white' }}
+              >
+                <Ban className="h-4 w-4" />
+                {isCancelling ? 'Cancelling...' : 'Cancel Event'}
+              </Button>
+            )}
+
+            {/* Phase 6A.59: Delete Event Button - Show ONLY for Draft/Cancelled with 0 registrations */}
+            {canDelete && (
+              <Button
+                onClick={() => setShowDeleteModal(true)}
+                disabled={isDeleting}
+                variant="destructive"
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? 'Deleting...' : 'Delete Event'}
               </Button>
             )}
 
@@ -277,225 +400,98 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Event Info & Stats */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Event Statistics */}
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ color: '#8B1538' }}>Event Statistics</CardTitle>
-                <CardDescription>Track your event's performance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Registrations */}
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <Users className="h-5 w-5 text-blue-600" />
-                      <span className="text-2xl font-bold text-blue-900">
-                        {event.currentRegistrations}
-                      </span>
-                    </div>
-                    <p className="text-sm text-blue-700 font-medium">Registered</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {registrationPercentage.toFixed(0)}% of capacity
-                    </p>
-                  </div>
+      {/* Phase 6A.59: Cancel Event Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <Ban className="h-6 w-6 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-neutral-900">Cancel Event</h2>
+            </div>
 
-                  {/* Available Spots */}
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <Users className="h-5 w-5 text-green-600" />
-                      <span className="text-2xl font-bold text-green-900">
-                        {spotsLeft}
-                      </span>
-                    </div>
-                    <p className="text-sm text-green-700 font-medium">Spots Left</p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Total capacity: {event.capacity}
-                    </p>
-                  </div>
+            <div className="mb-4">
+              <p className="text-sm text-neutral-600 mb-2">
+                This will cancel the event and notify all {event.currentRegistrations} registered attendees via email.
+              </p>
+              <p className="text-sm text-amber-600 font-medium">
+                The event will be marked as Cancelled but will remain in the database.
+              </p>
+            </div>
 
-                  {/* Revenue (if paid event) */}
-                  {!event.isFree && event.ticketPriceAmount && (
-                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <DollarSign className="h-5 w-5 text-orange-600" />
-                        <span className="text-2xl font-bold text-orange-900">
-                          ${(event.ticketPriceAmount * event.currentRegistrations).toFixed(2)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-orange-700 font-medium">Revenue</p>
-                      <p className="text-xs text-orange-600 mt-1">
-                        ${event.ticketPriceAmount} per ticket
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Cancellation Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={cancellationReason}
+                onChange={(e) => {
+                  setCancellationReason(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Please provide a reason for cancelling this event (min. 10 characters)..."
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                rows={4}
+                maxLength={500}
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                {cancellationReason.length}/500 characters {cancellationReason.length < 10 && `(min. 10 required)`}
+              </p>
+            </div>
 
-            {/* Event Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ color: '#8B1538' }}>Event Details</CardTitle>
-                <CardDescription>Your event information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Event Title */}
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Event Title</h4>
-                  <p className="text-lg font-semibold text-neutral-900">{event.title}</p>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Description</h4>
-                  <p className="text-neutral-600">{event.description}</p>
-                </div>
-
-                {/* Date & Time */}
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-[#FF7900] mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-semibold text-neutral-700">Date & Time</h4>
-                    <p className="text-neutral-600">
-                      {new Date(event.startDate).toLocaleString('en-US', {
-                        dateStyle: 'full',
-                        timeStyle: 'short',
-                      })}
-                    </p>
-                    {event.endDate && (
-                      <p className="text-sm text-neutral-500">
-                        Ends: {new Date(event.endDate).toLocaleString('en-US', {
-                          dateStyle: 'full',
-                          timeStyle: 'short',
-                        })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Location */}
-                {event.city && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-[#FF7900] mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-neutral-700">Location</h4>
-                      <p className="text-neutral-600">
-                        {event.address && `${event.address}, `}
-                        {event.city}, {event.state} {event.zipCode}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Category */}
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Category</h4>
-                  <Badge className="bg-gray-100 text-gray-700">
-                    {categoryLabels[event.category]}
-                  </Badge>
-                </div>
-
-                {/* Pricing */}
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">Pricing</h4>
-                  {event.isFree ? (
-                    <Badge className="bg-green-100 text-green-700">Free Event</Badge>
-                  ) : (
-                    <Badge className="bg-[#FFE8CC] text-[#8B1538]">
-                      ${event.ticketPriceAmount} per ticket
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Sign-up Management */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle style={{ color: '#8B1538' }}>Sign-Up Lists</CardTitle>
-                    <CardDescription>Manage items that attendees can volunteer to bring</CardDescription>
-                  </div>
-                  <div className="flex gap-3">
-                    {signUpLists && signUpLists.length > 0 && (
-                      <Button
-                        variant="outline"
-                        onClick={handleDownloadCSV}
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download CSV
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => router.push(`/events/${id}/manage/create-signup-list`)}
-                      className="flex items-center gap-2 text-white"
-                      style={{ background: '#FF7900', color: 'white' }}
-                    >
-                      <Upload className="h-4 w-4" />
-                      Create Sign-Up List
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <SignUpManagementSection eventId={id} isOrganizer={true} />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Media */}
-          <div className="space-y-6">
-            {/* Image Upload */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
-                  <CardTitle style={{ color: '#8B1538' }}>Event Images</CardTitle>
-                </div>
-                <CardDescription>Upload photos to attract attendees</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ImageUploader
-                  eventId={id}
-                  existingImages={event.images ? [...event.images] : []}
-                  maxImages={10}
-                  onUploadComplete={async () => {
-                    await refetch();
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Video Upload */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <VideoIcon className="h-5 w-5" style={{ color: '#FF7900' }} />
-                  <CardTitle style={{ color: '#8B1538' }}>Event Videos</CardTitle>
-                </div>
-                <CardDescription>Upload videos to showcase your event</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <VideoUploader
-                  eventId={id}
-                  existingVideos={event.videos ? [...event.videos] : []}
-                  maxVideos={3}
-                  onUploadComplete={async () => {
-                    await refetch();
-                  }}
-                />
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancellationReason('');
+                  setError(null);
+                }}
+                variant="outline"
+                className="flex-1"
+                disabled={isCancelling}
+              >
+                Go Back
+              </Button>
+              <Button
+                onClick={handleCancelEvent}
+                disabled={isCancelling || cancellationReason.trim().length < 10}
+                className="flex-1 text-white"
+                style={{ background: '#F59E0B', color: 'white' }}
+              >
+                {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </Button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Main Content - Tabbed Interface */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <TabPanel tabs={tabs} defaultTab="details" />
       </div>
+
+      {/* Unpublish Event Modal */}
+      <UnpublishEventModal
+        open={showUnpublishModal}
+        onOpenChange={setShowUnpublishModal}
+        onConfirm={handleUnpublishEvent}
+        isUnpublishing={isUnpublishing}
+        eventTitle={event?.title || ''}
+      />
+
+      {/* Delete Event Modal */}
+      <DeleteEventModal
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open);
+          if (!open) setDeleteError(null); // Clear error when closing
+        }}
+        onConfirm={handleDeleteEvent}
+        isDeleting={isDeleting}
+        eventTitle={event?.title || ''}
+        error={deleteError}
+      />
 
       <Footer />
     </div>

@@ -119,120 +119,104 @@ export class ApiClient {
       async (error) => {
         const originalRequest = error.config;
 
-        console.log('🔍 [AUTH INTERCEPTOR] Response error received:', {
-          status: error.response?.status,
-          url: originalRequest?.url,
-          method: originalRequest?.method,
-          hasResponse: !!error.response,
-          alreadyRetried: !!originalRequest._retry,
-          errorMessage: error.message,
-        });
+        // Phase 6A.25: Only log non-401 errors at this point
+        // 401 errors are handled silently by token refresh below
+        const is401 = error.response?.status === 401;
+        if (!is401) {
+          console.log('🔍 [AUTH INTERCEPTOR] Response error received:', {
+            status: error.response?.status,
+            url: originalRequest?.url,
+            method: originalRequest?.method,
+            hasResponse: !!error.response,
+            errorMessage: error.message,
+          });
+        }
 
         // Check if this is a 401 error and we haven't already retried
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          console.log('🔍 [AUTH INTERCEPTOR] 401 Unauthorized detected');
-
+        if (is401 && !originalRequest._retry) {
           // Skip refresh for auth endpoints (login, register, refresh)
           const isAuthEndpoint = originalRequest.url?.includes('/Auth/login') ||
                                   originalRequest.url?.includes('/Auth/register') ||
                                   originalRequest.url?.includes('/Auth/refresh');
 
-          console.log('🔍 [AUTH INTERCEPTOR] Is auth endpoint?', isAuthEndpoint);
-
           if (!isAuthEndpoint) {
-            console.log('🔓 [AUTH INTERCEPTOR] Attempting token refresh...');
-
             // Mark that we've tried to refresh for this request
             originalRequest._retry = true;
 
             try {
-              // Attempt to refresh the token
-              console.log('🔍 [AUTH INTERCEPTOR] Calling tokenRefreshService.refreshAccessToken()');
+              // Attempt to refresh the token silently
               const newToken = await tokenRefreshService.refreshAccessToken();
-
-              console.log('🔍 [AUTH INTERCEPTOR] Token refresh result:', newToken ? 'SUCCESS' : 'FAILED (null)');
 
               if (newToken) {
                 // Update the Authorization header with the new token
                 originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
 
-                console.log('🔄 [AUTH INTERCEPTOR] Retrying request with new token...');
-
+                // Phase 6A.25: Silent retry - no logging for successful token refresh
                 // Retry the original request
                 return this.axiosInstance(originalRequest);
               } else {
-                console.error('❌ [AUTH INTERCEPTOR] Token refresh returned null');
+                // Token refresh returned null - only log failures
+                console.warn('⚠️ [AUTH] Token refresh failed - session may have expired');
 
                 // For cross-origin scenarios (localhost -> staging), the refresh token cookie
                 // may not be sent, causing a 400 Bad Request. In this case, we should just
                 // reject the request without triggering logout, letting the user continue
                 // working with their current (possibly expired) session until they explicitly
                 // re-login.
-                //
-                // Only trigger logout for actual auth failures (not cookie issues)
                 const isCrossOrigin = typeof window !== 'undefined' &&
                                      window.location.hostname === 'localhost';
 
-                console.log('🔍 [AUTH INTERCEPTOR] Cross-origin detection:', {
-                  isCrossOrigin,
-                  hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
-                  willTriggerLogout: !isCrossOrigin
-                });
-
                 if (!isCrossOrigin && this.onUnauthorized) {
-                  console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback');
                   this.onUnauthorized();
-                } else if (isCrossOrigin) {
-                  console.log('✅ [AUTH INTERCEPTOR] Skipping logout for localhost cross-origin scenario');
                 }
 
                 return Promise.reject(new Error('Token refresh failed - please try logging in again'));
               }
             } catch (refreshError) {
-              console.error('❌ [AUTH INTERCEPTOR] Token refresh threw error:', refreshError);
+              // Only log actual refresh errors
+              console.warn('⚠️ [AUTH] Token refresh error:', refreshError);
 
               // For cross-origin scenarios, don't trigger logout on refresh failure
               const isCrossOrigin = typeof window !== 'undefined' &&
                                    window.location.hostname === 'localhost';
 
-              console.log('🔍 [AUTH INTERCEPTOR] Cross-origin detection (catch):', {
-                isCrossOrigin,
-                hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
-                willTriggerLogout: !isCrossOrigin
-              });
-
               if (!isCrossOrigin && this.onUnauthorized) {
-                console.log('🔍 [AUTH INTERCEPTOR] Calling onUnauthorized callback after refresh error');
                 this.onUnauthorized();
-              } else if (isCrossOrigin) {
-                console.log('✅ [AUTH INTERCEPTOR] Skipping logout for localhost cross-origin scenario (catch block)');
               }
 
               return Promise.reject(refreshError);
             }
-          } else {
-            console.log('🔍 [AUTH INTERCEPTOR] Skipping token refresh for auth endpoint');
           }
         }
 
         // PHASE 6A.10: Comprehensive error logging
-        console.error('❌ API Response Error:', {
-          message: error.message,
-          name: error.name,
-          code: error.code,
-          request: error.request ? {
-            method: error.config?.method,
-            url: error.config?.url,
-            headers: error.config?.headers,
-          } : 'No request object',
-          response: error.response ? {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            headers: error.response.headers,
-            data: error.response.data,
-          } : 'No response object',
-          isAxiosError: axios.isAxiosError(error),
-        });
+        // Phase 6A.25: Only log non-401 errors or 401 errors that won't be retried
+        // 401 errors that trigger token refresh are expected and handled gracefully
+        const is401WithRetry = error.response?.status === 401 && originalRequest._retry;
+        const is401FirstAttempt = error.response?.status === 401 && !originalRequest._retry;
+
+        // Skip logging for 401 first attempts (will be handled by token refresh above)
+        // and for 401 retry failures (already logged in the refresh flow)
+        if (!is401FirstAttempt) {
+          console.error('❌ API Response Error:', {
+            message: error.message,
+            name: error.name,
+            code: error.code,
+            request: error.request ? {
+              method: error.config?.method,
+              url: error.config?.url,
+              headers: error.config?.headers,
+            } : 'No request object',
+            response: error.response ? {
+              status: error.response.status,
+              statusText: error.response.statusText,
+              headers: error.response.headers,
+              data: error.response.data,
+            } : 'No response object',
+            isAxiosError: axios.isAxiosError(error),
+            wasRetried: is401WithRetry,
+          });
+        }
         return Promise.reject(this.handleError(error));
       }
     );

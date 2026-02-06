@@ -1,0 +1,11 @@
+{
+  "title": "Test Single Pricing Event Fixed",
+  "description": "This is a test event to verify single pricing works correctly with the backend API.",
+  "startDate": "2025-12-20T10:00:00Z",
+  "endDate": "2025-12-20T18:00:00Z",
+  "organizerId": "5e782b4d-29ed-4e1d-9039-6c8f698aeea9",
+  "capacity": 50,
+  "category": 2,
+  "ticketPriceAmount": 25.00,
+  "ticketPriceCurrency": 1
+}

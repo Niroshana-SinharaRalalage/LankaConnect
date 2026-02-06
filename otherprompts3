@@ -203,7 +203,31 @@ Option 1: Continue with Azure Configuration (Days 4-5)
   8. No local DB or docker using at this time. We have a stating database and staging deployment is azure and we use deploy-staging.yml for that. But the UI is currently running locally by poiting to staging APIs
 
   -------------------------------------------
-Please follow these best practices
+I hope you can test what you fixed in the APIs first. Once you confirm everthing is working from the API level, I will test them in the UI. Use this to get a Token.
+
+curl -X 'POST' \
+  'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "niroshhh@gmail.com",
+  "password": "12!@qwASzx",
+  "rememberMe": true,
+  "ipAddress": "string"
+}'
+
+---------------------------------------------
+Please proceed and make sure to stick to the plan don't miss any TODO items. If you face any issues, consult the system-architect again for proper RCA and a fix plan. Repeat this process until all the issues are resolved.
+---------------------------------------------
+Please rivew this plan with system-architect and show me the system-architect approved final plan,
+----------------------------------------------
+Please consult systeme-architect create a comprehensive plan
+----------------------------------------------
+Please consult systeme-architect do a comprehensive, systematic and Deep root cause analysis. Before you make any code changes, show me the RCA and the fix plan you create with system-architect.
+---------------------------------------------
+Please check whether this is an UI issue, Auth Issue, Backend API issue,  a Database issue or a feature missing case.
+
+Think harder and smarter as a Senior Software Engineer. Handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches. And follow these best practices:
 
 1. Follow established UI/UX best practices at all times — clarity and usability matter.
 
@@ -213,17 +237,20 @@ Please follow these best practices
 
 4. Before making code changes, search the codebase for similar implementations and prefer reusable components over duplication.
 
-5. For detailed guidelines, see: C:\Work\LankaConnect\CLAUDE.md.
+5. Ensure that no existing functionality is broken when updating or implementing new code. This is especially important on the UI side, where components can be very fragile—so please make changes carefully and thoughtfully.
 
-6. Commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
+6. For detailed guidelines, see: C:\Work\LankaConnect\CLAUDE.md.
 
-7. Use EF Core migrations for all database schema changes. If migration issues occur, fix them before running migrations.
+7. Make sure to commit your changes and update the status in both C:\Work\LankaConnect\docs\STREAMLINED_ACTION_PLAN.md and C:\Work\LankaConnect\docs\PROGRESS_TRACKER.md, following C:\Work\LankaConnect\docs\TASK_SYNCHRONIZATION_STRATEGY.md.
 
-8. Do not use local databases or Docker for staging. We have a staging database and staging is deployed to Azure using deploy-staging.yml. The UI may run locally, but it should point to the staging APIs.
+8. Use EF Core migrations for all database schema changes. If migration issues occur, fix them before running migrations.
 
-9. Be accurate and honest in status reports. Diagnose issues methodically — test the API endpoint, then check Azure container logs to determine whether the problem is a database/EF migration issue or something else.
+9. Make sure to test the relevent API(s) after make any backend code change,  database changes or any EF change or configuration.
 
-10. Think harder and smarter as a Senior Software Engineer: handle issues systematically, avoid shortcuts, and apply durable fixes rather than quick patches.
+10. Do not use local databases or Docker. We have a staging database and the backend is deployed to Azure staging using deploy-staging.yml. The UI must run locally (on 3000 port), but it should point to the backedn APIs running on azure stagin.
+
+11. Be accurate and honest in status reports. Diagnose issues methodically — test the API endpoint, then check Azure container logs to determine whether the problem is a database/EF migration issue or something else.
+
   -------------------------------------------------
 
   1. ✅ Landing Page (/)
@@ -589,154 +616,410 @@ Subscription status should update to "Active"
 
 =========================================================================
 
-New Features from Session 12 (Organizer Features)
-1. Event Creation Form (/events/create)
-Access: Requires authentication (redirects to login if not authenticated) Test Steps:
-Navigate to /events/create (or click "Create Event" button from events page)
-Fill out the form sections:
-Basic Information: Title (5-200 chars), Description (20-5000 chars), Category dropdown
-Date & Time: Start date/time (must be future), End date/time (must be after start)
-Location (optional): Street address, City, State, ZIP code (format: 12345 or 12345-6789), Country
-Capacity & Pricing: Maximum capacity (1-10,000), Free event checkbox, Ticket price + currency (if not free)
-Click "Create Event" button
-Verify redirect to event detail page after successful creation
-Validation to Test:
-Title too short/long
-Description too short/long
-Start date in the past
-End date before start date
-Paid event without price/currency
-ZIP code format validation
-Expected Result: Event created and visible in event list and organizer dashboard
-2. Organizer Dashboard (/events/my-events)
-Access: Requires authentication (redirects to login if not authenticated) Test Steps:
-Navigate to /events/my-events
-Verify 4 stat cards display correctly:
-Total Events (count)
-Upcoming Events (events with future start dates)
-Total Registrations (sum of all registrations)
-Total Revenue (calculated from paid events × registrations)
-Test status filtering:
-Click "All Events" to see everything
-Click individual status buttons (Draft, Published, Active, Postponed, Cancelled, Completed, Archived, Under Review)
-Verify count badges update correctly
-Test event management actions:
-Click "View" button → redirects to event detail page
-Click "Edit" button → redirects to event edit page
-Click "Delete" button → shows confirmation buttons
-Click "Confirm Delete" → event removed from list
-Click "Cancel" → cancels deletion
-Expected Results:
-Stats update in real-time as events change
-Filtering works correctly
-Delete requires confirmation
-Only shows events created by logged-in organizer
-3. Sign-Up List Management (/events/[id]/manage-signups)
-Access: Organizer-only (checks if user is event organizer) Test Steps:
-Navigate to an event you created: /events/[your-event-id]/manage-signups
-Verify 2 stat cards:
-Total Sign-Up Lists (count)
-Total Commitments (sum across all lists)
-Create Sign-Up List:
-Select list type (Open or Predefined)
-Enter category name (e.g., "Food", "Decorations")
-If Predefined: Add items with descriptions and quantities
-Click "Add Item" to add more predefined items
-Click "Remove" to delete items
-Click "Create Sign-Up List"
-View Commitments:
-Expand sign-up lists to see committed items
-Verify user details (name, quantity, commitment date)
-Download CSV:
-Click "Download All Sign-Ups (CSV)" button
-Verify CSV file downloads with format: Category, Item Description, User ID, Quantity, Committed At
-Expected Results:
-Only event organizer can access this page
-Sign-up lists created successfully
-Commitments display correctly with user details
-CSV export contains all commitment data
-📋 Existing Features (All Users)
-4. Events List Page (/events)
-Test Steps:
-Navigate to /events
-View all published events
-Test search and filtering (if implemented)
-Click on an event card to view details
-5. Event Detail Page (/events/[id])
-Test Steps:
-Navigate to any event detail page
-View event information (title, description, date, location, capacity, pricing)
-Test RSVP functionality (if user is attendee):
-Click "RSVP" button
-Verify registration confirmation
-Check "Current Registrations" count updates
-Test Waitlist (if event is full):
-Join waitlist
-Verify waitlist count updates
-Test Sign-Up Commitments (attendee view):
-View available sign-up lists
-Commit to items
-Verify commitment appears in list
-🔄 Complete Testing Workflows
-Workflow 1: As an Organizer (Full Lifecycle)
-Create Event (/events/create)
-Fill out all event details
-Set capacity and pricing
-Click "Create Event"
-Manage Event (/events/my-events)
-View event in dashboard
-Check stats update
-Edit event details if needed
-Manage Sign-Ups (/events/[id]/manage-signups)
-Create multiple sign-up lists (Food, Decorations, etc.)
-Add predefined items
-Monitor commitments as users join
-Download Data
-Export CSV with all commitments
-Review attendee data
-Workflow 2: As an Attendee
-Discover Events (/events)
-Browse event list
-Search/filter events
-View Details (/events/[id])
-Read event information
-Check availability
-Register (Event Detail Page)
-Click "RSVP" button
-Confirm registration
-Commit to Sign-Ups (Event Detail Page)
-View available sign-up lists
-Commit to bringing items
-Verify commitments saved
-Workflow 3: Edge Cases & Validation
-Unauthenticated Access:
-Try accessing /events/create without login → redirects to login
-Try accessing /events/my-events without login → redirects to login
-Organizer-Only Access:
-Try accessing /events/[someone-else's-event]/manage-signups → should show error or redirect
-Form Validation:
-Submit event creation form with invalid data
-Verify error messages display correctly
-Event Capacity:
-Create event with capacity of 5
-Register 5 users
-Verify 6th user sees "Event Full" and waitlist option
-Pricing:
-Create free event → verify no price shown
-Create paid event → verify ticket price displays
-Verify revenue calculation in organizer dashboard
-🎨 UI/UX Features to Test
-Brand Colors: Verify Saffron Orange (#FF7900) and Burgundy (#8B1538) used throughout
-Responsive Design: Test on mobile, tablet, desktop breakpoints
-Loading States: Check skeleton loaders while data fetches
-Error States: Verify error messages display correctly
-Empty States: Check "No events yet" messages with call-to-action buttons
-✅ Current Build Status
-TypeScript Errors: 0 (Zero Tolerance maintained)
-New Code: 1,731 lines across 3 options
-Commits: 6 total (3 features + 3 documentation)
-Routes Created:
-/events/create ✅
-/events/my-events ✅
-/events/[id]/manage-signups ✅
-All features are ready for testing! Start with the organizer workflows to test the Session 12 features, then verify existing attendee features still work correctly.
+Recommended Solution: Dual Storage Strategy (Option A)
+Implementation:
+Development: Store refresh token in localStorage
+Production: Use HttpOnly cookies (current approach)
+Why This Solution?
+✅ Works immediately with minimal changes
+✅ Industry standard (Auth0, Firebase use this pattern)
+✅ Backend already supports both modes
+✅ No SSL certificate complexity
+✅ Production maintains full security
+
+===================================================================
+
+Excellent question! You're absolutely right - I need a more comprehensive tracking system to ensure I don't miss anything or deviate from the plan. Let me create a complete TODO structure that maps directly to the implementation plan.
+Update Todos
+
+PHASE 0: Create ApplicationUrlsOptions.cs
+
+PHASE 0: Create BrandingOptions.cs
+
+PHASE 0: Update EmailSettings.cs with nested classes
+
+PHASE 0: Create EmailTemplateNames.cs constants
+
+PHASE 0: Create EmailRecipientType.cs enum
+
+PHASE 0: Create EventExtensions.cs with GetLocationDisplayString
+
+PHASE 0: Update appsettings.json with all config sections
+
+PHASE 0: Create appsettings.Development.json
+
+PHASE 0: Update DependencyInjection.cs
+
+PHASE 0: Build and verify zero errors
+
+PHASE 6A.54: Create base email template with parameters
+
+PHASE 6A.54: Create migration for email templates
+
+PHASE 6A.54: Seed all 6 email templates
+
+PHASE 6A.54: Create EMAIL_TEMPLATE_VARIABLES.md docs
+
+PHASE 6A.49: Add RegistrationRepository.GetByIdAsync override
+
+PHASE 6A.49: Fix PaymentsController to load Registration directly
+
+PHASE 6A.49: Add configuration injection to RegistrationConfirmedEventHandler
+
+PHASE 6A.49: Write unit tests for domain event tracking
+
+PHASE 6A.49: Deploy to staging and test paid event email
+
+PHASE 6A.53: Create database migration for email verification
+
+PHASE 6A.53: Update User.cs with GenerateEmailVerificationToken
+
+PHASE 6A.53: Create MemberVerificationRequestedEvent
+
+PHASE 6A.53: Create MemberVerificationRequestedEventHandler
+
+PHASE 6A.53: Create VerifyMemberEmailCommand and handler
+
+PHASE 6A.53: Add API endpoint for email verification
+
+PHASE 6A.53: Create frontend verification page
+
+PHASE 6A.51: Create SignupCommitmentConfirmedEvent
+
+PHASE 6A.51: Update SignUp.cs to raise event
+
+PHASE 6A.51: Create SignupCommitmentConfirmedEventHandler
+
+PHASE 6A.52: Create RegistrationCancelledEvent
+
+PHASE 6A.52: Update Registration.cs to raise cancellation event
+
+PHASE 6A.52: Create RegistrationCancelledEventHandler
+
+PHASE 6A.50: Create SendOrganizerEventEmailCommand
+
+PHASE 6A.50: Create command handler with IEventNotificationRecipientService
+
+PHASE 6A.50: Create GetEmailRecipientsQuery
+
+PHASE 6A.50: Add API endpoints to EventsController
+
+PHASE 6A.50: Create SendEmailModal frontend component
+
+PHASE 6A.50: Update AttendeeManagementTab with Send Email button
+
+FINAL: Update PROGRESS_TRACKER.md
+
+FINAL: Update STREAMLINED_ACTION_PLAN.md
+
+FINAL: Commit all changes with descriptive messages
+Perfect! Now I have a comprehensive 41-item TODO list that maps exactly to the implementation plan. Here's how I'll ensure I don't miss anything:
+My Tracking Strategy
+1. Todo List as Single Source of Truth
+I've created 41 specific TODO items covering all phases
+Each phase clearly labeled (PHASE 0, PHASE 6A.54, etc.)
+Items ordered sequentially to match the plan
+I'll mark each "in_progress" when starting, "completed" when done
+2. Before Moving to Next Phase
+I'll verify:
+✅ All TODOs for current phase marked "completed"
+✅ Build has 0 errors/warnings
+✅ Tests pass (if applicable)
+✅ Changes committed to git
+3. Cross-Reference with Plan Document
+Before each phase, I'll:
+Re-read the phase requirements from EMAIL_SYSTEM_IMPLEMENTATION_PLAN_FINAL.md
+Verify my TODOs match the acceptance criteria
+Consult architect if anything is unclear
+4. Incremental Commits
+I'll commit after completing each phase:
+Phase 0: "feat(email): Add configuration infrastructure for email system"
+Phase 6A.54: "feat(email): Create base email templates with parameterization"
+Phase 6A.49: "fix(email): Fix paid event registration email tracking issue"
+etc.
+5. Documentation Updates
+The last 3 TODOs ensure I:
+Update PROGRESS_TRACKER.md with session summary
+Update STREAMLINED_ACTION_PLAN.md with completion status
+Follow TASK_SYNCHRONIZATION_STRATEGY.md guidelines
+6. If Issues Arise
+I will:
+Stop immediately
+Consult system-architect agent for RCA
+Get approved fix plan
+Update TODOs if needed
+Resume with fix
+Would you like me to proceed with PHASE 0, Task 1: Create ApplicationUrlsOptions.cs? I'll work through each TODO systematically, marking progress as I go.
+
+====================Session Summaries  Original TODO list===============
+
+
+Update Todos
+
+Phase 1.1: Add SearchTerm to GetEventsQuery + handler
+
+Phase 1.2: Update GetMyRegisteredEventsQuery with filters
+
+Phase 1.3: Update GetEventsByOrganizerQuery with filters
+
+Phase 1.4: Update API endpoints in EventsController
+
+Phase 1.5: Deploy and test backend APIs on Azure staging
+
+Phase 2.1: Create useDebounce hook
+
+Phase 2.2: Create filter components (SearchInput, CategoryFilter, DateRangeFilter, LocationFilter, EventFiltersContainer)
+
+Phase 3: Add search to /events page
+
+Phase 4.1: Rename dashboard tab to Event Management
+
+Phase 4.2: Add filters to My Registered Events tab
+
+Phase 4.3: Add filters to Event Management tab
+
+Phase 5: Update documentation and commit
+
+
++===============================================
+
+Phase 5.1.1: Create ReferenceData domain structure (entities, interfaces)
+
+Phase 5.1.2: Create ReferenceDataService with IMemoryCache
+
+Phase 5.1.3: Create ReferenceDataController with API endpoints
+
+Phase 5.2.1: Create EF Core migration for EventCategory reference table
+
+Phase 5.2.2: Deploy migration to Azure staging and verify
+
+Phase 5.3.1: Create migration for PreferredEventCategoryIds in Users table
+
+Phase 5.3.2: Run data migration script for Cultural Interests
+
+Phase 5.4.1: Create frontend referenceData.service.ts
+
+Phase 5.4.2: Create React Query hooks for reference data
+
+Phase 5.4.3: Update EventFilters and profile components
+
+Phase 5.5: Write and run tests (unit, integration, E2E)
+
+Phase 5.6: Update PROGRESS_TRACKER.md and commit changes
+
+======================================================
+
+Perfect! Now I have a PERMANENT tracking document that will ensure I don't miss or deviate from the plan. This document:
+✅ Lives in the repository (docs/PHASE_6A47_IMPLEMENTATION_TRACKER.md)
+✅ Contains ALL TODO items from the detailed implementation plan
+✅ Has checkboxes for every single task
+✅ Tracks dependencies between phases
+✅ Documents verification commands for each phase
+✅ Includes success criteria for each phase
+✅ Has a deviation log to document any changes
+✅ Tracks architect consultations for accountability
+How I'll ensure I don't miss or deviate:
+Before starting any work: Check the tracker, mark task as IN PROGRESS
+During work: Follow the exact files and requirements listed
+After completing a task: Check off the checkbox, update status
+If I encounter issues: Document in Deviation Log, consult architect (as you instructed)
+Before moving to next phase: Verify ALL checkboxes in current phase are checked
+At end of each phase: Update Progress Summary percentages
+Now let me proceed with Phase 5.1.1 and update the tracker as I go. Let me start by creating the ReferenceData domain structure:
+
+===================================Session Summary===============================
+
+Update Todos
+
+Phase 1: Create ADR for hybrid enum strategy
+
+Phase 2: Create Cultural Interests API endpoint
+
+Phase 2: Add CulturalInterestDto
+
+Phase 2: Test Cultural Interests endpoint
+
+Phase 3: Create referenceData.service.ts
+
+Phase 3: Create useReferenceData hooks
+
+Phase 3: Create specialized hooks (useCulturalInterests, etc)
+
+Phase 4: Update CulturalInterestsSection to use hook
+
+Phase 4: Remove CULTURAL_INTERESTS constant
+
+Phase 5: Replace all hardcoded constants with API calls
+
+Phase 6: Write backend unit tests
+
+Phase 7: Write frontend integration tests
+
+Phase 8: Update all tracking documentation
+
+Phase 8: Final commit with completion summary
+Perfect! Now I have a complete, architect-approved plan with permanent tracking. Let me summarize what we have:
+✅ PERMANENT TRACKING SYSTEM CREATED
+📄 Main Plan Document:
+PHASE_6A47_COMPLETION_PLAN_APPROVED.md
+🎯 Key Decisions from System-Architect (Agent a2d590d):
+KEEP CulturalInterest as Value Object (NO migration to EventCategory)
+HYBRID Enum Strategy: Domain enums (3 types) + Reference data (38 types)
+NO BREAKING CHANGES to User model
+EXPOSE CulturalInterest.All via new API endpoint
+📋 TODO List (14 Tasks):
+Phase 1: ADR document (0.5 days)
+Phase 2: Cultural Interests API (0.5 days)
+Phase 3: Frontend hooks infrastructure (1 day)
+Phase 4: Update profile component (0.5 days)
+Phase 5: Replace hardcoded constants (1 day)
+Phase 6-7: Testing (1.5 days)
+Phase 8: Documentation & commit (0.5 days)
+Total: 5.5 days
+🔄 Recovery Strategy (if I forget again):
+
+# Read the approved plan
+cat docs/PHASE_6A47_COMPLETION_PLAN_APPROVED.md
+
+# Resume architect context
+# Agent ID: a2d590d
+Would you like me to start with Phase 1: Create the ADR (Architecture Decision Record) for the hybrid enum strategy?
+
+==================================================================================
+
+Summary
+I've created comprehensive production deployment documentation that answers all your questions:
+
+Your Questions Answered:
+Domain & Email:
+
+Domain from Namecheap: $10-15/year
+Email via Azure Communication Services: $0-5/month
+NO, domain purchase does NOT include email!
+You need both separately
+SSL Certificates:
+
+YES, completely FREE via Azure Container Apps!
+Auto-renewal every 90 days
+No purchase needed
+CI/CD Workflows:
+
+NO separate YML files needed!
+Just 5 total: 2 updates + 1 new + 2 unchanged
+One staging workflow handles all branches
+NON-API Capabilities:
+
+Audited all 21 features
+EventReminderJob fix included
+All verified and working
+Files Created:
+PRODUCTION_GO_LIVE_COMPREHENSIVE_GUIDE.md - 13,000+ words, 15 sections, complete day-by-day plan
+PRODUCTION_QUICK_START_SUMMARY.md - Quick reference guide
+WORKFLOW_IMPLEMENTATION_GUIDE.md - GitHub CI/CD setup
+SAFE_DEPLOYMENT_STRATEGY.md - Merge conflict handling
+GITHUB_APPROVAL_WORKFLOW_SETUP.md - Visual approval workflow
+.github/workflows/deploy-production-with-approval.yml - Approval workflow file
+7-Day Production Plan:
+Day 1: Domain + Email setup
+Day 2: Stripe production (+ wait for approval)
+Day 3: Azure infrastructure
+Day 4: Database + CI/CD
+Day 5: Hangfire + Monitoring
+Day 6: Testing + Audit
+Day 7: GO LIVE!
+Cost: $150-180/month ✅
+Within your $100-200 budget!
+
+The comprehensive guide covers everything including:
+
+Hangfire dashboard for production
+All background jobs verification
+Complete observability setup
+Non-API capabilities audit
+Step-by-step commands for everything
+Would you like me to help you get started with Day 1 (domain purchase and email configuration)?
+
+===============================================================================================
+Summary of Conversation
+What We've Accomplished ✅
+Documentation Created (8 files):
+
+BLUE_GREEN_DEPLOYMENT_GUIDE.md - Clarified deployment strategy
+PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md - Complete deployment guide
+SAFE_DEPLOYMENT_STRATEGY.md - Merge conflict handling
+WORKFLOW_IMPLEMENTATION_GUIDE.md - CI/CD workflow design
+GITHUB_APPROVAL_WORKFLOW_SETUP.md - Approval setup guide
+PRODUCTION_GO_LIVE_COMPREHENSIVE_GUIDE.md - Complete 7-day plan
+PRODUCTION_QUICK_START_SUMMARY.md - Quick reference
+CONTACT_OPTIONS_IMPLEMENTATION.md (unwanted - my error)
+Workflow File Created:
+
+.github/workflows/deploy-production-with-approval.yml - Approval workflow
+Key Questions Answered ✅
+Blue-Green Deployment: ONE production environment with TWO revisions (not duplicate environments)
+Custom Domain: lankaconnect.app (purchase from Namecheap/Cloudflare, $10-15/year)
+SSL Certificates: FREE via Azure Container Apps (automatic renewal)
+Email: Separate service needed (Azure Communication Services, $0-5/month)
+Database: New production database required (separate from staging)
+Merge Conflicts: Can test main in staging before production approval
+Workflow Files: Only 5 files total (not separate files per branch)
+Cost: $150-180/month (within your $100-200 budget)
+7-Day Production Go-Live Plan ✅
+Day 1: Domain & Email setup
+Day 2: Stripe production activation
+Day 3: Azure infrastructure creation
+Day 4: Database & CI/CD pipeline
+Day 5: Hangfire & monitoring
+Day 6: Testing & audit
+Day 7: GO LIVE
+My Errors Corrected
+❌ Misunderstood target audience (Sri Lankan community in USA, not Sri Lanka)
+❌ Created CONTACT_OPTIONS_IMPLEMENTATION.md without being asked
+Current Status
+All production deployment planning is complete and ready for you to execute when ready. The comprehensive guide (PRODUCTION_GO_LIVE_COMPREHENSIVE_GUIDE.md) has all commands, configurations, and step-by-step instructions.
+
+I'm ready for your next request.
+
+=====================================RevenueBreakdown=================
+
+Update Todos
+
+Domain Layer: Write unit tests for RevenueBreakdown value object
+
+Domain Layer: Implement RevenueBreakdown value object with calculation logic
+
+Domain Services: Create ISalesTaxService interface
+
+Domain Services: Create IRevenueCalculatorService interface
+
+Domain Entities: Add RevenueBreakdown property to Event entity
+
+Domain Entities: Add breakdown fields to Registration entity
+
+Infrastructure: Create StateTaxRate entity and repository
+
+Infrastructure: Implement DatabaseSalesTaxService with caching
+
+Infrastructure: Implement RevenueCalculatorService
+
+Database: Create migration for StateTaxRates table with seed data
+
+Database: Create migration to add revenue_breakdown to events table
+
+Database: Create migration to add breakdown fields to registrations table
+
+Application: Update CreateEventCommandHandler to calculate breakdown
+
+Application: Update GetEventAttendeesQueryHandler for breakdown totals
+
+Frontend: Create RevenueBreakdownTable component
+
+Frontend: Update EventCreationForm to show breakdown
+
+Frontend: Update AttendeeManagementTab revenue card
+
+Deployment: Deploy backend to Azure staging and test APIs
+
+Deployment: Deploy frontend to Azure staging and test UI
+
+Documentation: Update PROGRESS_TRACKER and STREAMLINED_ACTION_PLAN

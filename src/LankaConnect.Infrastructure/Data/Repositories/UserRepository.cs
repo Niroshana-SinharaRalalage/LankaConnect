@@ -1,13 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
+using LankaConnect.Domain.Users.Enums;
 using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using System.Diagnostics;
+using Serilog.Context;
 
 namespace LankaConnect.Infrastructure.Data.Repositories;
 
 public class UserRepository : Repository<User>, IUserRepository
 {
-    public UserRepository(AppDbContext context) : base(context)
+    private readonly ILogger<UserRepository> _repoLogger;
+
+    public UserRepository(
+        AppDbContext context,
+        ILogger<UserRepository> logger) : base(context)
     {
+        _repoLogger = logger;
     }
 
     /// <summary>
@@ -21,45 +30,119 @@ public class UserRepository : Repository<User>, IUserRepository
     /// However, we keep explicit Include() for clarity and to ensure proper split query optimization.
     /// The nested LanguageCode owned entity is loaded automatically - no ThenInclude() needed.
     /// Phase 6A.9 FIX: After loading, sync shadow navigation entities to domain's metro area ID list
+    /// Phase 6A.X: Added comprehensive logging with LogContext, Stopwatch, and PostgreSQL SqlState extraction
     /// </summary>
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var user = await _dbSet
-            .AsSplitQuery()
-            .Include(u => u.CulturalInterests)
-            .Include(u => u.Languages)
-            .Include(u => u.ExternalLogins)
-            // CRITICAL FIX Phase 6A.9: Load shadow navigation for metro areas many-to-many per ADR-009
-            // This populates _preferredMetroAreaEntities so EF Core can track changes to junction table
-            .Include("_preferredMetroAreaEntities")  // String-based for shadow property
-            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-
-        // Phase 6A.9 FIX: Sync loaded shadow navigation entities to domain's metro area ID list
-        // This bridges the gap between EF Core's entity references and domain's business logic IDs
-        if (user != null)
+        using (LogContext.PushProperty("Operation", "GetById"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("EntityId", id))
         {
-            // Access the shadow navigation using EF Core's Entry API
-            var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");
-            var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<Domain.Events.MetroArea>;
+            var stopwatch = Stopwatch.StartNew();
 
-            if (metroAreaEntities != null)
+            _repoLogger.LogDebug("GetByIdAsync START: EntityId={EntityId}", id);
+
+            try
             {
-                // Extract IDs and sync to domain's _preferredMetroAreaIds list
-                var metroAreaIds = metroAreaEntities.Select(m => m.Id).ToList();
-                user.SyncPreferredMetroAreaIdsFromEntities(metroAreaIds);
+                var user = await _dbSet
+                    .AsSplitQuery()
+                    .Include(u => u.CulturalInterests)
+                    .Include(u => u.Languages)
+                    .Include(u => u.ExternalLogins)
+                    // CRITICAL FIX Phase 6A.9: Load shadow navigation for metro areas many-to-many per ADR-009
+                    // This populates _preferredMetroAreaEntities so EF Core can track changes to junction table
+                    .Include("_preferredMetroAreaEntities")  // String-based for shadow property
+                    .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+                int metroAreaCount = 0;
+                // Phase 6A.9 FIX: Sync loaded shadow navigation entities to domain's metro area ID list
+                // This bridges the gap between EF Core's entity references and domain's business logic IDs
+                if (user != null)
+                {
+                    // Access the shadow navigation using EF Core's Entry API
+                    var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");
+                    var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<Domain.Events.MetroArea>;
+
+                    if (metroAreaEntities != null)
+                    {
+                        // Extract IDs and sync to domain's _preferredMetroAreaIds list
+                        var metroAreaIds = metroAreaEntities.Select(m => m.Id).ToList();
+                        metroAreaCount = metroAreaIds.Count;
+                        user.SyncPreferredMetroAreaIdsFromEntities(metroAreaIds);
+                    }
+                }
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByIdAsync COMPLETE: EntityId={EntityId}, Found={Found}, Email={Email}, MetroAreaCount={MetroAreaCount}, Duration={ElapsedMs}ms",
+                    id,
+                    user != null,
+                    user?.Email.Value,
+                    metroAreaCount,
+                    stopwatch.ElapsedMilliseconds);
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByIdAsync FAILED: EntityId={EntityId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    id,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
             }
         }
-
-        return user;
     }
 
     public async Task<User?> GetByEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
     {
-        // Include RefreshTokens for proper tracking when adding/removing tokens
-        // Remove AsNoTracking() to allow EF Core to track changes to RefreshTokens collection
-        return await _dbSet
-            .Include(u => u.RefreshTokens)
-            .FirstOrDefaultAsync(u => u.Email.Value == email.Value, cancellationToken);
+        using (LogContext.PushProperty("Operation", "GetByEmail"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("Email", email.Value))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetByEmailAsync START: Email={Email}", email.Value);
+
+            try
+            {
+                // Include RefreshTokens for proper tracking when adding/removing tokens
+                // Remove AsNoTracking() to allow EF Core to track changes to RefreshTokens collection
+                var result = await _dbSet
+                    .Include(u => u.RefreshTokens)
+                    .FirstOrDefaultAsync(u => u.Email.Value == email.Value, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByEmailAsync COMPLETE: Email={Email}, Found={Found}, UserId={UserId}, Duration={ElapsedMs}ms",
+                    email.Value,
+                    result != null,
+                    result?.Id,
+                    stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByEmailAsync FAILED: Email={Email}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    email.Value,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
     }
 
     public async Task<bool> ExistsWithEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
@@ -98,16 +181,21 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
+        // CRITICAL FIX: Remove AsNoTracking to enable token rotation
+        // RefreshToken endpoint needs to update/revoke old tokens and add new ones
+        // AsNoTracking prevents EF Core from tracking these changes
         return await _dbSet
-            .AsNoTracking()
+            .Include(u => u.RefreshTokens)
             .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshToken && rt.IsRevoked == false),
                 cancellationToken);
     }
 
     public async Task<User?> GetByEmailVerificationTokenAsync(string token, CancellationToken cancellationToken = default)
     {
+        // Phase 6A.53: Remove AsNoTracking to enable email verification updates
+        // Email verification endpoint needs to update IsEmailVerified flag
+        // AsNoTracking prevents EF Core from tracking these changes
         return await _dbSet
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, cancellationToken);
     }
 
@@ -138,31 +226,317 @@ public class UserRepository : Repository<User>, IUserRepository
     }
 
     /// <summary>
+    /// Phase 6A.29: Get user full names by their IDs (for badge creator display)
+    /// </summary>
+    public async Task<Dictionary<Guid, string>> GetUserNamesAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        var ids = userIds.ToList();
+        if (!ids.Any()) return new Dictionary<Guid, string>();
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(
+                u => u.Id,
+                u => $"{u.FirstName} {u.LastName}",
+                cancellationToken);
+    }
+
+    /// <summary>
+    /// Phase 6A.64: Get user emails by their IDs (bulk query to eliminate N+1 problem in event notifications)
+    /// This method replaces the N+1 query pattern where each registration triggers a separate user lookup.
+    /// Performance: 50 users with N+1 = 50 queries (~10 seconds). With this method = 1 query (~100ms).
+    /// </summary>
+    public async Task<Dictionary<Guid, string>> GetEmailsByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        var ids = userIds.ToList();
+        if (!ids.Any()) return new Dictionary<Guid, string>();
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(
+                u => u.Id,
+                u => u.Email.Value,
+                cancellationToken);
+    }
+
+    /// <summary>
     /// Override to sync shadow navigation for metro areas when adding new user
     /// Phase 6A.9 FIX: When creating a new user with metro areas, the domain's _preferredMetroAreaIds list
     /// contains the metro area GUIDs, but the shadow navigation _preferredMetroAreaEntities needs to be populated
     /// with actual MetroArea entities for EF Core to create the many-to-many junction table rows.
+    /// Phase 6A.X: Added comprehensive logging with LogContext, Stopwatch, and PostgreSQL SqlState extraction
     /// </summary>
     public override async Task AddAsync(User entity, CancellationToken cancellationToken = default)
     {
-        // Call base implementation to add entity to DbSet
-        await base.AddAsync(entity, cancellationToken);
-
-        // Sync metro areas from domain list to shadow navigation for persistence
-        // This bridges the gap between domain's List<Guid> and EF Core's ICollection<MetroArea>
-        if (entity.PreferredMetroAreaIds.Any())
+        using (LogContext.PushProperty("Operation", "Add"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("EntityId", entity.Id))
+        using (LogContext.PushProperty("MetroAreaCount", entity.PreferredMetroAreaIds.Count))
         {
-            // Load the MetroArea entities from the database based on the domain's ID list
-            var metroAreaEntities = await _context.Set<Domain.Events.MetroArea>()
-                .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
-                .ToListAsync(cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
 
-            // Access shadow navigation using EF Core's Entry API
-            var metroAreasCollection = _context.Entry(entity).Collection("_preferredMetroAreaEntities");
+            _repoLogger.LogDebug(
+                "AddAsync START: EntityId={EntityId}, Email={Email}, MetroAreaCount={MetroAreaCount}",
+                entity.Id,
+                entity.Email.Value,
+                entity.PreferredMetroAreaIds.Count);
 
-            // Set the loaded entities into the shadow navigation
-            // EF Core will detect this and create rows in user_preferred_metro_areas junction table
-            metroAreasCollection.CurrentValue = metroAreaEntities;
+            try
+            {
+                // Call base implementation to add entity to DbSet
+                await base.AddAsync(entity, cancellationToken);
+
+                // Sync metro areas from domain list to shadow navigation for persistence
+                // This bridges the gap between domain's List<Guid> and EF Core's ICollection<MetroArea>
+                if (entity.PreferredMetroAreaIds.Any())
+                {
+                    // Load the MetroArea entities from the database based on the domain's ID list
+                    var metroAreaEntities = await _context.Set<Domain.Events.MetroArea>()
+                        .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
+                        .ToListAsync(cancellationToken);
+
+                    _repoLogger.LogDebug(
+                        "AddAsync: Loaded {MetroAreaEntityCount} metro area entities for syncing",
+                        metroAreaEntities.Count);
+
+                    // Access shadow navigation using EF Core's Entry API
+                    var metroAreasCollection = _context.Entry(entity).Collection("_preferredMetroAreaEntities");
+
+                    // Set the loaded entities into the shadow navigation
+                    // EF Core will detect this and create rows in user_preferred_metro_areas junction table
+                    metroAreasCollection.CurrentValue = metroAreaEntities;
+                }
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "AddAsync COMPLETE: EntityId={EntityId}, Email={Email}, MetroAreasSynced={MetroAreasSynced}, Duration={ElapsedMs}ms",
+                    entity.Id,
+                    entity.Email.Value,
+                    entity.PreferredMetroAreaIds.Any(),
+                    stopwatch.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "AddAsync FAILED: EntityId={EntityId}, Email={Email}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    entity.Id,
+                    entity.Email.Value,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    // Phase 6A.90: Admin user management methods
+
+    /// <summary>
+    /// Phase 6A.90: Get paginated list of users with filtering for admin management
+    /// </summary>
+    public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        UserRole? roleFilter = null,
+        bool? isActiveFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetPaged"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        using (LogContext.PushProperty("Page", page))
+        using (LogContext.PushProperty("PageSize", pageSize))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetPagedAsync START: Page={Page}, PageSize={PageSize}, SearchTerm={SearchTerm}, RoleFilter={RoleFilter}, IsActiveFilter={IsActiveFilter}",
+                page, pageSize, searchTerm, roleFilter, isActiveFilter);
+
+            try
+            {
+                var query = _dbSet.AsNoTracking();
+
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var term = searchTerm.Trim().ToLower();
+                    query = query.Where(u =>
+                        u.FirstName.ToLower().Contains(term) ||
+                        u.LastName.ToLower().Contains(term) ||
+                        u.Email.Value.ToLower().Contains(term) ||
+                        (u.FirstName + " " + u.LastName).ToLower().Contains(term));
+                }
+
+                if (roleFilter.HasValue)
+                    query = query.Where(u => u.Role == roleFilter.Value);
+
+                if (isActiveFilter.HasValue)
+                    query = query.Where(u => u.IsActive == isActiveFilter.Value);
+
+                // Get total count for pagination
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                // Get paged items ordered by created date descending (newest first)
+                var items = await query
+                    .OrderByDescending(u => u.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetPagedAsync COMPLETE: Page={Page}, ItemCount={ItemCount}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
+                    page, items.Count, totalCount, stopwatch.ElapsedMilliseconds);
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetPagedAsync FAILED: Page={Page}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    page,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get user counts grouped by role for admin statistics
+    /// </summary>
+    public async Task<Dictionary<UserRole, int>> GetUserCountsByRoleAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetCountsByRole"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetUserCountsByRoleAsync START");
+
+            try
+            {
+                var counts = await _dbSet
+                    .AsNoTracking()
+                    .GroupBy(u => u.Role)
+                    .Select(g => new { Role = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Role, x => x.Count, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetUserCountsByRoleAsync COMPLETE: RoleCount={RoleCount}, Duration={ElapsedMs}ms",
+                    counts.Count, stopwatch.ElapsedMilliseconds);
+
+                return counts;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetUserCountsByRoleAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of active users
+    /// </summary>
+    public async Task<int> GetActiveUsersCountAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetActiveUsersCount"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetActiveUsersCountAsync START");
+
+            try
+            {
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(u => u.IsActive, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetActiveUsersCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetActiveUsersCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.90: Get total count of locked accounts
+    /// </summary>
+    public async Task<int> GetLockedAccountsCountAsync(CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetLockedAccountsCount"))
+        using (LogContext.PushProperty("EntityType", "User"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug("GetLockedAccountsCountAsync START");
+
+            try
+            {
+                var now = DateTime.UtcNow;
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(u => u.AccountLockedUntil != null && u.AccountLockedUntil > now, cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetLockedAccountsCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetLockedAccountsCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
         }
     }
 }

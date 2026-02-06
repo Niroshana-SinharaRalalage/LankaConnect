@@ -11,6 +11,8 @@ using LankaConnect.Application.Users.Commands.UnlinkExternalProvider;
 using LankaConnect.Application.Users.Commands.UpdatePreferredMetroAreas;
 using LankaConnect.Application.Users.Commands.RequestRoleUpgrade;
 using LankaConnect.Application.Users.Commands.CancelRoleUpgrade;
+using LankaConnect.Application.Users.Commands.UpdateUserBasicInfo;
+using LankaConnect.Application.Users.Commands.UpdateUserEmail;
 using LankaConnect.Application.Users.Queries.GetUserById;
 using LankaConnect.Application.Users.Queries.GetLinkedProviders;
 using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
@@ -380,6 +382,137 @@ public class UsersController : BaseController<UsersController>
             });
         }
     }
+
+    #region Basic Info Management (Phase 6A.70)
+
+    /// <summary>
+    /// Updates a user's basic information (First Name, Last Name, Phone, Bio)
+    /// Phase 6A.70: Profile Basic Info Section
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">Basic info details (firstName, lastName, phoneNumber, bio)</param>
+    /// <returns>Updated user profile</returns>
+    [HttpPut("{id:guid}/basic-info")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateBasicInfo(Guid id, [FromBody] UpdateBasicInfoRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UpdateBasicInfo",
+            ["UserId"] = id,
+            ["FirstName"] = request.FirstName,
+            ["LastName"] = request.LastName
+        }))
+        {
+            Logger.LogInformation("Updating basic info for user {UserId}", id);
+
+            var command = new UpdateUserBasicInfoCommand
+            {
+                UserId = id,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                PhoneNumber = request.PhoneNumber,
+                Bio = request.Bio
+            };
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Basic info updated successfully for user {UserId}", id);
+            }
+            else
+            {
+                var firstError = result.Errors.FirstOrDefault();
+                Logger.LogWarning("Basic info update failed for user {UserId}: {Error}", id, firstError);
+
+                // Check if it's a "not found" error
+                if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Detail = firstError,
+                        Status = 404,
+                        Title = "Not Found"
+                    });
+                }
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Updates a user's email address
+    /// Phase 6A.70: Profile Basic Info Section with Email Verification
+    /// Triggers email verification flow (reuses Phase 6A.53 infrastructure)
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">New email address</param>
+    /// <returns>Email update response with verification details</returns>
+    [HttpPut("{id:guid}/email")]
+    [ProducesResponseType(typeof(UpdateUserEmailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateEmail(Guid id, [FromBody] UpdateEmailRequest request)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "UpdateEmail",
+            ["UserId"] = id,
+            ["NewEmail"] = request.NewEmail
+        }))
+        {
+            Logger.LogInformation("Updating email for user {UserId} to {NewEmail}", id, request.NewEmail);
+
+            var command = new UpdateUserEmailCommand
+            {
+                UserId = id,
+                NewEmail = request.NewEmail
+            };
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                Logger.LogInformation("Email updated successfully for user {UserId}. Verification email sent.", id);
+            }
+            else
+            {
+                var firstError = result.Errors.FirstOrDefault();
+                Logger.LogWarning("Email update failed for user {UserId}: {Error}", id, firstError);
+
+                // Check if it's a "not found" error
+                if (firstError?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Detail = firstError,
+                        Status = 404,
+                        Title = "Not Found"
+                    });
+                }
+
+                // Check if it's a "already in use" error (duplicate email)
+                if (firstError?.Contains("already in use", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return Conflict(new ProblemDetails
+                    {
+                        Detail = firstError,
+                        Status = 409,
+                        Title = "Conflict"
+                    });
+                }
+            }
+
+            return HandleResult(result);
+        }
+    }
+
+    #endregion
 
     #region External Provider Management (Epic 1 Phase 2)
 
@@ -778,4 +911,25 @@ public record RequestRoleUpgradeRequest
     [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
     public UserRole TargetRole { get; init; }
     public string Reason { get; init; } = null!;
+}
+
+/// <summary>
+/// Request model for updating user's basic information
+/// Phase 6A.70: Profile Basic Info Section
+/// </summary>
+public record UpdateBasicInfoRequest
+{
+    public string FirstName { get; init; } = null!;
+    public string LastName { get; init; } = null!;
+    public string? PhoneNumber { get; init; }
+    public string? Bio { get; init; }
+}
+
+/// <summary>
+/// Request model for updating user's email address
+/// Phase 6A.70: Profile Basic Info Section with Email Verification
+/// </summary>
+public record UpdateEmailRequest
+{
+    public string NewEmail { get; init; } = null!;
 }

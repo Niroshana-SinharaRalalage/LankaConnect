@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Email" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="CsvHelper" />
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -29,6 +31,9 @@
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
     <PackageReference Include="Stripe.net" />
+    <!-- Phase 6A.24: QR Code and PDF generation for tickets -->
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="QuestPDF" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -36,5 +41,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <!-- Phase 6A.24: Include email templates in publish output -->
+  <ItemGroup>
+    <Content Include="Templates\Email\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

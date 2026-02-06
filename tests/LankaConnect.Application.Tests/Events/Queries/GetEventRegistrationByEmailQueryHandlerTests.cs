@@ -3,11 +3,13 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.TestUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MockQueryable.Moq;
 using Moq;
 
@@ -20,12 +22,14 @@ namespace LankaConnect.Application.Tests.Events.Queries;
 public class GetEventRegistrationByEmailQueryHandlerTests
 {
     private readonly Mock<IApplicationDbContext> _mockContext;
+    private readonly Mock<ILogger<GetEventRegistrationByEmailQueryHandler>> _mockLogger;
     private readonly GetEventRegistrationByEmailQueryHandler _handler;
 
     public GetEventRegistrationByEmailQueryHandlerTests()
     {
         _mockContext = new Mock<IApplicationDbContext>();
-        _handler = new GetEventRegistrationByEmailQueryHandler(_mockContext.Object);
+        _mockLogger = new Mock<ILogger<GetEventRegistrationByEmailQueryHandler>>();
+        _handler = new GetEventRegistrationByEmailQueryHandler(_mockContext.Object, _mockLogger.Object);
     }
 
     [Fact]
@@ -123,7 +127,7 @@ public class GetEventRegistrationByEmailQueryHandlerTests
 
         var attendee = AttendeeDetails.Create(
             name: "Test User",
-            age: 25
+            ageCategory: AgeCategory.Adult
         ).Value;
 
         var totalPrice = Money.Create(0, Currency.LKR).Value;

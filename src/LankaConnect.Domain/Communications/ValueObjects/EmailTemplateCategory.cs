@@ -54,9 +54,19 @@ public sealed class EmailTemplateCategory : ValueObject
     public static Result<EmailTemplateCategory> FromValue(string value)
     {
         var category = All.FirstOrDefault(c => c.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
-        return category != null 
+        return category != null
             ? Result<EmailTemplateCategory>.Success(category)
             : Result<EmailTemplateCategory>.Failure($"Invalid email template category: {value}");
+    }
+
+    /// <summary>
+    /// Creates a category from database value, used by EF Core during entity hydration.
+    /// Returns System category as fallback for invalid values to prevent "Cannot access value of a failed result" exceptions.
+    /// </summary>
+    public static EmailTemplateCategory FromDatabase(string value)
+    {
+        var category = All.FirstOrDefault(c => c.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
+        return category ?? System; // Fallback to System category for invalid values
     }
 
     /// <summary>
@@ -66,11 +76,11 @@ public sealed class EmailTemplateCategory : ValueObject
     {
         return emailType switch
         {
-            EmailType.EmailVerification or EmailType.PasswordReset => Authentication,
-            EmailType.BusinessNotification => Business,
+            EmailType.EmailVerification or EmailType.PasswordReset or EmailType.MemberEmailVerification => Authentication,
+            EmailType.BusinessNotification or EmailType.OrganizerCustomMessage => Business,
             EmailType.Marketing or EmailType.Newsletter => Marketing,
-            EmailType.Welcome => Notification,
-            EmailType.EventNotification => Notification,
+            EmailType.Welcome or EmailType.EventNotification or EmailType.EventReminder => Notification,
+            EmailType.SignupCommitmentConfirmation or EmailType.RegistrationCancellationConfirmation => Notification,
             EmailType.Transactional => System,
             _ => System
         };

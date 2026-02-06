@@ -5,6 +5,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,7 +27,8 @@ public class UpdateCulturalInterestsCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _handler = new UpdateCulturalInterestsCommandHandler(
             _userRepositoryMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            NullLogger<UpdateCulturalInterestsCommandHandler>.Instance);
     }
 
     private User CreateTestUser()
@@ -108,14 +110,14 @@ public class UpdateCulturalInterestsCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Should_Fail_When_Invalid_Interest_Code()
+    public async Task Handle_Should_Accept_Dynamic_EventCategory_Codes()
     {
-        // Arrange
+        // Arrange - Phase 6A.47: Now accepts any EventCategory code
         var user = CreateTestUser();
         var command = new UpdateCulturalInterestsCommand
         {
             UserId = user.Id,
-            InterestCodes = new List<string> { "INVALID_CODE" }
+            InterestCodes = new List<string> { "Business", "Cultural", "Community" }
         };
 
         _userRepositoryMock
@@ -125,20 +127,20 @@ public class UpdateCulturalInterestsCommandHandlerTests
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Invalid");
+        // Assert - Should succeed with dynamic codes
+        result.IsSuccess.Should().BeTrue();
+        user.CulturalInterests.Should().HaveCount(3);
     }
 
     [Fact]
-    public async Task Handle_Should_Fail_When_More_Than_10_Interests()
+    public async Task Handle_Should_Accept_More_Than_10_Interests()
     {
-        // Arrange
+        // Arrange - Phase 6A.47: Removed 10-interest limit, now unlimited
         var user = CreateTestUser();
         var command = new UpdateCulturalInterestsCommand
         {
             UserId = user.Id,
-            InterestCodes = Enumerable.Range(0, 11).Select(_ => "SL_CUISINE").ToList()
+            InterestCodes = Enumerable.Range(0, 15).Select(i => $"Interest_{i}").ToList()
         };
 
         _userRepositoryMock
@@ -148,8 +150,8 @@ public class UpdateCulturalInterestsCommandHandlerTests
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("10");
+        // Assert - Should succeed with 15 interests
+        result.IsSuccess.Should().BeTrue();
+        user.CulturalInterests.Should().HaveCount(15);
     }
 }

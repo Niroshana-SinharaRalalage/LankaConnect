@@ -6,6 +6,7 @@ using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Exceptions;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace LankaConnect.Application.Tests.Businesses.Commands;
@@ -14,13 +15,15 @@ public class AddServiceCommandHandlerTests
 {
     private readonly Mock<IBusinessRepository> _mockBusinessRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ILogger<AddServiceCommandHandler>> _mockLogger;
     private readonly AddServiceCommandHandler _handler;
 
     public AddServiceCommandHandlerTests()
     {
         _mockBusinessRepository = new Mock<IBusinessRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _handler = new AddServiceCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object);
+        _mockLogger = new Mock<ILogger<AddServiceCommandHandler>>();
+        _handler = new AddServiceCommandHandler(_mockBusinessRepository.Object, _mockUnitOfWork.Object, _mockLogger.Object);
     }
 
     [Fact]
@@ -208,10 +211,11 @@ public class AddServiceCommandHandlerTests
             .Setup(x => x.GetByIdAsync(businessId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBusiness);
 
-        // Act & Assert
-        await _handler.Invoking(x => x.Handle(command, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
 
+        // Assert
+        result.IsSuccess.Should().BeFalse();
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -238,10 +242,11 @@ public class AddServiceCommandHandlerTests
             .Setup(x => x.GetByIdAsync(businessId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBusiness);
 
-        // Act & Assert
-        await _handler.Invoking(x => x.Handle(command, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
 
+        // Assert
+        result.IsSuccess.Should().BeFalse();
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

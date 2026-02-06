@@ -147,7 +147,7 @@ public class ImageService : IImageService
     {
         // For public blob storage, return the same URL
         // In a production scenario with private containers, you would generate a SAS token here
-        _logger.LogDebug("Secure URL requested for {ImageUrl} (expires in {Hours} hours)", imageUrl, expiresInHours);
+        _logger.LogInformation("Secure URL requested for {ImageUrl} (expires in {Hours} hours)", imageUrl, expiresInHours);
         return Task.FromResult(Result<string>.Success(imageUrl));
     }
 

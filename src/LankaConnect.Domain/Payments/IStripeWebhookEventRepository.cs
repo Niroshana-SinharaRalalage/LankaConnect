@@ -7,9 +7,16 @@ namespace LankaConnect.Domain.Payments;
 public interface IStripeWebhookEventRepository
 {
     /// <summary>
-    /// Check if event has already been processed (idempotency)
+    /// Check if event has already been processed (idempotency).
+    /// Returns true only if the event exists AND was successfully processed.
     /// </summary>
     Task<bool> IsEventProcessedAsync(string eventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Check if an event record exists (regardless of processed status).
+    /// Used to prevent duplicate INSERT attempts on webhook retries.
+    /// </summary>
+    Task<bool> EventExistsAsync(string eventId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Record a new webhook event

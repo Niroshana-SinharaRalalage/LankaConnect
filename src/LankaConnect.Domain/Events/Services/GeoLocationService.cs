@@ -59,6 +59,33 @@ public class GeoLocationService : IGeoLocationService
     }
 
     /// <summary>
+    /// Phase 6A.70: Checks if an event location is within a metro area's radius
+    /// Used for newsletter subscriber recipient matching (Aurora → Cleveland example)
+    /// </summary>
+    public bool IsWithinMetroRadius(
+        decimal eventLatitude,
+        decimal eventLongitude,
+        decimal metroLatitude,
+        decimal metroLongitude,
+        int radiusMiles)
+    {
+        if (radiusMiles <= 0)
+            return false;
+
+        var distanceKm = CalculateDistanceKm(
+            metroLatitude,
+            metroLongitude,
+            eventLatitude,
+            eventLongitude);
+
+        // Convert radius from miles to kilometers (1 mile = 1.60934 km)
+        const double MilesToKmConversion = 1.60934;
+        var radiusKm = radiusMiles * MilesToKmConversion;
+
+        return distanceKm <= radiusKm;
+    }
+
+    /// <summary>
     /// Converts degrees to radians
     /// </summary>
     private static double ToRadians(double degrees)

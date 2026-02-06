@@ -20,9 +20,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-// IMPORTANT: Use explicit staging URL, NOT NEXT_PUBLIC_API_URL (which points to /api/proxy)
-// Always use the staging backend URL (local development should still use Azure staging for API calls)
-const BACKEND_URL = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+// IMPORTANT: Use environment variable for backend URL
+// BACKEND_API_URL is set in Container App environment (Azure deployment)
+// For local development, it defaults to Azure staging backend
+// This ensures the proxy works in both local and deployed environments
+const BACKEND_URL = process.env.BACKEND_API_URL || (() => {
+  const fallbackUrl = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
+  console.warn(`⚠️ [PROXY] BACKEND_API_URL not set, using fallback: ${fallbackUrl}`);
+  return fallbackUrl;
+})();
 
 export async function GET(
   request: NextRequest,
@@ -185,6 +191,54 @@ async function forwardRequest(
         },
         setCookieHeaders: response.headers.getSetCookie?.() || [],
       });
+    }
+
+    // Phase 6A.24 FIX: Check if response is binary (PDF, images, ZIP, Excel, etc.)
+    // Binary responses must be streamed as-is, not parsed as text/JSON
+    // Phase 6A.69: Added application/zip for sign-up list exports, and Excel formats for attendee exports
+    const responseContentType = response.headers.get('content-type') || '';
+    const isBinaryResponse = responseContentType.includes('application/pdf') ||
+                            responseContentType.includes('application/octet-stream') ||
+                            responseContentType.includes('application/zip') ||
+                            responseContentType.includes('application/vnd.openxmlformats') || // Excel (.xlsx)
+                            responseContentType.includes('application/vnd.ms-excel') || // Excel (.xls)
+                            responseContentType.includes('text/csv') || // CSV files
+                            responseContentType.includes('image/') ||
+                            responseContentType.includes('video/') ||
+                            responseContentType.includes('audio/');
+
+    if (isBinaryResponse) {
+      console.log('[Proxy] Binary response detected:', {
+        path,
+        contentType: responseContentType,
+        status: response.status,
+      });
+
+      // Stream binary response as-is with proper headers
+      const binaryData = await response.arrayBuffer();
+      const nextResponse = new NextResponse(binaryData, {
+        status: response.status,
+        headers: {
+          'Content-Type': responseContentType,
+          'Content-Disposition': response.headers.get('content-disposition') || '',
+        },
+      });
+
+      // Forward Set-Cookie headers from backend for binary responses too
+      const setCookieHeaders = response.headers.getSetCookie?.() || [];
+      setCookieHeaders.forEach(cookie => {
+        const cookieParts = cookie.split(';').map(p => p.trim());
+        const [nameValue, ...attributes] = cookieParts;
+        const newAttributes = attributes
+          .filter(attr => !attr.toLowerCase().startsWith('secure'))
+          .filter(attr => !attr.toLowerCase().startsWith('samesite=none'));
+        newAttributes.push('SameSite=Lax');
+        newAttributes.push('Path=/');
+        const newCookie = [nameValue, ...newAttributes].join('; ');
+        nextResponse.headers.append('Set-Cookie', newCookie);
+      });
+
+      return nextResponse;
     }
 
     // Get response body - handle empty responses (e.g., successful free event registration returns null)

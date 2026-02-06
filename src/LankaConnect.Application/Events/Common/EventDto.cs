@@ -1,3 +1,5 @@
+using LankaConnect.Application.Badges.DTOs;
+using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -13,10 +15,24 @@ public record EventDto
     public Guid OrganizerId { get; init; }
     public int Capacity { get; init; }
     public int CurrentRegistrations { get; init; }
+
+    /// <summary>
+    /// Issue #51: Maximum attendees allowed per single registration
+    /// Configurable by event organizer (default: 10, max: 50)
+    /// </summary>
+    public int MaxAttendeesPerRegistration { get; init; } = 10;
+
     public EventStatus Status { get; init; }
     public EventCategory Category { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Phase 6A.46: User-facing display label based on event lifecycle
+    /// Computed based on PublishedAt, StartDate, EndDate, and Status
+    /// Values: "New", "Upcoming", "Cancelled", "Completed", "Inactive", or status name
+    /// </summary>
+    public string DisplayLabel { get; init; } = string.Empty;
 
     // Location information (nullable - not all events have physical locations)
     public string? Address { get; init; }
@@ -26,6 +42,18 @@ public record EventDto
     public string? Country { get; init; }
     public decimal? Latitude { get; init; }
     public decimal? Longitude { get; init; }
+
+    /// <summary>
+    /// Phase 6A.97: IANA timezone ID for consistent date/time display (e.g., "America/New_York").
+    /// Derived from event location (US state). Used by frontend to display times in event's local timezone.
+    /// </summary>
+    public string? TimeZoneId { get; init; }
+
+    /// <summary>
+    /// Phase 6A.97: Timezone abbreviation for display (e.g., "EST", "PST").
+    /// Computed based on TimeZoneId and event StartDate (accounts for DST).
+    /// </summary>
+    public string? TimeZoneAbbreviation { get; init; }
 
     // Legacy Ticket pricing (nullable - free events, backward compatibility)
     public decimal? TicketPriceAmount { get; init; }
@@ -67,6 +95,41 @@ public record EventDto
     // Media galleries (Epic 2 Phase 2)
     public IReadOnlyList<EventImageDto> Images { get; init; } = Array.Empty<EventImageDto>();
     public IReadOnlyList<EventVideoDto> Videos { get; init; } = Array.Empty<EventVideoDto>();
+
+    /// <summary>
+    /// Phase 6A.25: Badge Management System
+    /// Badges assigned to this event for overlay display
+    /// </summary>
+    public IReadOnlyList<EventBadgeDto> Badges { get; init; } = Array.Empty<EventBadgeDto>();
+
+    /// <summary>
+    /// Phase 6A.32: Email Groups Integration
+    /// IDs of email groups associated with this event for invitations
+    /// </summary>
+    public IReadOnlyList<Guid> EmailGroupIds { get; init; } = Array.Empty<Guid>();
+
+    /// <summary>
+    /// Phase 6A.32: Email Groups Integration
+    /// Summary details of email groups associated with this event
+    /// Includes IsActive flag to detect soft-deleted groups
+    /// </summary>
+    public IReadOnlyList<EmailGroupSummaryDto> EmailGroups { get; init; } = Array.Empty<EmailGroupSummaryDto>();
+
+    /// <summary>
+    /// Phase 6A.X: Event Organizer Contact Details
+    /// Optional contact information published by the event organizer
+    /// </summary>
+    public bool PublishOrganizerContact { get; init; }
+    public string? OrganizerContactName { get; init; }
+    public string? OrganizerContactPhone { get; init; }
+    public string? OrganizerContactEmail { get; init; }
+
+    /// <summary>
+    /// Phase 6A.X: Revenue Breakdown for paid events
+    /// Shows detailed fee breakdown (tax, Stripe fee, platform commission, organizer payout)
+    /// Null for free events
+    /// </summary>
+    public RevenueBreakdownDto? RevenueBreakdown { get; init; }
 }
 
 /// <summary>
@@ -96,3 +159,6 @@ public record EventVideoDto
     public int DisplayOrder { get; init; }
     public DateTime UploadedAt { get; init; }
 }
+
+// Phase 6A.32: EmailGroupSummaryDto moved to LankaConnect.Application.Communications.Common
+// to avoid Swagger schema conflicts (duplicate schemaId error)

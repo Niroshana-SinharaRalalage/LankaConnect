@@ -7,6 +7,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Observability;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -26,7 +27,10 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly IUserRepository _userRepository;
+    private readonly IEmailMetrics _emailMetrics; // Phase 6A.99: For recording pre-send failures
     private readonly ILogger<ResendTicketEmailCommandHandler> _logger;
+
+    private const string HandlerName = "ResendTicketEmailCommandHandler";
 
     public ResendTicketEmailCommandHandler(
         IEventRepository eventRepository,
@@ -35,6 +39,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
         IUserRepository userRepository,
+        IEmailMetrics emailMetrics, // Phase 6A.99
         ILogger<ResendTicketEmailCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -43,7 +48,55 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
         _userRepository = userRepository;
+        _emailMetrics = emailMetrics;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Phase 6A.99: Record pre-send failures in email metrics for dashboard visibility.
+    /// These are failures that happen BEFORE the email send is attempted.
+    /// </summary>
+    private void RecordPreSendFailure(string errorMessage, string? recipientEmail = null)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var maskedEmail = string.IsNullOrEmpty(recipientEmail)
+            ? "unknown@unknown.com"
+            : MaskEmail(recipientEmail);
+
+        _emailMetrics.RecordFailedEmail(
+            correlationId,
+            EmailTemplateNames.PaidEventRegistration,
+            maskedEmail,
+            $"[Pre-send] {errorMessage}",
+            HandlerName);
+
+        // Also record as a failed send for template stats
+        _emailMetrics.RecordEmailSent(EmailTemplateNames.PaidEventRegistration, 0, success: false);
+    }
+
+    /// <summary>
+    /// Masks email for privacy in metrics.
+    /// </summary>
+    private static string MaskEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            return "***@***.***";
+
+        var parts = email.Split('@');
+        var localPart = parts[0];
+        var domainParts = parts[1].Split('.');
+
+        var maskedLocal = localPart.Length > 1
+            ? localPart[0] + new string('*', Math.Min(localPart.Length - 1, 3))
+            : "*";
+
+        var maskedDomain = domainParts[0].Length > 1
+            ? domainParts[0][0] + new string('*', Math.Min(domainParts[0].Length - 1, 3))
+            : "*";
+
+        var tld = domainParts.Length > 1 ? domainParts[^1] : "com";
+
+        return $"{maskedLocal}@{maskedDomain}.{tld}";
     }
 
     public async Task<Result> Handle(ResendTicketEmailCommand request, CancellationToken cancellationToken)
@@ -74,6 +127,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Registration not found - RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
                         request.RegistrationId, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("Registration not found");
                     return Result.Failure("Registration not found");
                 }
 
@@ -91,6 +145,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Event not found - EventId={EventId}, RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
                         registration.EventId, request.RegistrationId, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("Event not found");
                     return Result.Failure("Event not found");
                 }
 
@@ -107,6 +162,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Authorization failed - UserId={UserId}, RegistrationId={RegistrationId}, OwnerId={OwnerId}, Duration={ElapsedMs}ms",
                         request.UserId, request.RegistrationId, registration.UserId, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("Not authorized to resend this ticket");
                     return Result.Failure("Not authorized to resend this ticket");
                 }
 
@@ -123,6 +179,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Payment not completed - RegistrationId={RegistrationId}, PaymentStatus={PaymentStatus}, Duration={ElapsedMs}ms",
                         request.RegistrationId, registration.PaymentStatus, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("Payment not completed for this registration");
                     return Result.Failure("Payment not completed for this registration");
                 }
 
@@ -154,6 +211,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                             "ResendTicketEmail FAILED: Ticket generation failed - RegistrationId={RegistrationId}, Error={Error}, Duration={ElapsedMs}ms",
                             request.RegistrationId, string.Join(", ", generateResult.Errors), stopwatch.ElapsedMilliseconds);
 
+                        RecordPreSendFailure($"Failed to generate ticket: {string.Join(", ", generateResult.Errors)}");
                         return Result.Failure("Failed to generate ticket");
                     }
 
@@ -179,6 +237,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Ticket not found after generation - RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
                         request.RegistrationId, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("Ticket not found after generation");
                     return Result.Failure("Ticket not found");
                 }
 
@@ -218,6 +277,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: PDF retrieval failed - TicketId={TicketId}, Error={Error}, Duration={ElapsedMs}ms",
                         ticket.Id, string.Join(", ", pdfResult.Errors), stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure($"Failed to retrieve ticket PDF: {string.Join(", ", pdfResult.Errors)}");
                     return Result.Failure("Failed to retrieve ticket PDF");
                 }
 
@@ -246,6 +306,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: No email address found - RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
                         request.RegistrationId, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure("No email address found for this registration");
                     return Result.Failure("No email address found for this registration");
                 }
 
@@ -318,6 +379,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Template rendering failed - Template={TemplateName}, RegistrationId={RegistrationId}, Error={Error}, Duration={ElapsedMs}ms",
                         EmailTemplateNames.PaidEventRegistration, request.RegistrationId, renderResult.Error, stopwatch.ElapsedMilliseconds);
 
+                    RecordPreSendFailure($"Failed to render email template: {renderResult.Error}", recipientEmail);
                     return Result.Failure("Failed to render email template");
                 }
 

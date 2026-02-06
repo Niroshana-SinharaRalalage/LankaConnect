@@ -314,6 +314,131 @@ public static class EmailTemplateContract
         /// URL to download/view ticket.
         /// </summary>
         public const string TicketUrl = "TicketUrl";
+
+        /// <summary>
+        /// Registration date.
+        /// </summary>
+        public const string RegistrationDate = "RegistrationDate";
+
+        /// <summary>
+        /// Number of registrations/quantity.
+        /// </summary>
+        public const string Quantity = "Quantity";
+
+        /// <summary>
+        /// Flag for whether attendee details are available.
+        /// </summary>
+        public const string HasAttendeeDetails = "HasAttendeeDetails";
+
+        /// <summary>
+        /// Attendee details (JSON or formatted string).
+        /// </summary>
+        public const string Attendees = "Attendees";
+
+        /// <summary>
+        /// Flag for whether contact info is available.
+        /// </summary>
+        public const string HasContactInfo = "HasContactInfo";
+
+        /// <summary>
+        /// Contact email address.
+        /// </summary>
+        public const string ContactEmail = "ContactEmail";
+
+        /// <summary>
+        /// Contact phone number.
+        /// </summary>
+        public const string ContactPhone = "ContactPhone";
+    }
+
+    #endregion
+
+    #region Payment Parameters
+
+    /// <summary>
+    /// Parameters for payment-related emails.
+    /// </summary>
+    public static class Payment
+    {
+        /// <summary>
+        /// Amount paid (formatted).
+        /// </summary>
+        public const string AmountPaid = "AmountPaid";
+
+        /// <summary>
+        /// Total amount for the order.
+        /// </summary>
+        public const string TotalAmount = "TotalAmount";
+
+        /// <summary>
+        /// Stripe Payment Intent ID.
+        /// </summary>
+        public const string PaymentIntentId = "PaymentIntentId";
+
+        /// <summary>
+        /// Order confirmation number.
+        /// </summary>
+        public const string OrderNumber = "OrderNumber";
+
+        /// <summary>
+        /// Date of payment.
+        /// </summary>
+        public const string PaymentDate = "PaymentDate";
+    }
+
+    #endregion
+
+    #region Ticket Parameters
+
+    /// <summary>
+    /// Parameters for ticket-related emails.
+    /// </summary>
+    public static class Ticket
+    {
+        /// <summary>
+        /// Flag for whether a ticket is attached/included.
+        /// </summary>
+        public const string HasTicket = "HasTicket";
+
+        /// <summary>
+        /// Ticket code/number.
+        /// </summary>
+        public const string TicketCode = "TicketCode";
+
+        /// <summary>
+        /// Ticket expiry date.
+        /// </summary>
+        public const string TicketExpiryDate = "TicketExpiryDate";
+
+        /// <summary>
+        /// URL to view/download ticket.
+        /// </summary>
+        public const string TicketUrl = "TicketUrl";
+
+        /// <summary>
+        /// Ticket type name (e.g., "General Admission", "VIP").
+        /// </summary>
+        public const string TicketType = "TicketType";
+    }
+
+    #endregion
+
+    #region Event Image Parameters
+
+    /// <summary>
+    /// Parameters for event image display.
+    /// </summary>
+    public static class EventImage
+    {
+        /// <summary>
+        /// Flag for whether an event image should be displayed.
+        /// </summary>
+        public const string HasEventImage = "HasEventImage";
+
+        /// <summary>
+        /// URL to the event image.
+        /// </summary>
+        public const string EventImageUrl = "EventImageUrl";
     }
 
     #endregion

@@ -40,9 +40,8 @@ public class SendPasswordResetCommandHandlerTests
         // Phase 6A.87: Default setup for typed email service to return success
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         _handler = new SendPasswordResetCommandHandler(
             _mockUserRepository.Object,
@@ -89,7 +88,6 @@ public class SendPasswordResetCommandHandlerTests
                     p.UserEmail == email &&
                     !string.IsNullOrEmpty(p.ResetToken) &&
                     !string.IsNullOrEmpty(p.ResetLink)),
-                It.Is<string>(h => h == "SendPasswordResetCommandHandler"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -118,7 +116,6 @@ public class SendPasswordResetCommandHandlerTests
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.IsAny<IEmailParameters>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -148,7 +145,6 @@ public class SendPasswordResetCommandHandlerTests
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.IsAny<IEmailParameters>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
 
@@ -185,7 +181,6 @@ public class SendPasswordResetCommandHandlerTests
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.IsAny<IEmailParameters>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -218,7 +213,6 @@ public class SendPasswordResetCommandHandlerTests
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.IsAny<IEmailParameters>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
 
@@ -258,7 +252,6 @@ public class SendPasswordResetCommandHandlerTests
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.IsAny<PasswordResetEmailParams>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -281,7 +274,6 @@ public class SendPasswordResetCommandHandlerTests
         // Phase 6A.87: Setup typed email service to return failure
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "SMTP server unavailable" }));
 

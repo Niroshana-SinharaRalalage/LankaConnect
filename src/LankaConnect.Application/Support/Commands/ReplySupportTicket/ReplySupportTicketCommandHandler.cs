@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using System.Text.Json;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -14,7 +15,8 @@ namespace LankaConnect.Application.Support.Commands.ReplySupportTicket;
 
 /// <summary>
 /// Handler for ReplySupportTicketCommand
-/// Phase 6A.90: Adds admin reply to ticket and sends email notification
+/// Phase 6A.100: Adds admin reply to ticket and sends email notification.
+/// Uses ITypedEmailService with SupportTicketReplyEmailParams for compile-time type safety.
 /// </summary>
 public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTicketCommand>
 {
@@ -22,8 +24,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly IUserRepository _userRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IEmailService _emailService;
-    private readonly IApplicationUrlsService _urlsService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ReplySupportTicketCommandHandler> _logger;
 
@@ -32,8 +33,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
         IAdminAuditLogRepository auditLogRepository,
         IUserRepository userRepository,
         ICurrentUserService currentUserService,
-        IEmailService emailService,
-        IApplicationUrlsService urlsService,
+        ITypedEmailService typedEmailService,
         IUnitOfWork unitOfWork,
         ILogger<ReplySupportTicketCommandHandler> logger)
     {
@@ -41,8 +41,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
         _auditLogRepository = auditLogRepository;
         _userRepository = userRepository;
         _currentUserService = currentUserService;
-        _emailService = emailService;
-        _urlsService = urlsService;
+        _typedEmailService = typedEmailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -159,38 +158,32 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
     {
         try
         {
-            var parameters = new Dictionary<string, object>
-            {
-                { "Name", ticket.Name },
-                { "ReferenceId", ticket.ReferenceId },
-                { "Subject", ticket.Subject },
-                { "ReplyContent", replyContent },
-                { "AdminName", adminName },
-                { "SupportEmail", "support@lankaconnect.com" },
-                { "Year", DateTime.UtcNow.Year.ToString() },
-                { "RepliedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") + " UTC" }
-            };
+            // Phase 6A.100: Create typed email parameters
+            var emailParams = SupportTicketReplyEmailParams.Create(
+                recipientEmail: ticket.Email.Value,
+                recipientName: ticket.Name,
+                referenceId: ticket.ReferenceId,
+                subject: ticket.Subject,
+                replyContent: replyContent,
+                adminName: adminName,
+                repliedAt: DateTime.UtcNow);
 
             _logger.LogInformation(
-                "[Phase 6A.90] Sending support ticket reply email to {Email}, ReferenceId={ReferenceId}",
+                "[Phase 6A.100] Sending support ticket reply email to {Email}, ReferenceId={ReferenceId}",
                 ticket.Email.Value, ticket.ReferenceId);
 
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.SupportTicketReply,
-                ticket.Email.Value,
-                parameters,
-                cancellationToken);
+            var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-            if (result.IsSuccess)
+            if (result.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.90] Support ticket reply email sent successfully to {Email}",
-                    ticket.Email.Value);
+                    "[Phase 6A.100] Support ticket reply email sent successfully to {Email}, CorrelationId={CorrelationId}",
+                    ticket.Email.Value, result.CorrelationId);
             }
             else
             {
                 _logger.LogWarning(
-                    "[Phase 6A.90] Failed to send support ticket reply email to {Email}: {Errors}",
+                    "[Phase 6A.100] Failed to send support ticket reply email to {Email}: {Errors}",
                     ticket.Email.Value, string.Join(", ", result.Errors));
             }
         }
@@ -198,7 +191,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
         {
             // Fail-silent: Log error but don't throw
             _logger.LogError(ex,
-                "[Phase 6A.90] Error sending support ticket reply email to {Email}",
+                "[Phase 6A.100] Error sending support ticket reply email to {Email}",
                 ticket.Email.Value);
         }
     }

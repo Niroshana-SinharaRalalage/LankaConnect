@@ -147,17 +147,16 @@ public class CreateSupportTicketCommandHandler : ICommandHandler<CreateSupportTi
                 "[Phase 6A.87] Sending support ticket confirmation email to {Email}, ReferenceId={ReferenceId}",
                 ticket.Email.Value, ticket.ReferenceId);
 
-            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            // Phase 6A.100: Send via typed email service
             var typedResult = await _typedEmailService.SendEmailAsync(
                 emailParams,
-                HandlerName,
                 cancellationToken);
 
             if (typedResult.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.87] Support ticket confirmation email sent successfully to {Email}, UsedTyped={UsedTyped}",
-                    ticket.Email.Value, typedResult.UsedTypedParameters);
+                    "[Phase 6A.100] Support ticket confirmation email sent successfully to {Email}",
+                    ticket.Email.Value);
             }
             else
             {

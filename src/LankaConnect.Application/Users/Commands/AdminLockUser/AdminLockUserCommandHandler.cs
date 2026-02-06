@@ -201,17 +201,16 @@ public class AdminLockUserCommandHandler : ICommandHandler<AdminLockUserCommand>
                 "[Phase 6A.87] Sending lock notification email to {Email}",
                 user.Email.Value);
 
-            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            // Phase 6A.100: Send via typed email service
             var typedResult = await _typedEmailService.SendEmailAsync(
                 emailParams,
-                HandlerName,
                 cancellationToken);
 
             if (typedResult.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.87] Lock notification email sent successfully to {Email}, UsedTyped={UsedTyped}",
-                    user.Email.Value, typedResult.UsedTypedParameters);
+                    "[Phase 6A.100] Lock notification email sent successfully to {Email}",
+                    user.Email.Value);
             }
             else
             {

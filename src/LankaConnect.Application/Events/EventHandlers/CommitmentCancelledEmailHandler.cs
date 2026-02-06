@@ -118,17 +118,16 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
             }
 
-            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            // Phase 6A.100: Send via typed email service
             var typedResult = await _typedEmailService.SendEmailAsync(
                 emailParams,
-                HandlerName,
                 cancellationToken);
 
             if (typedResult.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.87] Commitment cancellation email sent to {Email} for event {EventId}, UsedTyped={UsedTyped}",
-                    user.Email.Value, @event.Id, typedResult.UsedTypedParameters);
+                    "[Phase 6A.100] Commitment cancellation email sent to {Email} for event {EventId}",
+                    user.Email.Value, @event.Id);
             }
             else
             {

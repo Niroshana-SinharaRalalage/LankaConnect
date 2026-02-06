@@ -79,10 +79,9 @@ public class MemberVerificationRequestedEventHandler
                     "MemberVerificationRequested: Sending verification email - Email={Email}, UserName={UserName}",
                     domainEvent.Email, userName);
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
@@ -96,8 +95,8 @@ public class MemberVerificationRequestedEventHandler
                 else
                 {
                     _logger.LogInformation(
-                        "MemberVerificationRequested COMPLETE: Email sent successfully - Email={Email}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
-                        domainEvent.Email, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] MemberVerificationRequested COMPLETE: Email sent - Email={Email}, Duration={ElapsedMs}ms",
+                        domainEvent.Email, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

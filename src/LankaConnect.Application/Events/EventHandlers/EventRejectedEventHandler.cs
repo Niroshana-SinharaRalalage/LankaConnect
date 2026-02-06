@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -12,22 +13,24 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles EventRejectedEvent to send rejection notification email to event organizer
+/// Phase 6A.100: Handles EventRejectedEvent to send rejection notification email to event organizer.
+/// Uses ITypedEmailService with EventRejectedEmailParams for compile-time type safety.
+/// Replaces inline HTML generation with database templates.
 /// </summary>
 public class EventRejectedEventHandler : INotificationHandler<DomainEventNotification<EventRejectedEvent>>
 {
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILogger<EventRejectedEventHandler> _logger;
 
     public EventRejectedEventHandler(
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         ILogger<EventRejectedEventHandler> logger)
     {
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _logger = logger;
@@ -88,44 +91,39 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                     organizer.Email.Value);
 
                 var organizerName = $"{organizer.FirstName} {organizer.LastName}";
-                var parameters = new Dictionary<string, object>
-                {
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "Reason", domainEvent.Reason },
-                    { "RejectedAt", domainEvent.RejectedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                    { "OrganizerName", organizerName }
-                };
 
-                var emailMessage = new EmailMessageDto
-                {
-                    ToEmail = organizer.Email.Value,
-                    ToName = organizerName,
-                    Subject = $"Event Requires Changes: {@event.Title.Value}",
-                    HtmlBody = GenerateEventRejectedHtml(parameters),
-                    Priority = 1 // High priority
-                };
+                // Phase 6A.100: Create typed email parameters
+                var emailParams = EventRejectedEmailParams.Create(
+                    organizerId: organizer.Id,
+                    organizerName: organizerName,
+                    organizerEmail: organizer.Email.Value,
+                    eventId: @event.Id,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    reason: domainEvent.Reason,
+                    rejectedAt: domainEvent.RejectedAt);
 
                 _logger.LogInformation(
                     "EventRejected: Sending rejection email - To={Email}",
                     organizer.Email.Value);
 
-                var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+                // Phase 6A.100: Use typed email service
+                var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (result.Success)
+                {
+                    _logger.LogInformation(
+                        "EventRejected COMPLETE: Email sent successfully - EventId={EventId}, To={Email}, Duration={ElapsedMs}ms, CorrelationId={CorrelationId}",
+                        domainEvent.EventId, organizer.Email.Value, stopwatch.ElapsedMilliseconds, result.CorrelationId);
+                }
+                else
                 {
                     _logger.LogError(
                         "EventRejected FAILED: Email sending failed - EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
                         domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "EventRejected COMPLETE: Email sent successfully - EventId={EventId}, To={Email}, Duration={ElapsedMs}ms",
-                        domainEvent.EventId, organizer.Email.Value, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -148,27 +146,5 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                     domainEvent.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
             }
         }
-    }
-
-    private string GenerateEventRejectedHtml(Dictionary<string, object> parameters)
-    {
-        var organizerName = parameters.TryGetValue("OrganizerName", out var name) ? name.ToString() : "Event Organizer";
-        return $@"
-            <html>
-            <body>
-                <h2>Event Requires Changes</h2>
-                <p>Dear {organizerName},</p>
-                <p>Your event submission has been reviewed and requires some changes before it can be approved:</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Date:</strong> {parameters["EventStartDate"]} at {parameters["EventStartTime"]}</li>
-                    <li><strong>Reviewed:</strong> {parameters["RejectedAt"]}</li>
-                </ul>
-                <p><strong>Feedback from our team:</strong></p>
-                <p>{parameters["Reason"]}</p>
-                <p>Please update your event and resubmit for approval.</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
     }
 }

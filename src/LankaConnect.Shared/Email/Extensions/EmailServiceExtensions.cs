@@ -1,4 +1,3 @@
-using LankaConnect.Shared.Email.Configuration;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Configuration;
@@ -8,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace LankaConnect.Shared.Email.Extensions;
 
 /// <summary>
-/// Phase 6A.87: DI registration extensions for the hybrid email system.
+/// Phase 6A.100: DI registration extensions for the unified typed email system.
 ///
 /// Usage in Startup/Program.cs:
 ///
@@ -18,16 +17,8 @@ namespace LankaConnect.Shared.Email.Extensions;
 ///   // Register bridge adapter (in Application)
 ///   services.AddEmailServiceBridge();
 ///
-/// Configuration (appsettings.json):
-///
-///   "EmailFeatureFlags": {
-///     "UseTypedParameters": false,
-///     "EnableLogging": true,
-///     "EnableValidation": true,
-///     "HandlerOverrides": {
-///       "EventReminderJob": true
-///     }
-///   }
+/// All handlers now use ITypedEmailService.SendEmailAsync(IEmailParameters).
+/// Feature flags have been removed - single code path only.
 /// </summary>
 public static class EmailServiceExtensions
 {
@@ -36,23 +27,13 @@ public static class EmailServiceExtensions
     /// Call this in the Application/API startup.
     /// </summary>
     /// <param name="services">Service collection</param>
-    /// <param name="configuration">Configuration (for feature flags)</param>
+    /// <param name="configuration">Configuration (kept for future extensibility)</param>
     /// <returns>Service collection for chaining</returns>
     public static IServiceCollection AddTypedEmailServices(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register feature flags from configuration
-        services.Configure<EmailFeatureFlags>(
-            configuration.GetSection("EmailFeatureFlags"));
-
-        // Register as singleton for consistent flag checking
-        services.AddSingleton(sp =>
-        {
-            var flags = new EmailFeatureFlags();
-            configuration.GetSection("EmailFeatureFlags").Bind(flags);
-            return flags;
-        });
+        // Phase 6A.100: Feature flags removed - single unified approach
 
         // Register logger implementation
         services.AddSingleton<IEmailLogger, DefaultEmailLogger>();
@@ -60,9 +41,9 @@ public static class EmailServiceExtensions
         // Register metrics implementation (singleton for aggregation)
         services.AddSingleton<IEmailMetrics, DefaultEmailMetrics>();
 
-        // Register typed email service adapter
+        // Phase 6A.100: Register TypedEmailService (replaces TypedEmailServiceAdapter)
         // Note: IEmailServiceBridge must be registered separately (in Application project)
-        services.AddScoped<ITypedEmailService, TypedEmailServiceAdapter>();
+        services.AddScoped<ITypedEmailService, TypedEmailService>();
 
         return services;
     }

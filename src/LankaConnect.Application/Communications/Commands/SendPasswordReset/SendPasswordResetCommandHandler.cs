@@ -164,10 +164,9 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
                     expiresAt: tokenExpiresAt
                 );
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 if (!typedResult.Success)

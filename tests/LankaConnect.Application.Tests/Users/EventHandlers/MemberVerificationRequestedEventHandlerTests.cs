@@ -66,9 +66,8 @@ public class MemberVerificationRequestedEventHandlerTests
         // Phase 6A.87: Setup typed email service mock
         _typedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
@@ -80,7 +79,6 @@ public class MemberVerificationRequestedEventHandlerTests
                 p.VerificationUrl == verificationUrl &&
                 p.UserName == "John Doe" &&
                 p.ExpirationHours == "24"),
-            It.Is<string>(h => h == "MemberVerificationRequestedEventHandler"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -107,9 +105,8 @@ public class MemberVerificationRequestedEventHandlerTests
         // Phase 6A.87: Setup typed email service mock
         _typedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
@@ -119,7 +116,6 @@ public class MemberVerificationRequestedEventHandlerTests
             It.Is<EmailVerificationEmailParams>(p =>
                 p.Email == email &&
                 p.UserName == "John"),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -145,9 +141,8 @@ public class MemberVerificationRequestedEventHandlerTests
         // Phase 6A.87: Setup typed email service mock
         _typedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
@@ -157,7 +152,6 @@ public class MemberVerificationRequestedEventHandlerTests
             It.Is<EmailVerificationEmailParams>(p =>
                 p.Email == email &&
                 p.UserName == "Friend"),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -180,7 +174,6 @@ public class MemberVerificationRequestedEventHandlerTests
         // Phase 6A.87: Setup typed email service to return failure
         _typedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email service error" }));
 

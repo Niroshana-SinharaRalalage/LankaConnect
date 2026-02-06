@@ -62,9 +62,8 @@ public class EventReminderJobTests
         _typedEmailService
             .Setup(x => x.SendEmailAsync(
                 It.IsAny<IEmailParameters>(),
-                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         _job = new EventReminderJob(
             _eventRepository.Object,
@@ -110,7 +109,6 @@ public class EventReminderJobTests
                 p.AttendeeName == "Jane Attendee" &&
                 p.EventTitle == eventTitle &&
                 p.AttendeeEmail == userEmail),
-            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
@@ -141,7 +139,6 @@ public class EventReminderJobTests
             It.Is<EventReminderEmailParams>(p =>
                 p.EventTitle == eventTitle &&
                 p.AttendeeEmail == contactEmail),
-            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
@@ -162,7 +159,6 @@ public class EventReminderJobTests
         // Assert - Phase 6A.87: Verify no typed emails sent
         _typedEmailService.Verify(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -193,7 +189,6 @@ public class EventReminderJobTests
         await act.Should().NotThrowAsync();
         _typedEmailService.Verify(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -227,14 +222,13 @@ public class EventReminderJobTests
         var callCount = 0;
         _typedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
                 callCount++;
                 return callCount == 1
                     ? TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email failed" })
-                    : TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100);
+                    : TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100);
             });
 
         // Act
@@ -243,7 +237,6 @@ public class EventReminderJobTests
         // Assert - Both registrations should be attempted (3 windows × 2 registrations = 6 calls)
         _typedEmailService.Verify(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            "EventReminderJob",
             It.IsAny<CancellationToken>()), Times.Exactly(6));
     }
 

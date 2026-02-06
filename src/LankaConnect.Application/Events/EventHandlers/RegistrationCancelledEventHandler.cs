@@ -113,10 +113,9 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                         @event.OrganizerContactPhone);
                 }
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
@@ -130,8 +129,8 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 else
                 {
                     _logger.LogInformation(
-                        "RegistrationCancelled COMPLETE: Email sent successfully - Email={Email}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
-                        user.Email.Value, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] RegistrationCancelled COMPLETE: Email sent - Email={Email}, Duration={ElapsedMs}ms",
+                        user.Email.Value, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

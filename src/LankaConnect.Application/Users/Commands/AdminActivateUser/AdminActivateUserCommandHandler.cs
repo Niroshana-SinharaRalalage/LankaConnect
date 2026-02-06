@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using System.Text.Json;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -14,14 +15,15 @@ namespace LankaConnect.Application.Users.Commands.AdminActivateUser;
 
 /// <summary>
 /// Handler for AdminActivateUserCommand
-/// Phase 6A.90: Activates a user by admin with role hierarchy protection and audit logging
+/// Phase 6A.100: Activates a user by admin with role hierarchy protection and audit logging.
+/// Uses ITypedEmailService with AccountActivatedEmailParams for compile-time type safety.
 /// </summary>
 public class AdminActivateUserCommandHandler : ICommandHandler<AdminActivateUserCommand>
 {
     private readonly IUserRepository _userRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AdminActivateUserCommandHandler> _logger;
@@ -30,7 +32,7 @@ public class AdminActivateUserCommandHandler : ICommandHandler<AdminActivateUser
         IUserRepository userRepository,
         IAdminAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IUnitOfWork unitOfWork,
         ILogger<AdminActivateUserCommandHandler> logger)
@@ -38,7 +40,7 @@ public class AdminActivateUserCommandHandler : ICommandHandler<AdminActivateUser
         _userRepository = userRepository;
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -182,34 +184,29 @@ public class AdminActivateUserCommandHandler : ICommandHandler<AdminActivateUser
         {
             var loginUrl = $"{_urlsService.FrontendBaseUrl}/auth/signin";
 
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", user.FullName },
-                { "LoginUrl", loginUrl },
-                { "SupportEmail", "support@lankaconnect.com" },
-                { "Year", DateTime.UtcNow.Year.ToString() }
-            };
+            // Phase 6A.100: Create typed email parameters
+            var emailParams = AccountActivatedEmailParams.Create(
+                userId: user.Id,
+                recipientEmail: user.Email.Value,
+                userName: user.FullName,
+                loginUrl: loginUrl);
 
             _logger.LogInformation(
-                "[Phase 6A.90] Sending activation email to {Email}",
+                "[Phase 6A.100] Sending activation email to {Email}",
                 user.Email.Value);
 
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.AccountActivatedByAdmin,
-                user.Email.Value,
-                parameters,
-                cancellationToken);
+            var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-            if (result.IsSuccess)
+            if (result.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.90] Activation email sent successfully to {Email}",
-                    user.Email.Value);
+                    "[Phase 6A.100] Activation email sent successfully to {Email}, CorrelationId={CorrelationId}",
+                    user.Email.Value, result.CorrelationId);
             }
             else
             {
                 _logger.LogWarning(
-                    "[Phase 6A.90] Failed to send activation email to {Email}: {Errors}",
+                    "[Phase 6A.100] Failed to send activation email to {Email}: {Errors}",
                     user.Email.Value, string.Join(", ", result.Errors));
             }
         }
@@ -217,7 +214,7 @@ public class AdminActivateUserCommandHandler : ICommandHandler<AdminActivateUser
         {
             // Fail-silent: Log error but don't throw
             _logger.LogError(ex,
-                "[Phase 6A.90] Error sending activation email to user {UserId}",
+                "[Phase 6A.100] Error sending activation email to user {UserId}",
                 user.Id);
         }
     }

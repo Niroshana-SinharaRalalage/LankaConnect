@@ -1,5 +1,4 @@
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
 using LankaConnect.Application.Interfaces;
@@ -10,6 +9,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -18,11 +19,11 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.EventHandlers;
 
 /// <summary>
-/// Phase 6A.75: Unit tests for EventApprovedEventHandler with templated email support.
+/// Phase 6A.100: Unit tests for EventApprovedEventHandler with ITypedEmailService.
 /// </summary>
 public class EventApprovedEventHandlerTests
 {
-    private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
@@ -31,7 +32,7 @@ public class EventApprovedEventHandlerTests
 
     public EventApprovedEventHandlerTests()
     {
-        _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
@@ -44,7 +45,7 @@ public class EventApprovedEventHandlerTests
             .Returns((Guid id) => $"https://lankaconnect.com/events/{id}/manage");
 
         _handler = new EventApprovedEventHandler(
-            _emailService.Object,
+            _typedEmailService.Object,
             _userRepository.Object,
             _eventRepository.Object,
             _emailUrlHelper.Object,
@@ -52,7 +53,7 @@ public class EventApprovedEventHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithValidEvent_ShouldSendTemplatedEmailToOrganizer()
+    public async Task Handle_WithValidEvent_ShouldSendTypedEmailToOrganizer()
     {
         // Arrange
         var eventId = Guid.NewGuid();
@@ -72,23 +73,18 @@ public class EventApprovedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert - Phase 6A.75: Verify templated email is used
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.EventApproval,
-            organizerEmail,
-            It.Is<Dictionary<string, object>>(p =>
-                p["OrganizerName"].ToString() == "John Organizer" &&
-                p["EventTitle"].ToString() == eventTitle),
+        // Assert - Phase 6A.100: Verify typed email service is used
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventApprovalEmailParams>(p =>
+                p.OrganizerEmail == organizerEmail &&
+                p.OrganizerName == "John Organizer" &&
+                p.EventTitle == eventTitle),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -113,26 +109,20 @@ public class EventApprovedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert - Phase 6A.75: Verify URLs are included
+        // Assert - Phase 6A.100: Verify URLs are included
         _emailUrlHelper.Verify(x => x.BuildEventDetailsUrl(eventId), Times.Once);
         _emailUrlHelper.Verify(x => x.BuildEventManageUrl(eventId), Times.Once);
 
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            EmailTemplateNames.EventApproval,
-            organizerEmail,
-            It.Is<Dictionary<string, object>>(p =>
-                p.ContainsKey("EventUrl") &&
-                p.ContainsKey("EventManageUrl")),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventApprovalEmailParams>(p =>
+                !string.IsNullOrEmpty(p.EventUrl) &&
+                !string.IsNullOrEmpty(p.EventManageUrl)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -152,10 +142,8 @@ public class EventApprovedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Never);
         _userRepository.Verify(x => x.GetByIdAsync(
             It.IsAny<Guid>(),
@@ -183,10 +171,8 @@ public class EventApprovedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert
-        _emailService.Verify(x => x.SendTemplatedEmailAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -207,12 +193,8 @@ public class EventApprovedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("Email service error"));
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Fail("test-correlation-id", new List<string> { "Email service error" }));
 
         // Act - Should not throw (fail-silent pattern)
         var act = async () => await _handler.Handle(notification, CancellationToken.None);

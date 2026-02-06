@@ -8,7 +8,6 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
-using LankaConnect.Shared.Email.Configuration;
 using LankaConnect.Shared.Email.Contracts;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -18,6 +17,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
 /// Phase 6A.24: Handles PaymentCompletedEvent to send confirmation email and generate tickets for paid events.
+/// Phase 6A.100: Unified to always use typed email parameters.
 /// This handler is triggered after successful payment for paid event registrations.
 /// </summary>
 public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNotification<PaymentCompletedEvent>>
@@ -28,11 +28,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
-    private readonly EmailFeatureFlags _featureFlags;  // Phase 6A.87: Added for typed parameters migration
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
-
-    private const string HandlerName = nameof(PaymentCompletedEventHandler);
 
     public PaymentCompletedEventHandler(
         IEmailService emailService,
@@ -41,8 +38,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEmailUrlHelper emailUrlHelper,  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
-        EmailFeatureFlags featureFlags,  // Phase 6A.87: Added for typed parameters migration
+        IEmailUrlHelper emailUrlHelper,
         ILogger<PaymentCompletedEventHandler> logger)
     {
         _emailService = emailService;
@@ -51,8 +47,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _emailUrlHelper = emailUrlHelper;  // Phase 6A.83: Added for EventDetailsUrl and TicketUrl
-        _featureFlags = featureFlags;  // Phase 6A.87: Added for typed parameters migration
+        _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
 
@@ -198,21 +193,11 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 }
             }
 
-            // Phase 6A.87: Check feature flag for typed parameters
-            var useTypedParameters = _featureFlags.IsEnabledForHandler(HandlerName);
-            _logger.LogInformation(
-                "[Phase 6A.87] Using typed parameters: {UseTypedParameters} for handler: {HandlerName}",
-                useTypedParameters, HandlerName);
-
             // Get event's primary image URL (direct URL, no CID)
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
 
-            Dictionary<string, object> parameters;
-
-            if (useTypedParameters)
-            {
-                // Phase 6A.87: Use typed TicketConfirmationEmailParams
+            // Phase 6A.100: Use typed TicketConfirmationEmailParams (unified approach)
                 var typedParams = TicketConfirmationEmailParams.Create(
                     eventId: @event.Id,
                     registrationId: registration.Id,
@@ -276,83 +261,20 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                         @event.OrganizerContactPhone);
                 }
 
-                // Validate if validation is enabled
-                if (_featureFlags.EnableValidation)
-                {
-                    if (!typedParams.Validate(out var validationErrors))
-                    {
-                        _logger.LogError(
-                            "[Phase 6A.87] [PaymentEmail-VALIDATION-ERROR] Parameter validation failed - CorrelationId: {CorrelationId}, Errors: {Errors}",
-                            correlationId, string.Join(", ", validationErrors));
-                        // Continue anyway - validation is advisory during migration
-                    }
-                }
-
-                // Convert to dictionary for template rendering
-                parameters = typedParams.ToDictionary();
-                _logger.LogInformation(
-                    "[Phase 6A.87] [PaymentEmail-TYPED] Built typed parameters - CorrelationId: {CorrelationId}, ParameterCount: {ParameterCount}",
-                    correlationId, parameters.Count);
-            }
-            else
+            // Phase 6A.100: Validate parameters
+            if (!typedParams.Validate(out var validationErrors))
             {
-                // Legacy: Use Dictionary approach
-                var hasAttendeeDetails = registration.HasDetailedAttendees() && registration.Attendees.Any();
-                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
-
-                parameters = new Dictionary<string, object>
-                {
-                    { "UserName", recipientName },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(domainEvent.PaymentCompletedAt, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                    { "HasAttendeeDetails", hasAttendeeDetails },
-                    { "EventImageUrl", eventImageUrl },
-                    { "HasEventImage", hasEventImage },
-                    { "AmountPaid", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
-                    { "TotalAmount", domainEvent.AmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
-                    { "Quantity", registration.Attendees.Count },
-                    { "TicketType", @event.IsFree() ? "Free Entry" : "General Admission" },
-                    { "OrderNumber", domainEvent.PaymentIntentId },
-                    { "PaymentIntentId", domainEvent.PaymentIntentId },
-                    { "PaymentDate", domainEvent.PaymentCompletedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                    { "SignUpListsUrl", @event.HasSignUpLists() ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups" : "" }
-                };
-
-                // Add contact information if available
-                if (registration.Contact != null)
-                {
-                    parameters["ContactEmail"] = registration.Contact.Email;
-                    parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                    parameters["HasContactInfo"] = true;
-                }
-                else
-                {
-                    parameters["ContactEmail"] = "";
-                    parameters["ContactPhone"] = "";
-                    parameters["HasContactInfo"] = false;
-                }
-
-                // Add organizer contact parameters
-                if (@event.HasOrganizerContact())
-                {
-                    parameters["HasOrganizerContact"] = true;
-                    parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "Event Organizer";
-                    parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-                    parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
-                }
-                else
-                {
-                    parameters["HasOrganizerContact"] = false;
-                    parameters["OrganizerContactName"] = "";
-                    parameters["OrganizerContactEmail"] = "";
-                    parameters["OrganizerContactPhone"] = "";
-                }
+                _logger.LogWarning(
+                    "[Phase 6A.100] [PaymentEmail-VALIDATION-WARNING] Parameter validation failed - CorrelationId: {CorrelationId}, Errors: {Errors}",
+                    correlationId, string.Join(", ", validationErrors));
+                // Continue anyway - validation is advisory
             }
+
+            // Convert to dictionary for template rendering
+            var parameters = typedParams.ToDictionary();
+            _logger.LogInformation(
+                "[Phase 6A.100] [PaymentEmail-TYPED] Built typed parameters - CorrelationId: {CorrelationId}, ParameterCount: {ParameterCount}",
+                correlationId, parameters.Count);
 
             // Phase 6A.52: Step 4 - Generate ticket with QR code
             _logger.LogInformation(

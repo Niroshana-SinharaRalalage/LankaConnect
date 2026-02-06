@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -13,25 +14,25 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Phase 6A.75: Handles EventApprovedEvent to send approval notification email to event organizer.
-/// Uses database-backed email template for consistent branding.
+/// Phase 6A.100: Handles EventApprovedEvent to send approval notification email to event organizer.
+/// Uses ITypedEmailService with EventApprovalEmailParams for compile-time type safety.
 /// </summary>
 public class EventApprovedEventHandler : INotificationHandler<DomainEventNotification<EventApprovedEvent>>
 {
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<EventApprovedEventHandler> _logger;
 
     public EventApprovedEventHandler(
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<EventApprovedEventHandler> logger)
     {
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;
@@ -78,43 +79,40 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     return;
                 }
 
-            var organizerName = $"{organizer.FirstName} {organizer.LastName}";
+                var organizerName = $"{organizer.FirstName} {organizer.LastName}";
 
-            // Phase 6A.75: Build URLs using centralized URL helper
-            var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
-            var eventManageUrl = _emailUrlHelper.BuildEventManageUrl(@event.Id);
+                // Build URLs using centralized URL helper
+                var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+                var eventManageUrl = _emailUrlHelper.BuildEventManageUrl(@event.Id);
 
-            // Build template parameters
-            var parameters = new Dictionary<string, object>
-            {
-                { "OrganizerName", organizerName },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventLocation", GetEventLocationString(@event) },
-                { "ApprovedAt", domainEvent.ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "EventUrl", eventUrl },
-                { "EventManageUrl", eventManageUrl }
-            };
+                // Phase 6A.100: Create typed email parameters
+                var emailParams = EventApprovalEmailParams.Create(
+                    organizerId: organizer.Id,
+                    organizerName: organizerName,
+                    organizerEmail: organizer.Email.Value,
+                    eventId: @event.Id,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    eventLocation: GetEventLocationString(@event),
+                    approvedAt: domainEvent.ApprovedAt,
+                    eventUrl: eventUrl,
+                    eventManageUrl: eventManageUrl);
 
                 _logger.LogInformation(
                     "EventApproved: Sending approval email - To={Email}, EventId={EventId}, EventTitle={EventTitle}",
                     organizer.Email.Value, domainEvent.EventId, @event.Title.Value);
 
-                // Phase 6A.75: Use templated email instead of inline HTML
-                var result = await _emailService.SendTemplatedEmailAsync(
-                    "template-event-approval",
-                    organizer.Email.Value,
-                    parameters,
-                    cancellationToken);
+                // Phase 6A.100: Use typed email service
+                var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsSuccess)
+                if (result.Success)
                 {
                     _logger.LogInformation(
-                        "EventApproved COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
-                        organizer.Email.Value, domainEvent.EventId, stopwatch.ElapsedMilliseconds);
+                        "EventApproved COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms, CorrelationId={CorrelationId}",
+                        organizer.Email.Value, domainEvent.EventId, stopwatch.ElapsedMilliseconds, result.CorrelationId);
                 }
                 else
                 {

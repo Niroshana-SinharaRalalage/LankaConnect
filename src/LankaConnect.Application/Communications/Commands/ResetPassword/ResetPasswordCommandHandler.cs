@@ -169,17 +169,16 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                             changedAt: DateTime.UtcNow
                         );
 
+                        // Phase 6A.100: Send via typed email service
                         var typedResult = await typedEmailService.SendEmailAsync(
                             emailParams,
-                            HandlerName,
                             CancellationToken.None);
 
                         if (typedResult.Success)
                         {
                             logger.LogInformation(
-                                "ResetPassword: Confirmation email sent - UserId={UserId}, UsedTyped={UsedTyped}",
-                                user.Id,
-                                typedResult.UsedTypedParameters);
+                                "[Phase 6A.100] ResetPassword: Confirmation email sent - UserId={UserId}",
+                                user.Id);
                         }
                         else
                         {

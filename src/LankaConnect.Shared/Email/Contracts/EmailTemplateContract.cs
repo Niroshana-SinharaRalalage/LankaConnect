@@ -49,6 +49,8 @@ public static class EmailTemplateContract
 
         // Event Management Templates
         public const string EventApproved = "template-event-approved";
+        public const string EventRejected = "template-event-rejected";
+        public const string EventPostponed = "template-event-postponed";
         public const string EventCancellation = "template-event-cancellation";
         public const string EventReminder = "template-event-reminder";
         public const string EventReminder24Hr = "template-event-reminder-24hr";

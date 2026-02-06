@@ -3,20 +3,16 @@ using LankaConnect.Shared.Email.Contracts;
 namespace LankaConnect.Shared.Email.Services;
 
 /// <summary>
-/// Phase 6A.87: Interface for typed email sending operations.
+/// Phase 6A.100: Interface for typed email sending operations.
 ///
 /// Purpose:
 /// - Provides strongly-typed email sending API
-/// - Alternative to Dictionary-based IEmailService
+/// - Single approach - all handlers use typed parameters
 /// - Enables compile-time parameter verification
-/// - Supports gradual migration via feature flags
+/// - Automatic validation before sending
 ///
 /// Usage:
-/// Handlers can use either:
-/// 1. Old way (Dictionary): emailService.SendTemplatedEmailAsync(templateName, email, dict)
-/// 2. New way (Typed): typedEmailService.SendEmailAsync(typedParams, handlerName)
-///
-/// Feature flags control which approach is active per handler.
+/// All handlers use: typedEmailService.SendEmailAsync(typedParams, cancellationToken)
 /// </summary>
 public interface ITypedEmailService
 {
@@ -24,18 +20,16 @@ public interface ITypedEmailService
     /// Sends an email using strongly-typed parameters.
     ///
     /// Process:
-    /// 1. Check feature flag for handler
-    /// 2. If typed enabled: Validate parameters, log, send via adapter
-    /// 3. If typed disabled: Convert to Dictionary, send via existing service
+    /// 1. Validate parameters (throws validation errors if invalid)
+    /// 2. Convert to dictionary via ToDictionary()
+    /// 3. Send via underlying email service
     /// 4. Record metrics for dashboard
     /// </summary>
     /// <param name="emailParams">Strongly-typed email parameters</param>
-    /// <param name="handlerName">Handler class name (for feature flag lookup)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result with success/failure and any errors</returns>
     Task<TypedEmailSendResult> SendEmailAsync(
         IEmailParameters emailParams,
-        string handlerName,
         CancellationToken cancellationToken = default);
 }
 
@@ -59,10 +53,6 @@ public class TypedEmailSendResult
     /// </summary>
     public List<string> Errors { get; set; } = new();
 
-    /// <summary>
-    /// Whether typed parameters were used (vs Dictionary fallback).
-    /// </summary>
-    public bool UsedTypedParameters { get; set; }
 
     /// <summary>
     /// Duration of the send operation in milliseconds.
@@ -72,13 +62,12 @@ public class TypedEmailSendResult
     /// <summary>
     /// Creates a successful result.
     /// </summary>
-    public static TypedEmailSendResult Ok(string correlationId, bool usedTyped, int durationMs)
+    public static TypedEmailSendResult Ok(string correlationId, int durationMs)
     {
         return new TypedEmailSendResult
         {
             Success = true,
             CorrelationId = correlationId,
-            UsedTypedParameters = usedTyped,
             DurationMs = durationMs
         };
     }
@@ -86,28 +75,26 @@ public class TypedEmailSendResult
     /// <summary>
     /// Creates a failed result with errors.
     /// </summary>
-    public static TypedEmailSendResult Fail(string correlationId, List<string> errors, bool usedTyped = false)
+    public static TypedEmailSendResult Fail(string correlationId, List<string> errors)
     {
         return new TypedEmailSendResult
         {
             Success = false,
             CorrelationId = correlationId,
-            Errors = errors,
-            UsedTypedParameters = usedTyped
+            Errors = errors
         };
     }
 
     /// <summary>
     /// Creates a failed result from exception.
     /// </summary>
-    public static TypedEmailSendResult Fail(string correlationId, Exception ex, bool usedTyped = false)
+    public static TypedEmailSendResult Fail(string correlationId, Exception ex)
     {
         return new TypedEmailSendResult
         {
             Success = false,
             CorrelationId = correlationId,
-            Errors = new List<string> { ex.Message },
-            UsedTypedParameters = usedTyped
+            Errors = new List<string> { ex.Message }
         };
     }
 }

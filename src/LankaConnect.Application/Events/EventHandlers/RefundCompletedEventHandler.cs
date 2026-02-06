@@ -121,10 +121,9 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                         @event.OrganizerContactPhone);
                 }
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
@@ -138,8 +137,8 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 else
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.87] RefundCompleted COMPLETE: Email sent successfully - Email={Email}, RefundId={RefundId}, Amount=${Amount}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
-                        domainEvent.ContactEmail, domainEvent.StripeRefundId, domainEvent.RefundAmount, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] RefundCompleted COMPLETE: Email sent - Email={Email}, RefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms",
+                        domainEvent.ContactEmail, domainEvent.StripeRefundId, domainEvent.RefundAmount, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

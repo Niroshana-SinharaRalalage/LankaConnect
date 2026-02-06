@@ -10,7 +10,6 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Shared.Email.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -31,7 +30,6 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IRegistrationRepository> _registrationRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
-    private readonly EmailFeatureFlags _featureFlags;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
     private readonly PaymentCompletedEventHandler _handler;
 
@@ -44,7 +42,6 @@ public class PaymentCompletedEventHandlerTests
         _eventRepository = new Mock<IEventRepository>();
         _registrationRepository = new Mock<IRegistrationRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
-        _featureFlags = new EmailFeatureFlags { UseTypedParameters = false };
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
 
         // Setup default URL helper behavior
@@ -90,7 +87,6 @@ public class PaymentCompletedEventHandlerTests
             _eventRepository.Object,
             _registrationRepository.Object,
             _emailUrlHelper.Object,
-            _featureFlags,
             _logger.Object);
     }
 

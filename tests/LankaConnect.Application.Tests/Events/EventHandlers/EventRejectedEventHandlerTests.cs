@@ -8,6 +8,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,9 +17,12 @@ using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.EventHandlers;
 
+/// <summary>
+/// Phase 6A.100: Unit tests for EventRejectedEventHandler with ITypedEmailService.
+/// </summary>
 public class EventRejectedEventHandlerTests
 {
-    private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<ILogger<EventRejectedEventHandler>> _logger;
@@ -25,20 +30,20 @@ public class EventRejectedEventHandlerTests
 
     public EventRejectedEventHandlerTests()
     {
-        _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
         _logger = new Mock<ILogger<EventRejectedEventHandler>>();
 
         _handler = new EventRejectedEventHandler(
-            _emailService.Object,
+            _typedEmailService.Object,
             _userRepository.Object,
             _eventRepository.Object,
             _logger.Object);
     }
 
     [Fact]
-    public async Task Handle_WithValidEvent_ShouldSendEmailToOrganizer()
+    public async Task Handle_WithValidEvent_ShouldSendTypedEmailToOrganizer()
     {
         // Arrange
         var eventId = Guid.NewGuid();
@@ -59,19 +64,19 @@ public class EventRejectedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(msg =>
-                msg.ToEmail == organizerEmail &&
-                msg.ToName == "John Organizer" &&
-                msg.Subject.Contains(eventTitle) &&
-                msg.HtmlBody.Contains(rejectionReason)),
+        // Assert - Phase 6A.100: Verify typed email service is used with correct parameters
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventRejectedEmailParams>(p =>
+                p.OrganizerEmail == organizerEmail &&
+                p.OrganizerName == "John Organizer" &&
+                p.EventTitle == eventTitle &&
+                p.Reason == rejectionReason),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -91,8 +96,8 @@ public class EventRejectedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Never);
         _userRepository.Verify(x => x.GetByIdAsync(
             It.IsAny<Guid>(),
@@ -120,8 +125,8 @@ public class EventRejectedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -142,8 +147,8 @@ public class EventRejectedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("Email service error"));
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Fail("test-correlation-id", new List<string> { "Email service error" }));
 
         // Act - Should not throw (fail-silent pattern)
         var act = async () => await _handler.Handle(notification, CancellationToken.None);
@@ -172,7 +177,7 @@ public class EventRejectedEventHandlerTests
     }
 
     [Fact]
-    public async Task Handle_EmailContainsRejectionReason_ShouldIncludeReasonInBody()
+    public async Task Handle_EmailContainsRejectionReason_ShouldIncludeReasonInParams()
     {
         // Arrange
         var eventId = Guid.NewGuid();
@@ -189,15 +194,15 @@ public class EventRejectedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
-        _emailService.Setup(x => x.SendEmailAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(msg => msg.HtmlBody.Contains(rejectionReason)),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.Is<EventRejectedEmailParams>(p => p.Reason == rejectionReason),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

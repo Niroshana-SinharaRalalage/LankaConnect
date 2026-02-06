@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
@@ -8,7 +7,6 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
-using LankaConnect.Shared.Email.Configuration;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
@@ -21,38 +19,31 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// Handles RegistrationConfirmedEvent to send confirmation email to attendee.
 /// Phase 6A.24: Enhanced to include attendee details and skip paid events.
 /// Phase 6A.38: Simplified to use direct Azure Blob Storage URLs for images (removed CID complexity).
+/// Phase 6A.100: Unified to use ITypedEmailService only.
 /// For paid events, email is sent by PaymentCompletedEventHandler after payment.
 /// </summary>
 public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<RegistrationConfirmedEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
-    private readonly EmailFeatureFlags _featureFlags;  // Phase 6A.87: Added for typed parameters migration
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
 
-    private const string HandlerName = nameof(RegistrationConfirmedEventHandler);
-
     public RegistrationConfirmedEventHandler(
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IEmailUrlHelper emailUrlHelper,
-        EmailFeatureFlags featureFlags,  // Phase 6A.87: Added for typed parameters migration
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _emailUrlHelper = emailUrlHelper;
-        _featureFlags = featureFlags;  // Phase 6A.87: Added for typed parameters migration
         _logger = logger;
     }
 
@@ -184,10 +175,9 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 "[Phase 6A.87] Sending free event registration email to {Email}",
                 user.Email.Value);
 
-            // Phase 6A.87: Send via typed email service (feature flags handled internally)
+            // Phase 6A.100: Send via typed email service
             var typedResult = await _typedEmailService.SendEmailAsync(
                 typedParams,
-                HandlerName,
                 cancellationToken);
 
             var result = typedResult.Success
@@ -199,8 +189,8 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             if (typedResult.Success)
             {
                 _logger.LogInformation(
-                    "[Phase 6A.87] RegistrationConfirmed COMPLETE: Email sent successfully to {Email}, UsedTyped={UsedTyped}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                    user.Email.Value, typedResult.UsedTypedParameters, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
+                    "[Phase 6A.100] RegistrationConfirmed COMPLETE: Email sent to {Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                    user.Email.Value, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
             }
             else
             {

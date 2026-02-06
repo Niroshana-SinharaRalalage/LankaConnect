@@ -172,10 +172,9 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     "[Phase 6A.87] Sending anonymous registration email to {Email}",
                     domainEvent.AttendeeEmail);
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
@@ -183,8 +182,8 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 if (typedResult.Success)
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.87] AnonymousRegistrationConfirmed COMPLETE: Email sent successfully to {Email}, UsedTyped={UsedTyped}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                        domainEvent.AttendeeEmail, typedResult.UsedTypedParameters, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] AnonymousRegistrationConfirmed COMPLETE: Email sent to {Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
+                        domainEvent.AttendeeEmail, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {

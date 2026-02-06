@@ -118,10 +118,9 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
                 }
 
-                // Phase 6A.87: Send via typed email service (feature flags handled internally)
+                // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
-                    HandlerName,
                     cancellationToken);
 
                 stopwatch.Stop();
@@ -129,8 +128,8 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 if (typedResult.Success)
                 {
                     _logger.LogInformation(
-                        "CommitmentUpdated COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, UsedTyped={UsedTyped}, Duration={ElapsedMs}ms",
-                        user.Email.Value, @event.Id, typedResult.UsedTypedParameters, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] CommitmentUpdated COMPLETE: Email sent - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        user.Email.Value, @event.Id, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {

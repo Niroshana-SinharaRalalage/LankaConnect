@@ -39,9 +39,8 @@ public class ResetPasswordCommandHandlerTests
         // Phase 6A.87: Default setup for typed email service to return success
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
-            It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), true, 100));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         _handler = new ResetPasswordCommandHandler(
             _mockUserRepository.Object,
@@ -485,7 +484,6 @@ public class ResetPasswordCommandHandlerTests
                 It.Is<PasswordChangedEmailParams>(p =>
                     p.UserEmail == email &&
                     p.UserId == user.Id),
-                It.Is<string>(h => h == "ResetPasswordCommandHandler"),
                 It.IsAny<CancellationToken>()),
             Times.AtMostOnce);
     }

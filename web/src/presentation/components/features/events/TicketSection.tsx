@@ -31,6 +31,8 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  // Phase 6A.100: Inline message state for resend email (replaces toast)
+  const [resendMessage, setResendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     if (!isPaidEvent) {
@@ -87,16 +89,25 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
     }
   };
 
+  // Phase 6A.100: Resend email with inline message (replaces toast)
   const handleResendEmail = async () => {
     if (isResending) return;
 
     try {
       setIsResending(true);
       setResendSuccess(false);
+      setResendMessage(null);
       await eventsRepository.resendTicketEmail(eventId);
       setResendSuccess(true);
+      setResendMessage({
+        type: 'success',
+        text: 'Confirmation email sent successfully! Check your inbox.',
+      });
       // Clear success message after 5 seconds
-      setTimeout(() => setResendSuccess(false), 5000);
+      setTimeout(() => {
+        setResendSuccess(false);
+        setResendMessage(null);
+      }, 5000);
     } catch (err: unknown) {
       console.error('Failed to resend email:', err);
       // Phase 6A.98: Extract meaningful error message from API response
@@ -109,7 +120,13 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
           errorMessage = response.response.data.message;
         }
       }
-      toast.error(errorMessage);
+      // Phase 6A.100: Use inline message instead of toast
+      setResendMessage({
+        type: 'error',
+        text: errorMessage,
+      });
+      // Auto-dismiss error after 8 seconds
+      setTimeout(() => setResendMessage(null), 8000);
     } finally {
       setIsResending(false);
     }
@@ -306,6 +323,28 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
             )}
           </Button>
         </div>
+
+        {/* Phase 6A.100: Inline message for resend email result */}
+        {resendMessage && (
+          <div className={`rounded-lg p-4 mt-3 ${
+            resendMessage.type === 'success'
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {resendMessage.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+              )}
+              <p className={`text-sm font-medium ${
+                resendMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+              }`}>
+                {resendMessage.text}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Expiry Notice */}
         {ticket.expiresAt && (

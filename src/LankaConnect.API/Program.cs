@@ -314,17 +314,16 @@ try
         }
     });
 
-    if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+    // Swagger enabled in all environments for API testing and verification
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
     {
-        app.UseSwagger();
-        app.UseSwaggerUI(c =>
-        {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "LankaConnect API V1");
-            c.RoutePrefix = string.Empty; // Make Swagger available at root
-            c.DisplayRequestDuration();
-        });
-    }
-    else
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "LankaConnect API V1");
+        c.RoutePrefix = "swagger"; // Available at /swagger in production
+        c.DisplayRequestDuration();
+    });
+
+    if (!app.Environment.IsDevelopment() && !app.Environment.IsStaging())
     {
         app.UseExceptionHandler("/Error");
         app.UseHsts();

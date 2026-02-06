@@ -5,6 +5,7 @@ using Moq;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Constants;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -24,6 +25,7 @@ public class SendPasswordResetCommandHandlerTests
     private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<ITypedEmailService> _mockTypedEmailService;  // Phase 6A.87: Added for typed email service
     private readonly Mock<IEmailTemplateService> _mockEmailTemplateService;
+    private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;  // Phase 6A.101: Added for environment-aware URLs
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<SendPasswordResetCommandHandler>> _mockLogger;
     private readonly SendPasswordResetCommandHandler _handler;
@@ -34,6 +36,7 @@ public class SendPasswordResetCommandHandlerTests
         _mockEmailService = new Mock<IEmailService>();
         _mockTypedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
         _mockEmailTemplateService = new Mock<IEmailTemplateService>();
+        _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();  // Phase 6A.101: Initialize mock
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<SendPasswordResetCommandHandler>>();
 
@@ -43,11 +46,16 @@ public class SendPasswordResetCommandHandlerTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
+        // Phase 6A.101: Default setup for email URL helper
+        _mockEmailUrlHelper.Setup(x => x.BuildPasswordResetUrl(It.IsAny<string>()))
+            .Returns<string>(token => $"https://staging.lankaconnect.com/reset-password?token={token}");
+
         _handler = new SendPasswordResetCommandHandler(
             _mockUserRepository.Object,
             _mockEmailService.Object,
             _mockTypedEmailService.Object,  // Phase 6A.87: Pass typed email service
             _mockEmailTemplateService.Object,
+            _mockEmailUrlHelper.Object,  // Phase 6A.101: Pass email URL helper
             _mockUnitOfWork.Object,
             _mockLogger.Object);
     }
@@ -271,6 +279,11 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
+        // Phase 6A.101: Commit happens BEFORE email send to prevent concurrency issues
+        _mockUnitOfWork
+            .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
         // Phase 6A.87: Setup typed email service to return failure
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
@@ -284,8 +297,9 @@ public class SendPasswordResetCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Failed to send password reset email");
 
-        // Verify database commit was NOT called (email failed)
-        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Phase 6A.101: Database commit IS called (before email send) - token is saved
+        // This allows user to retry if email fails
+        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact(Skip = "TODO: User.SetPasswordResetToken needs stricter validation to properly test failure scenario. Currently accepts all valid tokens.")]
@@ -329,7 +343,7 @@ public class SendPasswordResetCommandHandlerTests
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        // Phase 6A.87: Uses default typed email service setup (success)
+        // Phase 6A.101: Commit happens BEFORE email send - if it fails, no email is sent
         _mockUnitOfWork
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Database connection failed"));
@@ -340,6 +354,13 @@ public class SendPasswordResetCommandHandlerTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("An error occurred while sending password reset email");
+
+        // Phase 6A.101: Verify email was NOT sent (database failed first)
+        _mockTypedEmailService.Verify(
+            e => e.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

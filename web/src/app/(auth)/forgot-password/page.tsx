@@ -9,10 +9,7 @@ export default function ForgotPasswordPage() {
     <div
       className="min-h-screen flex items-center justify-center p-5"
       style={{
-        backgroundImage: 'url(/images/batik-sri-lanka.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        background: 'linear-gradient(to-r, #FF7900, #8B1538, #006400)'
       }}
     >
 

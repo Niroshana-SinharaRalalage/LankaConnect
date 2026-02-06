@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -23,6 +24,7 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
     private readonly IEmailService _emailService;
     private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
     private readonly IEmailTemplateService _emailTemplateService;
+    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.101: Environment-aware URL builder
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendPasswordResetCommandHandler> _logger;
 
@@ -33,6 +35,7 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
         IEmailService emailService,
         ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
         IEmailTemplateService emailTemplateService,
+        IEmailUrlHelper emailUrlHelper,  // Phase 6A.101: Environment-aware URL builder
         IUnitOfWork unitOfWork,
         ILogger<SendPasswordResetCommandHandler> logger)
     {
@@ -40,6 +43,7 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
         _emailService = emailService;
         _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
         _emailTemplateService = emailTemplateService;
+        _emailUrlHelper = emailUrlHelper;  // Phase 6A.101: Environment-aware URL builder
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -154,17 +158,29 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
                     user.Id,
                     tokenExpiresAt);
 
+                // Phase 6A.101: CRITICAL FIX - Commit to database FIRST, before sending email
+                // This prevents DbUpdateConcurrencyException when email send takes 5-10 seconds
+                // and another process modifies the user record during that time
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "SendPasswordReset: Token saved to database - Email={Email}, UserId={UserId}",
+                    request.Email,
+                    user.Id);
+
                 // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Phase 6A.101: Use IEmailUrlHelper for environment-aware URL building
                 var emailParams = PasswordResetEmailParams.Create(
                     userId: user.Id,
                     userName: user.FullName,
                     userEmail: user.Email.Value,
                     resetToken: resetToken,
-                    resetLink: $"https://lankaconnect.com/reset-password?token={resetToken}",
+                    resetLink: _emailUrlHelper.BuildPasswordResetUrl(resetToken),
                     expiresAt: tokenExpiresAt
                 );
 
                 // Phase 6A.100: Send via typed email service
+                // Phase 6A.101: Email sent AFTER database commit - if email fails, user can retry
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,
                     cancellationToken);
@@ -172,17 +188,15 @@ public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordReset
                 if (!typedResult.Success)
                 {
                     stopwatch.Stop();
+                    // Note: Token is already saved, user can retry password reset
                     _logger.LogWarning(
-                        "SendPasswordReset FAILED: Email send failed - Email={Email}, UserId={UserId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        "SendPasswordReset: Email send failed (token saved, user can retry) - Email={Email}, UserId={UserId}, Errors={Errors}, Duration={ElapsedMs}ms",
                         request.Email,
                         user.Id,
                         string.Join(", ", typedResult.Errors),
                         stopwatch.ElapsedMilliseconds);
-                    return Result<SendPasswordResetResponse>.Failure("Failed to send password reset email");
+                    return Result<SendPasswordResetResponse>.Failure("Failed to send password reset email. Please try again.");
                 }
-
-                // Save user with new token
-                await _unitOfWork.CommitAsync(cancellationToken);
 
                 var successResponse = new SendPasswordResetResponse(
                     user.Id,

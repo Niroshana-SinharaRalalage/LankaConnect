@@ -67,4 +67,12 @@ public interface IEmailUrlHelper
     /// <param name="ticketId">The ticket ID.</param>
     /// <returns>The complete ticket view URL.</returns>
     string BuildTicketViewUrl(Guid ticketId);
+
+    /// <summary>
+    /// Builds the password reset URL.
+    /// Phase 6A.101: Added for environment-aware password reset links.
+    /// </summary>
+    /// <param name="token">The password reset token.</param>
+    /// <returns>The complete password reset URL.</returns>
+    string BuildPasswordResetUrl(string token);
 }

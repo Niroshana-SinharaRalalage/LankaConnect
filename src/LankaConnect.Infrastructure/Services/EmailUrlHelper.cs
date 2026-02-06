@@ -140,6 +140,23 @@ public class EmailUrlHelper : IEmailUrlHelper
         return $"{frontendBaseUrl}{path}";
     }
 
+    /// <summary>
+    /// Builds the password reset URL.
+    /// Phase 6A.101: Added for environment-aware password reset links.
+    /// </summary>
+    public string BuildPasswordResetUrl(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new ArgumentException("Token cannot be null or whitespace.", nameof(token));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var passwordResetPath = _configuration["ApplicationUrls:PasswordResetPath"] ?? "/reset-password";
+
+        return $"{frontendBaseUrl}{passwordResetPath}?token={Uri.EscapeDataString(token)}";
+    }
+
     private string GetFrontendBaseUrl()
     {
         var url = _configuration["ApplicationUrls:FrontendBaseUrl"];

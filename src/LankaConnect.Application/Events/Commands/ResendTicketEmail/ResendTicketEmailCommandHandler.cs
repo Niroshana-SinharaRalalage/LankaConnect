@@ -1,13 +1,15 @@
 using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Observability;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -17,16 +19,16 @@ namespace LankaConnect.Application.Events.Commands.ResendTicketEmail;
 /// Phase 6A.24: Handler for resending ticket emails
 /// Verifies ownership and payment status before resending
 /// Phase 6A.24 FIX: Now also generates tickets if payment is complete but ticket was never created
-/// (handles case where webhook initially failed)
+/// Phase 6A.100: Unified to use ITypedEmailService only
 /// </summary>
 public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmailCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly ITicketService _ticketService;
-    private readonly IEmailService _emailService;
-    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEmailMetrics _emailMetrics; // Phase 6A.99: For recording pre-send failures
     private readonly ILogger<ResendTicketEmailCommandHandler> _logger;
 
@@ -36,18 +38,18 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         ITicketService ticketService,
-        IEmailService emailService,
-        IEmailTemplateService emailTemplateService,
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
+        IEmailUrlHelper emailUrlHelper,
         IEmailMetrics emailMetrics, // Phase 6A.99
         ILogger<ResendTicketEmailCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _ticketService = ticketService;
-        _emailService = emailService;
-        _emailTemplateService = emailTemplateService;
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
+        _emailUrlHelper = emailUrlHelper;
         _emailMetrics = emailMetrics;
         _logger = logger;
     }
@@ -65,13 +67,13 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
 
         _emailMetrics.RecordFailedEmail(
             correlationId,
-            EmailTemplateNames.PaidEventRegistration,
+            "template-paid-event-registration-confirmation-with-ticket",
             maskedEmail,
             $"[Pre-send] {errorMessage}",
             HandlerName);
 
         // Also record as a failed send for template stats
-        _emailMetrics.RecordEmailSent(EmailTemplateNames.PaidEventRegistration, 0, success: false);
+        _emailMetrics.RecordEmailSent("template-paid-event-registration-confirmation-with-ticket", 0, success: false);
     }
 
     /// <summary>
@@ -242,14 +244,12 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 }
 
                 // 5b. Phase 6A.X FIX: Check for stale PDF (attendee count mismatch)
-                // If registration has more attendees than when ticket was generated, regenerate PDF
                 var currentAttendeeCount = registration.GetAttendeeCount();
                 _logger.LogInformation(
                     "ResendTicketEmail: Checking PDF freshness - TicketId={TicketId}, CurrentAttendeeCount={CurrentCount}",
                     ticket.Id, currentAttendeeCount);
 
                 // Regenerate PDF to ensure it has current attendee data
-                // This handles the Add-Only Attendees scenario where attendees were added after initial ticket creation
                 var regenerateResult = await _ticketService.RegenerateTicketPdfForRegistrationAsync(
                     request.RegistrationId,
                     cancellationToken);
@@ -310,13 +310,12 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     return Result.Failure("No email address found for this registration");
                 }
 
-                // 8. Phase 6A.44 FIX: Format attendee details - names only (no age) to match PaymentCompletedEventHandler
+                // 8. Phase 6A.100: Format attendee details - names only (no age)
                 var attendeeDetailsHtml = new System.Text.StringBuilder();
                 if (registration.HasDetailedAttendees())
                 {
                     foreach (var attendee in registration.Attendees)
                     {
-                        // Phase 6A.44: Format attendee details - names only (no age displayed)
                         attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
                     }
                 }
@@ -325,94 +324,83 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     attendeeDetailsHtml.AppendLine($"<p>{registration.GetAttendeeCount()} attendee(s)</p>");
                 }
 
-                // Phase 6A.43 FIX: Align parameters with PaymentCompletedEventHandler
-                // Get event's primary image URL (direct URL, no CID)
+                // Get event's primary image URL
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
                 var eventImageUrl = primaryImage?.ImageUrl ?? "";
-                var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-                var parameters = new Dictionary<string, object>
+                // Phase 6A.100: Use typed TicketConfirmationEmailParams
+                var typedParams = TicketConfirmationEmailParams.Create(
+                    eventId: @event.Id,
+                    registrationId: registration.Id,
+                    userName: recipientName,
+                    contactEmail: recipientEmail,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    eventStartTime: LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
+                    eventLocation: GetEventLocationString(@event),
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                    amountPaid: registration.TotalPrice?.Amount ?? 0,
+                    paymentIntentId: registration.StripePaymentIntentId ?? "",
+                    paymentDate: registration.UpdatedAt ?? DateTime.UtcNow,
+                    quantity: registration.GetAttendeeCount());
+
+                // Set timezone
+                typedParams.TimeZoneId = @event.TimeZoneId;
+
+                // Set registration date
+                typedParams.RegistrationDate = registration.CreatedAt;
+
+                // Set attendee details
+                if (registration.HasDetailedAttendees())
                 {
-                    { "UserName", recipientName },
-                    { "EventTitle", @event.Title.Value },
-                    // Phase 6A.43: Use date range format matching PaymentCompletedEventHandler
-                    { "EventDateTime", FormatEventDateTimeRange(@event.StartDate, @event.EndDate) },
-                    { "EventLocation", GetEventLocationString(@event) },
-                    { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                    // Attendee details - names only (no age)
-                    { "Attendees", attendeeDetailsHtml.ToString().TrimEnd() },
-                    { "HasAttendeeDetails", registration.HasDetailedAttendees() },
-                    // Event image
-                    { "EventImageUrl", eventImageUrl },
-                    { "HasEventImage", hasEventImage },
-                    // Payment details
-                    // Phase 6A.56: Explicitly use en-US culture to ensure $ symbol instead of generic ¤
-                    { "AmountPaid", registration.TotalPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "$0.00" },
-                    { "PaymentIntentId", registration.StripePaymentIntentId ?? "" },
-                    { "PaymentDate", registration.UpdatedAt?.ToString("MMMM dd, yyyy h:mm tt") ?? DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
-                    // Ticket details
-                    { "HasTicket", true },
-                    { "TicketCode", ticket.TicketCode },
-                    { "TicketExpiryDate", @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy") },
-                    // Contact information
-                    { "ContactEmail", registration.Contact?.Email ?? "support@lankaconnect.com" },
-                    { "ContactPhone", registration.Contact?.PhoneNumber ?? "" },
-                    { "HasContactInfo", registration.Contact != null }
-                };
-
-                // 9. Render email template
-                // Phase 6A.79: Use EmailTemplateNames constant instead of hardcoded string
-                _logger.LogInformation(
-                    "ResendTicketEmail: Rendering email template - Template={TemplateName}, RegistrationId={RegistrationId}",
-                    EmailTemplateNames.PaidEventRegistration, request.RegistrationId);
-
-                var renderResult = await _emailTemplateService.RenderTemplateAsync(
-                    EmailTemplateNames.PaidEventRegistration,
-                    parameters,
-                    cancellationToken);
-
-                if (renderResult.IsFailure)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogError(
-                        "ResendTicketEmail FAILED: Template rendering failed - Template={TemplateName}, RegistrationId={RegistrationId}, Error={Error}, Duration={ElapsedMs}ms",
-                        EmailTemplateNames.PaidEventRegistration, request.RegistrationId, renderResult.Error, stopwatch.ElapsedMilliseconds);
-
-                    RecordPreSendFailure($"Failed to render email template: {renderResult.Error}", recipientEmail);
-                    return Result.Failure("Failed to render email template");
+                    typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
                 }
 
-                _logger.LogInformation(
-                    "ResendTicketEmail: Email template rendered - Subject={Subject}, RegistrationId={RegistrationId}",
-                    renderResult.Value.Subject, request.RegistrationId);
+                // Set event image
+                typedParams.WithEventImage(eventImageUrl);
 
-                // 10. Build email message with PDF attachment
-                var emailMessage = new EmailMessageDto
+                // Set ticket info
+                typedParams.WithTicket(
+                    ticket.TicketCode,
+                    @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy"),
+                    _emailUrlHelper.BuildTicketViewUrl(ticket.Id));
+
+                // Set contact information
+                if (registration.Contact != null)
                 {
-                    ToEmail = recipientEmail,
-                    ToName = recipientName,
-                    Subject = renderResult.Value.Subject,
-                    HtmlBody = renderResult.Value.HtmlBody,
-                    PlainTextBody = renderResult.Value.PlainTextBody,
-                    Attachments = new List<EmailAttachment>
+                    typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+                }
+
+                // Phase 6A.100: Validate parameters
+                if (!typedParams.Validate(out var validationErrors))
+                {
+                    _logger.LogWarning(
+                        "[Phase 6A.100] ResendTicketEmail: Parameter validation failed - Errors: {Errors}",
+                        string.Join(", ", validationErrors));
+                }
+
+                // Phase 6A.100: Build attachment list
+                var attachments = new List<EmailAttachmentDto>
+                {
+                    new EmailAttachmentDto
                     {
-                        new EmailAttachment
-                        {
-                            FileName = $"ticket-{ticket.TicketCode}.pdf",
-                            Content = pdfResult.Value,
-                            ContentType = "application/pdf"
-                        }
+                        FileName = $"ticket-{ticket.TicketCode}.pdf",
+                        Content = pdfResult.Value,
+                        ContentType = "application/pdf"
                     }
                 };
 
+                // 9. Phase 6A.100: Send via ITypedEmailService with attachments
                 _logger.LogInformation(
-                    "ResendTicketEmail: Email message built - To={Email}, Subject={Subject}, AttachmentCount={AttachmentCount}",
-                    recipientEmail, renderResult.Value.Subject, emailMessage.Attachments.Count);
+                    "ResendTicketEmail: Sending email via ITypedEmailService - Template={TemplateName}, RegistrationId={RegistrationId}",
+                    typedParams.TemplateName, request.RegistrationId);
 
-                // 11. Send email
-                var emailResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
-                if (emailResult.IsFailure)
+                var emailResult = await _typedEmailService.SendEmailWithAttachmentsAsync(
+                    typedParams,
+                    attachments,
+                    cancellationToken);
+
+                if (!emailResult.Success)
                 {
                     stopwatch.Stop();
 
@@ -421,7 +409,6 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                         "ResendTicketEmail FAILED: Email sending failed - Email={Email}, RegistrationId={RegistrationId}, Error={Error}, Duration={ElapsedMs}ms",
                         recipientEmail, request.RegistrationId, errorMessage, stopwatch.ElapsedMilliseconds);
 
-                    // Phase 6A.98: Pass the user-friendly error message from the email service
                     return Result.Failure(errorMessage);
                 }
 
@@ -453,26 +440,6 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
 
                 throw; // Re-throw to let MediatR/API handle
             }
-        }
-    }
-
-    /// <summary>
-    /// Phase 6A.43 FIX: Formats event date/time range matching PaymentCompletedEventHandler.
-    /// Examples:
-    /// - Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
-    /// - Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
-    /// </summary>
-    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
-    {
-        if (startDate.Date == endDate.Date)
-        {
-            // Same day event - show date once with "from X to Y"
-            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
-        }
-        else
-        {
-            // Multi-day event - show full date/time for both
-            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
         }
     }
 

@@ -68,6 +68,13 @@ public static class EmailTemplateContract
         // Admin Templates
         public const string AdminUserActivation = "template-admin-user-activation";
         public const string AdminUserDeactivation = "template-admin-user-deactivation";
+
+        // Organizer Templates
+        public const string OrganizerRoleApproval = "template-organizer-role-approval";
+
+        // Newsletter Templates
+        public const string NewsletterSubscriptionConfirmation = "template-newsletter-subscription-confirmation";
+        public const string NewsletterNotification = "template-newsletter-notification";
     }
 
     #endregion

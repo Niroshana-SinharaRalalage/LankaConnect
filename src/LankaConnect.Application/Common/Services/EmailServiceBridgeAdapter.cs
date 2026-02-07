@@ -80,4 +80,59 @@ public class EmailServiceBridgeAdapter : IEmailServiceBridge
             throw; // Let the adapter handle the exception
         }
     }
+
+    /// <inheritdoc />
+    public async Task<bool> SendTemplatedEmailWithAttachmentsAsync(
+        string templateName,
+        string recipientEmail,
+        string recipientName,
+        Dictionary<string, object> parameters,
+        List<EmailAttachmentDto> attachments,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug(
+                "EmailServiceBridgeAdapter: Sending email with attachments via IEmailService. Template={Template}, Recipient={Recipient}, AttachmentCount={AttachmentCount}",
+                templateName, recipientEmail, attachments?.Count ?? 0);
+
+            // Convert DTO attachments to EmailAttachment
+            var emailAttachments = attachments?.Select(a => new EmailAttachment
+            {
+                FileName = a.FileName,
+                Content = a.Content,
+                ContentType = a.ContentType,
+                ContentId = a.ContentId
+            }).ToList();
+
+            var result = await _emailService.SendTemplatedEmailAsync(
+                templateName,
+                recipientEmail,
+                parameters,
+                emailAttachments,
+                cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                _logger.LogDebug(
+                    "EmailServiceBridgeAdapter: Email with attachments sent successfully. Template={Template}",
+                    templateName);
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "EmailServiceBridgeAdapter: Email with attachments send failed. Template={Template}, Errors={Errors}",
+                    templateName, string.Join(", ", result.Errors));
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "EmailServiceBridgeAdapter: Exception while sending email with attachments. Template={Template}, Recipient={Recipient}",
+                templateName, recipientEmail);
+            throw;
+        }
+    }
 }

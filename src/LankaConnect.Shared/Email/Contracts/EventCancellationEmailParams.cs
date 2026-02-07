@@ -34,9 +34,10 @@ public class EventCancellationEmailParams : IEmailParameters
     #region Core Properties
 
     /// <summary>
-    /// User identifier.
+    /// User identifier. Optional for anonymous recipients (email groups/newsletter).
+    /// Phase 6A.100: Made optional to support bulk notification emails.
     /// </summary>
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     /// <summary>
     /// User's display name.
@@ -143,13 +144,13 @@ public class EventCancellationEmailParams : IEmailParameters
 
     /// <summary>
     /// Validates the email parameters.
+    /// Phase 6A.100: UserId is now optional for bulk notification emails.
     /// </summary>
     public bool Validate(out List<string> errors)
     {
         errors = new List<string>();
 
-        if (UserId == Guid.Empty)
-            errors.Add("UserId is required");
+        // UserId is optional for anonymous recipients (email groups/newsletter)
 
         if (string.IsNullOrWhiteSpace(UserName))
             errors.Add("UserName is required");
@@ -178,9 +179,10 @@ public class EventCancellationEmailParams : IEmailParameters
 
     /// <summary>
     /// Creates a new EventCancellationEmailParams with required fields.
+    /// Phase 6A.100: UserId is now optional to support bulk notification emails.
     /// </summary>
     public static EventCancellationEmailParams Create(
-        Guid userId,
+        Guid? userId,
         string userName,
         string userEmail,
         Guid eventId,

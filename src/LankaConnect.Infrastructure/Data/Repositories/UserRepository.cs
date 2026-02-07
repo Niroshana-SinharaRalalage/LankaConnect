@@ -201,8 +201,10 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByPasswordResetTokenAsync(string token, CancellationToken cancellationToken = default)
     {
+        // Phase 6A.101: Remove AsNoTracking to enable password reset updates
+        // Password reset endpoint needs to update PasswordHash and clear reset token
+        // AsNoTracking prevents EF Core from tracking these changes
         return await _dbSet
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.PasswordResetToken == token, cancellationToken);
     }
 

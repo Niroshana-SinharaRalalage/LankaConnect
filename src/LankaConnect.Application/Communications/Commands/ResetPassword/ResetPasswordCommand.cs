@@ -5,14 +5,15 @@ namespace LankaConnect.Application.Communications.Commands.ResetPassword;
 
 /// <summary>
 /// Command to reset user password using reset token
+/// Phase 6A.101: Email is now optional - user can be looked up by token
 /// </summary>
-/// <param name="Email">The email address of the user</param>
 /// <param name="Token">The password reset token</param>
 /// <param name="NewPassword">The new password</param>
+/// <param name="Email">The email address of the user (optional - for backward compatibility)</param>
 public record ResetPasswordCommand(
-    string Email,
     string Token,
-    string NewPassword) : ICommand<ResetPasswordResponse>;
+    string NewPassword,
+    string? Email = null) : ICommand<ResetPasswordResponse>;
 
 /// <summary>
 /// Response for reset password command

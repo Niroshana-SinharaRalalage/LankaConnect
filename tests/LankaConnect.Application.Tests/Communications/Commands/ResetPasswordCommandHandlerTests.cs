@@ -16,13 +16,14 @@ namespace LankaConnect.Application.Tests.Communications.Commands;
 /// TDD tests for ResetPasswordCommandHandler
 /// Tests written FIRST following Red-Green-Refactor cycle
 /// Phase 6A.87: Updated for ITypedEmailService support
+/// Phase 6A.101: Updated for token-based user lookup (email now optional)
 /// </summary>
 public class ResetPasswordCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IPasswordHashingService> _mockPasswordHashingService;
     private readonly Mock<IEmailService> _mockEmailService;
-    private readonly Mock<ITypedEmailService> _mockTypedEmailService;  // Phase 6A.87: Added for typed email service
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<ResetPasswordCommandHandler>> _mockLogger;
     private readonly ResetPasswordCommandHandler _handler;
@@ -32,7 +33,7 @@ public class ResetPasswordCommandHandlerTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockPasswordHashingService = new Mock<IPasswordHashingService>();
         _mockEmailService = new Mock<IEmailService>();
-        _mockTypedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
+        _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<ResetPasswordCommandHandler>>();
 
@@ -46,7 +47,7 @@ public class ResetPasswordCommandHandlerTests
             _mockUserRepository.Object,
             _mockPasswordHashingService.Object,
             _mockEmailService.Object,
-            _mockTypedEmailService.Object,  // Phase 6A.87: Pass typed email service
+            _mockTypedEmailService.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);
     }
@@ -56,13 +57,15 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-reset-token-123";
+        var token = "validresettokenabcdef1234567890ab";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        // Phase 6A.101: Command parameter order is now (Token, NewPassword, Email?)
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
+        // Phase 6A.101: Primary lookup is now by token
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -103,35 +106,55 @@ public class ResetPasswordCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithInvalidEmail_ShouldReturnFailure()
+    public async Task Handle_WithoutEmail_ShouldFindUserByToken()
     {
-        // Arrange
-        var command = new ResetPasswordCommand("invalid-email", "token-123", "NewP@ssw0rd!");
+        // Arrange - Phase 6A.101: Email is now optional
+        var token = "validresettokenabcdef1234567890ab";
+        var newPassword = "NewSecureP@ssw0rd!";
+        var command = new ResetPasswordCommand(token, newPassword); // No email provided
+        var user = CreateTestUserWithResetToken("test@example.com", token);
+
+        _mockUserRepository
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _mockPasswordHashingService
+            .Setup(p => p.ValidatePasswordStrength(newPassword))
+            .Returns(Result.Success());
+
+        _mockPasswordHashingService
+            .Setup(p => p.HashPassword(newPassword))
+            .Returns(Result<string>.Success("hashed-password"));
+
+        _mockUnitOfWork
+            .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Invalid email format");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Email.Should().Be("test@example.com");
 
-        // Verify no database or password operations
+        // Verify user was looked up by token, NOT by email
+        _mockUserRepository.Verify(
+            r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()),
+            Times.Once);
         _mockUserRepository.Verify(
             r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-        _mockPasswordHashingService.Verify(
-            p => p.HashPassword(It.IsAny<string>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WithNonExistentUser_ShouldReturnFailure()
+    public async Task Handle_WithNonExistentToken_ShouldReturnFailure()
     {
         // Arrange
-        var command = new ResetPasswordCommand("nonexistent@example.com", "token-123", "NewP@ssw0rd!");
+        var token = "nonexistenttokenabcdef1234567890";
+        var command = new ResetPasswordCommand(token, "NewP@ssw0rd!");
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
         // Act
@@ -139,7 +162,7 @@ public class ResetPasswordCommandHandlerTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Invalid reset token or email");
+        result.Error.Should().Contain("Invalid or expired reset token");
 
         // Verify no password operations
         _mockPasswordHashingService.Verify(
@@ -155,11 +178,17 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var correctToken = "correct-token";
-        var wrongToken = "wrong-token";
-        var command = new ResetPasswordCommand(email, wrongToken, "NewP@ssw0rd!");
+        var correctToken = "correcttokenabcdef1234567890abc";
+        var wrongToken = "wrongtokenabcdefgh1234567890abc";
+        var command = new ResetPasswordCommand(wrongToken, "NewP@ssw0rd!", email);
         var user = CreateTestUserWithResetToken(email, correctToken);
 
+        // Token lookup returns null (wrong token not in DB)
+        _mockUserRepository
+            .Setup(r => r.GetByPasswordResetTokenAsync(wrongToken, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Fallback email lookup finds user but token won't match
         _mockUserRepository
             .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -185,8 +214,8 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "expired-token";
-        var command = new ResetPasswordCommand(email, token, "NewP@ssw0rd!");
+        var token = "expiredtokenabcdef1234567890abc";
+        var command = new ResetPasswordCommand(token, "NewP@ssw0rd!", email);
         var user = CreateTestUser(email);
 
         // Set an expired token
@@ -194,7 +223,7 @@ public class ResetPasswordCommandHandlerTests
         user.SetPasswordResetToken(token, expiredTokenExpiry);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         // Act
@@ -215,13 +244,13 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var weakPassword = "weak";
-        var command = new ResetPasswordCommand(email, token, weakPassword);
+        var command = new ResetPasswordCommand(token, weakPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -249,13 +278,13 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -284,9 +313,9 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         // Add some refresh tokens to the user
@@ -302,7 +331,7 @@ public class ResetPasswordCommandHandlerTests
         user.AddRefreshToken(refreshToken2);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -332,13 +361,13 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -369,9 +398,9 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         // Record some failed login attempts
@@ -380,7 +409,7 @@ public class ResetPasswordCommandHandlerTests
         user.RecordFailedLoginAttempt();
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -410,13 +439,13 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -444,13 +473,13 @@ public class ResetPasswordCommandHandlerTests
     {
         // Arrange
         var email = "test@example.com";
-        var token = "valid-token";
+        var token = "validtokenabcdefgh1234567890abc";
         var newPassword = "NewSecureP@ssw0rd!";
-        var command = new ResetPasswordCommand(email, token, newPassword);
+        var command = new ResetPasswordCommand(token, newPassword, email);
         var user = CreateTestUserWithResetToken(email, token);
 
         _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByPasswordResetTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockPasswordHashingService
@@ -465,8 +494,6 @@ public class ResetPasswordCommandHandlerTests
             .Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        // Phase 6A.87: Uses default typed email service setup (success)
-
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -476,9 +503,8 @@ public class ResetPasswordCommandHandlerTests
         // Wait a bit for async email to be attempted
         await Task.Delay(100);
 
-        // Phase 6A.87: Verify typed email service was called with PasswordChangedEmailParams
+        // Verify typed email service was called with PasswordChangedEmailParams
         // Note: This is fire-and-forget, so we can't guarantee timing in tests
-        // In production, email failures don't affect the password reset result
         _mockTypedEmailService.Verify(
             e => e.SendEmailAsync(
                 It.Is<PasswordChangedEmailParams>(p =>

@@ -6,16 +6,17 @@ namespace LankaConnect.Application.Communications.Commands.ResetPassword;
 
 /// <summary>
 /// Validator for ResetPasswordCommand
+/// Phase 6A.101: Email is now optional - user can be looked up by token
 /// </summary>
 public class ResetPasswordCommandValidator : AbstractValidator<ResetPasswordCommand>
 {
     public ResetPasswordCommandValidator()
     {
+        // Phase 6A.101: Email is optional - only validate format if provided
         RuleFor(x => x.Email)
-            .NotEmpty()
-            .WithMessage("Email is required")
-            .Must(BeValidEmail)
-            .WithMessage("Invalid email format");
+            .Must(BeValidEmailOrNull)
+            .WithMessage("Invalid email format")
+            .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.Token)
             .NotEmpty()
@@ -44,8 +45,11 @@ public class ResetPasswordCommandValidator : AbstractValidator<ResetPasswordComm
             .WithMessage("Password must contain at least one special character");
     }
 
-    private static bool BeValidEmail(string email)
+    private static bool BeValidEmailOrNull(string? email)
     {
+        if (string.IsNullOrWhiteSpace(email))
+            return true;  // Null/empty is allowed (user found by token)
+
         var emailResult = Email.Create(email);
         return emailResult.IsSuccess;
     }

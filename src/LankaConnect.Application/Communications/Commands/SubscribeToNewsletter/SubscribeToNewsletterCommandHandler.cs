@@ -8,6 +8,8 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
 
@@ -17,12 +19,13 @@ namespace LankaConnect.Application.Communications.Commands.SubscribeToNewsletter
 /// Handler for newsletter subscription command
 /// Phase 6A.64: Newsletter subscription with email confirmation
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.100: Migrated to ITypedEmailService with NewsletterSubscriptionEmailParams
 /// </summary>
 public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNewsletterCommand, Result<SubscribeToNewsletterResponse>>
 {
     private readonly INewsletterSubscriberRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<SubscribeToNewsletterCommandHandler> _logger;
     private readonly IConfiguration _configuration;
@@ -30,14 +33,14 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     public SubscribeToNewsletterCommandHandler(
         INewsletterSubscriberRepository repository,
         IUnitOfWork unitOfWork,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IApplicationDbContext dbContext,
         ILogger<SubscribeToNewsletterCommandHandler> logger,
         IConfiguration configuration)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _dbContext = dbContext;
         _logger = logger;
         _configuration = configuration;
@@ -322,39 +325,29 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                 var confirmPath = _configuration["ApplicationUrls:NewsletterConfirmPath"] ?? "/newsletter/confirm";
                 var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
 
-                // Phase 6A.83 Part 3: Fix parameter name to match template expectation
-                // Phase 6A.99 Issue #57: Changed ConfirmationLink to ConfirmationUrl to match Phase 6A.96 template
-                var emailParameters = new Dictionary<string, object>
-                {
-                    { "Email", request.Email },
-                    { "ConfirmationToken", subscriber.ConfirmationToken! },
-                    { "ConfirmationUrl", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },  // Phase 6A.99: Fixed to match template placeholder
-                    { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
-                    { "MetroAreasText", metroAreaDescription },
-                    { "CompanyName", "LankaConnect" },
-                    { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") },
-                    { "Year", DateTime.UtcNow.Year }  // Phase 6A.99: Added Year for footer
-                };
+                // Phase 6A.100: Use typed email params instead of dictionary
+                var emailParams = NewsletterSubscriptionEmailParams.Create(
+                    email: request.Email,
+                    confirmationToken: subscriber.ConfirmationToken!,
+                    confirmationUrl: $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}",
+                    unsubscribeUrl: $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}",
+                    metroAreasText: metroAreaDescription);
 
-                var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
-                    EmailTemplateNames.NewsletterSubscriptionConfirmation,
-                    request.Email,
-                    emailParameters,
-                    cancellationToken);
+                var sendEmailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-                if (!sendEmailResult.IsSuccess)
+                if (!sendEmailResult.Success)
                 {
                     _logger.LogWarning(
-                        "SubscribeToNewsletter: Failed to send confirmation email - Email={Email}, Error={Error}. Subscription saved but email not sent.",
+                        "[Phase 6A.100] SubscribeToNewsletter: Failed to send confirmation email - Email={Email}, Errors={Errors}. Subscription saved but email not sent.",
                         request.Email,
-                        sendEmailResult.Error);
+                        string.Join(", ", sendEmailResult.Errors));
                     // Don't fail the subscription - email sending is non-critical for testing/staging
                     // In production, email service should be properly configured
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "SubscribeToNewsletter: Newsletter confirmation email sent - Email={Email}",
+                        "[Phase 6A.100] SubscribeToNewsletter: Newsletter confirmation email sent - Email={Email}",
                         request.Email);
                 }
 
@@ -396,6 +389,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
     /// <summary>
     /// Phase 6A.99: Helper method to send confirmation email for new or re-confirmed subscriptions.
+    /// Phase 6A.100: Migrated to ITypedEmailService with NewsletterSubscriptionEmailParams.
     /// Extracted to support both new subscriptions and resending confirmations.
     /// </summary>
     private async Task SendConfirmationEmailAsync(
@@ -414,35 +408,27 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             var confirmPath = _configuration["ApplicationUrls:NewsletterConfirmPath"] ?? "/newsletter/confirm";
             var unsubscribePath = _configuration["ApplicationUrls:NewsletterUnsubscribePath"] ?? "/newsletter/unsubscribe";
 
-            var emailParameters = new Dictionary<string, object>
-            {
-                { "Email", subscriber.Email.Value },
-                { "ConfirmationToken", subscriber.ConfirmationToken! },
-                { "ConfirmationUrl", $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}" },
-                { "UnsubscribeUrl", $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}" },
-                { "MetroAreasText", metroAreaDescription },
-                { "CompanyName", "LankaConnect" },
-                { "Date", DateTime.UtcNow.ToString("MMMM dd, yyyy") },
-                { "Year", DateTime.UtcNow.Year }
-            };
+            // Phase 6A.100: Use typed email params instead of dictionary
+            var emailParams = NewsletterSubscriptionEmailParams.Create(
+                email: subscriber.Email.Value,
+                confirmationToken: subscriber.ConfirmationToken!,
+                confirmationUrl: $"{apiBaseUrl}{confirmPath}?token={subscriber.ConfirmationToken}",
+                unsubscribeUrl: $"{apiBaseUrl}{unsubscribePath}?token={subscriber.UnsubscribeToken}",
+                metroAreasText: metroAreaDescription);
 
-            var sendEmailResult = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.NewsletterSubscriptionConfirmation,
-                subscriber.Email.Value,
-                emailParameters,
-                cancellationToken);
+            var sendEmailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-            if (!sendEmailResult.IsSuccess)
+            if (!sendEmailResult.Success)
             {
                 _logger.LogWarning(
-                    "SendConfirmationEmail: Failed to send confirmation email - Email={Email}, Error={Error}",
+                    "[Phase 6A.100] SendConfirmationEmail: Failed to send confirmation email - Email={Email}, Errors={Errors}",
                     subscriber.Email.Value,
-                    sendEmailResult.Error);
+                    string.Join(", ", sendEmailResult.Errors));
             }
             else
             {
                 _logger.LogInformation(
-                    "SendConfirmationEmail: Newsletter confirmation email sent - Email={Email}, SubscriberId={SubscriberId}",
+                    "[Phase 6A.100] SendConfirmationEmail: Newsletter confirmation email sent - Email={Email}, SubscriberId={SubscriberId}",
                     subscriber.Email.Value,
                     subscriber.Id);
             }
@@ -450,7 +436,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "SendConfirmationEmail FAILED: Exception sending confirmation email - Email={Email}, SubscriberId={SubscriberId}",
+                "[Phase 6A.100] SendConfirmationEmail FAILED: Exception sending confirmation email - Email={Email}, SubscriberId={SubscriberId}",
                 subscriber.Email.Value,
                 subscriber.Id);
             // Don't throw - email sending failure shouldn't break the subscription flow

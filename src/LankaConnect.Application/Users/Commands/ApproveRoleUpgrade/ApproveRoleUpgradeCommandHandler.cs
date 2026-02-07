@@ -9,6 +9,8 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Notifications;
 using LankaConnect.Domain.Notifications.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,6 +22,7 @@ namespace LankaConnect.Application.Users.Commands.ApproveRoleUpgrade;
 /// Phase 6A.6: Creates in-app notification when role upgrade is approved
 /// Phase 6A.75: Sends email notification when EventOrganizer role is approved
 /// Phase 6A.X Issue #46: Added admin audit logging for traceability
+/// Phase 6A.100: Migrated to ITypedEmailService with OrganizerRoleApprovalEmailParams
 /// </summary>
 public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgradeCommand>
 {
@@ -27,7 +30,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
     private readonly INotificationRepository _notificationRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ApproveRoleUpgradeCommandHandler> _logger;
@@ -37,7 +40,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         INotificationRepository notificationRepository,
         IAdminAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IUnitOfWork unitOfWork,
         ILogger<ApproveRoleUpgradeCommandHandler> logger)
@@ -46,7 +49,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         _notificationRepository = notificationRepository;
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -219,7 +222,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
 
     /// <summary>
     /// Phase 6A.75: Sends organizer role approval email using database template.
-    /// Phase 6A.75-Fix: Added Year parameter required by template footer.
+    /// Phase 6A.100: Migrated to ITypedEmailService with OrganizerRoleApprovalEmailParams.
     /// Fail-silent pattern: Logs error but doesn't fail the command if email fails.
     /// </summary>
     private async Task SendOrganizerApprovalEmailAsync(User user, CancellationToken cancellationToken)
@@ -229,37 +232,30 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
             var userName = $"{user.FirstName} {user.LastName}";
             var dashboardUrl = $"{_urlsService.FrontendBaseUrl}/dashboard";
 
-            // Phase 6A.75-Fix: Added Year parameter required by email template footer
-            var parameters = new Dictionary<string, object>
+            // Phase 6A.100: Use typed email params instead of dictionary
+            var emailParams = OrganizerRoleApprovalEmailParams.Create(
+                userId: user.Id,
+                recipientEmail: user.Email.Value,
+                userName: userName,
+                dashboardUrl: dashboardUrl);
+
+            _logger.LogInformation(
+                "[Phase 6A.100] SendOrganizerApprovalEmailAsync: Preparing to send - Email={Email}, UserId={UserId}",
+                user.Email.Value, user.Id);
+
+            // Phase 6A.100: Use typed email service
+            var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
+
+            if (result.Success)
             {
-                { "UserName", userName },
-                { "ApprovedAt", DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
-                { "DashboardUrl", dashboardUrl },
-                { "Year", DateTime.UtcNow.Year.ToString() }  // Required for template footer
-            };
-
-            // Using LogError for diagnostics to bypass log level filtering
-            _logger.LogError(
-                "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: Preparing to send - Email={Email}, UserId={UserId}, Template={Template}, Parameters={Parameters}",
-                user.Email.Value, user.Id, EmailTemplateNames.OrganizerRoleApproval, string.Join(", ", parameters.Keys));
-
-            // Phase 6A.75-Fix: Use constant instead of magic string
-            var result = await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.OrganizerRoleApproval,
-                user.Email.Value,
-                parameters,
-                cancellationToken);
-
-            if (result.IsSuccess)
-            {
-                _logger.LogError(
-                    "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: SUCCESS - Email sent to {Email}",
+                _logger.LogInformation(
+                    "[Phase 6A.100] SendOrganizerApprovalEmailAsync: SUCCESS - Email sent to {Email}",
                     user.Email.Value);
             }
             else
             {
-                _logger.LogError(
-                    "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: FAILED - Email={Email}, Errors={Errors}",
+                _logger.LogWarning(
+                    "[Phase 6A.100] SendOrganizerApprovalEmailAsync: FAILED - Email={Email}, Errors={Errors}",
                     user.Email.Value, string.Join(", ", result.Errors));
             }
         }
@@ -267,7 +263,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         {
             // Fail-silent: Log error but don't throw to prevent command failure
             _logger.LogError(ex,
-                "[DIAG-ISSUE45] SendOrganizerApprovalEmailAsync: EXCEPTION - UserId={UserId}, Error={ErrorMessage}",
+                "[Phase 6A.100] SendOrganizerApprovalEmailAsync: EXCEPTION - UserId={UserId}, Error={ErrorMessage}",
                 user.Id, ex.Message);
         }
     }

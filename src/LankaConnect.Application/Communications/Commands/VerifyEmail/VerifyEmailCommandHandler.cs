@@ -5,6 +5,8 @@ using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.VerifyEmail;
@@ -13,22 +15,23 @@ namespace LankaConnect.Application.Communications.Commands.VerifyEmail;
 /// Handler for verifying user email addresses
 /// Phase 6A.53: Token-only verification aligned with password reset pattern
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.100: Migrated to ITypedEmailService with WelcomeEmailParams
 /// </summary>
 public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Result<VerifyEmailResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<VerifyEmailCommandHandler> _logger;
 
     public VerifyEmailCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IUnitOfWork unitOfWork,
         ILogger<VerifyEmailCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -117,33 +120,38 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
                     user.Id,
                     user.Email.Value);
 
-                // Send welcome email asynchronously (fire and forget)
+                // Phase 6A.100: Send welcome email asynchronously (fire and forget) using typed email service
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var templateParameters = new Dictionary<string, object>
+                        var emailParams = WelcomeEmailParams.Create(
+                            userId: user.Id,
+                            recipientEmail: user.Email.Value,
+                            userName: user.FullName,
+                            firstName: user.FirstName,
+                            userEmail: user.Email.Value,
+                            triggerType: WelcomeEmailTriggerType.EmailVerification);
+
+                        var result = await _typedEmailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                        if (result.Success)
                         {
-                            { "UserName", user.FullName },
-                            { "UserEmail", user.Email.Value },
-                            { "CompanyName", "LankaConnect" },
-                            { "LoginUrl", "https://lankaconnect.com/login" }
-                        };
-
-                        await _emailService.SendTemplatedEmailAsync(
-                            EmailTemplateNames.Welcome,
-                            user.Email.Value,
-                            templateParameters,
-                            CancellationToken.None);
-
-                        _logger.LogInformation(
-                            "VerifyEmail: Welcome email sent - UserId={UserId}",
-                            user.Id);
+                            _logger.LogInformation(
+                                "[Phase 6A.100] VerifyEmail: Welcome email sent - UserId={UserId}",
+                                user.Id);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "[Phase 6A.100] VerifyEmail: Welcome email failed - UserId={UserId}, Errors={Errors}",
+                                user.Id, string.Join(", ", result.Errors));
+                        }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex,
-                            "VerifyEmail: Failed to send welcome email - UserId={UserId}, ErrorMessage={ErrorMessage}",
+                            "[Phase 6A.100] VerifyEmail: Failed to send welcome email - UserId={UserId}, ErrorMessage={ErrorMessage}",
                             user.Id,
                             ex.Message);
                     }

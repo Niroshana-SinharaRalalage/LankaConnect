@@ -248,36 +248,6 @@ export function LoginForm() {
           {isSubmitting ? 'Signing In...' : 'Sign In'}
         </button>
 
-        {/* Divider */}
-        <div className="flex items-center my-[30px]" style={{ color: '#999' }}>
-          <div className="flex-1 h-px" style={{ background: '#e0e0e0' }}></div>
-          <span className="px-4">OR</span>
-          <div className="flex-1 h-px" style={{ background: '#e0e0e0' }}></div>
-        </div>
-
-        {/* Microsoft SSO Button */}
-        <button
-          type="button"
-          className="w-full py-[14px] bg-white border-2 rounded-[10px] text-base font-medium cursor-pointer transition-all duration-300 flex items-center justify-center gap-2.5 mb-[15px]"
-          style={{ borderColor: '#e0e0e0' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#FF7900';
-            e.currentTarget.style.background = 'rgba(255, 121, 0, 0.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#e0e0e0';
-            e.currentTarget.style.background = 'white';
-          }}
-        >
-          <svg className="w-6 h-6" viewBox="0 0 23 23">
-            <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
-            <path fill="#f35325" d="M1 1h10v10H1z"/>
-            <path fill="#81bc06" d="M12 1h10v10H12z"/>
-            <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-            <path fill="#ffba08" d="M12 12h10v10H12z"/>
-          </svg>
-          Continue with Microsoft
-        </button>
       </form>
 
       {/* Signup Link */}

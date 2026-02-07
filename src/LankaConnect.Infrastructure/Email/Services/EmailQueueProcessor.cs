@@ -2,6 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.Email.Configuration;
 using Microsoft.Extensions.Options;
@@ -60,7 +61,7 @@ public class EmailQueueProcessor : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var emailMessageRepository = scope.ServiceProvider.GetRequiredService<IEmailMessageRepository>();
-        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        var emailService = scope.ServiceProvider.GetRequiredService<AzureEmailService>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         try
@@ -96,7 +97,7 @@ public class EmailQueueProcessor : BackgroundService
 
     private async Task ProcessSingleEmailAsync(
         Domain.Communications.Entities.EmailMessage emailMessage,
-        IEmailService emailService,
+        AzureEmailService emailService,
         IEmailMessageRepository repository,
         IUnitOfWork unitOfWork,
         CancellationToken cancellationToken)

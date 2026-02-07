@@ -1,30 +1,34 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.Email.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
-/// Controller for testing and diagnostics endpoints
-/// These endpoints should be secured or disabled in production
+/// Controller for testing and diagnostics endpoints.
+/// These endpoints should be secured or disabled in production.
+///
+/// Phase 6A.100: Uses AzureEmailService directly for test emails (not via IEmailService).
+/// This is intentional as test emails use inline HTML, not database templates.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class TestController : ControllerBase
 {
-    private readonly IEmailService _emailService;
+    private readonly AzureEmailService _azureEmailService;
     private readonly ILogger<TestController> _logger;
 
     public TestController(
-        IEmailService emailService,
+        AzureEmailService azureEmailService,
         ILogger<TestController> logger)
     {
-        _emailService = emailService;
+        _azureEmailService = azureEmailService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Send a test email to verify email configuration
+    /// Send a test email to verify email configuration.
+    /// Uses inline HTML content rather than database templates.
     /// </summary>
     /// <param name="toEmail">Recipient email address (defaults to niroshanaks@gmail.com)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -42,7 +46,8 @@ public class TestController : ControllerBase
         {
             _logger.LogInformation("Sending test email to {ToEmail}", toEmail);
 
-            var emailMessage = new EmailMessageDto
+            // Create email message DTO for direct sending
+            var emailMessage = new LankaConnect.Application.Common.DTOs.EmailMessageDto
             {
                 ToEmail = toEmail,
                 ToName = "Test Recipient",
@@ -52,7 +57,8 @@ public class TestController : ControllerBase
                 Priority = 1 // High priority for test emails
             };
 
-            var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+            // Send directly via AzureEmailService (bypasses template system)
+            var result = await _azureEmailService.SendEmailAsync(emailMessage, cancellationToken);
 
             if (result.IsSuccess)
             {

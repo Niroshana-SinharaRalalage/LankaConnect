@@ -203,17 +203,11 @@ public static class DependencyInjection
             return new RevenueCalculatorService(salesTaxService, commissionSettings, salesTaxSettings, logger);
         });
 
-        // Add Email Services (IEmailService via AzureEmailService - supports Azure SDK and SMTP fallback)
-        // Note: EmailSettings is configured below with SimpleEmailService
-        // Phase 6A.87: Wrap with MetricsRecordingEmailServiceDecorator to capture metrics for ALL email sends
+        // Phase 6A.100: Register AzureEmailService for direct email operations
+        // - Used by ITypedEmailService for template-based email sending
+        // - Used by TestController for diagnostic test emails
+        // - IEmailService interface has been completely removed
         services.AddScoped<AzureEmailService>();
-        services.AddScoped<IEmailService>(provider =>
-        {
-            var azureEmailService = provider.GetRequiredService<AzureEmailService>();
-            var metrics = provider.GetRequiredService<LankaConnect.Shared.Email.Observability.IEmailMetrics>();
-            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Email.Services.MetricsRecordingEmailServiceDecorator>>();
-            return new Email.Services.MetricsRecordingEmailServiceDecorator(azureEmailService, metrics, logger);
-        });
 
         // Phase 6A.47/6A.53: Add ApplicationUrlsService for email verification URLs
         services.AddScoped<IApplicationUrlsService, ApplicationUrlsService>();
@@ -279,11 +273,9 @@ public static class DependencyInjection
         services.Configure<ApplicationUrlsOptions>(configuration.GetSection(ApplicationUrlsOptions.SectionName));
         services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.SectionName));
 
-        // Phase 6A.43 Fix: Register AzureEmailService for both IEmailService and IEmailTemplateService
-        // This ensures all emails (free and paid) use database-stored templates consistently
-        // Previously: IEmailTemplateService → RazorEmailTemplateService (filesystem templates)
-        // Now: IEmailTemplateService → AzureEmailService (database templates)
-        // Phase 6A.87: Since IEmailService is now wrapped with decorator, get AzureEmailService directly
+        // Phase 6A.100: Register IEmailTemplateService via AzureEmailService
+        // This ensures all emails use database-stored templates consistently
+        // Used by InfrastructureTypedEmailService for template rendering
         services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<AzureEmailService>());
 
         // Phase 6A.100: Register Typed Email Services (complete IEmailService removal)

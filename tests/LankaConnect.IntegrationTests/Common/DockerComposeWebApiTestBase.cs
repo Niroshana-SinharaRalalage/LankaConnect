@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using LankaConnect.Infrastructure.Data;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Shared.Email.Services;
 using LankaConnect.IntegrationTests.Fakes;
 
 namespace LankaConnect.IntegrationTests.Common;
@@ -24,7 +25,7 @@ public abstract class DockerComposeWebApiTestBase : IAsyncLifetime
     protected HttpClient HttpClient { get; private set; } = null!;
     protected AppDbContext DbContext { get; private set; } = null!;
     protected IServiceProvider ServiceProvider { get; private set; } = null!;
-    protected IEmailService _emailService { get; private set; } = null!;
+    protected ITypedEmailService _typedEmailService { get; private set; } = null!;
     private Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? _transaction;
     private IServiceScope? _testScope;
 
@@ -92,7 +93,7 @@ public abstract class DockerComposeWebApiTestBase : IAsyncLifetime
         // Create a long-lived scope for test operations
         _testScope = ServiceProvider.CreateScope();
         DbContext = _testScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        _emailService = _testScope.ServiceProvider.GetRequiredService<IEmailService>();
+        _typedEmailService = _testScope.ServiceProvider.GetRequiredService<ITypedEmailService>();
 
         // Start transaction for test isolation
         _transaction = await DbContext.Database.BeginTransactionAsync();

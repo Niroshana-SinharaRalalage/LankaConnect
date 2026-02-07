@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Communication.Email;
+using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
@@ -11,15 +12,23 @@ using EmailValueObject = LankaConnect.Domain.Shared.ValueObjects.Email;
 using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
 using AzureEmailMessage = Azure.Communication.Email.EmailMessage;
 using AzureEmailAttachment = Azure.Communication.Email.EmailAttachment;
+using DtoEmailAttachment = LankaConnect.Application.Common.DTOs.EmailAttachment;
 
 namespace LankaConnect.Infrastructure.Email.Services;
 
 /// <summary>
-/// Phase 6A.43 Fix: Email service implementation using Azure Communication Services SDK.
-/// Now implements both IEmailService and IEmailTemplateService to provide unified email functionality.
-/// This ensures all email templates (free and paid events) use database-stored templates consistently.
+/// Phase 6A.100: Email service implementation using Azure Communication Services SDK.
+/// Implements IEmailTemplateService for template operations used by ITypedEmailService.
+///
+/// This service provides:
+/// - Direct email sending via SendEmailAsync (for test/diagnostic emails)
+/// - Template-based email sending via SendTemplatedEmailAsync (used by ITypedEmailService)
+/// - Template rendering from database templates
+///
+/// Note: IEmailService interface has been removed in Phase 6A.100.
+/// All handlers now use ITypedEmailService for strongly-typed email parameters.
 /// </summary>
-public class AzureEmailService : IEmailService, IEmailTemplateService
+public class AzureEmailService : IEmailTemplateService
 {
     private readonly ILogger<AzureEmailService> _logger;
     private readonly IEmailMessageRepository _emailMessageRepository;
@@ -228,7 +237,7 @@ public class AzureEmailService : IEmailService, IEmailTemplateService
     /// Attachments with ContentId are embedded using CID for immediate display in email clients.
     /// </summary>
     public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
-        Dictionary<string, object> parameters, List<Application.Common.Interfaces.EmailAttachment>? attachments,
+        Dictionary<string, object> parameters, List<DtoEmailAttachment>? attachments,
         CancellationToken cancellationToken = default)
     {
         try

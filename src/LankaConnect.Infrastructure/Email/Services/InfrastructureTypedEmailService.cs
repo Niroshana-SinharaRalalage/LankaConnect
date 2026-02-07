@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
@@ -139,7 +140,7 @@ public class InfrastructureTypedEmailService : ITypedEmailService
             var parameters = emailParams.ToDictionary();
 
             // Convert DTO attachments to EmailAttachment
-            var emailAttachments = attachments?.Select(a => new LankaConnect.Application.Common.Interfaces.EmailAttachment
+            var emailAttachments = attachments?.Select(a => new EmailAttachment
             {
                 FileName = a.FileName,
                 Content = a.Content,

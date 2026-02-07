@@ -2,12 +2,12 @@ namespace LankaConnect.Shared.Email.Observability;
 
 /// <summary>
 /// Phase 6A.86: Structured logging interface for email operations.
+/// Phase 6A.100: Feature flag logging removed (all handlers now use typed parameters).
 ///
 /// Purpose:
 /// - Provide correlation IDs for tracing email sends end-to-end
 /// - Log parameter validation failures before they cause production issues
 /// - Track template rendering performance
-/// - Monitor feature flag usage during staged rollout
 ///
 /// Correlation ID Flow:
 /// 1. Handler generates correlation ID at start
@@ -67,15 +67,6 @@ public interface IEmailLogger
     /// <param name="correlationId">Correlation ID from start</param>
     /// <param name="templateName">Template name that was not found</param>
     void LogTemplateNotFound(string correlationId, string templateName);
-
-    /// <summary>
-    /// Logs feature flag checks for hybrid system rollout monitoring.
-    /// Tracks which handlers are using typed vs Dictionary parameters.
-    /// </summary>
-    /// <param name="handlerName">Handler class name</param>
-    /// <param name="isEnabled">Whether typed parameters enabled for this handler</param>
-    /// <param name="reason">Reason (global setting, override, etc.)</param>
-    void LogFeatureFlagCheck(string handlerName, bool isEnabled, string reason);
 
     /// <summary>
     /// Generates a new correlation ID for email send operation.

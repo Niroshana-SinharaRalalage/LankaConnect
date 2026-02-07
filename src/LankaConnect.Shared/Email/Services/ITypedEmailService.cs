@@ -117,3 +117,30 @@ public class TypedEmailSendResult
         };
     }
 }
+
+/// <summary>
+/// DTO for email attachments (e.g., ticket PDFs).
+/// Phase 6A.100: Moved from IEmailServiceBridge after bridge pattern removal.
+/// </summary>
+public class EmailAttachmentDto
+{
+    /// <summary>
+    /// The file name for the attachment.
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The binary content of the attachment.
+    /// </summary>
+    public byte[] Content { get; set; } = Array.Empty<byte>();
+
+    /// <summary>
+    /// The MIME content type of the attachment.
+    /// </summary>
+    public string ContentType { get; set; } = "application/octet-stream";
+
+    /// <summary>
+    /// Optional Content-ID for inline attachments.
+    /// </summary>
+    public string? ContentId { get; set; }
+}

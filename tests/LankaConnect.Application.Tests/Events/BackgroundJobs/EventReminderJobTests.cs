@@ -1,4 +1,3 @@
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Events.Repositories;
@@ -24,11 +23,10 @@ public class EventReminderJobTests
 {
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IUserRepository> _userRepository;
-    private readonly Mock<IEmailService> _emailService;
-    private readonly Mock<ITypedEmailService> _typedEmailService;  // Phase 6A.87: Added for typed email support
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<IEventReminderRepository> _eventReminderRepository;
-    private readonly Mock<ITicketRepository> _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
+    private readonly Mock<ITicketRepository> _ticketRepository;
     private readonly Mock<ILogger<EventReminderJob>> _logger;
     private readonly EventReminderJob _job;
 
@@ -36,11 +34,10 @@ public class EventReminderJobTests
     {
         _eventRepository = new Mock<IEventRepository>();
         _userRepository = new Mock<IUserRepository>();
-        _emailService = new Mock<IEmailService>();
-        _typedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Added for typed email support
+        _typedEmailService = new Mock<ITypedEmailService>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _eventReminderRepository = new Mock<IEventReminderRepository>();
-        _ticketRepository = new Mock<ITicketRepository>();  // Phase 6A.83 Part 3: Added for ticket parameter support
+        _ticketRepository = new Mock<ITicketRepository>();
         _logger = new Mock<ILogger<EventReminderJob>>();
 
         // Phase 6A.71: Setup IEmailUrlHelper mock to return test URL
@@ -68,11 +65,10 @@ public class EventReminderJobTests
         _job = new EventReminderJob(
             _eventRepository.Object,
             _userRepository.Object,
-            _emailService.Object,
-            _typedEmailService.Object,  // Phase 6A.87: Added for typed email support
+            _typedEmailService.Object,
             _emailUrlHelper.Object,
             _eventReminderRepository.Object,
-            _ticketRepository.Object,  // Phase 6A.83 Part 3: Added for ticket parameter support
+            _ticketRepository.Object,
             _logger.Object);
     }
 

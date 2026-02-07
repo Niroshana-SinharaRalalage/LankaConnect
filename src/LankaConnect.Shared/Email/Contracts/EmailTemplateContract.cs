@@ -596,4 +596,95 @@ public static class EmailTemplateContract
     }
 
     #endregion
+
+    #region Business Notification Parameters
+
+    /// <summary>
+    /// Phase 6A.100: Parameters for business notification emails.
+    /// Supports 15+ notification types: approval, rejection, suspension, reviews, payments, etc.
+    /// </summary>
+    public static class Business
+    {
+        /// <summary>
+        /// Business name.
+        /// </summary>
+        public const string BusinessName = "BusinessName";
+
+        /// <summary>
+        /// Business identifier.
+        /// </summary>
+        public const string BusinessId = "BusinessId";
+
+        /// <summary>
+        /// Business category (e.g., "Restaurant", "Retail").
+        /// </summary>
+        public const string BusinessCategory = "BusinessCategory";
+
+        /// <summary>
+        /// Business status (e.g., "Active", "Pending", "Suspended").
+        /// </summary>
+        public const string BusinessStatus = "BusinessStatus";
+
+        /// <summary>
+        /// Notification type (e.g., "BusinessApproved", "NewReview").
+        /// </summary>
+        public const string NotificationType = "NotificationType";
+
+        /// <summary>
+        /// Date/time of notification.
+        /// </summary>
+        public const string NotificationDate = "NotificationDate";
+
+        /// <summary>
+        /// URL to the business page.
+        /// </summary>
+        public const string BusinessUrl = "BusinessUrl";
+
+        /// <summary>
+        /// Whether this is an approval notification.
+        /// </summary>
+        public const string IsApproval = "IsApproval";
+
+        /// <summary>
+        /// Whether this is a rejection notification.
+        /// </summary>
+        public const string IsRejection = "IsRejection";
+
+        /// <summary>
+        /// Whether this is a suspension notification.
+        /// </summary>
+        public const string IsSuspension = "IsSuspension";
+
+        /// <summary>
+        /// Whether this is a critical notification (high priority).
+        /// </summary>
+        public const string IsCritical = "IsCritical";
+
+        /// <summary>
+        /// Whether this is a report notification.
+        /// </summary>
+        public const string IsReport = "IsReport";
+
+        /// <summary>
+        /// Whether this notification requires user action.
+        /// </summary>
+        public const string RequiresAction = "RequiresAction";
+
+        /// <summary>
+        /// Next steps instructions for the user.
+        /// </summary>
+        public const string NextSteps = "NextSteps";
+
+        /// <summary>
+        /// Action URL (e.g., review page, payment page).
+        /// </summary>
+        public const string ActionUrl = "ActionUrl";
+
+        /// <summary>
+        /// Report URL (e.g., analytics page).
+        /// </summary>
+        public const string ReportUrl = "ReportUrl";
+    }
+
+    #endregion
 }

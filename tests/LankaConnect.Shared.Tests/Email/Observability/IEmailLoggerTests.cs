@@ -130,27 +130,7 @@ public class IEmailLoggerTests
             Times.Once);
     }
 
-    [Fact]
-    public void LogFeatureFlagCheck_ShouldLogDebug()
-    {
-        // Arrange
-        var handlerName = "EventReminderJob";
-        var isEnabled = true;
-        var reason = "Override enabled for pilot handler";
-
-        // Act
-        _emailLogger.LogFeatureFlagCheck(handlerName, isEnabled, reason);
-
-        // Assert
-        _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Debug,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(handlerName) && v.ToString()!.Contains(reason)),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
+    // Phase 6A.100: LogFeatureFlagCheck test removed - feature flags no longer used
 
     [Fact]
     public void GenerateCorrelationId_ShouldReturnNonEmptyString()
@@ -222,12 +202,7 @@ public class EmailLogger : IEmailLogger
             correlationId, templateName);
     }
 
-    public void LogFeatureFlagCheck(string handlerName, bool isEnabled, string reason)
-    {
-        _logger.LogDebug(
-            "Feature flag check: Handler={HandlerName}, Enabled={IsEnabled}, Reason={Reason}",
-            handlerName, isEnabled, reason);
-    }
+    // Phase 6A.100: LogFeatureFlagCheck removed - feature flags no longer used
 
     public string GenerateCorrelationId()
     {

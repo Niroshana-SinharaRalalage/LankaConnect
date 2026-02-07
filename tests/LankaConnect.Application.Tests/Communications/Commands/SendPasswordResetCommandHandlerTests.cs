@@ -18,14 +18,14 @@ namespace LankaConnect.Application.Tests.Communications.Commands;
 /// TDD tests for SendPasswordResetCommandHandler
 /// Tests written FIRST following Red-Green-Refactor cycle
 /// Phase 6A.87: Updated for ITypedEmailService support
+/// Phase 6A.100: Removed IEmailService - now uses only ITypedEmailService
 /// </summary>
 public class SendPasswordResetCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IEmailService> _mockEmailService;
-    private readonly Mock<ITypedEmailService> _mockTypedEmailService;  // Phase 6A.87: Added for typed email service
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IEmailTemplateService> _mockEmailTemplateService;
-    private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;  // Phase 6A.101: Added for environment-aware URLs
+    private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<SendPasswordResetCommandHandler>> _mockLogger;
     private readonly SendPasswordResetCommandHandler _handler;
@@ -33,29 +33,27 @@ public class SendPasswordResetCommandHandlerTests
     public SendPasswordResetCommandHandlerTests()
     {
         _mockUserRepository = new Mock<IUserRepository>();
-        _mockEmailService = new Mock<IEmailService>();
-        _mockTypedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
+        _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockEmailTemplateService = new Mock<IEmailTemplateService>();
-        _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();  // Phase 6A.101: Initialize mock
+        _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<SendPasswordResetCommandHandler>>();
 
-        // Phase 6A.87: Default setup for typed email service to return success
+        // Default setup for typed email service to return success
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
-        // Phase 6A.101: Default setup for email URL helper
+        // Default setup for email URL helper
         _mockEmailUrlHelper.Setup(x => x.BuildPasswordResetUrl(It.IsAny<string>()))
             .Returns<string>(token => $"https://staging.lankaconnect.com/reset-password?token={token}");
 
         _handler = new SendPasswordResetCommandHandler(
             _mockUserRepository.Object,
-            _mockEmailService.Object,
-            _mockTypedEmailService.Object,  // Phase 6A.87: Pass typed email service
+            _mockTypedEmailService.Object,
             _mockEmailTemplateService.Object,
-            _mockEmailUrlHelper.Object,  // Phase 6A.101: Pass email URL helper
+            _mockEmailUrlHelper.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);
     }

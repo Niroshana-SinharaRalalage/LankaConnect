@@ -1,29 +1,31 @@
 using System.Diagnostics;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Observability;
+using LankaConnect.Shared.Email.Services;
 
-namespace LankaConnect.Shared.Email.Services;
+namespace LankaConnect.Infrastructure.Email.Services;
 
 /// <summary>
-/// Phase 6A.100: Simplified implementation of ITypedEmailService.
+/// Phase 6A.100: Infrastructure implementation of ITypedEmailService.
 ///
 /// Purpose:
-/// - Single email sending approach (no feature flags)
-/// - Always validates parameters before sending
-/// - Always uses typed parameters converted via ToDictionary()
+/// - Single email sending approach using typed parameters (no Dictionary approach)
+/// - Directly uses AzureEmailService for email delivery (no bridge pattern)
+/// - Validates parameters before sending
 /// - Provides logging with correlation IDs
 /// - Records metrics for dashboard
 ///
-/// This replaces TypedEmailServiceAdapter which had feature flag complexity.
+/// This replaces the Shared.TypedEmailService + IEmailServiceBridge pattern
+/// with a simpler direct implementation in Infrastructure.
 /// </summary>
-public class TypedEmailService : ITypedEmailService
+public class InfrastructureTypedEmailService : ITypedEmailService
 {
-    private readonly IEmailServiceBridge _emailService;
+    private readonly AzureEmailService _emailService;
     private readonly IEmailLogger _logger;
     private readonly IEmailMetrics _metrics;
 
-    public TypedEmailService(
-        IEmailServiceBridge emailService,
+    public InfrastructureTypedEmailService(
+        AzureEmailService emailService,
         IEmailLogger logger,
         IEmailMetrics metrics)
     {
@@ -63,8 +65,8 @@ public class TypedEmailService : ITypedEmailService
             // Convert to dictionary for template rendering
             var parameters = emailParams.ToDictionary();
 
-            // Send email via underlying service
-            var success = await _emailService.SendTemplatedEmailAsync(
+            // Send email via AzureEmailService directly (no bridge)
+            var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
                 parameters,
@@ -74,9 +76,9 @@ public class TypedEmailService : ITypedEmailService
             var durationMs = (int)stopwatch.ElapsedMilliseconds;
 
             // Record metrics
-            _metrics.RecordEmailSent(emailParams.TemplateName, durationMs, success);
+            _metrics.RecordEmailSent(emailParams.TemplateName, durationMs, result.IsSuccess);
 
-            if (success)
+            if (result.IsSuccess)
             {
                 // Log success
                 _logger.LogEmailSendSuccess(correlationId, emailParams.TemplateName, durationMs);
@@ -85,8 +87,8 @@ public class TypedEmailService : ITypedEmailService
             else
             {
                 // Log failure
-                _logger.LogEmailSendFailure(correlationId, emailParams.TemplateName, "Email service returned failure", null);
-                return TypedEmailSendResult.Fail(correlationId, new List<string> { "Email service returned failure" });
+                _logger.LogEmailSendFailure(correlationId, emailParams.TemplateName, result.Error ?? "Unknown error", null);
+                return TypedEmailSendResult.Fail(correlationId, new List<string> { result.Error ?? "Email service returned failure" });
             }
         }
         catch (Exception ex)
@@ -136,25 +138,30 @@ public class TypedEmailService : ITypedEmailService
             // Convert to dictionary for template rendering
             var parameters = emailParams.ToDictionary();
 
-            // Get recipient name from parameters or use email
-            var recipientName = emailParams.RecipientName;
+            // Convert DTO attachments to EmailAttachment
+            var emailAttachments = attachments?.Select(a => new LankaConnect.Application.Common.Interfaces.EmailAttachment
+            {
+                FileName = a.FileName,
+                Content = a.Content,
+                ContentType = a.ContentType,
+                ContentId = a.ContentId
+            }).ToList();
 
-            // Send email with attachments via underlying service
-            var success = await _emailService.SendTemplatedEmailWithAttachmentsAsync(
+            // Send email with attachments via AzureEmailService directly (no bridge)
+            var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
-                recipientName,
                 parameters,
-                attachments,
+                emailAttachments,
                 cancellationToken);
 
             stopwatch.Stop();
             var durationMs = (int)stopwatch.ElapsedMilliseconds;
 
             // Record metrics
-            _metrics.RecordEmailSent(emailParams.TemplateName, durationMs, success);
+            _metrics.RecordEmailSent(emailParams.TemplateName, durationMs, result.IsSuccess);
 
-            if (success)
+            if (result.IsSuccess)
             {
                 // Log success
                 _logger.LogEmailSendSuccess(correlationId, emailParams.TemplateName, durationMs);
@@ -163,8 +170,8 @@ public class TypedEmailService : ITypedEmailService
             else
             {
                 // Log failure
-                _logger.LogEmailSendFailure(correlationId, emailParams.TemplateName, "Email service returned failure", null);
-                return TypedEmailSendResult.Fail(correlationId, new List<string> { "Email service returned failure" });
+                _logger.LogEmailSendFailure(correlationId, emailParams.TemplateName, result.Error ?? "Unknown error", null);
+                return TypedEmailSendResult.Fail(correlationId, new List<string> { result.Error ?? "Email service returned failure" });
             }
         }
         catch (Exception ex)

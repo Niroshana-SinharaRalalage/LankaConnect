@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
-using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -22,25 +20,20 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// </summary>
 public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNotification<CommitmentUpdatedEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
-    private const string HandlerName = nameof(CommitmentUpdatedEventHandler);  // Phase 6A.87: For feature flag lookup
-
     public CommitmentUpdatedEventHandler(
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;

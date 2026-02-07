@@ -13,8 +13,24 @@ using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRou
 namespace LankaConnect.Application.Common.Interfaces;
 
 /// <summary>
-/// Service interface for sending emails with templates and attachments
+/// OBSOLETE: Legacy service interface for sending emails with templates and attachments.
+/// Phase 6A.100: Use ITypedEmailService instead for strongly-typed email parameters.
+///
+/// This interface is retained for:
+/// - RegistrationEmailService (legacy infrastructure service)
+/// - Admin API controllers (TestController, EmailController)
+/// - Integration tests
+///
+/// New handlers MUST use ITypedEmailService with typed *EmailParams classes.
 /// </summary>
+// NOTE: This interface is kept for backward compatibility with:
+// - AzureEmailService (Infrastructure implementation)
+// - RegistrationEmailService (legacy infrastructure service)
+// - Admin API controllers (TestController, EmailController)
+// - Integration tests
+//
+// New handlers MUST use ITypedEmailService with typed *EmailParams classes instead.
+// See Phase 6A.100 for migration guidance.
 public interface IEmailService
 {
     /// <summary>

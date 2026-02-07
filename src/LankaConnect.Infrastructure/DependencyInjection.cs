@@ -29,7 +29,6 @@ using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Services;
 using LankaConnect.Application.Communications.BackgroundJobs;
-using LankaConnect.Application.Common.Extensions;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Shared.Email.Extensions;
 using LankaConnect.Infrastructure.Payments.Configuration;
@@ -287,12 +286,14 @@ public static class DependencyInjection
         // Phase 6A.87: Since IEmailService is now wrapped with decorator, get AzureEmailService directly
         services.AddScoped<IEmailTemplateService>(provider => provider.GetRequiredService<AzureEmailService>());
 
-        // Phase 6A.87: Register Typed Email Services for hybrid email system
+        // Phase 6A.100: Register Typed Email Services (complete IEmailService removal)
         // - ITypedEmailService enables strongly-typed email parameters with compile-time safety
-        // - IEmailServiceBridge connects TypedEmailServiceAdapter to existing IEmailService
-        // - Feature flags control gradual migration per handler
-        services.AddTypedEmailServices(configuration);
-        services.AddEmailServiceBridge();
+        // - InfrastructureTypedEmailService directly uses AzureEmailService (no bridge pattern)
+        // - All handlers now use ITypedEmailService only (no legacy Dictionary approach)
+        services.AddSingleton<LankaConnect.Shared.Email.Observability.IEmailLogger,
+            LankaConnect.Shared.Email.Extensions.DefaultEmailLogger>();
+        services.AddScoped<LankaConnect.Shared.Email.Services.ITypedEmailService,
+            LankaConnect.Infrastructure.Email.Services.InfrastructureTypedEmailService>();
 
         // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
         // This fixes the data loss issue where metrics disappeared after container restart

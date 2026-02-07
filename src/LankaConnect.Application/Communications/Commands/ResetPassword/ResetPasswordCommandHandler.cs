@@ -48,39 +48,41 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     {
         using (LogContext.PushProperty("Operation", "ResetPassword"))
         using (LogContext.PushProperty("EntityType", "User"))
-        using (LogContext.PushProperty("Email", request.Email))
+        using (LogContext.PushProperty("Email", request.Email ?? "not-provided"))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "ResetPassword START: Email={Email}",
-                request.Email);
+                "ResetPassword START: Email={Email}, HasToken={HasToken}",
+                request.Email ?? "not-provided",
+                !string.IsNullOrEmpty(request.Token));
 
             try
             {
-                // Validate email format
-                var emailResult = Email.Create(request.Email);
-                if (!emailResult.IsSuccess)
+                // Phase 6A.101: Find user by token (primary) or by email (backward compatibility)
+                LankaConnect.Domain.Users.User? user = null;
+
+                // First, try to find user by reset token (preferred method)
+                user = await _userRepository.GetByPasswordResetTokenAsync(request.Token, cancellationToken);
+
+                // If not found by token and email is provided, try email lookup for backward compatibility
+                if (user == null && !string.IsNullOrWhiteSpace(request.Email))
                 {
-                    stopwatch.Stop();
-                    _logger.LogWarning(
-                        "ResetPassword FAILED: Invalid email format - Email={Email}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.Email,
-                        emailResult.Error,
-                        stopwatch.ElapsedMilliseconds);
-                    return Result<ResetPasswordResponse>.Failure("Invalid email format");
+                    var emailResult = Email.Create(request.Email);
+                    if (emailResult.IsSuccess)
+                    {
+                        user = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
+                    }
                 }
 
-                // Get user by email
-                var user = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "ResetPassword FAILED: User not found - Email={Email}, Duration={ElapsedMs}ms",
-                        request.Email,
+                        "ResetPassword FAILED: User not found by token or email - Email={Email}, Duration={ElapsedMs}ms",
+                        request.Email ?? "not-provided",
                         stopwatch.ElapsedMilliseconds);
-                    return Result<ResetPasswordResponse>.Failure("Invalid reset token or email");
+                    return Result<ResetPasswordResponse>.Failure("Invalid or expired reset token");
                 }
 
                 // Validate reset token
@@ -89,7 +91,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     stopwatch.Stop();
                     _logger.LogWarning(
                         "ResetPassword FAILED: Invalid or expired token - Email={Email}, UserId={UserId}, Duration={ElapsedMs}ms",
-                        request.Email,
+                        user.Email.Value,
                         user.Id,
                         stopwatch.ElapsedMilliseconds);
                     return Result<ResetPasswordResponse>.Failure("Invalid or expired reset token");
@@ -97,7 +99,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
                 _logger.LogInformation(
                     "ResetPassword: Token validation passed - Email={Email}, UserId={UserId}",
-                    request.Email,
+                    user.Email.Value,
                     user.Id);
 
                 // Validate password strength
@@ -107,7 +109,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     stopwatch.Stop();
                     _logger.LogWarning(
                         "ResetPassword FAILED: Password validation failed - Email={Email}, UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.Email,
+                        user.Email.Value,
                         user.Id,
                         passwordValidationResult.Error,
                         stopwatch.ElapsedMilliseconds);
@@ -121,7 +123,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     stopwatch.Stop();
                     _logger.LogWarning(
                         "ResetPassword FAILED: Password hashing failed - Email={Email}, UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.Email,
+                        user.Email.Value,
                         user.Id,
                         hashResult.Error,
                         stopwatch.ElapsedMilliseconds);
@@ -135,7 +137,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                     stopwatch.Stop();
                     _logger.LogWarning(
                         "ResetPassword FAILED: Change password failed - Email={Email}, UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.Email,
+                        user.Email.Value,
                         user.Id,
                         changePasswordResult.Error,
                         stopwatch.ElapsedMilliseconds);
@@ -147,7 +149,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
                 _logger.LogInformation(
                     "ResetPassword: Password changed, tokens revoked - Email={Email}, UserId={UserId}",
-                    request.Email,
+                    user.Email.Value,
                     user.Id);
 
                 // Save changes
@@ -205,7 +207,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 stopwatch.Stop();
                 _logger.LogInformation(
                     "ResetPassword COMPLETE: Email={Email}, UserId={UserId}, Duration={ElapsedMs}ms",
-                    request.Email,
+                    user.Email.Value,
                     user.Id,
                     stopwatch.ElapsedMilliseconds);
 
@@ -216,7 +218,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 stopwatch.Stop();
                 _logger.LogError(ex,
                     "ResetPassword FAILED: Unexpected error - Email={Email}, Duration={ElapsedMs}ms, ErrorMessage={ErrorMessage}",
-                    request.Email,
+                    request.Email ?? "not-provided",
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);
                 return Result<ResetPasswordResponse>.Failure("An error occurred while resetting password");

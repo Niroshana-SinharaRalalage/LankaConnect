@@ -1,52 +1,21 @@
 using LankaConnect.Shared.Email.Observability;
-using LankaConnect.Shared.Email.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Shared.Email.Extensions;
 
 /// <summary>
-/// Phase 6A.100: DI registration extensions for the unified typed email system.
+/// Phase 6A.100: Email logging and metrics implementations.
 ///
-/// Usage in Startup/Program.cs:
-///
-///   // Register core email services (in Shared)
-///   services.AddTypedEmailServices(configuration);
-///
-///   // Register bridge adapter (in Application)
-///   services.AddEmailServiceBridge();
+/// Note: ITypedEmailService registration moved to LankaConnect.Infrastructure.DependencyInjection.cs
+/// using InfrastructureTypedEmailService which directly uses AzureEmailService (no bridge pattern).
 ///
 /// All handlers now use ITypedEmailService.SendEmailAsync(IEmailParameters).
-/// Feature flags have been removed - single code path only.
+/// IEmailService and bridge pattern have been removed.
 /// </summary>
 public static class EmailServiceExtensions
 {
-    /// <summary>
-    /// Registers the core typed email services from the Shared project.
-    /// Call this in the Application/API startup.
-    /// </summary>
-    /// <param name="services">Service collection</param>
-    /// <param name="configuration">Configuration (kept for future extensibility)</param>
-    /// <returns>Service collection for chaining</returns>
-    public static IServiceCollection AddTypedEmailServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Phase 6A.100: Feature flags removed - single unified approach
-
-        // Register logger implementation
-        services.AddSingleton<IEmailLogger, DefaultEmailLogger>();
-
-        // Register metrics implementation (singleton for aggregation)
-        services.AddSingleton<IEmailMetrics, DefaultEmailMetrics>();
-
-        // Phase 6A.100: Register TypedEmailService (replaces TypedEmailServiceAdapter)
-        // Note: IEmailServiceBridge must be registered separately (in Application project)
-        services.AddScoped<ITypedEmailService, TypedEmailService>();
-
-        return services;
-    }
+    // Phase 6A.100: AddTypedEmailServices removed - registration now in Infrastructure.DependencyInjection
+    // Phase 6A.100: AddEmailServiceBridge removed - bridge pattern eliminated
 }
 
 /// <summary>
@@ -101,12 +70,7 @@ public class DefaultEmailLogger : IEmailLogger
             correlationId, templateName);
     }
 
-    public void LogFeatureFlagCheck(string handlerName, bool isEnabled, string reason)
-    {
-        _logger.LogDebug(
-            "Feature flag check: Handler={HandlerName}, Enabled={IsEnabled}, Reason={Reason}",
-            handlerName, isEnabled, reason);
-    }
+    // Phase 6A.100: LogFeatureFlagCheck removed - all handlers now use typed parameters
 }
 
 /// <summary>

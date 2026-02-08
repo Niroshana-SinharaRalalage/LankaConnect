@@ -14,6 +14,8 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -21,7 +23,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.BackgroundJobs;
 
 /// <summary>
-/// Phase 6A.61: TDD Tests for EventNotificationEmailJob
+/// Phase 6A.100: TDD Tests for EventNotificationEmailJob
 /// Tests background email sending with recipient consolidation and history updates
 /// </summary>
 public class EventNotificationEmailJobTests
@@ -31,7 +33,7 @@ public class EventNotificationEmailJobTests
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<EventNotificationEmailJob>> _mockLogger;
@@ -44,7 +46,7 @@ public class EventNotificationEmailJobTests
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
-        _mockEmailService = new Mock<IEmailService>();
+        _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<EventNotificationEmailJob>>();
@@ -55,7 +57,7 @@ public class EventNotificationEmailJobTests
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,
-            _mockEmailService.Object,
+            _mockTypedEmailService.Object,
             _mockEmailUrlHelper.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);
@@ -165,24 +167,20 @@ public class EventNotificationEmailJobTests
             .Setup(x => x.BuildEventDetailsUrl(eventId))
             .Returns($"https://test.com/events/{eventId}");
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(historyId, CancellationToken.None);
 
         // Assert
         // Should send to 4 recipients (2 from groups + 2 from registrations)
-        _mockEmailService.Verify(
-            x => x.SendTemplatedEmailAsync(
-                EmailTemplateNames.EventDetails,
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
+        _mockTypedEmailService.Verify(
+            x => x.SendEmailAsync(
+                It.IsAny<EventDetailsEmailParams>(),
                 It.IsAny<CancellationToken>()),
             Times.Exactly(4));
 
@@ -228,24 +226,26 @@ public class EventNotificationEmailJobTests
             .Setup(x => x.BuildEventDetailsUrl(eventId))
             .Returns($"https://test.com/events/{eventId}");
 
-        // One succeeds, one fails
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(EmailTemplateNames.EventDetails, "success@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        // One succeeds, one fails - use callback to determine which recipient
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(
+                It.Is<EventDetailsEmailParams>(p => p.RecipientEmail == "success@test.com"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(EmailTemplateNames.EventDetails, "fail@test.com", It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("SMTP error"));
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(
+                It.Is<EventDetailsEmailParams>(p => p.RecipientEmail == "fail@test.com"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "SMTP error" }));
 
         // Act
         await _job.ExecuteAsync(historyId, CancellationToken.None);
 
         // Assert
-        _mockEmailService.Verify(
-            x => x.SendTemplatedEmailAsync(
-                EmailTemplateNames.EventDetails,
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
+        _mockTypedEmailService.Verify(
+            x => x.SendEmailAsync(
+                It.IsAny<EventDetailsEmailParams>(),
                 It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 

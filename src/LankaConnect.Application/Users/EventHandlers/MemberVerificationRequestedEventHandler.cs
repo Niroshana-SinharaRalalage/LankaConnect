@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
@@ -14,27 +13,22 @@ namespace LankaConnect.Application.Users.EventHandlers;
 /// <summary>
 /// Handles MemberVerificationRequestedEvent to send email verification link.
 /// Phase 6A.53: Member Email Verification System
-/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
+/// Phase 6A.100: Migrated to ITypedEmailService only - removed IEmailService dependency
 /// Uses fail-silent pattern to prevent transaction rollback.
 /// </summary>
 public class MemberVerificationRequestedEventHandler
     : INotificationHandler<DomainEventNotification<MemberVerificationRequestedEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly ILogger<MemberVerificationRequestedEventHandler> _logger;
     private readonly IApplicationUrlsService _urlsService;
 
-    private const string HandlerName = nameof(MemberVerificationRequestedEventHandler);  // Phase 6A.87: For feature flag lookup
-
     public MemberVerificationRequestedEventHandler(
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         ILogger<MemberVerificationRequestedEventHandler> logger,
         IApplicationUrlsService urlsService)
     {
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _logger = logger;
         _urlsService = urlsService;
     }

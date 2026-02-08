@@ -1,38 +1,36 @@
-using System.Globalization;
 using System.Text;
-using LankaConnect.Application.Common.Constants;
-using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Services;
 
 /// <summary>
-/// Phase 6A.X: Shared service for sending registration confirmation emails.
+/// Phase 6A.100: Shared service for sending registration confirmation emails.
 /// Consolidates email logic from multiple handlers to eliminate duplication.
 /// Supports both free and paid events, member and anonymous registrations.
-/// Phase 6A.X Issue #39: Added EventDetailsUrl to email templates.
+///
+/// Migrated to use ITypedEmailService with strongly-typed email parameters
+/// (FreeEventRegistrationEmailParams and TicketConfirmationEmailParams).
 /// </summary>
 public class RegistrationEmailService : IRegistrationEmailService
 {
-    private readonly IEmailService _emailService;
-    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationEmailService> _logger;
 
     public RegistrationEmailService(
-        IEmailService emailService,
-        IEmailTemplateService emailTemplateService,
+        ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationEmailService> logger)
     {
-        _emailService = emailService;
-        _emailTemplateService = emailTemplateService;
+        _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -69,83 +67,68 @@ public class RegistrationEmailService : IRegistrationEmailService
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
             var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Format event date/time range
-            var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
-
-            // Phase 6A.X Issue #39: Build event details URL for the email
+            // Build event details URL for the email
             var eventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
 
-            // Prepare email parameters
-            var parameters = new Dictionary<string, object>
+            // Create typed email parameters
+            var emailParams = FreeEventRegistrationEmailParams.Create(
+                eventId: @event.Id,
+                registrationId: registration.Id,
+                userName: recipientName,
+                userEmail: recipientEmail,
+                eventTitle: @event.Title.Value,
+                eventStartDate: @event.StartDate,
+                eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                eventLocation: GetEventLocationString(@event),
+                eventDetailsUrl: eventDetailsUrl,
+                registrationDate: registration.CreatedAt
+            );
+
+            // Set timezone for consistent date/time display
+            emailParams.TimeZoneId = @event.TimeZoneId;
+
+            // Add optional parameters
+            if (hasAttendeeDetails)
             {
-                { "UserName", recipientName },
-                { "EventTitle", @event.Title.Value },
-                { "EventDateTime", eventDateTimeRange },
-                { "EventLocation", GetEventLocationString(@event) },
-                { "EventDetailsUrl", eventDetailsUrl }, // Phase 6A.X Issue #39: Link to view event details
-                { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "Attendees", attendeeDetailsHtml },
-                { "HasAttendeeDetails", hasAttendeeDetails },
-                { "EventImageUrl", eventImageUrl },
-                { "HasEventImage", hasEventImage }
-            };
+                emailParams.WithAttendees(attendeeDetailsHtml);
+            }
+
+            if (hasEventImage)
+            {
+                emailParams.WithEventImage(eventImageUrl);
+            }
 
             // Add contact information
             if (registration.Contact != null)
             {
-                parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                parameters["HasContactInfo"] = true;
-            }
-            else
-            {
-                parameters["ContactEmail"] = "";
-                parameters["ContactPhone"] = "";
-                parameters["HasContactInfo"] = false;
+                emailParams.WithContactInfo(
+                    registration.Contact.Email,
+                    registration.Contact.PhoneNumber);
             }
 
             // Add organizer contact details
-            parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
-            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
-            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
-
-            // Render email template
-            var renderResult = await _emailTemplateService.RenderTemplateAsync(
-                EmailTemplateNames.FreeEventRegistration,
-                parameters,
-                cancellationToken);
-
-            if (renderResult.IsFailure)
+            if (@event.HasOrganizerContact())
             {
-                _logger.LogError(
-                    "Template rendering failed - Template={Template}, Error={Error}",
-                    EmailTemplateNames.FreeEventRegistration, renderResult.Error);
-                return Result.Failure($"Template rendering failed: {renderResult.Error}");
+                emailParams.WithOrganizerContact(
+                    @event.OrganizerContactName,
+                    @event.OrganizerContactEmail,
+                    @event.OrganizerContactPhone);
             }
 
-            // Build and send email
-            var emailMessage = new EmailMessageDto
-            {
-                ToEmail = recipientEmail,
-                ToName = recipientName,
-                Subject = renderResult.Value.Subject,
-                HtmlBody = renderResult.Value.HtmlBody,
-                PlainTextBody = renderResult.Value.PlainTextBody
-            };
+            // Send email via typed email service
+            var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-            var emailResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
-            if (emailResult.IsFailure)
+            if (!result.Success)
             {
                 _logger.LogError(
                     "Email sending failed - Email={Email}, Errors={Errors}",
-                    recipientEmail, string.Join(", ", emailResult.Errors));
-                return Result.Failure($"Email sending failed: {string.Join(", ", emailResult.Errors)}");
+                    recipientEmail, string.Join(", ", result.Errors));
+                return Result.Failure($"Email sending failed: {string.Join(", ", result.Errors)}");
             }
 
             _logger.LogInformation(
-                "Free event confirmation email sent successfully - Email={Email}, RegistrationId={RegistrationId}",
-                recipientEmail, registration.Id);
+                "Free event confirmation email sent successfully - Email={Email}, RegistrationId={RegistrationId}, CorrelationId={CorrelationId}",
+                recipientEmail, registration.Id, result.CorrelationId);
 
             return Result.Success();
         }
@@ -192,100 +175,96 @@ public class RegistrationEmailService : IRegistrationEmailService
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
             var hasEventImage = !string.IsNullOrEmpty(eventImageUrl);
 
-            // Format event date/time range
-            var eventDateTimeRange = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
-
-            // Phase 6A.X Issue #39: Build event details URL for the email
+            // Build event details URL for the email
             var eventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
 
-            // Prepare email parameters
-            var parameters = new Dictionary<string, object>
+            // Get payment amount
+            var amountPaid = registration.TotalPrice?.Amount ?? 0;
+
+            // Create typed email parameters
+            var emailParams = TicketConfirmationEmailParams.Create(
+                eventId: @event.Id,
+                registrationId: registration.Id,
+                userName: recipientName,
+                contactEmail: recipientEmail,
+                eventTitle: @event.Title.Value,
+                eventStartDate: @event.StartDate,
+                eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                eventLocation: GetEventLocationString(@event),
+                eventDetailsUrl: eventDetailsUrl,
+                amountPaid: amountPaid,
+                paymentIntentId: registration.StripePaymentIntentId ?? "",
+                paymentDate: registration.UpdatedAt ?? DateTime.UtcNow,
+                quantity: registration.Attendees?.Count ?? 1
+            );
+
+            // Set timezone for consistent date/time display
+            emailParams.TimeZoneId = @event.TimeZoneId;
+            emailParams.RegistrationDate = registration.CreatedAt;
+
+            // Add ticket information
+            emailParams.WithTicket(
+                ticketCode: ticket.TicketCode,
+                expiryDate: @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy"),
+                ticketUrl: "" // Ticket URL if applicable
+            );
+
+            // Add optional parameters
+            if (hasAttendeeDetails)
             {
-                { "UserName", recipientName },
-                { "EventTitle", @event.Title.Value },
-                { "EventDateTime", eventDateTimeRange },
-                { "EventLocation", GetEventLocationString(@event) },
-                { "EventDetailsUrl", eventDetailsUrl }, // Phase 6A.X Issue #39: Link to view event details
-                { "RegistrationDate", registration.CreatedAt.ToString("MMMM dd, yyyy h:mm tt") },
-                { "Attendees", attendeeDetailsHtml },
-                { "HasAttendeeDetails", hasAttendeeDetails },
-                { "EventImageUrl", eventImageUrl },
-                { "HasEventImage", hasEventImage },
-                // Payment details
-                { "AmountPaid", registration.TotalPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "$0.00" },
-                { "PaymentIntentId", registration.StripePaymentIntentId ?? "" },
-                { "PaymentDate", registration.UpdatedAt?.ToString("MMMM dd, yyyy h:mm tt") ?? DateTime.UtcNow.ToString("MMMM dd, yyyy h:mm tt") },
-                // Ticket details
-                { "HasTicket", true },
-                { "TicketCode", ticket.TicketCode },
-                { "TicketExpiryDate", @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy") }
-            };
+                emailParams.WithAttendees(attendeeDetailsHtml);
+            }
+
+            if (hasEventImage)
+            {
+                emailParams.WithEventImage(eventImageUrl);
+            }
 
             // Add contact information
             if (registration.Contact != null)
             {
-                parameters["ContactEmail"] = registration.Contact.Email;
-                parameters["ContactPhone"] = registration.Contact.PhoneNumber ?? "";
-                parameters["HasContactInfo"] = true;
-            }
-            else
-            {
-                parameters["ContactEmail"] = "";
-                parameters["ContactPhone"] = "";
-                parameters["HasContactInfo"] = false;
+                emailParams.WithContactInfo(
+                    registration.Contact.Email,
+                    registration.Contact.PhoneNumber);
             }
 
             // Add organizer contact details
-            parameters["HasOrganizerContact"] = @event.HasOrganizerContact();
-            parameters["OrganizerContactName"] = @event.OrganizerContactName ?? "";
-            parameters["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "";
-            parameters["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "";
-
-            // Render email template
-            var renderResult = await _emailTemplateService.RenderTemplateAsync(
-                EmailTemplateNames.PaidEventRegistration,
-                parameters,
-                cancellationToken);
-
-            if (renderResult.IsFailure)
+            if (@event.HasOrganizerContact())
             {
-                _logger.LogError(
-                    "Template rendering failed - Template={Template}, Error={Error}",
-                    EmailTemplateNames.PaidEventRegistration, renderResult.Error);
-                return Result.Failure($"Template rendering failed: {renderResult.Error}");
+                emailParams.WithOrganizerContact(
+                    @event.OrganizerContactName,
+                    @event.OrganizerContactEmail,
+                    @event.OrganizerContactPhone);
             }
 
-            // Build email message with PDF attachment
-            var emailMessage = new EmailMessageDto
+            // Create PDF attachment
+            var attachments = new List<EmailAttachmentDto>
             {
-                ToEmail = recipientEmail,
-                ToName = recipientName,
-                Subject = renderResult.Value.Subject,
-                HtmlBody = renderResult.Value.HtmlBody,
-                PlainTextBody = renderResult.Value.PlainTextBody,
-                Attachments = new List<EmailAttachment>
+                new EmailAttachmentDto
                 {
-                    new EmailAttachment
-                    {
-                        FileName = $"ticket-{ticket.TicketCode}.pdf",
-                        Content = ticketPdf,
-                        ContentType = "application/pdf"
-                    }
+                    FileName = $"ticket-{ticket.TicketCode}.pdf",
+                    Content = ticketPdf,
+                    ContentType = "application/pdf"
                 }
             };
 
-            var emailResult = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
-            if (emailResult.IsFailure)
+            // Send email with attachments via typed email service
+            var result = await _typedEmailService.SendEmailWithAttachmentsAsync(
+                emailParams,
+                attachments,
+                cancellationToken);
+
+            if (!result.Success)
             {
                 _logger.LogError(
                     "Email sending failed - Email={Email}, Errors={Errors}",
-                    recipientEmail, string.Join(", ", emailResult.Errors));
-                return Result.Failure($"Email sending failed: {string.Join(", ", emailResult.Errors)}");
+                    recipientEmail, string.Join(", ", result.Errors));
+                return Result.Failure($"Email sending failed: {string.Join(", ", result.Errors)}");
             }
 
             _logger.LogInformation(
-                "Paid event confirmation email sent successfully - Email={Email}, TicketCode={TicketCode}",
-                recipientEmail, ticket.TicketCode);
+                "Paid event confirmation email sent successfully - Email={Email}, TicketCode={TicketCode}, CorrelationId={CorrelationId}",
+                recipientEmail, ticket.TicketCode, result.CorrelationId);
 
             return Result.Success();
         }
@@ -338,25 +317,6 @@ public class RegistrationEmailService : IRegistrationEmailService
         }
 
         return html.ToString().TrimEnd();
-    }
-
-    /// <summary>
-    /// Formats event date/time range for display.
-    /// Same day: "December 24, 2025 from 5:00 PM to 10:00 PM"
-    /// Different days: "December 24, 2025 at 5:00 PM to December 25, 2025 at 10:00 PM"
-    /// </summary>
-    private static string FormatEventDateTimeRange(DateTime startDate, DateTime endDate)
-    {
-        if (startDate.Date == endDate.Date)
-        {
-            // Same day event
-            return $"{startDate:MMMM dd, yyyy} from {startDate:h:mm tt} to {endDate:h:mm tt}";
-        }
-        else
-        {
-            // Multi-day event
-            return $"{startDate:MMMM dd, yyyy} at {startDate:h:mm tt} to {endDate:MMMM dd, yyyy} at {endDate:h:mm tt}";
-        }
     }
 
     /// <summary>

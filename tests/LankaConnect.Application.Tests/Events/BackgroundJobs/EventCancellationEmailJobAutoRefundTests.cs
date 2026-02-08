@@ -12,6 +12,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -19,7 +21,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.BackgroundJobs;
 
 /// <summary>
-/// Phase 6A.92: TDD Tests for EventCancellationEmailJob auto-refund feature
+/// Phase 6A.100: TDD Tests for EventCancellationEmailJob auto-refund feature
 /// Tests automatic refund processing when an event is cancelled
 /// </summary>
 public class EventCancellationEmailJobAutoRefundTests
@@ -28,7 +30,7 @@ public class EventCancellationEmailJobAutoRefundTests
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IApplicationUrlsService> _mockUrlsService;
     private readonly Mock<IRegistrationRefundService> _mockRefundService;
     private readonly Mock<IStripePaymentService> _mockStripePaymentService;
@@ -42,7 +44,7 @@ public class EventCancellationEmailJobAutoRefundTests
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
-        _mockEmailService = new Mock<IEmailService>();
+        _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockUrlsService = new Mock<IApplicationUrlsService>();
         _mockRefundService = new Mock<IRegistrationRefundService>();
         _mockStripePaymentService = new Mock<IStripePaymentService>();
@@ -56,7 +58,7 @@ public class EventCancellationEmailJobAutoRefundTests
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,
-            _mockEmailService.Object,
+            _mockTypedEmailService.Object,
             _mockUrlsService.Object,
             _mockRefundService.Object,
             _mockStripePaymentService.Object,
@@ -213,9 +215,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         SetupEmptyRecipients();
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
@@ -260,9 +262,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         SetupEmptyRecipients();
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
@@ -319,9 +321,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         SetupEmptyRecipients();
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
@@ -384,9 +386,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         SetupEmptyRecipients();
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
@@ -436,9 +438,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         SetupEmptyRecipients();
 
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");
@@ -466,8 +468,8 @@ public class EventCancellationEmailJobAutoRefundTests
         _mockRefundService.Verify(
             x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        _mockEmailService.Verify(
-            x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()),
+        _mockTypedEmailService.Verify(
+            x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -509,9 +511,9 @@ public class EventCancellationEmailJobAutoRefundTests
 
         _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         SetupEmptyRecipients();
-        _mockEmailService
-            .Setup(x => x.SendTemplatedEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+        _mockTypedEmailService
+            .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         await _job.ExecuteAsync(eventId, "Event cancelled by organizer");

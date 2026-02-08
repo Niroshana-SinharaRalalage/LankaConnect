@@ -21,25 +21,20 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ResetPasswordCommandHandler> _logger;
-
-    private const string HandlerName = nameof(ResetPasswordCommandHandler);  // Phase 6A.87: For feature flag lookup
 
     public ResetPasswordCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IUnitOfWork unitOfWork,
         ILogger<ResetPasswordCommandHandler> logger)
     {
         _userRepository = userRepository;
         _passwordHashingService = passwordHashingService;
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }

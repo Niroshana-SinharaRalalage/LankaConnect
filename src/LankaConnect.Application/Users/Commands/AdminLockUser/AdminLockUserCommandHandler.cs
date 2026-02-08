@@ -24,27 +24,22 @@ public class AdminLockUserCommandHandler : ICommandHandler<AdminLockUserCommand>
     private readonly IUserRepository _userRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AdminLockUserCommandHandler> _logger;
-
-    private const string HandlerName = nameof(AdminLockUserCommandHandler);  // Phase 6A.87: For feature flag lookup
 
     public AdminLockUserCommandHandler(
         IUserRepository userRepository,
         IAdminAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IUnitOfWork unitOfWork,
         ILogger<AdminLockUserCommandHandler> logger)
     {
         _userRepository = userRepository;
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }

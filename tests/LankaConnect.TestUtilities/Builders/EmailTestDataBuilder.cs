@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Common.DTOs;
 using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.TestUtilities.Builders;
@@ -314,65 +314,5 @@ public static class EmailTestDataBuilder
     }
 }
 
-/// <summary>
-/// Extension methods for IEmailService to provide backward compatibility with integration tests
-/// </summary>
-public static class EmailServiceExtensions
-{
-    public static async Task<bool> SendEmailAsync(this IEmailService emailService, TestEmailAddress to, string subject, string body)
-    {
-        var emailDto = EmailTestDataBuilder.CreateEmailMessageDto(to, subject, body);
-        var result = await emailService.SendEmailAsync(emailDto);
-        return result.IsSuccess;
-    }
-
-    public static async Task<bool> SendEmailAsync(this IEmailService emailService, TestEmailAddress to, string subject, string textBody, string htmlBody)
-    {
-        var emailDto = EmailTestDataBuilder.CreateEmailMessageDto(to, subject, textBody, htmlBody);
-        var result = await emailService.SendEmailAsync(emailDto);
-        return result.IsSuccess;
-    }
-
-    public static async Task<Guid> QueueEmailAsync(this IEmailService emailService, TestEmailAddress to, string subject, string body, string? htmlBody = null, int priority = 2)
-    {
-        var emailDto = new EmailMessageDto
-        {
-            ToEmail = to.Address,
-            Subject = subject,
-            PlainTextBody = body,
-            HtmlBody = htmlBody ?? $"<p>{body}</p>",
-            Priority = priority
-        };
-        
-        await emailService.SendEmailAsync(emailDto);
-        // Return a dummy GUID for now - in real implementation this would be the actual queue ID
-        return Guid.NewGuid();
-    }
-
-    public static async Task ProcessEmailQueueAsync(this IEmailService emailService, int batchSize = 10)
-    {
-        // This is a stub for integration tests
-        // In real implementation, this would process queued emails
-        await Task.CompletedTask;
-    }
-
-    public static Task<EmailMessage?> GetEmailStatusAsync(this IEmailService emailService, Guid emailId)
-    {
-        // This is a stub for integration tests
-        // In real implementation, this would retrieve email status from the repository
-        return Task.FromResult<EmailMessage?>(null);
-    }
-
-    public static async Task RetryFailedEmailsAsync(this IEmailService emailService)
-    {
-        // This is a stub for integration tests
-        // In real implementation, this would retry failed emails
-        await Task.CompletedTask;
-    }
-
-    public static async Task<bool> SendTemplatedEmailAsync(this IEmailService emailService, TestEmailAddress to, string templateName, Dictionary<string, object> templateData)
-    {
-        var result = await emailService.SendTemplatedEmailAsync(templateName, to.Address, templateData);
-        return result.IsSuccess;
-    }
-}
+// Phase 6A.100: EmailServiceExtensions removed - IEmailService has been deleted.
+// Tests should use ITypedEmailService for strongly-typed email sending.

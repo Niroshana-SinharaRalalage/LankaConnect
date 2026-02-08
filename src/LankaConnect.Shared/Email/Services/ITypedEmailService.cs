@@ -31,6 +31,25 @@ public interface ITypedEmailService
     Task<TypedEmailSendResult> SendEmailAsync(
         IEmailParameters emailParams,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.100: Sends an email with attachments using strongly-typed parameters.
+    /// Used for paid event confirmations with ticket PDF attachments.
+    ///
+    /// Process:
+    /// 1. Validate parameters
+    /// 2. Convert to dictionary via ToDictionary()
+    /// 3. Send with attachments via underlying email service
+    /// 4. Record metrics for dashboard
+    /// </summary>
+    /// <param name="emailParams">Strongly-typed email parameters</param>
+    /// <param name="attachments">List of email attachments (e.g., ticket PDFs)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result with success/failure and any errors</returns>
+    Task<TypedEmailSendResult> SendEmailWithAttachmentsAsync(
+        IEmailParameters emailParams,
+        List<EmailAttachmentDto> attachments,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -97,4 +116,31 @@ public class TypedEmailSendResult
             Errors = new List<string> { ex.Message }
         };
     }
+}
+
+/// <summary>
+/// DTO for email attachments (e.g., ticket PDFs).
+/// Phase 6A.100: Moved from IEmailServiceBridge after bridge pattern removal.
+/// </summary>
+public class EmailAttachmentDto
+{
+    /// <summary>
+    /// The file name for the attachment.
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The binary content of the attachment.
+    /// </summary>
+    public byte[] Content { get; set; } = Array.Empty<byte>();
+
+    /// <summary>
+    /// The MIME content type of the attachment.
+    /// </summary>
+    public string ContentType { get; set; } = "application/octet-stream";
+
+    /// <summary>
+    /// Optional Content-ID for inline attachments.
+    /// </summary>
+    public string? ContentId { get; set; }
 }

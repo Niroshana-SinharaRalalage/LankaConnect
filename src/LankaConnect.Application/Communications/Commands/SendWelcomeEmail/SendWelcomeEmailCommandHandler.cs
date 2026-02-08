@@ -3,6 +3,8 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SendWelcomeEmail;
@@ -10,23 +12,21 @@ namespace LankaConnect.Application.Communications.Commands.SendWelcomeEmail;
 /// <summary>
 /// Handler for sending welcome emails to users
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.100: Migrated to ITypedEmailService with WelcomeEmailParams
 /// </summary>
 public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCommand, Result<SendWelcomeEmailResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
-    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly ILogger<SendWelcomeEmailCommandHandler> _logger;
 
     public SendWelcomeEmailCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
-        IEmailService emailService,
-        IEmailTemplateService emailTemplateService,
+        ITypedEmailService typedEmailService,
         ILogger<SendWelcomeEmailCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _emailService = emailService;
-        _emailTemplateService = emailTemplateService;
+        _typedEmailService = typedEmailService;
         _logger = logger;
     }
 
@@ -86,61 +86,40 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
                     user.Email.Value,
                     user.Role);
 
-            // Determine template based on trigger type
-            var templateName = request.TriggerType switch
+            // Phase 6A.100: Map command trigger type to typed params enum
+            var triggerType = request.TriggerType switch
             {
-                WelcomeEmailTrigger.Registration => "welcome-registration",
-                WelcomeEmailTrigger.EmailVerification => "welcome-verification",
-                WelcomeEmailTrigger.AccountActivation => "welcome-activation",
-                WelcomeEmailTrigger.Manual => "welcome-manual",
-                _ => "welcome-default"
+                WelcomeEmailTrigger.Registration => WelcomeEmailTriggerType.Registration,
+                WelcomeEmailTrigger.EmailVerification => WelcomeEmailTriggerType.EmailVerification,
+                WelcomeEmailTrigger.AccountActivation => WelcomeEmailTriggerType.AccountActivation,
+                WelcomeEmailTrigger.Manual => WelcomeEmailTriggerType.Manual,
+                _ => WelcomeEmailTriggerType.Default
             };
 
-            // Prepare template parameters
-            var templateParameters = new Dictionary<string, object>
-            {
-                { "UserName", user.FullName },
-                { "FirstName", user.FirstName },
-                { "UserEmail", user.Email.Value },
-                { "CompanyName", "LankaConnect" },
-                { "LoginUrl", "https://lankaconnect.com/login" },
-                { "DashboardUrl", "https://lankaconnect.com/dashboard" },
-                { "SupportEmail", "support@lankaconnect.com" },
-                { "TriggerType", request.TriggerType.ToString() },
-                { "WelcomeDate", DateTime.UtcNow.ToString("yyyy-MM-dd") }
-            };
+            // Phase 6A.100: Use typed email params instead of dictionary
+            var emailParams = WelcomeEmailParams.Create(
+                userId: user.Id,
+                recipientEmail: user.Email.Value,
+                userName: user.FullName,
+                firstName: user.FirstName,
+                userEmail: user.Email.Value,
+                triggerType: triggerType,
+                userRole: user.Role.ToString(),
+                isEventOrganizer: user.Role == Domain.Users.Enums.UserRole.EventOrganizer,
+                isAdmin: user.Role == Domain.Users.Enums.UserRole.Admin || user.Role == Domain.Users.Enums.UserRole.AdminManager,
+                customMessage: request.CustomMessage);
 
-            // Add custom message if provided
-            if (!string.IsNullOrWhiteSpace(request.CustomMessage))
-            {
-                templateParameters.Add("CustomMessage", request.CustomMessage);
-                templateParameters.Add("HasCustomMessage", true);
-            }
-            else
-            {
-                templateParameters.Add("HasCustomMessage", false);
-            }
+                // Phase 6A.100: Send welcome email using typed email service
+                var sendResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
-            // Add role-specific content
-            templateParameters.Add("UserRole", user.Role.ToString());
-            templateParameters.Add("IsEventOrganizer", user.Role == Domain.Users.Enums.UserRole.EventOrganizer);
-            templateParameters.Add("IsAdmin", user.Role == Domain.Users.Enums.UserRole.Admin || user.Role == Domain.Users.Enums.UserRole.AdminManager);
-
-                // Send welcome email
-                var sendResult = await _emailService.SendTemplatedEmailAsync(
-                    templateName,
-                    user.Email.Value,
-                    templateParameters,
-                    cancellationToken);
-
-                if (!sendResult.IsSuccess)
+                if (!sendResult.Success)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "SendWelcomeEmail FAILED: Email send failed - Email={Email}, TriggerType={TriggerType}, Error={Error}, Duration={ElapsedMs}ms",
+                        "SendWelcomeEmail FAILED: Email send failed - Email={Email}, TriggerType={TriggerType}, Errors={Errors}, Duration={ElapsedMs}ms",
                         user.Email.Value,
                         request.TriggerType,
-                        sendResult.Error,
+                        string.Join(", ", sendResult.Errors),
                         stopwatch.ElapsedMilliseconds);
                     return Result<SendWelcomeEmailResponse>.Failure("Failed to send welcome email");
                 }

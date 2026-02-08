@@ -7,6 +7,8 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -14,12 +16,11 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Phase 6A.81 Part 3: Sends email when Preliminary registration created.
+/// Phase 6A.100: Sends email when Preliminary registration created.
+/// Migrated from IEmailService to ITypedEmailService with PreliminaryRegistrationPaymentEmailParams.
+///
 /// Email contains payment link and 24h expiration notice.
-///
 /// Fail-silent: Email failures don't block registration transaction.
-/// Architect approval: Matches Phase 6A.83 pattern, email is secondary notification.
-///
 /// User decision: Immediate email sending (not delayed).
 /// Validation: Checks PaymentStatus before sending to prevent race condition.
 /// </summary>
@@ -28,20 +29,20 @@ public class RegistrationPendingPaymentEventHandler
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly ILogger<RegistrationPendingPaymentEventHandler> _logger;
 
     public RegistrationPendingPaymentEventHandler(
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IStripePaymentService stripePaymentService,
         ILogger<RegistrationPendingPaymentEventHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _stripePaymentService = stripePaymentService;
         _logger = logger;
     }
@@ -143,43 +144,44 @@ public class RegistrationPendingPaymentEventHandler
                 "ExpiresAt={ExpiresAt}, HoursRemaining={HoursRemaining}",
                 domainEvent.CheckoutExpiresAt.ToString("o"), hoursRemaining);
 
-            // Prepare email parameters
-            var parameters = new Dictionary<string, object>
-            {
-                { "UserName", domainEvent.ContactName },
-                { "EventTitle", @event.Title.Value },
-                { "EventStartDate", EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventStartTime", EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId) },  // Phase 6A.97: Uses event's timezone
-                { "EventLocation", @event.Location?.ToString() ?? "TBD" },
-                { "AttendeeCount", domainEvent.AttendeeCount },
-                { "TotalAmount", $"${domainEvent.TotalAmount:F2}" },
-                { "Currency", domainEvent.Currency.ToUpper() },
-                { "PaymentLink", checkoutUrl ?? string.Empty },
-                { "ExpiresAt", domainEvent.CheckoutExpiresAt.ToString("MMMM dd, yyyy h:mm tt UTC") },
-                { "HoursRemaining", hoursRemaining },
-                { "RegistrationId", domainEvent.RegistrationId.ToString() },
-                { "SupportEmail", "support@lankaconnect.com" },
-                { "Year", DateTime.UtcNow.Year }
-            };
+            // Phase 6A.100: Use typed email params
+            var emailParams = PreliminaryRegistrationPaymentEmailParams.Create(
+                recipientEmail: domainEvent.ContactEmail,
+                userName: domainEvent.ContactName,
+                eventId: @event.Id,
+                eventTitle: @event.Title.Value,
+                eventStartDate: @event.StartDate,
+                timeZoneId: @event.TimeZoneId,
+                eventLocation: @event.Location?.ToString() ?? "TBD",
+                registrationId: domainEvent.RegistrationId,
+                attendeeCount: domainEvent.AttendeeCount,
+                totalAmount: domainEvent.TotalAmount,
+                currency: domainEvent.Currency.ToUpper(),
+                paymentLink: checkoutUrl ?? string.Empty,
+                expiresAt: domainEvent.CheckoutExpiresAt);
 
             _logger.LogDebug(
-                "[Phase 6A.81-Part3] [Email-4] Email parameters prepared - " +
-                "ParameterCount={Count}",
-                parameters.Count);
+                "[Phase 6A.100] [Email-4] Email parameters prepared using typed params");
 
-            // Send email
-            await _emailService.SendTemplatedEmailAsync(
-                EmailTemplateNames.PreliminaryRegistrationPayment,
-                domainEvent.ContactEmail,
-                parameters,
-                cancellationToken);
+            // Send email using typed service
+            var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
             stopwatch.Stop();
 
-            _logger.LogInformation(
-                "[Phase 6A.81-Part3] [Email-COMPLETE] Preliminary registration email sent successfully - " +
-                "RegistrationId={RegistrationId}, Email={Email}, ExpiresIn={HoursRemaining}h, Duration={ElapsedMs}ms",
-                domainEvent.RegistrationId, domainEvent.ContactEmail, hoursRemaining, stopwatch.ElapsedMilliseconds);
+            if (result.Success)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.100] [Email-COMPLETE] Preliminary registration email sent successfully - " +
+                    "RegistrationId={RegistrationId}, Email={Email}, ExpiresIn={HoursRemaining}h, Duration={ElapsedMs}ms",
+                    domainEvent.RegistrationId, domainEvent.ContactEmail, hoursRemaining, stopwatch.ElapsedMilliseconds);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.100] [Email-FAILED] Preliminary registration email failed - " +
+                    "RegistrationId={RegistrationId}, Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                    domainEvent.RegistrationId, domainEvent.ContactEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+            }
         }
         catch (Exception ex)
         {

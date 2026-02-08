@@ -7,6 +7,8 @@ using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -23,13 +25,14 @@ namespace LankaConnect.Application.Communications.BackgroundJobs;
 /// Performance: Sends emails to unlimited recipients without blocking the API response.
 /// Retry: Hangfire automatically retries failed jobs (default: 10 attempts with exponential backoff).
 /// Monitoring: View job status and failures in Hangfire Dashboard (/hangfire).
+/// Phase 6A.100: Migrated to ITypedEmailService with NewsletterEmailParams.
 /// </summary>
 public class NewsletterEmailJob
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly IEventRepository _eventRepository;
     private readonly INewsletterRecipientService _recipientService;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IApplicationDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
@@ -39,7 +42,7 @@ public class NewsletterEmailJob
         INewsletterRepository newsletterRepository,
         IEventRepository eventRepository,
         INewsletterRecipientService recipientService,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IApplicationDbContext dbContext,
         IUnitOfWork unitOfWork,
@@ -48,7 +51,7 @@ public class NewsletterEmailJob
         _newsletterRepository = newsletterRepository;
         _eventRepository = eventRepository;
         _recipientService = recipientService;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
@@ -150,32 +153,20 @@ public class NewsletterEmailJob
                 }
             }
 
-            // 4. Prepare template parameters
-            // Phase 6A.74 Part 10 Issue #3: Template uses 'NewsletterContent', not 'NewsletterDescription'
-            // Phase 6A.74 Part 14 Fix: EventId must be truthy for Handlebars {{#if EventId}} - use newsletter.EventId.HasValue
-            // Phase 6A.83 Part 2: Fix parameter names to match template expectations
-            var parameters = new Dictionary<string, object>
-            {
-                ["NewsletterTitle"] = newsletter.Title?.Value ?? "Untitled Newsletter",
-                ["NewsletterContent"] = newsletter.Description?.Value ?? "No content", // Template expects 'NewsletterContent'
-                ["DashboardUrl"] = _urlsService.FrontendBaseUrl,
-                ["IsEventNewsletter"] = newsletter.EventId.HasValue,
-                ["EventId"] = newsletter.EventId.HasValue ? newsletter.EventId.Value : (object)false, // Handlebars {{#if}} needs truthy/falsy
-                ["EventTitle"] = eventTitle ?? "",
-                ["EventDateTime"] = eventDate ?? "",  // Phase 6A.83: Changed from EventDate to EventDateTime
-                ["EventDescription"] = eventDescription ?? "",  // Phase 6A.83: Added missing EventDescription
-                ["EventLocation"] = eventLocation ?? "",
-                ["EventDetailsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}" : "",
-                ["HasSignUpLists"] = hasSignUpLists, // Phase 6A.74 Part 14 Fix: Actually check if event has sign-up lists
-                ["SignUpListsUrl"] = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}#sign-ups" : ""
-            };
+            // 4. Prepare base parameters for newsletters
+            // Phase 6A.100: Use typed email params instead of dictionary
+            var newsletterTitle = newsletter.Title?.Value ?? "Untitled Newsletter";
+            var newsletterContent = newsletter.Description?.Value ?? "No content";
+            var dashboardUrl = _urlsService.FrontendBaseUrl;
+            var eventDetailsUrl = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}" : "";
+            var signUpListsUrl = newsletter.EventId.HasValue ? $"{_urlsService.FrontendBaseUrl}/events/{newsletter.EventId}#sign-ups" : "";
 
             // 5. Send templated email to each recipient
             var successCount = 0;
             var failCount = 0;
             var emailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            _logger.LogInformation("[Phase 6A.74] Starting email send to {Count} recipients...", recipients.TotalRecipients);
+            _logger.LogInformation("[Phase 6A.100] Starting email send to {Count} recipients...", recipients.TotalRecipients);
 
             foreach (var email in recipients.EmailAddresses)
             {
@@ -183,25 +174,48 @@ public class NewsletterEmailJob
                 {
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var result = await _emailService.SendTemplatedEmailAsync(
-                        EmailTemplateNames.Newsletter,
-                        email,
-                        parameters,
-                        CancellationToken.None);
+                    // Phase 6A.100: Create typed email params for each recipient
+                    NewsletterEmailParams emailParams;
+                    if (newsletter.EventId.HasValue)
+                    {
+                        emailParams = NewsletterEmailParams.CreateForEvent(
+                            recipientEmail: email,
+                            newsletterTitle: newsletterTitle,
+                            newsletterContent: newsletterContent,
+                            dashboardUrl: dashboardUrl,
+                            eventId: newsletter.EventId.Value,
+                            eventTitle: eventTitle ?? "",
+                            eventDateTime: eventDate ?? "",
+                            eventDescription: eventDescription ?? "",
+                            eventLocation: eventLocation ?? "",
+                            eventDetailsUrl: eventDetailsUrl,
+                            hasSignUpLists: hasSignUpLists,
+                            signUpListsUrl: signUpListsUrl);
+                    }
+                    else
+                    {
+                        emailParams = NewsletterEmailParams.CreateStandalone(
+                            recipientEmail: email,
+                            newsletterTitle: newsletterTitle,
+                            newsletterContent: newsletterContent,
+                            dashboardUrl: dashboardUrl);
+                    }
+
+                    var result = await _typedEmailService.SendEmailAsync(emailParams, CancellationToken.None);
 
                     singleEmailStopwatch.Stop();
 
-                    if (result.IsSuccess)
+                    if (result.Success)
                     {
                         successCount++;
-                        _logger.LogInformation("[Phase 6A.74] Successfully sent newsletter email to {Email} in {ElapsedMs}ms",
+                        _logger.LogInformation("[Phase 6A.100] Successfully sent newsletter email to {Email} in {ElapsedMs}ms",
                             email, singleEmailStopwatch.ElapsedMilliseconds);
                     }
                     else
                     {
                         failCount++;
                         _logger.LogWarning(
-                            "[Phase 6A.74] Failed to send newsletter email to {Email} for newsletter {NewsletterId} (took {ElapsedMs}ms): {Errors}",
+                            "[Phase 6A.100] Failed to send newsletter email to {Email} for newsletter {NewsletterId} (took {ElapsedMs}ms): {Errors}",
                             email, newsletterId, singleEmailStopwatch.ElapsedMilliseconds, string.Join(", ", result.Errors));
                     }
                 }
@@ -209,7 +223,7 @@ public class NewsletterEmailJob
                 {
                     failCount++;
                     _logger.LogError(emailEx,
-                        "[Phase 6A.74] Exception sending newsletter email to {Email} for newsletter {NewsletterId}",
+                        "[Phase 6A.100] Exception sending newsletter email to {Email} for newsletter {NewsletterId}",
                         email, newsletterId);
                 }
             }

@@ -1,8 +1,5 @@
 using System.Diagnostics;
-using System.Globalization;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
-using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -17,16 +14,14 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Phase 6A.X: Handles AttendeesAddedEvent to send confirmation email and regenerate ticket PDF.
+/// Phase 6A.100: Handles AttendeesAddedEvent to send confirmation email and regenerate ticket PDF.
 /// This handler is triggered after additional attendees are successfully added to a paid registration.
 /// Part of the Add-Only Attendees with Delta Payment feature.
-/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
+/// Unified to always use ITypedEmailService with AttendeesAddedEmailParams.
 /// </summary>
 public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotification<AttendeesAddedEvent>>
 {
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
-    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly ITicketService _ticketService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
@@ -34,12 +29,8 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<AttendeesAddedEventHandler> _logger;
 
-    private const string HandlerName = nameof(AttendeesAddedEventHandler);
-
     public AttendeesAddedEventHandler(
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
-        IEmailTemplateService emailTemplateService,
+        ITypedEmailService typedEmailService,
         ITicketService ticketService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
@@ -47,9 +38,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
         IEmailUrlHelper emailUrlHelper,
         ILogger<AttendeesAddedEventHandler> logger)
     {
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
-        _emailTemplateService = emailTemplateService;
+        _typedEmailService = typedEmailService;
         _ticketService = ticketService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
@@ -72,7 +61,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[Phase 6A.X] AttendeesAdded START: CorrelationId={CorrelationId}, EventId={EventId}, RegistrationId={RegistrationId}, " +
+                "[Phase 6A.100] AttendeesAdded START: CorrelationId={CorrelationId}, EventId={EventId}, RegistrationId={RegistrationId}, " +
                 "PreviousCount={PreviousCount}, AddedCount={AddedCount}, NewTotal={NewTotal}, AdditionalAmount={AdditionalAmount}",
                 correlationId, domainEvent.EventId, domainEvent.RegistrationId,
                 domainEvent.PreviousAttendeeCount, domainEvent.AddedAttendeeCount,
@@ -83,48 +72,28 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Step 1: Load event data
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-1] Loading event - CorrelationId={CorrelationId}, EventId={EventId}",
-                    correlationId, domainEvent.EventId);
-
                 var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
                 if (@event == null)
                 {
                     _logger.LogWarning(
-                        "[Phase 6A.X] [AttendeesAdded-ERROR] Event not found - CorrelationId={CorrelationId}, EventId={EventId}",
+                        "[Phase 6A.100] AttendeesAdded: Event not found - CorrelationId={CorrelationId}, EventId={EventId}",
                         correlationId, domainEvent.EventId);
                     return;
                 }
 
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-2] Event loaded - CorrelationId={CorrelationId}, EventTitle={EventTitle}",
-                    correlationId, @event.Title.Value);
-
                 // Step 2: Load registration with updated attendees
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-3] Loading registration - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
-                    correlationId, domainEvent.RegistrationId);
-
                 var registration = await _registrationRepository.GetByIdAsync(domainEvent.RegistrationId, cancellationToken);
                 if (registration == null)
                 {
                     _logger.LogWarning(
-                        "[Phase 6A.X] [AttendeesAdded-ERROR] Registration not found - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
+                        "[Phase 6A.100] AttendeesAdded: Registration not found - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
                         correlationId, domainEvent.RegistrationId);
                     return;
                 }
 
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-4] Registration loaded - CorrelationId={CorrelationId}, AttendeeCount={AttendeeCount}",
-                    correlationId, registration.Attendees.Count);
-
                 // Step 3: Determine recipient
                 string recipientName;
                 string recipientEmail = domainEvent.ContactEmail;
-
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-5] Determining recipient - CorrelationId={CorrelationId}, HasUserId={HasUserId}",
-                    correlationId, domainEvent.UserId.HasValue);
 
                 if (domainEvent.UserId.HasValue)
                 {
@@ -133,18 +102,12 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     {
                         recipientName = $"{user.FirstName} {user.LastName}";
                         recipientEmail = user.Email.Value;
-                        _logger.LogInformation(
-                            "[Phase 6A.X] [AttendeesAdded-6] User found - CorrelationId={CorrelationId}, Name={Name}",
-                            correlationId, recipientName);
                     }
                     else
                     {
                         recipientName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                             ? registration.Attendees.First().Name
                             : "Guest";
-                        _logger.LogWarning(
-                            "[Phase 6A.X] [AttendeesAdded-WARN] User not found, using fallback - CorrelationId={CorrelationId}",
-                            correlationId);
                     }
                 }
                 else
@@ -152,29 +115,21 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     recipientName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                         ? registration.Attendees.First().Name
                         : "Guest";
-                    _logger.LogInformation(
-                        "[Phase 6A.X] [AttendeesAdded-7] Anonymous user - CorrelationId={CorrelationId}, Name={Name}",
-                        correlationId, recipientName);
                 }
 
                 if (string.IsNullOrWhiteSpace(recipientEmail))
                 {
                     _logger.LogError(
-                        "[Phase 6A.X] [AttendeesAdded-ERROR] No email address - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
+                        "[Phase 6A.100] AttendeesAdded: No email address - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
                         correlationId, domainEvent.RegistrationId);
                     return;
                 }
 
                 // Step 4: Regenerate ticket PDF with updated attendees
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-8] Regenerating ticket PDF - CorrelationId={CorrelationId}, RegistrationId={RegistrationId}",
-                    correlationId, domainEvent.RegistrationId);
-
                 var ticketResult = await _ticketService.RegenerateTicketPdfForRegistrationAsync(
                     domainEvent.RegistrationId,
                     cancellationToken);
 
-                byte[]? pdfAttachment = null;
                 string ticketCode = "";
                 Guid? ticketId = null;
 
@@ -182,44 +137,21 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                 {
                     ticketCode = ticketResult.Value.TicketCode;
                     ticketId = ticketResult.Value.TicketId;
-
                     _logger.LogInformation(
-                        "[Phase 6A.X] [AttendeesAdded-9] Ticket PDF regenerated - CorrelationId={CorrelationId}, TicketCode={TicketCode}",
+                        "[Phase 6A.100] AttendeesAdded: Ticket regenerated - CorrelationId={CorrelationId}, TicketCode={TicketCode}",
                         correlationId, ticketCode);
-
-                    // Get PDF bytes for email attachment
-                    var pdfResult = await _ticketService.GetTicketPdfAsync(ticketResult.Value.TicketId, cancellationToken);
-                    if (pdfResult.IsSuccess)
-                    {
-                        pdfAttachment = pdfResult.Value;
-                        _logger.LogInformation(
-                            "[Phase 6A.X] [AttendeesAdded-10] PDF retrieved - CorrelationId={CorrelationId}, Size={Size} bytes",
-                            correlationId, pdfAttachment.Length);
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "[Phase 6A.X] [AttendeesAdded-WARN] PDF retrieval failed - CorrelationId={CorrelationId}, Errors={Errors}",
-                            correlationId, string.Join(", ", pdfResult.Errors));
-                    }
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "[Phase 6A.X] [AttendeesAdded-WARN] Ticket regeneration failed - CorrelationId={CorrelationId}, Errors={Errors}",
+                        "[Phase 6A.100] AttendeesAdded: Ticket regeneration failed - CorrelationId={CorrelationId}, Errors={Errors}",
                         correlationId, string.Join(", ", ticketResult.Errors));
                 }
 
-                // Step 5: Build email parameters
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-11] Building email parameters - CorrelationId={CorrelationId}",
-                    correlationId);
-
-                // Format new attendees HTML
+                // Step 5: Build typed email parameters
                 var newAttendeesHtml = new System.Text.StringBuilder();
                 var newAttendeesText = new System.Text.StringBuilder();
 
-                // Get the NEW attendees (last N attendees where N = AddedAttendeeCount)
                 var allAttendees = registration.Attendees.ToList();
                 var newAttendees = allAttendees.TakeLast(domainEvent.AddedAttendeeCount).ToList();
 
@@ -233,7 +165,6 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     newAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory})");
                 }
 
-                // Format all attendees HTML
                 var allAttendeesHtml = new System.Text.StringBuilder();
                 var allAttendeesText = new System.Text.StringBuilder();
                 int index = 1;
@@ -253,129 +184,62 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     index++;
                 }
 
-                // Phase 6A.87++ Fix: Add both original and aliased parameter names for template compatibility
-                var formattedDate = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId);
-                var formattedTime = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId);
-
-                var parameters = new Dictionary<string, object>
-                {
-                    { "UserName", recipientName },
-                    { "EventTitle", @event.Title.Value },
-                    { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
-                    { "EventStartTime", formattedTime },  // Phase 6A.97: Uses event's timezone
-                    { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87++ Fix: Combined for template
-                    { "EventLocation", GetEventLocationString(@event) },
-
-                    // Original params (keep for compatibility)
-                    { "PreviousCount", domainEvent.PreviousAttendeeCount },
-                    { "AddedCount", domainEvent.AddedAttendeeCount },
-                    { "NewTotalCount", domainEvent.NewTotalAttendeeCount },
-                    { "AdditionalAmount", domainEvent.AdditionalAmountPaid.ToString("F2", CultureInfo.InvariantCulture) },
-                    { "TotalPaid", domainEvent.TotalAmountPaid.ToString("F2", CultureInfo.InvariantCulture) },
-
-                    // Template aliases (Phase 6A.87++ Fix: Template expects these exact names)
-                    { "NewAttendeesCount", domainEvent.AddedAttendeeCount },
-                    { "TotalAttendeesCount", domainEvent.NewTotalAttendeeCount },
-                    { "AmountCharged", domainEvent.AdditionalAmountPaid.ToString("C", CultureInfo.GetCultureInfo("en-US")) },
-
-                    // Attendee lists
-                    { "NewAttendees", newAttendeesText.ToString().TrimEnd() },
-                    { "NewAttendeesHtml", newAttendeesHtml.ToString() },
-                    { "AllAttendees", allAttendeesText.ToString().TrimEnd() },
-                    { "AllAttendeesHtml", allAttendeesHtml.ToString() },
-
-                    { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
-                    { "Year", DateTime.UtcNow.Year }
-                };
-
-                if (ticketId.HasValue)
-                {
-                    parameters["TicketUrl"] = _emailUrlHelper.BuildTicketViewUrl(ticketId.Value);
-                    parameters["TicketCode"] = ticketCode;
-                    parameters["HasTicket"] = true;
-                }
-                else
-                {
-                    parameters["HasTicket"] = false;
-                }
+                // Phase 6A.100: Use AttendeesAddedEmailParams for type-safe email sending
+                var emailParams = AttendeesAddedEmailParams.Create(
+                    userId: domainEvent.UserId,
+                    registrationId: domainEvent.RegistrationId,
+                    eventId: domainEvent.EventId,
+                    userName: recipientName,
+                    userEmail: recipientEmail,
+                    eventTitle: @event.Title.Value,
+                    eventStartDate: @event.StartDate,
+                    timeZoneId: @event.TimeZoneId,
+                    eventLocation: GetEventLocationString(@event),
+                    previousCount: domainEvent.PreviousAttendeeCount,
+                    addedCount: domainEvent.AddedAttendeeCount,
+                    newTotalCount: domainEvent.NewTotalAttendeeCount,
+                    additionalAmount: domainEvent.AdditionalAmountPaid,
+                    totalPaid: domainEvent.TotalAmountPaid,
+                    newAttendees: newAttendeesText.ToString().TrimEnd(),
+                    newAttendeesHtml: newAttendeesHtml.ToString(),
+                    allAttendees: allAttendeesText.ToString().TrimEnd(),
+                    allAttendeesHtml: allAttendeesHtml.ToString(),
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
+                    ticketUrl: ticketId.HasValue ? _emailUrlHelper.BuildTicketViewUrl(ticketId.Value) : null,
+                    ticketCode: ticketCode
+                );
 
                 _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-12] Parameters built - CorrelationId={CorrelationId}, ParameterCount={Count}",
-                    correlationId, parameters.Count);
+                    "[Phase 6A.100] AttendeesAdded: Sending via ITypedEmailService - CorrelationId={CorrelationId}, Template={Template}",
+                    correlationId, emailParams.TemplateName);
 
-                // Step 6: Render email template
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-13] Rendering template - CorrelationId={CorrelationId}, Template={Template}",
-                    correlationId, EmailTemplateNames.AttendeesAddedConfirmation);
-
-                var renderResult = await _emailTemplateService.RenderTemplateAsync(
-                    EmailTemplateNames.AttendeesAddedConfirmation,
-                    parameters,
-                    cancellationToken);
-
-                if (renderResult.IsFailure)
-                {
-                    _logger.LogError(
-                        "[Phase 6A.X] [AttendeesAdded-ERROR] Template rendering failed - CorrelationId={CorrelationId}, Error={Error}",
-                        correlationId, renderResult.Error);
-                    return;
-                }
-
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-14] Template rendered - CorrelationId={CorrelationId}, Subject={Subject}",
-                    correlationId, renderResult.Value.Subject);
-
-                // Step 7: Build and send email
-                var emailMessage = new EmailMessageDto
-                {
-                    ToEmail = recipientEmail,
-                    ToName = recipientName,
-                    Subject = renderResult.Value.Subject ?? "Your Registration Has Been Updated",
-                    HtmlBody = renderResult.Value.HtmlBody ?? string.Empty,
-                    PlainTextBody = renderResult.Value.PlainTextBody,
-                    Attachments = pdfAttachment != null
-                        ? new List<EmailAttachment>
-                        {
-                            new EmailAttachment
-                            {
-                                FileName = $"ticket-{ticketCode}.pdf",
-                                Content = pdfAttachment,
-                                ContentType = "application/pdf"
-                            }
-                        }
-                        : null
-                };
-
-                _logger.LogInformation(
-                    "[Phase 6A.X] [AttendeesAdded-15] Sending email - CorrelationId={CorrelationId}, To={Email}, HasAttachment={HasAttachment}",
-                    correlationId, recipientEmail, pdfAttachment != null);
-
-                var result = await _emailService.SendEmailAsync(emailMessage, cancellationToken);
+                // Phase 6A.100: Send via typed email service
+                var typedResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (!typedResult.Success)
                 {
                     _logger.LogError(
-                        "[Phase 6A.X] AttendeesAdded FAILED: Email sending failed - CorrelationId={CorrelationId}, Email={Email}, " +
+                        "[Phase 6A.100] AttendeesAdded FAILED: Email sending failed - CorrelationId={CorrelationId}, Email={Email}, " +
                         "Errors={Errors}, Duration={ElapsedMs}ms",
-                        correlationId, recipientEmail, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        correlationId, recipientEmail, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.X] AttendeesAdded COMPLETE: Email sent successfully - CorrelationId={CorrelationId}, " +
+                        "[Phase 6A.100] AttendeesAdded COMPLETE: Email sent successfully - CorrelationId={CorrelationId}, " +
                         "Email={Email}, RegistrationId={RegistrationId}, AddedCount={AddedCount}, HasTicket={HasTicket}, " +
                         "Duration={ElapsedMs}ms",
                         correlationId, recipientEmail, domainEvent.RegistrationId, domainEvent.AddedAttendeeCount,
-                        parameters["HasTicket"], stopwatch.ElapsedMilliseconds);
+                        emailParams.HasTicket, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 stopwatch.Stop();
                 _logger.LogWarning(
-                    "[Phase 6A.X] AttendeesAdded CANCELED - CorrelationId={CorrelationId}, Duration={ElapsedMs}ms",
+                    "[Phase 6A.100] AttendeesAdded CANCELED - CorrelationId={CorrelationId}, Duration={ElapsedMs}ms",
                     correlationId, stopwatch.ElapsedMilliseconds);
                 throw;
             }
@@ -383,7 +247,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
             {
                 stopwatch.Stop();
                 _logger.LogError(ex,
-                    "[Phase 6A.X] AttendeesAdded FAILED: Unhandled exception - CorrelationId={CorrelationId}, " +
+                    "[Phase 6A.100] AttendeesAdded FAILED: Unhandled exception - CorrelationId={CorrelationId}, " +
                     "EventId={EventId}, RegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
                     correlationId, domainEvent.EventId, domainEvent.RegistrationId, stopwatch.ElapsedMilliseconds);
             }

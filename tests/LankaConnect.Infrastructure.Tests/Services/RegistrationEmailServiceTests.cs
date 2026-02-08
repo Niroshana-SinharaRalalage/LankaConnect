@@ -174,8 +174,8 @@ public class RegistrationEmailServiceTests
     [Fact]
     public async Task SendFreeEventConfirmationEmailAsync_ForAnonymous_ShouldSendToContactEmail()
     {
-        // Arrange
-        var registration = CreateTestRegistration(isFree: true);
+        // Arrange - Use CreateTestRegistrationWithContact for anonymous registration with proper Contact
+        var registration = CreateTestRegistrationWithContact(isFree: true);
         var @event = CreateTestEvent(isFree: true);
         User? user = null; // Anonymous registration
 
@@ -209,7 +209,7 @@ public class RegistrationEmailServiceTests
     [Fact]
     public async Task SendFreeEventConfirmationEmailAsync_ForAnonymous_ShouldUseContactNameAsUserName()
     {
-        // Arrange
+        // Arrange - Use CreateTestRegistrationWithAttendees which has proper Contact and Attendees
         var registration = CreateTestRegistrationWithAttendees();
         var @event = CreateTestEvent(isFree: true);
         User? user = null;
@@ -335,8 +335,8 @@ public class RegistrationEmailServiceTests
     [Fact]
     public async Task SendPaidEventConfirmationEmailAsync_ForAnonymous_ShouldSendToContactEmail()
     {
-        // Arrange
-        var registration = CreateTestRegistration(isFree: false);
+        // Arrange - Use CreateTestRegistrationWithContact for anonymous registration with proper Contact
+        var registration = CreateTestRegistrationWithContact(isFree: false);
         var @event = CreateTestEvent(isFree: false);
         var ticket = CreateTestTicket();
         var ticketPdf = new byte[] { 1, 2, 3 };
@@ -482,14 +482,66 @@ public class RegistrationEmailServiceTests
         return registration.Value;
     }
 
+    /// <summary>
+    /// Creates a registration with proper Contact and Attendees for anonymous registration tests.
+    /// Uses CreateWithAttendees factory method to properly set up contact info.
+    /// </summary>
+    private Registration CreateTestRegistrationWithContact(bool isFree)
+    {
+        var eventId = Guid.NewGuid();
+
+        // Create contact info for anonymous registration
+        var contact = RegistrationContact.Create("contact@example.com", "+1234567890", null).Value;
+
+        // Create attendees
+        var attendees = new List<AttendeeDetails>
+        {
+            AttendeeDetails.Create("John Doe", AgeCategory.Adult, null).Value
+        };
+
+        // Use CreateWithAttendees which properly sets Contact
+        // Signature: (eventId, userId?, attendees, contact, totalPrice, isPaidEvent, maxAttendeesPerRegistration)
+        var totalPrice = isFree ? Money.Zero(Currency.USD) : Money.Create(50.00m, Currency.USD).Value;
+        var registration = Registration.CreateWithAttendees(
+            eventId,
+            null, // anonymous - no userId
+            attendees,
+            contact,
+            totalPrice,
+            isPaidEvent: !isFree,
+            maxAttendeesPerRegistration: 10);
+
+        return registration.Value;
+    }
+
+    /// <summary>
+    /// Creates a registration with proper Contact and multiple Attendees for testing attendee details.
+    /// </summary>
     private Registration CreateTestRegistrationWithAttendees()
     {
         var eventId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        // Registration.Create takes (eventId, userId, quantity) - 3 parameters
-        // Note: Adding attendees is done through a different mechanism in the current API
-        var registration = Registration.Create(eventId, userId, 2);
+        // Create contact info
+        var contact = RegistrationContact.Create("contact@example.com", "+1234567890", null).Value;
+
+        // Create multiple attendees with detailed info
+        var attendees = new List<AttendeeDetails>
+        {
+            AttendeeDetails.Create("John Doe", AgeCategory.Adult, Gender.Male).Value,
+            AttendeeDetails.Create("Jane Smith", AgeCategory.Adult, Gender.Female).Value
+        };
+
+        // Use CreateWithAttendees which properly sets Contact and Attendees
+        // Signature: (eventId, userId?, attendees, contact, totalPrice, isPaidEvent, maxAttendeesPerRegistration)
+        var registration = Registration.CreateWithAttendees(
+            eventId,
+            userId,
+            attendees,
+            contact,
+            Money.Zero(Currency.USD), // free event
+            isPaidEvent: false,
+            maxAttendeesPerRegistration: 10);
 
         return registration.Value;
     }

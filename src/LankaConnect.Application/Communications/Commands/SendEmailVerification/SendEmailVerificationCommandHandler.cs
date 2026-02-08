@@ -12,25 +12,20 @@ namespace LankaConnect.Application.Communications.Commands.SendEmailVerification
 /// Handler for sending email verification emails
 /// Phase 6A.53: Generate verification token via domain event
 /// Phase 6A.X Observability: Enhanced with comprehensive structured logging
+/// Phase 6A.100: Email is sent via MemberVerificationRequestedEvent domain event handler
 /// </summary>
 public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVerificationCommand, Result<SendEmailVerificationResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
-    private readonly IEmailTemplateService _emailTemplateService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendEmailVerificationCommandHandler> _logger;
 
     public SendEmailVerificationCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
-        IEmailService emailService,
-        IEmailTemplateService emailTemplateService,
         IUnitOfWork unitOfWork,
         ILogger<SendEmailVerificationCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _emailService = emailService;
-        _emailTemplateService = emailTemplateService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }

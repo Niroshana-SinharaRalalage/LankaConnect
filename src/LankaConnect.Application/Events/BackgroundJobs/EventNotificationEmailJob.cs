@@ -10,14 +10,17 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
 /// <summary>
-/// Phase 6A.61: Background job to send manual event notification emails
-/// Consolidates recipients from email groups, registrations, and newsletter subscribers
+/// Phase 6A.100: Background job to send manual event notification emails.
+/// Migrated from IEmailService to ITypedEmailService with EventDetailsEmailParams.
+/// Consolidates recipients from email groups, registrations, and newsletter subscribers.
 /// </summary>
 public class EventNotificationEmailJob
 {
@@ -26,7 +29,7 @@ public class EventNotificationEmailJob
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EventNotificationEmailJob> _logger;
@@ -37,7 +40,7 @@ public class EventNotificationEmailJob
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IUnitOfWork unitOfWork,
         ILogger<EventNotificationEmailJob> logger)
@@ -47,7 +50,7 @@ public class EventNotificationEmailJob
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -156,7 +159,7 @@ public class EventNotificationEmailJob
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Sending to {RecipientCount} recipients",
                 correlationId, recipients.Count);
 
-            // 6. Send emails
+            // 6. Phase 6A.100: Send emails using ITypedEmailService with EventDetailsEmailParams
             int successCount = 0, failedCount = 0;
             int emailIndex = 0;
             foreach (var email in recipients)
@@ -168,21 +171,41 @@ public class EventNotificationEmailJob
                     _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Sending email {Index}/{Total} to: {Email}",
                         correlationId, emailIndex, recipients.Count, email);
 
-                    // Phase 6A.83 Part 3: Create per-recipient template data with personalized UserName
-                    var recipientTemplateData = new Dictionary<string, object>(baseTemplateData);
+                    // Phase 6A.83 Part 3: Get personalized UserName for recipient
                     var emailResult = Domain.Shared.ValueObjects.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken)
                         : null;
-                    recipientTemplateData["UserName"] = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
+                    var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
 
-                    var result = await _emailService.SendTemplatedEmailAsync(
-                        EmailTemplateNames.EventDetails,
-                        email,
-                        recipientTemplateData,
-                        cancellationToken);
+                    // Phase 6A.100: Use typed email params
+                    var emailParams = EventDetailsEmailParams.Create(
+                        recipientEmail: email,
+                        userName: userName,
+                        eventTitle: (string)baseTemplateData["EventTitle"],
+                        eventDate: (string)baseTemplateData["EventDate"],
+                        eventStartDate: (string)baseTemplateData["EventStartDate"],
+                        eventStartTime: (string)baseTemplateData["EventStartTime"],
+                        eventDateTime: (string)baseTemplateData["EventDateTime"],
+                        eventLocation: (string)baseTemplateData["EventLocation"],
+                        eventCity: (string)baseTemplateData["EventCity"],
+                        eventState: (string)baseTemplateData["EventState"],
+                        eventDescription: (string)baseTemplateData["EventDescription"],
+                        eventDetailsUrl: (string)baseTemplateData["EventDetailsUrl"],
+                        isFree: (bool)baseTemplateData["IsFreeEvent"],
+                        pricingDetails: (string)baseTemplateData["PricingDetails"],
+                        ticketPrice: (string)baseTemplateData["TicketPrice"],
+                        hasSignUpLists: (bool)baseTemplateData["HasSignUpLists"],
+                        signUpListsUrl: baseTemplateData.TryGetValue("SignUpListsUrl", out var signUpUrl) ? (string)signUpUrl : "",
+                        hasOrganizerContact: (bool)baseTemplateData["HasOrganizerContact"],
+                        organizerContactName: baseTemplateData.TryGetValue("OrganizerContactName", out var orgName) ? (string)orgName : "",
+                        organizerContactEmail: baseTemplateData.TryGetValue("OrganizerContactEmail", out var orgEmail) ? (string?)orgEmail : null,
+                        organizerContactPhone: baseTemplateData.TryGetValue("OrganizerContactPhone", out var orgPhone) ? (string?)orgPhone : null,
+                        subjectPrefix: (string)baseTemplateData["SubjectPrefix"]);
 
-                    if (result.IsSuccess)
+                    var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
+
+                    if (result.Success)
                     {
                         successCount++;
                         _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Email {Index}/{Total} SUCCESS to: {Email}",
@@ -193,7 +216,7 @@ public class EventNotificationEmailJob
                         failedCount++;
                         // Phase 6A.61+ RCA: Log the EXACT error message at ERROR level
                         _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] Email {Index}/{Total} FAILED to: {Email}, Error: {Error}",
-                            correlationId, emailIndex, recipients.Count, email, result.Error ?? "Unknown error");
+                            correlationId, emailIndex, recipients.Count, email, string.Join(", ", result.Errors));
                     }
                 }
                 catch (Exception ex)

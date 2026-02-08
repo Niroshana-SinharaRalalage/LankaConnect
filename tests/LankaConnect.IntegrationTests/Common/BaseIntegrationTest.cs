@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using LankaConnect.Infrastructure.Data;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Shared.Email.Services;
 using Testcontainers.PostgreSql;
 
 namespace LankaConnect.IntegrationTests.Common;
@@ -24,7 +25,7 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
     protected HttpClient HttpClient { get; private set; } = null!;
     protected AppDbContext DbContext { get; private set; } = null!;
     protected IServiceProvider ServiceProvider { get; private set; } = null!;
-    protected IEmailService _emailService { get; private set; } = null!;
+    protected ITypedEmailService _typedEmailService { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -83,7 +84,7 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         // Create a long-lived scope for test operations
         var testScope = ServiceProvider.CreateScope();
         DbContext = testScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        _emailService = testScope.ServiceProvider.GetRequiredService<IEmailService>();
+        _typedEmailService = testScope.ServiceProvider.GetRequiredService<ITypedEmailService>();
     }
 
     public async Task DisposeAsync()

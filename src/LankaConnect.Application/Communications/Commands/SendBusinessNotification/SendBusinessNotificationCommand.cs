@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Shared.Email.Contracts;
 
 namespace LankaConnect.Application.Communications.Commands.SendBusinessNotification;
 
@@ -29,8 +30,8 @@ public class SendBusinessNotificationResponse
     public BusinessNotificationType NotificationType { get; init; }
     public string Subject { get; init; } = string.Empty;
     public DateTime SentAt { get; init; }
-    
-    public SendBusinessNotificationResponse(Guid businessId, Guid userId, string email, 
+
+    public SendBusinessNotificationResponse(Guid businessId, Guid userId, string email,
         BusinessNotificationType notificationType, string subject, DateTime sentAt)
     {
         BusinessId = businessId;
@@ -42,24 +43,4 @@ public class SendBusinessNotificationResponse
     }
 }
 
-/// <summary>
-/// Types of business notifications
-/// </summary>
-public enum BusinessNotificationType
-{
-    BusinessCreated = 1,
-    BusinessUpdated = 2,
-    BusinessApproved = 3,
-    BusinessRejected = 4,
-    BusinessSuspended = 5,
-    BusinessReactivated = 6,
-    NewReview = 7,
-    ReviewResponse = 8,
-    ServiceAdded = 9,
-    ServiceUpdated = 10,
-    PaymentReceived = 11,
-    PaymentFailed = 12,
-    SubscriptionExpiring = 13,
-    SubscriptionRenewed = 14,
-    PerformanceReport = 15
-}
+// Note: BusinessNotificationType is now defined in LankaConnect.Shared.Email.Contracts

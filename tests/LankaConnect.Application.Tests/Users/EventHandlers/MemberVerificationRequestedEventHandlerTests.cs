@@ -16,27 +16,25 @@ namespace LankaConnect.Application.Tests.Users.EventHandlers;
 /// <summary>
 /// Tests for MemberVerificationRequestedEventHandler
 /// Phase 6A.53: Member Email Verification System
-/// Phase 6A.87: Updated for ITypedEmailService support
+/// Phase 6A.100: Migrated to ITypedEmailService only - removed IEmailService dependency
 /// TDD approach - tests written before implementation changes
 /// </summary>
 public class MemberVerificationRequestedEventHandlerTests
 {
-    private readonly Mock<IEmailService> _emailService;
-    private readonly Mock<ITypedEmailService> _typedEmailService;  // Phase 6A.87: Added for typed email service
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<ILogger<MemberVerificationRequestedEventHandler>> _logger;
     private readonly Mock<IApplicationUrlsService> _urlsService;
     private readonly MemberVerificationRequestedEventHandler _handler;
 
     public MemberVerificationRequestedEventHandlerTests()
     {
-        _emailService = new Mock<IEmailService>();
-        _typedEmailService = new Mock<ITypedEmailService>();  // Phase 6A.87: Initialize mock
+        _typedEmailService = new Mock<ITypedEmailService>();
         _logger = new Mock<ILogger<MemberVerificationRequestedEventHandler>>();
         _urlsService = new Mock<IApplicationUrlsService>();
 
+        // Phase 6A.100: Constructor now only takes 3 arguments
         _handler = new MemberVerificationRequestedEventHandler(
-            _emailService.Object,
-            _typedEmailService.Object,  // Phase 6A.87: Pass typed email service
+            _typedEmailService.Object,
             _logger.Object,
             _urlsService.Object);
     }

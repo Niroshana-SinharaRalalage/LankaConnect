@@ -24,20 +24,16 @@ public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserComm
     private readonly IUserRepository _userRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AdminUnlockUserCommandHandler> _logger;
-
-    private const string HandlerName = nameof(AdminUnlockUserCommandHandler);  // Phase 6A.87: For feature flag lookup
 
     public AdminUnlockUserCommandHandler(
         IUserRepository userRepository,
         IAdminAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IUnitOfWork unitOfWork,
         ILogger<AdminUnlockUserCommandHandler> logger)
@@ -45,8 +41,7 @@ public class AdminUnlockUserCommandHandler : ICommandHandler<AdminUnlockUserComm
         _userRepository = userRepository;
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
         _logger = logger;

@@ -21,29 +21,24 @@ namespace LankaConnect.Application.Communications.Commands.SendPasswordReset;
 public class SendPasswordResetCommandHandler : IRequestHandler<SendPasswordResetCommand, Result<SendPasswordResetResponse>>
 {
     private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailTemplateService _emailTemplateService;
-    private readonly IEmailUrlHelper _emailUrlHelper;  // Phase 6A.101: Environment-aware URL builder
+    private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendPasswordResetCommandHandler> _logger;
 
-    private const string HandlerName = nameof(SendPasswordResetCommandHandler);  // Phase 6A.87: For feature flag lookup
-
     public SendPasswordResetCommandHandler(
         LankaConnect.Domain.Users.IUserRepository userRepository,
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service
+        ITypedEmailService typedEmailService,
         IEmailTemplateService emailTemplateService,
-        IEmailUrlHelper emailUrlHelper,  // Phase 6A.101: Environment-aware URL builder
+        IEmailUrlHelper emailUrlHelper,
         IUnitOfWork unitOfWork,
         ILogger<SendPasswordResetCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _emailTemplateService = emailTemplateService;
-        _emailUrlHelper = emailUrlHelper;  // Phase 6A.101: Environment-aware URL builder
+        _emailUrlHelper = emailUrlHelper;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }

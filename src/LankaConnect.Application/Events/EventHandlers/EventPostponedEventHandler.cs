@@ -5,6 +5,8 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -12,24 +14,25 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers;
 
 /// <summary>
-/// Handles EventPostponedEvent to send bulk postponement notifications to all registered attendees
+/// Phase 6A.100: Handles EventPostponedEvent to send postponement notifications to all registered attendees.
+/// Migrated from inline HTML to ITypedEmailService with EventPostponedEmailParams.
 /// </summary>
 public class EventPostponedEventHandler : INotificationHandler<DomainEventNotification<EventPostponedEvent>>
 {
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly ILogger<EventPostponedEventHandler> _logger;
 
     public EventPostponedEventHandler(
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         ILogger<EventPostponedEventHandler> logger)
     {
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
@@ -94,8 +97,9 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                     "EventPostponed: Found confirmed registrations - Count={Count}",
                     confirmedRegistrations.Count);
 
-                // Prepare bulk email messages
-                var emailMessages = new List<EmailMessageDto>();
+                // Phase 6A.100: Send typed emails individually instead of bulk with inline HTML
+                int successCount = 0;
+                int failCount = 0;
 
                 foreach (var registration in confirmedRegistrations)
                 {
@@ -117,58 +121,59 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                         continue;
                     }
 
-                    var parameters = new Dictionary<string, object>
+                    try
                     {
-                        { "UserName", $"{user.FirstName} {user.LastName}" },
-                        { "EventTitle", @event.Title.Value },
-                        { "OriginalStartDate", domainEvent.PostponedAt.ToString("MMMM dd, yyyy") },
-                        { "OriginalStartTime", domainEvent.PostponedAt.ToString("h:mm tt") },
-                        { "Reason", domainEvent.Reason },
-                        { "PostponedAt", domainEvent.PostponedAt.ToString("MMMM dd, yyyy h:mm tt") }
-                    };
+                        // Phase 6A.100: Use typed email params instead of inline HTML
+                        var emailParams = EventPostponedEmailParams.Create(
+                            userId: user.Id,
+                            userName: $"{user.FirstName} {user.LastName}",
+                            userEmail: user.Email.Value,
+                            eventId: @event.Id,
+                            eventTitle: @event.Title.Value,
+                            originalStartDate: domainEvent.PostponedAt,
+                            timeZoneId: @event.TimeZoneId,
+                            reason: domainEvent.Reason,
+                            postponedAt: domainEvent.PostponedAt);
 
-                    var emailMessage = new EmailMessageDto
+                        var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
+
+                        if (result.Success)
+                        {
+                            successCount++;
+                            _logger.LogDebug(
+                                "EventPostponed: Email sent to {Email} - Duration={DurationMs}ms",
+                                user.Email.Value, result.DurationMs);
+                        }
+                        else
+                        {
+                            failCount++;
+                            _logger.LogWarning(
+                                "EventPostponed: Failed to send email to {Email} - Errors={Errors}",
+                                user.Email.Value, string.Join(", ", result.Errors));
+                        }
+                    }
+                    catch (Exception emailEx)
                     {
-                        ToEmail = user.Email.Value,
-                        ToName = $"{user.FirstName} {user.LastName}",
-                        Subject = $"Event Postponed: {@event.Title.Value}",
-                        HtmlBody = GenerateEventPostponedHtml(parameters),
-                        Priority = 1 // High priority
-                    };
-
-                    emailMessages.Add(emailMessage);
+                        failCount++;
+                        _logger.LogError(emailEx,
+                            "EventPostponed: Exception sending email to {Email}",
+                            user.Email.Value);
+                    }
                 }
-
-                if (!emailMessages.Any())
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "EventPostponed: No email messages prepared - EventId={EventId}, Duration={ElapsedMs}ms",
-                        domainEvent.EventId, stopwatch.ElapsedMilliseconds);
-                    return;
-                }
-
-                _logger.LogInformation(
-                    "EventPostponed: Sending bulk emails - EmailCount={EmailCount}",
-                    emailMessages.Count);
-
-                // Send bulk emails
-                var result = await _emailService.SendBulkEmailAsync(emailMessages, cancellationToken);
 
                 stopwatch.Stop();
 
-                if (result.IsFailure)
+                if (successCount == 0 && failCount > 0)
                 {
                     _logger.LogError(
-                        "EventPostponed FAILED: Bulk email sending failed - EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        "EventPostponed FAILED: All emails failed - EventId={EventId}, Failed={Failed}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, failCount, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "EventPostponed COMPLETE: Emails sent successfully - EventId={EventId}, Successful={Successful}, Failed={Failed}, Total={Total}, Duration={ElapsedMs}ms",
-                        domainEvent.EventId, result.Value.SuccessfulSends, result.Value.FailedSends, result.Value.TotalEmails, stopwatch.ElapsedMilliseconds);
+                        "EventPostponed COMPLETE: Emails sent - EventId={EventId}, Success={Success}, Failed={Failed}, Duration={ElapsedMs}ms",
+                        domainEvent.EventId, successCount, failCount, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -191,26 +196,5 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                     domainEvent.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
             }
         }
-    }
-
-    private string GenerateEventPostponedHtml(Dictionary<string, object> parameters)
-    {
-        // Simplified HTML generation - in production this would use Razor templates
-        return $@"
-            <html>
-            <body>
-                <h2>Event Postponed</h2>
-                <p>Dear {parameters["UserName"]},</p>
-                <p>We would like to inform you that the following event has been postponed:</p>
-                <ul>
-                    <li><strong>Event:</strong> {parameters["EventTitle"]}</li>
-                    <li><strong>Original Date:</strong> {parameters["OriginalStartDate"]} at {parameters["OriginalStartTime"]}</li>
-                    <li><strong>Reason:</strong> {parameters["Reason"]}</li>
-                </ul>
-                <p>We will notify you once a new date has been confirmed. Your registration remains active.</p>
-                <p>We apologize for any inconvenience this may cause.</p>
-                <p>Best regards,<br/>LankaConnect Team</p>
-            </body>
-            </html>";
     }
 }

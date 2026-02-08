@@ -3,6 +3,8 @@ using LankaConnect.Application.Communications.Commands.VerifyEmail;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Common;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using FluentAssertions;
@@ -11,11 +13,14 @@ using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 
+/// <summary>
+/// Phase 6A.100: Updated tests for ITypedEmailService migration
+/// </summary>
 public class VerifyEmailCommandHandlerTests
 {
     private readonly Mock<LankaConnect.Domain.Users.IUserRepository> _userRepository;
     private readonly Mock<IUnitOfWork> _unitOfWork;
-    private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<ILogger<VerifyEmailCommandHandler>> _logger;
     private readonly VerifyEmailCommandHandler _handler;
 
@@ -23,12 +28,12 @@ public class VerifyEmailCommandHandlerTests
     {
         _userRepository = new Mock<LankaConnect.Domain.Users.IUserRepository>();
         _unitOfWork = new Mock<IUnitOfWork>();
-        _emailService = new Mock<IEmailService>();
+        _typedEmailService = new Mock<ITypedEmailService>();
         _logger = new Mock<ILogger<VerifyEmailCommandHandler>>();
-        
+
         _handler = new VerifyEmailCommandHandler(
             _userRepository.Object,
-            _emailService.Object,
+            _typedEmailService.Object,
             _unitOfWork.Object,
             _logger.Object
         );
@@ -49,13 +54,11 @@ public class VerifyEmailCommandHandlerTests
         _userRepository.Setup(x => x.GetByEmailVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        // Mock email service for welcome email (fire and forget)
-        _emailService.Setup(x => x.SendTemplatedEmailAsync(
-            "welcome-email",
-            user.Email.Value,
-            It.IsAny<Dictionary<string, object>>(),
+        // Phase 6A.100: Mock typed email service for welcome email (fire and forget)
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+            It.IsAny<WelcomeEmailParams>(),
             It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

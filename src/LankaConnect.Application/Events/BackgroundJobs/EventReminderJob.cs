@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
-using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -23,32 +21,27 @@ public class EventReminderJob
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
-    private readonly ITypedEmailService _typedEmailService;  // Phase 6A.87: Typed email service for pilot migration
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEventReminderRepository _eventReminderRepository;
-    private readonly ITicketRepository _ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
+    private readonly ITicketRepository _ticketRepository;
     private readonly ILogger<EventReminderJob> _logger;
-
-    private const string HandlerName = "EventReminderJob";  // Phase 6A.87: For feature flag lookup
 
     public EventReminderJob(
         IEventRepository eventRepository,
         IUserRepository userRepository,
-        IEmailService emailService,
-        ITypedEmailService typedEmailService,  // Phase 6A.87: Typed email service for pilot migration
+        ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IEventReminderRepository eventReminderRepository,
-        ITicketRepository ticketRepository,  // Phase 6A.83 Part 3: Added for ticket parameter support
+        ITicketRepository ticketRepository,
         ILogger<EventReminderJob> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
-        _emailService = emailService;
-        _typedEmailService = typedEmailService;  // Phase 6A.87: Typed email service
+        _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _eventReminderRepository = eventReminderRepository;
-        _ticketRepository = ticketRepository;  // Phase 6A.83 Part 3: Added for ticket parameter support
+        _ticketRepository = ticketRepository;
         _logger = logger;
     }
 

@@ -9,14 +9,16 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Events.BackgroundJobs;
 
 /// <summary>
-/// Phase 6A.64: Background job that sends event cancellation emails to all recipients.
-/// This job is queued by EventCancelledEventHandler and executes asynchronously outside the HTTP request context.
+/// Phase 6A.100: Background job that sends event cancellation emails to all recipients.
+/// Migrated from IEmailService to ITypedEmailService with EventCancellationEmailParams.
 ///
 /// Recipients include:
 /// 1. Confirmed registrations (user accounts only)
@@ -39,7 +41,7 @@ public class EventCancellationEmailJob
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
+    private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IRegistrationRefundService _refundService;
     private readonly IStripePaymentService _stripePaymentService;  // Phase 6A.92: Added for auto-refund
@@ -51,7 +53,7 @@ public class EventCancellationEmailJob
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
-        IEmailService emailService,
+        ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IRegistrationRefundService refundService,
         IStripePaymentService stripePaymentService,  // Phase 6A.92: Added for auto-refund
@@ -62,7 +64,7 @@ public class EventCancellationEmailJob
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
-        _emailService = emailService;
+        _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _refundService = refundService;
         _stripePaymentService = stripePaymentService;  // Phase 6A.92: Added for auto-refund
@@ -227,33 +229,18 @@ public class EventCancellationEmailJob
                 "[TEMP-DIAGNOSTIC] Event {EventId} cancellation email recipients: {Recipients}",
                 eventId, string.Join(", ", allRecipients.OrderBy(e => e)));
 
-            // 6. Prepare base template parameters
-            var baseParameters = new Dictionary<string, object>
-            {
-                ["EventTitle"] = @event.Title?.Value ?? "Untitled Event",
-                ["EventStartDate"] = EmailDateTimeHelper.FormatEventDate(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                ["EventStartTime"] = EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                // Phase 6A.83 Part 3: Add EventDateTime (template expects combined date+time)
-                ["EventDateTime"] = EmailDateTimeHelper.FormatDateTimeWithTz(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                ["EventLocation"] = GetEventLocationString(@event),
-                ["CancellationReason"] = cancellationReason,
-                ["RefundInfo"] = GetRefundInfoMessage(@event.IsFree(), refundResults),
-                // Phase 6A.83 Part 3: Use OrganizerContact* parameters (template expects these exact names)
-                ["OrganizerContactEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
-                ["OrganizerContactName"] = @event.OrganizerContactName ?? "LankaConnect Support",
-                ["OrganizerContactPhone"] = @event.OrganizerContactPhone ?? "",
-                // Phase 6A.83 Part 3: Also send old parameter name for backward compatibility (template has duplicates)
-                ["OrganizerEmail"] = @event.OrganizerContactEmail ?? "support@lankaconnect.com",
-                ["DashboardUrl"] = _urlsService.FrontendBaseUrl
-            };
-
-            // 7. Send templated email to each recipient
-            // Phase 6A.64: Detailed timing and error tracking for observability
+            // 6. Phase 6A.100: Send typed emails using EventCancellationEmailParams
             var successCount = 0;
             var failCount = 0;
             var emailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            _logger.LogInformation("[Phase 6A.64] Starting email send to {Count} recipients...", allRecipients.Count);
+            _logger.LogInformation("[Phase 6A.100] Starting email send to {Count} recipients...", allRecipients.Count);
+
+            // Prepare common values
+            var eventLocation = GetEventLocationString(@event);
+            var refundMessage = GetRefundInfoMessage(@event.IsFree(), refundResults);
+            var organizerName = @event.OrganizerContactName ?? "LankaConnect Support";
+            var isFreeEvent = @event.IsFree();
 
             foreach (var email in allRecipients)
             {
@@ -261,34 +248,44 @@ public class EventCancellationEmailJob
                 {
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var recipientParameters = new Dictionary<string, object>(baseParameters);
+                    // Get user info if available (for personalization)
                     var emailResult = Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _userRepository.GetByEmailAsync(emailResult.Value, CancellationToken.None)
                         : null;
-                    recipientParameters["UserName"] = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
+                    var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
 
-                    var result = await _emailService.SendTemplatedEmailAsync(
-                        EmailTemplateNames.EventCancellation,
-                        email,
-                        recipientParameters,
-                        CancellationToken.None);
+                    // Phase 6A.100: Use typed email params
+                    var emailParams = EventCancellationEmailParams.Create(
+                        userId: user?.Id,
+                        userName: userName,
+                        userEmail: email,
+                        eventId: eventId,
+                        eventTitle: @event.Title?.Value ?? "Untitled Event",
+                        eventStartDate: @event.StartDate,
+                        timeZoneId: @event.TimeZoneId,
+                        eventLocation: eventLocation,
+                        cancellationReason: cancellationReason,
+                        cancelledAt: DateTime.UtcNow,
+                        organizerName: organizerName,
+                        refundsWillBeProcessed: !isFreeEvent && refundResults.SuccessCount > 0,
+                        refundMessage: refundMessage);
+
+                    var result = await _typedEmailService.SendEmailAsync(emailParams, CancellationToken.None);
 
                     singleEmailStopwatch.Stop();
 
-                    if (result.IsSuccess)
+                    if (result.Success)
                     {
                         successCount++;
-                        // TEMP DIAGNOSTIC: Change from Debug to Information to see in logs
-                        // TODO-REMOVE: Change back to LogDebug after Phase 6A.70 verification
-                        _logger.LogInformation("[TEMP-DIAGNOSTIC] Successfully sent cancellation email to {Email} in {ElapsedMs}ms",
+                        _logger.LogInformation("[Phase 6A.100] Successfully sent cancellation email to {Email} in {ElapsedMs}ms",
                             email, singleEmailStopwatch.ElapsedMilliseconds);
                     }
                     else
                     {
                         failCount++;
                         _logger.LogWarning(
-                            "[Phase 6A.64] Failed to send cancellation email to {Email} for event {EventId} (took {ElapsedMs}ms): {Errors}",
+                            "[Phase 6A.100] Failed to send cancellation email to {Email} for event {EventId} (took {ElapsedMs}ms): {Errors}",
                             email, eventId, singleEmailStopwatch.ElapsedMilliseconds, string.Join(", ", result.Errors));
                     }
                 }
@@ -296,7 +293,7 @@ public class EventCancellationEmailJob
                 {
                     failCount++;
                     _logger.LogError(emailEx,
-                        "[Phase 6A.64] Exception sending cancellation email to {Email} for event {EventId}",
+                        "[Phase 6A.100] Exception sending cancellation email to {Email} for event {EventId}",
                         email, eventId);
                 }
             }
@@ -304,7 +301,7 @@ public class EventCancellationEmailJob
             emailStopwatch.Stop();
 
             _logger.LogInformation(
-                "[Phase 6A.64] Event cancellation emails completed for event {EventId} in {TotalElapsedMs}ms. " +
+                "[Phase 6A.100] Event cancellation emails completed for event {EventId} in {TotalElapsedMs}ms. " +
                 "Success: {SuccessCount}, Failed: {FailCount}, Avg time per email: {AvgMs}ms",
                 eventId, emailStopwatch.ElapsedMilliseconds, successCount, failCount,
                 allRecipients.Count > 0 ? emailStopwatch.ElapsedMilliseconds / allRecipients.Count : 0);

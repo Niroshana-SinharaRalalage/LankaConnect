@@ -1,5 +1,4 @@
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
 using LankaConnect.Application.Interfaces;
@@ -10,6 +9,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,11 +21,11 @@ namespace LankaConnect.Application.Tests.Events.EventHandlers;
 /// <summary>
 /// Phase 6A.X Issue #29: Unit tests for PaymentCompletedEventHandler.
 /// Tests focus on ContactEmail validation and recovery for guest users.
+/// Phase 6A.100: Updated to use ITypedEmailService.
 /// </summary>
 public class PaymentCompletedEventHandlerTests
 {
-    private readonly Mock<IEmailService> _emailService;
-    private readonly Mock<IEmailTemplateService> _emailTemplateService;
+    private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<ITicketService> _ticketService;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
@@ -35,8 +36,7 @@ public class PaymentCompletedEventHandlerTests
 
     public PaymentCompletedEventHandlerTests()
     {
-        _emailService = new Mock<IEmailService>();
-        _emailTemplateService = new Mock<IEmailTemplateService>();
+        _typedEmailService = new Mock<ITypedEmailService>();
         _ticketService = new Mock<ITicketService>();
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
@@ -50,17 +50,17 @@ public class PaymentCompletedEventHandlerTests
         _emailUrlHelper.Setup(x => x.BuildTicketViewUrl(It.IsAny<Guid>()))
             .Returns((Guid id) => $"https://lankaconnect.com/tickets/{id}");
 
-        // Setup default template rendering success
-        _emailTemplateService.Setup(x => x.RenderTemplateAsync(
-                It.IsAny<string>(),
-                It.IsAny<Dictionary<string, object>>(),
+        // Setup default typed email service success
+        _typedEmailService.Setup(x => x.SendEmailAsync(
+                It.IsAny<IEmailParameters>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<RenderedEmailTemplate>.Success(new RenderedEmailTemplate
-            {
-                Subject = "Test Subject",
-                HtmlBody = "<html>Test Body</html>",
-                PlainTextBody = "Test Body"
-            }));
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
+
+        _typedEmailService.Setup(x => x.SendEmailWithAttachmentsAsync(
+                It.IsAny<IEmailParameters>(),
+                It.IsAny<List<EmailAttachmentDto>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
         // Setup default ticket generation success
         _ticketService.Setup(x => x.GenerateTicketAsync(
@@ -80,8 +80,7 @@ public class PaymentCompletedEventHandlerTests
             .ReturnsAsync(Result<byte[]>.Success(new byte[] { 1, 2, 3 }));
 
         _handler = new PaymentCompletedEventHandler(
-            _emailService.Object,
-            _emailTemplateService.Object,
+            _typedEmailService.Object,
             _ticketService.Object,
             _userRepository.Object,
             _eventRepository.Object,
@@ -110,17 +109,14 @@ public class PaymentCompletedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _emailService.Setup(x => x.SendEmailAsync(
-                It.IsAny<EmailMessageDto>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Email should be sent to guest email
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(e => e.ToEmail == guestEmail),
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.Is<IEmailParameters>(p => p.RecipientEmail == guestEmail),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -142,17 +138,14 @@ public class PaymentCompletedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _emailService.Setup(x => x.SendEmailAsync(
-                It.IsAny<EmailMessageDto>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Email should be recovered from registration.Contact and email sent
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(e => e.ToEmail == recoveryEmail),
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.Is<IEmailParameters>(p => p.RecipientEmail == recoveryEmail),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -179,8 +172,12 @@ public class PaymentCompletedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Email should NOT be sent
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -207,8 +204,12 @@ public class PaymentCompletedEventHandlerTests
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Email should NOT be sent (whitespace treated as empty)
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -239,17 +240,14 @@ public class PaymentCompletedEventHandlerTests
             .ReturnsAsync(mockEvent);
         _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockUser);
-        _emailService.Setup(x => x.SendEmailAsync(
-                It.IsAny<EmailMessageDto>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
         // Assert - Email should be sent to member's email (from user record), not contactEmail
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.Is<EmailMessageDto>(e => e.ToEmail == memberEmail),
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.Is<IEmailParameters>(p => p.RecipientEmail == memberEmail),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -275,10 +273,11 @@ public class PaymentCompletedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _emailService.Setup(x => x.SendEmailAsync(
-                It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Setup(x => x.SendEmailWithAttachmentsAsync(
+                It.IsAny<IEmailParameters>(),
+                It.IsAny<List<EmailAttachmentDto>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure("Email service error"));
+            .ReturnsAsync(TypedEmailSendResult.Fail(Guid.NewGuid().ToString(), new List<string> { "Email service error" }));
 
         // Act - Should not throw (fail-silent pattern)
         var act = async () => await _handler.Handle(notification, CancellationToken.None);
@@ -308,8 +307,12 @@ public class PaymentCompletedEventHandlerTests
 
         // Assert
         await act.Should().NotThrowAsync();
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -338,8 +341,12 @@ public class PaymentCompletedEventHandlerTests
 
         // Assert
         await act.Should().NotThrowAsync();
-        _emailService.Verify(x => x.SendEmailAsync(
-            It.IsAny<EmailMessageDto>(),
+        _typedEmailService.Verify(x => x.SendEmailAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _typedEmailService.Verify(x => x.SendEmailWithAttachmentsAsync(
+            It.IsAny<IEmailParameters>(),
+            It.IsAny<List<EmailAttachmentDto>>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 

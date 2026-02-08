@@ -16,13 +16,13 @@ namespace LankaConnect.Application.Tests.Communications.Commands;
 /// TDD tests for ResetPasswordCommandHandler
 /// Tests written FIRST following Red-Green-Refactor cycle
 /// Phase 6A.87: Updated for ITypedEmailService support
+/// Phase 6A.100: Removed IEmailService - now uses only ITypedEmailService
 /// Phase 6A.101: Updated for token-based user lookup (email now optional)
 /// </summary>
 public class ResetPasswordCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IPasswordHashingService> _mockPasswordHashingService;
-    private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<ResetPasswordCommandHandler>> _mockLogger;
@@ -32,12 +32,11 @@ public class ResetPasswordCommandHandlerTests
     {
         _mockUserRepository = new Mock<IUserRepository>();
         _mockPasswordHashingService = new Mock<IPasswordHashingService>();
-        _mockEmailService = new Mock<IEmailService>();
         _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<ResetPasswordCommandHandler>>();
 
-        // Phase 6A.87: Default setup for typed email service to return success
+        // Default setup for typed email service to return success
         _mockTypedEmailService.Setup(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()))
@@ -46,7 +45,6 @@ public class ResetPasswordCommandHandlerTests
         _handler = new ResetPasswordCommandHandler(
             _mockUserRepository.Object,
             _mockPasswordHashingService.Object,
-            _mockEmailService.Object,
             _mockTypedEmailService.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object);

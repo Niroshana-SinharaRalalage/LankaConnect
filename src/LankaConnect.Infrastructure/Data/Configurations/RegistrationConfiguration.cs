@@ -204,8 +204,16 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.HasIndex(r => r.UserId)
             .HasDatabaseName("ix_registrations_user_id");
 
-        // Remove unique constraint on EventId+UserId since UserId can be null for anonymous
-        // Anonymous users can register multiple times with different attendee info
+        // Phase 6A.XXX FIX: Conditional unique index for authenticated users
+        // Prevents duplicate active registrations for the same user on the same event.
+        // Filtered to exclude terminal/transient states so users can re-register after cancellation.
+        builder.HasIndex(r => new { r.EventId, r.UserId })
+            .HasDatabaseName("uix_registrations_event_user_active")
+            .IsUnique()
+            .HasFilter("\"UserId\" IS NOT NULL AND \"Status\" NOT IN ('Cancelled', 'Refunded', 'RefundRequested', 'Abandoned', 'Preliminary', 'Pending')");
+
+        // Note: Conditional unique index on (EventId, contact->>'email') is added via raw SQL
+        // in the migration file because EF Core doesn't support JSONB expression indexes natively.
 
         builder.HasIndex(r => new { r.UserId, r.Status })
             .HasDatabaseName("ix_registrations_user_status");

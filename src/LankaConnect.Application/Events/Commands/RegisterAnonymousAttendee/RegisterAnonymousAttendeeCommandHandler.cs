@@ -113,21 +113,27 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     "RegisterAnonymousAttendee: Event loaded - EventId={EventId}, Title={Title}, IsFree={IsFree}, Status={Status}",
                     @event.Id, @event.Title.Value, @event.IsFree(), @event.Status);
 
-                // Phase 6A.44: Check if this email is already registered for the event (anonymous registration)
-                var existingAnonymousRegistration = @event.Registrations
-                    .Where(r => r.UserId == null) // Only anonymous registrations
-                    .Where(r => r.Status != RegistrationStatus.Cancelled && r.Status != RegistrationStatus.Refunded)
+                // Phase 6A.XXX FIX: Check ALL registrations by email (both anonymous AND authenticated)
+                // Previously filtered on r.UserId == null which missed authenticated registrations,
+                // allowing the same email to have duplicate registrations via different paths
+                var existingRegistrationByEmail = @event.Registrations
+                    .Where(r => r.Status != RegistrationStatus.Cancelled
+                             && r.Status != RegistrationStatus.Refunded
+                             && r.Status != RegistrationStatus.RefundRequested
+                             && r.Status != RegistrationStatus.Preliminary
+                             && r.Status != RegistrationStatus.Abandoned)
                     .FirstOrDefault(r =>
-                        (r.Contact != null && r.Contact.Email == request.Email) ||
-                        (r.AttendeeInfo != null && r.AttendeeInfo.Email.Value == request.Email));
+                        (r.Contact != null && r.Contact.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)) ||
+                        (r.AttendeeInfo != null && r.AttendeeInfo.Email != null &&
+                         r.AttendeeInfo.Email.Value.Equals(request.Email, StringComparison.OrdinalIgnoreCase)));
 
-                if (existingAnonymousRegistration != null)
+                if (existingRegistrationByEmail != null)
                 {
                     stopwatch.Stop();
 
                     _logger.LogWarning(
-                        "RegisterAnonymousAttendee FAILED: Email already registered - EventId={EventId}, Email={Email}, ExistingRegistrationId={RegistrationId}, Duration={ElapsedMs}ms",
-                        request.EventId, request.Email, existingAnonymousRegistration.Id, stopwatch.ElapsedMilliseconds);
+                        "RegisterAnonymousAttendee FAILED: Email already registered (cross-path check) - EventId={EventId}, Email={Email}, ExistingRegistrationId={RegistrationId}, ExistingUserId={ExistingUserId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.Email, existingRegistrationByEmail.Id, existingRegistrationByEmail.UserId, stopwatch.ElapsedMilliseconds);
 
                     return Result<string?>.Failure(
                         "This email is already registered for this event. Each email can only register once.");

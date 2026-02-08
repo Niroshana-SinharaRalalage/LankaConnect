@@ -10,6 +10,7 @@ using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Application.Users.Queries.GetAdminUserDetails;
 using LankaConnect.Application.Users.Queries.GetAdminUsersPaged;
 using LankaConnect.Application.Users.Queries.GetAdminUserStatistics;
+using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Users.Enums;
 
 namespace LankaConnect.API.Controllers;
@@ -203,6 +204,64 @@ public class AdminUsersController : BaseController<AdminUsersController>
         var command = new AdminUnlockUserCommand(userId, ipAddress, userAgent);
         var result = await Mediator.Send(command);
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Resend email verification to a user
+    /// Phase 6A.90: Admin can trigger verification email resend for any user
+    /// </summary>
+    /// <param name="userId">User ID to resend verification for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/resend-verification")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResendVerification(Guid userId, CancellationToken cancellationToken)
+    {
+        Logger.LogInformation(
+            "Admin {AdminUserId} resending verification email - TargetUserId={TargetUserId}",
+            User.TryGetUserId(), userId);
+
+        try
+        {
+            var command = new SendEmailVerificationCommand(userId, ForceResend: true);
+            var result = await Mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                if (result.Error.Contains("recently sent") || result.Error.Contains("rate limit"))
+                {
+                    return StatusCode(429, new { error = result.Error });
+                }
+
+                Logger.LogWarning(
+                    "Admin {AdminUserId} resend verification failed for user {TargetUserId}: {Error}",
+                    User.TryGetUserId(), userId, result.Error);
+                return BadRequest(new { error = result.Error });
+            }
+
+            Logger.LogInformation(
+                "Admin {AdminUserId} successfully resent verification email to user {TargetUserId} ({Email})",
+                User.TryGetUserId(), userId, result.Value.Email);
+
+            return Ok(new
+            {
+                message = "Verification email has been sent.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                expiresAt = result.Value.TokenExpiresAt
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "Admin {AdminUserId} failed to resend verification email for user {TargetUserId}",
+                User.TryGetUserId(), userId);
+            return StatusCode(500, new { error = "An error occurred while sending the verification email" });
+        }
     }
 
     #region Private Helpers

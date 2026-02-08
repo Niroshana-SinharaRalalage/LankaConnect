@@ -267,6 +267,24 @@ public class Event : BaseEntity
         if (quantity <= 0)
             return Result.Failure("Quantity must be greater than 0");
 
+        // Phase 6A.XXX FIX: Check for duplicate email across ALL registrations (both anonymous and authenticated)
+        // Previously had zero duplicate detection - found by system-architect
+#pragma warning disable CS0618
+        var existingByEmail = _registrations.FirstOrDefault(r =>
+            r.Status != RegistrationStatus.Cancelled &&
+            r.Status != RegistrationStatus.Refunded &&
+            r.Status != RegistrationStatus.RefundRequested &&
+            r.Status != RegistrationStatus.Preliminary &&
+            r.Status != RegistrationStatus.Abandoned &&
+            r.Status != RegistrationStatus.Pending &&
+            ((r.Contact != null && r.Contact.Email.Equals(attendeeInfo.Email.Value, StringComparison.OrdinalIgnoreCase)) ||
+             (r.AttendeeInfo != null && r.AttendeeInfo.Email != null &&
+              r.AttendeeInfo.Email.Value.Equals(attendeeInfo.Email.Value, StringComparison.OrdinalIgnoreCase))));
+#pragma warning restore CS0618
+
+        if (existingByEmail != null)
+            return Result.Failure("This email is already registered for this event. Each email can only register once.");
+
         if (!HasCapacityFor(quantity))
             return Result.Failure("Event is at full capacity");
 
@@ -311,45 +329,59 @@ public class Event : BaseEntity
             return Result.Failure("Contact information is required");
 
         // Phase 6A.45 FIX: Check for duplicate registration
-        // For authenticated users: check by userId
-        // For anonymous users: check by email (case-insensitive)
+        // Phase 6A.XXX FIX: Cross-path duplicate detection - check BOTH UserId AND email
+        // Previously, authenticated path only checked UserId and anonymous path only checked email,
+        // allowing the same email to register via both paths for the same event.
         if (userId.HasValue)
         {
-            // Phase 6A.81: Authenticated user - check if already registered (not cancelled/refunded/preliminary/abandoned)
-            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
-            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
+            // Check 1: Authenticated user - check by UserId
 #pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
-            var existingRegistration = _registrations.FirstOrDefault(r =>
+            var existingByUserId = _registrations.FirstOrDefault(r =>
                 r.UserId == userId &&
                 r.Status != RegistrationStatus.Cancelled &&
                 r.Status != RegistrationStatus.Refunded &&
-                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
-                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
-                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
-                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+                r.Status != RegistrationStatus.RefundRequested &&
+                r.Status != RegistrationStatus.Preliminary &&
+                r.Status != RegistrationStatus.Abandoned &&
+                r.Status != RegistrationStatus.Pending);
 #pragma warning restore CS0618
 
-            if (existingRegistration != null)
+            if (existingByUserId != null)
                 return Result.Failure("You are already registered for this event. To change your registration details, please cancel your current registration first.");
-        }
-        else
-        {
-            // Phase 6A.81: Anonymous user - check by email (case-insensitive)
-            // CRITICAL: Exclude Preliminary and Abandoned states to allow retry after payment failure
-            // Phase 6A.93 FIX: Also exclude RefundRequested to allow re-registration while refund is pending
-#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
-            var existingRegistration = _registrations.FirstOrDefault(r =>
+
+            // Check 2: Cross-path - check by email to catch registrations from the anonymous path
+#pragma warning disable CS0618
+            var existingByEmail = _registrations.FirstOrDefault(r =>
                 r.Contact != null &&
                 r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase) &&
                 r.Status != RegistrationStatus.Cancelled &&
                 r.Status != RegistrationStatus.Refunded &&
-                r.Status != RegistrationStatus.RefundRequested &&  // Phase 6A.93: Allow re-registration while refund is pending
-                r.Status != RegistrationStatus.Preliminary &&  // Phase 6A.81: Allow retry if previous attempt didn't complete payment
-                r.Status != RegistrationStatus.Abandoned &&    // Phase 6A.81: Allow retry if previous session expired
-                r.Status != RegistrationStatus.Pending);       // Legacy: exclude old pending registrations
+                r.Status != RegistrationStatus.RefundRequested &&
+                r.Status != RegistrationStatus.Preliminary &&
+                r.Status != RegistrationStatus.Abandoned &&
+                r.Status != RegistrationStatus.Pending);
 #pragma warning restore CS0618
 
-            if (existingRegistration != null)
+            if (existingByEmail != null)
+                return Result.Failure("This email is already registered for this event. Each email can only register once.");
+        }
+        else
+        {
+            // Anonymous user - check by email across ALL registrations (both anonymous and authenticated)
+#pragma warning disable CS0618
+            var existingByEmail = _registrations.FirstOrDefault(r =>
+                ((r.Contact != null && r.Contact.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase)) ||
+                 (r.AttendeeInfo != null && r.AttendeeInfo.Email != null &&
+                  r.AttendeeInfo.Email.Value.Equals(contact.Email, StringComparison.OrdinalIgnoreCase))) &&
+                r.Status != RegistrationStatus.Cancelled &&
+                r.Status != RegistrationStatus.Refunded &&
+                r.Status != RegistrationStatus.RefundRequested &&
+                r.Status != RegistrationStatus.Preliminary &&
+                r.Status != RegistrationStatus.Abandoned &&
+                r.Status != RegistrationStatus.Pending);
+#pragma warning restore CS0618
+
+            if (existingByEmail != null)
                 return Result.Failure("This email is already registered for this event. Each email can only register once.");
         }
 
@@ -559,10 +591,20 @@ public class Event : BaseEntity
         return Result.Success();
     }
 
+    // Phase 6A.XXX FIX: Check all active statuses, not just Confirmed
+    // Previously only checked Confirmed, missing CheckedIn, Attended, and Waitlisted
+#pragma warning disable CS0618 // Type or member is obsolete (Pending deprecated but supported for backward compatibility)
     public bool IsUserRegistered(Guid userId)
     {
-        return _registrations.Any(r => r.UserId == userId && r.Status == RegistrationStatus.Confirmed);
+        return _registrations.Any(r => r.UserId == userId
+            && r.Status != RegistrationStatus.Cancelled
+            && r.Status != RegistrationStatus.Refunded
+            && r.Status != RegistrationStatus.RefundRequested
+            && r.Status != RegistrationStatus.Preliminary
+            && r.Status != RegistrationStatus.Abandoned
+            && r.Status != RegistrationStatus.Pending);
     }
+#pragma warning restore CS0618
 
     public bool HasCapacityFor(int quantity)
     {

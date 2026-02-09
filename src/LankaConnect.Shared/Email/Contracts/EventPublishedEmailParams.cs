@@ -119,6 +119,20 @@ public class EventPublishedEmailParams : IEmailParameters
 
     #endregion
 
+    #region Signup Lists Properties
+
+    /// <summary>
+    /// Whether signup lists are available for this event (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to the signup lists page.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -147,20 +161,18 @@ public class EventPublishedEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventUrl, EventUrl },
             { EmailTemplateContract.Event.EventDetailsUrl, EventUrl },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year },
-            { EmailTemplateContract.OrganizerContact.HasOrganizerContact, HasOrganizerContact }
+            { EmailTemplateContract.OrganizerContact.HasOrganizerContact, HasOrganizerContact },
+
+            // Organizer contact params (always include, even if empty)
+            { EmailTemplateContract.OrganizerContact.OrganizerContactName, OrganizerContactName ?? string.Empty },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail ?? string.Empty },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone ?? string.Empty },
+
+            // Signup lists params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl }  // Template alias (singular form)
         };
-
-        // Add organizer contact info if available
-        if (HasOrganizerContact)
-        {
-            dict[EmailTemplateContract.OrganizerContact.OrganizerContactName] = OrganizerContactName ?? "Event Organizer";
-
-            if (!string.IsNullOrWhiteSpace(OrganizerContactEmail))
-                dict[EmailTemplateContract.OrganizerContact.OrganizerContactEmail] = OrganizerContactEmail;
-
-            if (!string.IsNullOrWhiteSpace(OrganizerContactPhone))
-                dict[EmailTemplateContract.OrganizerContact.OrganizerContactPhone] = OrganizerContactPhone;
-        }
 
         return dict;
     }

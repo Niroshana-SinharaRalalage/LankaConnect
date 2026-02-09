@@ -107,6 +107,11 @@ public class WelcomeEmailParams : IEmailParameters
     /// </summary>
     public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
+    /// <summary>
+    /// Site URL for template linking.
+    /// </summary>
+    public string SiteUrl { get; set; } = "https://lankaconnect.com";
+
     #endregion
 
     #region Optional Custom Message
@@ -147,6 +152,12 @@ public class WelcomeEmailParams : IEmailParameters
             { "UserRole", UserRole },
             { "IsEventOrganizer", IsEventOrganizer },
             { "IsAdmin", IsAdmin },
+            // Template alias: template uses Email instead of UserEmail
+            { "Email", UserEmail },
+            // Template alias: template uses Name instead of UserName
+            { "Name", UserName },
+            // Template alias: template uses SiteUrl for site linking
+            { "SiteUrl", SiteUrl },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
     }

@@ -144,6 +144,16 @@ public class RefundEmailParams : IEmailParameters
     /// </summary>
     public string PaymentIntentId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Event location.
+    /// </summary>
+    public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Cancellation date formatted string (for template display).
+    /// </summary>
+    public string CancellationDate { get; set; } = string.Empty;
+
     #endregion
 
     #region Organizer Contact Properties
@@ -167,6 +177,20 @@ public class RefundEmailParams : IEmailParameters
     /// Organizer's phone.
     /// </summary>
     public string OrganizerContactPhone { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Signup Lists Properties
+
+    /// <summary>
+    /// Whether signup lists are available for this event (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to the signup lists page.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
 
     #endregion
 
@@ -230,11 +254,19 @@ public class RefundEmailParams : IEmailParameters
             { "StripeRefundId", StripeRefundId },
             { "ReferenceId", !string.IsNullOrEmpty(StripeRefundId) ? StripeRefundId : PaymentIntentId },  // Phase 6A.87++ Fix: Fallback to PaymentIntentId
 
+            { "EventLocation", EventLocation },
+            { "CancellationDate", CancellationDate },
+
             // Organizer contact params (for {{#HasOrganizerContact}} conditional)
             { "HasOrganizerContact", HasOrganizerContact },
             { "OrganizerContactName", OrganizerContactName },
             { "OrganizerContactEmail", OrganizerContactEmail },
             { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Signup lists params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
 
             // Footer params
             { "Year", DateTime.UtcNow.Year }
@@ -295,6 +327,16 @@ public class RefundEmailParams : IEmailParameters
         OrganizerContactName = name ?? string.Empty;
         OrganizerContactEmail = email ?? string.Empty;
         OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL.
+    /// </summary>
+    public RefundEmailParams WithSignUpLists(string url)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(url);
+        SignUpListsUrl = url ?? string.Empty;
         return this;
     }
 

@@ -109,6 +109,49 @@ public class EventCancellationEmailParams : IEmailParameters
     /// </summary>
     public string BrowseEventsUrl { get; set; } = "https://lankaconnect.com/events";
 
+    /// <summary>
+    /// URL to view event details.
+    /// </summary>
+    public string EventDetailsUrl { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Organizer Contact Properties
+
+    /// <summary>
+    /// Whether organizer contact info is available (controls {{#HasOrganizerContact}} conditional).
+    /// </summary>
+    public bool HasOrganizerContact { get; set; } = false;
+
+    /// <summary>
+    /// Organizer's name.
+    /// </summary>
+    public string OrganizerContactName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's email.
+    /// </summary>
+    public string OrganizerContactEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Organizer's phone.
+    /// </summary>
+    public string OrganizerContactPhone { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Signup Lists Properties
+
+    /// <summary>
+    /// Whether signup lists are available for this event (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to the signup lists page.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -130,6 +173,7 @@ public class EventCancellationEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
+            { "EventDate", formattedDate },  // Template alias for EventStartDate
             { "EventLocation", EventLocation },
             { "CancellationReason", CancellationReason },
             { "CancelledAt", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
@@ -138,6 +182,20 @@ public class EventCancellationEmailParams : IEmailParameters
             { "RefundMessage", RefundMessage },
             { "SupportEmail", SupportEmail },
             { "BrowseEventsUrl", BrowseEventsUrl },
+            { "DashboardUrl", BrowseEventsUrl },  // Template alias for BrowseEventsUrl
+            { "EventDetailsUrl", EventDetailsUrl },
+
+            // Organizer contact params (for {{#HasOrganizerContact}} conditional)
+            { "HasOrganizerContact", HasOrganizerContact },
+            { "OrganizerContactName", OrganizerContactName },
+            { "OrganizerContactEmail", OrganizerContactEmail },
+            { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Signup lists params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
+
             { "Year", DateTime.UtcNow.Year }
         };
     }
@@ -171,6 +229,35 @@ public class EventCancellationEmailParams : IEmailParameters
             errors.Add("CancelledAt is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Setters
+
+    /// <summary>
+    /// Sets organizer contact information.
+    /// </summary>
+    public EventCancellationEmailParams WithOrganizerContact(
+        string? name,
+        string? email = null,
+        string? phone = null)
+    {
+        HasOrganizerContact = !string.IsNullOrWhiteSpace(name);
+        OrganizerContactName = name ?? string.Empty;
+        OrganizerContactEmail = email ?? string.Empty;
+        OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL.
+    /// </summary>
+    public EventCancellationEmailParams WithSignUpLists(string url)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(url);
+        SignUpListsUrl = url ?? string.Empty;
+        return this;
     }
 
     #endregion

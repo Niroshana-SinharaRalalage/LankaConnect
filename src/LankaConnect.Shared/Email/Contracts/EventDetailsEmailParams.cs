@@ -157,12 +157,12 @@ public class EventDetailsEmailParams : IEmailParameters
     /// <summary>
     /// Organizer contact email.
     /// </summary>
-    public string? OrganizerContactEmail { get; set; }
+    public string OrganizerContactEmail { get; set; } = string.Empty;
 
     /// <summary>
     /// Organizer contact phone.
     /// </summary>
-    public string? OrganizerContactPhone { get; set; }
+    public string OrganizerContactPhone { get; set; } = string.Empty;
 
     #endregion
 
@@ -209,18 +209,14 @@ public class EventDetailsEmailParams : IEmailParameters
             { EmailTemplateContract.Registration.TicketPrice, TicketPrice },
             { "HasSignUpLists", HasSignUpLists },
             { EmailTemplateContract.Event.SignUpListsUrl, SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
             { EmailTemplateContract.OrganizerContact.HasOrganizerContact, HasOrganizerContact },
             { EmailTemplateContract.OrganizerContact.OrganizerContactName, OrganizerContactName },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone },
             { "SubjectPrefix", SubjectPrefix },
             { EmailTemplateContract.Common.Year, Year }
         };
-
-        // Only add optional fields if they have values
-        if (!string.IsNullOrWhiteSpace(OrganizerContactEmail))
-            dict[EmailTemplateContract.OrganizerContact.OrganizerContactEmail] = OrganizerContactEmail;
-
-        if (!string.IsNullOrWhiteSpace(OrganizerContactPhone))
-            dict[EmailTemplateContract.OrganizerContact.OrganizerContactPhone] = OrganizerContactPhone;
 
         return dict;
     }
@@ -299,8 +295,8 @@ public class EventDetailsEmailParams : IEmailParameters
             SignUpListsUrl = signUpListsUrl,
             HasOrganizerContact = hasOrganizerContact,
             OrganizerContactName = organizerContactName,
-            OrganizerContactEmail = organizerContactEmail,
-            OrganizerContactPhone = organizerContactPhone,
+            OrganizerContactEmail = organizerContactEmail ?? string.Empty,
+            OrganizerContactPhone = organizerContactPhone ?? string.Empty,
             SubjectPrefix = subjectPrefix,
             Year = DateTime.UtcNow.Year
         };

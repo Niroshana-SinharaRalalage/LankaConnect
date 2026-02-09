@@ -88,6 +88,11 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     public string EventDetailsUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// Whether the event has signup lists (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
     /// URL to signup lists section of event (if event has signup lists).
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
@@ -198,7 +203,9 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87 Fix: Combined for standardized templates
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
+            { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
 
             // Registration parameters
             { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(RegistrationDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
@@ -345,6 +352,16 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     public FreeEventRegistrationEmailParams WithSignUpListsUrl(string signUpListsUrl)
     {
         SignUpListsUrl = signUpListsUrl ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL and HasSignUpLists flag together.
+    /// </summary>
+    public FreeEventRegistrationEmailParams WithSignUpLists(string url)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(url);
+        SignUpListsUrl = url ?? string.Empty;
         return this;
     }
 

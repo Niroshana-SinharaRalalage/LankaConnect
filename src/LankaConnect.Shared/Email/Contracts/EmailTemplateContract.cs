@@ -92,6 +92,11 @@ public static class EmailTemplateContract
         public const string UserName = "UserName";
 
         /// <summary>
+        /// User's first name (used in welcome/business emails).
+        /// </summary>
+        public const string FirstName = "FirstName";
+
+        /// <summary>
         /// Current year for footer copyright. E.g., "© {{Year}} LankaConnect"
         /// </summary>
         public const string Year = "Year";
@@ -105,6 +110,16 @@ public static class EmailTemplateContract
         /// Company name for branding.
         /// </summary>
         public const string CompanyName = "CompanyName";
+
+        /// <summary>
+        /// URL to the user dashboard.
+        /// </summary>
+        public const string DashboardUrl = "DashboardUrl";
+
+        /// <summary>
+        /// Site URL for template linking.
+        /// </summary>
+        public const string SiteUrl = "SiteUrl";
     }
 
     #endregion
@@ -159,6 +174,36 @@ public static class EmailTemplateContract
         public const string SignUpListsUrl = "SignUpListsUrl";
 
         /// <summary>
+        /// Alias for SignUpListsUrl - templates use singular form {{SignupListUrl}}.
+        /// </summary>
+        public const string SignupListUrl = "SignupListUrl";
+
+        /// <summary>
+        /// Boolean flag for {{#HasSignUpLists}} conditional blocks in templates.
+        /// </summary>
+        public const string HasSignUpLists = "HasSignUpLists";
+
+        /// <summary>
+        /// Alias for EventStartDate - some templates use {{EventDate}}.
+        /// </summary>
+        public const string EventDate = "EventDate";
+
+        /// <summary>
+        /// Organizer's display name (used in cancellation, approval, rejection emails).
+        /// </summary>
+        public const string OrganizerName = "OrganizerName";
+
+        /// <summary>
+        /// URL to manage the event (organizer-facing).
+        /// </summary>
+        public const string EventManageUrl = "EventManageUrl";
+
+        /// <summary>
+        /// URL to browse other events.
+        /// </summary>
+        public const string BrowseEventsUrl = "BrowseEventsUrl";
+
+        /// <summary>
         /// Event description text.
         /// </summary>
         public const string EventDescription = "EventDescription";
@@ -203,6 +248,26 @@ public static class EmailTemplateContract
         /// Organizer's phone number.
         /// </summary>
         public const string OrganizerContactPhone = "OrganizerContactPhone";
+    }
+
+    #endregion
+
+    #region Event Cancellation Parameters
+
+    /// <summary>
+    /// Parameters specific to event cancellation emails.
+    /// </summary>
+    public static class EventCancellation
+    {
+        /// <summary>
+        /// Whether refunds will be processed for cancelled event.
+        /// </summary>
+        public const string RefundsWillBeProcessed = "RefundsWillBeProcessed";
+
+        /// <summary>
+        /// Refund status message for cancelled event.
+        /// </summary>
+        public const string RefundMessage = "RefundMessage";
     }
 
     #endregion
@@ -393,6 +458,21 @@ public static class EmailTemplateContract
         /// Date of payment.
         /// </summary>
         public const string PaymentDate = "PaymentDate";
+
+        /// <summary>
+        /// URL for making a payment (e.g., preliminary registration payment).
+        /// </summary>
+        public const string PaymentLink = "PaymentLink";
+
+        /// <summary>
+        /// Alias for PaymentLink - some templates use {{PaymentUrl}}.
+        /// </summary>
+        public const string PaymentUrl = "PaymentUrl";
+
+        /// <summary>
+        /// Payment expiration time (alias for ExpiresAt in payment contexts).
+        /// </summary>
+        public const string ExpirationTime = "ExpirationTime";
     }
 
     #endregion
@@ -470,9 +550,39 @@ public static class EmailTemplateContract
         public const string CommitmentItem = "CommitmentItem";
 
         /// <summary>
+        /// Item description (alias for SignupItem in templates).
+        /// </summary>
+        public const string ItemDescription = "ItemDescription";
+
+        /// <summary>
+        /// Signup item name.
+        /// </summary>
+        public const string SignupItem = "SignupItem";
+
+        /// <summary>
+        /// Type of commitment (e.g., "Item Contribution").
+        /// </summary>
+        public const string CommitmentType = "CommitmentType";
+
+        /// <summary>
+        /// Instructions for pickup/delivery.
+        /// </summary>
+        public const string PickupInstructions = "PickupInstructions";
+
+        /// <summary>
         /// Quantity committed.
         /// </summary>
         public const string CommitmentQuantity = "CommitmentQuantity";
+
+        /// <summary>
+        /// New quantity (for commitment update emails).
+        /// </summary>
+        public const string NewQuantity = "NewQuantity";
+
+        /// <summary>
+        /// Previous quantity (for commitment update emails).
+        /// </summary>
+        public const string OldQuantity = "OldQuantity";
 
         /// <summary>
         /// Total number of slots available.
@@ -593,6 +703,36 @@ public static class EmailTemplateContract
         /// Timestamp of the action.
         /// </summary>
         public const string ActionTimestamp = "ActionTimestamp";
+    }
+
+    #endregion
+
+    #region Newsletter Parameters
+
+    /// <summary>
+    /// Parameters for newsletter-related emails.
+    /// </summary>
+    public static class Newsletter
+    {
+        /// <summary>
+        /// Newsletter title/subject.
+        /// </summary>
+        public const string NewsletterTitle = "NewsletterTitle";
+
+        /// <summary>
+        /// Newsletter HTML content.
+        /// </summary>
+        public const string NewsletterContent = "NewsletterContent";
+
+        /// <summary>
+        /// URL to unsubscribe from newsletter.
+        /// </summary>
+        public const string UnsubscribeLink = "UnsubscribeLink";
+
+        /// <summary>
+        /// Whether this newsletter is event-specific.
+        /// </summary>
+        public const string IsEventNewsletter = "IsEventNewsletter";
     }
 
     #endregion

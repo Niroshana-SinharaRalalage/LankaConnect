@@ -78,7 +78,7 @@ public class EventRejectedEmailParams : IEmailParameters
     /// <summary>
     /// Support email address.
     /// </summary>
-    public string SupportEmail { get; set; } = "support@lankaconnect.com";
+    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
     #endregion
 
@@ -171,7 +171,7 @@ public class EventRejectedEmailParams : IEmailParameters
             TimeZoneId = timeZoneId,
             Reason = reason,
             RejectedAt = rejectedAt,
-            SupportEmail = supportEmail ?? "support@lankaconnect.com"
+            SupportEmail = supportEmail ?? "lankaconnect.app@gmail.com"
         };
     }
 

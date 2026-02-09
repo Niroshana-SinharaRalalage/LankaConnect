@@ -88,7 +88,7 @@ public class AdminUserEmailParams : IEmailParameters
     /// <summary>
     /// Support email address.
     /// </summary>
-    public string SupportEmail { get; set; } = "support@lankaconnect.com";
+    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
     /// <summary>
     /// Login URL for the application.
@@ -247,7 +247,7 @@ public class AdminUserEmailParams : IEmailParameters
             Reason = reason,
             ActionDate = actionDate,
             CanAppeal = canAppeal,
-            AppealInstructions = appealInstructions ?? "To appeal this decision, please contact support@lankaconnect.com with your account details."
+            AppealInstructions = appealInstructions ?? "To appeal this decision, please contact lankaconnect.app@gmail.com with your account details."
         }.AsAccountLocked();
     }
 

@@ -56,7 +56,7 @@ public class SupportTicketReplyEmailParams : IEmailParameters
     /// <summary>
     /// Support email address.
     /// </summary>
-    public string SupportEmail { get; set; } = "support@lankaconnect.com";
+    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
     #endregion
 

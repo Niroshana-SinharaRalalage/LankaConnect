@@ -25,7 +25,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundRequestedEventHandler> _logger;
 
-    private const string SupportEmail = "support@lankaconnect.com";
+    private const string SupportEmail = "lankaconnect.app@gmail.com";
 
     public RefundRequestedEventHandler(
         ITypedEmailService typedEmailService,
